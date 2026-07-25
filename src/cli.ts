@@ -44,7 +44,8 @@ Usage:
 
 CI tip: CI mode is auto-detected from CI / provider env vars (GitHub Actions,
 GitLab, Circle, Jenkins, …). No mode: "ci" needed in plugin config. Pass --ci
-or mode: "ci" to force it; mode: "development" to opt out.`;
+or mode: "ci" to force it; mode: "development" to opt out. Findings are always
+collected in full before the build fails.`;
 }
 
 export function parseArgs(argv: string[]): Parsed {

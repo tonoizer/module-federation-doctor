@@ -6,8 +6,8 @@ problems in Module Federation projects built with Vite, Rspack, and Rsbuild.
 ## Primary DX: build plugin
 
 Register Doctor next to your Module Federation plugin. It runs after emit, prints
-findings in the terminal (and bundler logs), then fails the build when policy
-says so — after every finding is collected.
+**all** findings in the terminal (and bundler logs), then fails the build when
+policy says so — only after every finding is collected.
 
 **Vite**
 

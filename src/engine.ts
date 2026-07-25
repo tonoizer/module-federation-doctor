@@ -56,12 +56,29 @@ async function runRule(
     };
     findings.push({ ...base, fingerprint: fingerprint(base) });
   };
-  const returned = await rule.check({
-    facts: deepFreeze(structuredClone(facts)),
-    options: deepFreeze(resolved.options),
-    report: add,
-  });
-  if (Array.isArray(returned)) for (const finding of returned) add(finding);
+  try {
+    const returned = await rule.check({
+      facts: deepFreeze(structuredClone(facts)),
+      options: deepFreeze(resolved.options),
+      report: add,
+    });
+    if (Array.isArray(returned)) for (const finding of returned) add(finding);
+  } catch (error) {
+    // Keep every other rule's findings; never abort the suite on the first rule failure.
+    const base = {
+      schemaVersion: 1 as const,
+      ruleId: rule.meta.id,
+      severity: "error" as const,
+      message: `Rule "${rule.meta.id}" failed during analysis: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      project: facts.project.name,
+      evidence: { ruleId: rule.meta.id },
+      documentation: rule.meta.documentation,
+      suggestion: "Fix or disable this rule, then re-run Doctor to collect the full report.",
+    };
+    findings.push({ ...base, fingerprint: fingerprint(base) });
+  }
   return findings;
 }
 
@@ -102,6 +119,7 @@ async function runAnalysis(
         )
       ).flat(),
     );
+    // Write the full report before any caller decides to fail the build.
     const report = reportFor(facts, findings);
     const safeFacts = redact(facts, resolved.root) as ProjectFacts;
     await writeReports(safeFacts, report, resolved.output.directory, resolved.output.formats);
