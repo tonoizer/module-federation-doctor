@@ -9,7 +9,7 @@ Using the wrong integration can skip required bundler hooks and runtime generati
 
 ## How to fix it
 
-Use the official package for Vite, Rspack, or Rsbuild.
+Use the official package for Vite, Rspack, Rsbuild, or Webpack.
 
 Override this rule with `rules["config/plugin-package-mismatch"]`.
 

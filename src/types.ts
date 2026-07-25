@@ -1,4 +1,4 @@
-export type BundlerName = "vite" | "rspack" | "rsbuild" | "unknown";
+export type BundlerName = "vite" | "rspack" | "rsbuild" | "webpack" | "unknown";
 export type Severity = "info" | "warning" | "error";
 export type OutputFormat = "terminal" | "json" | "sarif";
 export type RuleSetting = "off" | Severity | readonly [Severity, Record<string, unknown>];

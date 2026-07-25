@@ -25,6 +25,42 @@ export function failAfterCollect(result: AnalysisResult): void {
   );
 }
 
+type CompilationLike = {
+  assets: Record<string, unknown>;
+  warnings: Error[];
+  errors: Error[];
+};
+
+type CompilerLike = {
+  context: string;
+  hooks: {
+    afterEmit: {
+      tapPromise: (name: string, fn: (compilation: CompilationLike) => Promise<void>) => void;
+    };
+  };
+  webpack?: { WebpackError?: new (message: string) => Error };
+};
+
+function attachCompilationAfterEmit(compiler: CompilerLike, configured: DoctorOptions): void {
+  if (!configured.root) configured.root = compiler.context;
+  compiler.hooks.afterEmit.tapPromise("ModuleFederationDoctor", async (compilation) => {
+    const result = await analyzeBuild(configured, Object.keys(compilation.assets));
+    const ErrorCtor = compiler.webpack?.WebpackError ?? Error;
+    const policyErrors: Error[] = [];
+    // Pass 1: publish every finding (as warnings) so nothing is lost mid-hook.
+    for (const finding of result.report.findings) {
+      const diagnostic = new ErrorCtor(formatFinding(finding));
+      compilation.warnings.push(diagnostic);
+      if (finding.severity === "error" && result.exitCode === 1) {
+        policyErrors.push(diagnostic);
+      }
+    }
+    // Pass 2: attach all policy errors together, then throw once.
+    for (const diagnostic of policyErrors) compilation.errors.push(diagnostic);
+    failAfterCollect(result);
+  });
+}
+
 /**
  * Build/CI-only invariant (#32): adapters may hook post-emit surfaces only
  * (`writeBundle` / `afterEmit` / `onAfterBuild`). Never register
@@ -74,25 +110,14 @@ function createDoctorPlugin(bundler: BundlerName) {
       ...(bundler === "rspack"
         ? {
             rspack(compiler) {
-              if (!configured.root) configured.root = compiler.context;
-              compiler.hooks.afterEmit.tapPromise("ModuleFederationDoctor", async (compilation) => {
-                const result = await analyzeBuild(configured, Object.keys(compilation.assets));
-                const ErrorCtor =
-                  (compiler as { webpack?: { WebpackError?: new (message: string) => Error } })
-                    .webpack?.WebpackError ?? Error;
-                const policyErrors: Error[] = [];
-                // Pass 1: publish every finding (as warnings) so nothing is lost mid-hook.
-                for (const finding of result.report.findings) {
-                  const diagnostic = new ErrorCtor(formatFinding(finding));
-                  compilation.warnings.push(diagnostic);
-                  if (finding.severity === "error" && result.exitCode === 1) {
-                    policyErrors.push(diagnostic);
-                  }
-                }
-                // Pass 2: attach all policy errors together, then throw once.
-                for (const diagnostic of policyErrors) compilation.errors.push(diagnostic);
-                failAfterCollect(result);
-              });
+              attachCompilationAfterEmit(compiler, configured);
+            },
+          }
+        : {}),
+      ...(bundler === "webpack"
+        ? {
+            webpack(compiler) {
+              attachCompilationAfterEmit(compiler, configured);
             },
           }
         : {}),
@@ -130,3 +155,4 @@ function createDoctorPlugin(bundler: BundlerName) {
 export const viteDoctor = createDoctorPlugin("vite");
 export const rspackDoctor = createDoctorPlugin("rspack");
 export const rsbuildDoctor = createDoctorPlugin("rsbuild");
+export const webpackDoctor = createDoctorPlugin("webpack");

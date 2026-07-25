@@ -7,6 +7,7 @@ export default defineConfig({
     "src/vite.ts",
     "src/rspack.ts",
     "src/rsbuild.ts",
+    "src/webpack.ts",
     "src/rules.ts",
   ],
   format: ["esm"],

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UnpluginContextMeta, UnpluginOptions } from "unplugin";
-import { rsbuildDoctor, rspackDoctor, viteDoctor } from "../../src/plugin.js";
+import { rsbuildDoctor, rspackDoctor, viteDoctor, webpackDoctor } from "../../src/plugin.js";
 
 /** Hooks that would inject or rewrite client modules / assets. */
 const CLIENT_INJECTION_HOOKS = [
@@ -86,6 +86,50 @@ describe("build-time-only adapter contract", () => {
       },
     };
     plugin.rspack?.(compiler as never);
+    expect(taps).toEqual([{ name: "ModuleFederationDoctor" }]);
+  });
+
+  it("webpack adapter only taps afterEmit (no client injection hooks)", () => {
+    const plugin = rawPlugin(webpackDoctor.raw, "webpack");
+    expect(plugin.name).toBe("module-federation-doctor");
+    expect(plugin.enforce).toBe("post");
+    expect(typeof plugin.webpack).toBe("function");
+    for (const hook of CLIENT_INJECTION_HOOKS) {
+      expect(plugin).not.toHaveProperty(hook);
+    }
+
+    const taps: Array<{ name: string }> = [];
+    const compiler = {
+      context: "/tmp/mfdoctor-webpack",
+      hooks: {
+        afterEmit: {
+          tapPromise(name: string, _fn: unknown) {
+            taps.push({ name });
+          },
+        },
+        compilation: {
+          tap() {
+            throw new Error("must not tap compilation");
+          },
+        },
+        thisCompilation: {
+          tap() {
+            throw new Error("must not tap thisCompilation");
+          },
+        },
+        emit: {
+          tapPromise() {
+            throw new Error("must not tap emit");
+          },
+        },
+        make: {
+          tapPromise() {
+            throw new Error("must not tap make");
+          },
+        },
+      },
+    };
+    plugin.webpack?.(compiler as never);
     expect(taps).toEqual([{ name: "ModuleFederationDoctor" }]);
   });
 

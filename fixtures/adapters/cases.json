@@ -1,5 +1,5 @@
 {
-  "bundlers": ["vite", "rspack", "rsbuild"],
+  "bundlers": ["vite", "rspack", "rsbuild", "webpack"],
   "cases": {
     "clean": { "expectedExitCode": 0, "expectedSeverity": null },
     "warning": { "expectedExitCode": 0, "expectedSeverity": "warning" },
