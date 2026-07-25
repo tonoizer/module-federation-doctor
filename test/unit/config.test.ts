@@ -4,6 +4,7 @@ import { DEFAULT_EXCLUDE, DEFAULT_INCLUDE, resolveOptions } from "../../src/conf
 
 describe("resolveOptions", () => {
   it("uses safe development defaults", () => {
+    vi.stubEnv("CI", "");
     const root = path.resolve("fixture");
     expect(resolveOptions({ root })).toMatchObject({
       mode: "development",
@@ -15,6 +16,7 @@ describe("resolveOptions", () => {
         formats: ["terminal", "json"],
       },
     });
+    vi.unstubAllEnvs();
   });
 
   it("uses strict CI defaults", () => {
