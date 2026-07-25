@@ -21,7 +21,7 @@ This permanent non-goal is documented under
 ## Roadmap
 
 - **[v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1)** —
-  governance-ready Doctor (Webpack + CI federation gate + policy packs +
+  governance-ready Doctor (CI federation gate + policy packs +
   baselines + dynamic-import completeness + compatibility matrix + npm
   publish). Epic:
   [#30](https://github.com/tonoizer/module-federation-doctor/issues/30).

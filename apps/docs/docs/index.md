@@ -4,7 +4,7 @@ pageType: home
 hero:
   name: Module Federation Doctor
   text: Diagnostics for federation projects
-  tagline: Offline-first checks for Vite, Rspack, and Rsbuild. Register the build plugin next to Module Federation and gate CI with terminal, JSON, and SARIF reports.
+  tagline: Offline-first checks for Vite, Rspack, Rsbuild, and Webpack. Register the build plugin next to Module Federation and gate CI with terminal, JSON, and SARIF reports.
   actions:
     - theme: brand
       text: Get started

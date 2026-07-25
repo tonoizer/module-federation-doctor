@@ -24,7 +24,7 @@ function createRule(
     meta: {
       id,
       defaultSeverity,
-      supportedBundlers: ["vite", "rspack", "rsbuild", "unknown"],
+      supportedBundlers: ["vite", "rspack", "rsbuild", "webpack", "unknown"],
       documentation: `/rules/${id}`,
       ...guidance,
     },
@@ -688,6 +688,7 @@ export const builtInRules: DoctorRule[] = [
       vite: "@module-federation/vite",
       rspack: "@module-federation/enhanced",
       rsbuild: "@module-federation/rsbuild-plugin",
+      webpack: "@module-federation/enhanced",
     };
     const packageName = expected[context.facts.bundler.name];
     if (packageName && !context.facts.dependencies.declared[packageName])

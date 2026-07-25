@@ -404,6 +404,7 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     vite: "vite",
     rspack: "@rspack/core",
     rsbuild: "@rsbuild/core",
+    webpack: "webpack",
     unknown: "",
   }[options.bundler];
   const bundlerVersion = options.bundlerVersion ?? installed[bundlerPackage];

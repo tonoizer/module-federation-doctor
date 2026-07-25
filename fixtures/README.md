@@ -1,6 +1,7 @@
 # Fixtures
 
-- `adapters`: clean, warning, and error policy inputs for Vite, Rspack, and Rsbuild.
+- `adapters`: clean, warning, and error policy inputs for Vite, Rspack, Rsbuild,
+  and Webpack.
 - `diagnostics`: rule, redaction, ordering, and failure cases.
 - `manifests`: valid and malformed Module Federation artifacts.
 - `workspaces`: portable project reports used by federation checks.

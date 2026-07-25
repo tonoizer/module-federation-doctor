@@ -308,7 +308,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "config/plugin-package-mismatch": {
     category: "correctness",
     impact: "Using the wrong integration can skip required bundler hooks and runtime generation.",
-    fix: "Use the official package for Vite, Rspack, or Rsbuild.",
+    fix: "Use the official package for Vite, Rspack, Rsbuild, or Webpack.",
     sources: ["https://module-federation.io/integrations/index.html"],
   },
   "shared/singleton-risk": {
