@@ -12,7 +12,9 @@ import type {
 } from "./types.js";
 import { stableStringify } from "./utils.js";
 
-/** Published Doctor docs origin (Rspress site). */
+/** Published Doctor docs origin (Rspress site).
+ * Matches the default SITE_ORIGIN in apps/docs/rspress.config.ts
+ * (module-federation.github.io) until the package moves under the org. */
 export const DOCTOR_DOCS_ORIGIN = "https://module-federation.github.io";
 
 /** Hosts allowed when printing official Module Federation source links. */

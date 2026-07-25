@@ -59,3 +59,6 @@ stay as rules, not showcases.
 These directories are demo fixtures, not runnable apps. Keep
 [mixed federation](./mixed-example.md) for the healthy multi-bundler path and
 [mixed federation issues](./mixed-issues-example.md) for a red combination.
+See [Examples](./examples.md) for the full catalog and planned nested /
+per-bundler demos ([#47](https://github.com/tonoizer/module-federation-doctor/issues/47),
+[#48](https://github.com/tonoizer/module-federation-doctor/issues/48)).

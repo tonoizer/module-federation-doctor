@@ -5,6 +5,25 @@ Federation website stack. Branding reuses the official federation mark with a
 Doctor diagnostic accent (`docs/public/doctor-*.svg`) plus a generated tooling
 icon for hero and social surfaces.
 
+## Site origin (`SITE_ORIGIN`)
+
+OG and Twitter image URLs in the built HTML are absolute. They use:
+
+```bash
+SITE_ORIGIN=https://module-federation.github.io   # default
+```
+
+That default matches the planned Module Federation org docs host and the
+`DOCTOR_DOCS_ORIGIN` constant used in terminal/SARIF rule links
+(`src/reporters.ts`). The GitHub repository currently lives under
+`tonoizer/module-federation-doctor`; until an org transfer, keep the default
+unless you deploy docs elsewhere — then set `SITE_ORIGIN` to that public
+origin (no trailing slash) for the docs build.
+
+Navigation IA is Start → CLI → Rules → Examples → Limitations, with deeper
+guides under More guides. Top nav: **Start** (`/setup`) and **Rules**
+(`/rules/`), including the Runtime rule group.
+
 ## What Doctor adopts
 
 - status-first error/warning/info counts in the terminal reporter,

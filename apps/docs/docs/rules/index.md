@@ -2,6 +2,8 @@
 
 Rule pages are generated from package metadata. Each page explains the issue, impact, fix, and upstream evidence.
 
+Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime, Federation, Performance, Security, and Doctor. Printed terminal `docs:` links open the same pages.
+
 ## Correctness
 
 | Rule | Severity | What it protects |

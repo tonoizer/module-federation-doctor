@@ -8,6 +8,10 @@ Install as a **devDependency**. Doctor is **build/CI-only**: adapters run after
 emit in Node and are not part of the browser bundle. They add CI time, not
 runtime size or performance cost.
 
+**Agents:** read the terminal findings block, open the linked rule docs, apply
+the fix (or an intentional [governance](./apps/docs/docs/suppressions.md)
+mute), and rebuild until the process exits **0**. Quiet success prints nothing.
+
 ## Primary DX: build plugin
 
 Register Doctor next to your Module Federation plugin. It runs **after emit**,
@@ -67,6 +71,10 @@ development defaults to `failOn: "never"` so findings print without breaking
 the build. Override with `--ci`, `mode: "ci"`, `mode: "development"`, or
 `failOn`.
 
+Quiet success is the default: zero findings print nothing. Use `--verbose`,
+`printLog: { success: true }`, `quiet: false`, or `MFDOCTOR_QUIET=0` for the
+legacy "no findings" line. `MFDOCTOR_QUIET=1` forces quiet.
+
 ### Noisy finding? Mute intentionally
 
 When a rule is known and accepted (for example a host that keeps direct
@@ -82,9 +90,10 @@ federationDoctor({
 });
 ```
 
-See [Suppressions and allowlists](./apps/docs/docs/suppressions.md) for
-severity overrides, policy packs, fingerprint baselines, `failOn`, and the
-canonical `examples/mixed-federation` host pattern.
+See [Governance: suppressions and allowlists](./apps/docs/docs/suppressions.md)
+for severity overrides, policy packs, fingerprint baselines, `failOn`, and the
+canonical `examples/mixed-federation` host pattern. Full rule catalog:
+[Rule reference](./apps/docs/docs/rules/index.md).
 
 ## CLI (complementary)
 
@@ -111,10 +120,6 @@ is no HTML report or `--ui` dashboard. For a programmatic remotes/shared graph,
 use `buildUiPayload` and `schemas/ui.schema.json` (see report schemas in the
 docs).
 
-Quiet success is the default: zero findings print nothing. Use `--verbose`,
-`printLog: { success: true }`, `quiet: false`, or `MFDOCTOR_QUIET=0` for the
-legacy "no findings" line. `MFDOCTOR_QUIET=1` forces quiet.
-
 | Command         | When to use it                                              |
 | --------------- | ----------------------------------------------------------- |
 | Plugin on build | Gate the real emit; strongest artifact evidence             |
@@ -130,7 +135,7 @@ only command that fetches over the network, and it never executes remote
 JavaScript. Exit codes: `0` pass, `1` policy fail, `2` analysis incomplete.
 Fingerprint baselines keep known debt visible in reports without failing policy
 by default — see [baselines](./apps/docs/docs/baselines.md) and
-[suppressions](./apps/docs/docs/suppressions.md).
+[governance](./apps/docs/docs/suppressions.md).
 
 ## Policy packs and presets
 
@@ -156,8 +161,9 @@ apps (`createInstance` / runtime plugins without a Vite/Rspack/Rsbuild/Webpack M
 [#34](https://github.com/tonoizer/module-federation-doctor/issues/34).
 
 Every built-in rule has an issue, impact, fix, category, and source link. See
-the [full documentation](./apps/docs/docs/index.md), including report schemas,
-privacy notes, current limits, and the upstream research behind the checks.
+the [rule reference](./apps/docs/docs/rules/index.md) and
+[Get started](./apps/docs/docs/setup.md) for setup, CI, and the fix-until-exit-0
+loop.
 
 ## Development
 
@@ -182,6 +188,9 @@ Examples:
   `pnpm demo:showcase`
 - From `examples/`: `pnpm --dir examples demo` runs showcase + mixed-issues
   (or `pnpm demo:examples` from the repo root)
+- Planned: nested multi-bundler ([#47](https://github.com/tonoizer/module-federation-doctor/issues/47)),
+  per-bundler demos ([#48](https://github.com/tonoizer/module-federation-doctor/issues/48)) —
+  see [Examples](./apps/docs/docs/examples.md)
 
 The repo also includes an original Codex skill at
 `.codex/skills/mfdoctor/SKILL.md` for repeatable diagnosis work.

@@ -46,6 +46,13 @@ const sections = categories
   .join("\n\n");
 await writeGenerated(
   path.join(root, "index.md"),
-  `# Rule reference\n\nRule pages are generated from package metadata. Each page explains the issue, impact, fix, and upstream evidence.\n\n${sections}\n`,
+  `# Rule reference
+
+Rule pages are generated from package metadata. Each page explains the issue, impact, fix, and upstream evidence.
+
+Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime, Federation, Performance, Security, and Doctor. Printed terminal \`docs:\` links open the same pages.
+
+${sections}
+`,
 );
 if (drift) process.exitCode = 1;
