@@ -1,4 +1,4 @@
-# Vite, Rspack, Rsbuild, and Webpack setup
+# Get started
 
 Install Doctor as a **devDependency** (`pnpm add -D @module-federation/doctor`).
 Keep one `mfOptions` object and pass it to both Module Federation and Doctor.
@@ -22,6 +22,17 @@ not shipped in the published bundle
 `CI` / provider env vars (or `mode: "ci"`) turn on `failOn: "error"` and SARIF
 output automatically. You do **not** need `mode: "ci"` in plugin config when CI
 already exports those variables.
+
+## First finding
+
+1. Register the plugin (below) and run a normal production build.
+2. Read the terminal block: severity, rule id, message, short fix, docs URL.
+3. Open the matching page under [Rule reference](./rules/) and apply the fix.
+4. Rebuild until the process exits **0**. Agents should treat that loop as the
+   whole job — do not stop while findings remain that policy fails on.
+5. If a finding is intentional product policy, mute that rule (or baseline the
+   fingerprint) instead of removing Doctor — see
+   [Governance](./suppressions.md).
 
 ## Terminal output knobs
 

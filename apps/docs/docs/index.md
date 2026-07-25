@@ -4,7 +4,7 @@ pageType: home
 hero:
   name: Module Federation Doctor
   text: Diagnostics for federation projects
-  tagline: Offline-first checks for Vite, Rspack, Rsbuild, and Webpack. Register the build plugin next to Module Federation and gate CI with terminal, JSON, and SARIF reports.
+  tagline: Register the build plugin next to Module Federation. Doctor prints findings after emit, then fails CI only when policy says so. Fix until the build exits 0.
   actions:
     - theme: brand
       text: Get started
@@ -12,17 +12,14 @@ hero:
     - theme: alt
       text: Rule reference
       link: /rules/
-  image:
-    src: /doctor-tooling-icon.png
-    alt: Module Federation Doctor icon
 
 features:
-  - title: Config and shared checks
-    details: Catch name, expose, remote, shared, and plugin mismatches before they ship.
-  - title: Artifact evidence
-    details: Validate manifests, remote entries, types, and emitted Doctor project facts from real builds.
-  - title: Offline by default
-    details: Local analysis stays offline. Use probe only when you intentionally inspect a deployed manifest.
-  - title: CI-ready reports
-    details: Terminal, JSON, and SARIF output you can attach to pull requests. CI is auto-detected and fails the build on error findings after every issue is collected.
+  - title: One plugin call
+    details: Vite, Rspack, Rsbuild, and Webpack adapters run after emit. Clean builds stay quiet; findings include fix hints and docs links.
+  - title: Clear rule catalog
+    details: Config, shared, artifact, reliability, runtime, federation, performance, and security rules — each with issue, impact, and fix.
+  - title: Governance without silence
+    details: Mute known rules with rules off, severity overrides, policy packs, or fingerprint baselines — keep Doctor on.
+  - title: CI and agents
+    details: Terminal, JSON, and SARIF. CI auto-detect fails on errors. Agents should fix printed findings until the build exits 0.
 ---

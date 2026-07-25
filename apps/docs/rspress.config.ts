@@ -3,6 +3,11 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "@rspress/core";
 
 const docsAppDir = path.dirname(fileURLToPath(import.meta.url));
+// Absolute origin for OG/Twitter image URLs in the built site.
+// Default stays module-federation.github.io (planned org docs host) even while
+// the GitHub repo lives under tonoizer — override with SITE_ORIGIN when
+// deploying elsewhere (for example a Pages preview or custom domain).
+// Terminal/SARIF rule links use the same default via DOCTOR_DOCS_ORIGIN in src/reporters.ts.
 const siteOrigin = (process.env.SITE_ORIGIN || "https://module-federation.github.io").replace(
   /\/$/,
   "",

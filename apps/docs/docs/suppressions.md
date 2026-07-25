@@ -1,8 +1,11 @@
-# Suppressions and allowlists
+# Governance: suppressions and allowlists
 
 Doctor already supports intentional allow/deny of specific rules. Use this page
 when a finding is **known and accepted** — for example enterprise nesting that
 keeps direct `remoteEntry` URLs — so CI stays green without disabling Doctor.
+
+This is the short **Governance** reference for `rules: { "id": "off" }`,
+severity overrides, policy packs, fingerprint baselines, and `failOn`.
 
 There is **no** source-comment `eslint-disable` style in v1. Prefer config
 `rules`, policy packs, or fingerprint baselines.

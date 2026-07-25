@@ -15,5 +15,11 @@ canonical suppression pattern for accepted host choices (see
 
 For intentional Doctor findings:
 
+- [Examples overview](./examples.md) — catalog + planned demos
 - [Finding showcase](./showcase.md) — themed one-rule demos
 - [Mixed federation issues](./mixed-issues-example.md) — same multi-bundler shape, red on purpose
+
+Planned (stubs until shipped): nested multi-bundler
+([#47](https://github.com/tonoizer/module-federation-doctor/issues/47)) and
+per-bundler standalone demos
+([#48](https://github.com/tonoizer/module-federation-doctor/issues/48)).
