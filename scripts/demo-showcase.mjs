@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(root, "dist/cli.js");
 
-/** @type {Array<{ dir?: string; pattern?: string; ruleId: string; expectedExit: number; command?: "check" | "federation" }>} */
+/** @type {Array<{ dir?: string; pattern?: string; ruleId?: string; expectNoFindings?: boolean; expectedExit: number; command?: "check" | "federation" | "runtime" }>} */
 const cases = [
   {
     dir: "examples/showcase/config/expose-key-invalid",
@@ -102,24 +102,52 @@ const cases = [
     ruleId: "federation/missing-provider",
     expectedExit: 1,
   },
+  {
+    command: "runtime",
+    dir: "examples/showcase/runtime/green",
+    expectNoFindings: true,
+    expectedExit: 0,
+  },
+  {
+    command: "runtime",
+    dir: "examples/showcase/runtime/shared-mismatch",
+    ruleId: "runtime/shared-mismatch",
+    expectedExit: 1,
+  },
 ];
 
 let failed = false;
 
 for (const item of cases) {
   const command = item.command ?? "check";
-  const args =
-    command === "federation"
-      ? [cli, "federation", path.join(root, item.pattern), "--format", "terminal"]
-      : [cli, "check", path.join(root, item.dir), "--ci", "--format", "terminal"];
+  /** @type {string[]} */
+  let args;
+  if (command === "federation") {
+    args = [cli, "federation", path.join(root, item.pattern), "--format", "terminal"];
+  } else if (command === "runtime") {
+    const dir = path.join(root, item.dir);
+    args = [
+      cli,
+      "runtime",
+      path.join(dir, "trace.json"),
+      path.join(dir, "*.project.json"),
+      "--format",
+      "terminal",
+    ];
+  } else {
+    args = [cli, "check", path.join(root, item.dir), "--ci", "--format", "terminal"];
+  }
   const label = item.dir ?? item.pattern;
   const result = spawnSync(process.execPath, args, { encoding: "utf8", cwd: root });
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
   const exitCode = result.status ?? 1;
-  const hasRule = output.includes(item.ruleId);
-  const ok = exitCode === item.expectedExit && hasRule;
+  const hasExpectation = item.expectNoFindings
+    ? /no findings/i.test(output)
+    : Boolean(item.ruleId && output.includes(item.ruleId));
+  const ok = exitCode === item.expectedExit && hasExpectation;
+  const expectation = item.expectNoFindings ? "no findings" : item.ruleId;
   process.stdout.write(
-    `${ok ? "ok" : "FAIL"} ${label} → ${item.ruleId} (exit ${exitCode}, expected ${item.expectedExit})\n`,
+    `${ok ? "ok" : "FAIL"} ${label} → ${expectation} (exit ${exitCode}, expected ${item.expectedExit})\n`,
   );
   if (!ok) {
     failed = true;

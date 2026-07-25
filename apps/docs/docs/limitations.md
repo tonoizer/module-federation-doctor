@@ -22,15 +22,18 @@ Static imports cannot see every runtime import until `MFDOCTOR-105` lands its
 documented completeness bar (supported dynamic patterns + honest
 `doctor/partial-analysis` — not a claim of 100% arbitrary runtime JS).
 
-Cross-app host↔remote shared/integration issues still need each app's
-`.mf/doctor/project.json` plus `mfdoctor federation` (or the workspace gate in
-`MFDOCTOR-109`). Opt-in `mfdoctor probe` inspects a deployed manifest.
+The Doctor plugin analyzes the **current** app (config + emit). Cross-app
+host↔remote shared/integration issues need each app's `.mf/doctor/project.json`
+plus `mfdoctor federation` (or the workspace gate in `MFDOCTOR-109`). Opt-in
+`mfdoctor probe` inspects a deployed manifest.
 
 Opt-in browser runtime trace import is available through `mfdoctor runtime` when
 you supply an Observability Plugin export. Default `check` and `federation`
 analysis stay offline.
 
-Doctor does not ship an HTML dashboard. Use terminal, JSON, and SARIF reports.
+Doctor does not ship an HTML dashboard today. Use terminal, JSON, and SARIF
+reports. Restoring a richer HTML analysis UI is tracked in
+[#13](https://github.com/tonoizer/module-federation-doctor/issues/13).
 
 ## post-v1
 

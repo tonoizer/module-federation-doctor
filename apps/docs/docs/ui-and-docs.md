@@ -1,46 +1,20 @@
-# UI and documentation design
+# Documentation design
 
 The docs site runs on Rspress 2 (`@rspress/core`), matching the Module
 Federation website stack. Branding reuses the official federation mark with a
 Doctor diagnostic accent (`docs/public/doctor-*.svg`) plus a generated tooling
 icon for hero and social surfaces.
 
-Vitest provides useful design ideas, but Doctor has a different job.
-
 ## What Doctor adopts
 
-- status-first error/warning/info counts,
-- fast filters and search,
-- expandable evidence,
-- light and dark system themes,
+- status-first error/warning/info counts in the terminal reporter,
+- expandable evidence in JSON/SARIF artifacts,
+- light and dark system themes on the docs site,
 - local docs search and generated reference pages,
-- one report file that can be attached to CI,
-- an optional `--ui` dashboard that opens the same portable report on loopback.
+- machine-readable reports you can attach to CI (`report.json`, `results.sarif`).
 
-The implementation is a static `report.html`. It makes no network requests,
-loads no remote assets, and renders only Doctor's redacted report plus derived
-federation graphs. This keeps it safe and portable.
-
-## Live `--ui` server
-
-`mfdoctor check --ui` and `mfdoctor federation … --ui` force HTML output, then
-serve `.mf/doctor/report.html` on `127.0.0.1` (default port `51205`) and open a
-browser. The server is read-only: static files only, no write endpoints, no
-remote execution, and no WebSocket rerun controls.
-
-Hold is skipped when `MFDOCTOR_UI_NO_HOLD=1` (useful for tests).
-
-## Dashboard views
-
-- Findings: filters, search, expandable evidence
-- Remote graph: project → remote wiring
-- Shared: shared dependency graph across projects
-- Orchestration: exposes, consumes, external-runtime provider links
-- Module info: per-project federation tables
-
-Graph views follow the Module Federation Chrome DevTools layout patterns
-(React Flow + dagre) but run from Doctor's offline report payload, not browser
-runtime globals.
+Doctor no longer ships an HTML dashboard or `--ui` server. Terminal output plus
+JSON/SARIF are the supported report surfaces.
 
 ## What Doctor does not copy
 

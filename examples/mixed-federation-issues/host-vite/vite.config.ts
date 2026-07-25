@@ -1,5 +1,5 @@
 import { federation } from "@module-federation/vite";
-import doctor from "@module-federation/doctor/vite";
+import { federationDoctor } from "@module-federation/doctor/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -37,7 +37,7 @@ export default defineConfig({
     // Intentionally leave remote-manifest-recommended and
     // reliability/version-first-offline-remotes enabled so the host report is red.
     // failOn never so the red suite still builds and emits project facts.
-    doctor({ moduleFederation: mfOptions, mode: "ci", failOn: "never" }),
+    federationDoctor({ moduleFederation: mfOptions, failOn: "never" }),
   ],
   server: { port: 5183, strictPort: true },
   preview: { port: 5183, strictPort: true },

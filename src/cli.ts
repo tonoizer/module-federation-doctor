@@ -10,8 +10,6 @@ import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
 import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "./rules.js";
 import type { DoctorOptions, ModuleFederationConfigLike, OutputFormat, RuleMeta } from "./types.js";
 import { stableStringify } from "./utils.js";
-import { DEFAULT_UI_PORT, serveUiUntilClosed } from "./ui-server.js";
-import { resolveOptions } from "./config.js";
 
 interface Parsed {
   command: "check" | "federation" | "probe" | "runtime" | "rules" | "help";
@@ -25,11 +23,9 @@ interface Parsed {
   maxBytes?: number;
   remoteEntry?: boolean;
   ruleId?: string;
-  ui: boolean;
-  uiPort?: number;
 }
 
-const outputFormats = new Set<OutputFormat>(["terminal", "json", "sarif", "html"]);
+const outputFormats = new Set<OutputFormat>(["terminal", "json", "sarif"]);
 const DEFAULT_RUNTIME_PROJECTS = ".mf/doctor/**/project.json";
 
 function help(): string {
@@ -38,26 +34,18 @@ function help(): string {
 Usage:
   mfdoctor check [root]
   mfdoctor check --ci
-  mfdoctor check --format terminal,json,sarif,html
-  mfdoctor check --ui
-  mfdoctor check --ui --ui-port 51205
+  mfdoctor check --format terminal,json,sarif
   mfdoctor federation ".mf/doctor/**/project.json"
-  mfdoctor federation ".mf/doctor/**/project.json" --ui
   mfdoctor runtime ./trace.json
   mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
   mfdoctor rules [rule-id]
   mfdoctor probe https://host.example/mf-manifest.json
-  mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry`;
-}
+  mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
 
-function shouldHoldUi(): boolean {
-  return process.env.MFDOCTOR_UI_NO_HOLD !== "1" && process.env.VITEST !== "true";
-}
-
-function withHtml(formats: OutputFormat[] | undefined): OutputFormat[] {
-  const base = formats ? [...formats] : [];
-  if (!base.includes("html")) base.push("html");
-  return base;
+CI tip: CI mode is auto-detected from CI / provider env vars (GitHub Actions,
+GitLab, Circle, Jenkins, …). No mode: "ci" needed in plugin config. Pass --ci
+or mode: "ci" to force it; mode: "development" to opt out. Findings are always
+collected in full before the build fails.`;
 }
 
 export function parseArgs(argv: string[]): Parsed {
@@ -69,21 +57,12 @@ export function parseArgs(argv: string[]): Parsed {
     command !== "runtime" &&
     command !== "rules"
   )
-    return { command: "help", patterns: [], ci: false, ui: false };
-  const parsed: Parsed = { command, patterns: [], ci: false, ui: false };
+    return { command: "help", patterns: [], ci: false };
+  const parsed: Parsed = { command, patterns: [], ci: false };
   for (let index = 1; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === "--ci") parsed.ci = true;
-    else if (value === "--ui") parsed.ui = true;
-    else if (value === "--ui-port") {
-      const next = argv[index + 1];
-      if (!next) throw new Error("--ui-port needs an integer value.");
-      const port = Number(next);
-      if (!Number.isSafeInteger(port) || port <= 0 || port > 65535)
-        throw new Error("--ui-port needs an integer port between 1 and 65535.");
-      parsed.uiPort = port;
-      index += 1;
-    } else if (value === "--remote-entry" && command === "probe") parsed.remoteEntry = true;
+    else if (value === "--remote-entry" && command === "probe") parsed.remoteEntry = true;
     else if ((value === "--timeout" || value === "--max-bytes") && command === "probe") {
       const next = argv[index + 1];
       if (!next) throw new Error(`${value} needs an integer value.`);
@@ -109,8 +88,6 @@ export function parseArgs(argv: string[]): Parsed {
     else if (!parsed.root && value) parsed.root = value;
     else throw new Error(`Unexpected argument: ${value}`);
   }
-  if (parsed.ui && (command === "probe" || command === "rules"))
-    throw new Error(`--ui is only supported for check, federation, and runtime.`);
   return parsed;
 }
 
@@ -134,15 +111,6 @@ async function configAt(root: string): Promise<DoctorOptions> {
     cwd: root,
   });
   return federation.config ? { ...config, moduleFederation: federation.config } : config;
-}
-
-async function maybeServeUi(directory: string, parsed: Parsed): Promise<void> {
-  if (!parsed.ui || !shouldHoldUi()) return;
-  await serveUiUntilClosed({
-    directory,
-    port: parsed.uiPort ?? DEFAULT_UI_PORT,
-    open: true,
-  });
 }
 
 function toRuleMeta(
@@ -215,14 +183,13 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     try {
       const files = await fg(parsed.patterns, { absolute: true, onlyFiles: true });
       if (files.length === 0) throw new Error("No project reports matched.");
-      const formats = parsed.ui ? withHtml(parsed.formats ?? ["terminal", "json"]) : parsed.formats;
+      const formats = parsed.formats;
       const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
       const result = await analyzeFederation(files, formats ? { formats, outputDirectory } : {});
       if (!formats)
         process.stdout.write(
           stableStringify({ schemaVersion: 1, findings: result.findings }, 2) + "\n",
         );
-      await maybeServeUi(outputDirectory, parsed);
       return result.exitCode;
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
@@ -243,7 +210,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       const patterns = parsed.patterns.length > 0 ? parsed.patterns : [DEFAULT_RUNTIME_PROJECTS];
       const files = await fg(patterns, { absolute: true, onlyFiles: true, cwd: root });
       if (files.length === 0) throw new RuntimeTraceError("No project reports matched.");
-      const formats = parsed.ui ? withHtml(parsed.formats ?? ["terminal", "json"]) : parsed.formats;
+      const formats = parsed.formats;
       const outputDirectory = path.resolve(root, ".mf/doctor");
       const result = await analyzeRuntime({
         tracePath: path.resolve(root, tracePath),
@@ -262,7 +229,6 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
             2,
           ) + "\n",
         );
-      await maybeServeUi(outputDirectory, parsed);
       return result.exitCode;
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
@@ -274,11 +240,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     const config = await configAt(root);
     const options: DoctorOptions = { ...config, root };
     if (parsed.ci) options.mode = "ci";
-    const formats = parsed.ui ? withHtml(parsed.formats ?? config.output?.formats) : parsed.formats;
-    if (formats) options.output = { ...config.output, formats };
+    if (parsed.formats) options.output = { ...config.output, formats: parsed.formats };
     const result = await analyze(options);
-    const directory = resolveOptions(options).output.directory;
-    await maybeServeUi(directory, parsed);
     return result.exitCode;
   } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);

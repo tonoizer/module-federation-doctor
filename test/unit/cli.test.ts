@@ -26,7 +26,6 @@ describe("CLI arguments", () => {
       patterns: [],
       ci: true,
       formats: ["terminal", "json", "sarif"],
-      ui: false,
     });
   });
 
@@ -35,7 +34,6 @@ describe("CLI arguments", () => {
       command: "federation",
       patterns: [".mf/doctor/**/project.json"],
       ci: false,
-      ui: false,
     });
   });
 
@@ -54,26 +52,13 @@ describe("CLI arguments", () => {
       patterns: [".mf/doctor/**/project.json"],
       ci: false,
       formats: ["terminal", "json"],
-      ui: false,
     });
   });
 
-  it("parses --ui and --ui-port for check and federation", () => {
-    expect(parseArgs(["check", "--ui", "--ui-port", "51205"])).toEqual({
-      command: "check",
-      patterns: [],
-      ci: false,
-      ui: true,
-      uiPort: 51205,
-    });
-    expect(parseArgs(["federation", "a.json", "--ui"])).toEqual({
-      command: "federation",
-      patterns: ["a.json"],
-      ci: false,
-      ui: true,
-    });
+  it("rejects unknown options including retired --ui", () => {
+    expect(() => parseArgs(["check", "--ui"])).toThrow("Unknown option: --ui");
     expect(() => parseArgs(["probe", "https://example.com/mf-manifest.json", "--ui"])).toThrow(
-      "--ui is only supported for check, federation, and runtime.",
+      "Unknown option: --ui",
     );
   });
 
@@ -96,15 +81,14 @@ describe("CLI arguments", () => {
       timeoutMs: 5000,
       maxBytes: 100000,
       remoteEntry: true,
-      ui: false,
     });
     expect(() => parseArgs(["check", "--format", "xml"])).toThrow("Unknown output format");
+    expect(() => parseArgs(["check", "--format", "html"])).toThrow("Unknown output format");
     expect(parseArgs(["rules", "config/name-required"])).toEqual({
       command: "rules",
       ruleId: "config/name-required",
       patterns: [],
       ci: false,
-      ui: false,
     });
   });
 
@@ -136,24 +120,6 @@ describe("CLI arguments", () => {
   it("returns exit 2 for invalid config", async () => {
     const root = await temporaryProject("export default { this is not valid");
     await expect(main(["check", root])).resolves.toBe(2);
-  });
-
-  it("writes html when --ui is set without holding the server", async () => {
-    const root = await temporaryProject(
-      'export default { output: { formats: ["json"] }, rules: { "doctor/partial-analysis": "off" } };',
-    );
-    const previous = process.env.MFDOCTOR_UI_NO_HOLD;
-    process.env.MFDOCTOR_UI_NO_HOLD = "1";
-    try {
-      await expect(main(["check", root, "--ui", "--format", "json"])).resolves.toBe(0);
-      const html = await fs.readFile(path.join(root, ".mf/doctor/report.html"), "utf8");
-      const ui = JSON.parse(await fs.readFile(path.join(root, ".mf/doctor/ui-data.json"), "utf8"));
-      expect(html).toContain("Module Federation Doctor");
-      expect(ui.graphs).toBeTruthy();
-    } finally {
-      if (previous === undefined) delete process.env.MFDOCTOR_UI_NO_HOLD;
-      else process.env.MFDOCTOR_UI_NO_HOLD = previous;
-    }
   });
 
   it("lists rule guidance and rejects an unknown rule", async () => {

@@ -1,5 +1,5 @@
 import { federation } from "@module-federation/vite";
-import doctor from "@module-federation/doctor/vite";
+import { federationDoctor } from "@module-federation/doctor/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -32,9 +32,9 @@ export default defineConfig({
   plugins: [
     react(),
     federation(mfOptions),
-    doctor({
+    // CI is auto-detected (CI / GITHUB_ACTIONS / …) → failOn: "error" + SARIF.
+    federationDoctor({
       moduleFederation: mfOptions,
-      mode: "ci",
       rules: {
         // This local example has no manifest server. Production apps should
         // prefer manifest URLs so tooling can inspect richer metadata.

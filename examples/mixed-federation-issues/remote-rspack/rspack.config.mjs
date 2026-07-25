@@ -1,5 +1,5 @@
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
-import doctor from "@module-federation/doctor/rspack";
+import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
 
 const mfOptions = {
   name: "rspack_remote_issues",
@@ -44,6 +44,6 @@ export default {
   resolve: { extensions: [".tsx", ".ts", ".jsx", ".js"] },
   plugins: [
     new ModuleFederationPlugin(mfOptions),
-    doctor({ moduleFederation: mfOptions, mode: "ci", failOn: "never" }),
+    moduleFederationDoctorPlugin({ moduleFederation: mfOptions, failOn: "never" }),
   ],
 };

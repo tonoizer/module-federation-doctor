@@ -1,13 +1,14 @@
 # CLI and CI
 
+The **build plugin** is the primary DX. Use the CLI for offline checks,
+cross-project federation analysis, runtime trace correlation, and deployed
+manifest probes.
+
 ```bash
 mfdoctor check
 mfdoctor check packages/host --ci
-mfdoctor check --format terminal,json,sarif,html
-mfdoctor check --ui
-mfdoctor check --ui --ui-port 51205
+mfdoctor check --format terminal,json,sarif
 mfdoctor federation ".mf/doctor/**/project.json"
-mfdoctor federation ".mf/doctor/**/project.json" --ui
 mfdoctor runtime ./trace.json
 mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
 mfdoctor rules
@@ -22,10 +23,20 @@ Doctor loads optional `mfdoctor.config.ts`; flags win over config. `check` exits
 it only reads a user-supplied Observability export and local `project.json`
 files.
 
-`--ui` is supported on `check`, `federation`, and `runtime`. It ensures HTML
-output is written, serves the portable dashboard on `127.0.0.1`, and opens a
-browser. Change the port with `--ui-port`. The UI server is read-only and
-loopback-bound.
+## CI auto-detect
+
+Doctor enables CI defaults automatically when the environment looks like CI
+(`CI=true` / `CI=1`, `GITHUB_ACTIONS`, `GITLAB_CI`, `CIRCLECI`, Jenkins,
+Azure Pipelines, and similar). No `mode: "ci"` is required in plugin config.
+
+When CI is detected (or you pass `--ci` / `mode: "ci"`):
+
+- `failOn` defaults to `"error"`
+- output formats default to `terminal`, `json`, and `sarif`
+
+Local development defaults to `failOn: "never"` so findings still print without
+breaking the build. Override with `failOn: "warning" | "error" | "never"`, or
+force local defaults in CI with `mode: "development"`.
 
 `rules` prints the machine-readable built-in rule catalog. Pass one rule id to
 get its default severity, category, impact, fix, supported bundlers, docs path,
@@ -43,6 +54,9 @@ Doctor never fetches URLs found in the trace and never executes remote
 JavaScript. Trace URLs are collapsed to origin plus basename, and token, cookie,
 authorization, password, and secret fields are redacted before findings are
 emitted.
+
+See `examples/showcase/runtime/green` (exit 0) and
+`examples/showcase/runtime/shared-mismatch` (exit 1) for offline demos.
 
 ## Deployed manifest probe
 

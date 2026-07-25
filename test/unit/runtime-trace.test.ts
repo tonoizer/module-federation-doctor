@@ -195,6 +195,41 @@ describe("runtime trace import", () => {
     expect(result.findings.some((item) => item.ruleId === "runtime/shared-mismatch")).toBe(true);
   });
 
+  it("accepts a healthy runtime trace with no findings", async () => {
+    const hostFile = await writeProject(
+      baseProject({
+        name: "host",
+        moduleFederation: {
+          name: "host",
+          exposes: {},
+          remotes: {
+            checkout: {
+              name: "checkout",
+              entry: "https://cdn.example.com/checkout/mf-manifest.json",
+              shareScope: "default",
+            },
+          },
+          shared: {
+            react: {
+              package: "react",
+              singleton: true,
+              eager: false,
+              requiredVersion: "^19.0.0",
+              shareScope: "default",
+            },
+          },
+        },
+      }),
+    );
+    const result = await analyzeRuntime({
+      tracePath: path.join(fixtureRoot, "healthy.json"),
+      projectFiles: [hostFile],
+      formats: ["terminal"],
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.findings).toEqual([]);
+  });
+
   it("rejects empty or invalid traces", () => {
     expect(() => parseRuntimeTraces({})).toThrow(RuntimeTraceError);
     expect(() => parseRuntimeTraces([])).toThrow(RuntimeTraceError);

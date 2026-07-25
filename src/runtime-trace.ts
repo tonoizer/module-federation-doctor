@@ -499,7 +499,7 @@ export async function analyzeRuntime(options: {
   const ui = buildUiPayload(projects, report);
   const formats = options.formats ?? [];
   if (options.outputDirectory && formats.length > 0)
-    await writeFederationReports(projects, report, ui, options.outputDirectory, formats);
+    await writeFederationReports(projects, report, options.outputDirectory, formats);
 
   return {
     traces,

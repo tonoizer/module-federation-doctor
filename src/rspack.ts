@@ -1,4 +1,9 @@
 import { rspackDoctor } from "./plugin.js";
 
-export const doctor = rspackDoctor.rspack;
-export default doctor;
+/** Rspack plugin factory — register next to `ModuleFederationPlugin`. */
+export const moduleFederationDoctorPlugin = rspackDoctor.rspack;
+
+/** @deprecated Use `moduleFederationDoctorPlugin`. */
+export const doctor = moduleFederationDoctorPlugin;
+
+export default moduleFederationDoctorPlugin;

@@ -1,0 +1,33 @@
+{
+  "traceId": "mf-healthy-001",
+  "status": "ok",
+  "summary": {
+    "outcome": "success",
+    "phases": {
+      "manifest": { "status": "complete" },
+      "remoteEntry": { "status": "complete" },
+      "init": { "status": "complete" },
+      "shared": { "status": "complete" }
+    }
+  },
+  "remote": {
+    "name": "checkout",
+    "entry": "https://cdn.example.com/checkout/mf-manifest.json"
+  },
+  "shared": {
+    "name": "react",
+    "provider": "host",
+    "requiredVersion": "^19.0.0",
+    "selectedVersion": "19.1.1",
+    "availableVersions": ["19.1.1"]
+  },
+  "moduleInfo": {
+    "name": "host"
+  },
+  "events": [
+    { "phase": "manifest", "status": "complete" },
+    { "phase": "remoteEntry", "status": "complete" },
+    { "phase": "init", "status": "complete" },
+    { "phase": "shared", "status": "complete" }
+  ]
+}

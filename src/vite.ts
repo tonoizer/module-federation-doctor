@@ -1,4 +1,9 @@
 import { viteDoctor } from "./plugin.js";
 
-export const doctor = viteDoctor.vite;
-export default doctor;
+/** Vite plugin — register next to `federation` from `@module-federation/vite`. */
+export const federationDoctor = viteDoctor.vite;
+
+/** @deprecated Use `federationDoctor`. */
+export const doctor = federationDoctor;
+
+export default federationDoctor;
