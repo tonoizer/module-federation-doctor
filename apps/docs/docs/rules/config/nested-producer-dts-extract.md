@@ -5,11 +5,11 @@
 
 ## Issue
 
-A nested producer that both exposes and consumes remotes may omit extracted remote types from its type archive.
+A producer can omit remote types only when an exposed module actually re-exports a configured remote and the remote types are not extracted.
 
 ## How to fix it
 
-Enable `dts.generateTypes.extractRemoteTypes` for producers that also consume remotes.
+Enable `dts.generateTypes.extractRemoteTypes` when an exposed module reaches a remote through a local import or re-export.
 
 Suppress or retarget with `rules["config/nested-producer-dts-extract"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 

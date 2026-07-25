@@ -80,8 +80,8 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "config/nested-producer-dts-extract": {
     category: "reliability",
     impact:
-      "A nested producer that both exposes and consumes remotes may omit extracted remote types from its type archive.",
-    fix: "Enable `dts.generateTypes.extractRemoteTypes` for producers that also consume remotes.",
+      "A producer can omit remote types only when an exposed module actually re-exports a configured remote and the remote types are not extracted.",
+    fix: "Enable `dts.generateTypes.extractRemoteTypes` when an exposed module reaches a remote through a local import or re-export.",
     sources: ["https://module-federation.io/configure/dts.html"],
   },
   "config/dts-output-dir-mismatch": {
@@ -97,8 +97,8 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "config/remote-type-urls-missing": {
     category: "tooling",
     impact:
-      "Direct `.js` remote entries do not advertise type archives unless `remoteTypeUrls` or a manifest is configured.",
-    fix: "Prefer `mf-manifest.json`, or set `dts.consumeTypes.remoteTypeUrls` for each `.js` remote.",
+      "Doctor reports this only when it can prove that a direct remote entry's inferred type location cannot match known producer output. Normal `remoteEntry.js` entries infer `@mf-types.zip` by default.",
+    fix: "Keep the default inferred type location when producer output follows Module Federation defaults. Use `dts.consumeTypes.remoteTypeUrls` only for runtime-only or custom type locations.",
     sources: [
       "https://module-federation.io/configure/dts.html",
       "https://module-federation.io/configure/remotes.html",
@@ -248,10 +248,15 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     sources: ["https://module-federation.io/configure/shareStrategy.html"],
   },
   "federation/circular-remote-graph": {
-    category: "correctness",
-    impact: "Circular remotes can deadlock nested container initialization and type extraction.",
-    fix: "Break the cycle so remotes form a DAG, or isolate shared code outside the remote graph.",
-    sources: ["https://module-federation.io/configure/remotes.html", core],
+    category: "reliability",
+    impact:
+      "A remote cycle is valid Module Federation topology by itself. Doctor warns only when a strongly connected group contains a `version-first` member that eagerly loads a remote during startup.",
+    fix: "Keep valid `loaded-first` bi-directional setups. For a risky cycle, use `loaded-first`, add startup fallback handling, or make the remote edge on the startup path lazy.",
+    sources: [
+      "https://module-federation.io/configure/shareStrategy.html",
+      "https://module-federation.io/configure/remotes.html",
+      "https://github.com/module-federation/module-federation-examples/tree/master/bi-directional",
+    ],
   },
   "reliability/shared-import-false": {
     category: "reliability",

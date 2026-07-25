@@ -324,6 +324,158 @@ describe("federation host-gaps and ghost-shares", () => {
     expect(ghost?.severity).toBe("info");
     expect(ghost?.evidence.package).toBe("lodash");
   });
+
+  it("honors off and severity overrides for federation strategy mismatch", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-fed-strategy-"));
+    roots.push(root);
+    const first = projectFacts("first", {}, []);
+    const second = projectFacts("second", {}, []);
+    first.moduleFederation!.shareStrategy = "version-first";
+    second.moduleFederation!.shareStrategy = "loaded-first";
+    const files = [path.join(root, "first.json"), path.join(root, "second.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(first));
+    await fs.writeFile(files[1]!, JSON.stringify(second));
+
+    const finding = (await analyzeFederation(files)).findings.find(
+      (item) => item.ruleId === "federation/share-strategy-mismatch",
+    );
+    expect(finding?.severity).toBe("warning");
+    expect(finding?.documentation).toBe("/rules/federation/share-strategy-mismatch");
+    expect(finding?.fingerprint).toBeTruthy();
+
+    const quiet = await analyzeFederation(files, {
+      rules: { "federation/share-strategy-mismatch": "off" },
+    });
+    expect(
+      quiet.findings.some((item) => item.ruleId === "federation/share-strategy-mismatch"),
+    ).toBe(false);
+
+    const retargeted = await analyzeFederation(files, {
+      rules: { "federation/share-strategy-mismatch": "info" },
+    });
+    expect(
+      retargeted.findings.find((item) => item.ruleId === "federation/share-strategy-mismatch")
+        ?.severity,
+    ).toBe("info");
+  });
+
+  it("allows a healthy loaded-first async bi-directional federation cycle", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-fed-cycle-"));
+    roots.push(root);
+    const first = projectFacts("first", {}, []);
+    const second = projectFacts("second", {}, []);
+    first.moduleFederation!.name = "app_a";
+    first.moduleFederation!.shareStrategy = "loaded-first";
+    first.moduleFederation!.exposes = { "./A": "src/A.ts" };
+    first.moduleFederation!.remotes = {
+      b: { name: "app_b", entry: "https://example.test/b/remoteEntry.js", shareScope: ["default"] },
+    };
+    first.moduleFederation!.experiments = {
+      asyncStartup: true,
+      externalRuntime: false,
+      provideExternalRuntime: false,
+    };
+    second.moduleFederation!.name = "app_b";
+    second.moduleFederation!.shareStrategy = "loaded-first";
+    second.moduleFederation!.exposes = { "./B": "src/B.ts" };
+    second.moduleFederation!.remotes = {
+      a: { name: "app_a", entry: "https://example.test/a/remoteEntry.js", shareScope: ["default"] },
+    };
+    second.moduleFederation!.experiments = {
+      asyncStartup: true,
+      externalRuntime: false,
+      provideExternalRuntime: false,
+    };
+    const files = [path.join(root, "first.json"), path.join(root, "second.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(first));
+    await fs.writeFile(files[1]!, JSON.stringify(second));
+
+    const result = await analyzeFederation(files);
+    expect(result.findings.some((item) => item.ruleId === "federation/circular-remote-graph")).toBe(
+      false,
+    );
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("warns only when a cycle has version-first eager startup evidence", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-fed-risk-"));
+    roots.push(root);
+    const first = projectFacts("first", {}, []);
+    const second = projectFacts("second", {}, []);
+    first.moduleFederation!.name = "app_a";
+    first.moduleFederation!.shareStrategy = "version-first";
+    first.moduleFederation!.remotes = {
+      b: { name: "app_b", entry: "https://example.test/b/remoteEntry.js", shareScope: ["default"] },
+    };
+    second.moduleFederation!.name = "app_b";
+    second.moduleFederation!.shareStrategy = "loaded-first";
+    second.moduleFederation!.remotes = {
+      a: { name: "app_a", entry: "https://example.test/a/remoteEntry.js", shareScope: ["default"] },
+    };
+    const files = [path.join(root, "first.json"), path.join(root, "second.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(first));
+    await fs.writeFile(files[1]!, JSON.stringify(second));
+
+    const finding = (await analyzeFederation(files)).findings.find(
+      (item) => item.ruleId === "federation/circular-remote-graph",
+    );
+    expect(finding?.severity).toBe("warning");
+    expect(finding?.evidence.riskMembers).toEqual([
+      expect.objectContaining({ project: "first", shareStrategy: "version-first" }),
+    ]);
+    expect(finding?.evidence.edges).toHaveLength(2);
+
+    const quiet = await analyzeFederation(files, {
+      rules: { "federation/circular-remote-graph": "off" },
+    });
+    expect(quiet.findings.some((item) => item.ruleId === "federation/circular-remote-graph")).toBe(
+      false,
+    );
+    const retargeted = await analyzeFederation(files, {
+      rules: { "federation/circular-remote-graph": "error" },
+    });
+    expect(
+      retargeted.findings.find((item) => item.ruleId === "federation/circular-remote-graph")
+        ?.severity,
+    ).toBe("error");
+  });
+});
+
+describe("DTS rule evidence", () => {
+  it("does not warn for a normal direct remoteEntry.js with default DTS inference", async () => {
+    const facts = projectFacts("consumer", {}, []);
+    facts.moduleFederation!.dts = { enabled: true, options: {} };
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "https://example.test/remoteEntry.js",
+        shareScope: ["default"],
+      },
+    };
+    const rule = builtInRules.find((item) => item.meta.id === "config/remote-type-urls-missing")!;
+    const findings: unknown[] = [];
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toHaveLength(0);
+  });
+
+  it("does not warn about nested DTS extraction without exposed-to-remote evidence", async () => {
+    const facts = projectFacts("nested", {}, []);
+    facts.moduleFederation!.dts = { enabled: true, options: {} };
+    facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "https://example.test/mf-manifest.json",
+        shareScope: ["default"],
+      },
+    };
+    const rule = builtInRules.find(
+      (item) => item.meta.id === "config/nested-producer-dts-extract",
+    )!;
+    const findings: unknown[] = [];
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toHaveLength(0);
+  });
 });
 
 describe("shared policy resolveOptions", () => {

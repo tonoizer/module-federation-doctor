@@ -33,7 +33,6 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`config/shared-capability-disabled`](./config/shared-capability-disabled.md) | error | Tree-shaken sharing code cannot register or consume configured shared packages. |
 | [`config/shared-externals-conflict`](./config/shared-externals-conflict.md) | error | A dependency cannot be provided by federation after the bundler removes it as an external. |
 | [`config/tree-shaking-server-calc-injection`](./config/tree-shaking-server-calc-injection.md) | warning | Runtime-injected used exports conflict with the deployment-owned `server-calc` contract. |
-| [`federation/circular-remote-graph`](./federation/circular-remote-graph.md) | error | Circular remotes can deadlock nested container initialization and type extraction. |
 | [`federation/external-runtime-provider-missing`](./federation/external-runtime-provider-missing.md) | error | External-runtime remotes cannot start without a federation-wide provider. |
 | [`federation/name-conflict`](./federation/name-conflict.md) | error | Duplicate container names collide in runtime data and global chunk storage. |
 | [`federation/share-scope-mismatch`](./federation/share-scope-mismatch.md) | error | Projects in different scopes cannot reuse the same shared provider. |
@@ -50,8 +49,9 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`artifact/manifest-shared-version-mismatch`](./artifact/manifest-shared-version-mismatch.md) | warning | Stale version metadata can choose the wrong shared provider at runtime. |
 | [`config/dts-output-dir-mismatch`](./config/dts-output-dir-mismatch.md) | warning | A nested remote-entry `filename` that disagrees with `dts.generateTypes.outputDir` can publish type archives to the wrong path. |
 | [`config/implementation-suspicious`](./config/implementation-suspicious.md) | info | A custom implementation can violate the runtime contract expected by the build plugin. |
-| [`config/nested-producer-dts-extract`](./config/nested-producer-dts-extract.md) | warning | A nested producer that both exposes and consumes remotes may omit extracted remote types from its type archive. |
+| [`config/nested-producer-dts-extract`](./config/nested-producer-dts-extract.md) | warning | A producer can omit remote types only when an exposed module actually re-exports a configured remote and the remote types are not extracted. |
 | [`config/remote-localhost-in-production`](./config/remote-localhost-in-production.md) | warning | Localhost remotes in CI/production builds cannot resolve on other machines and break deployments. |
+| [`federation/circular-remote-graph`](./federation/circular-remote-graph.md) | warning | A remote cycle is valid Module Federation topology by itself. Doctor warns only when a strongly connected group contains a `version-first` member that eagerly loads a remote during startup. |
 | [`federation/missing-provider`](./federation/missing-provider.md) | error | Every consumer disabled its fallback, so no build can provide the package. |
 | [`federation/share-strategy-mismatch`](./federation/share-strategy-mismatch.md) | warning | Hosts and remotes that disagree on `version-first` vs `loaded-first` negotiate shared versions differently at startup. |
 | [`reliability/async-startup-library-promise`](./reliability/async-startup-library-promise.md) | warning | Async startup changes synchronous library entry exports into a Promise contract. |
@@ -99,6 +99,6 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`artifact/types-missing`](./artifact/types-missing.md) | warning | No emitted declaration artifact was found for a typed producer. |
 | [`config/get-public-path-unused`](./config/get-public-path-unused.md) | info | `getPublicPath` has no effect on a consumer that exposes no modules. |
 | [`config/remote-manifest-recommended`](./config/remote-manifest-recommended.md) | info | A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. |
-| [`config/remote-type-urls-missing`](./config/remote-type-urls-missing.md) | warning | Direct `.js` remote entries do not advertise type archives unless `remoteTypeUrls` or a manifest is configured. |
+| [`config/remote-type-urls-missing`](./config/remote-type-urls-missing.md) | warning | Doctor reports this only when it can prove that a direct remote entry's inferred type location cannot match known producer output. Normal `remoteEntry.js` entries infer `@mf-types.zip` by default. |
 | [`doctor/partial-analysis`](./doctor/partial-analysis.md) | warning | Missing facts or unresolved dynamic imports reduce confidence and can hide relevant findings. |
 | [`runtime/remote-unknown`](./runtime/remote-unknown.md) | warning | The trace names a remote that is absent from loaded Doctor project facts. |

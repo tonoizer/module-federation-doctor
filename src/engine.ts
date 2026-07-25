@@ -13,6 +13,7 @@ import { addBuildFacts, collectProjectFacts, type BuildDiagnostics } from "./col
 import { resolveOptions } from "./config.js";
 import { builtInRules, federationRuleMeta } from "./rules.js";
 import { DEFAULT_ALWAYS_SHARED } from "./shared-policy.js";
+import { buildFederationModel, findFederationCycleGroups } from "./federation-model.js";
 import type {
   AnalysisResult,
   DoctorFinding,
@@ -35,16 +36,6 @@ function parseSetting(setting: RuleSetting | undefined, fallback: Severity) {
   if (setting === "off") return undefined;
   if (Array.isArray(setting)) return { severity: setting[0], options: setting[1] };
   return { severity: setting as Severity, options: {} };
-}
-
-function federationRuleSeverity(
-  ruleId: (typeof federationRuleMeta)[number]["id"],
-  rules: Record<string, RuleSetting> | undefined,
-): Severity | undefined {
-  const meta = federationRuleMeta.find((rule) => rule.id === ruleId);
-  const fallback = meta?.severity ?? "warning";
-  const resolved = parseSetting(rules?.[ruleId], fallback);
-  return resolved?.severity;
 }
 
 async function runRule(
@@ -193,25 +184,6 @@ export async function analyzeBuild(
   return runAnalysis(options, emittedAssets, diagnostics);
 }
 
-function federationFinding(
-  ruleId: (typeof federationRuleMeta)[number]["id"],
-  severity: Severity,
-  project: string,
-  message: string,
-  evidence: Record<string, unknown>,
-): DoctorFinding {
-  const base = {
-    schemaVersion: 1 as const,
-    ruleId,
-    severity,
-    project,
-    message,
-    evidence,
-    documentation: `/rules/${ruleId}`,
-  };
-  return { ...base, fingerprint: fingerprint(base) };
-}
-
 function pushFederationFinding(
   findings: DoctorFinding[],
   rules: Record<string, RuleSetting> | undefined,
@@ -220,9 +192,20 @@ function pushFederationFinding(
   message: string,
   evidence: Record<string, unknown>,
 ): void {
-  const severity = federationRuleSeverity(ruleId, rules);
-  if (!severity) return;
-  findings.push(federationFinding(ruleId, severity, project, message, evidence));
+  const meta = federationRuleMeta.find((rule) => rule.id === ruleId);
+  const resolved = parseSetting(rules?.[ruleId], meta?.severity ?? "warning");
+  if (!resolved || !meta) return;
+  const base = {
+    schemaVersion: 1 as const,
+    ruleId,
+    severity: resolved.severity,
+    project,
+    message,
+    evidence,
+    documentation: `/rules/${ruleId}`,
+    suggestion: meta.fix,
+  };
+  findings.push({ ...base, fingerprint: fingerprint(base) });
 }
 
 export async function analyzeFederation(
@@ -253,107 +236,77 @@ export async function analyzeFederation(
   const findings: DoctorFinding[] = [];
   const rules = options.rules;
   const alwaysShared = new Set<string>([...DEFAULT_ALWAYS_SHARED, ...(options.alwaysShared ?? [])]);
-  const names = new Map<string, string[]>();
-  for (const project of projects) {
-    const name = project.moduleFederation?.name;
-    if (name) names.set(name, [...(names.get(name) ?? []), project.project.name]);
-  }
-  for (const [name, owners] of names)
+  const federation = buildFederationModel(projects);
+  for (const [name, owners] of federation.federationNames)
     if (owners.length > 1)
       pushFederationFinding(
         findings,
         rules,
         "federation/name-conflict",
-        owners[0] ?? "federation",
+        owners[0]?.projectName ?? "federation",
         `Module Federation name "${name}" is used by more than one project.`,
-        { name, projects: owners.sort() },
+        { name, projects: owners.map((owner) => owner.projectName).sort() },
       );
 
   const strategyOwners = new Map<string, string[]>();
-  for (const project of projects) {
-    if (!project.moduleFederation) continue;
-    const strategy = project.moduleFederation.shareStrategy ?? "version-first";
-    strategyOwners.set(strategy, [...(strategyOwners.get(strategy) ?? []), project.project.name]);
+  for (const node of federation.projects) {
+    if (!node.project.moduleFederation) continue;
+    strategyOwners.set(node.shareStrategy, [
+      ...(strategyOwners.get(node.shareStrategy) ?? []),
+      node.projectName,
+    ]);
   }
   if (strategyOwners.size > 1)
-    findings.push(
-      federationFinding(
-        "federation/share-strategy-mismatch",
-        "warning",
-        [...strategyOwners.values()][0]?.[0] ?? "federation",
-        "Federation projects disagree on `shareStrategy`.",
-        {
-          strategies: Object.fromEntries(
-            [...strategyOwners.entries()]
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([strategy, owners]) => [strategy, [...owners].sort()]),
-          ),
-        },
-      ),
+    pushFederationFinding(
+      findings,
+      rules,
+      "federation/share-strategy-mismatch",
+      [...strategyOwners.values()][0]?.[0] ?? "federation",
+      "Federation projects disagree on `shareStrategy`.",
+      {
+        strategies: Object.fromEntries(
+          [...strategyOwners.entries()]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([strategy, owners]) => [strategy, [...owners].sort()]),
+        ),
+      },
     );
 
-  const projectByFederationName = new Map<string, string>();
-  for (const project of projects) {
-    const federationName = project.moduleFederation?.name;
-    if (!federationName) continue;
-    projectByFederationName.set(federationName, project.project.name);
-  }
-  const remoteAdj = new Map<string, string[]>();
-  for (const project of projects) {
-    const from = project.moduleFederation?.name;
-    if (!from) continue;
-    const targets = new Set<string>();
-    for (const remote of Object.values(project.moduleFederation?.remotes ?? {})) {
-      if (projectByFederationName.has(remote.name)) targets.add(remote.name);
-    }
-    remoteAdj.set(from, [...targets].sort());
-  }
-  const cycles: string[][] = [];
-  const visiting = new Set<string>();
-  const visited = new Set<string>();
-  const stack: string[] = [];
-  const visit = (node: string) => {
-    if (visited.has(node)) return;
-    if (visiting.has(node)) {
-      const start = stack.indexOf(node);
-      if (start >= 0) cycles.push([...stack.slice(start), node]);
-      return;
-    }
-    visiting.add(node);
-    stack.push(node);
-    for (const next of remoteAdj.get(node) ?? []) visit(next);
-    stack.pop();
-    visiting.delete(node);
-    visited.add(node);
-  };
-  for (const node of [...remoteAdj.keys()].sort()) visit(node);
-  const uniqueCycles = new Map<string, string[]>();
-  for (const cycle of cycles) {
-    const body = cycle.slice(0, -1);
-    let best = body;
-    let bestKey = body.join(">");
-    for (let index = 1; index < body.length; index += 1) {
-      const candidate = body.slice(index).concat(body.slice(0, index));
-      const key = candidate.join(">");
-      if (key.localeCompare(bestKey) < 0) {
-        best = candidate;
-        bestKey = key;
-      }
-    }
-    uniqueCycles.set(best.join("->"), best.concat(best[0]!));
-  }
-  for (const cycle of [...uniqueCycles.values()].sort((a, b) =>
-    a.join(">").localeCompare(b.join(">")),
-  )) {
-    const projectName = projectByFederationName.get(cycle[0]!) ?? cycle[0]!;
-    findings.push(
-      federationFinding(
-        "federation/circular-remote-graph",
-        "error",
-        projectName,
-        `Remote graph contains a cycle: ${cycle.join(" -> ")}.`,
-        { cycle, projects: cycle.map((name) => projectByFederationName.get(name) ?? name) },
-      ),
+  for (const group of findFederationCycleGroups(federation)) {
+    if (group.riskEdges.length === 0) continue;
+    const first = group.members[0];
+    if (!first) continue;
+    pushFederationFinding(
+      findings,
+      rules,
+      "federation/circular-remote-graph",
+      first.projectName,
+      `Remote graph has a cycle with eager \`version-first\` startup risk: ${group.members
+        .map((member) => member.federationName ?? member.projectName)
+        .join(" -> ")}.`,
+      {
+        projects: group.members.map((member) => member.projectName),
+        members: group.members.map((member) => ({
+          project: member.projectName,
+          federationName: member.federationName,
+          shareStrategy: member.shareStrategy,
+          asyncStartup: member.asyncStartup,
+        })),
+        edges: group.edges.map((edge) => ({
+          from: edge.fromFederationName,
+          to: edge.targetFederationName,
+          project: edge.fromProject,
+          remote: edge.remoteName,
+          alias: edge.alias,
+          entry: edge.entry,
+        })),
+        riskMembers: group.riskMembers.map((member) => ({
+          project: member.projectName,
+          federationName: member.federationName,
+          shareStrategy: member.shareStrategy,
+          asyncStartup: member.asyncStartup,
+        })),
+      },
     );
   }
 

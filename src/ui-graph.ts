@@ -9,6 +9,7 @@ import type {
   UiGraphNode,
 } from "./types.js";
 import { summarizeFindings } from "./baseline.js";
+import { buildFederationModel, type FederationModel } from "./federation-model.js";
 
 function emptyGraph(): UiGraph {
   return { nodes: [], edges: [] };
@@ -87,15 +88,15 @@ function addEdge(edges: Map<string, UiGraphEdge>, edge: UiGraphEdge): void {
   if (!edges.has(edge.id)) edges.set(edge.id, edge);
 }
 
-function buildRemotesGraph(projects: ProjectFacts[], findings: DoctorFinding[]): UiGraph {
+function buildRemotesGraph(
+  projects: ProjectFacts[],
+  findings: DoctorFinding[],
+  federation: FederationModel,
+): UiGraph {
   const nodes = new Map<string, UiGraphNode>();
   const edges = new Map<string, UiGraphEdge>();
   const projectSeverity = findingsByProject(findings);
-  const federationNames = new Map<string, string>();
-
   for (const project of projects) {
-    const name = project.moduleFederation?.name;
-    if (name) federationNames.set(name, project.project.name);
     addNode(
       nodes,
       withSeverity(
@@ -117,34 +118,30 @@ function buildRemotesGraph(projects: ProjectFacts[], findings: DoctorFinding[]):
     );
   }
 
-  for (const project of projects) {
-    const remotes = project.moduleFederation?.remotes ?? {};
-    for (const remote of Object.values(remotes)) {
-      const matchedName = federationNames.get(remote.name);
-      const matched = matchedName
-        ? projects.find((item) => item.project.name === matchedName)
-        : undefined;
-      const targetId = matched
-        ? projectNodeId(matched)
-        : remoteNodeId(project.project.name, remote.name);
-      if (!matched)
-        addNode(nodes, {
-          id: targetId,
-          label: remote.name,
-          kind: "remote",
-          meta: {
-            entry: remote.entry,
-            shareScope: remote.shareScope,
-            alias: remote.alias,
-          },
-        });
-      addEdge(edges, {
-        id: `${projectNodeId(project)}->${targetId}`,
-        source: projectNodeId(project),
-        target: targetId,
-        label: remote.alias ?? remote.name,
+  const projectsById = new Map(federation.projects.map((node) => [node.id, node.project] as const));
+  for (const edge of federation.remoteEdges) {
+    const matched = edge.targetId ? projectsById.get(edge.targetId) : undefined;
+    const targetId = matched
+      ? projectNodeId(matched)
+      : remoteNodeId(edge.fromProject, edge.remoteName);
+    if (!matched)
+      addNode(nodes, {
+        id: targetId,
+        label: edge.remoteName,
+        kind: "remote",
+        meta: {
+          entry: edge.entry,
+          shareScope: edge.shareScope,
+          alias: edge.alias,
+        },
       });
-    }
+    const source = `project:${edge.fromProject}`;
+    addEdge(edges, {
+      id: `${source}->${targetId}`,
+      source,
+      target: targetId,
+      label: edge.alias ?? edge.remoteName,
+    });
   }
 
   return {
@@ -221,15 +218,15 @@ function buildSharedGraph(projects: ProjectFacts[], findings: DoctorFinding[]): 
   };
 }
 
-function buildOrchestrationGraph(projects: ProjectFacts[], findings: DoctorFinding[]): UiGraph {
+function buildOrchestrationGraph(
+  projects: ProjectFacts[],
+  findings: DoctorFinding[],
+  federation: FederationModel,
+): UiGraph {
   const nodes = new Map<string, UiGraphNode>();
   const edges = new Map<string, UiGraphEdge>();
   const projectSeverity = findingsByProject(findings);
-  const federationNames = new Map<string, ProjectFacts>();
-
   for (const project of projects) {
-    const name = project.moduleFederation?.name;
-    if (name) federationNames.set(name, project);
     addNode(
       nodes,
       withSeverity(
@@ -267,18 +264,17 @@ function buildOrchestrationGraph(projects: ProjectFacts[], findings: DoctorFindi
     }
   }
 
-  for (const project of projects) {
-    for (const remote of Object.values(project.moduleFederation?.remotes ?? {})) {
-      const provider = federationNames.get(remote.name);
-      if (!provider) continue;
-      for (const key of Object.keys(provider.moduleFederation?.exposes ?? {})) {
-        addEdge(edges, {
-          id: `${projectNodeId(project)}->${exposeNodeId(provider.project.name, key)}`,
-          source: projectNodeId(project),
-          target: exposeNodeId(provider.project.name, key),
-          label: `consumes ${remote.name}`,
-        });
-      }
+  const projectsById = new Map(federation.projects.map((node) => [node.id, node.project] as const));
+  for (const edge of federation.remoteEdges) {
+    const provider = edge.targetId ? projectsById.get(edge.targetId) : undefined;
+    if (!provider) continue;
+    for (const key of Object.keys(provider.moduleFederation?.exposes ?? {})) {
+      addEdge(edges, {
+        id: `project:${edge.fromProject}->${exposeNodeId(provider.project.name, key)}`,
+        source: `project:${edge.fromProject}`,
+        target: exposeNodeId(provider.project.name, key),
+        label: `consumes ${edge.remoteName}`,
+      });
     }
   }
 
@@ -331,15 +327,19 @@ function buildOrchestrationGraph(projects: ProjectFacts[], findings: DoctorFindi
  */
 export function buildUiPayload(projects: ProjectFacts[], report: DoctorReport): DoctorUiPayload {
   const findings = report.findings;
+  const federation = buildFederationModel(projects);
   return {
     schemaVersion: 1,
     report,
     projects,
     graphs: {
-      remotes: projects.length === 0 ? emptyGraph() : buildRemotesGraph(projects, findings),
+      remotes:
+        projects.length === 0 ? emptyGraph() : buildRemotesGraph(projects, findings, federation),
       shared: projects.length === 0 ? emptyGraph() : buildSharedGraph(projects, findings),
       orchestration:
-        projects.length === 0 ? emptyGraph() : buildOrchestrationGraph(projects, findings),
+        projects.length === 0
+          ? emptyGraph()
+          : buildOrchestrationGraph(projects, findings, federation),
     },
   };
 }
