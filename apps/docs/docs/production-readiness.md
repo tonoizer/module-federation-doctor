@@ -63,6 +63,10 @@ conflicts, missing providers, and external-runtime provider gaps become visible.
 Doctor stays offline by default. It records normalized config and artifact
 metadata, not source bodies, secrets, or live remote responses.
 
+Install Doctor as a `devDependency`. Adapters analyze after emit in Node; they
+are not part of the client bundle. MF `runtimePlugins` are covered through the
+shared bundler `mfOptions` object — not by shipping Doctor into the runtime.
+
 ## Research sources
 
 - [Official configuration index](https://module-federation.io/configure/index.html)
