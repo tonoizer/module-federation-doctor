@@ -9,6 +9,8 @@
     "apps/docs/docs/rules/**/*.md",
     "fixtures/manifests/malformed.json",
     "pnpm-lock.yaml",
+    ".agents/**",
+    ".claude/skills/**",
   ],
   "sortPackageJson": false,
 }
