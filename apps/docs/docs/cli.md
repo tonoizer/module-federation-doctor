@@ -4,7 +4,10 @@
 mfdoctor check
 mfdoctor check packages/host --ci
 mfdoctor check --format terminal,json,sarif,html
+mfdoctor check --ui
+mfdoctor check --ui --ui-port 51205
 mfdoctor federation ".mf/doctor/**/project.json"
+mfdoctor federation ".mf/doctor/**/project.json" --ui
 mfdoctor rules
 mfdoctor rules config/name-required
 mfdoctor probe https://cdn.example.com/mf-manifest.json
@@ -14,6 +17,10 @@ mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
 Doctor loads optional `mfdoctor.config.ts`; flags win over config. `check` exits
 0 when policy passes, 1 for policy findings, and 2 when analysis cannot finish.
 `check` and `federation` make no network requests.
+
+`--ui` is supported on `check` and `federation`. It ensures HTML output is
+written, serves the portable dashboard on `127.0.0.1`, and opens a browser.
+Change the port with `--ui-port`. The UI server is read-only and loopback-bound.
 
 `rules` prints the machine-readable built-in rule catalog. Pass one rule id to
 get its default severity, category, impact, fix, supported bundlers, docs path,

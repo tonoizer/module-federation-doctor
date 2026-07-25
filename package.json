@@ -35,6 +35,7 @@
     "./schemas/project.schema.json": "./schemas/project.schema.json",
     "./schemas/report.schema.json": "./schemas/report.schema.json",
     "./schemas/probe.schema.json": "./schemas/probe.schema.json",
+    "./schemas/ui.schema.json": "./schemas/ui.schema.json",
     "./package.json": "./package.json"
   },
   "types": "./dist/index.d.ts",
@@ -72,13 +73,14 @@
   },
   "scripts": {
     "prepare": "husky",
-    "build": "tsdown",
+    "build": "tsdown && pnpm --filter @module-federation/doctor-ui build",
     "dev": "tsdown --watch",
     "clean": "node -e \"import('node:fs').then(fs=>{for(const p of ['dist','.mf','coverage'])fs.rmSync(p,{recursive:true,force:true})})\" && pnpm --filter './apps/**' --filter './examples/**' clean",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint --deny-warnings .",
     "typecheck": "tsc -p tsconfig.json && pnpm --filter './apps/**' --filter './examples/**' typecheck",
+    "ui:build": "pnpm --filter @module-federation/doctor-ui build",
     "test": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
     "test:unit": "vitest run test/unit",
     "test:integration": "vitest run test/integration",

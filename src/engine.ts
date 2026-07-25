@@ -10,12 +10,15 @@ import type {
   DoctorOptions,
   DoctorReport,
   DoctorRule,
+  FederationAnalysisResult,
+  OutputFormat,
   ProjectFacts,
   RuleSetting,
   Severity,
 } from "./types.js";
 import { deepFreeze, fingerprint, redact, sortFindings } from "./utils.js";
-import { writeReports } from "./reporters.js";
+import { writeFederationReports, writeReports } from "./reporters.js";
+import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
 
 function parseSetting(setting: RuleSetting | undefined, fallback: Severity) {
   if (!setting) return { severity: fallback, options: {} };
@@ -143,7 +146,10 @@ function federationFinding(
   return { ...base, fingerprint: fingerprint(base) };
 }
 
-export async function analyzeFederation(files: string[]): Promise<DoctorFinding[]> {
+export async function analyzeFederation(
+  files: string[],
+  options: { outputDirectory?: string; formats?: OutputFormat[] } = {},
+): Promise<FederationAnalysisResult> {
   const projects = (
     await Promise.all(
       files
@@ -265,5 +271,17 @@ export async function analyzeFederation(files: string[]): Promise<DoctorFinding[
         ),
       );
   }
-  return sortFindings(findings);
+  const sorted = sortFindings(findings);
+  const report = reportFromFindings(projects, sorted);
+  const ui = buildUiPayload(projects, report);
+  const formats = options.formats ?? [];
+  if (options.outputDirectory && formats.length > 0)
+    await writeFederationReports(projects, report, ui, options.outputDirectory, formats);
+  return {
+    projects,
+    findings: sorted,
+    report,
+    ui,
+    exitCode: sorted.some((item) => item.severity === "error") ? 1 : 0,
+  };
 }

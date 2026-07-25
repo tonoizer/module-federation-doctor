@@ -356,3 +356,46 @@ export interface AnalysisResult {
   report: DoctorReport;
   exitCode: 0 | 1 | 2;
 }
+
+export type UiGraphNodeKind = "project" | "remote" | "shared" | "expose" | "runtime";
+
+export interface UiGraphNode {
+  id: string;
+  label: string;
+  kind: UiGraphNodeKind;
+  project?: string;
+  severity?: Severity;
+  meta?: Record<string, unknown>;
+}
+
+export interface UiGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  severity?: Severity;
+}
+
+export interface UiGraph {
+  nodes: UiGraphNode[];
+  edges: UiGraphEdge[];
+}
+
+export interface DoctorUiPayload {
+  schemaVersion: 1;
+  report: DoctorReport;
+  projects: ProjectFacts[];
+  graphs: {
+    remotes: UiGraph;
+    shared: UiGraph;
+    orchestration: UiGraph;
+  };
+}
+
+export interface FederationAnalysisResult {
+  projects: ProjectFacts[];
+  findings: DoctorFinding[];
+  report: DoctorReport;
+  ui: DoctorUiPayload;
+  exitCode: 0 | 1;
+}

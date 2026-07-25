@@ -17,6 +17,7 @@ guess from package names alone.
 
 ```bash
 pnpm mfdoctor check --format terminal,json,html
+pnpm mfdoctor check --ui
 ```
 
 5. For build facts, run the real bundler build with the Doctor adapter.
