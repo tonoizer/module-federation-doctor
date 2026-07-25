@@ -5,7 +5,8 @@ problems in Module Federation projects built with Vite, Rspack, and Rsbuild.
 It can run as a CLI or as a build plugin.
 
 Install as a **devDependency**. Doctor is **build/CI-only**: adapters run after
-emit in Node and are not part of the browser bundle.
+emit in Node and are not part of the browser bundle. They add CI time, not
+runtime size or performance cost.
 
 ```bash
 pnpm add -D @module-federation/doctor

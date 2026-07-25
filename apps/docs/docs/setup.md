@@ -58,9 +58,9 @@ export default {
 Apps that use `@module-federation/runtime` / `createInstance` **without** a
 Vite, Rspack, or Rsbuild Module Federation **build** plugin are not first-class
 Doctor targets
-([#34](https://github.com/tonoizer/module-federation-doctor/issues/34)). There
-is no post-emit adapter hook, and Doctor does not parse runtime init from
-source.
+([#34](https://github.com/tonoizer/module-federation-doctor/issues/34),
+`MFDOCTOR-117`). There is no post-emit adapter hook, and Doctor does not parse
+runtime init from source.
 
 Analyzing MF **`runtimePlugins` via build-time config** (shared `mfOptions`
 passed into the adapter) **is** supported. That path is different from a
