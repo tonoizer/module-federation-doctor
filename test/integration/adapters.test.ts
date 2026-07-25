@@ -101,10 +101,11 @@ describe("adapter cases", () => {
     const { stdout } = await execFileAsync("node", ["scripts/demo-showcase.mjs"], {
       cwd: repository,
     });
-    expect(stdout).toContain("ok examples/showcase/config/name-required");
     expect(stdout).toContain("ok examples/showcase/config/expose-key-invalid");
     expect(stdout).toContain("ok examples/showcase/shared/eager-without-singleton");
     expect(stdout).toContain("ok examples/showcase/federation/version-conflict");
+    expect(stdout).not.toContain("examples/showcase/config/name-required");
+    expect(stdout).not.toContain("examples/showcase/name-required");
   }, 60_000);
 });
 

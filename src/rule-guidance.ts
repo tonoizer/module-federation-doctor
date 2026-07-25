@@ -18,8 +18,9 @@ const core = "https://github.com/module-federation/core";
 export const ruleGuidance: Record<string, RuleGuidance> = {
   "config/name-required": {
     category: "correctness",
-    impact: "The runtime uses the container name for global state and module lookup.",
-    fix: "Set a stable, non-empty, federation-wide unique name.",
+    impact:
+      "The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so Doctor keeps this for offline checks rather than a showcase fixture.",
+    fix: 'Set `name` to a stable, federation-wide unique id such as "host" or "shop".',
     sources: ["https://module-federation.io/configure/name.html"],
   },
   "config/expose-key-invalid": {

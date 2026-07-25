@@ -5,11 +5,11 @@
 
 ## Issue
 
-The runtime uses the container name for global state and module lookup.
+The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so Doctor keeps this for offline checks rather than a showcase fixture.
 
 ## How to fix it
 
-Set a stable, non-empty, federation-wide unique name.
+Set `name` to a stable, federation-wide unique id such as "host" or "shop".
 
 Override this rule with `rules["config/name-required"]`.
 
