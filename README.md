@@ -72,6 +72,8 @@ Examples:
 - `examples/mixed-federation-issues` — same topology with intentional Doctor
   findings; run `pnpm demo:mixed-issues`
 - `examples/showcase` — themed misconfigs; run `pnpm demo:showcase`
+- From `examples/`: `pnpm --dir examples demo` runs showcase + mixed-issues
+  (or `pnpm demo:examples` from the repo root)
 
 The repo also includes an original Codex skill at
 `.codex/skills/mfdoctor/SKILL.md` for repeatable diagnosis work.

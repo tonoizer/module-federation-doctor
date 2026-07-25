@@ -1,6 +1,7 @@
 packages:
   - "."
   - "apps/*"
+  - "examples"
   - "examples/mixed-federation/*"
   - "examples/mixed-federation-issues/*"
   - "examples/showcase/**"
