@@ -27,7 +27,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm fmt:check
       - run: pnpm lint
-      - run: pnpm typecheck
+      # Examples resolve @module-federation/doctor/* from dist/; build before typecheck.
       - run: pnpm build
+      - run: pnpm typecheck
       - run: pnpm docs:build
       - run: pnpm test:unit

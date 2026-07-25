@@ -7,11 +7,31 @@
     "mfdoctor": "dist/cli.js"
   },
   "exports": {
-    ".": "./dist/index.js",
-    "./vite": "./dist/vite.js",
-    "./rspack": "./dist/rspack.js",
-    "./rsbuild": "./dist/rsbuild.js",
-    "./rules": "./dist/rules.js",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.js",
+      "default": "./dist/vite.js"
+    },
+    "./rspack": {
+      "types": "./dist/rspack.d.ts",
+      "import": "./dist/rspack.js",
+      "default": "./dist/rspack.js"
+    },
+    "./rsbuild": {
+      "types": "./dist/rsbuild.d.ts",
+      "import": "./dist/rsbuild.js",
+      "default": "./dist/rsbuild.js"
+    },
+    "./rules": {
+      "types": "./dist/rules.d.ts",
+      "import": "./dist/rules.js",
+      "default": "./dist/rules.js"
+    },
     "./schemas/project.schema.json": "./schemas/project.schema.json",
     "./schemas/report.schema.json": "./schemas/report.schema.json",
     "./schemas/probe.schema.json": "./schemas/probe.schema.json",
