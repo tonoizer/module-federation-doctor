@@ -21,6 +21,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test:integration
+      # One-rule showcase fixtures (config, shared, federation, runtime).
+      - run: node scripts/demo-showcase.mjs
       # Red multi-bundler demo: asserts planted findings and federation conflicts.
       - run: node scripts/demo-mixed-issues.mjs
       - if: always()

@@ -4,6 +4,21 @@ Use Node `>=22.12.0` and pnpm 11. Run `pnpm install
 --frozen-lockfile`, then `pnpm check`. Add behavior tests for rules and adapters.
 Run `pnpm changeset` for a public package change.
 
+## Release gates
+
+`pnpm demo:showcase` (`scripts/demo-showcase.mjs`) is a release gate: it runs
+~20 one-rule fixtures under `examples/showcase` (config, shared, federation, and
+runtime) and asserts each fixture’s expected `ruleId` and exit code. The
+[Integration workflow](https://github.com/tonoizer/module-federation-doctor/blob/main/.github/workflows/integration.yml)
+runs the same script on every PR and on `main`. When a case fails, the log line
+names the fixture path (or glob), the expected `ruleId`, and the actual vs
+expected exit code.
+
+Add or update a showcase fixture when you ship or change a rule that needs a
+human-readable demo. Keep runtime cases (`examples/showcase/runtime/green` and
+`shared-mismatch`) in the script so `mfdoctor runtime` regressions are caught in
+CI.
+
 ## Architecture notes
 
 When adding or extending a bundler adapter:
@@ -42,6 +57,7 @@ Close the matching GitHub issue and drop the row from
 | `MFDOCTOR-109` | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) | One-shot workspace federation gate for CI _(shipped — see [CLI](./cli.md#workspace-federation-gate) / [setup](./setup.md#multi-app-ci-loop))_ |
 | `MFDOCTOR-110` | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) | Shareable policy packs and named presets _(shipped — see [policy packs](./policy-packs.md))_                                                  |
 | `MFDOCTOR-111` | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) | Fingerprint baselines and suppressions _(shipped)_                                                                                            |
+| `MFDOCTOR-127` | [#55](https://github.com/tonoizer/module-federation-doctor/issues/55) | Wire showcase demos into PR CI _(shipped — see [showcase](./showcase.md) and release gates above)_                                            |
 | `MFDOCTOR-115` | [#32](https://github.com/tonoizer/module-federation-doctor/issues/32) | Build-time only / never in client bundle                                                                                                      |
 | `MFDOCTOR-117` | [#34](https://github.com/tonoizer/module-federation-doctor/issues/34) | Runtime-only MF (no bundler plugin) out of scope                                                                                              |
 | `MFDOCTOR-112` | [#28](https://github.com/tonoizer/module-federation-doctor/issues/28) | First public npm publish _(after product items)_                                                                                              |
