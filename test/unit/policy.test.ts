@@ -120,7 +120,7 @@ describe("resolvePolicy / resolveOptions precedence", () => {
       meta: {
         id: "team/custom",
         defaultSeverity: "error",
-        supportedBundlers: ["vite", "rspack", "rsbuild", "unknown"],
+        supportedBundlers: ["vite", "rspack", "rsbuild", "webpack", "unknown"],
         documentation: "/rules/team/custom",
       },
       check() {},
