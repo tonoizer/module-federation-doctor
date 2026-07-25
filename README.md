@@ -51,11 +51,11 @@ plugins: [
 
 ```ts
 import { ModuleFederationPlugin } from "@module-federation/enhanced/webpack";
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+import { ModuleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
 
 plugins: [
   new ModuleFederationPlugin(mfOptions),
-  moduleFederationDoctorPlugin({ moduleFederation: mfOptions }),
+  ModuleFederationDoctorPlugin({ moduleFederation: mfOptions }),
 ];
 ```
 

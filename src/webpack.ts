@@ -1,9 +1,12 @@
 import { webpackDoctor } from "./plugin.js";
 
 /** Webpack plugin factory — register next to `ModuleFederationPlugin`. */
-export const moduleFederationDoctorPlugin = webpackDoctor.webpack;
+export const ModuleFederationDoctorPlugin = webpackDoctor.webpack;
 
-/** @deprecated Use `moduleFederationDoctorPlugin`. */
-export const doctor = moduleFederationDoctorPlugin;
+/** @deprecated Use `ModuleFederationDoctorPlugin`. */
+export const moduleFederationDoctorPlugin = ModuleFederationDoctorPlugin;
 
-export default moduleFederationDoctorPlugin;
+/** @deprecated Use `ModuleFederationDoctorPlugin`. */
+export const doctor = ModuleFederationDoctorPlugin;
+
+export default ModuleFederationDoctorPlugin;

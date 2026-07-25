@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ModuleFederationPlugin } from "@module-federation/enhanced/webpack";
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+import { ModuleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,6 +25,6 @@ export default {
   },
   plugins: [
     new ModuleFederationPlugin(mfOptions),
-    moduleFederationDoctorPlugin({ moduleFederation: mfOptions }),
+    ModuleFederationDoctorPlugin({ moduleFederation: mfOptions }),
   ],
 };
