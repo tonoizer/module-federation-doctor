@@ -4,6 +4,20 @@ Use Node `>=22.12.0` and pnpm 11. Run `pnpm install
 --frozen-lockfile`, then `pnpm check`. Add behavior tests for rules and adapters.
 Run `pnpm changeset` for a public package change.
 
+## Architecture notes
+
+When adding or extending a bundler adapter:
+
+- Pass through the same public MF options object the app gives Module Federation.
+- Collect facts from emitted manifests, stats, and other public build outputs.
+- Record [capabilities](./capabilities.md) honestly when optional input is
+  missing.
+- Do **not** scrape undocumented private Module Federation plugin fields or
+  private plugin instance state to fill gaps.
+
+This permanent non-goal is documented under
+[limitations](./limitations.md#permanent-guarantees--non-goals).
+
 ## Tracked follow-up work
 
 These are useful later expansions, not release blockers. Each ID has a GitHub
@@ -16,7 +30,3 @@ issue; close the issue and drop the matching row from
 - `MFDOCTOR-104` → [#13](https://github.com/tonoizer/module-federation-doctor/issues/13): HTML analysis UI beyond the portable report.
 - `MFDOCTOR-105` → [#14](https://github.com/tonoizer/module-federation-doctor/issues/14): Runtime / dynamic imports beyond static analysis.
 - `MFDOCTOR-106` → [#15](https://github.com/tonoizer/module-federation-doctor/issues/15): Broader Node, bundler, framework, and package-manager matrix.
-
-Permanent non-goal (not follow-up work): no undocumented private Module
-Federation plugin fields —
-[#18](https://github.com/tonoizer/module-federation-doctor/issues/18).

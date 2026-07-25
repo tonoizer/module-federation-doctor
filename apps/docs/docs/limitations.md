@@ -18,8 +18,17 @@ Opt-in browser runtime trace import is available through `mfdoctor runtime` when
 you supply an Observability Plugin export. Default `check` and `federation`
 analysis stay offline.
 
-## Permanent guarantee
+## Permanent guarantees / non-goals
 
 Doctor does not rely on undocumented private Module Federation plugin fields.
-That is a stability non-goal, not removable follow-up work. See
-[#18](https://github.com/tonoizer/module-federation-doctor/issues/18).
+That is a stability guarantee and permanent non-goal, not removable follow-up
+work. See [#18](https://github.com/tonoizer/module-federation-doctor/issues/18).
+
+Adapters and rules use **public Module Federation options**, emitted
+**manifests**, **stats**, and **recorded capabilities** only. They must not
+scrape private plugin instance state, undocumented internals, or other
+non-public compiler/plugin fields. Missing optional public input yields
+`doctor/partial-analysis` instead of reaching into private MF plugin state.
+
+Adapter authors: see
+[architecture notes](./contributing.md#architecture-notes).
