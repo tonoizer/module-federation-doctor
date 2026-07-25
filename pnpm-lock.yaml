@@ -138,6 +138,111 @@ importers:
         specifier: 2.3.3
         version: 2.3.3(rollup@4.62.2)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0))
 
+  examples/mixed-federation-issues/host-vite:
+    dependencies:
+      '@mfdoctor-example/shared-ui':
+        specifier: workspace:*
+        version: link:../../mixed-federation/shared-ui
+      '@module-federation/doctor':
+        specifier: workspace:*
+        version: link:../../..
+      '@module-federation/vite':
+        specifier: 1.19.1
+        version: 1.19.1(typescript@5.9.3)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0))
+      react:
+        specifier: 'catalog:'
+        version: 19.2.8
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@types/react':
+        specifier: 19.2.17
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      '@vitejs/plugin-react':
+        specifier: 6.0.4
+        version: 6.0.4(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0))
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vite:
+        specifier: 8.1.5
+        version: 8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)
+
+  examples/mixed-federation-issues/remote-rsbuild:
+    dependencies:
+      '@mfdoctor-example/shared-ui':
+        specifier: workspace:*
+        version: link:../../mixed-federation/shared-ui
+      '@module-federation/doctor':
+        specifier: workspace:*
+        version: link:../../..
+      '@module-federation/rsbuild-plugin':
+        specifier: 2.8.0
+        version: 2.8.0(@rsbuild/core@2.1.8(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0))(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(typescript@5.9.3)(webpack@5.109.0(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.23))
+      react:
+        specifier: 'catalog:'
+        version: 19.2.8
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@rsbuild/core':
+        specifier: 2.1.8
+        version: 2.1.8(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0)
+      '@rsbuild/plugin-react':
+        specifier: 2.1.0
+        version: 2.1.0(@rsbuild/core@2.1.8(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0))(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))
+      '@types/react':
+        specifier: 19.2.17
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+  examples/mixed-federation-issues/remote-rspack:
+    dependencies:
+      '@mfdoctor-example/shared-ui':
+        specifier: workspace:*
+        version: link:../../mixed-federation/shared-ui
+      '@module-federation/doctor':
+        specifier: workspace:*
+        version: link:../../..
+      '@module-federation/enhanced':
+        specifier: 2.8.0
+        version: 2.8.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(typescript@5.9.3)(webpack@5.109.0(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.23))
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: 18.3.1
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@rspack/cli':
+        specifier: 2.1.5
+        version: 2.1.5(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(@rspack/dev-server@2.1.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23)))
+      '@rspack/core':
+        specifier: 2.1.5
+        version: 2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23)
+      '@rspack/dev-server':
+        specifier: 2.1.0
+        version: 2.1.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))
+      '@types/react':
+        specifier: 18.3.18
+        version: 18.3.18
+      '@types/react-dom':
+        specifier: 18.3.5
+        version: 18.3.5(@types/react@18.3.18)
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
   examples/mixed-federation/host-vite:
     dependencies:
       '@mfdoctor-example/shared-ui':
@@ -248,6 +353,52 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+
+  examples/showcase/config/expose-key-invalid: {}
+
+  examples/showcase/config/expose-path-missing: {}
+
+  examples/showcase/config/filename-invalid: {}
+
+  examples/showcase/config/name-required: {}
+
+  examples/showcase/config/remote-entry-invalid: {}
+
+  examples/showcase/config/remote-http-insecure: {}
+
+  examples/showcase/config/share-scope-undeclared: {}
+
+  examples/showcase/federation/missing-provider: {}
+
+  examples/showcase/federation/name-conflict: {}
+
+  examples/showcase/federation/share-scope-mismatch: {}
+
+  examples/showcase/federation/singleton-mismatch: {}
+
+  examples/showcase/federation/version-conflict: {}
+
+  examples/showcase/reliability/shared-import-false: {}
+
+  examples/showcase/reliability/version-first-offline-remotes: {}
+
+  examples/showcase/shared/candidate:
+    dependencies:
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+
+  examples/showcase/shared/eager-without-singleton: {}
+
+  examples/showcase/shared/singleton-risk: {}
+
+  examples/showcase/shared/unused: {}
+
+  examples/showcase/shared/version-unsatisfied:
+    dependencies:
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
 
 packages:
 
@@ -1831,10 +1982,21 @@ packages:
   '@types/node@26.1.1':
     resolution: {integrity: sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw==}
 
+  '@types/prop-types@15.7.15':
+    resolution: {integrity: sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw==}
+
+  '@types/react-dom@18.3.5':
+    resolution: {integrity: sha512-P4t6saawp+b/dFrUr2cvkVsfvPguwsxtH6dNIYRllMsefqFzkZk5UIjzyDOv5g1dXIPdG4Sp1yCR4Z6RCUsG/Q==}
+    peerDependencies:
+      '@types/react': ^18.0.0
+
   '@types/react-dom@19.2.3':
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
     peerDependencies:
       '@types/react': ^19.2.0
+
+  '@types/react@18.3.18':
+    resolution: {integrity: sha512-t4yC+vtgnkYjNSKlFx1jkAhH8LgTo2N/7Qvi83kdEaUtMDiwpbLAktKDaAMlRcJ5eSxZkH74eEGt1ky31d7kfQ==}
 
   '@types/react@19.2.17':
     resolution: {integrity: sha512-MXfmqaVPEVgkBT/aY0aGCkRWWtByiYQXo3xdQ8r5RzuFrPiRn8Gar2tQdXSUQ2GKV3bkXckek89V8wQBY2Q/Aw==}
@@ -5638,9 +5800,20 @@ snapshots:
     dependencies:
       undici-types: 8.3.0
 
+  '@types/prop-types@15.7.15': {}
+
+  '@types/react-dom@18.3.5(@types/react@18.3.18)':
+    dependencies:
+      '@types/react': 18.3.18
+
   '@types/react-dom@19.2.3(@types/react@19.2.17)':
     dependencies:
       '@types/react': 19.2.17
+
+  '@types/react@18.3.18':
+    dependencies:
+      '@types/prop-types': 15.7.15
+      csstype: 3.2.3
 
   '@types/react@19.2.17':
     dependencies:

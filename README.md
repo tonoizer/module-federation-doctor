@@ -69,9 +69,9 @@ pnpm release:dry-run
 Examples:
 
 - `examples/mixed-federation` — healthy Vite + Rspack + Rsbuild e2e path
-- `examples/showcase` — intentional misconfigs; run `pnpm demo:showcase` to see
-  `config/name-required`, `config/expose-key-invalid`, and
-  `shared/eager-without-singleton`
+- `examples/mixed-federation-issues` — same topology with intentional Doctor
+  findings; run `pnpm demo:mixed-issues`
+- `examples/showcase` — themed misconfigs; run `pnpm demo:showcase`
 
 The repo also includes an original Codex skill at
 `.codex/skills/mfdoctor/SKILL.md` for repeatable diagnosis work.

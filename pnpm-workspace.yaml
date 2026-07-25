@@ -2,6 +2,8 @@ packages:
   - "."
   - "apps/*"
   - "examples/mixed-federation/*"
+  - "examples/mixed-federation-issues/*"
+  - "examples/showcase/**"
   - "fixtures/**/*"
 
 catalog:

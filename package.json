@@ -87,6 +87,7 @@
     "test:e2e": "pnpm build && pnpm test:examples && playwright test",
     "test:examples": "pnpm --filter './examples/mixed-federation/**' build",
     "demo:showcase": "pnpm build && node scripts/demo-showcase.mjs",
+    "demo:mixed-issues": "pnpm build && node scripts/demo-mixed-issues.mjs",
     "docs:dev": "pnpm --filter @module-federation/doctor-docs dev",
     "docs:build": "pnpm --filter @module-federation/doctor-docs build",
     "pack:check": "pnpm build && publint && attw --pack . --profile esm-only && node scripts/pack-check.mjs",
