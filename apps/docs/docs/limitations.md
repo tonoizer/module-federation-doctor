@@ -10,10 +10,6 @@ Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1
 
 ## v1.0 (governance-ready)
 
-| Gap                                      | Issue                                                                                  |
-| ---------------------------------------- | -------------------------------------------------------------------------------------- |
-| Shareable policy packs and named presets | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) (`MFDOCTOR-110`) |
-
 The v1 [compatibility matrix](./compatibility.md) for Vite / Rspack / Rsbuild /
 Webpack, Node engines, package managers, and report surfaces has shipped
 ([#15](https://github.com/tonoizer/module-federation-doctor/issues/15),

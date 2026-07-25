@@ -101,6 +101,13 @@ JavaScript. Exit codes: `0` pass, `1` policy fail, `2` analysis incomplete.
 Fingerprint baselines keep known debt visible in reports without failing policy
 by default — see the docs page on baselines.
 
+## Policy packs and presets
+
+Share org governance with built-in presets (`recommended`, `strict`) and
+package-level policy packs via `extends`. Packs can ship severity maps plus
+custom `defineRule` plugins. See
+[policy packs](./apps/docs/docs/policy-packs.md).
+
 ## What it checks
 
 - Core config: names, exposes, remotes, scopes, runtime plugins, public paths.

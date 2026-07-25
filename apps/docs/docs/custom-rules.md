@@ -23,3 +23,14 @@ export const requireManifest = defineRule({
   },
 });
 ```
+
+Register custom rules through `extends` (alone or inside a
+[policy pack](./policy-packs.md)):
+
+```ts
+import { requireManifest } from "./rules/require-manifest";
+
+export default {
+  extends: ["recommended", requireManifest],
+};
+```

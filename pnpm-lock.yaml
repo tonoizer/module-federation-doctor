@@ -379,6 +379,8 @@ importers:
         specifier: 18.3.1
         version: 18.3.1
 
+  fixtures/policy-packs/acme-mfdoctor-policy: {}
+
 packages:
 
   '@andrewbranch/untar.js@1.0.3':

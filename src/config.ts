@@ -1,5 +1,6 @@
 import path from "node:path";
 import { resolveBaselineOptions } from "./baseline.js";
+import { resolvePolicy } from "./policy.js";
 import type { DoctorOptions, ResolvedDoctorOptions } from "./types.js";
 
 export const DEFAULT_INCLUDE = ["src/**/*.{ts,tsx,js,jsx,mts,mjs}"];
@@ -51,13 +52,26 @@ export function isCiEnvironment(env: NodeJS.ProcessEnv = process.env): boolean {
   return hasCiProviderSignal(env);
 }
 
-export function resolveOptions(options: DoctorOptions = {}): ResolvedDoctorOptions {
+/**
+ * Resolve Doctor options, including preset / policy-pack `extends`.
+ *
+ * Severity precedence (later wins):
+ * 1. Built-in rule `defaultSeverity`
+ * 2. Preset maps from `extends`
+ * 3. Pack maps from `extends`
+ * 4. Local `rules` on DoctorOptions (config file)
+ * 5. CLI / adapter flags merged onto DoctorOptions before this call
+ */
+export async function resolveOptions(options: DoctorOptions = {}): Promise<ResolvedDoctorOptions> {
   // Auto-infer CI from the environment. Explicit mode wins:
   // - mode: "ci" forces CI defaults
   // - mode: "development" forces local defaults even when CI=* is set
   // - mode omitted → detect from CI / provider env vars
   const ci = options.mode === "ci" || (options.mode === undefined && isCiEnvironment());
   const root = path.resolve(options.root ?? process.cwd());
+  const policy = await resolvePolicy(options.extends, root);
+  // Local / CLI `rules` override pack and preset maps.
+  const rules = { ...policy.rules, ...options.rules };
   const resolved: ResolvedDoctorOptions = {
     bundler: options.bundler ?? "unknown",
     mode: ci ? "ci" : "development",
@@ -70,8 +84,9 @@ export function resolveOptions(options: DoctorOptions = {}): ResolvedDoctorOptio
     failOn: options.failOn ?? (ci ? "error" : "never"),
     include: options.include ?? DEFAULT_INCLUDE,
     exclude: options.exclude ?? DEFAULT_EXCLUDE,
-    rules: options.rules ?? {},
-    extends: options.extends ?? [],
+    rules,
+    extends: policy.plugins,
+    appliedPolicies: policy.applied,
   };
   const baseline = resolveBaselineOptions(options.baseline, root);
   if (baseline) resolved.baseline = baseline;

@@ -9,6 +9,7 @@ export default defineConfig({
     "src/rsbuild.ts",
     "src/webpack.ts",
     "src/rules.ts",
+    "src/policy.ts",
   ],
   format: ["esm"],
   outDir: "dist",

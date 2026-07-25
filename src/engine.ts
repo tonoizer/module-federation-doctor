@@ -123,7 +123,7 @@ async function runAnalysis(
   options: DoctorOptions = {},
   emittedAssets?: string[],
 ): Promise<AnalysisResult> {
-  const resolved = resolveOptions(options);
+  const resolved = await resolveOptions(options);
   try {
     const facts = await collectProjectFacts(resolved);
     if (emittedAssets) await addBuildFacts(facts, emittedAssets, resolved.root);
