@@ -116,10 +116,46 @@ export interface DependencyFacts {
   installed: Record<string, string>;
 }
 
+/** How a resolved import/specifier entered project facts. */
+export type ImportEvidenceSource = "source" | "manifest" | "runtime-trace";
+
+/** Dynamic/runtime call sites Doctor could not resolve to a string specifier. */
+export type UnresolvedDynamicApi =
+  | "import"
+  | "loadRemote"
+  | "loadShare"
+  | "loadShareSync"
+  | "registerRemotes";
+
+export interface UnresolvedDynamicImport {
+  api: UnresolvedDynamicApi;
+  /** Workspace-relative source file when known. */
+  file: string;
+}
+
 export interface ImportFacts {
   sourceFiles: string[];
   specifiers: string[];
+  /**
+   * Resolved package names from static imports, dynamic `import()` /
+   * `require()` / `loadShare*` string literals, and opt-in runtime traces.
+   * Configured remote aliases are excluded (see `remotes`).
+   */
   packages: string[];
+  /** Packages seen only through dynamic `import()` / `loadShare*` literals or runtime traces. */
+  dynamicPackages: string[];
+  /**
+   * Remote aliases referenced by `import('alias/...')` / `loadRemote('alias/...')`
+   * literals, plus remotes hinted by manifest or opt-in runtime traces.
+   */
+  remotes: string[];
+  /**
+   * Dynamic call sites that could not be resolved statically.
+   * Prefer `doctor/partial-analysis` over claiming unused/missing usage.
+   */
+  unresolvedDynamic: UnresolvedDynamicImport[];
+  /** Evidence channels that contributed to packages/remotes. */
+  evidenceSources: ImportEvidenceSource[];
 }
 
 export interface ManifestExpose {
@@ -313,7 +349,8 @@ export interface DoctorOptions {
   bundlerVersion?: string;
   mode?: "development" | "ci";
   root?: string;
-  /** Default Observability export path for `mfdoctor runtime` when no trace arg is given. */
+  /** Default Observability export path for `mfdoctor runtime` when no trace arg is given.
+   * When set on `check` / adapter options, also merges shared/remote hints into import facts. */
   runtimeTrace?: string;
   output?: {
     directory?: string;

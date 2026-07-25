@@ -50,7 +50,27 @@
       "properties": {
         "sourceFiles": { "$ref": "#/$defs/stringArray" },
         "specifiers": { "$ref": "#/$defs/stringArray" },
-        "packages": { "$ref": "#/$defs/stringArray" }
+        "packages": { "$ref": "#/$defs/stringArray" },
+        "dynamicPackages": { "$ref": "#/$defs/stringArray" },
+        "remotes": { "$ref": "#/$defs/stringArray" },
+        "unresolvedDynamic": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["api", "file"],
+            "properties": {
+              "api": {
+                "enum": ["import", "loadRemote", "loadShare", "loadShareSync", "registerRemotes"]
+              },
+              "file": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "evidenceSources": {
+          "type": "array",
+          "items": { "enum": ["source", "manifest", "runtime-trace"] }
+        }
       },
       "additionalProperties": false
     },

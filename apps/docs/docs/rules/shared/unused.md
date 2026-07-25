@@ -9,7 +9,7 @@ Unused shared declarations add runtime bookkeeping and can signal stale config.
 
 ## How to fix it
 
-Remove stale entries or verify dynamic imports that static analysis cannot see.
+Remove stale entries, or ensure usage is visible via static imports, string-literal `import()` / `loadShare`, or an opt-in Observability runtime trace.
 
 Override this rule with `rules["shared/unused"]`.
 

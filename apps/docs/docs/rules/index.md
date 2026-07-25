@@ -86,5 +86,5 @@ Rule pages are generated from package metadata. Each page explains the issue, im
 | [`artifact/types-missing`](./artifact/types-missing.md) | warning | No emitted declaration artifact was found for a typed producer. |
 | [`config/get-public-path-unused`](./config/get-public-path-unused.md) | info | `getPublicPath` has no effect on a consumer that exposes no modules. |
 | [`config/remote-manifest-recommended`](./config/remote-manifest-recommended.md) | info | A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. |
-| [`doctor/partial-analysis`](./doctor/partial-analysis.md) | warning | Missing facts reduce confidence and can hide relevant findings. |
+| [`doctor/partial-analysis`](./doctor/partial-analysis.md) | warning | Missing facts or unresolved dynamic imports reduce confidence and can hide relevant findings. |
 | [`runtime/remote-unknown`](./runtime/remote-unknown.md) | warning | The trace names a remote that is absent from loaded Doctor project facts. |

@@ -7,7 +7,10 @@ Doctor writes:
 - `.mf/doctor/results.sarif`: source locations and stable fingerprints.
 
 Comparable content has no timestamps. Paths are workspace relative. Schema
-version 1 changes only through an intentional compatibility change.
+version 1 changes only through an intentional compatibility change. Additive
+import-analysis fields (`dynamicPackages`, `remotes`, `unresolvedDynamic`,
+`evidenceSources`) document Doctor’s dynamic-import completeness bar without
+breaking older `project.json` files that omit them.
 
 The npm package ships JSON Schema files:
 

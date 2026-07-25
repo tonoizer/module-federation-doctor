@@ -12,7 +12,9 @@ and severity totals.
 strips URL queries from output, and does not execute the remote entry.
 
 Capabilities matter. If `config`, `manifest`, `stats`, `emittedAssets`, or
-`installedVersions` is false, state that the analysis is partial.
+`installedVersions` is false, state that the analysis is partial. Import facts
+may also list `unresolvedDynamic` call sites; prefer `doctor/partial-analysis`
+over claiming unused shared packages when those gaps could hide usage.
 
 Exit codes:
 

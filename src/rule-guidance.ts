@@ -301,8 +301,9 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   },
   "doctor/partial-analysis": {
     category: "tooling",
-    impact: "Missing facts reduce confidence and can hide relevant findings.",
-    fix: "Pass explicit MF options and run Doctor through the bundler adapter after emit.",
+    impact:
+      "Missing facts or unresolved dynamic imports reduce confidence and can hide relevant findings.",
+    fix: "Pass explicit MF options, run Doctor through the bundler adapter after emit, and prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
     sources: [configure],
   },
   "config/plugin-package-mismatch": {
@@ -326,7 +327,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "shared/unused": {
     category: "performance",
     impact: "Unused shared declarations add runtime bookkeeping and can signal stale config.",
-    fix: "Remove stale entries or verify dynamic imports that static analysis cannot see.",
+    fix: "Remove stale entries, or ensure usage is visible via static imports, string-literal `import()` / `loadShare`, or an opt-in Observability runtime trace.",
     sources: [shared],
   },
   "shared/candidate": {

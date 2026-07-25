@@ -647,7 +647,15 @@ describe("built-in rules", () => {
         declared: { react: "^19", "@module-federation/vite": "1.19.1" },
         installed: { react: "19.1.1" },
       },
-      imports: { sourceFiles: ["src/Widget.ts"], specifiers: ["react"], packages: ["react"] },
+      imports: {
+        sourceFiles: ["src/Widget.ts"],
+        specifiers: ["react"],
+        packages: ["react"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
       artifacts: { emittedAssets: [] },
     };
     mutate(facts);

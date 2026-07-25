@@ -147,7 +147,15 @@ describe("cross-project analysis", () => {
         },
       },
       dependencies: { declared: { react: requiredVersion }, installed: { react: version } },
-      imports: { sourceFiles: [], specifiers: [], packages: [] },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
       artifacts: { emittedAssets: [] },
     });
     const files = [path.join(root, "a.json"), path.join(root, "b.json"), path.join(root, "c.json")];

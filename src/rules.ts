@@ -675,13 +675,24 @@ export const builtInRules: DoctorRule[] = [
       .map(([name]) => name)
       .sort();
     if (!mf(context)) missing.push("moduleFederation");
-    if (missing.length > 0)
-      report(
-        context,
-        "Doctor completed with partial input.",
-        { missing },
-        "Pass explicit MF options.",
-      );
+    const unresolvedDynamic = context.facts.imports.unresolvedDynamic ?? [];
+    if (missing.length === 0 && unresolvedDynamic.length === 0) return;
+    report(
+      context,
+      unresolvedDynamic.length > 0 && missing.length === 0
+        ? "Doctor completed with unresolved dynamic import patterns."
+        : "Doctor completed with partial input.",
+      {
+        ...(missing.length > 0 ? { missing } : {}),
+        ...(unresolvedDynamic.length > 0 ? { unresolvedDynamic } : {}),
+        ...(context.facts.imports.evidenceSources
+          ? { evidenceSources: context.facts.imports.evidenceSources }
+          : {}),
+      },
+      unresolvedDynamic.length > 0
+        ? "Prefer string-literal `import()` / `loadRemote` / `loadShare`, or pass an opt-in Observability export via `runtimeTrace` / `mfdoctor runtime`."
+        : "Pass explicit MF options.",
+    );
   }),
   createRule("config/plugin-package-mismatch", "warning", (context) => {
     const expected: Partial<Record<ProjectFacts["bundler"]["name"], string>> = {
@@ -707,10 +718,26 @@ export const builtInRules: DoctorRule[] = [
         report(context, `"${name}" is eager but not singleton.`, { package: name });
   }),
   createRule("shared/unused", "warning", (context) => {
-    const imported = new Set(context.facts.imports.packages);
+    const imported = new Set([
+      ...(context.facts.imports.packages ?? []),
+      ...(context.facts.imports.dynamicPackages ?? []),
+    ]);
+    const unresolvedMayHideUsage = (context.facts.imports.unresolvedDynamic ?? []).some((item) =>
+      ["import", "loadShare", "loadShareSync"].includes(item.api),
+    );
+    // Incomplete dynamic evidence → prefer doctor/partial-analysis over false unused certainty.
+    if (unresolvedMayHideUsage) return;
     for (const name of Object.keys(mf(context)?.shared ?? {}))
       if (!imported.has(name))
-        report(context, `Shared package "${name}" is not statically imported.`, { package: name });
+        report(
+          context,
+          `Shared package "${name}" is not imported in scanned sources or opt-in runtime evidence.`,
+          {
+            package: name,
+            evidenceSources: context.facts.imports.evidenceSources ?? [],
+            dynamicPackages: context.facts.imports.dynamicPackages ?? [],
+          },
+        );
   }),
   createRule("shared/candidate", "warning", (context) => {
     const shared = new Set(Object.keys(mf(context)?.shared ?? {}));

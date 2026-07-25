@@ -47,7 +47,15 @@ function baseProject(overrides: Partial<ProjectFacts> & { name: string }): Proje
       installed: { react: "19.1.1" },
       ...overrides.dependencies,
     },
-    imports: { sourceFiles: [], specifiers: [], packages: ["react"] },
+    imports: {
+      sourceFiles: [],
+      specifiers: [],
+      packages: ["react"],
+      dynamicPackages: [],
+      remotes: [],
+      unresolvedDynamic: [],
+      evidenceSources: ["source"],
+    },
     artifacts: {
       emittedAssets: ["remoteEntry.js"],
       ...overrides.artifacts,

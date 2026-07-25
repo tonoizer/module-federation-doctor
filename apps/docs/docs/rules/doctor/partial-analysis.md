@@ -5,11 +5,11 @@
 
 ## Issue
 
-Missing facts reduce confidence and can hide relevant findings.
+Missing facts or unresolved dynamic imports reduce confidence and can hide relevant findings.
 
 ## How to fix it
 
-Pass explicit MF options and run Doctor through the bundler adapter after emit.
+Pass explicit MF options, run Doctor through the bundler adapter after emit, and prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.
 
 Override this rule with `rules["doctor/partial-analysis"]`.
 
