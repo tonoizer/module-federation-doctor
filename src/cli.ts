@@ -1,18 +1,36 @@
 #!/usr/bin/env node
 
+import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import fg from "fast-glob";
 import { loadConfig } from "unconfig";
+import {
+  generateBaseline,
+  loadBaseline,
+  parseBaseline,
+  pruneBaseline,
+  updateBaseline,
+  writeBaselineFile,
+} from "./baseline.js";
 import { analyze, analyzeFederation } from "./engine.js";
 import { probeManifest } from "./probe.js";
 import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
 import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "./rules.js";
-import type { DoctorOptions, ModuleFederationConfigLike, OutputFormat, RuleMeta } from "./types.js";
+import type {
+  BaselineOptions,
+  DoctorFinding,
+  DoctorOptions,
+  DoctorReport,
+  ModuleFederationConfigLike,
+  OutputFormat,
+  RuleMeta,
+} from "./types.js";
 import { stableStringify } from "./utils.js";
 
 interface Parsed {
-  command: "check" | "federation" | "probe" | "runtime" | "rules" | "help";
+  command: "check" | "federation" | "probe" | "runtime" | "rules" | "baseline" | "help";
+  baselineAction?: "generate" | "update" | "prune";
   root?: string;
   url?: string;
   trace?: string;
@@ -23,10 +41,15 @@ interface Parsed {
   maxBytes?: number;
   remoteEntry?: boolean;
   ruleId?: string;
+  baseline?: string;
+  reportPath?: string;
+  outPath?: string;
 }
 
 const outputFormats = new Set<OutputFormat>(["terminal", "json", "sarif"]);
 const DEFAULT_RUNTIME_PROJECTS = ".mf/doctor/**/project.json";
+const DEFAULT_BASELINE_OUT = "mfdoctor.baseline.json";
+const DEFAULT_REPORT = ".mf/doctor/report.json";
 
 function help(): string {
   return `mfdoctor
@@ -35,7 +58,12 @@ Usage:
   mfdoctor check [root]
   mfdoctor check --ci
   mfdoctor check --format terminal,json,sarif
+  mfdoctor check --baseline ./mfdoctor.baseline.json
   mfdoctor federation ".mf/doctor/**/project.json"
+  mfdoctor federation ".mf/doctor/**/project.json" --baseline ./mfdoctor.baseline.json
+  mfdoctor baseline generate [.mf/doctor/report.json] [--out mfdoctor.baseline.json]
+  mfdoctor baseline update [.mf/doctor/report.json] [--out mfdoctor.baseline.json]
+  mfdoctor baseline prune [.mf/doctor/report.json] [--out mfdoctor.baseline.json]
   mfdoctor runtime ./trace.json
   mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
   mfdoctor rules [rule-id]
@@ -45,7 +73,11 @@ Usage:
 CI tip: CI mode is auto-detected from CI / provider env vars (GitHub Actions,
 GitLab, Circle, Jenkins, …). No mode: "ci" needed in plugin config. Pass --ci
 or mode: "ci" to force it; mode: "development" to opt out. Findings are always
-collected in full before the build fails.`;
+collected in full before the build fails.
+
+Baselines: use fingerprint baselines for incremental adoption. Suppressed
+findings still appear in reports but do not fail policy unless
+baseline.failOnSuppressed is set. Baselines are tracked debt — shrink them.`;
 }
 
 export function parseArgs(argv: string[]): Parsed {
@@ -55,11 +87,20 @@ export function parseArgs(argv: string[]): Parsed {
     command !== "federation" &&
     command !== "probe" &&
     command !== "runtime" &&
-    command !== "rules"
+    command !== "rules" &&
+    command !== "baseline"
   )
     return { command: "help", patterns: [], ci: false };
   const parsed: Parsed = { command, patterns: [], ci: false };
-  for (let index = 1; index < argv.length; index += 1) {
+  let index = 1;
+  if (command === "baseline") {
+    const action = argv[1];
+    if (action !== "generate" && action !== "update" && action !== "prune")
+      throw new Error("baseline needs a subcommand: generate, update, or prune.");
+    parsed.baselineAction = action;
+    index = 2;
+  }
+  for (; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === "--ci") parsed.ci = true;
     else if (value === "--remote-entry" && command === "probe") parsed.remoteEntry = true;
@@ -78,6 +119,20 @@ export function parseArgs(argv: string[]): Parsed {
       index += 1;
     } else if (value?.startsWith("--format=")) {
       parsed.formats = parseFormats(value.slice("--format=".length));
+    } else if (value === "--baseline") {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-")) throw new Error("--baseline needs a file path.");
+      parsed.baseline = next;
+      index += 1;
+    } else if (value?.startsWith("--baseline=")) {
+      parsed.baseline = value.slice("--baseline=".length);
+    } else if (value === "--out" || value === "-o") {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-")) throw new Error(`${value} needs a file path.`);
+      parsed.outPath = next;
+      index += 1;
+    } else if (value?.startsWith("--out=")) {
+      parsed.outPath = value.slice("--out=".length);
     } else if (value?.startsWith("-")) throw new Error(`Unknown option: ${value}`);
     else if (command === "federation") parsed.patterns.push(value ?? "");
     else if (command === "runtime") {
@@ -85,6 +140,7 @@ export function parseArgs(argv: string[]): Parsed {
       else if (value) parsed.patterns.push(value);
     } else if (command === "probe" && !parsed.url && value) parsed.url = value;
     else if (command === "rules" && !parsed.ruleId && value) parsed.ruleId = value;
+    else if (command === "baseline" && !parsed.reportPath && value) parsed.reportPath = value;
     else if (!parsed.root && value) parsed.root = value;
     else throw new Error(`Unexpected argument: ${value}`);
   }
@@ -128,6 +184,70 @@ function toRuleMeta(
   };
 }
 
+function baselineFromConfig(config: DoctorOptions): string | BaselineOptions | undefined {
+  return config.baseline;
+}
+
+async function loadReportFindings(reportPath: string): Promise<DoctorFinding[]> {
+  const raw = JSON.parse(await fs.readFile(reportPath, "utf8")) as unknown;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw))
+    throw new Error("Report file must be a JSON object.");
+  const report = raw as DoctorReport;
+  if (!Array.isArray(report.findings)) throw new Error('Report file requires a "findings" array.');
+  return report.findings;
+}
+
+async function runBaseline(parsed: Parsed): Promise<number> {
+  const action = parsed.baselineAction;
+  if (!action) {
+    process.stderr.write("baseline needs a subcommand: generate, update, or prune.\n");
+    return 2;
+  }
+  const cwd = process.cwd();
+  const reportPath = path.resolve(cwd, parsed.reportPath ?? DEFAULT_REPORT);
+  const outPath = path.resolve(cwd, parsed.outPath ?? DEFAULT_BASELINE_OUT);
+  try {
+    const findings = await loadReportFindings(reportPath);
+    if (action === "generate") {
+      const baseline = generateBaseline(findings);
+      await writeBaselineFile(outPath, baseline);
+      process.stdout.write(
+        `Wrote ${baseline.entries.length} baseline entr${baseline.entries.length === 1 ? "y" : "ies"} to ${outPath}\n`,
+      );
+      return 0;
+    }
+    let existing;
+    try {
+      existing = await loadBaseline(outPath);
+    } catch (error) {
+      const missing =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as NodeJS.ErrnoException).code === "ENOENT";
+      if (action === "update" && missing) {
+        // First update without a file is equivalent to generate.
+        existing = parseBaseline({ schemaVersion: 1, entries: [] });
+      } else if (missing) {
+        process.stderr.write(`No baseline file at ${outPath}. Run baseline generate first.\n`);
+        return 2;
+      } else {
+        throw error;
+      }
+    }
+    const next =
+      action === "update" ? updateBaseline(existing, findings) : pruneBaseline(existing, findings);
+    await writeBaselineFile(outPath, next);
+    process.stdout.write(
+      `${action === "update" ? "Updated" : "Pruned"} baseline at ${outPath} (${next.entries.length} entr${next.entries.length === 1 ? "y" : "ies"})\n`,
+    );
+    return 0;
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return 2;
+  }
+}
+
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   let parsed: Parsed;
   try {
@@ -140,6 +260,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     process.stdout.write(help() + "\n");
     return 0;
   }
+  if (parsed.command === "baseline") return runBaseline(parsed);
   if (parsed.command === "probe") {
     if (!parsed.url) {
       process.stderr.write("probe needs a manifest URL.\n");
@@ -185,7 +306,13 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       if (files.length === 0) throw new Error("No project reports matched.");
       const formats = parsed.formats;
       const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
-      const result = await analyzeFederation(files, formats ? { formats, outputDirectory } : {});
+      const config = await configAt(process.cwd());
+      const baseline = parsed.baseline ?? baselineFromConfig(config);
+      const result = await analyzeFederation(files, {
+        ...(formats ? { formats, outputDirectory } : {}),
+        ...(baseline ? { baseline } : {}),
+        root: process.cwd(),
+      });
       if (!formats)
         process.stdout.write(
           stableStringify({ schemaVersion: 1, findings: result.findings }, 2) + "\n",
@@ -241,6 +368,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     const options: DoctorOptions = { ...config, root };
     if (parsed.ci) options.mode = "ci";
     if (parsed.formats) options.output = { ...config.output, formats: parsed.formats };
+    if (parsed.baseline) options.baseline = parsed.baseline;
     const result = await analyze(options);
     return result.exitCode;
   } catch (error) {

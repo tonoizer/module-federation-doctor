@@ -67,6 +67,19 @@ describe("resolveOptions", () => {
         formats: ["terminal", "json"],
       },
     });
+    expect((await resolveOptions({ root })).baseline).toBeUndefined();
+  });
+
+  it("resolves baseline path options", async () => {
+    stubLocalEnv();
+    const root = path.resolve("fixture");
+    expect((await resolveOptions({ root, baseline: "./mfdoctor.baseline.json" })).baseline).toEqual(
+      {
+        path: path.resolve(root, "./mfdoctor.baseline.json"),
+        failOnSuppressed: false,
+        reportStale: true,
+      },
+    );
   });
 
   it("auto-infers CI defaults from CI=true without mode", async () => {

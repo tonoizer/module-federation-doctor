@@ -231,6 +231,10 @@ export interface DoctorFinding {
   suggestion?: string;
   documentation?: string;
   fingerprint: string;
+  /** Present when the finding matches a checked-in fingerprint baseline entry. */
+  suppressed?: boolean;
+  /** Optional human reason copied from the matching baseline entry. */
+  suppressionReason?: string;
 }
 
 export interface RuleMeta {
@@ -362,6 +366,33 @@ export interface DoctorPolicyPack {
  */
 export type DoctorExtendEntry = DoctorPresetName | DoctorPolicyPack | DoctorRule | (string & {});
 
+export interface BaselineEntry {
+  fingerprint: string;
+  ruleId?: string;
+  project?: string;
+  reason?: string;
+}
+
+export interface BaselineFile {
+  schemaVersion: 1;
+  entries: BaselineEntry[];
+}
+
+export interface BaselineOptions {
+  /** Path to a checked-in baseline JSON file (relative to `root` or absolute). */
+  path: string;
+  /**
+   * When true, suppressed findings still fail `failOn` policy.
+   * Default false: suppressed findings appear in reports but do not fail the gate.
+   */
+  failOnSuppressed?: boolean;
+  /**
+   * When true (default), emit `doctor/stale-baseline` info findings for unused
+   * baseline entries.
+   */
+  reportStale?: boolean;
+}
+
 export interface DoctorOptions {
   moduleFederation?: ModuleFederationConfigLike;
   bundler?: BundlerName;
@@ -376,6 +407,11 @@ export interface DoctorOptions {
     formats?: OutputFormat[];
   };
   failOn?: "never" | "warning" | "error";
+  /**
+   * Fingerprint baseline for incremental CI adoption.
+   * Pass a path string or `{ path, failOnSuppressed?, reportStale? }`.
+   */
+  baseline?: string | BaselineOptions;
   include?: string[];
   exclude?: string[];
   /**
@@ -402,6 +438,11 @@ export interface ResolvedDoctorOptions {
     formats: OutputFormat[];
   };
   failOn: "never" | "warning" | "error";
+  baseline?: {
+    path: string;
+    failOnSuppressed: boolean;
+    reportStale: boolean;
+  };
   include: string[];
   exclude: string[];
   rules: Record<string, RuleSetting>;
@@ -470,6 +511,8 @@ export interface DoctorReport {
     info: number;
     warnings: number;
     errors: number;
+    /** Count of findings marked suppressed by a fingerprint baseline. */
+    suppressed?: number;
   };
   findings: DoctorFinding[];
 }

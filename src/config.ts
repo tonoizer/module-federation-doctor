@@ -1,4 +1,5 @@
 import path from "node:path";
+import { resolveBaselineOptions } from "./baseline.js";
 import { resolvePolicy } from "./policy.js";
 import type { DoctorOptions, ResolvedDoctorOptions } from "./types.js";
 
@@ -87,6 +88,8 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
     extends: policy.plugins,
     appliedPolicies: policy.applied,
   };
+  const baseline = resolveBaselineOptions(options.baseline, root);
+  if (baseline) resolved.baseline = baseline;
   if (options.moduleFederation !== undefined) resolved.moduleFederation = options.moduleFederation;
   if (options.bundlerVersion !== undefined) resolved.bundlerVersion = options.bundlerVersion;
   if (options.runtimeTrace !== undefined)

@@ -10,19 +10,17 @@ Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1
 
 ## v1.0 (governance-ready)
 
-| Gap                                               | Issue                                                                                  |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Compatibility matrix for v1 bundlers and runtimes | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) (`MFDOCTOR-106`) |
-| One-shot workspace federation gate for CI         | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) (`MFDOCTOR-109`) |
-| Fingerprint baselines and suppressions            | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) (`MFDOCTOR-111`) |
-
-Dynamic Module Federation import patterns are covered at the documented
-[completeness bar](./capabilities.md#dynamic-import-completeness-v1): supported
-literals and runtime/manifest hints when evidence exists, with honest
-`doctor/partial-analysis` for unresolved dynamics — not a claim of 100%
-arbitrary runtime JS
-([#14](https://github.com/tonoizer/module-federation-doctor/issues/14),
-`MFDOCTOR-105`).
+| Gap                                                                             | Issue                                                                                  |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Compatibility matrix for v1 bundlers and runtimes                               | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) (`MFDOCTOR-106`) |
+| One-shot workspace federation gate for CI                                       | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) (`MFDOCTOR-109`) |
+| Dynamic Module Federation import patterns are covered at the documented         |
+| [completeness bar](./capabilities.md#dynamic-import-completeness-v1): supported |
+| literals and runtime/manifest hints when evidence exists, with honest           |
+| `doctor/partial-analysis` for unresolved dynamics — not a claim of 100%         |
+| arbitrary runtime JS                                                            |
+| ([#14](https://github.com/tonoizer/module-federation-doctor/issues/14),         |
+| `MFDOCTOR-105`).                                                                |
 
 The Doctor plugin analyzes the **current** app (config + emit). Cross-app
 host↔remote shared/integration issues need each app's `.mf/doctor/project.json`

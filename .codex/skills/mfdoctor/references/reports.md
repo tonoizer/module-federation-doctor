@@ -4,9 +4,14 @@
 for federation-wide analysis.
 
 `report.json` contains sorted findings, stable fingerprints, capability flags,
-and severity totals.
+and severity totals. Baseline-matched findings include `suppressed: true` and
+may set `summary.suppressed`.
 
-`results.sarif` is for code-scanning upload.
+`results.sarif` is for code-scanning upload (including external suppressions
+when a baseline matches).
+
+`mfdoctor.baseline.json` is an optional checked-in fingerprint allowlist for
+incremental CI adoption. See docs `baselines.md`.
 
 `mfdoctor probe` prints a separate, bounded live-manifest summary. It is opt-in,
 strips URL queries from output, and does not execute the remote entry.

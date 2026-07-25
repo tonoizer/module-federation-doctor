@@ -16,6 +16,7 @@ The npm package ships JSON Schema files:
 
 - `@module-federation/doctor/schemas/project.schema.json`
 - `@module-federation/doctor/schemas/report.schema.json`
+- `@module-federation/doctor/schemas/baseline.schema.json`
 - `@module-federation/doctor/schemas/probe.schema.json`
 - `@module-federation/doctor/schemas/runtime-trace.schema.json`
 - `@module-federation/doctor/schemas/ui.schema.json` (graph payload shape for
@@ -24,3 +25,7 @@ The npm package ships JSON Schema files:
 Use them in editors, artifact validators, or deployment gates. They are strict
 about the stable outer contract and leave normalized federation internals open
 for additive fields within schema version 1.
+
+Findings may include `suppressed` / `suppressionReason` when a
+[fingerprint baseline](./baselines.md) matches. Report `summary.suppressed`
+counts those findings when present.

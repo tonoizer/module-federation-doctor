@@ -9,6 +9,20 @@ export {
   resolvePolicy,
   strictPreset,
 } from "./policy.js";
+export {
+  applyBaseline,
+  entryMatchesFinding,
+  generateBaseline,
+  loadBaseline,
+  parseBaseline,
+  policyFails,
+  policyRelevantFindings,
+  pruneBaseline,
+  resolveBaselineOptions,
+  summarizeFindings,
+  updateBaseline,
+  writeBaselineFile,
+} from "./baseline.js";
 export { defineRule, builtInRules } from "./rules.js";
 export { ProbeError, probeManifest } from "./probe.js";
 export {
@@ -20,10 +34,14 @@ export {
 } from "./runtime-trace.js";
 export { buildUiPayload } from "./ui-graph.js";
 export type { ManifestProbeResult, ProbeOptions } from "./probe.js";
+export type { ApplyBaselineResult, ResolvedBaselineOptions } from "./baseline.js";
 export type {
   AnalysisCapabilities,
   AnalysisResult,
   ArtifactFacts,
+  BaselineEntry,
+  BaselineFile,
+  BaselineOptions,
   BundlerFacts,
   BundlerName,
   DependencyFacts,

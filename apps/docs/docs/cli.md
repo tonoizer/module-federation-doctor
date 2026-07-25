@@ -8,7 +8,12 @@ manifest probes.
 mfdoctor check
 mfdoctor check packages/host --ci
 mfdoctor check --format terminal,json,sarif
+mfdoctor check --baseline ./mfdoctor.baseline.json
 mfdoctor federation ".mf/doctor/**/project.json"
+mfdoctor federation ".mf/doctor/**/project.json" --baseline ./mfdoctor.baseline.json
+mfdoctor baseline generate .mf/doctor/report.json --out mfdoctor.baseline.json
+mfdoctor baseline update .mf/doctor/report.json --out mfdoctor.baseline.json
+mfdoctor baseline prune .mf/doctor/report.json --out mfdoctor.baseline.json
 mfdoctor runtime ./trace.json
 mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
 mfdoctor rules
@@ -23,6 +28,21 @@ Doctor loads optional `mfdoctor.config.ts`; flags win over config. Use
 cannot finish. `check` and `federation` make no network requests. `runtime` also
 stays offline: it only reads a user-supplied Observability export and local
 `project.json` files.
+
+## Fingerprint baselines
+
+For incremental CI adoption, check in a fingerprint baseline so known debt does
+not block `failOn` while new findings still fail. See
+[Fingerprint baselines](./baselines.md).
+
+```bash
+mfdoctor baseline generate .mf/doctor/report.json --out mfdoctor.baseline.json
+mfdoctor check --ci --baseline ./mfdoctor.baseline.json
+```
+
+Suppressed findings still appear in reports (marked suppressed) but do not fail
+policy unless `baseline.failOnSuppressed` is true. Baselines are tracked debt —
+prune them as findings are fixed.
 
 ## CI auto-detect
 

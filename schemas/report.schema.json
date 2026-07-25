@@ -33,7 +33,8 @@
         "projects": { "type": "integer", "minimum": 0 },
         "info": { "type": "integer", "minimum": 0 },
         "warnings": { "type": "integer", "minimum": 0 },
-        "errors": { "type": "integer", "minimum": 0 }
+        "errors": { "type": "integer", "minimum": 0 },
+        "suppressed": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     },
@@ -69,7 +70,9 @@
           "evidence": { "type": "object" },
           "suggestion": { "type": "string" },
           "documentation": { "type": "string" },
-          "fingerprint": { "type": "string", "minLength": 1 }
+          "fingerprint": { "type": "string", "minLength": 1 },
+          "suppressed": { "type": "boolean" },
+          "suppressionReason": { "type": "string" }
         },
         "additionalProperties": false
       }
