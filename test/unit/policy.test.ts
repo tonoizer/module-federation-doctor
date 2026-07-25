@@ -132,4 +132,13 @@ describe("resolvePolicy / resolveOptions precedence", () => {
     });
     expect(resolved.extends.map((rule) => rule.meta.id)).toEqual(["team/custom"]);
   });
+
+  it("rejects remote HTTP(S) policy pack URLs", async () => {
+    await expect(resolvePolicy(["https://example.com/policy.js"], repoRoot)).rejects.toThrow(
+      /no remote HTTP download/i,
+    );
+    await expect(resolvePolicy(["http://example.com/policy.js"], repoRoot)).rejects.toThrow(
+      /no remote HTTP download/i,
+    );
+  });
 });
