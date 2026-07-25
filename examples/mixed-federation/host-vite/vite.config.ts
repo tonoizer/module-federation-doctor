@@ -28,25 +28,12 @@ const mfOptions = {
   },
 };
 
-const doctorOptions =
-  process.env.DOCTOR_CASE === "error"
-    ? { ...mfOptions, name: "" }
-    : process.env.DOCTOR_CASE === "warning"
-      ? {
-          ...mfOptions,
-          shared: {
-            ...mfOptions.shared,
-            react: { ...mfOptions.shared.react, eager: true, singleton: false },
-          },
-        }
-      : mfOptions;
-
 export default defineConfig({
   plugins: [
     react(),
     federation(mfOptions),
     doctor({
-      moduleFederation: doctorOptions,
+      moduleFederation: mfOptions,
       mode: "ci",
       rules: {
         // This local example has no manifest server. Production apps should

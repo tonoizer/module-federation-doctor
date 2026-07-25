@@ -12,19 +12,6 @@ const mfOptions = {
   },
 };
 
-const doctorOptions =
-  process.env.DOCTOR_CASE === "error"
-    ? { ...mfOptions, exposes: { Card: "./src/missing.tsx" } }
-    : process.env.DOCTOR_CASE === "warning"
-      ? {
-          ...mfOptions,
-          shared: {
-            ...mfOptions.shared,
-            react: { ...mfOptions.shared.react, eager: true, singleton: false },
-          },
-        }
-      : mfOptions;
-
 export default {
   mode: "development",
   entry: "./src/index.ts",
@@ -55,6 +42,6 @@ export default {
   resolve: { extensions: [".tsx", ".ts", ".jsx", ".js"] },
   plugins: [
     new ModuleFederationPlugin(mfOptions),
-    doctor({ moduleFederation: doctorOptions, mode: "ci" }),
+    doctor({ moduleFederation: mfOptions, mode: "ci" }),
   ],
 };
