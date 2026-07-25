@@ -29,6 +29,12 @@ export interface ProbeOptions {
 
 interface ProbeUrlOptions {
   allowPrivateNetworks?: boolean;
+  /**
+   * Allow plain HTTP to loopback hosts. Only set for the user-supplied initial
+   * URL (local probe DX). Redirect hops must not set this — public →
+   * `http://127.0.0.1` requires `allowPrivateNetworks`.
+   */
+  allowLoopbackHttp?: boolean;
 }
 
 export interface ManifestProbeResult {
@@ -81,10 +87,13 @@ function isRestrictedNetworkHost(hostname: string): boolean {
 function assertProbeUrlAllowed(url: URL, options: ProbeUrlOptions): void {
   if (url.username || url.password)
     throw new ProbeError("URLs with embedded credentials are not allowed.");
-  const loopbackHttp = url.protocol === "http:" && isLoopback(url.hostname);
-  if (url.protocol !== "https:" && !loopbackHttp)
+  const isHttpLoopback = url.protocol === "http:" && isLoopback(url.hostname);
+  // Plain HTTP is only syntactically valid for loopback; network policy below
+  // still applies unless allowLoopbackHttp (initial URL) or allowPrivateNetworks.
+  if (url.protocol !== "https:" && !isHttpLoopback)
     throw new ProbeError("Only HTTPS URLs are allowed. HTTP is allowed only for localhost.");
-  if (options.allowPrivateNetworks || loopbackHttp) return;
+  if (options.allowPrivateNetworks) return;
+  if (isHttpLoopback && options.allowLoopbackHttp) return;
   if (isRestrictedNetworkHost(url.hostname))
     throw new ProbeError(
       "URLs targeting private, link-local, metadata, or loopback networks are not allowed.",
@@ -226,7 +235,8 @@ export async function probeManifest(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const initial = safeUrl(value, urlOptions);
+    // HTTP loopback exception is for the user-supplied URL only; redirects use urlOptions.
+    const initial = safeUrl(value, { ...urlOptions, allowLoopbackHttp: true });
     const { response, url } = await guardedFetch(
       initial,
       { headers: { accept: "application/json" }, signal: controller.signal },
@@ -261,7 +271,12 @@ export async function probeManifest(
     };
 
     if (options.remoteEntry && summary.remoteEntry) {
-      const remoteUrl = safeUrl(summary.remoteEntry, urlOptions);
+      // Keep local DX when the user started on HTTP loopback; do not open a
+      // public-manifest → http://127.0.0.1 remote-entry pivot without opt-in.
+      const remoteUrl = safeUrl(summary.remoteEntry, {
+        ...urlOptions,
+        allowLoopbackHttp: initial.protocol === "http:" && isLoopback(initial.hostname),
+      });
       const remote = await guardedFetch(
         remoteUrl,
         { method: "HEAD", signal: controller.signal },

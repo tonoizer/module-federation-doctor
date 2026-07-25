@@ -182,6 +182,32 @@ describe("manifest probe", () => {
     expect(requests).toEqual(["https://cdn.example.com/mf-manifest.json"]);
   });
 
+  it("rejects public HTTPS redirects to HTTP loopback without allowPrivateNetworks", async () => {
+    for (const target of [
+      "http://127.0.0.1:8080/mf-manifest.json",
+      "http://localhost/mf-manifest.json",
+      "http://[::1]/mf-manifest.json",
+    ]) {
+      const requests: string[] = [];
+      const fetchImpl: typeof fetch = async (input) => {
+        const href = String(input);
+        requests.push(href);
+        if (href === "https://cdn.example.com/mf-manifest.json") {
+          return new Response(null, {
+            status: 302,
+            headers: { location: target },
+          });
+        }
+        throw new Error(`unexpected fetch: ${href}`);
+      };
+
+      await expect(
+        probeManifest("https://cdn.example.com/mf-manifest.json", { fetch: fetchImpl }),
+      ).rejects.toThrow(/private, link-local, metadata, or loopback/);
+      expect(requests).toEqual(["https://cdn.example.com/mf-manifest.json"]);
+    }
+  });
+
   it("allows private redirect targets only when explicitly opted in", async () => {
     const body = JSON.stringify({
       id: "checkout",
@@ -217,6 +243,46 @@ describe("manifest probe", () => {
     });
     expect(result.manifest).toMatchObject({
       url: "https://10.0.0.8/mf-manifest.json",
+      status: 200,
+      name: "checkout",
+    });
+  });
+
+  it("allows HTTP loopback redirect targets only when explicitly opted in", async () => {
+    const body = JSON.stringify({
+      id: "checkout",
+      name: "checkout",
+      exposes: [],
+      shared: [],
+      remotes: [],
+    });
+    const fetchImpl: typeof fetch = async (input) => {
+      const href = String(input);
+      if (href === "https://cdn.example.com/mf-manifest.json") {
+        return new Response(null, {
+          status: 302,
+          headers: { location: "http://127.0.0.1:9/mf-manifest.json" },
+        });
+      }
+      if (href === "http://127.0.0.1:9/mf-manifest.json") {
+        return new Response(body, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    };
+
+    await expect(
+      probeManifest("https://cdn.example.com/mf-manifest.json", { fetch: fetchImpl }),
+    ).rejects.toThrow(/private, link-local, metadata, or loopback/);
+
+    const result = await probeManifest("https://cdn.example.com/mf-manifest.json", {
+      fetch: fetchImpl,
+      allowPrivateNetworks: true,
+    });
+    expect(result.manifest).toMatchObject({
+      url: "http://127.0.0.1:9/mf-manifest.json",
       status: 200,
       name: "checkout",
     });
