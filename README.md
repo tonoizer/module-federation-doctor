@@ -58,7 +58,7 @@ privacy notes, current limits, and the upstream research behind the checks.
 
 ## Development
 
-Requires Node `^20.19.0 || >=22.12.0` and pnpm 10.
+Requires Node `>=22.12.0` and pnpm 11.
 
 ```bash
 pnpm install --frozen-lockfile

@@ -5,10 +5,17 @@ packages:
   - "fixtures/**/*"
 
 catalog:
-  react: 19.1.1
-  react-dom: 19.1.1
+  react: 19.2.8
+  react-dom: 19.2.8
 
-onlyBuiltDependencies:
-  - esbuild
-  - husky
-  - unrs-resolver
+saveExact: true
+strictPeerDependencies: false
+# Exact pins + frozen lockfiles are the trust boundary; keep installs reproducible in CI.
+minimumReleaseAge: 0
+
+allowBuilds:
+  "@parcel/watcher": false
+  core-js: false
+  esbuild: true
+  husky: true
+  unrs-resolver: true
