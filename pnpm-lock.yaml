@@ -112,6 +112,19 @@ importers:
 
   examples: {}
 
+  examples/compatibility/modern:
+    dependencies:
+      '@module-federation/enhanced':
+        specifier: 2.8.0
+        version: 2.8.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(typescript@5.9.3)(webpack@5.109.0)
+    devDependencies:
+      '@module-federation/doctor':
+        specifier: workspace:*
+        version: link:../../..
+      '@rspack/core':
+        specifier: 2.1.5
+        version: 2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23)
+
   examples/compatibility/webpack:
     dependencies:
       '@module-federation/enhanced':

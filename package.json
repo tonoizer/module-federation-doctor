@@ -1,7 +1,7 @@
 {
   "name": "@module-federation/doctor",
   "version": "0.1.0",
-  "description": "Module Federation diagnostics for Vite, Rolldown/Vite Plus, Rspack, Rsbuild, and Webpack",
+  "description": "Module Federation diagnostics for Vite, Rolldown/Vite Plus, Rspack, Rsbuild, Webpack, and Modern.js",
   "type": "module",
   "bin": {
     "mfdoctor": "dist/cli.js"
@@ -31,6 +31,11 @@
       "types": "./dist/webpack.d.ts",
       "import": "./dist/webpack.js",
       "default": "./dist/webpack.js"
+    },
+    "./modern": {
+      "types": "./dist/modern.d.ts",
+      "import": "./dist/modern.js",
+      "default": "./dist/modern.js"
     },
     "./rules": {
       "types": "./dist/rules.d.ts",
@@ -76,6 +81,7 @@
     "rspack",
     "rsbuild",
     "webpack",
+    "modern.js",
     "diagnostics",
     "sarif"
   ],

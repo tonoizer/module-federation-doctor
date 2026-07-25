@@ -32,6 +32,7 @@ try {
         rspack: "rspack build",
         rsbuild: "rsbuild build",
         webpack: "webpack --mode production",
+        modern: "node modern-smoke.mjs",
       },
       dependencies: {
         "@module-federation/doctor": `file:${tarball}`,
@@ -57,6 +58,7 @@ const vite = await import("@module-federation/doctor/vite");
 const rspack = await import("@module-federation/doctor/rspack");
 const rsbuild = await import("@module-federation/doctor/rsbuild");
 const webpack = await import("@module-federation/doctor/webpack");
+const modern = await import("@module-federation/doctor/modern");
 const rules = await import("@module-federation/doctor/rules");
 const reportSchema = await import("@module-federation/doctor/schemas/report.schema.json", { with: { type: "json" } });
 const packageJson = await import("@module-federation/doctor/package.json", { with: { type: "json" } });
@@ -68,10 +70,13 @@ assert.equal(typeof rspack.moduleFederationDoctorPlugin, "function");
 assert.equal(typeof rsbuild.pluginModuleFederationDoctor, "function");
 assert.equal(typeof webpack.ModuleFederationDoctorPlugin, "function");
 assert.equal(webpack.moduleFederationDoctorPlugin, webpack.ModuleFederationDoctorPlugin);
+assert.equal(typeof modern.pluginModuleFederationDoctor, "function");
+assert.equal(typeof modern.appendModuleFederationDoctor, "function");
 assert.equal(typeof vite.default, "function");
 assert.equal(typeof rspack.default, "function");
 assert.equal(typeof rsbuild.default, "function");
 assert.equal(typeof webpack.default, "function");
+assert.equal(typeof modern.default, "function");
 assert.equal(typeof rules.defineRule, "function");
 const policy = await import("@module-federation/doctor/policy");
 assert.equal(typeof policy.definePolicyPack, "function");
@@ -110,6 +115,31 @@ export default defineConfig({ plugins: [pluginModuleFederationDoctor(${doctorOpt
 export default { mode: "production", entry: "./src/index.js", plugins: [ModuleFederationDoctorPlugin(${doctorOptions})] };
 `,
   );
+  await fs.writeFile(
+    path.join(consumer, "modern-smoke.mjs"),
+    `import assert from "node:assert/strict";
+import { pluginModuleFederationDoctor, appendModuleFederationDoctor } from "@module-federation/doctor/modern";
+const plugin = pluginModuleFederationDoctor(${doctorOptions});
+assert.equal(plugin.name, "@module-federation/doctor");
+assert.equal(typeof plugin.setup, "function");
+const registered = [];
+const chain = { plugin(name) { return { use(p) { registered.push([name, p]); return this; } }; } };
+await plugin.setup({
+  getAppContext: () => ({ bundlerType: "rspack", appDirectory: process.cwd() }),
+  modifyBundlerChain(fn) { fn(chain); },
+});
+assert.equal(registered.length, 1);
+assert.equal(registered[0][0], "module-federation-doctor");
+assert.equal(typeof registered[0][1].apply, "function");
+const rspackChain = [];
+appendModuleFederationDoctor(
+  { plugin(name) { return { use(p) { rspackChain.push([name, p]); return this; } }; } },
+  ${doctorOptions},
+);
+assert.equal(rspackChain.length, 1);
+assert.equal(rspackChain[0][0], "module-federation-doctor");
+`,
+  );
   run("pnpm", ["install", "--ignore-scripts"], consumer);
   run("pnpm", ["check"], consumer);
   run("pnpm", ["cli"], consumer);
@@ -117,6 +147,7 @@ export default { mode: "production", entry: "./src/index.js", plugins: [ModuleFe
   run("pnpm", ["rspack"], consumer);
   run("pnpm", ["rsbuild"], consumer);
   run("pnpm", ["webpack"], consumer);
+  run("pnpm", ["modern"], consumer);
   process.stdout.write(`Tarball consumer passed: ${pathToFileURL(tarball).href}\n`);
 } finally {
   await fs.rm(temporary, { recursive: true, force: true });

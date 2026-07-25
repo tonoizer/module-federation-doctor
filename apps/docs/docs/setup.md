@@ -9,12 +9,12 @@ Supported / partial / unsupported cells (bundlers, Node, package managers,
 report surfaces) are listed in the [compatibility matrix](./compatibility.md).
 
 Doctor runs **only after emit** (`writeBundle` / `closeBundle` / `afterEmit` /
-`onAfterBuild`), prints **one** findings block to the terminal when there are
-findings, then fails the build only after every finding is collected when CI
-policy requires it. Clean runs stay quiet by default (no "no findings" noise).
-Adapters must not inject Doctor into client assets and must not re-print
-findings into bundler warning streams. Analysis costs CI/build time only; it is
-not shipped in the published bundle
+`onAfterBuild` / Modern.js `modifyBundlerChain` → `afterEmit`), prints **one**
+findings block to the terminal when there are findings, then fails the build
+only after every finding is collected when CI policy requires it. Clean runs
+stay quiet by default (no "no findings" noise). Adapters must not inject Doctor
+into client assets and must not re-print findings into bundler warning streams.
+Analysis costs CI/build time only; it is not shipped in the published bundle
 ([#32](https://github.com/tonoizer/module-federation-doctor/issues/32),
 [#46](https://github.com/tonoizer/module-federation-doctor/issues/46),
 [#54](https://github.com/tonoizer/module-federation-doctor/issues/54)).
@@ -33,6 +33,21 @@ already exports those variables.
 5. If a finding is intentional product policy, mute that rule (or baseline the
    fingerprint) instead of removing Doctor — see
    [Governance](./suppressions.md).
+
+## Which adapter?
+
+| Project surface                | Doctor entry                        | Notes                                                                                  |
+| ------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------- |
+| Vite                           | `@module-federation/doctor/vite`    | Primary host path                                                                      |
+| Direct Rspack (`@rspack/core`) | `@module-federation/doctor/rspack`  | First-class; do **not** replace with the Modern.js entry                               |
+| Rsbuild                        | `@module-federation/doctor/rsbuild` | `onAfterBuild`                                                                         |
+| Webpack                        | `@module-federation/doctor/webpack` | `@module-federation/enhanced/webpack`                                                  |
+| Modern.js (`modern.config.*`)  | `@module-federation/doctor/modern`  | **partial** — composes post-emit via `modifyBundlerChain`; records `bundler: "modern"` |
+
+Modern.js builds on Rspack (or Webpack). The Modern.js adapter is a convenience
+for `modern.config` — it does **not** deprecate direct Rspack coverage. Matrix
+status is **partial** until CI runs a real `@modern-js/app-tools` build (today’s
+smoke stubs `modifyBundlerChain` on Rspack).
 
 ## Terminal output knobs
 
@@ -66,6 +81,8 @@ Rolldown-integrated Vite (`rolldown-vite` / Vite 8+), and Vite Plus. See
 [Vite integration](./vite-integration.md#rolldown-and-vite-plus).
 
 ## Rspack
+
+Use this for **direct** `@rspack/core` projects (not Modern.js / Rsbuild wrappers).
 
 ```ts
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
@@ -110,6 +127,46 @@ export default {
 };
 ```
 
+## Modern.js
+
+Register next to `@module-federation/modern-js` / `@module-federation/modern-js-v3`.
+Doctor attaches through Modern.js `modifyBundlerChain` using the same post-emit
+analysis as the Rspack/Webpack adapters.
+
+```ts
+import { appTools, defineConfig } from "@modern-js/app-tools";
+import { moduleFederationPlugin } from "@module-federation/modern-js";
+import { pluginModuleFederationDoctor } from "@module-federation/doctor/modern";
+
+const mfOptions = { name: "remote", exposes: { "./App": "./src/App.tsx" } };
+
+export default defineConfig({
+  plugins: [
+    appTools(),
+    moduleFederationPlugin(),
+    pluginModuleFederationDoctor({ moduleFederation: mfOptions }),
+  ],
+});
+```
+
+Escape hatch — keep using the **public Rspack adapter** inside Modern.js
+`tools.bundlerChain` (facts record `bundler: "rspack"`):
+
+```ts
+import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+// or: import { appendModuleFederationDoctor } from "@module-federation/doctor/modern";
+
+export default defineConfig({
+  tools: {
+    bundlerChain(chain) {
+      chain
+        .plugin("module-federation-doctor")
+        .use(moduleFederationDoctorPlugin({ moduleFederation: mfOptions }));
+    },
+  },
+});
+```
+
 ## Supported analysis paths
 
 | Path                                                                                 | Covered?                                      |
@@ -151,7 +208,7 @@ after your builds. See [CLI and CI](./cli.md).
 ## Out of scope: runtime-only apps
 
 Apps that use `@module-federation/runtime` / `createInstance` **without** a
-Vite, Rspack, Rsbuild, or Webpack Module Federation **build** plugin are not
+Vite, Rspack, Rsbuild, Webpack, or Modern.js Module Federation **build** plugin are not
 first-class Doctor targets
 ([#34](https://github.com/tonoizer/module-federation-doctor/issues/34),
 `MFDOCTOR-117`). There is no post-emit adapter hook, and Doctor does not parse

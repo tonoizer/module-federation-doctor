@@ -27,7 +27,7 @@ type CompilationLike = {
   errors: Error[];
 };
 
-type CompilerLike = {
+export type CompilerLike = {
   context: string;
   hooks: {
     afterEmit: {
@@ -41,8 +41,9 @@ type CompilerLike = {
  * Post-emit only: analyze emitted assets, print via the shared terminal reporter
  * inside analyzeBuild, then fail the compilation once if policy requires it.
  * Do not push per-finding warnings — that double-prints with the terminal block.
+ * Shared by Rspack, Webpack, and the Modern.js adapter (which composes this hook).
  */
-function attachCompilationAfterEmit(compiler: CompilerLike, configured: DoctorOptions): void {
+export function attachDoctorAfterEmit(compiler: CompilerLike, configured: DoctorOptions): void {
   if (!configured.root) configured.root = compiler.context;
   compiler.hooks.afterEmit.tapPromise("ModuleFederationDoctor", async (compilation) => {
     const result = await analyzeBuild(configured, Object.keys(compilation.assets));
@@ -152,14 +153,14 @@ function createDoctorPlugin(bundler: BundlerName) {
       ...(bundler === "rspack"
         ? {
             rspack(compiler) {
-              attachCompilationAfterEmit(compiler, configured);
+              attachDoctorAfterEmit(compiler, configured);
             },
           }
         : {}),
       ...(bundler === "webpack"
         ? {
             webpack(compiler) {
-              attachCompilationAfterEmit(compiler, configured);
+              attachDoctorAfterEmit(compiler, configured);
             },
           }
         : {}),

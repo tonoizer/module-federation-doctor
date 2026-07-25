@@ -59,8 +59,8 @@ claiming upstream behavior, start from the [source map](./sources.md).
   publish). Epic:
   [#30](https://github.com/tonoizer/module-federation-doctor/issues/30).
 - **[post-v1](https://github.com/tonoizer/module-federation-doctor/milestone/2)** —
-  later adapters (Modern.js). Not release blockers for
-  v1.0 or the upstream maintainer conversation.
+  later product work beyond current adapters. Not release blockers for v1.0 or
+  the upstream maintainer conversation.
 
 Close the matching GitHub issue and drop the row from
 [limitations](./limitations.md) when work ships.
@@ -71,6 +71,7 @@ Close the matching GitHub issue and drop the row from
 | -------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MFDOCTOR-101` | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) | Webpack adapter _(shipped — see [setup](./setup.md#webpack))_                                                                                                                     |
 | `MFDOCTOR-102` | [#11](https://github.com/tonoizer/module-federation-doctor/issues/11) | Rolldown and Vite Plus lifecycle coverage _(shipped as **partial** — see [compatibility](./compatibility.md) / [Vite integration](./vite-integration.md#rolldown-and-vite-plus))_ |
+| `MFDOCTOR-103` | [#12](https://github.com/tonoizer/module-federation-doctor/issues/12) | Modern.js adapter without hiding direct Rspack _(shipped as **partial** — see [compatibility](./compatibility.md) / [setup](./setup.md#modernjs))_                                |
 | `MFDOCTOR-105` | [#14](https://github.com/tonoizer/module-federation-doctor/issues/14) | Dynamic-import completeness beyond static analysis _(shipped — see [capabilities](./capabilities.md#dynamic-import-completeness-v1))_                                             |
 | `MFDOCTOR-106` | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) | Compatibility matrix for v1 bundlers and runtimes _(shipped — see [compatibility](./compatibility.md))_                                                                           |
 | `MFDOCTOR-109` | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) | One-shot workspace federation gate for CI _(shipped — see [CLI](./cli.md#workspace-federation-gate) / [setup](./setup.md#multi-app-ci-loop))_                                     |
@@ -85,9 +86,9 @@ Close the matching GitHub issue and drop the row from
 
 ### post-v1
 
-| ID             | Issue                                                                 | Topic                                          |
-| -------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
-| `MFDOCTOR-103` | [#12](https://github.com/tonoizer/module-federation-doctor/issues/12) | Modern.js adapter without hiding direct Rspack |
+No open post-v1 adapter gaps right now. Rolldown / Vite Plus (#11) and Modern.js
+(#12) shipped as **partial** matrix cells — see
+[compatibility](./compatibility.md).
 
 `MFDOCTOR-104` / [#13](https://github.com/tonoizer/module-federation-doctor/issues/13)
 (HTML analysis UI) was closed as not planned — Doctor does not ship an HTML

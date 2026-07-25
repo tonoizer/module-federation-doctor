@@ -36,6 +36,9 @@ jobs:
           - id: webpack
             filter: "@mfdoctor-example/webpack-smoke"
             dir: examples/compatibility/webpack
+          - id: modern
+            filter: "@mfdoctor-example/modern-smoke"
+            dir: examples/compatibility/modern
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - run: corepack enable && corepack prepare pnpm@11.17.0 --activate

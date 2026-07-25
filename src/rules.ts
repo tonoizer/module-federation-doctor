@@ -30,7 +30,7 @@ function createRule(
     meta: {
       id,
       defaultSeverity,
-      supportedBundlers: ["vite", "rspack", "rsbuild", "webpack", "unknown"],
+      supportedBundlers: ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"],
       documentation: `/rules/${id}`,
       ...guidance,
     },
@@ -742,10 +742,28 @@ export const builtInRules: DoctorRule[] = [
       rsbuild: "@module-federation/rsbuild-plugin",
       webpack: "@module-federation/enhanced",
     };
-    const packageName = expected[context.facts.bundler.name];
+    const bundler = context.facts.bundler.name;
+    if (bundler === "modern") {
+      const declared = context.facts.dependencies.declared;
+      const hasModern =
+        Boolean(declared["@module-federation/modern-js"]) ||
+        Boolean(declared["@module-federation/modern-js-v3"]);
+      if (!hasModern) {
+        report(
+          context,
+          'Expected "@module-federation/modern-js" or "@module-federation/modern-js-v3" for modern.',
+          {
+            bundler,
+            expectedPackage: "@module-federation/modern-js",
+          },
+        );
+      }
+      return;
+    }
+    const packageName = expected[bundler];
     if (packageName && !context.facts.dependencies.declared[packageName])
-      report(context, `Expected "${packageName}" for ${context.facts.bundler.name}.`, {
-        bundler: context.facts.bundler.name,
+      report(context, `Expected "${packageName}" for ${bundler}.`, {
+        bundler,
         expectedPackage: packageName,
       });
   }),

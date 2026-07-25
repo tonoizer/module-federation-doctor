@@ -27,7 +27,9 @@
       "type": "object",
       "required": ["name", "mode"],
       "properties": {
-        "name": { "enum": ["vite", "rspack", "rsbuild", "webpack", "unknown"] },
+        "name": {
+          "enum": ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"]
+        },
         "version": { "type": "string" },
         "mode": { "type": "string" },
         "lifecycle": {

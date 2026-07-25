@@ -1,0 +1,17 @@
+{
+  "name": "@mfdoctor-example/modern-smoke",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\""
+  },
+  "dependencies": {
+    "@module-federation/enhanced": "2.8.0"
+  },
+  "devDependencies": {
+    "@module-federation/doctor": "workspace:*",
+    "@rspack/core": "2.1.5"
+  }
+}

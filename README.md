@@ -1,8 +1,8 @@
 # Module Federation Doctor
 
 `@module-federation/doctor` finds config, sharing, runtime, manifest, and output
-problems in Module Federation projects built with Vite, Rspack, Rsbuild, and
-Webpack.
+problems in Module Federation projects built with Vite, Rspack, Rsbuild,
+Webpack, and Modern.js.
 
 Install as a **devDependency**. Doctor is **build/CI-only**: adapters run after
 emit in Node and are not part of the browser bundle. They add CI time, not
@@ -28,7 +28,7 @@ import { federationDoctor } from "@module-federation/doctor/vite";
 plugins: [federation(mfOptions), federationDoctor({ moduleFederation: mfOptions })];
 ```
 
-**Rspack**
+**Rspack** (direct `@rspack/core` — first-class; not replaced by Modern.js)
 
 ```ts
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
@@ -61,6 +61,19 @@ import { ModuleFederationDoctorPlugin } from "@module-federation/doctor/webpack"
 plugins: [
   new ModuleFederationPlugin(mfOptions),
   ModuleFederationDoctorPlugin({ moduleFederation: mfOptions }),
+];
+```
+
+**Modern.js** (**partial** — adapter + Rspack-under-the-hood smoke; does not hide `/rspack`)
+
+```ts
+import { moduleFederationPlugin } from "@module-federation/modern-js";
+import { pluginModuleFederationDoctor } from "@module-federation/doctor/modern";
+
+plugins: [
+  appTools(),
+  moduleFederationPlugin(),
+  pluginModuleFederationDoctor({ moduleFederation: mfOptions }),
 ];
 ```
 
@@ -169,7 +182,7 @@ loop.
 
 Requires Node `>=22.12.0` and pnpm 11 (primary). See the
 [compatibility matrix](./apps/docs/docs/compatibility.md) for supported /
-partial / unsupported cells (Vite, Rspack, Rsbuild, Webpack; npm / yarn
+partial / unsupported cells (Vite, Rspack, Rsbuild, Webpack, Modern.js; npm / yarn
 consumer notes; terminal / JSON / SARIF on CI).
 
 ```bash

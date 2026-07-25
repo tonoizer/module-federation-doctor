@@ -8,6 +8,7 @@ export default defineConfig({
     "src/rspack.ts",
     "src/rsbuild.ts",
     "src/webpack.ts",
+    "src/modern.ts",
     "src/rules.ts",
     "src/policy.ts",
   ],
