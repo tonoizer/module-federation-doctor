@@ -55,7 +55,7 @@ describe("compiler build diagnostics helpers", () => {
       readonly kind = "other";
     }
     const plugin = new SomethingElse();
-    (plugin as { name: string }).name = "ModuleFederationPlugin";
+    (plugin as unknown as { name: string }).name = "ModuleFederationPlugin";
     expect(countModuleFederationPlugins({ options: { plugins: [plugin] } })).toBe(1);
   });
 
