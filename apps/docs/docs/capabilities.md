@@ -10,3 +10,6 @@
 
 Rules consult recorded capabilities. Missing optional input creates
 `doctor/partial-analysis` instead of pretending full analysis happened.
+Adapters must not scrape private Module Federation plugin fields to invent
+coverage — see
+[permanent guarantees / non-goals](./limitations.md#permanent-guarantees--non-goals).

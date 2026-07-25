@@ -42,20 +42,54 @@ reports. Restoring a richer HTML analysis UI is tracked in
 | Rolldown and Vite Plus lifecycle coverage        | [#11](https://github.com/tonoizer/module-federation-doctor/issues/11) (`MFDOCTOR-102`) |
 | Modern.js adapter (without hiding direct Rspack) | [#12](https://github.com/tonoizer/module-federation-doctor/issues/12) (`MFDOCTOR-103`) |
 
+## What Doctor covers
+
+| Path                                                                                 | Covered?                                      |
+| ------------------------------------------------------------------------------------ | --------------------------------------------- |
+| Bundler MF plugin + Doctor adapter + shared `mfOptions` (including `runtimePlugins`) | Yes — primary                                 |
+| CLI `check` with explicit `moduleFederation` / `module-federation.config`            | Partial (config/imports; weaker without emit) |
+| On-disk / deployed `mf-manifest.json` (`check` discover / `probe`)                   | Producer/deploy evidence only                 |
+| `mfdoctor runtime` + Observability export                                            | Opt-in live correlation, offline              |
+
+MF `runtimePlugins` declared in bundler MF config **are** first-class: Doctor
+reads them from the shared `mfOptions` object at build time. That is not the
+same as analyzing a runtime-only host.
+
 ## Permanent guarantees / non-goals
 
 Doctor does not rely on undocumented private Module Federation plugin fields.
-That is a stability non-goal, not removable follow-up work. See
-[#18](https://github.com/tonoizer/module-federation-doctor/issues/18).
+That is a stability guarantee and permanent non-goal, not removable follow-up
+work. See [#18](https://github.com/tonoizer/module-federation-doctor/issues/18).
+
+Adapters and rules use **public Module Federation options**, emitted
+**manifests**, **stats**, and **recorded capabilities** only. They must not
+scrape private plugin instance state, undocumented internals, or other
+non-public compiler/plugin fields. Missing optional public input yields
+`doctor/partial-analysis` instead of reaching into private MF plugin state.
+
+Adapter authors: see
+[architecture notes](./contributing.md#architecture-notes).
 
 Doctor is **build/CI-only**. Install it as a `devDependency`. Adapters run after
 emit in Node and must not appear in the client bundle
-([#32](https://github.com/tonoizer/module-federation-doctor/issues/32)). An
-in-browser Doctor runtime agent is **not planned**
-([#33](https://github.com/tonoizer/module-federation-doctor/issues/33)).
+([#32](https://github.com/tonoizer/module-federation-doctor/issues/32),
+`MFDOCTOR-115`). An in-browser Doctor runtime agent is **not planned**
+([#33](https://github.com/tonoizer/module-federation-doctor/issues/33),
+`MFDOCTOR-116`).
 
-**Runtime-only** Module Federation apps (runtime / `createInstance` without a
-bundler MF build plugin) are **out of scope** for first-class support
-([#34](https://github.com/tonoizer/module-federation-doctor/issues/34)). MF
-`runtimePlugins` listed in bundler MF config **are** analyzed at build time when
-you pass those options into the Doctor adapter.
+**Runtime-only** Module Federation apps — `@module-federation/runtime` /
+`createInstance` / runtime plugins **without** a Vite, Rspack, Rsbuild (or
+future Webpack) Module Federation **build** plugin — are **out of scope** for
+first-class support
+([#34](https://github.com/tonoizer/module-federation-doctor/issues/34),
+`MFDOCTOR-117`).
+
+Without a bundler MF plugin there is usually no Doctor post-emit hook, no
+reliable emit/manifest from that app, and Doctor does not parse
+`createInstance(...)` from source. Manifest and `probe` coverage apply to
+**producer artifacts** that emit `mf-manifest.json`, not to “we inferred the
+whole runtime-only host.”
+
+Do **not** ship Doctor into the browser to close that gap. Prefer Observability
+exports + `mfdoctor runtime`, or add a bundler MF plugin + Doctor adapter. See
+[setup](./setup.md).
