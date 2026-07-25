@@ -36,7 +36,7 @@ Close the matching GitHub issue and drop the row from
 
 | ID             | Issue                                                                 | Topic                                                                                                                                 |
 | -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `MFDOCTOR-101` | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) | Webpack adapter                                                                                                                       |
+| `MFDOCTOR-101` | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) | Webpack adapter _(shipped — see [setup](./setup.md#webpack))_                                                                         |
 | `MFDOCTOR-105` | [#14](https://github.com/tonoizer/module-federation-doctor/issues/14) | Dynamic-import completeness beyond static analysis _(shipped — see [capabilities](./capabilities.md#dynamic-import-completeness-v1))_ |
 | `MFDOCTOR-106` | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) | Compatibility matrix for v1 bundlers and runtimes                                                                                     |
 | `MFDOCTOR-109` | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) | One-shot workspace federation gate for CI                                                                                             |
