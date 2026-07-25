@@ -64,4 +64,5 @@ node dist/cli.js runtime examples/showcase/runtime/green/trace.json "examples/sh
 ```
 
 For a healthy multi-bundler app, use `examples/mixed-federation`.
+For nested multi-bundler orchestration, use `examples/nested-federation`.
 For a red multi-bundler combination, use `examples/mixed-federation-issues`.

@@ -108,10 +108,10 @@ Reds that **do not** block other cells:
 
 ## CI map
 
-| Workflow                      | What it proves                                                  |
-| ----------------------------- | --------------------------------------------------------------- |
-| `compatibility.yml`           | Per-bundler build+Doctor on Node 22 + 24; report surfaces       |
-| `doctor.yml`                  | Full mixed-federation build + federation analyze + SARIF upload |
-| `integration.yml` / `e2e.yml` | Adapter tests and Playwright mixed-federation path              |
-| `package.yml`                 | Pack/consume smoke on Node 22 + 24 (includes Webpack)           |
-| `quality.yml`                 | fmt, lint, types, unit tests, `docs:build`                      |
+| Workflow                      | What it proves                                                    |
+| ----------------------------- | ----------------------------------------------------------------- |
+| `compatibility.yml`           | Per-bundler build+Doctor on Node 22 + 24; report surfaces         |
+| `doctor.yml`                  | Mixed + nested federation builds + workspace gates + SARIF upload |
+| `integration.yml` / `e2e.yml` | Adapter tests and Playwright mixed-federation path                |
+| `package.yml`                 | Pack/consume smoke on Node 22 + 24 (includes Webpack)             |
+| `quality.yml`                 | fmt, lint, types, unit tests, `docs:build`                        |

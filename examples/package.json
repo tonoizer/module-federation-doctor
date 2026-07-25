@@ -3,10 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "demo": "pnpm demo:showcase && pnpm demo:mixed-issues",
+    "demo": "pnpm demo:showcase && pnpm demo:mixed-issues && pnpm demo:nested",
     "demo:showcase": "pnpm --dir .. run demo:showcase",
     "demo:mixed-issues": "pnpm --dir .. run demo:mixed-issues",
+    "demo:nested": "pnpm --dir .. run demo:nested",
     "build:green": "pnpm --dir .. run test:examples",
+    "build:nested": "pnpm --dir .. run test:nested",
     "test:e2e": "pnpm --dir .. run test:e2e"
   }
 }

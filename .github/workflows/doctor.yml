@@ -22,6 +22,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test:examples
+      - run: pnpm test:nested
       - name: Analyze federation (workspace gate)
         uses: ./.github/actions/workspace-federation-gate
         with:
@@ -31,6 +32,16 @@ jobs:
           upload-sarif: "true"
           upload-artifact: "false"
           artifact-name: doctor-federation
+      - name: Analyze nested federation (workspace gate)
+        uses: ./.github/actions/workspace-federation-gate
+        with:
+          roots: examples/nested-federation
+          cli: node dist/cli.js
+          formats: terminal,json,sarif
+          upload-sarif: "true"
+          upload-artifact: "false"
+          artifact-name: doctor-nested-federation
+          sarif-category: module-federation-doctor-nested
       - if: always()
         run: node scripts/github-annotations.mjs | tee -a "$GITHUB_STEP_SUMMARY"
       - if: always()
@@ -39,4 +50,5 @@ jobs:
           name: doctor-reports
           path: |
             examples/mixed-federation/*/.mf/doctor
+            examples/nested-federation/*/.mf/doctor
             .mf/doctor

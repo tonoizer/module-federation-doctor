@@ -1,7 +1,10 @@
 import fs from "node:fs/promises";
 import fg from "fast-glob";
 
-const files = await fg("examples/mixed-federation/*/.mf/doctor/report.json");
+const files = await fg([
+  "examples/mixed-federation/*/.mf/doctor/report.json",
+  "examples/nested-federation/*/.mf/doctor/report.json",
+]);
 let errors = 0;
 let warnings = 0;
 for (const file of files.sort()) {
