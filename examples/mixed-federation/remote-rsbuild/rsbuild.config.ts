@@ -21,6 +21,7 @@ export default defineConfig({
     pluginModuleFederationDoctor({ moduleFederation: mfOptions }),
   ],
   server: {
+    host: "127.0.0.1",
     port: 3002,
     headers: { "Access-Control-Allow-Origin": "*" },
   },

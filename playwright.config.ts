@@ -4,17 +4,17 @@ const federationWebServers = [
   {
     name: "rspack-remote",
     command: "pnpm --dir examples/mixed-federation/remote-rspack preview",
-    url: "http://localhost:3001/remoteEntry.js",
+    url: "http://127.0.0.1:3001/remoteEntry.js",
   },
   {
     name: "rsbuild-remote",
     command: "pnpm --dir examples/mixed-federation/remote-rsbuild preview",
-    url: "http://localhost:3002/remoteEntry.js",
+    url: "http://127.0.0.1:3002/remoteEntry.js",
   },
   {
     name: "host-vite",
     command: "pnpm --dir examples/mixed-federation/host-vite preview",
-    url: "http://localhost:5173",
+    url: "http://127.0.0.1:5173",
   },
 ] as const;
 
@@ -26,7 +26,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   retries: process.env.CI ? 2 : 0,
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "http://127.0.0.1:5173",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
