@@ -12,6 +12,7 @@ import type {
   UnresolvedDynamicImport,
 } from "./types.js";
 import { normalizePath, relativePath } from "./utils.js";
+import { detectViteLifecycle } from "./vite-lifecycle.js";
 
 interface PackageJson {
   name?: string;
@@ -629,6 +630,10 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     unknown: "",
   }[options.bundler];
   const bundlerVersion = options.bundlerVersion ?? installed[bundlerPackage];
+  const lifecycle =
+    options.bundler === "vite"
+      ? (options.viteLifecycle ?? (await detectViteLifecycle(options.root)))
+      : undefined;
   const facts: ProjectFacts = {
     schemaVersion: 1,
     project: {
@@ -639,6 +644,7 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
       name: options.bundler,
       mode: options.mode,
       ...(bundlerVersion ? { version: bundlerVersion } : {}),
+      ...(lifecycle ? { lifecycle } : {}),
     },
     capabilities: {
       config: options.moduleFederation !== undefined,

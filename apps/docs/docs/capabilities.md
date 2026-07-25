@@ -4,15 +4,16 @@ Analysis depth per supported bundler. For supported / partial / unsupported
 **product** cells (Node, package managers, report surfaces), see the
 [compatibility matrix](./compatibility.md).
 
-| Capability                             | Vite                                                            | Rspack            | Rsbuild               | Webpack           |
+| Capability                             | Vite / Rolldown / Vite Plus                                     | Rspack            | Rsbuild               | Webpack           |
 | -------------------------------------- | --------------------------------------------------------------- | ----------------- | --------------------- | ----------------- |
 | Explicit MF config                     | Yes                                                             | Yes               | Yes                   | Yes               |
 | Static imports                         | Yes                                                             | Yes               | Yes                   | Yes               |
 | Supported dynamic patterns (see below) | Yes                                                             | Yes               | Yes                   | Yes               |
 | Manifest and stats                     | Yes                                                             | Yes               | Yes                   | Yes               |
-| Emitted assets                         | Rollup-compatible hooks                                         | Compilation hooks | Rspack when available | Compilation hooks |
+| Emitted assets                         | On-disk `writeBundle` / `closeBundle` (Rolldown-safe)           | Compilation hooks | Rspack when available | Compilation hooks |
 | Opt-in runtime traces                  | Correlated when `runtimeTrace` / `mfdoctor runtime` is supplied | Same              | Same                  | Same              |
 | Cross-project checks                   | Yes                                                             | Yes               | Yes                   | Yes               |
+| Lifecycle recording                    | `bundler.lifecycle` (`vite` / `rolldown-vite` / `vite-plus`)    | —                 | —                     | —                 |
 
 Rules consult recorded capabilities. Missing optional input creates
 `doctor/partial-analysis` instead of pretending full analysis happened.

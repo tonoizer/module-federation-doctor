@@ -3,6 +3,34 @@
 The Vite plugin is not a thin copy of the Rspack plugin. Doctor keeps its
 Vite-only facts under the `vite` section of `project.json`.
 
+## Rolldown and Vite Plus
+
+Module Federation on Rolldown-integrated Vite and Vite Plus uses the **same**
+Doctor entry as classic Vite:
+
+```ts
+import { federation } from "@module-federation/vite";
+import { federationDoctor } from "@module-federation/doctor/vite";
+```
+
+| Flavor                    | How Doctor detects it                                                           | Emit engine |
+| ------------------------- | ------------------------------------------------------------------------------- | ----------- |
+| Classic Vite              | Default when no Rolldown / Vite Plus markers                                    | `rollup`    |
+| `rolldown-vite` / Vite 8+ | Declared `rolldown-vite` / `rolldown`, or public `meta.rolldownVersion`         | `rolldown`  |
+| Vite Plus                 | `vite-plus` / `@voidzero-dev/vite-plus-core` (including `vite` alias overrides) | `rolldown`  |
+
+Doctor records `bundler.lifecycle` (`flavor`, `engine`, `postEmitHook`,
+`evidence`) on `project.json`. Emit analysis prefers **on-disk** `dist/**` /
+`build/**` assets over the in-memory Rollup `bundle` object, because Rolldown
+does not share that object across hooks. When Rolldown has not finished writing
+on `writeBundle`, Doctor defers to `closeBundle`. If emit facts are still
+missing, it leaves `capabilities.emittedAssets` false so
+[`doctor/partial-analysis`](./rules/doctor/partial-analysis.md) reports the gap
+honestly.
+
+Direct Rolldown **without** `@module-federation/vite` is unsupported — Rolldown
+dropped built-in Module Federation in favor of the Vite plugin.
+
 ## Vite-only options
 
 | Option                          | Risk or opportunity                                 | Doctor guidance                         |

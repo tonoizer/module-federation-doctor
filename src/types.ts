@@ -3,6 +3,25 @@ export type Severity = "info" | "warning" | "error";
 export type OutputFormat = "terminal" | "json" | "sarif";
 export type RuleSetting = "off" | Severity | readonly [Severity, Record<string, unknown>];
 
+/** Vite-family emit engine (classic Rollup vs Rolldown). */
+export type ViteLifecycleEngine = "rollup" | "rolldown";
+
+/**
+ * Supported Vite-family MF entry flavors. All use
+ * `@module-federation/doctor/vite` + `@module-federation/vite`.
+ */
+export type ViteLifecycleFlavor = "vite" | "rolldown-vite" | "vite-plus";
+
+/** Recorded when the Vite adapter analyzes a Vite / Rolldown / Vite Plus build. */
+export interface ViteLifecycleFacts {
+  flavor: ViteLifecycleFlavor;
+  engine: ViteLifecycleEngine;
+  /** Post-emit hook that produced analysis facts, when known. */
+  postEmitHook?: "writeBundle" | "closeBundle";
+  /** Declared/installed packages or public hook meta that drove detection. */
+  evidence: string[];
+}
+
 export interface SourceLocation {
   path: string;
   line?: number;
@@ -18,6 +37,8 @@ export interface BundlerFacts {
   name: BundlerName;
   version?: string;
   mode: string;
+  /** Present for Vite-family adapters when the emit lifecycle is known. */
+  lifecycle?: ViteLifecycleFacts;
 }
 
 export interface AnalysisCapabilities {
@@ -409,6 +430,11 @@ export interface DoctorOptions {
   moduleFederation?: ModuleFederationConfigLike;
   bundler?: BundlerName;
   bundlerVersion?: string;
+  /**
+   * Vite-family lifecycle override. Adapters normally detect this from
+   * package.json / public plugin meta; set only in tests or unusual setups.
+   */
+  viteLifecycle?: ViteLifecycleFacts;
   mode?: "development" | "ci";
   root?: string;
   /** Default Observability export path for `mfdoctor runtime` when no trace arg is given.
@@ -450,6 +476,7 @@ export interface ResolvedDoctorOptions {
   moduleFederation?: ModuleFederationConfigLike;
   bundler: BundlerName;
   bundlerVersion?: string;
+  viteLifecycle?: ViteLifecycleFacts;
   mode: "development" | "ci";
   root: string;
   runtimeTrace?: string;

@@ -1,8 +1,8 @@
 # Limitations
 
-MVP supports Vite, direct Rspack, Rsbuild, and Webpack. Gaps below are tracked as
-GitHub issues and milestones so each one can be removed from this page when it
-ships.
+MVP supports Vite (including Rolldown-integrated Vite and Vite Plus), direct
+Rspack, Rsbuild, and Webpack. Gaps below are tracked as GitHub issues and
+milestones so each one can be removed from this page when it ships.
 
 Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1)
 · [post-v1](https://github.com/tonoizer/module-federation-doctor/milestone/2)
@@ -10,8 +10,9 @@ Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1
 
 ## v1.0 (governance-ready)
 
-The v1 [compatibility matrix](./compatibility.md) for Vite / Rspack / Rsbuild /
-Webpack, Node engines, package managers, and report surfaces has shipped
+The v1 [compatibility matrix](./compatibility.md) for Vite / Rolldown /
+Vite Plus / Rspack / Rsbuild / Webpack, Node engines, package managers, and
+report surfaces has shipped
 ([#15](https://github.com/tonoizer/module-federation-doctor/issues/15),
 `MFDOCTOR-106`).
 
@@ -47,7 +48,6 @@ closed as not planned.
 
 | Gap                                              | Issue                                                                                  |
 | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| Rolldown and Vite Plus lifecycle coverage        | [#11](https://github.com/tonoizer/module-federation-doctor/issues/11) (`MFDOCTOR-102`) |
 | Modern.js adapter (without hiding direct Rspack) | [#12](https://github.com/tonoizer/module-federation-doctor/issues/12) (`MFDOCTOR-103`) |
 
 ## What Doctor covers
@@ -99,8 +99,8 @@ reliable emit/manifest from that app, and Doctor does not parse
 whole runtime-only host.”
 
 Doctor analysis and the terminal findings showcase run **only post-emit /
-after-build** (`writeBundle` / `afterEmit` / `onAfterBuild`). Adapters never
-register `transform` / `load` / client-injection hooks
+after-build** (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild`).
+Adapters never register `transform` / `load` / client-injection hooks
 ([#54](https://github.com/tonoizer/module-federation-doctor/issues/54)).
 
 Do **not** ship Doctor into the browser to close that gap. Prefer Observability

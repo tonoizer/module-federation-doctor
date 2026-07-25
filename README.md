@@ -19,7 +19,7 @@ prints **all** findings once at the end of the build (severity, rule, message,
 fix, docs links), then fails when policy says so — only after every finding is
 collected. Clean builds stay quiet by default.
 
-**Vite**
+**Vite** (also Rolldown-integrated Vite and Vite Plus — same entry)
 
 ```ts
 import { federation } from "@module-federation/vite";

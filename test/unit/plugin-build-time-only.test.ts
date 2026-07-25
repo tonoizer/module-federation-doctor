@@ -80,11 +80,14 @@ function doctorOptions(root: string, kind: "clean" | "error"): DoctorOptions {
 }
 
 describe("build-time-only adapter contract", () => {
-  it("vite adapter only registers writeBundle (no client injection hooks)", () => {
-    const plugin = rawPlugin(viteDoctor.raw, "vite");
+  it("vite adapter only registers writeBundle/closeBundle (no client injection hooks)", () => {
+    const plugin = rawPlugin(viteDoctor.raw, "vite") as UnpluginOptions & {
+      closeBundle?: unknown;
+    };
     expect(plugin.name).toBe("module-federation-doctor");
     expect(plugin.enforce).toBe("post");
     expect(typeof plugin.writeBundle).toBe("function");
+    expect(typeof plugin.closeBundle).toBe("function");
     for (const hook of CLIENT_INJECTION_HOOKS) {
       expect(plugin).not.toHaveProperty(hook);
     }
