@@ -4,6 +4,9 @@ Use Node `>=22.12.0` and pnpm 11. Run `pnpm install
 --frozen-lockfile`, then `pnpm check`. Add behavior tests for rules and adapters.
 Run `pnpm changeset` for a public package change.
 
+For mixed-federation Playwright flake triage, see
+[`test/e2e/README.md`](https://github.com/tonoizer/module-federation-doctor/blob/main/test/e2e/README.md).
+
 ## Release gates
 
 `pnpm demo:showcase` (`scripts/demo-showcase.mjs`) is a release gate: it runs
