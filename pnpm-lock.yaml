@@ -13,6 +13,9 @@ catalogs:
       specifier: 19.2.8
       version: 19.2.8
 
+overrides:
+  react-router: 8.3.0
+
 importers:
 
   .:
@@ -76,8 +79,8 @@ importers:
   apps/docs:
     dependencies:
       '@rspress/core':
-        specifier: 2.0.14
-        version: 2.0.14(@module-federation/runtime-tools@2.8.0)(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(@types/mdast@4.0.4)(@types/react@19.2.17)(core-js@3.42.0)(micromark-util-types@2.0.2)(micromark@4.0.2(supports-color@8.1.1))(supports-color@8.1.1)
+        specifier: 2.0.18
+        version: 2.0.18(@module-federation/runtime-tools@2.8.0)(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(@types/mdast@4.0.4)(@types/react@19.2.17)(core-js@3.42.0)(micromark-util-types@2.0.2)(micromark@4.0.2(supports-color@8.1.1))(supports-color@8.1.1)
       react:
         specifier: 19.1.1
         version: 19.1.1
@@ -1597,14 +1600,6 @@ packages:
       core-js:
         optional: true
 
-  '@rsbuild/plugin-react@2.0.1':
-    resolution: {integrity: sha512-n5m3VxEm6m3Dv1VkI0WnxsildySJ6M+QjGIzkZDy5UebRCIJ1Q/hlQVyhofBL6C+AcsF9fGjlHQkeiteXJSr3Q==}
-    peerDependencies:
-      '@rsbuild/core': ^2.0.0-0
-    peerDependenciesMeta:
-      '@rsbuild/core':
-        optional: true
-
   '@rsbuild/plugin-react@2.1.0':
     resolution: {integrity: sha512-RQTIAWB/CwPjoWt9iAl+8HixeQVgZ7kEIBrWPCixfITyHdiD84h0YpUTpEUuz6kGHw1KXT9mHZ3Rwy6WG7aRDA==}
     peerDependencies:
@@ -1722,15 +1717,6 @@ packages:
       selfsigned:
         optional: true
 
-  '@rspack/plugin-react-refresh@2.0.0':
-    resolution: {integrity: sha512-Cf6CxBStNDJbiXMc/GmsvG1G8PRlUpa0MSfWsMTI+e8npzuTN/p8nwLs3shriBZOLciqgkSZpBtPTd10BLpj1g==}
-    peerDependencies:
-      '@rspack/core': ^2.0.0-0
-      react-refresh: '>=0.10.0 <1.0.0'
-    peerDependenciesMeta:
-      '@rspack/core':
-        optional: true
-
   '@rspack/plugin-react-refresh@2.0.2':
     resolution: {integrity: sha512-dGNZiCxQxgAUI9sah7gd8u+O7OJZRCmqtEJNDOd8xW5RqcieC86F7p5qcShyw6onH5pKf57evpr2VjGbaFGkZg==}
     peerDependencies:
@@ -1740,13 +1726,13 @@ packages:
       '@rspack/core':
         optional: true
 
-  '@rspress/core@2.0.14':
-    resolution: {integrity: sha512-k59i08zwBGgHrjHw8CK1m4CeTrKPvZRmV54bxubQl6AdDdmhJK6WrNg3UthwWmd38scKtqF40ATXDE8RMiNcNA==}
+  '@rspress/core@2.0.18':
+    resolution: {integrity: sha512-DBpsr/6XAItQkZPL5FSjthLGuzdG9ks/7EOxkqaaXp93uAT54LO0PD5Dkoy6ydup1PnvkpHyiHpUyDcnHHTVhg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
-  '@rspress/shared@2.0.14':
-    resolution: {integrity: sha512-sCe9tAo+s9tR4DmFSjMyHOxQvhzTSYXkkMUfVEo5w+uMCNXXGAIC6D0xAVDMHq1jIFF9ix47VxzlCo+CYNS14g==}
+  '@rspress/shared@2.0.18':
+    resolution: {integrity: sha512-GJswqJQCPSxvBt5r+gJzz8Em8EEK/sOmCQjTpemTvldvxr1Lva85BGVnSQZOgofnM0nrjt18kn4mmnuuSstbpA==}
 
   '@shikijs/core@4.3.1':
     resolution: {integrity: sha512-ANMDxuaPsNMdDC1m4vfvhlDmJweMwkE5XitTwrq2rWHx5jM+dlm4MmHt2PP6t0uejfR77SuhrhJ0zEijIF/uhA==}
@@ -2337,9 +2323,8 @@ packages:
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
-  cookie@1.1.1:
-    resolution: {integrity: sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==}
-    engines: {node: '>=18'}
+  cookie-es@3.1.1:
+    resolution: {integrity: sha512-UaXxwISYJPTr9hwQxMFYZ7kNhSXboMXP+Z3TRX6f1/NyaGPfuNUZOWP1pUEb75B2HjfklIYLVRfWiFZJyC6Npg==}
 
   copy-to-clipboard@3.3.3:
     resolution: {integrity: sha512-2KV8NhB5JqC3ky0r9PMCAZKbUHSwtEo4CwCs0KXgruG43gX5PMqDEBbVU4OUzw2MuAWUfsuFmWvEKG5QRfSnJA==}
@@ -3424,12 +3409,12 @@ packages:
       react: '>=18'
       react-dom: '>=18'
 
-  react-router@7.18.1:
-    resolution: {integrity: sha512-GDLgg3i3uM0aeJO3Fm+TCS+sDQ7gu12T6x0qdTEzcwqEfleci7JwugVNIF3U//0FWKnJT7ptG+20B2jfDqnZAg==}
-    engines: {node: '>=20.0.0'}
+  react-router@8.3.0:
+    resolution: {integrity: sha512-qyPMvW83jGIct3yiieisxdk9M745anqhpIMKN5m1t6yBMfgVPpt77aHOqs5fUlEJRMCGffg9BaQLH9oPVOL7xQ==}
+    engines: {node: '>=22.22.0'}
     peerDependencies:
-      react: '>=18'
-      react-dom: '>=18'
+      react: '>=19.2.7'
+      react-dom: '>=19.2.7'
     peerDependenciesMeta:
       react-dom:
         optional: true
@@ -3751,9 +3736,6 @@ packages:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
     hasBin: true
-
-  set-cookie-parser@2.7.2:
-    resolution: {integrity: sha512-oeM1lpU/UvhTxw+g3cIfxXHyJRc/uidd3yK1P242gzHds0udQBYzs3y8j4gCCW+ZJ7ad0yctld8RYO+bdurlvw==}
 
   shallow-clone@3.0.1:
     resolution: {integrity: sha512-/6KqX+GVUdqPuPPd2LxDDxzX6CAbjJehAAOKlNpqqUpAqPM6HeL8f+o3a+JsyGjn2lv0WY8UsTgUJjU9Ok55NA==}
@@ -5360,15 +5342,6 @@ snapshots:
     transitivePeerDependencies:
       - '@module-federation/runtime-tools'
 
-  '@rsbuild/plugin-react@2.0.1(@rsbuild/core@2.1.8(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0))(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))':
-    dependencies:
-      '@rspack/plugin-react-refresh': 2.0.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(react-refresh@0.18.0)
-      react-refresh: 0.18.0
-    optionalDependencies:
-      '@rsbuild/core': 2.1.8(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0)
-    transitivePeerDependencies:
-      - '@rspack/core'
-
   '@rsbuild/plugin-react@2.1.0(@rsbuild/core@2.1.8(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0))(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))':
     dependencies:
       '@rspack/plugin-react-refresh': 2.0.2(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(react-refresh@0.18.0)
@@ -5455,25 +5428,19 @@ snapshots:
       '@rspack/core': 2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23)
       '@rspack/dev-middleware': 2.0.3(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))
 
-  '@rspack/plugin-react-refresh@2.0.0(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(react-refresh@0.18.0)':
-    dependencies:
-      react-refresh: 0.18.0
-    optionalDependencies:
-      '@rspack/core': 2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23)
-
   '@rspack/plugin-react-refresh@2.0.2(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(react-refresh@0.18.0)':
     dependencies:
       react-refresh: 0.18.0
     optionalDependencies:
       '@rspack/core': 2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23)
 
-  '@rspress/core@2.0.14(@module-federation/runtime-tools@2.8.0)(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(@types/mdast@4.0.4)(@types/react@19.2.17)(core-js@3.42.0)(micromark-util-types@2.0.2)(micromark@4.0.2(supports-color@8.1.1))(supports-color@8.1.1)':
+  '@rspress/core@2.0.18(@module-federation/runtime-tools@2.8.0)(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))(@types/mdast@4.0.4)(@types/react@19.2.17)(core-js@3.42.0)(micromark-util-types@2.0.2)(micromark@4.0.2(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
       '@mdx-js/mdx': 3.1.1(supports-color@8.1.1)
       '@mdx-js/react': 3.1.1(@types/react@19.2.17)(react@19.2.8)
       '@rsbuild/core': 2.1.8(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0)
-      '@rsbuild/plugin-react': 2.0.1(@rsbuild/core@2.1.8(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0))(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))
-      '@rspress/shared': 2.0.14(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0)
+      '@rsbuild/plugin-react': 2.1.0(@rsbuild/core@2.1.8(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0))(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.0)(@swc/helpers@0.5.23))
+      '@rspress/shared': 2.0.18(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0)
       '@shikijs/rehype': 4.3.1
       '@types/unist': 3.0.3
       '@unhead/react': 2.1.16(react@19.2.8)
@@ -5517,7 +5484,7 @@ snapshots:
       - micromark-util-types
       - supports-color
 
-  '@rspress/shared@2.0.14(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0)':
+  '@rspress/shared@2.0.18(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0)':
     dependencies:
       '@rsbuild/core': 2.1.8(@module-federation/runtime-tools@2.8.0)(core-js@3.42.0)
       '@shikijs/rehype': 4.3.1
@@ -6068,7 +6035,7 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  cookie@1.1.1: {}
+  cookie-es@3.1.1: {}
 
   copy-to-clipboard@3.3.3:
     dependencies:
@@ -7394,13 +7361,12 @@ snapshots:
     dependencies:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
-      react-router: 7.18.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react-router: 8.3.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
 
-  react-router@7.18.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  react-router@8.3.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
-      cookie: 1.1.1
+      cookie-es: 3.1.1
       react: 19.2.8
-      set-cookie-parser: 2.7.2
     optionalDependencies:
       react-dom: 19.2.8(react@19.2.8)
 
@@ -7822,8 +7788,6 @@ snapshots:
       compute-scroll-into-view: 3.1.1
 
   semver@7.8.5: {}
-
-  set-cookie-parser@2.7.2: {}
 
   shallow-clone@3.0.1:
     dependencies:
