@@ -22,7 +22,7 @@ const requireManifest = {
   meta: {
     id: "acme/require-manifest",
     defaultSeverity: "error",
-    supportedBundlers: ["vite", "rspack", "rsbuild", "unknown"],
+    supportedBundlers: ["vite", "rspack", "rsbuild", "webpack", "unknown"],
     documentation: "/rules/acme/require-manifest",
     category: "reliability",
     impact: "Without a manifest, hosts lose type hints and richer DevTools data.",
