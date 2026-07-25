@@ -116,6 +116,11 @@
   },
   {
     "type": "file",
+    "name": "compatibility",
+    "label": "Compatibility"
+  },
+  {
+    "type": "file",
     "name": "limitations",
     "label": "Limitations"
   },

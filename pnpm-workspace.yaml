@@ -2,6 +2,7 @@ packages:
   - "."
   - "apps/*"
   - "examples"
+  - "examples/compatibility/*"
   - "examples/mixed-federation/*"
   - "examples/mixed-federation-issues/*"
   - "examples/showcase/**"
