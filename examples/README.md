@@ -1,9 +1,9 @@
 # Examples
 
-Five stories live here. Use the flat green path for healthy e2e, nested for
+Six stories live here. Use the flat green path for healthy e2e, nested for
 multi-level multi-bundler orchestration, standalone cells for per-bundler
-build+Doctor findings, the red path for intentional conflicts, and the showcase
-for one-rule demos.
+build+Doctor findings, the red path for intentional conflicts, the showcase for
+one-rule demos, and compatibility for Webpack matrix smoke.
 
 | Suite                                                  | Intent                                                         | Command                                 |
 | ------------------------------------------------------ | -------------------------------------------------------------- | --------------------------------------- |
