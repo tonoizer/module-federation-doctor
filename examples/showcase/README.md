@@ -25,9 +25,9 @@ failure—such as a missing `name`—stay in the catalog but are not demoed here
 | `config/implementation-suspicious-suppressed` | _(none)_                                | `rules["config/implementation-suspicious"] = "off"` |
 | `config/remote-localhost-in-production`       | `config/remote-localhost-in-production` | warning (CI mode)                                   |
 | `config/remote-alias-prefix-collision`        | `config/remote-alias-prefix-collision`  | error                                               |
-| `config/nested-producer-dts-extract`          | `config/nested-producer-dts-extract`    | warning                                             |
+| `config/nested-producer-dts-extract`          | _(none)_                                | needs exposed-to-remote evidence                    |
 | `config/dts-output-dir-mismatch`              | `config/dts-output-dir-mismatch`        | warning                                             |
-| `config/remote-type-urls-missing`             | `config/remote-type-urls-missing`       | warning                                             |
+| `config/remote-type-urls-missing`             | _(none)_                                | default `@mf-types.zip` URL is inferred             |
 
 ## Shared
 
@@ -58,7 +58,7 @@ Committed `.project.json` facts for `mfdoctor federation`:
 | `federation/version-conflict`        | `federation/version-conflict`        | error    |
 | `federation/share-scope-mismatch`    | `federation/share-scope-mismatch`    | error    |
 | `federation/share-strategy-mismatch` | `federation/share-strategy-mismatch` | warning  |
-| `federation/circular-remote-graph`   | `federation/circular-remote-graph`   | error    |
+| `federation/circular-remote-graph`   | `federation/circular-remote-graph`   | warning  |
 | `federation/singleton-mismatch`      | `shared/singleton-mismatch`          | warning  |
 | `federation/name-conflict`           | `federation/name-conflict`           | error    |
 | `federation/missing-provider`        | `federation/missing-provider`        | error    |

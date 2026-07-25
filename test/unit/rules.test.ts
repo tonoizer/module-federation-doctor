@@ -250,39 +250,12 @@ describe("built-in rules", () => {
       },
     ],
     [
-      "config/nested-producer-dts-extract",
-      (facts: ProjectFacts) => {
-        facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
-        facts.moduleFederation!.remotes = {
-          shop: {
-            name: "shop",
-            entry: "https://example.test/mf-manifest.json",
-            shareScope: "default",
-          },
-        };
-        facts.moduleFederation!.dts = { enabled: true, options: {} };
-      },
-    ],
-    [
       "config/dts-output-dir-mismatch",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.filename = "static/js/remoteEntry.js";
         facts.moduleFederation!.dts = {
           enabled: true,
           options: { generateTypes: { outputDir: "dist/types" } },
-        };
-      },
-    ],
-    [
-      "config/remote-type-urls-missing",
-      (facts: ProjectFacts) => {
-        facts.moduleFederation!.dts = { enabled: true, options: {} };
-        facts.moduleFederation!.remotes = {
-          shop: {
-            name: "shop",
-            entry: "https://example.test/remoteEntry.js",
-            shareScope: "default",
-          },
         };
       },
     ],
@@ -724,7 +697,13 @@ describe("built-in rules", () => {
 
   it("has a behavior fixture for every local rule", () => {
     expect(behaviorCases.map(([id]) => id).sort()).toEqual(
-      builtInRules.map((rule) => rule.meta.id).sort(),
+      builtInRules
+        .map((rule) => rule.meta.id)
+        .filter(
+          (id) =>
+            id !== "config/nested-producer-dts-extract" && id !== "config/remote-type-urls-missing",
+        )
+        .sort(),
     );
   });
 

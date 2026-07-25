@@ -28,9 +28,9 @@ stay as rules, not showcases.
 | Suspicious impl muted    | `node dist/cli.js check examples/showcase/config/implementation-suspicious-suppressed --ci` | no findings (`"off"`)                             |
 | Localhost remotes in CI  | `node dist/cli.js check examples/showcase/config/remote-localhost-in-production --ci`       | `config/remote-localhost-in-production` (warning) |
 | Alias prefix collision   | `node dist/cli.js check examples/showcase/config/remote-alias-prefix-collision --ci`        | `config/remote-alias-prefix-collision` (error)    |
-| Nested producer DTS      | `node dist/cli.js check examples/showcase/config/nested-producer-dts-extract --ci`          | `config/nested-producer-dts-extract` (warning)    |
+| Nested producer DTS      | `node dist/cli.js check examples/showcase/config/nested-producer-dts-extract --ci`          | no finding (needs exposed-to-remote evidence)     |
 | DTS outputDir mismatch   | `node dist/cli.js check examples/showcase/config/dts-output-dir-mismatch --ci`              | `config/dts-output-dir-mismatch` (warning)        |
-| Remote type URLs missing | `node dist/cli.js check examples/showcase/config/remote-type-urls-missing --ci`             | `config/remote-type-urls-missing` (warning)       |
+| Remote type URLs missing | `node dist/cli.js check examples/showcase/config/remote-type-urls-missing --ci`             | no finding (default DTS URL is inferred)          |
 
 ## Shared
 
@@ -60,7 +60,7 @@ stay as rules, not showcases.
 | Version conflict        | `node dist/cli.js federation "examples/showcase/federation/version-conflict/*.project.json"`        | `federation/version-conflict` (error)          |
 | Share scope mismatch    | `node dist/cli.js federation "examples/showcase/federation/share-scope-mismatch/*.project.json"`    | `federation/share-scope-mismatch` (error)      |
 | Share strategy mismatch | `node dist/cli.js federation "examples/showcase/federation/share-strategy-mismatch/*.project.json"` | `federation/share-strategy-mismatch` (warning) |
-| Circular remote graph   | `node dist/cli.js federation "examples/showcase/federation/circular-remote-graph/*.project.json"`   | `federation/circular-remote-graph` (error)     |
+| Circular remote graph   | `node dist/cli.js federation "examples/showcase/federation/circular-remote-graph/*.project.json"`   | `federation/circular-remote-graph` (warning)   |
 | Singleton mismatch      | `node dist/cli.js federation "examples/showcase/federation/singleton-mismatch/*.project.json"`      | `shared/singleton-mismatch` (warning)          |
 | Name conflict           | `node dist/cli.js federation "examples/showcase/federation/name-conflict/*.project.json"`           | `federation/name-conflict` (error)             |
 | Missing provider        | `node dist/cli.js federation "examples/showcase/federation/missing-provider/*.project.json"`        | `federation/missing-provider` (error)          |

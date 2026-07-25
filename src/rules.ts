@@ -134,25 +134,6 @@ function generateTypesOptions(config: NormalizedMFConfig | undefined): Record<st
   return options;
 }
 
-function extractRemoteTypesEnabled(config: NormalizedMFConfig | undefined): boolean {
-  const generate = generateTypesOptions(config);
-  if (typeof generate.extractRemoteTypes === "boolean") return generate.extractRemoteTypes;
-  const top = dtsOptions(config).extractRemoteTypes;
-  return typeof top === "boolean" ? top : false;
-}
-
-function consumeTypesOptions(config: NormalizedMFConfig | undefined): Record<string, unknown> {
-  const options = dtsOptions(config);
-  const consumeTypes = options.consumeTypes;
-  if (consumeTypes && typeof consumeTypes === "object")
-    return consumeTypes as Record<string, unknown>;
-  return options;
-}
-
-function hasRemoteTypeUrls(config: NormalizedMFConfig | undefined): boolean {
-  return consumeTypesOptions(config).remoteTypeUrls !== undefined;
-}
-
 const DEFAULT_REMOTE_ENTRY_MAX_BYTES = 524_288;
 const DEFAULT_SHARED_MAX_BYTES = 524_288;
 const DEFAULT_EXPOSE_MAX_BYTES = 358_400;
@@ -265,19 +246,11 @@ export const builtInRules: DoctorRule[] = [
       );
     }
   }),
-  createRule("config/nested-producer-dts-extract", "warning", (context) => {
-    const config = mf(context);
-    if (!config || config.dts?.enabled === false) return;
-    const exposes = Object.keys(config.exposes);
-    const remotes = Object.keys(config.remotes);
-    if (exposes.length === 0 || remotes.length === 0) return;
-    if (extractRemoteTypesEnabled(config)) return;
-    report(
-      context,
-      "Nested producer exposes modules and consumes remotes without `extractRemoteTypes`.",
-      { exposes, remotes },
-      "Enable `dts.generateTypes.extractRemoteTypes` so remote types are included in the producer archive.",
-    );
+  createRule("config/nested-producer-dts-extract", "warning", (_context) => {
+    // A config with exposes and remotes is not enough evidence. The warning is
+    // deferred until the collector can prove an exposed module re-exports a
+    // configured remote through its local import graph.
+    return;
   }),
   createRule("config/dts-output-dir-mismatch", "warning", (context) => {
     const config = mf(context);
@@ -301,21 +274,11 @@ export const builtInRules: DoctorRule[] = [
       "Align `filename` nesting with `dts.generateTypes.outputDir` so type archives resolve next to the container.",
     );
   }),
-  createRule("config/remote-type-urls-missing", "warning", (context) => {
-    const config = mf(context);
-    if (!config || config.dts?.enabled === false || hasRemoteTypeUrls(config)) return;
-    for (const [name, remote] of Object.entries(config.remotes)) {
-      const url = remoteEntryUrl(remote.entry);
-      if (!/remoteEntry(?:\.[cm]?js)?(?:[?#]|$)/i.test(url) && !/\.m?js(?:[?#]|$)/i.test(url))
-        continue;
-      if (/\.json(?:[?#]|$)/i.test(url)) continue;
-      report(
-        context,
-        `Remote "${name}" uses a direct JS entry without type URLs or a manifest.`,
-        { name, entry: remote.entry },
-        "Prefer `mf-manifest.json`, or set `dts.consumeTypes.remoteTypeUrls` for this remote.",
-      );
-    }
+  createRule("config/remote-type-urls-missing", "warning", (_context) => {
+    // The default producer output is inferred from a direct remoteEntry.js
+    // (`@mf-types.zip`). Without producer artifacts or an explicit mismatch,
+    // Doctor has no proof that the inferred URL is wrong, so stay silent.
+    return;
   }),
   createRule("artifact/public-path-non-string-manifest", "warning", (context) => {
     const config = mf(context);
@@ -1046,7 +1009,7 @@ export const federationRuleMeta = [
   },
   {
     id: "federation/circular-remote-graph",
-    severity: "error",
+    severity: "warning",
     ...ruleGuidance["federation/circular-remote-graph"]!,
   },
   {
