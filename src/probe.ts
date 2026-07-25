@@ -1,12 +1,40 @@
+import { BlockList, isIP } from "node:net";
+
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
+const METADATA_HOSTNAMES = new Set(["metadata.google.internal", "metadata.goog"]);
+
+/** Private, link-local, loopback, CGNAT, and ULA ranges (incl. IPv4-mapped IPv6). */
+const RESTRICTED_NETWORKS = new BlockList();
+RESTRICTED_NETWORKS.addSubnet("0.0.0.0", 8, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("10.0.0.0", 8, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("100.64.0.0", 10, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("127.0.0.0", 8, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("169.254.0.0", 16, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("172.16.0.0", 12, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("192.168.0.0", 16, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("::1", 128, "ipv6");
+RESTRICTED_NETWORKS.addSubnet("fe80::", 10, "ipv6");
+RESTRICTED_NETWORKS.addSubnet("fc00::", 7, "ipv6");
 
 export interface ProbeOptions {
   timeoutMs?: number;
   maxBytes?: number;
   remoteEntry?: boolean;
+  /** Allow private, link-local, metadata, and loopback targets (off by default). */
+  allowPrivateNetworks?: boolean;
   fetch?: typeof globalThis.fetch;
+}
+
+interface ProbeUrlOptions {
+  allowPrivateNetworks?: boolean;
+  /**
+   * Allow plain HTTP to loopback hosts. Only set for the user-supplied initial
+   * URL (local probe DX). Redirect hops must not set this — public →
+   * `http://127.0.0.1` requires `allowPrivateNetworks`.
+   */
+  allowLoopbackHttp?: boolean;
 }
 
 export interface ManifestProbeResult {
@@ -38,22 +66,54 @@ export class ProbeError extends Error {
   }
 }
 
-function safeUrl(value: string): URL {
+function unbracketHostname(hostname: string): string {
+  return hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
+}
+
+/** Normalize host for policy checks (FQDN trailing dots + brackets). */
+function normalizeHostname(hostname: string): string {
+  return unbracketHostname(hostname.toLowerCase().replace(/\.+$/, ""));
+}
+
+function isRestrictedNetworkHost(hostname: string): boolean {
+  const host = normalizeHostname(hostname);
+  if (METADATA_HOSTNAMES.has(host) || host === "localhost") return true;
+  const version = isIP(host);
+  if (version === 4) return RESTRICTED_NETWORKS.check(host, "ipv4");
+  if (version === 6) return RESTRICTED_NETWORKS.check(host, "ipv6");
+  return false;
+}
+
+function assertProbeUrlAllowed(url: URL, options: ProbeUrlOptions): void {
+  if (url.username || url.password)
+    throw new ProbeError("URLs with embedded credentials are not allowed.");
+  const isHttpLoopback = url.protocol === "http:" && isLoopback(url.hostname);
+  // Plain HTTP is only syntactically valid for loopback; network policy below
+  // still applies unless allowLoopbackHttp (initial URL) or allowPrivateNetworks.
+  if (url.protocol !== "https:" && !isHttpLoopback)
+    throw new ProbeError("Only HTTPS URLs are allowed. HTTP is allowed only for localhost.");
+  if (options.allowPrivateNetworks) return;
+  if (isHttpLoopback && options.allowLoopbackHttp) return;
+  if (isRestrictedNetworkHost(url.hostname))
+    throw new ProbeError(
+      "URLs targeting private, link-local, metadata, or loopback networks are not allowed.",
+    );
+}
+
+function safeUrl(value: string, options: ProbeUrlOptions = {}): URL {
   let url: URL;
   try {
     url = new URL(value);
   } catch {
     throw new ProbeError(`Invalid URL: ${value}`);
   }
-  if (url.username || url.password)
-    throw new ProbeError("URLs with embedded credentials are not allowed.");
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && isLoopback(url.hostname)))
-    throw new ProbeError("Only HTTPS URLs are allowed. HTTP is allowed only for localhost.");
+  assertProbeUrlAllowed(url, options);
   return url;
 }
 
 function isLoopback(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+  const host = normalizeHostname(hostname);
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
 }
 
 function publicUrl(url: URL): string {
@@ -69,6 +129,7 @@ async function guardedFetch(
   initialUrl: URL,
   init: RequestInit,
   fetcher: typeof globalThis.fetch,
+  urlOptions: ProbeUrlOptions = {},
 ): Promise<{ response: Response; url: URL }> {
   let url = initialUrl;
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
@@ -77,7 +138,7 @@ async function guardedFetch(
     const location = response.headers.get("location");
     if (!location) throw new ProbeError(`Redirect from ${publicUrl(url)} has no Location header.`);
     if (redirects === MAX_REDIRECTS) throw new ProbeError("Too many redirects.");
-    url = safeUrl(new URL(location, url).href);
+    url = safeUrl(new URL(location, url).href, urlOptions);
   }
   throw new ProbeError("Too many redirects.");
 }
@@ -167,14 +228,20 @@ export async function probeManifest(
     throw new ProbeError("maxBytes must be an integer from 1 to 20971520.");
 
   const fetcher = options.fetch ?? globalThis.fetch;
+  const urlOptions: ProbeUrlOptions =
+    options.allowPrivateNetworks === undefined
+      ? {}
+      : { allowPrivateNetworks: options.allowPrivateNetworks };
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const initial = safeUrl(value);
+    // HTTP loopback exception is for the user-supplied URL only; redirects use urlOptions.
+    const initial = safeUrl(value, { ...urlOptions, allowLoopbackHttp: true });
     const { response, url } = await guardedFetch(
       initial,
       { headers: { accept: "application/json" }, signal: controller.signal },
       fetcher,
+      urlOptions,
     );
     if (!response.ok) throw new ProbeError(`Manifest request failed with HTTP ${response.status}.`);
     const bytes = await readBounded(response, maxBytes);
@@ -204,11 +271,17 @@ export async function probeManifest(
     };
 
     if (options.remoteEntry && summary.remoteEntry) {
-      const remoteUrl = safeUrl(summary.remoteEntry);
+      // Keep local DX when the user started on HTTP loopback; do not open a
+      // public-manifest → http://127.0.0.1 remote-entry pivot without opt-in.
+      const remoteUrl = safeUrl(summary.remoteEntry, {
+        ...urlOptions,
+        allowLoopbackHttp: initial.protocol === "http:" && isLoopback(initial.hostname),
+      });
       const remote = await guardedFetch(
         remoteUrl,
         { method: "HEAD", signal: controller.signal },
         fetcher,
+        urlOptions,
       );
       result.remoteEntry = {
         url: publicUrl(remote.url),

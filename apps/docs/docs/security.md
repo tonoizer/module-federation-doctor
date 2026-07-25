@@ -18,3 +18,13 @@ development only. It limits redirects, time, and response size. It removes
 queries and fragments from reported URLs and never executes the remote entry.
 The requested server can still see the caller's IP address and normal HTTP
 metadata. Do not pass secret headers; the command has no header option.
+
+Redirects are followed manually (at most five hops). Every redirect target is
+re-validated: no embedded credentials; HTTPS only (plain HTTP is allowed only
+for the user-supplied initial loopback URL, for local development); and no
+private, link-local, loopback, or cloud-metadata hosts unless you opt in with
+`allowPrivateNetworks` on the probe API. That blocks classic SSRF pivots such as
+`https://cdn.example` → `https://169.254.169.254/`,
+`https://metadata.google.internal/`, or
+`https://cdn.example` → `http://127.0.0.1/`. Default `check` / `federation` /
+`runtime` analysis stays offline; `probe` remains opt-in.
