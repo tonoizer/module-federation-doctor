@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "remote",
+    "root": "."
+  },
+  "bundler": {
+    "name": "rspack",
+    "mode": "ci"
+  },
+  "capabilities": {
+    "config": true,
+    "sourceImports": true,
+    "manifest": false,
+    "stats": false,
+    "emittedAssets": false,
+    "installedVersions": true
+  },
+  "moduleFederation": {
+    "name": "remote",
+    "exposes": {},
+    "remotes": {},
+    "shared": {}
+  },
+  "dependencies": {
+    "declared": {},
+    "installed": {}
+  },
+  "imports": {
+    "sourceFiles": [],
+    "specifiers": [],
+    "packages": [],
+    "dynamicPackages": [],
+    "remotes": [],
+    "unresolvedDynamic": [],
+    "evidenceSources": []
+  },
+  "artifacts": {
+    "emittedAssets": []
+  }
+}

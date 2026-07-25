@@ -320,6 +320,7 @@ async function runFederationAnalysis(
   formats: OutputFormat[] | undefined,
   baseline?: string | BaselineOptions,
   verbose = false,
+  config: DoctorOptions = {},
 ): Promise<number> {
   if (files.length === 0) {
     process.stderr.write("No project reports matched.\n");
@@ -330,6 +331,8 @@ async function runFederationAnalysis(
     ...(formats ? { formats, outputDirectory } : {}),
     ...(baseline ? { baseline } : {}),
     ...(verbose ? { quiet: false, printLog: { success: true } } : {}),
+    ...(config.rules ? { rules: config.rules } : {}),
+    ...(config.alwaysShared ? { alwaysShared: config.alwaysShared } : {}),
     root: process.cwd(),
   });
   if (!formats)
@@ -402,7 +405,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           roots: parsed.roots,
           ...(parsed.globs.length > 0 ? { globs: parsed.globs } : {}),
         });
-        return await runFederationAnalysis(files, parsed.formats, baseline, parsed.verbose);
+        return await runFederationAnalysis(files, parsed.formats, baseline, parsed.verbose, config);
       }
       if (parsed.patterns.length === 0) {
         process.stderr.write(
@@ -411,7 +414,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         return 2;
       }
       const files = await fg(parsed.patterns, { absolute: true, onlyFiles: true });
-      return await runFederationAnalysis(files, parsed.formats, baseline, parsed.verbose);
+      return await runFederationAnalysis(files, parsed.formats, baseline, parsed.verbose, config);
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
       return 2;

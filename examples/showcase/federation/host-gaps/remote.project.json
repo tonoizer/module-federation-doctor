@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "remote",
+    "root": "."
+  },
+  "bundler": {
+    "name": "rspack",
+    "mode": "ci"
+  },
+  "capabilities": {
+    "config": true,
+    "sourceImports": true,
+    "manifest": false,
+    "stats": false,
+    "emittedAssets": false,
+    "installedVersions": true
+  },
+  "moduleFederation": {
+    "name": "remote",
+    "exposes": {},
+    "remotes": {},
+    "shared": {}
+  },
+  "dependencies": {
+    "declared": {
+      "zustand": "^5.0.0"
+    },
+    "installed": {
+      "zustand": "5.0.3"
+    }
+  },
+  "imports": {
+    "sourceFiles": ["src/Widget.ts"],
+    "specifiers": ["zustand"],
+    "packages": ["zustand"],
+    "dynamicPackages": [],
+    "remotes": [],
+    "unresolvedDynamic": [],
+    "evidenceSources": ["source"]
+  },
+  "artifacts": {
+    "emittedAssets": []
+  }
+}

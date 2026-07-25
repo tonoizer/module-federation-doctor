@@ -84,6 +84,12 @@
         "evidenceSources": {
           "type": "array",
           "items": { "enum": ["source", "manifest", "runtime-trace"] }
+        },
+        "depth": { "enum": ["direct", "local-graph"] },
+        "deepImports": { "$ref": "#/$defs/stringArray" },
+        "deepImportFiles": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/stringArray" }
         }
       },
       "additionalProperties": false

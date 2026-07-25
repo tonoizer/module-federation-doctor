@@ -7,6 +7,7 @@ import type {
   DoctorPolicyPack,
   DoctorPresetName,
   DoctorRule,
+  DoctorSharedPolicy,
   RuleSetting,
   Severity,
 } from "./types.js";
@@ -36,6 +37,7 @@ function isPolicyPack(value: unknown): value is DoctorPolicyPack {
   return (
     pack.rules !== undefined ||
     pack.plugins !== undefined ||
+    pack.sharedPolicy !== undefined ||
     (typeof pack.name === "string" && pack.name.length > 0)
   );
 }
@@ -59,6 +61,8 @@ const STRICT_KEEP: Record<string, RuleSetting> = {
   "doctor/partial-analysis": "warning",
   "shared/candidate": "warning",
   "config/implementation-suspicious": "warning",
+  // Low-signal federation hygiene — align with MFDOCTOR-130 heuristic noise guidance.
+  "federation/ghost-shares": "warning",
 };
 
 export const recommendedPreset: DoctorPolicyPack = definePolicyPack({
@@ -95,6 +99,8 @@ export interface ResolvedPolicy {
   plugins: DoctorRule[];
   /** Preset / pack names applied, left to right. */
   applied: string[];
+  /** Shared-policy layers from packs (left → right); local options merge later. */
+  sharedPolicyLayers: DoctorSharedPolicy[];
 }
 
 function normalizeExtends(
@@ -153,6 +159,7 @@ export async function resolvePolicy(
   const rules: Record<string, RuleSetting> = {};
   const plugins: DoctorRule[] = [];
   const applied: string[] = [];
+  const sharedPolicyLayers: DoctorSharedPolicy[] = [];
   const seenRules = new Set<string>();
 
   const appendPlugin = (rule: DoctorRule) => {
@@ -167,6 +174,7 @@ export async function resolvePolicy(
   const applyPack = (pack: DoctorPolicyPack, label: string) => {
     applied.push(packLabel(pack, label));
     if (pack.rules) Object.assign(rules, pack.rules);
+    if (pack.sharedPolicy) sharedPolicyLayers.push(pack.sharedPolicy);
     for (const rule of pack.plugins ?? []) appendPlugin(rule);
   };
 
@@ -202,5 +210,5 @@ export async function resolvePolicy(
     throw new Error(`Unsupported Doctor extends entry: ${String(entry)}`);
   }
 
-  return { rules, plugins, applied };
+  return { rules, plugins, applied, sharedPolicyLayers };
 }

@@ -39,6 +39,7 @@ stay as rules, not showcases.
 | Unused + unresolved dyn | `node dist/cli.js check examples/showcase/shared/unused-unresolved --ci`         | `doctor/partial-analysis` (no `shared/unused`) |
 | Shared candidate        | `node dist/cli.js check examples/showcase/shared/candidate --ci`                 | `shared/candidate` (info)                      |
 | Shared candidate muted  | `node dist/cli.js check examples/showcase/shared/candidate-suppressed --ci`      | no findings (`"off"`)                          |
+| Deep-import bypass      | `node dist/cli.js check examples/showcase/shared/deep-import-bypass --ci`        | `shared/deep-import-bypass` (warning)          |
 
 ## Reliability
 
@@ -56,6 +57,8 @@ stay as rules, not showcases.
 | Singleton mismatch   | `node dist/cli.js federation "examples/showcase/federation/singleton-mismatch/*.project.json"`   | `shared/singleton-mismatch` (warning)     |
 | Name conflict        | `node dist/cli.js federation "examples/showcase/federation/name-conflict/*.project.json"`        | `federation/name-conflict` (error)        |
 | Missing provider     | `node dist/cli.js federation "examples/showcase/federation/missing-provider/*.project.json"`     | `federation/missing-provider` (error)     |
+| Host gaps            | `node dist/cli.js federation "examples/showcase/federation/host-gaps/*.project.json"`            | `federation/host-gaps` (warning)          |
+| Ghost shares         | `node dist/cli.js federation "examples/showcase/federation/ghost-shares/*.project.json"`         | `federation/ghost-shares` (info)          |
 
 ## Runtime
 

@@ -64,10 +64,13 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 
 | Rule | Severity | What it protects |
 | --- | --- | --- |
+| [`federation/ghost-shares`](./federation/ghost-shares.md) | info | A package is declared in `shared` by only one project and is unused elsewhere in the federation graph, creating one-sided version coupling. |
+| [`federation/host-gaps`](./federation/host-gaps.md) | warning | A package used by two or more federation projects is missing from every `shared` config, so each app may bundle its own copy. |
 | [`performance/asset-budget`](./performance/asset-budget.md) | warning | Federation assets that exceed project budgets slow startup and transfer more bytes than planned. |
 | [`performance/version-first-startup`](./performance/version-first-startup.md) | info | `version-first` loads all remote entries during initialization, adding startup work. |
 | [`performance/vite-bundle-all-css`](./performance/vite-bundle-all-css.md) | warning | Vite attaches all bundle CSS to every expose, which can duplicate transfer and style work. |
 | [`shared/candidate`](./shared/candidate.md) | info | A stateful framework dependency may be bundled separately by host and remote. |
+| [`shared/deep-import-bypass`](./shared/deep-import-bypass.md) | warning | Subpath imports bypass Module Federation shared-scope negotiation when only the root package is declared in `shared`, so each microfrontend may bundle its own copy. |
 | [`shared/eager-without-singleton`](./shared/eager-without-singleton.md) | warning | An eager non-singleton can add copies to initial chunks without guaranteeing reuse. |
 | [`shared/unused`](./shared/unused.md) | warning | Unused shared declarations add runtime bookkeeping and can signal stale config. |
 

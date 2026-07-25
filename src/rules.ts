@@ -1,6 +1,12 @@
 import semver from "semver";
 import { lookupAssetSize, sumAssetSizes } from "./collect.js";
 import { ruleGuidance } from "./rule-guidance.js";
+import {
+  DEFAULT_ALWAYS_SHARED,
+  DEFAULT_DEEP_IMPORT_ALLOWLIST,
+  DEFAULT_SHARE_CANDIDATE_PACKAGES,
+  DEFAULT_SINGLETON_RISK_PACKAGES,
+} from "./shared-policy.js";
 import type {
   DoctorRule,
   NormalizedMFConfig,
@@ -62,8 +68,42 @@ function optionBytes(options: Record<string, unknown>, key: string, fallback: nu
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
+function optionStringList(options: Record<string, unknown>, key: string): string[] {
+  const value = options[key];
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
 function scopeList(value: string | string[] | undefined): string[] {
   return value === undefined ? ["default"] : Array.isArray(value) ? value : [value];
+}
+
+function singletonRiskSet(context: RuleContext): Set<string> {
+  return new Set([
+    ...(context.sharedPolicy?.singletonRisks ?? DEFAULT_SINGLETON_RISK_PACKAGES),
+    ...optionStringList(context.options, "additionalPackages"),
+  ]);
+}
+
+function shareCandidateSet(context: RuleContext): Set<string> {
+  return new Set([
+    ...(context.sharedPolicy?.shareCandidates ?? DEFAULT_SHARE_CANDIDATE_PACKAGES),
+    ...optionStringList(context.options, "additionalPackages"),
+  ]);
+}
+
+function alwaysSharedSet(context: RuleContext): Set<string> {
+  return new Set([
+    ...(context.sharedPolicy?.alwaysShared ?? DEFAULT_ALWAYS_SHARED),
+    ...optionStringList(context.options, "alwaysShared"),
+  ]);
+}
+
+function deepImportAllowlist(context: RuleContext): Set<string> {
+  return new Set([
+    ...(context.sharedPolicy?.deepImportAllowlist ?? DEFAULT_DEEP_IMPORT_ALLOWLIST),
+    ...optionStringList(context.options, "allowlist"),
+  ]);
 }
 
 const DEFAULT_REMOTE_ENTRY_MAX_BYTES = 524_288;
@@ -710,8 +750,9 @@ export const builtInRules: DoctorRule[] = [
       });
   }),
   createRule("shared/singleton-risk", "warning", (context) => {
+    const risks = singletonRiskSet(context);
     for (const [name, shared] of Object.entries(mf(context)?.shared ?? {}))
-      if (/^(react|react-dom|vue|@angular\/core)$/.test(name) && !shared.singleton)
+      if (risks.has(name) && !shared.singleton)
         report(context, `"${name}" normally needs singleton sharing.`, { package: name });
   }),
   createRule("shared/eager-without-singleton", "warning", (context) => {
@@ -724,13 +765,14 @@ export const builtInRules: DoctorRule[] = [
       ...(context.facts.imports.packages ?? []),
       ...(context.facts.imports.dynamicPackages ?? []),
     ]);
+    const alwaysShared = alwaysSharedSet(context);
     const unresolvedMayHideUsage = (context.facts.imports.unresolvedDynamic ?? []).some((item) =>
       ["import", "loadShare", "loadShareSync"].includes(item.api),
     );
     // Incomplete dynamic evidence → prefer doctor/partial-analysis over false unused certainty.
     if (unresolvedMayHideUsage) return;
     for (const name of Object.keys(mf(context)?.shared ?? {}))
-      if (!imported.has(name))
+      if (!imported.has(name) && !alwaysShared.has(name))
         report(
           context,
           `Shared package "${name}" is not imported in scanned sources or opt-in runtime evidence.`,
@@ -738,19 +780,58 @@ export const builtInRules: DoctorRule[] = [
             package: name,
             evidenceSources: context.facts.imports.evidenceSources ?? [],
             dynamicPackages: context.facts.imports.dynamicPackages ?? [],
+            importDepth: context.facts.imports.depth ?? context.sharedPolicy?.importDepth,
           },
         );
   }),
   // Package-name heuristic — advisory `info` (strict keeps it from becoming a hard error).
   createRule("shared/candidate", "info", (context) => {
     const shared = new Set(Object.keys(mf(context)?.shared ?? {}));
+    const candidates = shareCandidateSet(context);
     for (const name of context.facts.imports.packages)
-      if (
-        context.facts.dependencies.declared[name] &&
-        !shared.has(name) &&
-        /^(react|react-dom|vue|@angular\/core)$/.test(name)
-      )
-        report(context, `"${name}" is a likely shared dependency.`, { package: name });
+      if (context.facts.dependencies.declared[name] && !shared.has(name) && candidates.has(name))
+        report(context, `"${name}" is a likely shared dependency.`, {
+          package: name,
+          importDepth: context.facts.imports.depth ?? context.sharedPolicy?.importDepth,
+        });
+  }),
+  createRule("shared/deep-import-bypass", "warning", (context) => {
+    const shared = mf(context)?.shared ?? {};
+    const sharedKeys = new Set(Object.keys(shared));
+    const allowlist = deepImportAllowlist(context);
+    const deepImports = context.facts.imports.deepImports ?? [];
+    const deepImportFiles = context.facts.imports.deepImportFiles ?? {};
+    const byPackage = new Map<string, string[]>();
+    for (const specifier of deepImports) {
+      if (allowlist.has(specifier)) continue;
+      // Exact shared key for the subpath means MF can negotiate that specifier.
+      if (sharedKeys.has(specifier)) continue;
+      const root = specifier.startsWith("@")
+        ? specifier.split("/").slice(0, 2).join("/")
+        : (specifier.split("/")[0] ?? specifier);
+      // Bypass only when the root package is shared but the subpath is not.
+      if (!sharedKeys.has(root)) continue;
+      const list = byPackage.get(root) ?? [];
+      list.push(specifier);
+      byPackage.set(root, list);
+    }
+    for (const [pkg, specifiers] of [...byPackage.entries()].sort(([a], [b]) =>
+      a.localeCompare(b),
+    )) {
+      const files = deepImportFiles[pkg] ?? [];
+      report(
+        context,
+        `Shared package "${pkg}" is bypassed by ${specifiers.length} subpath import(s).`,
+        {
+          package: pkg,
+          specifiers: [...specifiers].sort(),
+          files: files.slice(0, 5),
+          fileCount: files.length,
+          importDepth: context.facts.imports.depth ?? context.sharedPolicy?.importDepth,
+        },
+        `Replace subpath imports with root imports, or add the exact subpaths to shared (for example "${specifiers[0]}").`,
+      );
+    }
   }),
   createRule("artifact/public-path-suspicious", "warning", (context) => {
     const publicPath = context.facts.artifacts.manifest?.publicPath;
@@ -790,6 +871,16 @@ export const federationRuleMeta = [
     id: "federation/missing-provider",
     severity: "error",
     ...ruleGuidance["federation/missing-provider"]!,
+  },
+  {
+    id: "federation/host-gaps",
+    severity: "warning",
+    ...ruleGuidance["federation/host-gaps"]!,
+  },
+  {
+    id: "federation/ghost-shares",
+    severity: "info",
+    ...ruleGuidance["federation/ghost-shares"]!,
   },
   {
     id: "shared/singleton-mismatch",

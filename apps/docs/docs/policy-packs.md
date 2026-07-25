@@ -7,10 +7,10 @@ overrides, baselines, and `failOn`, see
 
 ## Built-in presets
 
-| Preset        | Intent                                                                                                                                                                                          |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `recommended` | Documented severity map matching built-in / federation / runtime catalog defaults.                                                                                                              |
-| `strict`      | Production gate: `info` → `warning`, `warning` → `error`, except advisory tooling / soft-heuristic signals (`doctor/partial-analysis`, `shared/candidate`, `config/implementation-suspicious`). |
+| Preset        | Intent                                                                                                                                                                                                                     |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `recommended` | Documented severity map matching built-in / federation / runtime catalog defaults.                                                                                                                                         |
+| `strict`      | Production gate: `info` → `warning`, `warning` → `error`, except advisory tooling / soft-heuristic signals (`doctor/partial-analysis`, `shared/candidate`, `config/implementation-suspicious`, `federation/ghost-shares`). |
 
 ```ts
 export default {
@@ -77,6 +77,31 @@ export default {
 ```
 
 In-repo example: `fixtures/policy-packs/acme-mfdoctor-policy`.
+
+## Shared-usage policy knobs
+
+Packs (and local `DoctorOptions`) can extend built-in package lists and import
+depth without replacing them:
+
+```ts
+export default definePolicyPack({
+  name: "@scope/mfdoctor-policy",
+  sharedPolicy: {
+    importDepth: "local-graph", // or "direct"
+    additionalCandidates: ["@acme/ui"],
+    additionalSingletonRisks: ["@acme/store"],
+    alwaysShared: ["@acme/runtime"],
+    deepImportAllowlist: ["lodash/fp"],
+  },
+  rules: {
+    "shared/deep-import-bypass": "warning",
+  },
+});
+```
+
+Equivalent local fields on `DoctorOptions`: `importDepth`,
+`additionalCandidates`, `additionalSingletonRisks`, `alwaysShared`,
+`deepImportAllowlist`.
 
 ## Override precedence
 
