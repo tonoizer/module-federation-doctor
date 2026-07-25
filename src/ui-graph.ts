@@ -8,6 +8,7 @@ import type {
   UiGraphEdge,
   UiGraphNode,
 } from "./types.js";
+import { summarizeFindings } from "./baseline.js";
 
 function emptyGraph(): UiGraph {
   return { nodes: [], edges: [] };
@@ -341,6 +342,7 @@ export function reportFromFindings(
   projects: ProjectFacts[],
   findings: DoctorFinding[],
 ): DoctorReport {
+  const summary = summarizeFindings(findings);
   return {
     schemaVersion: 1,
     capabilities: {
@@ -353,9 +355,10 @@ export function reportFromFindings(
     },
     summary: {
       projects: projects.length,
-      info: findings.filter((item) => item.severity === "info").length,
-      warnings: findings.filter((item) => item.severity === "warning").length,
-      errors: findings.filter((item) => item.severity === "error").length,
+      info: summary.info,
+      warnings: summary.warnings,
+      errors: summary.errors,
+      ...(summary.suppressed > 0 ? { suppressed: summary.suppressed } : {}),
     },
     findings,
   };

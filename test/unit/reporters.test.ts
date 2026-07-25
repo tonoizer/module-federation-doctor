@@ -42,7 +42,7 @@ describe("reporters", () => {
     const report = {
       schemaVersion: 1,
       capabilities: facts.capabilities,
-      summary: { projects: 1, info: 0, warnings: 0, errors: 1 },
+      summary: { projects: 1, info: 0, warnings: 0, errors: 1, suppressed: 1 },
       findings: [
         {
           schemaVersion: 1,
@@ -53,6 +53,8 @@ describe("reporters", () => {
           evidence: {},
           documentation: "/rules/config/name-required",
           fingerprint: "abc",
+          suppressed: true,
+          suppressionReason: "legacy debt",
         },
       ],
     } satisfies DoctorReport;
@@ -62,7 +64,11 @@ describe("reporters", () => {
     const json = JSON.parse(await fs.readFile(path.join(output, "report.json"), "utf8"));
     const sarif = JSON.parse(await fs.readFile(path.join(output, "results.sarif"), "utf8"));
     expect(json.findings[0].ruleId).toBe("config/name-required");
+    expect(json.findings[0].suppressed).toBe(true);
     expect(sarif.runs[0].results[0].ruleId).toBe("config/name-required");
+    expect(sarif.runs[0].results[0].suppressions).toEqual([
+      { kind: "external", justification: "legacy debt" },
+    ]);
     await expect(fs.access(path.join(output, "report.html"))).rejects.toThrow();
   });
 });

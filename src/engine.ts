@@ -1,6 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import semver from "semver";
+import {
+  applyBaseline,
+  loadBaseline,
+  policyFails,
+  resolveBaselineOptions,
+  summarizeFindings,
+  type ResolvedBaselineOptions,
+} from "./baseline.js";
 import { addBuildFacts, collectProjectFacts } from "./collect.js";
 import { resolveOptions } from "./config.js";
 import { builtInRules, federationRuleMeta } from "./rules.js";
@@ -83,23 +91,32 @@ async function runRule(
 }
 
 function reportFor(facts: ProjectFacts, findings: DoctorFinding[]): DoctorReport {
+  const summary = summarizeFindings(findings);
   return {
     schemaVersion: 1,
     capabilities: facts.capabilities,
     summary: {
       projects: 1,
-      info: findings.filter((item) => item.severity === "info").length,
-      warnings: findings.filter((item) => item.severity === "warning").length,
-      errors: findings.filter((item) => item.severity === "error").length,
+      info: summary.info,
+      warnings: summary.warnings,
+      errors: summary.errors,
+      ...(summary.suppressed > 0 ? { suppressed: summary.suppressed } : {}),
     },
     findings,
   };
 }
 
-function policyFails(findings: DoctorFinding[], failOn: "never" | "warning" | "error"): boolean {
-  if (failOn === "never") return false;
-  if (failOn === "warning") return findings.some((item) => item.severity !== "info");
-  return findings.some((item) => item.severity === "error");
+async function withBaseline(
+  findings: DoctorFinding[],
+  baseline: ResolvedBaselineOptions | undefined,
+): Promise<{ findings: DoctorFinding[]; failOnSuppressed: boolean }> {
+  if (!baseline) return { findings, failOnSuppressed: false };
+  const file = await loadBaseline(baseline.path);
+  const applied = applyBaseline(findings, file, { reportStale: baseline.reportStale });
+  return {
+    findings: sortFindings(applied.findings),
+    failOnSuppressed: baseline.failOnSuppressed,
+  };
 }
 
 async function runAnalysis(
@@ -110,7 +127,7 @@ async function runAnalysis(
   try {
     const facts = await collectProjectFacts(resolved);
     if (emittedAssets) await addBuildFacts(facts, emittedAssets, resolved.root);
-    const findings = sortFindings(
+    const rawFindings = sortFindings(
       (
         await Promise.all(
           [...builtInRules, ...resolved.extends].map((rule) =>
@@ -119,11 +136,16 @@ async function runAnalysis(
         )
       ).flat(),
     );
+    const { findings, failOnSuppressed } = await withBaseline(rawFindings, resolved.baseline);
     // Write the full report before any caller decides to fail the build.
     const report = reportFor(facts, findings);
     const safeFacts = redact(facts, resolved.root) as ProjectFacts;
     await writeReports(safeFacts, report, resolved.output.directory, resolved.output.formats);
-    return { facts: safeFacts, report, exitCode: policyFails(findings, resolved.failOn) ? 1 : 0 };
+    return {
+      facts: safeFacts,
+      report,
+      exitCode: policyFails(findings, resolved.failOn, failOnSuppressed) ? 1 : 0,
+    };
   } catch (error) {
     if (resolved.output.formats.includes("terminal"))
       process.stderr.write(
@@ -166,7 +188,13 @@ function federationFinding(
 
 export async function analyzeFederation(
   files: string[],
-  options: { outputDirectory?: string; formats?: OutputFormat[] } = {},
+  options: {
+    outputDirectory?: string;
+    formats?: OutputFormat[];
+    failOn?: "never" | "warning" | "error";
+    baseline?: string | { path: string; failOnSuppressed?: boolean; reportStale?: boolean };
+    root?: string;
+  } = {},
 ): Promise<FederationAnalysisResult> {
   const projects = (
     await Promise.all(
@@ -289,17 +317,23 @@ export async function analyzeFederation(
         ),
       );
   }
-  const sorted = sortFindings(findings);
-  const report = reportFromFindings(projects, sorted);
+  const root = path.resolve(options.root ?? process.cwd());
+  const baselineOptions = resolveBaselineOptions(options.baseline, root);
+  const { findings: baselined, failOnSuppressed } = await withBaseline(
+    sortFindings(findings),
+    baselineOptions,
+  );
+  const report = reportFromFindings(projects, baselined);
   const ui = buildUiPayload(projects, report);
   const formats = options.formats ?? [];
   if (options.outputDirectory && formats.length > 0)
     await writeFederationReports(projects, report, options.outputDirectory, formats);
+  const failOn = options.failOn ?? "error";
   return {
     projects,
-    findings: sorted,
+    findings: baselined,
     report,
     ui,
-    exitCode: sorted.some((item) => item.severity === "error") ? 1 : 0,
+    exitCode: policyFails(baselined, failOn, failOnSuppressed) ? 1 : 0,
   };
 }

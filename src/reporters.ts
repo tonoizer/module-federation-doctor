@@ -20,10 +20,15 @@ function terminal(report: DoctorReport): string {
           ? pc.yellow("warning")
           : pc.blue("info");
     const location = finding.location ? ` ${finding.location.path}` : "";
-    lines.push(`  ${icon} ${finding.ruleId}${location}\n    ${finding.message}`);
+    const suppressed = finding.suppressed ? pc.dim(" [suppressed]") : "";
+    lines.push(`  ${icon} ${finding.ruleId}${location}${suppressed}\n    ${finding.message}`);
   }
+  const suppressed =
+    report.summary.suppressed && report.summary.suppressed > 0
+      ? `, ${report.summary.suppressed} suppressed`
+      : "";
   lines.push(
-    `\n${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info`,
+    `\n${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info${suppressed}`,
   );
   return lines.join("\n");
 }
@@ -49,6 +54,17 @@ function sarif(report: DoctorReport): Record<string, unknown> {
                 : "note",
           message: { text: finding.message },
           partialFingerprints: { primaryLocationLineHash: finding.fingerprint },
+          ...(finding.suppressed
+            ? {
+                suppressions: [
+                  {
+                    kind: "external",
+                    justification:
+                      finding.suppressionReason ?? "Matched checked-in fingerprint baseline",
+                  },
+                ],
+              }
+            : {}),
           ...(finding.location
             ? {
                 locations: [
