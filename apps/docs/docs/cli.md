@@ -61,7 +61,8 @@ mfdoctor federation ".mf/doctor/**/project.json"
 
 For incremental CI adoption, check in a fingerprint baseline so known debt does
 not block `failOn` while new findings still fail. See
-[Fingerprint baselines](./baselines.md).
+[Fingerprint baselines](./baselines.md) and
+[Suppressions and allowlists](./suppressions.md).
 
 ```bash
 mfdoctor baseline generate .mf/doctor/report.json --out mfdoctor.baseline.json
