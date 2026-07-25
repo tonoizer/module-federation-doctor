@@ -16,6 +16,7 @@ single-file HTML dashboard:
 pnpm mfdoctor check --format terminal,json,sarif,html
 pnpm mfdoctor federation ".mf/doctor/**/project.json"
 pnpm mfdoctor rules config/name-required
+pnpm mfdoctor runtime ./.mf/observability/latest.json
 ```
 
 Use the matching plugin to check the final build output:
@@ -35,6 +36,10 @@ export default {
 
 `@module-federation/doctor/rspack` and
 `@module-federation/doctor/rsbuild` expose the same adapter shape.
+
+`mfdoctor runtime` imports a user-supplied Observability Plugin export and
+correlates share, remote, and init events with local `project.json` facts. It
+stays offline and never executes remote JavaScript.
 
 The opt-in probe checks a deployed manifest and, when requested, its remote
 entry. It fetches data but never runs remote JavaScript:
@@ -69,10 +74,11 @@ pnpm release:dry-run
 Examples:
 
 - `examples/mixed-federation` — healthy Vite + Rspack + Rsbuild e2e path
-- `examples/showcase` — intentional misconfigs; run `pnpm demo:showcase` to see
-  `config/expose-key-invalid` and `shared/eager-without-singleton` (rules that
-  duplicate hard plugin failures, such as `config/name-required`, stay in the
-  catalog without a showcase fixture)
+- `examples/mixed-federation-issues` — same topology with intentional Doctor
+  findings; run `pnpm demo:mixed-issues`
+- `examples/showcase` — themed misconfigs; run `pnpm demo:showcase`
+- From `examples/`: `pnpm --dir examples demo` runs showcase + mixed-issues
+  (or `pnpm demo:examples` from the repo root)
 
 The repo also includes an original Codex skill at
 `.codex/skills/mfdoctor/SKILL.md` for repeatable diagnosis work.

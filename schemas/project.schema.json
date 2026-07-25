@@ -60,7 +60,11 @@
       "properties": {
         "manifest": { "type": "object" },
         "stats": { "type": "object" },
-        "emittedAssets": { "$ref": "#/$defs/stringArray" }
+        "emittedAssets": { "$ref": "#/$defs/stringArray" },
+        "assetSizes": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        }
       },
       "additionalProperties": false
     }

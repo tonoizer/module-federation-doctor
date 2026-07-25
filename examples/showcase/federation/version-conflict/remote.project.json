@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "remote",
+    "root": "."
+  },
+  "bundler": {
+    "name": "vite",
+    "mode": "ci"
+  },
+  "capabilities": {
+    "config": true,
+    "sourceImports": true,
+    "manifest": false,
+    "stats": false,
+    "emittedAssets": false,
+    "installedVersions": true
+  },
+  "moduleFederation": {
+    "name": "remote",
+    "exposes": {},
+    "remotes": {},
+    "shared": {
+      "react": {
+        "package": "react",
+        "singleton": true,
+        "eager": false,
+        "requiredVersion": "^18.3.0",
+        "shareScope": ["default"]
+      }
+    }
+  },
+  "dependencies": {
+    "declared": {
+      "react": "^18.3.0"
+    },
+    "installed": {
+      "react": "18.3.1"
+    }
+  },
+  "imports": {
+    "sourceFiles": [],
+    "specifiers": [],
+    "packages": []
+  },
+  "artifacts": {
+    "emittedAssets": []
+  }
+}

@@ -8,6 +8,8 @@ mfdoctor check --ui
 mfdoctor check --ui --ui-port 51205
 mfdoctor federation ".mf/doctor/**/project.json"
 mfdoctor federation ".mf/doctor/**/project.json" --ui
+mfdoctor runtime ./trace.json
+mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
 mfdoctor rules
 mfdoctor rules config/name-required
 mfdoctor probe https://cdn.example.com/mf-manifest.json
@@ -16,15 +18,31 @@ mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
 
 Doctor loads optional `mfdoctor.config.ts`; flags win over config. `check` exits
 0 when policy passes, 1 for policy findings, and 2 when analysis cannot finish.
-`check` and `federation` make no network requests.
+`check` and `federation` make no network requests. `runtime` also stays offline:
+it only reads a user-supplied Observability export and local `project.json`
+files.
 
-`--ui` is supported on `check` and `federation`. It ensures HTML output is
-written, serves the portable dashboard on `127.0.0.1`, and opens a browser.
-Change the port with `--ui-port`. The UI server is read-only and loopback-bound.
+`--ui` is supported on `check`, `federation`, and `runtime`. It ensures HTML
+output is written, serves the portable dashboard on `127.0.0.1`, and opens a
+browser. Change the port with `--ui-port`. The UI server is read-only and
+loopback-bound.
 
 `rules` prints the machine-readable built-in rule catalog. Pass one rule id to
 get its default severity, category, impact, fix, supported bundlers, docs path,
 and official sources.
+
+## Runtime trace import
+
+`runtime` is an explicit opt-in path for correlating browser Observability Plugin
+reports with Doctor project facts. Pass a JSON export (`exportReport`,
+`.mf/observability/latest.json`, or an array/`reports` wrapper). Project globs
+default to `.mf/doctor/**/project.json`. You can also set `runtimeTrace` in
+`mfdoctor.config` when the CLI path is omitted.
+
+Doctor never fetches URLs found in the trace and never executes remote
+JavaScript. Trace URLs are collapsed to origin plus basename, and token, cookie,
+authorization, password, and secret fields are redacted before findings are
+emitted.
 
 ## Deployed manifest probe
 

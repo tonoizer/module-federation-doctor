@@ -2,6 +2,13 @@ export { analyze, analyzeFederation } from "./engine.js";
 export { resolveOptions, DEFAULT_EXCLUDE, DEFAULT_INCLUDE } from "./config.js";
 export { defineRule, builtInRules } from "./rules.js";
 export { ProbeError, probeManifest } from "./probe.js";
+export {
+  RuntimeTraceError,
+  analyzeRuntime,
+  correlateRuntime,
+  loadRuntimeTraceFile,
+  parseRuntimeTraces,
+} from "./runtime-trace.js";
 export { buildUiPayload } from "./ui-graph.js";
 export { htmlReport } from "./html.js";
 export { DEFAULT_UI_PORT, serveUi } from "./ui-server.js";
@@ -29,6 +36,8 @@ export type {
   RuleContext,
   RuleMeta,
   RuleSetting,
+  RuntimeAnalysisResult,
+  RuntimeTraceReport,
   Severity,
   SourceLocation,
   UiGraph,

@@ -19,7 +19,7 @@ Rule pages are generated from package metadata. Each page explains the issue, im
 | [`config/external-runtime-with-exposes`](./config/external-runtime-with-exposes.md) | error | A runtime provider is only supported on a pure consumer and the upstream plugin throws otherwise. |
 | [`config/get-public-path-invalid`](./config/get-public-path-invalid.md) | error | The runtime cannot evaluate an invalid stringified public-path function. |
 | [`config/library-remote-type-mismatch`](./config/library-remote-type-mismatch.md) | warning | A consumer loader can fail when its remote type does not match the producer library format. |
-| [`config/name-required`](./config/name-required.md) | error | The runtime uses the container name for global state and module lookup. |
+| [`config/name-required`](./config/name-required.md) | error | The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so Doctor keeps this for offline checks rather than a showcase fixture. |
 | [`config/plugin-package-mismatch`](./config/plugin-package-mismatch.md) | warning | Using the wrong integration can skip required bundler hooks and runtime generation. |
 | [`config/remote-capability-disabled`](./config/remote-capability-disabled.md) | error | Tree-shaken remote-consumption code cannot load configured remotes. |
 | [`config/remote-entry-invalid`](./config/remote-entry-invalid.md) | error | The runtime cannot resolve a remote without a usable entry or manifest address. |
@@ -51,6 +51,10 @@ Rule pages are generated from package metadata. Each page explains the issue, im
 | [`reliability/tree-shaking-server-calc-contract`](./reliability/tree-shaking-server-calc-contract.md) | warning | Server-calculated shared artifacts need a known fallback output and deployment pipeline. |
 | [`reliability/version-first-offline-remotes`](./reliability/version-first-offline-remotes.md) | warning | An unavailable remote can break startup before its exposed module is requested. |
 | [`reliability/vite-fixed-parse-timeout`](./reliability/vite-fixed-parse-timeout.md) | info | A busy large build can exceed a fixed timeout and produce incomplete remote/shared analysis. |
+| [`runtime/error-correlated`](./runtime/error-correlated.md) | error | A stable RUNTIME error code from an imported browser trace was matched to offline build evidence. |
+| [`runtime/init-failed`](./runtime/init-failed.md) | error | Container initialization failed before exposes or shared resolution could finish. |
+| [`runtime/remote-load-failed`](./runtime/remote-load-failed.md) | error | A browser Observability trace failed while loading a remote manifest, entry, expose, or factory. |
+| [`runtime/shared-mismatch`](./runtime/shared-mismatch.md) | error | Runtime shared selection conflicts with installed versions, required ranges, or provider config. |
 | [`shared/singleton-mismatch`](./shared/singleton-mismatch.md) | warning | Projects disagree on whether multiple instances are allowed. |
 | [`shared/singleton-risk`](./shared/singleton-risk.md) | warning | Multiple framework runtimes can split global state, contexts, hooks, or renderers. |
 
@@ -58,6 +62,7 @@ Rule pages are generated from package metadata. Each page explains the issue, im
 
 | Rule | Severity | What it protects |
 | --- | --- | --- |
+| [`performance/asset-budget`](./performance/asset-budget.md) | warning | Federation assets that exceed project budgets slow startup and transfer more bytes than planned. |
 | [`performance/version-first-startup`](./performance/version-first-startup.md) | info | `version-first` loads all remote entries during initialization, adding startup work. |
 | [`performance/vite-bundle-all-css`](./performance/vite-bundle-all-css.md) | warning | Vite attaches all bundle CSS to every expose, which can duplicate transfer and style work. |
 | [`shared/candidate`](./shared/candidate.md) | warning | A stateful framework dependency may be bundled separately by host and remote. |
@@ -82,3 +87,4 @@ Rule pages are generated from package metadata. Each page explains the issue, im
 | [`config/get-public-path-unused`](./config/get-public-path-unused.md) | info | `getPublicPath` has no effect on a consumer that exposes no modules. |
 | [`config/remote-manifest-recommended`](./config/remote-manifest-recommended.md) | info | A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. |
 | [`doctor/partial-analysis`](./doctor/partial-analysis.md) | warning | Missing facts reduce confidence and can hide relevant findings. |
+| [`runtime/remote-unknown`](./runtime/remote-unknown.md) | warning | The trace names a remote that is absent from loaded Doctor project facts. |

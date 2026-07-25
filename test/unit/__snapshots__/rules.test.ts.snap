@@ -25,6 +25,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "reliability/external-runtime-provider-unverified",
   "reliability/async-startup-library-promise",
   "performance/version-first-startup",
+  "performance/asset-budget",
   "reliability/version-first-offline-remotes",
   "reliability/shared-import-false",
   "config/tree-shaking-server-calc-injection",
@@ -58,5 +59,10 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "federation/missing-provider",
   "shared/singleton-mismatch",
   "federation/external-runtime-provider-missing",
+  "runtime/remote-load-failed",
+  "runtime/init-failed",
+  "runtime/shared-mismatch",
+  "runtime/remote-unknown",
+  "runtime/error-correlated",
 ]
 `;

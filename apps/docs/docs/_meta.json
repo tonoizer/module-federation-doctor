@@ -25,6 +25,11 @@
   },
   {
     "type": "file",
+    "name": "mixed-issues-example",
+    "label": "Mixed issues example"
+  },
+  {
+    "type": "file",
     "name": "showcase",
     "label": "Finding showcase"
   },

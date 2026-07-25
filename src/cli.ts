@@ -6,16 +6,18 @@ import fg from "fast-glob";
 import { loadConfig } from "unconfig";
 import { analyze, analyzeFederation } from "./engine.js";
 import { probeManifest } from "./probe.js";
-import { builtInRules, federationRuleMeta } from "./rules.js";
+import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
+import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "./rules.js";
 import type { DoctorOptions, ModuleFederationConfigLike, OutputFormat, RuleMeta } from "./types.js";
 import { stableStringify } from "./utils.js";
 import { DEFAULT_UI_PORT, serveUiUntilClosed } from "./ui-server.js";
 import { resolveOptions } from "./config.js";
 
 interface Parsed {
-  command: "check" | "federation" | "probe" | "rules" | "help";
+  command: "check" | "federation" | "probe" | "runtime" | "rules" | "help";
   root?: string;
   url?: string;
+  trace?: string;
   patterns: string[];
   ci: boolean;
   formats?: OutputFormat[];
@@ -28,6 +30,7 @@ interface Parsed {
 }
 
 const outputFormats = new Set<OutputFormat>(["terminal", "json", "sarif", "html"]);
+const DEFAULT_RUNTIME_PROJECTS = ".mf/doctor/**/project.json";
 
 function help(): string {
   return `mfdoctor
@@ -40,6 +43,8 @@ Usage:
   mfdoctor check --ui --ui-port 51205
   mfdoctor federation ".mf/doctor/**/project.json"
   mfdoctor federation ".mf/doctor/**/project.json" --ui
+  mfdoctor runtime ./trace.json
+  mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
   mfdoctor rules [rule-id]
   mfdoctor probe https://host.example/mf-manifest.json
   mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry`;
@@ -57,7 +62,13 @@ function withHtml(formats: OutputFormat[] | undefined): OutputFormat[] {
 
 export function parseArgs(argv: string[]): Parsed {
   const command = argv[0];
-  if (command !== "check" && command !== "federation" && command !== "probe" && command !== "rules")
+  if (
+    command !== "check" &&
+    command !== "federation" &&
+    command !== "probe" &&
+    command !== "runtime" &&
+    command !== "rules"
+  )
     return { command: "help", patterns: [], ci: false, ui: false };
   const parsed: Parsed = { command, patterns: [], ci: false, ui: false };
   for (let index = 1; index < argv.length; index += 1) {
@@ -90,13 +101,16 @@ export function parseArgs(argv: string[]): Parsed {
       parsed.formats = parseFormats(value.slice("--format=".length));
     } else if (value?.startsWith("-")) throw new Error(`Unknown option: ${value}`);
     else if (command === "federation") parsed.patterns.push(value ?? "");
-    else if (command === "probe" && !parsed.url && value) parsed.url = value;
+    else if (command === "runtime") {
+      if (!parsed.trace && value) parsed.trace = value;
+      else if (value) parsed.patterns.push(value);
+    } else if (command === "probe" && !parsed.url && value) parsed.url = value;
     else if (command === "rules" && !parsed.ruleId && value) parsed.ruleId = value;
     else if (!parsed.root && value) parsed.root = value;
     else throw new Error(`Unexpected argument: ${value}`);
   }
   if (parsed.ui && (command === "probe" || command === "rules"))
-    throw new Error(`--ui is only supported for check and federation.`);
+    throw new Error(`--ui is only supported for check, federation, and runtime.`);
   return parsed;
 }
 
@@ -129,6 +143,21 @@ async function maybeServeUi(directory: string, parsed: Parsed): Promise<void> {
     port: parsed.uiPort ?? DEFAULT_UI_PORT,
     open: true,
   });
+}
+
+function toRuleMeta(
+  rule: (typeof federationRuleMeta)[number] | (typeof runtimeRuleMeta)[number],
+): RuleMeta {
+  return {
+    id: rule.id,
+    defaultSeverity: rule.severity,
+    supportedBundlers: ["vite", "rspack", "rsbuild"],
+    documentation: `/rules/${rule.id}`,
+    category: rule.category,
+    impact: rule.impact,
+    fix: rule.fix,
+    sources: rule.sources,
+  };
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
@@ -164,18 +193,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (parsed.command === "rules") {
     const catalog: RuleMeta[] = [
       ...builtInRules.map((rule) => rule.meta),
-      ...federationRuleMeta.map(
-        (rule): RuleMeta => ({
-          id: rule.id,
-          defaultSeverity: rule.severity,
-          supportedBundlers: ["vite", "rspack", "rsbuild"],
-          documentation: `/rules/${rule.id}`,
-          category: rule.category,
-          impact: rule.impact,
-          fix: rule.fix,
-          sources: rule.sources,
-        }),
-      ),
+      ...federationRuleMeta.map(toRuleMeta),
+      ...runtimeRuleMeta.map(toRuleMeta),
     ];
     catalog.sort((left, right) => left.id.localeCompare(right.id));
     if (parsed.ruleId) {
@@ -202,6 +221,46 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       if (!formats)
         process.stdout.write(
           stableStringify({ schemaVersion: 1, findings: result.findings }, 2) + "\n",
+        );
+      await maybeServeUi(outputDirectory, parsed);
+      return result.exitCode;
+    } catch (error) {
+      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+      return 2;
+    }
+  }
+  if (parsed.command === "runtime") {
+    const root = path.resolve(process.cwd());
+    try {
+      const config = await configAt(root);
+      const tracePath = parsed.trace ?? config.runtimeTrace;
+      if (!tracePath) {
+        process.stderr.write(
+          "runtime needs a trace JSON path or DoctorOptions.runtimeTrace in mfdoctor.config.\n",
+        );
+        return 2;
+      }
+      const patterns = parsed.patterns.length > 0 ? parsed.patterns : [DEFAULT_RUNTIME_PROJECTS];
+      const files = await fg(patterns, { absolute: true, onlyFiles: true, cwd: root });
+      if (files.length === 0) throw new RuntimeTraceError("No project reports matched.");
+      const formats = parsed.ui ? withHtml(parsed.formats ?? ["terminal", "json"]) : parsed.formats;
+      const outputDirectory = path.resolve(root, ".mf/doctor");
+      const result = await analyzeRuntime({
+        tracePath: path.resolve(root, tracePath),
+        projectFiles: files,
+        ...(formats ? { formats, outputDirectory } : {}),
+      });
+      if (!formats)
+        process.stdout.write(
+          stableStringify(
+            {
+              schemaVersion: 1,
+              summary: result.summary,
+              findings: result.findings,
+              traces: result.traces,
+            },
+            2,
+          ) + "\n",
         );
       await maybeServeUi(outputDirectory, parsed);
       return result.exitCode;

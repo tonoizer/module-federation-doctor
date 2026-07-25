@@ -92,7 +92,7 @@ async function runAnalysis(
   const resolved = resolveOptions(options);
   try {
     const facts = await collectProjectFacts(resolved);
-    if (emittedAssets) addBuildFacts(facts, emittedAssets, resolved.root);
+    if (emittedAssets) await addBuildFacts(facts, emittedAssets, resolved.root);
     const findings = sortFindings(
       (
         await Promise.all(
