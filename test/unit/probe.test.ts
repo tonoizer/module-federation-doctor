@@ -141,6 +141,47 @@ describe("manifest probe", () => {
     ).rejects.toThrow(/private, link-local, metadata, or loopback/);
   });
 
+  it("rejects redirects to metadata hostnames with a trailing DNS dot", async () => {
+    const requests: string[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      const href = String(input);
+      requests.push(href);
+      if (href === "https://cdn.example.com/mf-manifest.json") {
+        return new Response(null, {
+          status: 301,
+          headers: { location: "https://metadata.google.internal./computeMetadata/v1/" },
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    };
+
+    await expect(
+      probeManifest("https://cdn.example.com/mf-manifest.json", { fetch: fetchImpl }),
+    ).rejects.toThrow(/private, link-local, metadata, or loopback/);
+    expect(requests).toEqual(["https://cdn.example.com/mf-manifest.json"]);
+  });
+
+  it("rejects redirects to IPv4-mapped IPv6 link-local / metadata addresses", async () => {
+    const requests: string[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      const href = String(input);
+      requests.push(href);
+      if (href === "https://cdn.example.com/mf-manifest.json") {
+        return new Response(null, {
+          status: 302,
+          // Node normalizes this Location host to [::ffff:a9fe:a9fe]
+          headers: { location: "https://[::ffff:169.254.169.254]/" },
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    };
+
+    await expect(
+      probeManifest("https://cdn.example.com/mf-manifest.json", { fetch: fetchImpl }),
+    ).rejects.toThrow(/private, link-local, metadata, or loopback/);
+    expect(requests).toEqual(["https://cdn.example.com/mf-manifest.json"]);
+  });
+
   it("allows private redirect targets only when explicitly opted in", async () => {
     const body = JSON.stringify({
       id: "checkout",

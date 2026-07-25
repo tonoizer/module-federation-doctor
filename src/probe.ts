@@ -1,9 +1,22 @@
-import { isIP } from "node:net";
+import { BlockList, isIP } from "node:net";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
 const METADATA_HOSTNAMES = new Set(["metadata.google.internal", "metadata.goog"]);
+
+/** Private, link-local, loopback, CGNAT, and ULA ranges (incl. IPv4-mapped IPv6). */
+const RESTRICTED_NETWORKS = new BlockList();
+RESTRICTED_NETWORKS.addSubnet("0.0.0.0", 8, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("10.0.0.0", 8, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("100.64.0.0", 10, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("127.0.0.0", 8, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("169.254.0.0", 16, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("172.16.0.0", 12, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("192.168.0.0", 16, "ipv4");
+RESTRICTED_NETWORKS.addSubnet("::1", 128, "ipv6");
+RESTRICTED_NETWORKS.addSubnet("fe80::", 10, "ipv6");
+RESTRICTED_NETWORKS.addSubnet("fc00::", 7, "ipv6");
 
 export interface ProbeOptions {
   timeoutMs?: number;
@@ -51,51 +64,17 @@ function unbracketHostname(hostname: string): string {
   return hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
 }
 
-function isRestrictedIPv4(a: number, b: number): boolean {
-  if (a === 10) return true;
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  if (a === 192 && b === 168) return true;
-  if (a === 169 && b === 254) return true;
-  if (a === 127) return true;
-  if (a === 0) return true;
-  if (a === 100 && b >= 64 && b <= 127) return true;
-  return false;
-}
-
-function ipv4Octets(host: string): [number, number] | undefined {
-  const parts = host.split(".");
-  if (parts.length !== 4) return undefined;
-  const a = Number(parts[0]);
-  const b = Number(parts[1]);
-  if (!Number.isInteger(a) || !Number.isInteger(b)) return undefined;
-  return [a, b];
-}
-
-function isRestrictedIPv6(host: string): boolean {
-  const lower = host.toLowerCase();
-  if (lower === "::1") return true;
-  if (lower.startsWith("fe80:")) return true;
-  if (lower.startsWith("fc") || lower.startsWith("fd")) return true;
-  if (lower.startsWith("::ffff:")) {
-    const mapped = lower.slice("::ffff:".length);
-    if (isIP(mapped) === 4) {
-      const octets = ipv4Octets(mapped);
-      return octets ? isRestrictedIPv4(octets[0], octets[1]) : false;
-    }
-  }
-  return false;
+/** Normalize host for policy checks (FQDN trailing dots + brackets). */
+function normalizeHostname(hostname: string): string {
+  return unbracketHostname(hostname.toLowerCase().replace(/\.+$/, ""));
 }
 
 function isRestrictedNetworkHost(hostname: string): boolean {
-  const lower = hostname.toLowerCase();
-  if (METADATA_HOSTNAMES.has(lower) || lower === "localhost") return true;
-  const host = unbracketHostname(lower);
+  const host = normalizeHostname(hostname);
+  if (METADATA_HOSTNAMES.has(host) || host === "localhost") return true;
   const version = isIP(host);
-  if (version === 4) {
-    const octets = ipv4Octets(host);
-    return octets ? isRestrictedIPv4(octets[0], octets[1]) : false;
-  }
-  if (version === 6) return isRestrictedIPv6(host);
+  if (version === 4) return RESTRICTED_NETWORKS.check(host, "ipv4");
+  if (version === 6) return RESTRICTED_NETWORKS.check(host, "ipv6");
   return false;
 }
 
@@ -124,7 +103,8 @@ function safeUrl(value: string, options: ProbeUrlOptions = {}): URL {
 }
 
 function isLoopback(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+  const host = normalizeHostname(hostname);
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
 }
 
 function publicUrl(url: URL): string {
