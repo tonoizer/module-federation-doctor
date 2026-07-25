@@ -7,11 +7,14 @@ to see the exact rule IDs Doctor reports:
 pnpm demo:showcase
 ```
 
+Prefer fixtures where a missing or weak config would still reach a Module
+Federation plugin or build. Hard plugin failures (for example an empty `name`)
+stay as rules, not showcases.
+
 ## Config
 
 | Setup                   | Command                                                                       | Finding                                 |
 | ----------------------- | ----------------------------------------------------------------------------- | --------------------------------------- |
-| Empty `name`            | `node dist/cli.js check examples/showcase/config/name-required --ci`          | `config/name-required` (error)          |
 | Expose key without `./` | `node dist/cli.js check examples/showcase/config/expose-key-invalid --ci`     | `config/expose-key-invalid` (error)     |
 | Missing expose path     | `node dist/cli.js check examples/showcase/config/expose-path-missing --ci`    | `config/expose-path-missing` (error)    |
 | Invalid remote entry    | `node dist/cli.js check examples/showcase/config/remote-entry-invalid --ci`   | `config/remote-entry-invalid` (error)   |

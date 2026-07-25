@@ -3,11 +3,14 @@
 These setups are intentionally wrong so `mfdoctor check` / `mfdoctor federation`
 can demo real findings. They are not apps and are not part of the green e2e path.
 
+Showcase fixtures prefer cases Module Federation plugins often allow through to
+a build (or only warn about later). Rules that duplicate a hard plugin
+failure—such as a missing `name`—stay in the catalog but are not demoed here.
+
 ## Config
 
 | Directory                       | Expected rule                   | Severity |
 | ------------------------------- | ------------------------------- | -------- |
-| `config/name-required`          | `config/name-required`          | error    |
 | `config/expose-key-invalid`     | `config/expose-key-invalid`     | error    |
 | `config/expose-path-missing`    | `config/expose-path-missing`    | error    |
 | `config/remote-entry-invalid`   | `config/remote-entry-invalid`   | error    |
@@ -55,7 +58,7 @@ Committed `.project.json` facts for `mfdoctor federation`:
 pnpm build
 pnpm demo:showcase
 # or one at a time:
-node dist/cli.js check examples/showcase/config/name-required --ci --format terminal
+node dist/cli.js check examples/showcase/config/expose-key-invalid --ci --format terminal
 node dist/cli.js federation "examples/showcase/federation/version-conflict/*.project.json" --format terminal
 node dist/cli.js runtime examples/showcase/runtime/green/trace.json "examples/showcase/runtime/green/*.project.json" --format terminal
 ```

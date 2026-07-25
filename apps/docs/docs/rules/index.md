@@ -19,7 +19,7 @@ Rule pages are generated from package metadata. Each page explains the issue, im
 | [`config/external-runtime-with-exposes`](./config/external-runtime-with-exposes.md) | error | A runtime provider is only supported on a pure consumer and the upstream plugin throws otherwise. |
 | [`config/get-public-path-invalid`](./config/get-public-path-invalid.md) | error | The runtime cannot evaluate an invalid stringified public-path function. |
 | [`config/library-remote-type-mismatch`](./config/library-remote-type-mismatch.md) | warning | A consumer loader can fail when its remote type does not match the producer library format. |
-| [`config/name-required`](./config/name-required.md) | error | The runtime uses the container name for global state and module lookup. |
+| [`config/name-required`](./config/name-required.md) | error | The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so Doctor keeps this for offline checks rather than a showcase fixture. |
 | [`config/plugin-package-mismatch`](./config/plugin-package-mismatch.md) | warning | Using the wrong integration can skip required bundler hooks and runtime generation. |
 | [`config/remote-capability-disabled`](./config/remote-capability-disabled.md) | error | Tree-shaken remote-consumption code cannot load configured remotes. |
 | [`config/remote-entry-invalid`](./config/remote-entry-invalid.md) | error | The runtime cannot resolve a remote without a usable entry or manifest address. |

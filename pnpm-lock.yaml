@@ -325,8 +325,6 @@ importers:
 
   examples/showcase/config/filename-invalid: {}
 
-  examples/showcase/config/name-required: {}
-
   examples/showcase/config/remote-entry-invalid: {}
 
   examples/showcase/config/remote-http-insecure: {}

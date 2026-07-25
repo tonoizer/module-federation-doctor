@@ -8,11 +8,6 @@ const cli = path.join(root, "dist/cli.js");
 /** @type {Array<{ dir?: string; pattern?: string; ruleId?: string; expectNoFindings?: boolean; expectedExit: number; command?: "check" | "federation" | "runtime" }>} */
 const cases = [
   {
-    dir: "examples/showcase/config/name-required",
-    ruleId: "config/name-required",
-    expectedExit: 1,
-  },
-  {
     dir: "examples/showcase/config/expose-key-invalid",
     ruleId: "config/expose-key-invalid",
     expectedExit: 1,
