@@ -4,6 +4,10 @@
 problems in Module Federation projects built with Vite, Rspack, and Rsbuild.
 It can run as a CLI or as a build plugin.
 
+Install as a **devDependency**. Doctor is **build/CI-only**: adapters run after
+emit in Node and are not part of the browser bundle. They add CI time, not
+runtime size or performance cost.
+
 ```bash
 pnpm add -D @module-federation/doctor
 pnpm mfdoctor check --ci
@@ -56,6 +60,11 @@ pnpm mfdoctor probe https://cdn.example.com/mf-manifest.json --remote-entry
 - Vite details: CSS bundling, parser timeouts, and Vite-only switches.
 - Build output: manifests, remote entries, type archives, assets, and metadata.
 - Whole federation: cross-project name, version, scope, and provider conflicts.
+
+MF `runtimePlugins` in bundler config are checked at build time. Runtime-only
+apps that never use a Vite/Rspack/Rsbuild MF **build** plugin are out of scope
+for first-class support — use Observability + `mfdoctor runtime` instead of
+shipping Doctor into the browser.
 
 Every built-in rule has an issue, impact, fix, category, and source link. See
 the [full documentation](./apps/docs/docs/index.md), including report schemas,

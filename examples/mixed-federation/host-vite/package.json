@@ -11,13 +11,13 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@module-federation/doctor": "workspace:*",
     "@module-federation/vite": "1.19.1",
     "@mfdoctor-example/shared-ui": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@module-federation/doctor": "workspace:*",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.4",
