@@ -1,0 +1,24 @@
+{
+  "name": "@mfdoctor-standalone/rspack",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rspack build",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@module-federation/enhanced": "2.8.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@module-federation/doctor": "workspace:*",
+    "@rspack/cli": "2.1.5",
+    "@rspack/core": "2.1.5",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "typescript": "5.9.3"
+  }
+}

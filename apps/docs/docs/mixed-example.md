@@ -18,11 +18,7 @@ see [Nested federation example](./nested-example.md).
 
 For intentional Doctor findings:
 
-- [Examples overview](./examples.md) — catalog + planned demos
-- [Finding showcase](./showcase.md) — themed one-rule demos
+- [Examples overview](./examples.md) — full catalog
+- [One-rule showcase](./showcase.md) — CLI one-rule fixtures
+- [Standalone findings](./standalone-findings.md) — per-bundler build+Doctor demos
 - [Mixed federation issues](./mixed-issues-example.md) — same multi-bundler shape, red on purpose
-
-Planned (stubs until shipped): nested multi-bundler
-([#47](https://github.com/tonoizer/module-federation-doctor/issues/47)) and
-per-bundler standalone demos
-([#48](https://github.com/tonoizer/module-federation-doctor/issues/48)).

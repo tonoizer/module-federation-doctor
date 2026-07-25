@@ -6,6 +6,7 @@ packages:
   - "examples/mixed-federation/*"
   - "examples/mixed-federation-issues/*"
   - "examples/nested-federation/*"
+  - "examples/standalone-findings/*"
   - "examples/showcase/**"
   - "fixtures/**/*"
 

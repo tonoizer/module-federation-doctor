@@ -101,6 +101,7 @@
     "test:nested": "pnpm --filter './examples/nested-federation/**' build && node dist/cli.js workspace examples/nested-federation --format terminal,json",
     "demo:showcase": "pnpm build && node scripts/demo-showcase.mjs",
     "demo:mixed-issues": "pnpm build && node scripts/demo-mixed-issues.mjs",
+    "demo:standalone": "pnpm build && node scripts/demo-standalone-findings.mjs",
     "demo:nested": "pnpm build && node scripts/demo-nested.mjs",
     "demo:examples": "pnpm --filter @mfdoctor-example/demos demo",
     "docs:dev": "pnpm --filter @module-federation/doctor-docs dev",

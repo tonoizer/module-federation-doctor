@@ -1,7 +1,11 @@
-# Finding showcases
+# One-rule CLI showcase
 
 These setups are intentionally wrong so `mfdoctor check` / `mfdoctor federation`
-can demo real findings. They are not apps and are not part of the green e2e path.
+/ `mfdoctor runtime` can demo **one rule (or a small combination) at a time**.
+They are CLI fixtures, not bundler apps, and are not part of the green e2e path.
+
+For per-bundler **build+Doctor** demos with visible findings, use
+[`../standalone-findings`](../standalone-findings) (`pnpm demo:standalone`).
 
 Showcase fixtures prefer cases Module Federation plugins often allow through to
 a build (or only warn about later). Rules that duplicate a hard plugin
@@ -71,3 +75,4 @@ node dist/cli.js runtime examples/showcase/runtime/green/trace.json "examples/sh
 For a healthy multi-bundler app, use `examples/mixed-federation`.
 For nested multi-bundler orchestration, use `examples/nested-federation`.
 For a red multi-bundler combination, use `examples/mixed-federation-issues`.
+For per-bundler standalone build findings, use `examples/standalone-findings`.
