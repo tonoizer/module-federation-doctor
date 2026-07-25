@@ -42,8 +42,17 @@ Doctor does not ship an HTML dashboard. Use terminal, JSON, and SARIF reports.
 ## Permanent guarantees / non-goals
 
 Doctor does not rely on undocumented private Module Federation plugin fields.
-That is a stability non-goal, not removable follow-up work. See
-[#18](https://github.com/tonoizer/module-federation-doctor/issues/18).
+That is a stability guarantee and permanent non-goal, not removable follow-up
+work. See [#18](https://github.com/tonoizer/module-federation-doctor/issues/18).
+
+Adapters and rules use **public Module Federation options**, emitted
+**manifests**, **stats**, and **recorded capabilities** only. They must not
+scrape private plugin instance state, undocumented internals, or other
+non-public compiler/plugin fields. Missing optional public input yields
+`doctor/partial-analysis` instead of reaching into private MF plugin state.
+
+Adapter authors: see
+[architecture notes](./contributing.md#architecture-notes).
 
 Doctor is **build/CI-only**. Install it as a `devDependency`. Adapters run after
 emit in Node and must not appear in the client bundle

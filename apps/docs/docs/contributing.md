@@ -4,6 +4,20 @@ Use Node `>=22.12.0` and pnpm 11. Run `pnpm install
 --frozen-lockfile`, then `pnpm check`. Add behavior tests for rules and adapters.
 Run `pnpm changeset` for a public package change.
 
+## Architecture notes
+
+When adding or extending a bundler adapter:
+
+- Pass through the same public MF options object the app gives Module Federation.
+- Collect facts from emitted manifests, stats, and other public build outputs.
+- Record [capabilities](./capabilities.md) honestly when optional input is
+  missing.
+- Do **not** scrape undocumented private Module Federation plugin fields or
+  private plugin instance state to fill gaps.
+
+This permanent non-goal is documented under
+[limitations](./limitations.md#permanent-guarantees--non-goals).
+
 ## Roadmap
 
 - **[v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1)** —
@@ -30,7 +44,6 @@ Close the matching GitHub issue and drop the row from
 | `MFDOCTOR-111` | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) | Fingerprint baselines and suppressions              |
 | `MFDOCTOR-115` | [#32](https://github.com/tonoizer/module-federation-doctor/issues/32) | Build-time only / never in client bundle            |
 | `MFDOCTOR-117` | [#34](https://github.com/tonoizer/module-federation-doctor/issues/34) | Runtime-only MF (no bundler plugin) out of scope    |
-| —              | [#18](https://github.com/tonoizer/module-federation-doctor/issues/18) | Document permanent non-goal (private MF fields)     |
 | `MFDOCTOR-112` | [#28](https://github.com/tonoizer/module-federation-doctor/issues/28) | First public npm publish _(after product items)_    |
 | `MFDOCTOR-113` | [#29](https://github.com/tonoizer/module-federation-doctor/issues/29) | Propose Doctor to official MF org _(after publish)_ |
 
@@ -49,7 +62,9 @@ dashboard.
 (in-browser Doctor runtime agent) was closed as not planned — Doctor stays
 build/CI-only and must not add bundle size or runtime cost.
 
-Permanent non-goals: no undocumented private Module Federation plugin fields
+Permanent non-goals (documented under
+[limitations](./limitations.md#permanent-guarantees--non-goals)): no
+undocumented private Module Federation plugin fields
 ([#18](https://github.com/tonoizer/module-federation-doctor/issues/18));
 build-time-only Doctor
 ([#32](https://github.com/tonoizer/module-federation-doctor/issues/32)).

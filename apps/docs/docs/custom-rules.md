@@ -2,7 +2,9 @@
 
 Custom rules use `defineRule` and receive frozen normalized facts only. A rule
 may be async. It reports findings through `context.report` and cannot mutate
-facts.
+facts. Facts come from public MF options, manifests, stats, and recorded
+capabilities — not private plugin state
+([limitations](./limitations.md#permanent-guarantees--non-goals)).
 
 ```ts
 import { defineRule } from "@module-federation/doctor/rules";
