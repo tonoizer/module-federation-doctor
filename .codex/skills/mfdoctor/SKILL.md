@@ -1,6 +1,6 @@
 ---
 name: mfdoctor
-description: Audit Module Federation projects with Module Federation Doctor. Use for config review, Vite/Rspack/Rsbuild integration checks, shared dependency conflicts, manifest/stats/type output review, cross-project federation analysis, performance checks, runtime evidence correlation, or production-readiness work in this repository.
+description: Audit Module Federation projects with Module Federation Doctor. Use for config review, Vite/Rspack/Rsbuild/Webpack integration checks, shared dependency conflicts, manifest/stats/type output review, cross-project federation analysis, performance checks, runtime evidence correlation, or production-readiness work in this repository.
 ---
 
 # Module Federation Doctor
@@ -27,6 +27,10 @@ moduleFederationDoctorPlugin({ moduleFederation: mfOptions });
 // Rsbuild
 import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild";
 pluginModuleFederationDoctor({ moduleFederation: mfOptions });
+
+// Webpack
+import { moduleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+moduleFederationDoctorPlugin({ moduleFederation: mfOptions });
 ```
 
 5. Or run the smallest useful CLI check:

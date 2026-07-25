@@ -31,6 +31,7 @@ try {
         vite: "vite build",
         rspack: "rspack build",
         rsbuild: "rsbuild build",
+        webpack: "webpack --mode production",
       },
       dependencies: {
         "@module-federation/doctor": `file:${tarball}`,
@@ -38,6 +39,8 @@ try {
         "@rspack/core": "2.1.5",
         "@rsbuild/core": "2.1.5",
         vite: "8.1.0",
+        webpack: "5.105.4",
+        "webpack-cli": "6.0.1",
       },
     }),
   );
@@ -53,6 +56,7 @@ const api = await import("@module-federation/doctor");
 const vite = await import("@module-federation/doctor/vite");
 const rspack = await import("@module-federation/doctor/rspack");
 const rsbuild = await import("@module-federation/doctor/rsbuild");
+const webpack = await import("@module-federation/doctor/webpack");
 const rules = await import("@module-federation/doctor/rules");
 const reportSchema = await import("@module-federation/doctor/schemas/report.schema.json", { with: { type: "json" } });
 const packageJson = await import("@module-federation/doctor/package.json", { with: { type: "json" } });
@@ -61,9 +65,11 @@ assert.equal(typeof api.probeManifest, "function");
 assert.equal(typeof vite.federationDoctor, "function");
 assert.equal(typeof rspack.moduleFederationDoctorPlugin, "function");
 assert.equal(typeof rsbuild.pluginModuleFederationDoctor, "function");
+assert.equal(typeof webpack.moduleFederationDoctorPlugin, "function");
 assert.equal(typeof vite.default, "function");
 assert.equal(typeof rspack.default, "function");
 assert.equal(typeof rsbuild.default, "function");
+assert.equal(typeof webpack.default, "function");
 assert.equal(typeof rules.defineRule, "function");
 assert.equal(reportSchema.default.title, "Module Federation Doctor report");
 assert.equal(packageJson.default.bin.mfdoctor, "dist/cli.js");
@@ -90,12 +96,19 @@ import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild"
 export default defineConfig({ plugins: [pluginModuleFederationDoctor(${doctorOptions})] });
 `,
   );
+  await fs.writeFile(
+    path.join(consumer, "webpack.config.mjs"),
+    `import { moduleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+export default { mode: "production", entry: "./src/index.js", plugins: [moduleFederationDoctorPlugin(${doctorOptions})] };
+`,
+  );
   run("pnpm", ["install", "--ignore-scripts"], consumer);
   run("pnpm", ["check"], consumer);
   run("pnpm", ["cli"], consumer);
   run("pnpm", ["vite"], consumer);
   run("pnpm", ["rspack"], consumer);
   run("pnpm", ["rsbuild"], consumer);
+  run("pnpm", ["webpack"], consumer);
   process.stdout.write(`Tarball consumer passed: ${pathToFileURL(tarball).href}\n`);
 } finally {
   await fs.rm(temporary, { recursive: true, force: true });
