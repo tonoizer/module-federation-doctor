@@ -10,13 +10,17 @@ import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
 import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "./rules.js";
 import type { DoctorOptions, ModuleFederationConfigLike, OutputFormat, RuleMeta } from "./types.js";
 import { stableStringify } from "./utils.js";
+import { discoverWorkspaceProjects } from "./workspace.js";
 
 interface Parsed {
-  command: "check" | "federation" | "probe" | "runtime" | "rules" | "help";
+  command: "check" | "federation" | "workspace" | "probe" | "runtime" | "rules" | "help";
   root?: string;
   url?: string;
   trace?: string;
   patterns: string[];
+  roots: string[];
+  globs: string[];
+  workspace: boolean;
   ci: boolean;
   formats?: OutputFormat[];
   timeoutMs?: number;
@@ -35,12 +39,21 @@ Usage:
   mfdoctor check [root]
   mfdoctor check --ci
   mfdoctor check --format terminal,json,sarif
+  mfdoctor workspace [root...]
+  mfdoctor workspace [root...] --glob "**/.mf/doctor/project.json"
+  mfdoctor federation --workspace [root...]
+  mfdoctor federation --workspace [root...] --format terminal,json,sarif
   mfdoctor federation ".mf/doctor/**/project.json"
   mfdoctor runtime ./trace.json
   mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
   mfdoctor rules [rule-id]
   mfdoctor probe https://host.example/mf-manifest.json
   mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
+
+Workspace: after each app builds with the Doctor plugin, \`workspace\` (or
+\`federation --workspace\`) auto-discovers \`.mf/doctor/project.json\` under the
+given roots. Pass explicit globs to \`federation\` only when you need a manual
+escape hatch. Exit codes: 0 pass, 1 policy fail, 2 analysis incomplete.
 
 CI tip: CI mode is auto-detected from CI / provider env vars (GitHub Actions,
 GitLab, Circle, Jenkins, …). No mode: "ci" needed in plugin config. Pass --ci
@@ -53,16 +66,40 @@ export function parseArgs(argv: string[]): Parsed {
   if (
     command !== "check" &&
     command !== "federation" &&
+    command !== "workspace" &&
     command !== "probe" &&
     command !== "runtime" &&
     command !== "rules"
   )
-    return { command: "help", patterns: [], ci: false };
-  const parsed: Parsed = { command, patterns: [], ci: false };
+    return { command: "help", patterns: [], roots: [], globs: [], workspace: false, ci: false };
+  const parsed: Parsed = {
+    command,
+    patterns: [],
+    roots: [],
+    globs: [],
+    workspace: command === "workspace",
+    ci: false,
+  };
   for (let index = 1; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === "--ci") parsed.ci = true;
-    else if (value === "--remote-entry" && command === "probe") parsed.remoteEntry = true;
+    else if (value === "--workspace" && (command === "federation" || command === "workspace")) {
+      parsed.workspace = true;
+    } else if (value === "--glob" && (command === "federation" || command === "workspace")) {
+      const next = argv[index + 1];
+      if (!next) throw new Error("--glob needs a pattern.");
+      parsed.globs.push(next);
+      parsed.workspace = true;
+      index += 1;
+    } else if (
+      value?.startsWith("--glob=") &&
+      (command === "federation" || command === "workspace")
+    ) {
+      const glob = value.slice("--glob=".length);
+      if (!glob) throw new Error("--glob needs a pattern.");
+      parsed.globs.push(glob);
+      parsed.workspace = true;
+    } else if (value === "--remote-entry" && command === "probe") parsed.remoteEntry = true;
     else if ((value === "--timeout" || value === "--max-bytes") && command === "probe") {
       const next = argv[index + 1];
       if (!next) throw new Error(`${value} needs an integer value.`);
@@ -79,14 +116,22 @@ export function parseArgs(argv: string[]): Parsed {
     } else if (value?.startsWith("--format=")) {
       parsed.formats = parseFormats(value.slice("--format=".length));
     } else if (value?.startsWith("-")) throw new Error(`Unknown option: ${value}`);
-    else if (command === "federation") parsed.patterns.push(value ?? "");
-    else if (command === "runtime") {
+    else if (command === "federation" || command === "workspace") {
+      if (parsed.workspace) parsed.roots.push(value ?? "");
+      else parsed.patterns.push(value ?? "");
+    } else if (command === "runtime") {
       if (!parsed.trace && value) parsed.trace = value;
       else if (value) parsed.patterns.push(value);
     } else if (command === "probe" && !parsed.url && value) parsed.url = value;
     else if (command === "rules" && !parsed.ruleId && value) parsed.ruleId = value;
     else if (!parsed.root && value) parsed.root = value;
     else throw new Error(`Unexpected argument: ${value}`);
+  }
+  if (command === "federation" && parsed.globs.length > 0) parsed.workspace = true;
+  // Allow `federation <root> --workspace` by treating early positionals as roots.
+  if (parsed.workspace && parsed.patterns.length > 0 && parsed.roots.length === 0) {
+    parsed.roots = parsed.patterns;
+    parsed.patterns = [];
   }
   return parsed;
 }
@@ -126,6 +171,23 @@ function toRuleMeta(
     fix: rule.fix,
     sources: rule.sources,
   };
+}
+
+async function runFederationAnalysis(
+  files: string[],
+  formats: OutputFormat[] | undefined,
+): Promise<number> {
+  if (files.length === 0) {
+    process.stderr.write("No project reports matched.\n");
+    return 2;
+  }
+  const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
+  const result = await analyzeFederation(files, formats ? { formats, outputDirectory } : {});
+  if (!formats)
+    process.stdout.write(
+      stableStringify({ schemaVersion: 1, findings: result.findings }, 2) + "\n",
+    );
+  return result.exitCode;
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
@@ -175,22 +237,29 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     } else process.stdout.write(stableStringify({ schemaVersion: 1, rules: catalog }, 2) + "\n");
     return 0;
   }
-  if (parsed.command === "federation") {
-    if (parsed.patterns.length === 0) {
-      process.stderr.write("federation needs at least one project.json glob.\n");
-      return 2;
-    }
+  if (parsed.command === "federation" || parsed.command === "workspace") {
     try {
-      const files = await fg(parsed.patterns, { absolute: true, onlyFiles: true });
-      if (files.length === 0) throw new Error("No project reports matched.");
-      const formats = parsed.formats;
-      const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
-      const result = await analyzeFederation(files, formats ? { formats, outputDirectory } : {});
-      if (!formats)
-        process.stdout.write(
-          stableStringify({ schemaVersion: 1, findings: result.findings }, 2) + "\n",
+      if (parsed.workspace) {
+        if (parsed.patterns.length > 0) {
+          process.stderr.write(
+            "workspace mode takes roots and optional --glob overrides, not positional federation globs.\n",
+          );
+          return 2;
+        }
+        const files = await discoverWorkspaceProjects({
+          roots: parsed.roots,
+          ...(parsed.globs.length > 0 ? { globs: parsed.globs } : {}),
+        });
+        return await runFederationAnalysis(files, parsed.formats);
+      }
+      if (parsed.patterns.length === 0) {
+        process.stderr.write(
+          'federation needs --workspace or at least one project.json glob (for example ".mf/doctor/**/project.json").\n',
         );
-      return result.exitCode;
+        return 2;
+      }
+      const files = await fg(parsed.patterns, { absolute: true, onlyFiles: true });
+      return await runFederationAnalysis(files, parsed.formats);
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
       return 2;

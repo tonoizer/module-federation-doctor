@@ -1,5 +1,11 @@
 export { analyze, analyzeFederation } from "./engine.js";
 export { resolveOptions, isCiEnvironment, DEFAULT_EXCLUDE, DEFAULT_INCLUDE } from "./config.js";
+export {
+  DEFAULT_WORKSPACE_PROJECT_GLOBS,
+  WORKSPACE_IGNORE,
+  discoverWorkspaceProjects,
+} from "./workspace.js";
+export type { DiscoverWorkspaceProjectsOptions } from "./workspace.js";
 export { defineRule, builtInRules } from "./rules.js";
 export { ProbeError, probeManifest } from "./probe.js";
 export {

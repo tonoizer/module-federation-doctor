@@ -22,8 +22,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test:examples
-      - name: Analyze federation
-        run: node dist/cli.js federation "examples/mixed-federation/*/.mf/doctor/project.json" | tee federation-report.json
+      - name: Analyze federation (workspace gate)
+        uses: ./.github/actions/workspace-federation-gate
+        with:
+          roots: examples/mixed-federation
+          cli: node dist/cli.js
+          formats: terminal,json,sarif
+          upload-sarif: "true"
+          upload-artifact: "false"
+          artifact-name: doctor-federation
       - if: always()
         run: node scripts/github-annotations.mjs | tee -a "$GITHUB_STEP_SUMMARY"
       - if: always()
@@ -32,9 +39,4 @@ jobs:
           name: doctor-reports
           path: |
             examples/mixed-federation/*/.mf/doctor
-            federation-report.json
-      - if: always() && hashFiles('examples/mixed-federation/*/.mf/doctor/results.sarif') != ''
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@3b0bd1d116c0bde30213346b22d4f634d96a2fb0 # v3
-        with:
-          sarif_file: examples/mixed-federation
+            .mf/doctor

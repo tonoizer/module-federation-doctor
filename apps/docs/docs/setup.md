@@ -84,11 +84,32 @@ export default {
 
 ## Multi-app CI loop
 
-1. Build each host and remote with the Doctor plugin so each app writes
-   `.mf/doctor/project.json`.
-2. Run `mfdoctor federation ".mf/doctor/**/project.json"` for cross-app shared,
-   name, and provider conflicts.
-3. Optionally run `mfdoctor probe <manifest-url>` against deployed remotes.
+One-shot path after each host/remote builds with the Doctor plugin:
+
+```bash
+mfdoctor workspace
+# or: mfdoctor federation --workspace
+mfdoctor workspace apps packages --format terminal,json,sarif
+```
+
+That auto-discovers `**/.mf/doctor/project.json` under the given roots and runs
+cross-app shared, name, and provider checks. Exit codes match the rest of the
+CLI: `0` pass, `1` policy fail, `2` analysis incomplete (for example no project
+facts found).
+
+Manual globs remain available as an escape hatch when discovery roots are not
+enough:
+
+```bash
+mfdoctor federation ".mf/doctor/**/project.json"
+mfdoctor federation "packages/*/.mf/doctor/project.json"
+```
+
+Optionally run `mfdoctor probe <manifest-url>` against deployed remotes.
+
+For GitHub Actions, reuse
+[`.github/actions/workspace-federation-gate`](https://github.com/tonoizer/module-federation-doctor/tree/main/.github/actions/workspace-federation-gate)
+after your builds. See [CLI and CI](./cli.md).
 
 ## Out of scope: runtime-only apps
 

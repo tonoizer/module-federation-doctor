@@ -2,6 +2,7 @@ node_modules/
 dist/
 doc_build/
 .mf/
+!fixtures/**/.mf/
 coverage/
 playwright-report/
 test-results/

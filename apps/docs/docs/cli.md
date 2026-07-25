@@ -8,6 +8,9 @@ manifest probes.
 mfdoctor check
 mfdoctor check packages/host --ci
 mfdoctor check --format terminal,json,sarif
+mfdoctor workspace
+mfdoctor workspace apps packages --format terminal,json,sarif
+mfdoctor federation --workspace
 mfdoctor federation ".mf/doctor/**/project.json"
 mfdoctor runtime ./trace.json
 mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
@@ -17,11 +20,36 @@ mfdoctor probe https://cdn.example.com/mf-manifest.json
 mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
 ```
 
-Doctor loads optional `mfdoctor.config.ts`; flags win over config. `check` exits
-0 when policy passes, 1 for policy findings, and 2 when analysis cannot finish.
-`check` and `federation` make no network requests. `runtime` also stays offline:
-it only reads a user-supplied Observability export and local `project.json`
-files.
+Doctor loads optional `mfdoctor.config.ts`; flags win over config. `check`,
+`workspace`, and `federation` exit `0` when policy passes, `1` for policy
+findings, and `2` when analysis cannot finish (invalid args, no matching
+`project.json`, or a hard failure). `check`, `workspace`, and `federation` make
+no network requests. `runtime` also stays offline: it only reads a
+user-supplied Observability export and local `project.json` files.
+
+## Workspace federation gate
+
+After each app builds with the Doctor plugin, run the one-shot workspace gate:
+
+```bash
+mfdoctor workspace
+mfdoctor federation --workspace apps packages
+```
+
+Defaults discover `**/.mf/doctor/project.json` under the given roots (cwd when
+omitted). Override discovery with `--glob` when you need a manual layout:
+
+```bash
+mfdoctor workspace --glob "packages/*/.mf/doctor/project.json"
+mfdoctor federation --workspace examples/showcase/federation/version-conflict --glob "*.project.json"
+```
+
+Explicit `federation` globs without `--workspace` remain the escape hatch for
+hand-tuned CI:
+
+```bash
+mfdoctor federation ".mf/doctor/**/project.json"
+```
 
 ## CI auto-detect
 
@@ -84,5 +112,33 @@ with an HTTP error exits 1.
 
 ## GitHub Actions
 
-Upload `.mf/doctor/results.sarif` with
+Reuse the composite action after each federated app has emitted
+`.mf/doctor/project.json`:
+
+```yaml
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  federation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm --filter './apps/**' build
+      - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@main
+        with:
+          roots: .
+          cli: pnpm exec mfdoctor
+          formats: terminal,json,sarif
+```
+
+Optional inputs: `build-command` (run builds inside the action), `globs` (manual
+discovery escape hatch), `upload-sarif` / `upload-artifact`.
+
+You can also call the CLI directly and upload `.mf/doctor/results.sarif` with
 `github/codeql-action/upload-sarif` when code scanning is enabled.
