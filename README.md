@@ -7,7 +7,6 @@ Webpack, and Modern.js.
 Install as a **devDependency**. Doctor is **build/CI-only**: adapters run after
 emit in Node and are not part of the browser bundle. They add CI time, not
 runtime size or performance cost.
-10|
 
 **Agents:** read the terminal findings block, open the linked rule docs, apply
 the fix (or an intentional [governance](./apps/docs/docs/suppressions.md)
