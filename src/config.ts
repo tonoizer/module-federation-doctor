@@ -12,26 +12,42 @@ export const DEFAULT_EXCLUDE = [
 
 const CI_FALSEY = new Set(["", "0", "false", "no", "off"]);
 
+type CiProviderCheck = { key: string; equals: string } | { key: string; truthy: true };
+
+const CI_PROVIDER_CHECKS: readonly CiProviderCheck[] = [
+  { key: "GITHUB_ACTIONS", equals: "true" },
+  { key: "GITLAB_CI", equals: "true" },
+  { key: "CIRCLECI", equals: "true" },
+  { key: "BUILDKITE", equals: "true" },
+  { key: "TRAVIS", equals: "true" },
+  { key: "APPVEYOR", equals: "True" },
+  { key: "TF_BUILD", equals: "True" },
+  { key: "TEAMCITY_VERSION", truthy: true },
+  { key: "JENKINS_URL", truthy: true },
+  { key: "BITBUCKET_BUILD_NUMBER", truthy: true },
+  { key: "CODEBUILD_BUILD_ID", truthy: true },
+];
+
+/** Provider env vars that imply CI even when `CI` is unset or falsey. */
+export const CI_PROVIDER_ENV_KEYS = CI_PROVIDER_CHECKS.map((check) => check.key);
+
+function hasCiProviderSignal(env: NodeJS.ProcessEnv): boolean {
+  return CI_PROVIDER_CHECKS.some((check) => {
+    const value = env[check.key];
+    if ("equals" in check) return value === check.equals;
+    return Boolean(value);
+  });
+}
+
 /**
  * Detect CI without requiring `mode: "ci"` in Doctor config.
  * Honors common provider env vars and truthy `CI` values (`true`, `1`, …).
+ * A falsey `CI` does not opt out of provider detection.
  */
 export function isCiEnvironment(env: NodeJS.ProcessEnv = process.env): boolean {
   const ci = env.CI;
   if (ci !== undefined && !CI_FALSEY.has(ci.trim().toLowerCase())) return true;
-  return Boolean(
-    env.GITHUB_ACTIONS === "true" ||
-    env.GITLAB_CI === "true" ||
-    env.CIRCLECI === "true" ||
-    env.BUILDKITE === "true" ||
-    env.TRAVIS === "true" ||
-    env.APPVEYOR === "True" ||
-    env.TF_BUILD === "True" ||
-    env.TEAMCITY_VERSION ||
-    env.JENKINS_URL ||
-    env.BITBUCKET_BUILD_NUMBER ||
-    env.CODEBUILD_BUILD_ID,
-  );
+  return hasCiProviderSignal(env);
 }
 
 export function resolveOptions(options: DoctorOptions = {}): ResolvedDoctorOptions {
