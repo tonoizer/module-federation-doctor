@@ -186,13 +186,13 @@ Examples:
 - `examples/compatibility/webpack` — Webpack build+Doctor smoke for the matrix
 - `examples/mixed-federation-issues` — same flat topology with intentional Doctor
   findings; run `pnpm demo:mixed-issues`
-- `examples/showcase` — themed misconfigs + runtime green/fail demos; run
+- `examples/standalone-findings` — per-bundler Vite/Webpack/Rspack/Rsbuild
+  cells that emit visible Doctor findings; run `pnpm demo:standalone`
+- `examples/showcase` — one-rule CLI fixtures + runtime green/fail demos; run
   `pnpm demo:showcase`
-- From `examples/`: `pnpm --dir examples demo` runs showcase + mixed-issues + nested
-  (or `pnpm demo:examples` from the repo root)
-- Planned: nested multi-bundler ([#47](https://github.com/tonoizer/module-federation-doctor/issues/47)),
-  per-bundler demos ([#48](https://github.com/tonoizer/module-federation-doctor/issues/48)) —
-  see [Examples](./apps/docs/docs/examples.md)
+- From `examples/`: `pnpm --dir examples demo` runs showcase + standalone +
+  mixed-issues + nested (or `pnpm demo:examples` from the repo root)
+- See [Examples](./apps/docs/docs/examples.md) for the full catalog
 
 Doctor-specific agent UX prefers CLI/plugin finding output (rule id, fix,
 Doctor docs URL, official MF sources, exit codes). For Module Federation

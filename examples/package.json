@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "demo": "pnpm demo:showcase && pnpm demo:mixed-issues && pnpm demo:nested",
+    "demo": "pnpm demo:showcase && pnpm demo:standalone && pnpm demo:mixed-issues && pnpm demo:nested",
     "demo:showcase": "pnpm --dir .. run demo:showcase",
+    "demo:standalone": "pnpm --dir .. run demo:standalone",
     "demo:mixed-issues": "pnpm --dir .. run demo:mixed-issues",
     "demo:nested": "pnpm --dir .. run demo:nested",
     "build:green": "pnpm --dir .. run test:examples",

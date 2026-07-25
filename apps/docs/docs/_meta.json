@@ -88,8 +88,13 @@
   },
   {
     "type": "file",
+    "name": "standalone-findings",
+    "label": "Standalone findings"
+  },
+  {
+    "type": "file",
     "name": "showcase",
-    "label": "Finding showcase"
+    "label": "One-rule showcase"
   },
   {
     "type": "divider"

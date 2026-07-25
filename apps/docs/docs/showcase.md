@@ -1,11 +1,14 @@
-# Finding showcase
+# One-rule CLI showcase
 
-`examples/showcase` holds themed, intentional misconfigs. Run them with the CLI
-to see the exact rule IDs Doctor reports:
+`examples/showcase` holds themed, intentional misconfigs for the **CLI**. Run
+them to see the exact rule IDs Doctor reports one fixture at a time:
 
 ```bash
 pnpm demo:showcase
 ```
+
+For **per-bundler build+Doctor** demos (Vite / Webpack / Rspack / Rsbuild), see
+[standalone findings](./standalone-findings.md) (`pnpm demo:standalone`).
 
 Prefer fixtures where a missing or weak config would still reach a Module
 Federation plugin or build. Hard plugin failures (for example an empty `name`)
@@ -62,8 +65,8 @@ stay as rules, not showcases.
 | Shared mismatch | `node dist/cli.js runtime examples/showcase/runtime/shared-mismatch/trace.json "examples/showcase/runtime/shared-mismatch/*.project.json"` | `runtime/shared-mismatch` (error) |
 
 These directories are demo fixtures, not runnable apps. Keep
-[mixed federation](./mixed-example.md) for the healthy multi-bundler path and
-[mixed federation issues](./mixed-issues-example.md) for a red combination.
-See [Examples](./examples.md) for the full catalog and planned nested /
-per-bundler demos ([#47](https://github.com/tonoizer/module-federation-doctor/issues/47),
-[#48](https://github.com/tonoizer/module-federation-doctor/issues/48)).
+[mixed federation](./mixed-example.md) for the healthy multi-bundler path,
+[nested federation](./nested-example.md) for multi-level orchestration,
+[mixed federation issues](./mixed-issues-example.md) for a red combination, and
+[standalone findings](./standalone-findings.md) for per-bundler build demos.
+See [Examples](./examples.md) for the full catalog.

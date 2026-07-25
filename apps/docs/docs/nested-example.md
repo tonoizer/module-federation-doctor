@@ -25,5 +25,5 @@ This path stays green. Consumers that use `remoteEntry.js` turn off
 pattern as the [mixed example](./mixed-example.md).
 
 For intentional red findings, use [mixed issues](./mixed-issues-example.md) or
-the [finding showcase](./showcase.md). Per-bundler standalone demos live under
-MFDOCTOR-120.
+the [one-rule showcase](./showcase.md). Per-bundler build+Doctor demos:
+[standalone findings](./standalone-findings.md).
