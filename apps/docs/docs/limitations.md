@@ -9,18 +9,21 @@ Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1
 
 ## v1.0 (governance-ready)
 
-| Gap                                                | Issue                                                                                  |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Webpack adapter and compatibility matrix           | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) (`MFDOCTOR-101`) |
-| Dynamic-import completeness beyond static analysis | [#14](https://github.com/tonoizer/module-federation-doctor/issues/14) (`MFDOCTOR-105`) |
-| Compatibility matrix for v1 bundlers and runtimes  | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) (`MFDOCTOR-106`) |
-| One-shot workspace federation gate for CI          | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) (`MFDOCTOR-109`) |
-| Shareable policy packs and named presets           | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) (`MFDOCTOR-110`) |
-| Fingerprint baselines and suppressions             | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) (`MFDOCTOR-111`) |
+| Gap                                               | Issue                                                                                  |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Webpack adapter and compatibility matrix          | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) (`MFDOCTOR-101`) |
+| Compatibility matrix for v1 bundlers and runtimes | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) (`MFDOCTOR-106`) |
+| One-shot workspace federation gate for CI         | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) (`MFDOCTOR-109`) |
+| Shareable policy packs and named presets          | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) (`MFDOCTOR-110`) |
+| Fingerprint baselines and suppressions            | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) (`MFDOCTOR-111`) |
 
-Static imports cannot see every runtime import until `MFDOCTOR-105` lands its
-documented completeness bar (supported dynamic patterns + honest
-`doctor/partial-analysis` — not a claim of 100% arbitrary runtime JS).
+Dynamic Module Federation import patterns are covered at the documented
+[completeness bar](./capabilities.md#dynamic-import-completeness-v1): supported
+literals and runtime/manifest hints when evidence exists, with honest
+`doctor/partial-analysis` for unresolved dynamics — not a claim of 100%
+arbitrary runtime JS
+([#14](https://github.com/tonoizer/module-federation-doctor/issues/14),
+`MFDOCTOR-105`).
 
 The Doctor plugin analyzes the **current** app (config + emit). Cross-app
 host↔remote shared/integration issues need each app's `.mf/doctor/project.json`
@@ -29,7 +32,9 @@ plus `mfdoctor federation` (or the workspace gate in `MFDOCTOR-109`). Opt-in
 
 Opt-in browser runtime trace import is available through `mfdoctor runtime` when
 you supply an Observability Plugin export. Default `check` and `federation`
-analysis stay offline.
+analysis stay offline. When `runtimeTrace` is set on Doctor options, `check`
+also merges shared/remote hints from that export into import facts without
+fetching URLs or executing remote JavaScript.
 
 Doctor does not ship an HTML dashboard today. Use terminal, JSON, and SARIF
 reports. Restoring a richer HTML analysis UI is tracked in

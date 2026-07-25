@@ -25,7 +25,15 @@ function baseFacts(): ProjectFacts {
       installedVersions: true,
     },
     dependencies: { declared: {}, installed: {} },
-    imports: { sourceFiles: [], specifiers: [], packages: [] },
+    imports: {
+      sourceFiles: [],
+      specifiers: [],
+      packages: [],
+      dynamicPackages: [],
+      remotes: [],
+      unresolvedDynamic: [],
+      evidenceSources: [],
+    },
     artifacts: { emittedAssets: [] },
   };
 }

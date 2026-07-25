@@ -2,7 +2,15 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import fg from "fast-glob";
 import { packageName, normalizeModuleFederation } from "./normalize.js";
-import type { ArtifactFacts, ProjectFacts, ResolvedDoctorOptions } from "./types.js";
+import type {
+  ArtifactFacts,
+  ImportEvidenceSource,
+  ImportFacts,
+  ProjectFacts,
+  ResolvedDoctorOptions,
+  UnresolvedDynamicApi,
+  UnresolvedDynamicImport,
+} from "./types.js";
 import { normalizePath, relativePath } from "./utils.js";
 
 interface PackageJson {
@@ -52,7 +60,79 @@ async function installedVersions(
   return installed;
 }
 
-async function collectImports(options: ResolvedDoctorOptions): Promise<ProjectFacts["imports"]> {
+interface RawImportScan {
+  sourceFiles: string[];
+  /** Specifier → whether any reference was dynamic (import()/require/runtime API). */
+  specifierDynamic: Map<string, boolean>;
+  /** Specifiers that come from loadRemote / registerRemotes (always remotes, not packages). */
+  remoteSpecifiers: Set<string>;
+  unresolvedDynamic: UnresolvedDynamicImport[];
+}
+
+const STATIC_IMPORT_PATTERN = /(?:import|export)\s+(?:[\s\S]*?\sfrom\s*)?["']([^"'`]+)["']/g;
+const DYNAMIC_IMPORT_LITERAL = /import\s*\(\s*["']([^"'`]+)["']\s*\)/g;
+const REQUIRE_LITERAL = /require\s*\(\s*["']([^"'`]+)["']\s*\)/g;
+const LOAD_REMOTE_LITERAL = /\bloadRemote\s*\(\s*["']([^"'`]+)["']\s*\)/g;
+const LOAD_SHARE_LITERAL = /\bloadShare(?:Sync)?\s*\(\s*["']([^"'`]+)["']\s*\)/g;
+const REGISTER_REMOTES_NAME =
+  /\bregisterRemotes\s*\(\s*\[([\s\S]*?)\]\s*(?:,\s*\{[\s\S]*?\})?\s*\)/g;
+const REMOTE_NAME_IN_OBJECT = /\b(?:name|alias)\s*:\s*["']([^"'`]+)["']/g;
+
+/** Dynamic call with a non-literal first argument (variable, template, expression). */
+const UNRESOLVED_DYNAMIC_CALL =
+  /\b(import|loadRemote|loadShare(?:Sync)?|registerRemotes)\s*\(\s*(?!["'])/g;
+
+function recordSpecifier(map: Map<string, boolean>, specifier: string, dynamic: boolean): void {
+  map.set(specifier, Boolean(map.get(specifier)) || dynamic);
+}
+
+function scanSourceImports(source: string, file: string, scan: RawImportScan): void {
+  for (const match of source.matchAll(STATIC_IMPORT_PATTERN))
+    if (match[1]) recordSpecifier(scan.specifierDynamic, match[1], false);
+  for (const match of source.matchAll(DYNAMIC_IMPORT_LITERAL))
+    if (match[1]) recordSpecifier(scan.specifierDynamic, match[1], true);
+  for (const match of source.matchAll(REQUIRE_LITERAL))
+    if (match[1]) recordSpecifier(scan.specifierDynamic, match[1], true);
+  for (const match of source.matchAll(LOAD_REMOTE_LITERAL))
+    if (match[1]) {
+      recordSpecifier(scan.specifierDynamic, match[1], true);
+      scan.remoteSpecifiers.add(match[1]);
+    }
+  for (const match of source.matchAll(LOAD_SHARE_LITERAL))
+    if (match[1]) recordSpecifier(scan.specifierDynamic, match[1], true);
+
+  for (const match of source.matchAll(REGISTER_REMOTES_NAME)) {
+    const body = match[1] ?? "";
+    let foundName = false;
+    for (const nameMatch of body.matchAll(REMOTE_NAME_IN_OBJECT)) {
+      if (!nameMatch[1]) continue;
+      foundName = true;
+      recordSpecifier(scan.specifierDynamic, nameMatch[1], true);
+      scan.remoteSpecifiers.add(nameMatch[1]);
+    }
+    if (!foundName) scan.unresolvedDynamic.push({ api: "registerRemotes", file });
+  }
+
+  for (const match of source.matchAll(UNRESOLVED_DYNAMIC_CALL)) {
+    const apiRaw = match[1] ?? "import";
+    const api: UnresolvedDynamicApi =
+      apiRaw === "loadShareSync"
+        ? "loadShareSync"
+        : apiRaw === "loadShare"
+          ? "loadShare"
+          : apiRaw === "loadRemote"
+            ? "loadRemote"
+            : apiRaw === "registerRemotes"
+              ? "registerRemotes"
+              : "import";
+    const after = source.slice((match.index ?? 0) + match[0].length);
+    // Array-literal registerRemotes is handled by REGISTER_REMOTES_NAME above.
+    if (api === "registerRemotes" && /^\s*\[/.test(after)) continue;
+    scan.unresolvedDynamic.push({ api, file });
+  }
+}
+
+async function scanProjectImports(options: ResolvedDoctorOptions): Promise<RawImportScan> {
   const files = (
     await fg(options.include, {
       cwd: options.root,
@@ -61,26 +141,143 @@ async function collectImports(options: ResolvedDoctorOptions): Promise<ProjectFa
       followSymbolicLinks: false,
     })
   ).map(normalizePath);
-  const specifiers = new Set<string>();
-  const importPattern =
-    /(?:import|export)\s+(?:[\s\S]*?\sfrom\s*)?["']([^"'`]+)["']|import\s*\(\s*["']([^"'`]+)["']\s*\)|require\s*\(\s*["']([^"'`]+)["']\s*\)/g;
-  for (const file of files.sort()) {
-    const source = await fs.readFile(path.join(options.root, file), "utf8");
-    for (const match of source.matchAll(importPattern)) {
-      const specifier = match[1] ?? match[2] ?? match[3];
-      if (specifier) specifiers.add(specifier);
-    }
-  }
-  const sorted = [...specifiers].sort();
-  return {
+  const scan: RawImportScan = {
     sourceFiles: files.sort(),
-    specifiers: sorted,
-    packages: [
-      ...new Set(
-        sorted.filter((item) => !item.startsWith(".") && !item.startsWith("/")).map(packageName),
-      ),
-    ].sort(),
+    specifierDynamic: new Map(),
+    remoteSpecifiers: new Set(),
+    unresolvedDynamic: [],
   };
+  for (const file of scan.sourceFiles) {
+    const source = await fs.readFile(path.join(options.root, file), "utf8");
+    scanSourceImports(source, file, scan);
+  }
+  scan.unresolvedDynamic.sort((a, b) => a.file.localeCompare(b.file) || a.api.localeCompare(b.api));
+  return scan;
+}
+
+function finalizeImports(input: {
+  scan: RawImportScan;
+  remoteAliases: Set<string>;
+  manifestRemotes: string[];
+  runtimePackages: string[];
+  runtimeRemotes: string[];
+  evidenceSources: Set<ImportEvidenceSource>;
+}): ImportFacts {
+  const packages = new Set<string>();
+  const dynamicPackages = new Set<string>();
+  const remotes = new Set<string>(input.manifestRemotes);
+  const specifiers = [...input.scan.specifierDynamic.keys()].sort();
+
+  for (const specifier of input.scan.remoteSpecifiers) {
+    const name = packageName(specifier);
+    remotes.add(name);
+  }
+
+  for (const [specifier, dynamic] of input.scan.specifierDynamic) {
+    if (input.scan.remoteSpecifiers.has(specifier)) continue;
+    if (specifier.startsWith(".") || specifier.startsWith("/")) continue;
+    const name = packageName(specifier);
+    if (input.remoteAliases.has(name) || remotes.has(name)) {
+      remotes.add(name);
+      continue;
+    }
+    packages.add(name);
+    if (dynamic) dynamicPackages.add(name);
+  }
+
+  for (const name of input.runtimePackages) {
+    packages.add(name);
+    dynamicPackages.add(name);
+  }
+  for (const name of input.runtimeRemotes) remotes.add(name);
+
+  for (const name of Array.from(packages)) {
+    if (!input.remoteAliases.has(name)) continue;
+    packages.delete(name);
+    dynamicPackages.delete(name);
+    remotes.add(name);
+  }
+
+  const unresolvedDynamic = [
+    ...new Map(
+      input.scan.unresolvedDynamic.map((item) => [`${item.api}:${item.file}`, item] as const),
+    ).values(),
+  ].sort((a, b) => a.file.localeCompare(b.file) || a.api.localeCompare(b.api));
+
+  return {
+    sourceFiles: [...input.scan.sourceFiles].sort(),
+    specifiers,
+    packages: [...packages].sort(),
+    dynamicPackages: [...dynamicPackages].sort(),
+    remotes: [...remotes].sort(),
+    unresolvedDynamic,
+    evidenceSources: [...input.evidenceSources].sort(),
+  };
+}
+
+async function runtimeTraceHints(
+  runtimeTrace: string | undefined,
+): Promise<{ packages: string[]; remotes: string[]; used: boolean }> {
+  if (!runtimeTrace) return { packages: [], remotes: [], used: false };
+  try {
+    const parsed = JSON.parse(await fs.readFile(runtimeTrace, "utf8")) as unknown;
+    const reports = Array.isArray(parsed)
+      ? parsed
+      : parsed && typeof parsed === "object"
+        ? Array.isArray((parsed as { reports?: unknown }).reports)
+          ? (parsed as { reports: unknown[] }).reports
+          : (parsed as { report?: unknown }).report
+            ? [(parsed as { report: unknown }).report]
+            : [parsed]
+        : [];
+    const packages = new Set<string>();
+    const remotes = new Set<string>();
+    let sawTrace = false;
+    for (const item of reports) {
+      if (!item || typeof item !== "object") continue;
+      const report = item as Record<string, unknown>;
+      const shared =
+        report.shared && typeof report.shared === "object"
+          ? (report.shared as Record<string, unknown>)
+          : undefined;
+      const remote =
+        report.remote && typeof report.remote === "object"
+          ? (report.remote as Record<string, unknown>)
+          : undefined;
+      const sharedName =
+        (typeof shared?.package === "string" && shared.package) ||
+        (typeof shared?.name === "string" && shared.name) ||
+        (typeof shared?.pkg === "string" && shared.pkg) ||
+        (typeof shared?.shareKey === "string" && shared.shareKey) ||
+        undefined;
+      if (sharedName) {
+        packages.add(sharedName);
+        sawTrace = true;
+      }
+      if (typeof remote?.name === "string" && remote.name) {
+        remotes.add(remote.name);
+        sawTrace = true;
+      }
+      if (typeof remote?.alias === "string" && remote.alias) {
+        remotes.add(remote.alias);
+        sawTrace = true;
+      }
+      if (
+        typeof report.traceId === "string" ||
+        report.summary !== undefined ||
+        Array.isArray(report.events)
+      )
+        sawTrace = true;
+    }
+    return {
+      packages: [...packages].sort(),
+      remotes: [...remotes].sort(),
+      used: sawTrace,
+    };
+  } catch {
+    // Invalid/missing opt-in traces must not break offline check; partial-analysis covers gaps.
+    return { packages: [], remotes: [], used: false };
+  }
 }
 
 function manifestFrom(value: unknown, file: string): NonNullable<ArtifactFacts["manifest"]> {
@@ -366,7 +563,7 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     ...packageJson.devDependencies,
     ...packageJson.dependencies,
   };
-  const imports = await collectImports(options);
+  const scan = await scanProjectImports(options);
   const artifacts = await collectArtifacts(options.root);
   const normalizedMf =
     normalizeModuleFederation(options.moduleFederation) ??
@@ -376,7 +573,7 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     try {
       await fs.access(path.resolve(options.root, target));
       const safeNormalized = normalizePath(safeTarget);
-      if (!imports.sourceFiles.includes(safeNormalized)) imports.sourceFiles.push(safeNormalized);
+      if (!scan.sourceFiles.includes(safeNormalized)) scan.sourceFiles.push(safeNormalized);
     } catch {
       // Missing expose paths are reported from this collected absence.
     }
@@ -398,7 +595,31 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
       options.root,
       normalizedMf.vite.virtualModuleDir,
     );
-  imports.sourceFiles.sort();
+  scan.sourceFiles.sort();
+
+  const remoteAliases = new Set(
+    Object.entries(normalizedMf?.remotes ?? {}).flatMap(([alias, remote]) =>
+      [alias, remote.name, remote.alias].filter((value): value is string => Boolean(value)),
+    ),
+  );
+  const manifestRemotes = (artifacts.manifest?.remotes ?? [])
+    .flatMap((remote) => [remote.name, remote.alias])
+    .filter((value): value is string => Boolean(value));
+  const traceHints = await runtimeTraceHints(options.runtimeTrace);
+  const evidenceSources = new Set<ImportEvidenceSource>();
+  if (scan.sourceFiles.length > 0 || scan.specifierDynamic.size > 0) evidenceSources.add("source");
+  if (manifestRemotes.length > 0) evidenceSources.add("manifest");
+  if (traceHints.used) evidenceSources.add("runtime-trace");
+
+  const imports = finalizeImports({
+    scan,
+    remoteAliases,
+    manifestRemotes,
+    runtimePackages: traceHints.packages,
+    runtimeRemotes: traceHints.remotes,
+    evidenceSources,
+  });
+
   const installed = await installedVersions(options.root, declared);
   const bundlerPackage = {
     vite: "vite",

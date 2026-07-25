@@ -2,7 +2,9 @@
 
 - `adapters`: clean, warning, and error policy inputs for Vite, Rspack, and Rsbuild.
 - `diagnostics`: rule, redaction, ordering, and failure cases.
+- `dynamic-imports`: supported and unresolved dynamic MF import patterns (MFDOCTOR-105).
 - `manifests`: valid and malformed Module Federation artifacts.
+- `runtime-traces`: Observability-style exports for `mfdoctor runtime` correlation.
 - `workspaces`: portable project reports used by federation checks.
 
 Most fixtures are created in temporary directories by tests so generated output

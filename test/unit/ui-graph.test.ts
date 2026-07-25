@@ -20,7 +20,15 @@ function project(
     },
     moduleFederation: federation,
     dependencies: { declared: { react: "^18" }, installed: { react: "18.3.1" } },
-    imports: { sourceFiles: [], specifiers: [], packages: [] },
+    imports: {
+      sourceFiles: [],
+      specifiers: [],
+      packages: [],
+      dynamicPackages: [],
+      remotes: [],
+      unresolvedDynamic: [],
+      evidenceSources: [],
+    },
     artifacts: { emittedAssets: [] },
   };
 }

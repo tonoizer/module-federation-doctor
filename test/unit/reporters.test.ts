@@ -28,7 +28,15 @@ describe("reporters", () => {
         installedVersions: false,
       },
       dependencies: { declared: {}, installed: {} },
-      imports: { sourceFiles: [], specifiers: [], packages: [] },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
       artifacts: { emittedAssets: [] },
     } satisfies ProjectFacts;
     const report = {

@@ -48,7 +48,9 @@ and official sources.
 reports with Doctor project facts. Pass a JSON export (`exportReport`,
 `.mf/observability/latest.json`, or an array/`reports` wrapper). Project globs
 default to `.mf/doctor/**/project.json`. You can also set `runtimeTrace` in
-`mfdoctor.config` when the CLI path is omitted.
+`mfdoctor.config` when the CLI path is omitted. The same `runtimeTrace` option
+on bundler/`check` Doctor options merges shared and remote hints into import
+facts for dynamic-import recall without changing offline defaults when unset.
 
 Doctor never fetches URLs found in the trace and never executes remote
 JavaScript. Trace URLs are collapsed to origin plus basename, and token, cookie,
