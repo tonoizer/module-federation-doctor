@@ -29,8 +29,8 @@ import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild"
 pluginModuleFederationDoctor({ moduleFederation: mfOptions });
 
 // Webpack
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
-moduleFederationDoctorPlugin({ moduleFederation: mfOptions });
+import { ModuleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+ModuleFederationDoctorPlugin({ moduleFederation: mfOptions });
 ```
 
 5. Or run the smallest useful CLI check:

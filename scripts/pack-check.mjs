@@ -65,7 +65,8 @@ assert.equal(typeof api.probeManifest, "function");
 assert.equal(typeof vite.federationDoctor, "function");
 assert.equal(typeof rspack.moduleFederationDoctorPlugin, "function");
 assert.equal(typeof rsbuild.pluginModuleFederationDoctor, "function");
-assert.equal(typeof webpack.moduleFederationDoctorPlugin, "function");
+assert.equal(typeof webpack.ModuleFederationDoctorPlugin, "function");
+assert.equal(webpack.moduleFederationDoctorPlugin, webpack.ModuleFederationDoctorPlugin);
 assert.equal(typeof vite.default, "function");
 assert.equal(typeof rspack.default, "function");
 assert.equal(typeof rsbuild.default, "function");
@@ -102,8 +103,8 @@ export default defineConfig({ plugins: [pluginModuleFederationDoctor(${doctorOpt
   );
   await fs.writeFile(
     path.join(consumer, "webpack.config.mjs"),
-    `import { moduleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
-export default { mode: "production", entry: "./src/index.js", plugins: [moduleFederationDoctorPlugin(${doctorOptions})] };
+    `import { ModuleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+export default { mode: "production", entry: "./src/index.js", plugins: [ModuleFederationDoctorPlugin(${doctorOptions})] };
 `,
   );
   run("pnpm", ["install", "--ignore-scripts"], consumer);
