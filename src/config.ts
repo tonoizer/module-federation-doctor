@@ -1,7 +1,7 @@
 import path from "node:path";
 import { resolveBaselineOptions } from "./baseline.js";
 import { resolvePolicy } from "./policy.js";
-import type { DoctorOptions, ResolvedDoctorOptions } from "./types.js";
+import type { DoctorOptions, DoctorPrintLog, ResolvedDoctorOptions } from "./types.js";
 
 export const DEFAULT_INCLUDE = ["src/**/*.{ts,tsx,js,jsx,mts,mjs}"];
 export const DEFAULT_EXCLUDE = [
@@ -13,6 +13,33 @@ export const DEFAULT_EXCLUDE = [
 ];
 
 const CI_FALSEY = new Set(["", "0", "false", "no", "off"]);
+
+/**
+ * Resolve quiet-success for terminal output.
+ * Precedence: `MFDOCTOR_QUIET` env → explicit `quiet` / `printLog.success` → default quiet.
+ */
+export function resolveQuiet(
+  options: Pick<DoctorOptions, "quiet" | "printLog"> = {},
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const raw = env.MFDOCTOR_QUIET;
+  if (raw !== undefined) {
+    return !CI_FALSEY.has(raw.trim().toLowerCase());
+  }
+  if (options.quiet !== undefined) return options.quiet;
+  if (options.printLog?.success === true) return false;
+  return true;
+}
+
+export function resolvePrintLog(
+  options: Pick<DoctorOptions, "quiet" | "printLog"> = {},
+  env: NodeJS.ProcessEnv = process.env,
+): Required<DoctorPrintLog> {
+  const quiet = resolveQuiet(options, env);
+  return {
+    success: options.printLog?.success ?? !quiet,
+  };
+}
 
 type CiProviderCheck = { key: string; equals: string } | { key: string; truthy: true };
 
@@ -72,6 +99,8 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   const policy = await resolvePolicy(options.extends, root);
   // Local / CLI `rules` override pack and preset maps.
   const rules = { ...policy.rules, ...options.rules };
+  const printLog = resolvePrintLog(options);
+  const quiet = resolveQuiet(options);
   const resolved: ResolvedDoctorOptions = {
     bundler: options.bundler ?? "unknown",
     mode: ci ? "ci" : "development",
@@ -82,6 +111,8 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
         options.output?.formats ?? (ci ? ["terminal", "json", "sarif"] : ["terminal", "json"]),
     },
     failOn: options.failOn ?? (ci ? "error" : "never"),
+    quiet,
+    printLog,
     include: options.include ?? DEFAULT_INCLUDE,
     exclude: options.exclude ?? DEFAULT_EXCLUDE,
     rules,

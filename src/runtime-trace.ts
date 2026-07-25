@@ -480,6 +480,8 @@ export async function analyzeRuntime(options: {
   projectFiles: string[];
   outputDirectory?: string;
   formats?: OutputFormat[];
+  quiet?: boolean;
+  printLog?: { success?: boolean };
 }): Promise<RuntimeAnalysisResult> {
   const traces = await loadRuntimeTraceFile(options.tracePath);
   const projects = (
@@ -499,7 +501,10 @@ export async function analyzeRuntime(options: {
   const ui = buildUiPayload(projects, report);
   const formats = options.formats ?? [];
   if (options.outputDirectory && formats.length > 0)
-    await writeFederationReports(projects, report, options.outputDirectory, formats);
+    await writeFederationReports(projects, report, options.outputDirectory, formats, {
+      ...(options.quiet !== undefined ? { quiet: options.quiet } : {}),
+      ...(options.printLog !== undefined ? { printLog: options.printLog } : {}),
+    });
 
   return {
     traces,

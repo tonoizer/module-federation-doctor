@@ -393,6 +393,18 @@ export interface DoctorPolicyPack {
  */
 export type DoctorExtendEntry = DoctorPresetName | DoctorPolicyPack | DoctorRule | (string & {});
 
+/**
+ * Terminal print toggles (RS Doctor–style). Findings always print when the
+ * terminal format is enabled; success chatter is off by default.
+ */
+export interface DoctorPrintLog {
+  /**
+   * When true, print the green "no findings" line on a clean run.
+   * Default false — quiet success.
+   */
+  success?: boolean;
+}
+
 export interface DoctorOptions {
   moduleFederation?: ModuleFederationConfigLike;
   bundler?: BundlerName;
@@ -407,6 +419,14 @@ export interface DoctorOptions {
     formats?: OutputFormat[];
   };
   failOn?: "never" | "warning" | "error";
+  /**
+   * When true (default), skip terminal output on zero findings.
+   * Override with `printLog.success: true`, `quiet: false`, CLI `--verbose`,
+   * or `MFDOCTOR_QUIET=0`. Force quiet with `MFDOCTOR_QUIET=1`.
+   */
+  quiet?: boolean;
+  /** Fine-grained terminal print toggles. `printLog.success` implies not quiet. */
+  printLog?: DoctorPrintLog;
   /**
    * Fingerprint baseline for incremental CI adoption.
    * Pass a path string or `{ path, failOnSuppressed?, reportStale? }`.
@@ -438,6 +458,9 @@ export interface ResolvedDoctorOptions {
     formats: OutputFormat[];
   };
   failOn: "never" | "warning" | "error";
+  /** Resolved quiet-success gate for the terminal reporter. */
+  quiet: boolean;
+  printLog: Required<DoctorPrintLog>;
   baseline?: {
     path: string;
     failOnSuppressed: boolean;

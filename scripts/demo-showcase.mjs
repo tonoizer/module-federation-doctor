@@ -142,10 +142,10 @@ for (const item of cases) {
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
   const exitCode = result.status ?? 1;
   const hasExpectation = item.expectNoFindings
-    ? /no findings/i.test(output)
+    ? !output.includes("Module Federation Doctor") && !/\b(error|warning)\b/.test(output)
     : Boolean(item.ruleId && output.includes(item.ruleId));
   const ok = exitCode === item.expectedExit && hasExpectation;
-  const expectation = item.expectNoFindings ? "no findings" : item.ruleId;
+  const expectation = item.expectNoFindings ? "quiet success (no findings)" : item.ruleId;
   process.stdout.write(
     `${ok ? "ok" : "FAIL"} ${label} → ${expectation} (exit ${exitCode}, expected ${item.expectedExit})\n`,
   );

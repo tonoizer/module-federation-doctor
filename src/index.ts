@@ -1,5 +1,12 @@
 export { analyze, analyzeFederation } from "./engine.js";
-export { resolveOptions, isCiEnvironment, DEFAULT_EXCLUDE, DEFAULT_INCLUDE } from "./config.js";
+export {
+  resolveOptions,
+  resolveQuiet,
+  resolvePrintLog,
+  isCiEnvironment,
+  DEFAULT_EXCLUDE,
+  DEFAULT_INCLUDE,
+} from "./config.js";
 export {
   applyBaseline,
   entryMatchesFinding,
@@ -56,6 +63,7 @@ export type {
   DoctorOptions,
   DoctorPolicyPack,
   DoctorPresetName,
+  DoctorPrintLog,
   DoctorReport,
   DoctorRule,
   DoctorUiPayload,

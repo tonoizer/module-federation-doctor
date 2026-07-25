@@ -98,6 +98,11 @@ reliable emit/manifest from that app, and Doctor does not parse
 **producer artifacts** that emit `mf-manifest.json`, not to “we inferred the
 whole runtime-only host.”
 
+Doctor analysis and the terminal findings showcase run **only post-emit /
+after-build** (`writeBundle` / `afterEmit` / `onAfterBuild`). Adapters never
+register `transform` / `load` / client-injection hooks
+([#54](https://github.com/tonoizer/module-federation-doctor/issues/54)).
+
 Do **not** ship Doctor into the browser to close that gap. Prefer Observability
 exports + `mfdoctor runtime`, or add a bundler MF plugin + Doctor adapter. See
 [setup](./setup.md).
