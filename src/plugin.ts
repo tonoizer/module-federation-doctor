@@ -1,7 +1,8 @@
-import { createUnplugin } from "unplugin";
+import { createUnplugin, type UnpluginOptions } from "unplugin";
 import fg from "fast-glob";
-import { analyzeBuild } from "./engine.js";
+import { analyze, analyzeBuild } from "./engine.js";
 import type { AnalysisResult, BundlerName, DoctorOptions } from "./types.js";
+import { detectViteLifecycle, withPostEmitHook, type ViteHookMeta } from "./vite-lifecycle.js";
 
 /**
  * Fail only after every finding has already been collected and reported.
@@ -57,9 +58,71 @@ function attachCompilationAfterEmit(compiler: CompilerLike, configured: DoctorOp
   });
 }
 
+async function listViteEmittedAssets(root: string): Promise<string[]> {
+  return fg(["dist/**/*", "build/**/*"], {
+    cwd: root,
+    onlyFiles: true,
+  });
+}
+
+/**
+ * Vite / Rolldown / Vite Plus post-emit path.
+ *
+ * Prefer on-disk assets over the in-memory `bundle` object — Rolldown does not
+ * share that object across hooks the way Rollup does. When Rolldown/Vite Plus
+ * has not finished writing on `writeBundle`, defer to `closeBundle`. If emit
+ * facts are still missing, analyze without claiming `emittedAssets` so
+ * `doctor/partial-analysis` stays honest.
+ */
+function createViteFamilyHooks(configured: DoctorOptions) {
+  let analyzed = false;
+
+  const run = async (
+    hook: "writeBundle" | "closeBundle",
+    meta: ViteHookMeta | undefined,
+  ): Promise<void> => {
+    if (analyzed) return;
+    const root = configured.root ?? process.cwd();
+    const detected = configured.viteLifecycle ?? (await detectViteLifecycle(root, meta));
+    const lifecycle = withPostEmitHook(detected, hook);
+    configured.viteLifecycle = lifecycle;
+
+    const emittedAssets = await listViteEmittedAssets(root);
+    // Rolldown can finish disk writes after writeBundle; wait for closeBundle.
+    if (hook === "writeBundle" && emittedAssets.length === 0 && lifecycle.engine === "rolldown") {
+      return;
+    }
+
+    analyzed = true;
+    if (emittedAssets.length === 0 && lifecycle.engine === "rolldown") {
+      // Honest gap: config/imports only; do not claim emit coverage.
+      const result = await analyze(configured);
+      failAfterCollect(result);
+      return;
+    }
+
+    const result = await analyzeBuild(configured, emittedAssets);
+    failAfterCollect(result);
+  };
+
+  return {
+    async writeBundle(this: void) {
+      // Runtime plugin context may expose public Rolldown/Vite meta on `this`.
+      const meta = (this as unknown as { meta?: ViteHookMeta } | undefined)?.meta;
+      await run("writeBundle", meta);
+    },
+    async closeBundle(this: void) {
+      const meta = (this as unknown as { meta?: ViteHookMeta } | undefined)?.meta;
+      await run("closeBundle", meta);
+    },
+  } as Pick<UnpluginOptions, "writeBundle"> & {
+    closeBundle: NonNullable<UnpluginOptions["writeBundle"]>;
+  };
+}
+
 /**
  * Build/CI-only invariant (#32 / #54): adapters may hook post-emit surfaces only
- * (`writeBundle` / `afterEmit` / `onAfterBuild`). Never register
+ * (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild`). Never register
  * `transform` / `load` / `banner` (or similar) hooks that inject Doctor into
  * client assets. Findings print once via the shared terminal reporter at the
  * end of analysis — adapters must not re-emit per-finding bundler logs (#46).
@@ -85,20 +148,7 @@ function createDoctorPlugin(bundler: BundlerName) {
     return {
       name: "module-federation-doctor",
       enforce: "post",
-      ...(bundler === "vite"
-        ? {
-            async writeBundle() {
-              const root = configured.root ?? process.cwd();
-              const emittedAssets = await fg(["dist/**/*", "build/**/*"], {
-                cwd: root,
-                onlyFiles: true,
-              });
-              // analyzeBuild prints the findings block once; preserve severity via failOn.
-              const result = await analyzeBuild(configured, emittedAssets);
-              failAfterCollect(result);
-            },
-          }
-        : {}),
+      ...(bundler === "vite" ? createViteFamilyHooks(configured) : {}),
       ...(bundler === "rspack"
         ? {
             rspack(compiler) {

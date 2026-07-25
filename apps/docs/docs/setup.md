@@ -8,7 +8,7 @@ Explicit options give Doctor the safest and most complete input — including MF
 Supported / partial / unsupported cells (bundlers, Node, package managers,
 report surfaces) are listed in the [compatibility matrix](./compatibility.md).
 
-Doctor runs **only after emit** (`writeBundle` / `afterEmit` /
+Doctor runs **only after emit** (`writeBundle` / `closeBundle` / `afterEmit` /
 `onAfterBuild`), prints **one** findings block to the terminal when there are
 findings, then fails the build only after every finding is collected when CI
 policy requires it. Clean runs stay quiet by default (no "no findings" noise).
@@ -60,6 +60,10 @@ export default {
   plugins: [federation(mfOptions), federationDoctor({ moduleFederation: mfOptions })],
 };
 ```
+
+The same `@module-federation/doctor/vite` entry covers classic Vite,
+Rolldown-integrated Vite (`rolldown-vite` / Vite 8+), and Vite Plus. See
+[Vite integration](./vite-integration.md#rolldown-and-vite-plus).
 
 ## Rspack
 

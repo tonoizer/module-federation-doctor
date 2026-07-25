@@ -1,6 +1,16 @@
 import { viteDoctor } from "./plugin.js";
 
-/** Vite plugin — register next to `federation` from `@module-federation/vite`. */
+/**
+ * Vite-family Doctor plugin — register next to `federation` from
+ * `@module-federation/vite`.
+ *
+ * Supported entry path for classic Vite, Rolldown-integrated Vite
+ * (`rolldown-vite` / Vite 8+), and Vite Plus (`vite-plus` /
+ * `@voidzero-dev/vite-plus-core`). Doctor detects the emit engine and records
+ * lifecycle capabilities; use the same `mfOptions` object as the MF plugin.
+ *
+ * Direct Rolldown without `@module-federation/vite` is unsupported.
+ */
 export const federationDoctor = viteDoctor.vite;
 
 /** @deprecated Use `federationDoctor`. */

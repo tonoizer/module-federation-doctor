@@ -29,7 +29,21 @@
       "properties": {
         "name": { "enum": ["vite", "rspack", "rsbuild", "webpack", "unknown"] },
         "version": { "type": "string" },
-        "mode": { "type": "string" }
+        "mode": { "type": "string" },
+        "lifecycle": {
+          "type": "object",
+          "required": ["flavor", "engine", "evidence"],
+          "properties": {
+            "flavor": { "enum": ["vite", "rolldown-vite", "vite-plus"] },
+            "engine": { "enum": ["rollup", "rolldown"] },
+            "postEmitHook": { "enum": ["writeBundle", "closeBundle"] },
+            "evidence": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     },

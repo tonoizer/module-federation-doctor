@@ -1,7 +1,7 @@
 {
   "name": "@module-federation/doctor",
   "version": "0.1.0",
-  "description": "Module Federation diagnostics for Vite, Rspack, Rsbuild, and Webpack",
+  "description": "Module Federation diagnostics for Vite, Rolldown/Vite Plus, Rspack, Rsbuild, and Webpack",
   "type": "module",
   "bin": {
     "mfdoctor": "dist/cli.js"
