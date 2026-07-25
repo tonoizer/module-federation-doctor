@@ -29,6 +29,32 @@ describe("CLI arguments", () => {
     });
   });
 
+  it("parses baseline flags and subcommands", () => {
+    expect(parseArgs(["check", "--baseline", "./mfdoctor.baseline.json"])).toEqual({
+      command: "check",
+      patterns: [],
+      ci: false,
+      baseline: "./mfdoctor.baseline.json",
+    });
+    expect(
+      parseArgs([
+        "baseline",
+        "generate",
+        ".mf/doctor/report.json",
+        "--out",
+        "mfdoctor.baseline.json",
+      ]),
+    ).toEqual({
+      command: "baseline",
+      baselineAction: "generate",
+      patterns: [],
+      ci: false,
+      reportPath: ".mf/doctor/report.json",
+      outPath: "mfdoctor.baseline.json",
+    });
+    expect(() => parseArgs(["baseline"])).toThrow("baseline needs a subcommand");
+  });
+
   it("parses federation globs", () => {
     expect(parseArgs(["federation", ".mf/doctor/**/project.json"])).toEqual({
       command: "federation",
@@ -115,6 +141,25 @@ describe("CLI arguments", () => {
       'export default { moduleFederation: { name: "" }, output: { formats: [] }, rules: { "doctor/partial-analysis": "off", "config/plugin-package-mismatch": "off" } };',
     );
     await expect(main(["check", root, "--ci"])).resolves.toBe(1);
+  });
+
+  it("generates a baseline and lets CI check pass when baselined", async () => {
+    const root = await temporaryProject(
+      'export default { moduleFederation: { name: "" }, output: { formats: ["json"] }, rules: { "doctor/partial-analysis": "off", "config/plugin-package-mismatch": "off" } };',
+    );
+    await expect(main(["check", root, "--ci"])).resolves.toBe(1);
+    const reportPath = path.join(root, ".mf/doctor/report.json");
+    const baselinePath = path.join(root, "mfdoctor.baseline.json");
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      await expect(main(["baseline", "generate", reportPath, "--out", baselinePath])).resolves.toBe(
+        0,
+      );
+    } finally {
+      process.chdir(cwd);
+    }
+    await expect(main(["check", root, "--ci", "--baseline", baselinePath])).resolves.toBe(0);
   });
 
   it("returns exit 2 for invalid config", async () => {

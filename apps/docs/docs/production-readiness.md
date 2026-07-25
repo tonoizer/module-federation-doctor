@@ -60,6 +60,10 @@ Use `mfdoctor federation ".mf/doctor/**/project.json"` after every application
 has produced `project.json`. This is where name collisions, version/scope
 conflicts, missing providers, and external-runtime provider gaps become visible.
 
+For incremental adoption, check in a
+[fingerprint baseline](./baselines.md) so known debt stays visible in reports
+without failing the gate. Baselines are debt — prune them as findings are fixed.
+
 Doctor stays offline by default. It records normalized config and artifact
 metadata, not source bodies, secrets, or live remote responses.
 

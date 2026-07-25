@@ -15,7 +15,6 @@ Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1
 | Compatibility matrix for v1 bundlers and runtimes | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) (`MFDOCTOR-106`) |
 | One-shot workspace federation gate for CI         | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) (`MFDOCTOR-109`) |
 | Shareable policy packs and named presets          | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) (`MFDOCTOR-110`) |
-| Fingerprint baselines and suppressions            | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) (`MFDOCTOR-111`) |
 
 Dynamic Module Federation import patterns are covered at the documented
 [completeness bar](./capabilities.md#dynamic-import-completeness-v1): supported

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { resolveBaselineOptions } from "./baseline.js";
 import type { DoctorOptions, ResolvedDoctorOptions } from "./types.js";
 
 export const DEFAULT_INCLUDE = ["src/**/*.{ts,tsx,js,jsx,mts,mjs}"];
@@ -72,6 +73,8 @@ export function resolveOptions(options: DoctorOptions = {}): ResolvedDoctorOptio
     rules: options.rules ?? {},
     extends: options.extends ?? [],
   };
+  const baseline = resolveBaselineOptions(options.baseline, root);
+  if (baseline) resolved.baseline = baseline;
   if (options.moduleFederation !== undefined) resolved.moduleFederation = options.moduleFederation;
   if (options.bundlerVersion !== undefined) resolved.bundlerVersion = options.bundlerVersion;
   if (options.runtimeTrace !== undefined)

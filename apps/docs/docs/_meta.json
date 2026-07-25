@@ -20,6 +20,11 @@
   },
   {
     "type": "file",
+    "name": "baselines",
+    "label": "Fingerprint baselines"
+  },
+  {
+    "type": "file",
     "name": "mixed-example",
     "label": "Mixed example"
   },
