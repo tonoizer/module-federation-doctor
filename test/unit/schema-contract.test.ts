@@ -6,8 +6,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   SCHEMA_CONTRACTS,
   assertPackageExportsMatchSchemas,
+  runSchemaContractChecks,
   validatePayload,
-} from "../../scripts/schema-contract.mjs";
+} from "../helpers/schema-contract.js";
 import { generateBaseline } from "../../src/baseline.js";
 import { probeManifest } from "../../src/probe.js";
 import { writeReports } from "../../src/reporters.js";
@@ -74,7 +75,7 @@ async function serve(handler: RequestListener): Promise<string> {
 
 describe("published schema contracts", () => {
   it("keeps package exports, titles, and required fields aligned with shipped schemas", async () => {
-    await assertPackageExportsMatchSchemas();
+    await runSchemaContractChecks();
     expect(SCHEMA_CONTRACTS.map((contract) => contract.file)).toEqual([
       "project.schema.json",
       "report.schema.json",
@@ -89,13 +90,14 @@ describe("published schema contracts", () => {
   });
 
   it("validates showcase and fixture project.json artifacts", async () => {
+    await assertPackageExportsMatchSchemas();
     const files = [
       "examples/showcase/federation/version-conflict/host.project.json",
       "examples/showcase/runtime/green/host.project.json",
       "fixtures/workspaces/clean/host/.mf/doctor/project.json",
     ];
     for (const relativePath of files) {
-      const payload = JSON.parse(await fs.readFile(path.resolve(relativePath), "utf8"));
+      const payload: unknown = JSON.parse(await fs.readFile(path.resolve(relativePath), "utf8"));
       await validatePayload("project.schema.json", payload, relativePath);
     }
   });
@@ -118,7 +120,9 @@ describe("published schema contracts", () => {
     ];
     const report = reportFromFindings([facts], findings);
     await writeReports(facts, report, output, ["json"]);
-    const written = JSON.parse(await fs.readFile(path.join(output, "report.json"), "utf8"));
+    const written: unknown = JSON.parse(
+      await fs.readFile(path.join(output, "report.json"), "utf8"),
+    );
     await validatePayload("report.schema.json", written, "report.json");
     await validatePayload("project.schema.json", facts, "facts");
   });

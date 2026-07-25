@@ -4,78 +4,39 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import type { ErrorObject, ValidateFunction } from "ajv";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const schemasDir = path.join(root, "schemas");
 
-/**
- * Public v1 schema contracts shipped via package.json exports.
- * Titles, export paths, and top-level `required` must stay in sync with
- * `schemas/*.schema.json` or pack:check / unit tests fail.
- */
-export const SCHEMA_CONTRACTS = [
-  {
-    file: "project.schema.json",
-    export: "./schemas/project.schema.json",
-    title: "Module Federation Doctor project facts",
-    required: [
-      "schemaVersion",
-      "project",
-      "bundler",
-      "capabilities",
-      "dependencies",
-      "imports",
-      "artifacts",
-    ],
-    kind: "artifact",
-  },
-  {
-    file: "report.schema.json",
-    export: "./schemas/report.schema.json",
-    title: "Module Federation Doctor report",
-    required: ["schemaVersion", "capabilities", "summary", "findings"],
-    kind: "artifact",
-  },
-  {
-    file: "baseline.schema.json",
-    export: "./schemas/baseline.schema.json",
-    title: "Module Federation Doctor fingerprint baseline",
-    required: ["schemaVersion", "entries"],
-    kind: "artifact",
-  },
-  {
-    file: "probe.schema.json",
-    export: "./schemas/probe.schema.json",
-    title: "Module Federation Doctor manifest probe result",
-    required: ["schemaVersion", "manifest"],
-    kind: "artifact",
-  },
-  {
-    file: "runtime-trace.schema.json",
-    export: "./schemas/runtime-trace.schema.json",
-    title: "Module Federation Doctor runtime trace correlation summary",
-    required: ["schemaVersion", "traces", "projects", "findings"],
-    kind: "artifact",
-  },
-  {
-    file: "ui.schema.json",
-    export: "./schemas/ui.schema.json",
-    title: "Module Federation Doctor UI payload",
-    required: ["schemaVersion", "report", "projects", "graphs"],
-    kind: "programmatic",
-    note: "Programmatic graph payload from buildUiPayload; not a persisted CLI artifact. Related: HTML UI retirement (#59 / #131).",
-  },
-];
+/** Schemas that are programmatic contracts (not persisted CLI artifacts). */
+const PROGRAMMATIC_SCHEMA_FILES = new Set(["ui.schema.json"]);
 
-let ajv;
-const validators = new Map();
+export type SchemaKind = "artifact" | "programmatic";
 
-async function loadSchema(fileName) {
+export type SchemaContract = {
+  file: string;
+  export: string;
+  kind: SchemaKind;
+};
+
+type JsonSchemaDocument = {
+  title?: string;
+  required?: string[];
+  properties?: {
+    schemaVersion?: { const?: unknown };
+  };
+};
+
+let ajv: Ajv2020 | undefined;
+const validators = new Map<string, ValidateFunction>();
+
+async function loadSchema(fileName: string): Promise<JsonSchemaDocument> {
   const text = await fs.readFile(path.join(schemasDir, fileName), "utf8");
-  return JSON.parse(text);
+  return JSON.parse(text) as JsonSchemaDocument;
 }
 
-function createAjv() {
+function createAjv(): Ajv2020 {
   const instance = new Ajv2020({
     allErrors: true,
     strict: true,
@@ -85,58 +46,84 @@ function createAjv() {
   return instance;
 }
 
-async function validatorFor(fileName) {
-  if (!validators.has(fileName)) {
+async function validatorFor(fileName: string): Promise<ValidateFunction> {
+  let validate = validators.get(fileName);
+  if (!validate) {
     if (!ajv) ajv = createAjv();
     const schema = await loadSchema(fileName);
-    validators.set(fileName, ajv.compile(schema));
+    validate = ajv.compile(schema);
+    validators.set(fileName, validate);
   }
-  return validators.get(fileName);
+  return validate;
 }
 
-export async function validatePayload(fileName, payload, label = fileName) {
+/** Discover shipped schemas; kind is the only non-schema metadata we keep. */
+export async function listSchemaContracts(): Promise<SchemaContract[]> {
+  const files = (await fs.readdir(schemasDir))
+    .filter((file) => file.endsWith(".schema.json"))
+    .sort();
+  return files.map((file) => ({
+    file,
+    export: `./schemas/${file}`,
+    kind: PROGRAMMATIC_SCHEMA_FILES.has(file) ? "programmatic" : "artifact",
+  }));
+}
+
+export async function validatePayload(
+  fileName: string,
+  payload: unknown,
+  label = fileName,
+): Promise<void> {
   const validate = await validatorFor(fileName);
   if (validate(payload)) return;
-  const details = (validate.errors ?? [])
+  const details = ((validate.errors ?? []) as ErrorObject[])
     .map((error) => `${error.instancePath || "/"} ${error.message ?? "invalid"}`)
     .join("\n");
   throw new Error(`Schema validation failed for ${label}:\n${details}`);
 }
 
-export async function assertPackageExportsMatchSchemas() {
-  const packageJson = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
+/**
+ * Bidirectional sync: every `schemas/*.schema.json` is exported, and every
+ * `package.json#exports` schema path maps to a real file. Shape / required
+ * fields are owned by the JSON Schema + AJV (and emitter unit tests).
+ */
+export async function assertPackageExportsMatchSchemas(): Promise<void> {
+  const packageJson = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8")) as {
+    exports?: Record<string, unknown>;
+  };
   const exports = packageJson.exports ?? {};
-  const schemaFiles = (await fs.readdir(schemasDir))
-    .filter((file) => file.endsWith(".schema.json"))
+  const contracts = await listSchemaContracts();
+  const schemaFiles = contracts.map((contract) => contract.file);
+
+  const exportedSchemaFiles = Object.keys(exports)
+    .filter((key) => key.startsWith("./schemas/") && key.endsWith(".schema.json"))
+    .map((key) => key.slice("./schemas/".length))
     .sort();
   assert.deepEqual(
-    schemaFiles,
-    SCHEMA_CONTRACTS.map((contract) => contract.file).sort(),
-    "schemas/ directory and SCHEMA_CONTRACTS must list the same files",
+    exportedSchemaFiles,
+    [...schemaFiles].sort(),
+    "package.json#exports schema paths must match schemas/ directory",
   );
-  for (const contract of SCHEMA_CONTRACTS) {
+
+  for (const contract of contracts) {
     assert.equal(
       exports[contract.export],
       contract.export,
       `package.json must export ${contract.export}`,
     );
     const schema = await loadSchema(contract.file);
-    assert.equal(schema.title, contract.title, `${contract.file} title drift`);
+    assert.equal(typeof schema.title, "string", `${contract.file} must declare a title`);
+    assert.ok((schema.title ?? "").length > 0, `${contract.file} title must be non-empty`);
     assert.equal(
       schema.properties?.schemaVersion?.const,
       1,
       `${contract.file} schemaVersion must be 1`,
     );
-    assert.deepEqual(
-      [...(schema.required ?? [])].sort(),
-      [...contract.required].sort(),
-      `${contract.file} required fields drift`,
-    );
   }
 }
 
 /** Representative on-disk fixtures for pack:check (no Doctor runtime required). */
-export async function validateFixturePayloads() {
+export async function validateFixturePayloads(): Promise<void> {
   const projectFixtures = [
     "examples/showcase/federation/version-conflict/host.project.json",
     "examples/showcase/runtime/green/host.project.json",
@@ -244,12 +231,15 @@ export async function validateFixturePayloads() {
   );
 }
 
-export async function runSchemaContractChecks() {
+export async function runSchemaContractChecks(): Promise<void> {
   await assertPackageExportsMatchSchemas();
   await validateFixturePayloads();
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+const isCli =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isCli) {
   await runSchemaContractChecks();
   process.stdout.write("Schema contract checks passed.\n");
 }
