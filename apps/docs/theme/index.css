@@ -1,0 +1,20 @@
+:root {
+  /* Adapted from Module Federation docs brand, tuned for Doctor tooling blues */
+  --rp-c-brand: #175cd3;
+  --rp-c-brand-dark: #175cd3;
+  --rp-c-brand-darker: #108cb9;
+  --rp-c-brand-light: #79b8ff;
+  --rp-c-brand-lighter: #79b8ff;
+  --rp-c-brand-tint: rgba(23, 92, 211, 0.14);
+  --rp-custom-block-info-bg: rgba(23, 92, 211, 0.06);
+  --rp-custom-block-info-border: rgba(16, 140, 185, 0.45);
+}
+
+.dark {
+  --rp-c-brand: #79b8ff;
+  --rp-c-brand-dark: #79b8ff;
+  --rp-c-brand-darker: #108cb9;
+  --rp-c-brand-light: #79b8ff;
+  --rp-c-brand-lighter: #b6d8ff;
+  --rp-c-brand-tint: rgba(121, 184, 255, 0.16);
+}

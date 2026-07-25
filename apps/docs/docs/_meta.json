@@ -1,0 +1,134 @@
+[
+  {
+    "type": "section-header",
+    "label": "Start"
+  },
+  {
+    "type": "file",
+    "name": "index",
+    "label": "Introduction"
+  },
+  {
+    "type": "file",
+    "name": "setup",
+    "label": "Setup"
+  },
+  {
+    "type": "file",
+    "name": "cli",
+    "label": "CLI and CI"
+  },
+  {
+    "type": "file",
+    "name": "mixed-example",
+    "label": "Mixed example"
+  },
+  {
+    "type": "file",
+    "name": "showcase",
+    "label": "Finding showcase"
+  },
+  {
+    "type": "divider"
+  },
+  {
+    "type": "section-header",
+    "label": "Reference"
+  },
+  {
+    "type": "dir",
+    "name": "rules",
+    "label": "Rules",
+    "collapsible": true,
+    "collapsed": true
+  },
+  {
+    "type": "file",
+    "name": "custom-rules",
+    "label": "Custom rules"
+  },
+  {
+    "type": "file",
+    "name": "report-schemas",
+    "label": "Report schemas"
+  },
+  {
+    "type": "divider"
+  },
+  {
+    "type": "section-header",
+    "label": "Guides"
+  },
+  {
+    "type": "file",
+    "name": "production-readiness",
+    "label": "Production readiness"
+  },
+  {
+    "type": "file",
+    "name": "configuration-audit",
+    "label": "Configuration audit"
+  },
+  {
+    "type": "file",
+    "name": "performance",
+    "label": "Performance"
+  },
+  {
+    "type": "file",
+    "name": "runtime-manifests",
+    "label": "Runtime and manifests"
+  },
+  {
+    "type": "file",
+    "name": "vite-integration",
+    "label": "Vite integration"
+  },
+  {
+    "type": "file",
+    "name": "ui-and-docs",
+    "label": "UI and docs design"
+  },
+  {
+    "type": "file",
+    "name": "monorepos",
+    "label": "Monorepos"
+  },
+  {
+    "type": "file",
+    "name": "security",
+    "label": "Security and privacy"
+  },
+  {
+    "type": "file",
+    "name": "capabilities",
+    "label": "Capabilities"
+  },
+  {
+    "type": "file",
+    "name": "limitations",
+    "label": "Limitations"
+  },
+  {
+    "type": "divider"
+  },
+  {
+    "type": "section-header",
+    "label": "Project"
+  },
+  {
+    "type": "file",
+    "name": "contributing",
+    "label": "Contributing"
+  },
+  {
+    "type": "file",
+    "name": "releasing",
+    "label": "Releasing"
+  },
+  {
+    "type": "file",
+    "name": "inspiration",
+    "label": "Inspiration"
+  }
+]

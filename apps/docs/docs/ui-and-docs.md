@@ -1,5 +1,10 @@
 # UI and documentation design
 
+The docs site runs on Rspress 2 (`@rspress/core`), matching the Module
+Federation website stack. Branding reuses the official federation mark with a
+Doctor diagnostic accent (`docs/public/doctor-*.svg`) plus a generated tooling
+icon for hero and social surfaces.
+
 Vitest provides useful design ideas, but Doctor has a different job.
 
 ## What Doctor adopts

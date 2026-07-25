@@ -1,10 +1,28 @@
-# Module Federation Doctor
+---
+pageType: home
 
-Module Federation Doctor finds config, shared dependency, and emitted artifact
-problems in Vite, Rspack, and Rsbuild projects. It runs locally, produces stable
-machine-readable reports, and stays offline by default. The separate `probe`
-command uses the network only when you ask it to inspect a deployed manifest.
+hero:
+  name: Module Federation Doctor
+  text: Diagnostics for federation projects
+  tagline: Offline-first checks for Vite, Rspack, and Rsbuild. Stable machine-readable reports for local builds and CI.
+  actions:
+    - theme: brand
+      text: Get started
+      link: /setup
+    - theme: alt
+      text: Rule reference
+      link: /rules/
+  image:
+    src: /doctor-tooling-icon.png
+    alt: Module Federation Doctor icon
 
-Start with [adapter setup](./setup.md), then add the [CI command](./cli.md).
-Use the [production audit](./production-readiness.md) to choose config,
-performance, runtime, and deployment checks.
+features:
+  - title: Config and shared checks
+    details: Catch name, expose, remote, shared, and plugin mismatches before they ship.
+  - title: Artifact evidence
+    details: Validate manifests, remote entries, types, and emitted Doctor project facts from real builds.
+  - title: Offline by default
+    details: Local analysis stays offline. Use probe only when you intentionally inspect a deployed manifest.
+  - title: CI-ready reports
+    details: Terminal, JSON, SARIF, and portable HTML output you can attach to pull requests.
+---
