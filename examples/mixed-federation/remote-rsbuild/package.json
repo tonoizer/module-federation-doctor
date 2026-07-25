@@ -11,13 +11,13 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@module-federation/doctor": "workspace:*",
     "@module-federation/rsbuild-plugin": "2.8.0",
     "@mfdoctor-example/shared-ui": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@module-federation/doctor": "workspace:*",
     "@rsbuild/core": "2.1.8",
     "@rsbuild/plugin-react": "2.1.0",
     "@types/react": "19.2.17",
