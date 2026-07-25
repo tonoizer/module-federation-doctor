@@ -7,11 +7,6 @@ const cli = path.join(root, "dist/cli.js");
 
 const cases = [
   {
-    dir: "examples/showcase/name-required",
-    ruleId: "config/name-required",
-    expectedExit: 1,
-  },
-  {
     dir: "examples/showcase/expose-key-invalid",
     ruleId: "config/expose-key-invalid",
     expectedExit: 1,

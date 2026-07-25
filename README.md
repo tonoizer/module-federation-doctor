@@ -70,8 +70,9 @@ Examples:
 
 - `examples/mixed-federation` — healthy Vite + Rspack + Rsbuild e2e path
 - `examples/showcase` — intentional misconfigs; run `pnpm demo:showcase` to see
-  `config/name-required`, `config/expose-key-invalid`, and
-  `shared/eager-without-singleton`
+  `config/expose-key-invalid` and `shared/eager-without-singleton` (rules that
+  duplicate hard plugin failures, such as `config/name-required`, stay in the
+  catalog without a showcase fixture)
 
 The repo also includes an original Codex skill at
 `.codex/skills/mfdoctor/SKILL.md` for repeatable diagnosis work.
