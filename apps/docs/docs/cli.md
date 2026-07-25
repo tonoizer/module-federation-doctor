@@ -125,7 +125,9 @@ Safety defaults:
 - HTTPS is required, except HTTP on localhost.
 - The manifest timeout is 10 seconds. Change it with `--timeout 5000`.
 - The manifest size limit is 2 MiB. Change it with `--max-bytes 1000000`.
-- Redirects are checked and limited to five.
+- Redirects are re-validated each hop and limited to five.
+- Private, link-local, loopback, and cloud-metadata hosts are blocked unless
+  the probe API sets `allowPrivateNetworks`.
 - URLs with embedded user names or passwords are rejected.
 
 An unreachable target or invalid response exits 2. A reachable remote entry

@@ -1,12 +1,21 @@
+import { isIP } from "node:net";
+
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
+const METADATA_HOSTNAMES = new Set(["metadata.google.internal", "metadata.goog"]);
 
 export interface ProbeOptions {
   timeoutMs?: number;
   maxBytes?: number;
   remoteEntry?: boolean;
+  /** Allow private, link-local, metadata, and loopback targets (off by default). */
+  allowPrivateNetworks?: boolean;
   fetch?: typeof globalThis.fetch;
+}
+
+interface ProbeUrlOptions {
+  allowPrivateNetworks?: boolean;
 }
 
 export interface ManifestProbeResult {
@@ -38,17 +47,79 @@ export class ProbeError extends Error {
   }
 }
 
-function safeUrl(value: string): URL {
+function unbracketHostname(hostname: string): string {
+  return hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
+}
+
+function isRestrictedIPv4(a: number, b: number): boolean {
+  if (a === 10) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 127) return true;
+  if (a === 0) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true;
+  return false;
+}
+
+function ipv4Octets(host: string): [number, number] | undefined {
+  const parts = host.split(".");
+  if (parts.length !== 4) return undefined;
+  const a = Number(parts[0]);
+  const b = Number(parts[1]);
+  if (!Number.isInteger(a) || !Number.isInteger(b)) return undefined;
+  return [a, b];
+}
+
+function isRestrictedIPv6(host: string): boolean {
+  const lower = host.toLowerCase();
+  if (lower === "::1") return true;
+  if (lower.startsWith("fe80:")) return true;
+  if (lower.startsWith("fc") || lower.startsWith("fd")) return true;
+  if (lower.startsWith("::ffff:")) {
+    const mapped = lower.slice("::ffff:".length);
+    if (isIP(mapped) === 4) {
+      const octets = ipv4Octets(mapped);
+      return octets ? isRestrictedIPv4(octets[0], octets[1]) : false;
+    }
+  }
+  return false;
+}
+
+function isRestrictedNetworkHost(hostname: string): boolean {
+  const lower = hostname.toLowerCase();
+  if (METADATA_HOSTNAMES.has(lower) || lower === "localhost") return true;
+  const host = unbracketHostname(lower);
+  const version = isIP(host);
+  if (version === 4) {
+    const octets = ipv4Octets(host);
+    return octets ? isRestrictedIPv4(octets[0], octets[1]) : false;
+  }
+  if (version === 6) return isRestrictedIPv6(host);
+  return false;
+}
+
+function assertProbeUrlAllowed(url: URL, options: ProbeUrlOptions): void {
+  if (url.username || url.password)
+    throw new ProbeError("URLs with embedded credentials are not allowed.");
+  const loopbackHttp = url.protocol === "http:" && isLoopback(url.hostname);
+  if (url.protocol !== "https:" && !loopbackHttp)
+    throw new ProbeError("Only HTTPS URLs are allowed. HTTP is allowed only for localhost.");
+  if (options.allowPrivateNetworks || loopbackHttp) return;
+  if (isRestrictedNetworkHost(url.hostname))
+    throw new ProbeError(
+      "URLs targeting private, link-local, metadata, or loopback networks are not allowed.",
+    );
+}
+
+function safeUrl(value: string, options: ProbeUrlOptions = {}): URL {
   let url: URL;
   try {
     url = new URL(value);
   } catch {
     throw new ProbeError(`Invalid URL: ${value}`);
   }
-  if (url.username || url.password)
-    throw new ProbeError("URLs with embedded credentials are not allowed.");
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && isLoopback(url.hostname)))
-    throw new ProbeError("Only HTTPS URLs are allowed. HTTP is allowed only for localhost.");
+  assertProbeUrlAllowed(url, options);
   return url;
 }
 
@@ -69,6 +140,7 @@ async function guardedFetch(
   initialUrl: URL,
   init: RequestInit,
   fetcher: typeof globalThis.fetch,
+  urlOptions: ProbeUrlOptions = {},
 ): Promise<{ response: Response; url: URL }> {
   let url = initialUrl;
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
@@ -77,7 +149,7 @@ async function guardedFetch(
     const location = response.headers.get("location");
     if (!location) throw new ProbeError(`Redirect from ${publicUrl(url)} has no Location header.`);
     if (redirects === MAX_REDIRECTS) throw new ProbeError("Too many redirects.");
-    url = safeUrl(new URL(location, url).href);
+    url = safeUrl(new URL(location, url).href, urlOptions);
   }
   throw new ProbeError("Too many redirects.");
 }
@@ -167,14 +239,19 @@ export async function probeManifest(
     throw new ProbeError("maxBytes must be an integer from 1 to 20971520.");
 
   const fetcher = options.fetch ?? globalThis.fetch;
+  const urlOptions: ProbeUrlOptions =
+    options.allowPrivateNetworks === undefined
+      ? {}
+      : { allowPrivateNetworks: options.allowPrivateNetworks };
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const initial = safeUrl(value);
+    const initial = safeUrl(value, urlOptions);
     const { response, url } = await guardedFetch(
       initial,
       { headers: { accept: "application/json" }, signal: controller.signal },
       fetcher,
+      urlOptions,
     );
     if (!response.ok) throw new ProbeError(`Manifest request failed with HTTP ${response.status}.`);
     const bytes = await readBounded(response, maxBytes);
@@ -204,11 +281,12 @@ export async function probeManifest(
     };
 
     if (options.remoteEntry && summary.remoteEntry) {
-      const remoteUrl = safeUrl(summary.remoteEntry);
+      const remoteUrl = safeUrl(summary.remoteEntry, urlOptions);
       const remote = await guardedFetch(
         remoteUrl,
         { method: "HEAD", signal: controller.signal },
         fetcher,
+        urlOptions,
       );
       result.remoteEntry = {
         url: publicUrl(remote.url),

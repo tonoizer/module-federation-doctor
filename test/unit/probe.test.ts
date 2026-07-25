@@ -95,4 +95,125 @@ describe("manifest probe", () => {
     });
     await expect(probeManifest(`${origin}/manifest.json`)).rejects.toBeInstanceOf(ProbeError);
   });
+
+  it("rejects redirect chains that land on private or metadata hosts", async () => {
+    const requests: string[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      const href = String(input);
+      requests.push(href);
+      if (href === "https://cdn.example.com/mf-manifest.json") {
+        return new Response(null, {
+          status: 302,
+          headers: { location: "https://safe.example.com/step" },
+        });
+      }
+      if (href === "https://safe.example.com/step") {
+        return new Response(null, {
+          status: 302,
+          headers: { location: "https://169.254.169.254/latest/meta-data/" },
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    };
+
+    await expect(
+      probeManifest("https://cdn.example.com/mf-manifest.json", { fetch: fetchImpl }),
+    ).rejects.toThrow(/private, link-local, metadata, or loopback/);
+    expect(requests).toEqual([
+      "https://cdn.example.com/mf-manifest.json",
+      "https://safe.example.com/step",
+    ]);
+  });
+
+  it("rejects redirects to cloud metadata hostnames", async () => {
+    const fetchImpl: typeof fetch = async (input) => {
+      if (String(input) === "https://cdn.example.com/mf-manifest.json") {
+        return new Response(null, {
+          status: 301,
+          headers: { location: "https://metadata.google.internal/computeMetadata/v1/" },
+        });
+      }
+      throw new Error(`unexpected fetch: ${String(input)}`);
+    };
+
+    await expect(
+      probeManifest("https://cdn.example.com/mf-manifest.json", { fetch: fetchImpl }),
+    ).rejects.toThrow(/private, link-local, metadata, or loopback/);
+  });
+
+  it("allows private redirect targets only when explicitly opted in", async () => {
+    const body = JSON.stringify({
+      id: "checkout",
+      name: "checkout",
+      exposes: [],
+      shared: [],
+      remotes: [],
+    });
+    const fetchImpl: typeof fetch = async (input) => {
+      const href = String(input);
+      if (href === "https://cdn.example.com/mf-manifest.json") {
+        return new Response(null, {
+          status: 302,
+          headers: { location: "https://10.0.0.8/mf-manifest.json" },
+        });
+      }
+      if (href === "https://10.0.0.8/mf-manifest.json") {
+        return new Response(body, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    };
+
+    await expect(
+      probeManifest("https://cdn.example.com/mf-manifest.json", { fetch: fetchImpl }),
+    ).rejects.toThrow(/private, link-local, metadata, or loopback/);
+
+    const result = await probeManifest("https://cdn.example.com/mf-manifest.json", {
+      fetch: fetchImpl,
+      allowPrivateNetworks: true,
+    });
+    expect(result.manifest).toMatchObject({
+      url: "https://10.0.0.8/mf-manifest.json",
+      status: 200,
+      name: "checkout",
+    });
+  });
+
+  it("follows a safe HTTPS redirect chain within the hop limit", async () => {
+    const body = JSON.stringify({
+      id: "checkout",
+      name: "checkout",
+      exposes: [{ name: "./Cart" }],
+      shared: [],
+      remotes: [],
+    });
+    const fetchImpl: typeof fetch = async (input) => {
+      const href = String(input);
+      if (href === "https://cdn.example.com/mf-manifest.json") {
+        return new Response(null, {
+          status: 302,
+          headers: { location: "/v2/mf-manifest.json" },
+        });
+      }
+      if (href === "https://cdn.example.com/v2/mf-manifest.json") {
+        return new Response(body, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    };
+
+    const result = await probeManifest("https://cdn.example.com/mf-manifest.json", {
+      fetch: fetchImpl,
+    });
+    expect(result.manifest).toMatchObject({
+      url: "https://cdn.example.com/v2/mf-manifest.json",
+      status: 200,
+      name: "checkout",
+      exposes: 1,
+    });
+  });
 });
