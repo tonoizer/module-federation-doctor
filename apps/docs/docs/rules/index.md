@@ -62,6 +62,7 @@ Rule pages are generated from package metadata. Each page explains the issue, im
 
 | Rule | Severity | What it protects |
 | --- | --- | --- |
+| [`performance/asset-budget`](./performance/asset-budget.md) | warning | Federation assets that exceed project budgets slow startup and transfer more bytes than planned. |
 | [`performance/version-first-startup`](./performance/version-first-startup.md) | info | `version-first` loads all remote entries during initialization, adding startup work. |
 | [`performance/vite-bundle-all-css`](./performance/vite-bundle-all-css.md) | warning | Vite attaches all bundle CSS to every expose, which can duplicate transfer and style work. |
 | [`shared/candidate`](./shared/candidate.md) | warning | A stateful framework dependency may be bundled separately by host and remote. |

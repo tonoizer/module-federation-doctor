@@ -1,4 +1,5 @@
 import semver from "semver";
+import { lookupAssetSize, sumAssetSizes } from "./collect.js";
 import { ruleGuidance } from "./rule-guidance.js";
 import type {
   DoctorRule,
@@ -56,9 +57,18 @@ function optionBoolean(options: Record<string, unknown>, key: string): boolean |
   return typeof options[key] === "boolean" ? options[key] : undefined;
 }
 
+function optionBytes(options: Record<string, unknown>, key: string, fallback: number): number {
+  const value = options[key];
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
 function scopeList(value: string | string[] | undefined): string[] {
   return value === undefined ? ["default"] : Array.isArray(value) ? value : [value];
 }
+
+const DEFAULT_REMOTE_ENTRY_MAX_BYTES = 524_288;
+const DEFAULT_SHARED_MAX_BYTES = 524_288;
+const DEFAULT_EXPOSE_MAX_BYTES = 358_400;
 
 export const builtInRules: DoctorRule[] = [
   createRule("config/name-required", "error", (context) => {
@@ -349,6 +359,73 @@ export const builtInRules: DoctorRule[] = [
         { remoteCount: Object.keys(config.remotes).length, threshold },
         "Consider `loaded-first` when on-demand loading matters more than highest-version selection.",
       );
+  }),
+  createRule("performance/asset-budget", "warning", (context) => {
+    const manifest = context.facts.artifacts.manifest;
+    const sizes = context.facts.artifacts.assetSizes;
+    if (!manifest?.valid || !sizes || Object.keys(sizes).length === 0) return;
+
+    const remoteEntryMax = optionBytes(
+      context.options,
+      "remoteEntryMaxBytes",
+      DEFAULT_REMOTE_ENTRY_MAX_BYTES,
+    );
+    const sharedMax = optionBytes(context.options, "sharedMaxBytes", DEFAULT_SHARED_MAX_BYTES);
+    const exposeMax = optionBytes(context.options, "exposeMaxBytes", DEFAULT_EXPOSE_MAX_BYTES);
+    const suggestion =
+      "Reduce the oversized assets or raise the matching `remoteEntryMaxBytes`, `sharedMaxBytes`, or `exposeMaxBytes` rule option.";
+
+    if (manifest.remoteEntry?.name) {
+      const assets = [manifest.remoteEntry.name];
+      const bytes = lookupAssetSize(sizes, manifest.remoteEntry.name);
+      if (bytes !== undefined && bytes > remoteEntryMax)
+        report(
+          context,
+          `Remote entry exceeds the ${remoteEntryMax} byte budget (${bytes} bytes).`,
+          {
+            class: "remoteEntry",
+            target: manifest.remoteEntry.name,
+            bytes,
+            maxBytes: remoteEntryMax,
+            assets,
+          },
+          suggestion,
+        );
+    }
+
+    for (const shared of manifest.shared) {
+      const bytes = sumAssetSizes(sizes, shared.assets);
+      if (bytes === undefined || bytes <= sharedMax) continue;
+      report(
+        context,
+        `Shared package "${shared.name}" exceeds the ${sharedMax} byte budget (${bytes} bytes).`,
+        {
+          class: "shared",
+          target: shared.name,
+          bytes,
+          maxBytes: sharedMax,
+          assets: shared.assets,
+        },
+        suggestion,
+      );
+    }
+
+    for (const expose of manifest.exposes) {
+      const bytes = sumAssetSizes(sizes, expose.assets);
+      if (bytes === undefined || bytes <= exposeMax) continue;
+      report(
+        context,
+        `Expose "${expose.key}" exceeds the ${exposeMax} byte budget (${bytes} bytes).`,
+        {
+          class: "expose",
+          target: expose.key,
+          bytes,
+          maxBytes: exposeMax,
+          assets: expose.assets,
+        },
+        suggestion,
+      );
+    }
   }),
   createRule("reliability/version-first-offline-remotes", "warning", (context) => {
     const config = mf(context);

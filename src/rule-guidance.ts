@@ -167,6 +167,13 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Use `loaded-first` when on-demand loading is more important than highest-version selection.",
     sources: ["https://module-federation.io/configure/shareStrategy.html"],
   },
+  "performance/asset-budget": {
+    category: "performance",
+    impact:
+      "Federation assets that exceed project budgets slow startup and transfer more bytes than planned.",
+    fix: 'Reduce the oversized entry, expose, or shared assets, or raise `rules["performance/asset-budget"]` byte limits.',
+    sources: [manifest, "https://module-federation.io/configure/shareStrategy.html"],
+  },
   "reliability/version-first-offline-remotes": {
     category: "reliability",
     impact: "An unavailable remote can break startup before its exposed module is requested.",
