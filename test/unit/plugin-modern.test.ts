@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   appendModuleFederationDoctor,
   pluginModuleFederationDoctor,
@@ -91,5 +91,21 @@ describe("modern.js adapter", () => {
     // Public Rspack entry factory — escape hatch must not invent a private plugin.
     expect(typeof moduleFederationDoctorPlugin).toBe("function");
     expect(registered[0]?.[1]).toMatchObject({ apply: expect.any(Function) });
+  });
+
+  it("warns when modifyBundlerChain is missing instead of silently no-oping", async () => {
+    const plugin = pluginModuleFederationDoctor({
+      moduleFederation: { name: "modern_fixture" },
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await plugin.setup({
+        getAppContext: () => ({ bundlerType: "rspack", appDirectory: "/tmp/mfdoctor-modern" }),
+      });
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0]?.[0])).toContain("modifyBundlerChain is missing");
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

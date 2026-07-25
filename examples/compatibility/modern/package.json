@@ -8,8 +8,7 @@
     "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\""
   },
   "dependencies": {
-    "@module-federation/enhanced": "2.8.0",
-    "@module-federation/modern-js": "2.8.0"
+    "@module-federation/enhanced": "2.8.0"
   },
   "devDependencies": {
     "@module-federation/doctor": "workspace:*",

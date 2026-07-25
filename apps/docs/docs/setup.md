@@ -42,10 +42,12 @@ already exports those variables.
 | Direct Rspack (`@rspack/core`) | `@module-federation/doctor/rspack`  | First-class; do **not** replace with the Modern.js entry                               |
 | Rsbuild                        | `@module-federation/doctor/rsbuild` | `onAfterBuild`                                                                         |
 | Webpack                        | `@module-federation/doctor/webpack` | `@module-federation/enhanced/webpack`                                                  |
-| Modern.js (`modern.config.*`)  | `@module-federation/doctor/modern`  | Composes the same post-emit hook via `modifyBundlerChain`; records `bundler: "modern"` |
+| Modern.js (`modern.config.*`)  | `@module-federation/doctor/modern`  | **partial** — composes post-emit via `modifyBundlerChain`; records `bundler: "modern"` |
 
 Modern.js builds on Rspack (or Webpack). The Modern.js adapter is a convenience
-for `modern.config` — it does **not** deprecate direct Rspack coverage.
+for `modern.config` — it does **not** deprecate direct Rspack coverage. Matrix
+status is **partial** until CI runs a real `@modern-js/app-tools` build (today’s
+smoke stubs `modifyBundlerChain` on Rspack).
 
 ## Terminal output knobs
 

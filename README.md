@@ -65,7 +65,7 @@ plugins: [
 ];
 ```
 
-**Modern.js** (composes the same post-emit hook; does not hide `/rspack`)
+**Modern.js** (**partial** — adapter + Rspack-under-the-hood smoke; does not hide `/rspack`)
 
 ```ts
 import { moduleFederationPlugin } from "@module-federation/modern-js";

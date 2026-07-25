@@ -25,6 +25,8 @@ const doctor = pluginModuleFederationDoctor({
   rules: {
     // Smoke focuses on adapter wiring, not DTS generation.
     "artifact/types-missing": "off",
+    // Simulated smoke uses enhanced/rspack under the hood (not @module-federation/modern-js).
+    "config/plugin-package-mismatch": "off",
   },
 });
 await doctor.setup({

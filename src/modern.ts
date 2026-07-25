@@ -62,7 +62,13 @@ export function pluginModuleFederationDoctor(options: DoctorOptions = {}): Moder
         ...(root ? { root } : {}),
         bundler: "modern",
       };
-      api.modifyBundlerChain?.((chain) => {
+      if (typeof api.modifyBundlerChain !== "function") {
+        console.warn(
+          "[@module-federation/doctor/modern] api.modifyBundlerChain is missing; Doctor was not registered. Use a Modern.js App Tools plugin API, or call appendModuleFederationDoctor / @module-federation/doctor/rspack from tools.bundlerChain.",
+        );
+        return;
+      }
+      api.modifyBundlerChain((chain) => {
         chain.plugin("module-federation-doctor").use(createAfterEmitPlugin(configured));
       });
     },
