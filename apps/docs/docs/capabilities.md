@@ -1,20 +1,26 @@
 # Capability matrix
 
-| Capability                             | Vite                                                            | Rspack            | Rsbuild               |
-| -------------------------------------- | --------------------------------------------------------------- | ----------------- | --------------------- |
-| Explicit MF config                     | Yes                                                             | Yes               | Yes                   |
-| Static imports                         | Yes                                                             | Yes               | Yes                   |
-| Supported dynamic patterns (see below) | Yes                                                             | Yes               | Yes                   |
-| Manifest and stats                     | Yes                                                             | Yes               | Yes                   |
-| Emitted assets                         | Rollup-compatible hooks                                         | Compilation hooks | Rspack when available |
-| Opt-in runtime traces                  | Correlated when `runtimeTrace` / `mfdoctor runtime` is supplied | Same              | Same                  |
-| Cross-project checks                   | Yes                                                             | Yes               | Yes                   |
+Analysis depth per supported bundler. For supported / partial / pending /
+unsupported **product** cells (Node, package managers, report surfaces, Webpack
+gate), see the [compatibility matrix](./compatibility.md).
+
+| Capability                             | Vite                                                            | Rspack            | Rsbuild               | Webpack                                                                         |
+| -------------------------------------- | --------------------------------------------------------------- | ----------------- | --------------------- | ------------------------------------------------------------------------------- |
+| Explicit MF config                     | Yes                                                             | Yes               | Yes                   | Pending ([#10](https://github.com/tonoizer/module-federation-doctor/issues/10)) |
+| Static imports                         | Yes                                                             | Yes               | Yes                   | Pending                                                                         |
+| Supported dynamic patterns (see below) | Yes                                                             | Yes               | Yes                   | Pending                                                                         |
+| Manifest and stats                     | Yes                                                             | Yes               | Yes                   | Pending                                                                         |
+| Emitted assets                         | Rollup-compatible hooks                                         | Compilation hooks | Rspack when available | Pending                                                                         |
+| Opt-in runtime traces                  | Correlated when `runtimeTrace` / `mfdoctor runtime` is supplied | Same              | Same                  | Pending                                                                         |
+| Cross-project checks                   | Yes                                                             | Yes               | Yes                   | Pending                                                                         |
 
 Rules consult recorded capabilities. Missing optional input creates
 `doctor/partial-analysis` instead of pretending full analysis happened.
 Adapters must not scrape private Module Federation plugin fields to invent
 coverage — see
 [permanent guarantees / non-goals](./limitations.md#permanent-guarantees--non-goals).
+Webpack is listed as Pending until the adapter lands on `main`; do not claim
+those cells as Yes without CI evidence.
 
 ## Dynamic-import completeness (v1)
 

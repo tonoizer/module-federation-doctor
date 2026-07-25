@@ -101,7 +101,10 @@ privacy notes, current limits, and the upstream research behind the checks.
 
 ## Development
 
-Requires Node `>=22.12.0` and pnpm 11.
+Requires Node `>=22.12.0` and pnpm 11 (primary). See the
+[compatibility matrix](./apps/docs/docs/compatibility.md) for supported /
+partial / pending cells (Vite, Rspack, Rsbuild; Webpack pending on #10; npm /
+yarn consumer notes; terminal / JSON / SARIF on CI).
 
 ```bash
 pnpm install --frozen-lockfile

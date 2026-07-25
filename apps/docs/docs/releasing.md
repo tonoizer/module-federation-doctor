@@ -27,6 +27,17 @@ tags such as `1.2.3` (never `v1.2.3`).
 5. Push the version commit without a tag.
 6. Create a GitHub release whose tag exactly matches `package.json`.
 
+## Compatibility matrix and release blockers
+
+Before claiming a bundler or runtime cell in release notes, confirm the
+[compatibility matrix](./compatibility.md) status and the `compatibility`
+workflow. Supported Vite / Rspack / Rsbuild cells failing on Node 22 or 24, or
+missing terminal / JSON / SARIF artifacts on the CI path, **block** release.
+Webpack remains **pending** until
+[#10](https://github.com/tonoizer/module-federation-doctor/issues/10) lands —
+that pending cell does not block other supported cells, but you must not claim
+Webpack support without adapter + CI evidence on `main`.
+
 ## Stable and prerelease
 
 A normal GitHub release publishes with npm tag `latest`. A prerelease publishes

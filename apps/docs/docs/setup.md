@@ -5,6 +5,11 @@ Keep one `mfOptions` object and pass it to both Module Federation and Doctor.
 Explicit options give Doctor the safest and most complete input — including MF
 `runtimePlugins`, which Doctor analyzes from that config at build time.
 
+Supported / partial / pending cells (bundlers, Node, package managers, report
+surfaces) are listed in the [compatibility matrix](./compatibility.md). Webpack
+is **pending** until
+[#10](https://github.com/tonoizer/module-federation-doctor/issues/10) lands.
+
 Doctor runs after emit (`writeBundle` / `afterEmit` / `onAfterBuild`), prints
 findings to the terminal (and bundler logs), then fails the build only after
 every finding is collected when CI policy requires it. Adapters must not inject

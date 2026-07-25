@@ -9,13 +9,18 @@ Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1
 
 ## v1.0 (governance-ready)
 
-| Gap                                               | Issue                                                                                  |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Webpack adapter and compatibility matrix          | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) (`MFDOCTOR-101`) |
-| Compatibility matrix for v1 bundlers and runtimes | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) (`MFDOCTOR-106`) |
-| One-shot workspace federation gate for CI         | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) (`MFDOCTOR-109`) |
-| Shareable policy packs and named presets          | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) (`MFDOCTOR-110`) |
-| Fingerprint baselines and suppressions            | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) (`MFDOCTOR-111`) |
+| Gap                                       | Issue                                                                                  |
+| ----------------------------------------- | -------------------------------------------------------------------------------------- |
+| Webpack adapter                           | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) (`MFDOCTOR-101`) |
+| One-shot workspace federation gate for CI | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) (`MFDOCTOR-109`) |
+| Shareable policy packs and named presets  | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) (`MFDOCTOR-110`) |
+| Fingerprint baselines and suppressions    | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) (`MFDOCTOR-111`) |
+
+The v1 [compatibility matrix](./compatibility.md) for Vite / Rspack / Rsbuild,
+Node engines, package managers, and report surfaces has shipped
+([#15](https://github.com/tonoizer/module-federation-doctor/issues/15),
+`MFDOCTOR-106`). Webpack remains **pending** on that page until [#10](https://github.com/tonoizer/module-federation-doctor/issues/10)
+lands — other cells are not blocked.
 
 Dynamic Module Federation import patterns are covered at the documented
 [completeness bar](./capabilities.md#dynamic-import-completeness-v1): supported
