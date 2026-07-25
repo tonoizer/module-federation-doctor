@@ -39,8 +39,20 @@ Doctor does not ship an HTML dashboard. Use terminal, JSON, and SARIF reports.
 | Rolldown and Vite Plus lifecycle coverage        | [#11](https://github.com/tonoizer/module-federation-doctor/issues/11) (`MFDOCTOR-102`) |
 | Modern.js adapter (without hiding direct Rspack) | [#12](https://github.com/tonoizer/module-federation-doctor/issues/12) (`MFDOCTOR-103`) |
 
-## Permanent guarantee
+## Permanent guarantees / non-goals
 
 Doctor does not rely on undocumented private Module Federation plugin fields.
 That is a stability non-goal, not removable follow-up work. See
 [#18](https://github.com/tonoizer/module-federation-doctor/issues/18).
+
+Doctor is **build/CI-only**. Install it as a `devDependency`. Adapters run after
+emit in Node and must not appear in the client bundle
+([#32](https://github.com/tonoizer/module-federation-doctor/issues/32)). An
+in-browser Doctor runtime agent is **not planned**
+([#33](https://github.com/tonoizer/module-federation-doctor/issues/33)).
+
+**Runtime-only** Module Federation apps (runtime / `createInstance` without a
+bundler MF build plugin) are **out of scope** for first-class support
+([#34](https://github.com/tonoizer/module-federation-doctor/issues/34)). MF
+`runtimePlugins` listed in bundler MF config **are** analyzed at build time when
+you pass those options into the Doctor adapter.

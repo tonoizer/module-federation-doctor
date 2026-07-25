@@ -28,6 +28,8 @@ Close the matching GitHub issue and drop the row from
 | `MFDOCTOR-109` | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) | One-shot workspace federation gate for CI           |
 | `MFDOCTOR-110` | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) | Shareable policy packs and named presets            |
 | `MFDOCTOR-111` | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) | Fingerprint baselines and suppressions              |
+| `MFDOCTOR-115` | [#32](https://github.com/tonoizer/module-federation-doctor/issues/32) | Build-time only / never in client bundle            |
+| `MFDOCTOR-117` | [#34](https://github.com/tonoizer/module-federation-doctor/issues/34) | Runtime-only MF (no bundler plugin) out of scope    |
 | —              | [#18](https://github.com/tonoizer/module-federation-doctor/issues/18) | Document permanent non-goal (private MF fields)     |
 | `MFDOCTOR-112` | [#28](https://github.com/tonoizer/module-federation-doctor/issues/28) | First public npm publish _(after product items)_    |
 | `MFDOCTOR-113` | [#29](https://github.com/tonoizer/module-federation-doctor/issues/29) | Propose Doctor to official MF org _(after publish)_ |
@@ -43,5 +45,11 @@ Close the matching GitHub issue and drop the row from
 (HTML analysis UI) was closed as not planned — Doctor does not ship an HTML
 dashboard.
 
-Permanent non-goal: no undocumented private Module Federation plugin fields —
-[#18](https://github.com/tonoizer/module-federation-doctor/issues/18).
+`MFDOCTOR-116` / [#33](https://github.com/tonoizer/module-federation-doctor/issues/33)
+(in-browser Doctor runtime agent) was closed as not planned — Doctor stays
+build/CI-only and must not add bundle size or runtime cost.
+
+Permanent non-goals: no undocumented private Module Federation plugin fields
+([#18](https://github.com/tonoizer/module-federation-doctor/issues/18));
+build-time-only Doctor
+([#32](https://github.com/tonoizer/module-federation-doctor/issues/32)).
