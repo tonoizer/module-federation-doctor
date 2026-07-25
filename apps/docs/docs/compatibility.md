@@ -19,14 +19,14 @@ Related: [capabilities](./capabilities.md) ·
 
 ## Bundlers
 
-| Bundler              | Status                    | Adapter entry                       | CI evidence                                                | Notes                                                                 |
-| -------------------- | ------------------------- | ----------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------- |
-| Vite                 | **supported**             | `@module-federation/doctor/vite`    | `compatibility` workflow → `host-vite` build + Doctor      | Primary host path in `examples/mixed-federation`                      |
-| Rolldown / Vite Plus | **supported**             | `@module-federation/doctor/vite`    | unit lifecycle hooks + honest `doctor/partial-analysis`    | Same Vite entry; Rolldown/`vite-plus` detected and recorded (#11)     |
-| Rspack               | **supported**             | `@module-federation/doctor/rspack`  | `compatibility` workflow → `remote-rspack` build + Doctor  | Direct `@module-federation/enhanced/rspack`                           |
-| Rsbuild              | **supported**             | `@module-federation/doctor/rsbuild` | `compatibility` workflow → `remote-rsbuild` build + Doctor | `@module-federation/rsbuild-plugin`                                   |
-| Webpack              | **supported**             | `@module-federation/doctor/webpack` | `compatibility` workflow → `webpack-smoke` build + Doctor  | `@module-federation/enhanced/webpack` (#10 shipped)                   |
-| Modern.js            | **unsupported** (post-v1) | —                                   | —                                                          | [#12](https://github.com/tonoizer/module-federation-doctor/issues/12) |
+| Bundler              | Status                    | Adapter entry                       | CI evidence                                                | Notes                                                                                           |
+| -------------------- | ------------------------- | ----------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Vite                 | **supported**             | `@module-federation/doctor/vite`    | `compatibility` workflow → `host-vite` build + Doctor      | Primary host path in `examples/mixed-federation`                                                |
+| Rolldown / Vite Plus | **partial**               | `@module-federation/doctor/vite`    | unit lifecycle hooks + honest `doctor/partial-analysis`    | Same Vite entry; usable with gaps until a real Rolldown/Vite Plus smoke build lands in CI (#11) |
+| Rspack               | **supported**             | `@module-federation/doctor/rspack`  | `compatibility` workflow → `remote-rspack` build + Doctor  | Direct `@module-federation/enhanced/rspack`                                                     |
+| Rsbuild              | **supported**             | `@module-federation/doctor/rsbuild` | `compatibility` workflow → `remote-rsbuild` build + Doctor | `@module-federation/rsbuild-plugin`                                                             |
+| Webpack              | **supported**             | `@module-federation/doctor/webpack` | `compatibility` workflow → `webpack-smoke` build + Doctor  | `@module-federation/enhanced/webpack` (#10 shipped)                                             |
+| Modern.js            | **unsupported** (post-v1) | —                                   | —                                                          | [#12](https://github.com/tonoizer/module-federation-doctor/issues/12)                           |
 
 Runtime-only Module Federation (no bundler MF **build** plugin) is
 **unsupported** as a first-class path — see
@@ -104,7 +104,9 @@ Reds that **do not** block other cells:
    pnpm.
 2. Expected `doctor/partial-analysis` warnings on partial analysis paths —
    honest gaps, not matrix failures.
-3. post-v1 adapters (Modern.js) — out of scope for v1 close.
+3. Rolldown / Vite Plus — documented **partial** (unit lifecycle coverage only;
+   no release claim until a real smoke build is in `compatibility.yml`).
+4. post-v1 adapters (Modern.js) — out of scope for v1 close.
 
 ## CI map
 

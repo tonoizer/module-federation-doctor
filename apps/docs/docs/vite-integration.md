@@ -15,9 +15,12 @@ import { federationDoctor } from "@module-federation/doctor/vite";
 
 | Flavor                    | How Doctor detects it                                                           | Emit engine |
 | ------------------------- | ------------------------------------------------------------------------------- | ----------- |
-| Classic Vite              | Default when no Rolldown / Vite Plus markers                                    | `rollup`    |
-| `rolldown-vite` / Vite 8+ | Declared `rolldown-vite` / `rolldown`, or public `meta.rolldownVersion`         | `rolldown`  |
+| Classic Vite              | Default when no strong Rolldown / Vite Plus markers                             | `rollup`    |
+| `rolldown-vite` / Vite 8+ | Declared `rolldown-vite`, `vite→rolldown-vite` alias, or `meta.rolldownVersion` | `rolldown`  |
 | Vite Plus                 | `vite-plus` / `@voidzero-dev/vite-plus-core` (including `vite` alias overrides) | `rolldown`  |
+
+Bare `rolldown` in `package.json` is weak evidence only (common in monorepo
+tooling roots) and does **not** reclassify classic Vite by itself.
 
 Doctor records `bundler.lifecycle` (`flavor`, `engine`, `postEmitHook`,
 `evidence`) on `project.json`. Emit analysis prefers **on-disk** `dist/**` /

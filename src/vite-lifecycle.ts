@@ -80,6 +80,11 @@ function engineFromMeta(meta: ViteHookMeta | undefined): ViteLifecycleEngine | u
 /**
  * Detect which Vite-family emit lifecycle the project uses.
  *
+ * Strong Rolldown signals only: `rolldown-vite`, Vite Plus packages,
+ * `vite→…` alias resolution, or public `meta.rolldownVersion`. Bare
+ * `rolldown` alone is weak evidence (common in monorepo tooling roots) and
+ * must not reclassify classic Vite.
+ *
  * Supported MF entry path for all flavors: `@module-federation/doctor/vite`
  * next to `@module-federation/vite`. Direct Rolldown without the Vite MF
  * plugin is unsupported (Rolldown dropped built-in MF).
@@ -127,7 +132,7 @@ export async function detectViteLifecycle(
   if (vitePlus.length > 0 || resolvedVite === "@voidzero-dev/vite-plus-core") {
     flavor = "vite-plus";
     engine = "rolldown";
-  } else if (rolldownVite.length > 0 || metaEngine === "rolldown" || rolldown.length > 0) {
+  } else if (rolldownVite.length > 0 || metaEngine === "rolldown") {
     flavor = "rolldown-vite";
     engine = "rolldown";
   } else if (metaEngine === "rollup") {

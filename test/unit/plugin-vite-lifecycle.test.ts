@@ -96,6 +96,14 @@ describe("detectViteLifecycle", () => {
     expect(lifecycle.flavor).toBe("rolldown-vite");
     expect(lifecycle.evidence).toContain("meta.rolldownVersion");
   });
+
+  it("treats bare rolldown as weak evidence without reclassifying classic Vite", async () => {
+    const root = await makeRoot({ vite: "5.4.0", rolldown: "1.0.0" });
+    const lifecycle = await detectViteLifecycle(root);
+    expect(lifecycle.flavor).toBe("vite");
+    expect(lifecycle.engine).toBe("rollup");
+    expect(lifecycle.evidence).toEqual(["rolldown"]);
+  });
 });
 
 describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
@@ -145,7 +153,7 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
   });
 
   it("defers empty Rolldown writeBundle to closeBundle", async () => {
-    const root = await makeRoot({ rolldown: "1.0.0" });
+    const root = await makeRoot({ "rolldown-vite": "7.0.0" });
     const raw = viteDoctor.raw(doctorOptions(root), {
       framework: "vite",
       versions: { unplugin: "3.3.0" },

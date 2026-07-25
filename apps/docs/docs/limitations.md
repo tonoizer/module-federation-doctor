@@ -1,8 +1,10 @@
 # Limitations
 
-MVP supports Vite (including Rolldown-integrated Vite and Vite Plus), direct
-Rspack, Rsbuild, and Webpack. Gaps below are tracked as GitHub issues and
-milestones so each one can be removed from this page when it ships.
+MVP supports Vite (including Rolldown-integrated Vite and Vite Plus as a
+**partial** matrix cell — lifecycle coverage without a dedicated CI smoke
+build yet), direct Rspack, Rsbuild, and Webpack. Gaps below are tracked as
+GitHub issues and milestones so each one can be removed from this page when it
+ships.
 
 Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1)
 · [post-v1](https://github.com/tonoizer/module-federation-doctor/milestone/2)
