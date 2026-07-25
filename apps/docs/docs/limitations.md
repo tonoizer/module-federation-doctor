@@ -86,8 +86,8 @@ Adapter authors: see
 These rules are implemented; a few need compiler-observed facts that CLI-only
 `check` cannot invent:
 
-| Rule                                       | Evidence                                                                                     |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Rule                                       | Evidence                                                                                                                                                             |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `config/duplicate-plugin-registration`     | Webpack/Rspack adapters count MF plugins via public `.name` (`ModuleFederationPlugin`, `RspackModuleFederationPlugin`) or `constructor.name` when `.name` is missing |
 | `artifact/public-path-non-string-manifest` | Webpack/Rspack adapters classify `output.publicPath`; Vite/Rsbuild do not surface this today                                                                         |
 | Remaining topology rules                   | Config / `project.json` / remotes graph (`mfdoctor federation`)                                                                                                      |

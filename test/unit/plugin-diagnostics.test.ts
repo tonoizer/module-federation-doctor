@@ -31,19 +31,29 @@ describe("compiler build diagnostics helpers", () => {
   });
 
   it("falls back to constructor.name when instance .name is missing (native webpack)", () => {
-    class ModuleFederationPlugin {}
-    class UnrelatedPlugin {}
+    class ModuleFederationPlugin {
+      readonly kind = "mf";
+    }
+    class UnrelatedPlugin {
+      readonly kind = "other";
+    }
     expect(
       countModuleFederationPlugins({
         options: {
-          plugins: [new ModuleFederationPlugin(), new UnrelatedPlugin(), new ModuleFederationPlugin()],
+          plugins: [
+            new ModuleFederationPlugin(),
+            new UnrelatedPlugin(),
+            new ModuleFederationPlugin(),
+          ],
         },
       }),
     ).toBe(2);
   });
 
   it("prefers instance .name over constructor.name", () => {
-    class SomethingElse {}
+    class SomethingElse {
+      readonly kind = "other";
+    }
     const plugin = new SomethingElse();
     (plugin as { name: string }).name = "ModuleFederationPlugin";
     expect(countModuleFederationPlugins({ options: { plugins: [plugin] } })).toBe(1);
