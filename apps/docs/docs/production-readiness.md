@@ -41,14 +41,16 @@ Vite-only; it does not pretend the setting exists in every bundler.
 
 ## Production policy
 
-Recommended CI policy:
+Recommended CI policy (also the default when `CI=true`):
 
 ```ts
-doctor({
+import { federationDoctor } from "@module-federation/doctor/vite";
+
+federationDoctor({
   moduleFederation: mfOptions,
-  mode: "ci",
+  // mode: "ci" is optional when CI=true is already set in the environment
   failOn: "error",
-  output: { formats: ["terminal", "json", "sarif", "html"] },
+  output: { formats: ["terminal", "json", "sarif"] },
 });
 ```
 

@@ -44,12 +44,20 @@ Committed `.project.json` facts for `mfdoctor federation`:
 | `federation/name-conflict`        | `federation/name-conflict`        | error    |
 | `federation/missing-provider`     | `federation/missing-provider`     | error    |
 
+## Runtime
+
+| Directory                 | Expected                  | Exit |
+| ------------------------- | ------------------------- | ---- |
+| `runtime/green`           | no findings               | 0    |
+| `runtime/shared-mismatch` | `runtime/shared-mismatch` | 1    |
+
 ```bash
 pnpm build
 pnpm demo:showcase
 # or one at a time:
 node dist/cli.js check examples/showcase/config/name-required --ci --format terminal
 node dist/cli.js federation "examples/showcase/federation/version-conflict/*.project.json" --format terminal
+node dist/cli.js runtime examples/showcase/runtime/green/trace.json "examples/showcase/runtime/green/*.project.json" --format terminal
 ```
 
 For a healthy multi-bundler app, use `examples/mixed-federation`.

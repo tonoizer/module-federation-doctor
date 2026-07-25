@@ -1,5 +1,5 @@
 import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
-import doctor from "@module-federation/doctor/rsbuild";
+import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild";
 import { defineConfig } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 
@@ -18,7 +18,7 @@ export default defineConfig({
   plugins: [
     pluginReact(),
     pluginModuleFederation(mfOptions),
-    doctor({ moduleFederation: mfOptions, mode: "ci" }),
+    pluginModuleFederationDoctor({ moduleFederation: mfOptions }),
   ],
   server: {
     port: 3002,

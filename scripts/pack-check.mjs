@@ -58,6 +58,9 @@ const reportSchema = await import("@module-federation/doctor/schemas/report.sche
 const packageJson = await import("@module-federation/doctor/package.json", { with: { type: "json" } });
 assert.equal(typeof api.analyze, "function");
 assert.equal(typeof api.probeManifest, "function");
+assert.equal(typeof vite.federationDoctor, "function");
+assert.equal(typeof rspack.moduleFederationDoctorPlugin, "function");
+assert.equal(typeof rsbuild.pluginModuleFederationDoctor, "function");
 assert.equal(typeof vite.default, "function");
 assert.equal(typeof rspack.default, "function");
 assert.equal(typeof rsbuild.default, "function");
@@ -70,21 +73,21 @@ assert.equal(packageJson.default.bin.mfdoctor, "dist/cli.js");
     '{ moduleFederation: { name: "consumer" }, output: { formats: [] }, rules: { "doctor/partial-analysis": "off", "config/plugin-package-mismatch": "off", "artifact/remote-entry-missing": "off" } }';
   await fs.writeFile(
     path.join(consumer, "vite.config.js"),
-    `import doctor from "@module-federation/doctor/vite";
-export default { plugins: [doctor(${doctorOptions})] };
+    `import { federationDoctor } from "@module-federation/doctor/vite";
+export default { plugins: [federationDoctor(${doctorOptions})] };
 `,
   );
   await fs.writeFile(
     path.join(consumer, "rspack.config.mjs"),
-    `import doctor from "@module-federation/doctor/rspack";
-export default { mode: "production", entry: "./src/index.js", plugins: [doctor(${doctorOptions})] };
+    `import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+export default { mode: "production", entry: "./src/index.js", plugins: [moduleFederationDoctorPlugin(${doctorOptions})] };
 `,
   );
   await fs.writeFile(
     path.join(consumer, "rsbuild.config.mjs"),
     `import { defineConfig } from "@rsbuild/core";
-import doctor from "@module-federation/doctor/rsbuild";
-export default defineConfig({ plugins: [doctor(${doctorOptions})] });
+import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild";
+export default defineConfig({ plugins: [pluginModuleFederationDoctor(${doctorOptions})] });
 `,
   );
   run("pnpm", ["install", "--ignore-scripts"], consumer);

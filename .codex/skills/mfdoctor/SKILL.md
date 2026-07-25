@@ -13,31 +13,47 @@ guess from package names alone.
 1. Find the project root and package manager.
 2. Identify the bundler and official MF integration.
 3. Reuse the exact MF options object in the Doctor adapter.
-4. Run the smallest useful check:
+4. Prefer the build plugin as the primary path:
+
+```ts
+// Vite
+import { federationDoctor } from "@module-federation/doctor/vite";
+federationDoctor({ moduleFederation: mfOptions });
+
+// Rspack
+import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+moduleFederationDoctorPlugin({ moduleFederation: mfOptions });
+
+// Rsbuild
+import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild";
+pluginModuleFederationDoctor({ moduleFederation: mfOptions });
+```
+
+5. Or run the smallest useful CLI check:
 
 ```bash
-pnpm mfdoctor check --format terminal,json,html
-pnpm mfdoctor check --ui
+pnpm mfdoctor check --format terminal,json,sarif
 pnpm mfdoctor runtime ./.mf/observability/latest.json
 ```
 
-5. For build facts, run the real bundler build with the Doctor adapter.
-6. For a multi-app system, collect every `.mf/doctor/project.json` and run:
+6. For build facts, run the real bundler build with the Doctor adapter.
+   `CI=true` (or `mode: "ci"`) fails the build on error findings after collect.
+7. For a multi-app system, collect every `.mf/doctor/project.json` and run:
 
 ```bash
 pnpm mfdoctor federation ".mf/doctor/**/project.json"
 ```
 
-7. When the user asks for a deployed check, use the guarded probe:
+8. When the user asks for a deployed check, use the guarded probe:
 
 ```bash
 pnpm mfdoctor probe https://cdn.example.com/mf-manifest.json --remote-entry
 ```
 
-8. Read findings by category: correctness, reliability, performance, security,
+9. Read findings by category: correctness, reliability, performance, security,
    then tooling.
-9. For each finding, report the evidence, impact, exact fix, and official source.
-10. Rerun the same command after the fix.
+10. For each finding, report the evidence, impact, exact fix, and official source.
+11. Rerun the same command after the fix.
 
 ## Guardrails
 
@@ -59,6 +75,6 @@ pnpm mfdoctor probe https://cdn.example.com/mf-manifest.json --remote-entry
 - Read [references/sources.md](references/sources.md) before changing a rule or
   making an upstream behavior claim.
 - Read [references/reports.md](references/reports.md) when consuming Doctor
-  JSON, SARIF, or HTML output.
+  JSON or SARIF output.
 - Read the repository Rspress pages under `apps/docs/docs` for the current rule
   and fix catalog.

@@ -2,51 +2,75 @@
 
 `@module-federation/doctor` finds config, sharing, runtime, manifest, and output
 problems in Module Federation projects built with Vite, Rspack, and Rsbuild.
-It can run as a CLI or as a build plugin.
+
+## Primary DX: build plugin
+
+Register Doctor next to your Module Federation plugin. It runs after emit, prints
+findings in the terminal (and bundler logs), then fails the build when policy
+says so — after every finding is collected.
+
+**Vite**
+
+```ts
+import { federation } from "@module-federation/vite";
+import { federationDoctor } from "@module-federation/doctor/vite";
+
+plugins: [federation(mfOptions), federationDoctor({ moduleFederation: mfOptions })];
+```
+
+**Rspack**
+
+```ts
+import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
+import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+
+plugins: [
+  new ModuleFederationPlugin(mfOptions),
+  moduleFederationDoctorPlugin({ moduleFederation: mfOptions }),
+];
+```
+
+**Rsbuild**
+
+```ts
+import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
+import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild";
+
+plugins: [
+  pluginModuleFederation(mfOptions),
+  pluginModuleFederationDoctor({ moduleFederation: mfOptions }),
+];
+```
+
+Set `CI=true` (or `mode: "ci"` / `--ci`) to fail on error findings and include
+SARIF by default. Local development defaults to `failOn: "never"` so findings
+print without breaking the build.
+
+## CLI (complementary)
+
+Use the CLI when you are not running a bundler build, or for cross-project and
+deployed checks:
 
 ```bash
 pnpm add -D @module-federation/doctor
 pnpm mfdoctor check --ci
-```
-
-`check` is offline. It writes a terminal report plus optional JSON, SARIF, and a
-single-file HTML dashboard:
-
-```bash
-pnpm mfdoctor check --format terminal,json,sarif,html
+pnpm mfdoctor check --format terminal,json,sarif
 pnpm mfdoctor federation ".mf/doctor/**/project.json"
-pnpm mfdoctor rules config/name-required
 pnpm mfdoctor runtime ./.mf/observability/latest.json
-```
-
-Use the matching plugin to check the final build output:
-
-```ts
-import doctor from "@module-federation/doctor/vite";
-
-export default {
-  plugins: [
-    doctor({
-      moduleFederation: federationOptions,
-      mode: "ci",
-    }),
-  ],
-};
-```
-
-`@module-federation/doctor/rspack` and
-`@module-federation/doctor/rsbuild` expose the same adapter shape.
-
-`mfdoctor runtime` imports a user-supplied Observability Plugin export and
-correlates share, remote, and init events with local `project.json` facts. It
-stays offline and never executes remote JavaScript.
-
-The opt-in probe checks a deployed manifest and, when requested, its remote
-entry. It fetches data but never runs remote JavaScript:
-
-```bash
 pnpm mfdoctor probe https://cdn.example.com/mf-manifest.json --remote-entry
+pnpm mfdoctor rules config/name-required
 ```
+
+| Command         | When to use it                                              |
+| --------------- | ----------------------------------------------------------- |
+| Plugin on build | Gate the real emit; strongest artifact evidence             |
+| `check`         | Offline config analysis without a full bundler run          |
+| `federation`    | Host↔remote integration after each app wrote `project.json` |
+| `runtime`       | Correlate an Observability Plugin export with project facts |
+| `probe`         | Inspect a deployed manifest / remoteEntry HEAD (network)    |
+
+`check`, `federation`, and `runtime` stay offline. `probe` is the only command
+that fetches over the network, and it never executes remote JavaScript.
 
 ## What it checks
 
@@ -76,7 +100,8 @@ Examples:
 - `examples/mixed-federation` — healthy Vite + Rspack + Rsbuild e2e path
 - `examples/mixed-federation-issues` — same topology with intentional Doctor
   findings; run `pnpm demo:mixed-issues`
-- `examples/showcase` — themed misconfigs; run `pnpm demo:showcase`
+- `examples/showcase` — themed misconfigs + runtime green/fail demos; run
+  `pnpm demo:showcase`
 - From `examples/`: `pnpm --dir examples demo` runs showcase + mixed-issues
   (or `pnpm demo:examples` from the repo root)
 

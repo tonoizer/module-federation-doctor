@@ -11,6 +11,8 @@ export const DEFAULT_EXCLUDE = [
 ];
 
 export function resolveOptions(options: DoctorOptions = {}): ResolvedDoctorOptions {
+  // Auto-infer CI when CI=true (GitHub Actions, etc.) or mode: "ci" is set.
+  // CI defaults: failOn "error", formats include sarif.
   const ci = options.mode === "ci" || (options.mode === undefined && process.env.CI === "true");
   const root = path.resolve(options.root ?? process.cwd());
   const resolved: ResolvedDoctorOptions = {

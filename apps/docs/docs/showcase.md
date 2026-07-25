@@ -46,6 +46,13 @@ pnpm demo:showcase
 | Name conflict        | `node dist/cli.js federation "examples/showcase/federation/name-conflict/*.project.json"`        | `federation/name-conflict` (error)        |
 | Missing provider     | `node dist/cli.js federation "examples/showcase/federation/missing-provider/*.project.json"`     | `federation/missing-provider` (error)     |
 
+## Runtime
+
+| Setup           | Command                                                                                                                                    | Finding                           |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| Healthy trace   | `node dist/cli.js runtime examples/showcase/runtime/green/trace.json "examples/showcase/runtime/green/*.project.json"`                     | no findings (exit 0)              |
+| Shared mismatch | `node dist/cli.js runtime examples/showcase/runtime/shared-mismatch/trace.json "examples/showcase/runtime/shared-mismatch/*.project.json"` | `runtime/shared-mismatch` (error) |
+
 These directories are demo fixtures, not runnable apps. Keep
 [mixed federation](./mixed-example.md) for the healthy multi-bundler path and
 [mixed federation issues](./mixed-issues-example.md) for a red combination.

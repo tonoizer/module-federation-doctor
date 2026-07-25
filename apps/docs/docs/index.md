@@ -4,7 +4,7 @@ pageType: home
 hero:
   name: Module Federation Doctor
   text: Diagnostics for federation projects
-  tagline: Offline-first checks for Vite, Rspack, and Rsbuild. Stable machine-readable reports for local builds and CI.
+  tagline: Offline-first checks for Vite, Rspack, and Rsbuild. Register the build plugin next to Module Federation and gate CI with terminal, JSON, and SARIF reports.
   actions:
     - theme: brand
       text: Get started
@@ -24,5 +24,5 @@ features:
   - title: Offline by default
     details: Local analysis stays offline. Use probe only when you intentionally inspect a deployed manifest.
   - title: CI-ready reports
-    details: Terminal, JSON, SARIF, and portable HTML output you can attach to pull requests.
+    details: Terminal, JSON, and SARIF output you can attach to pull requests. CI=true fails the build on error findings after every issue is collected.
 ---

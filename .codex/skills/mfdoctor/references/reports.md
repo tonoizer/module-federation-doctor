@@ -8,13 +8,6 @@ and severity totals.
 
 `results.sarif` is for code-scanning upload.
 
-`ui-data.json` contains the report, project facts, and derived remotes/shared/
-orchestration graphs used by the dashboard.
-
-`report.html` is a single-file offline viewer. It must make no network requests
-and must render only redacted report data plus derived graphs. Open it with
-`mfdoctor check --ui` or `mfdoctor federation … --ui` (loopback, read-only).
-
 `mfdoctor probe` prints a separate, bounded live-manifest summary. It is opt-in,
 strips URL queries from output, and does not execute the remote entry.
 

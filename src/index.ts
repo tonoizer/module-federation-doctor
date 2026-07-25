@@ -10,8 +10,6 @@ export {
   parseRuntimeTraces,
 } from "./runtime-trace.js";
 export { buildUiPayload } from "./ui-graph.js";
-export { htmlReport } from "./html.js";
-export { DEFAULT_UI_PORT, serveUi } from "./ui-server.js";
 export type { ManifestProbeResult, ProbeOptions } from "./probe.js";
 export type {
   AnalysisCapabilities,

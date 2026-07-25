@@ -1,27 +1,37 @@
 # Vite, Rspack, and Rsbuild setup
 
 Keep one `mfOptions` object and pass it to both Module Federation and Doctor.
-Explicit options give Doctor the safest and most complete input.
+Explicit options give Doctor the safest and most complete input. Doctor runs
+after emit, prints findings to the terminal (and bundler logs), then fails the
+build only after every finding is collected when CI policy requires it.
+
+`CI=true` (or `mode: "ci"`) turns on `failOn: "error"` and SARIF output. You do
+not need to set `mode: "ci"` in every config when CI already exports `CI=true`.
 
 ## Vite
 
 ```ts
 import { federation } from "@module-federation/vite";
-import doctor from "@module-federation/doctor/vite";
+import { federationDoctor } from "@module-federation/doctor/vite";
 
 const mfOptions = { name: "host", remotes: {} };
-export default { plugins: [federation(mfOptions), doctor({ moduleFederation: mfOptions })] };
+export default {
+  plugins: [federation(mfOptions), federationDoctor({ moduleFederation: mfOptions })],
+};
 ```
 
 ## Rspack
 
 ```ts
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
-import doctor from "@module-federation/doctor/rspack";
+import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
 
 const mfOptions = { name: "remote", exposes: { "./App": "./src/App.tsx" } };
 export default {
-  plugins: [new ModuleFederationPlugin(mfOptions), doctor({ moduleFederation: mfOptions })],
+  plugins: [
+    new ModuleFederationPlugin(mfOptions),
+    moduleFederationDoctorPlugin({ moduleFederation: mfOptions }),
+  ],
 };
 ```
 
@@ -29,10 +39,21 @@ export default {
 
 ```ts
 import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
-import doctor from "@module-federation/doctor/rsbuild";
+import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild";
 
 const mfOptions = { name: "remote", exposes: { "./App": "./src/App.tsx" } };
 export default {
-  plugins: [pluginModuleFederation(mfOptions), doctor({ moduleFederation: mfOptions })],
+  plugins: [
+    pluginModuleFederation(mfOptions),
+    pluginModuleFederationDoctor({ moduleFederation: mfOptions }),
+  ],
 };
 ```
+
+## Multi-app CI loop
+
+1. Build each host and remote with the Doctor plugin so each app writes
+   `.mf/doctor/project.json`.
+2. Run `mfdoctor federation ".mf/doctor/**/project.json"` for cross-app shared,
+   name, and provider conflicts.
+3. Optionally run `mfdoctor probe <manifest-url>` against deployed remotes.

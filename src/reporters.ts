@@ -1,9 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import pc from "picocolors";
-import { htmlReport } from "./html.js";
-import { buildUiPayload } from "./ui-graph.js";
-import type { DoctorReport, DoctorUiPayload, OutputFormat, ProjectFacts } from "./types.js";
+import type { DoctorReport, OutputFormat, ProjectFacts } from "./types.js";
 import { stableStringify } from "./utils.js";
 
 function terminal(report: DoctorReport): string {
@@ -74,11 +72,6 @@ function sarif(report: DoctorReport): Record<string, unknown> {
   };
 }
 
-async function writeHtmlDashboard(directory: string, ui: DoctorUiPayload): Promise<void> {
-  await fs.writeFile(path.join(directory, "ui-data.json"), stableStringify(ui, 2) + "\n");
-  await fs.writeFile(path.join(directory, "report.html"), htmlReport(ui));
-}
-
 export async function writeReports(
   facts: ProjectFacts,
   report: DoctorReport,
@@ -94,15 +87,12 @@ export async function writeReports(
       path.join(directory, "results.sarif"),
       stableStringify(sarif(report), 2) + "\n",
     );
-  if (formats.includes("html"))
-    await writeHtmlDashboard(directory, buildUiPayload([facts], report));
   if (formats.includes("terminal")) process.stdout.write(terminal(report) + "\n");
 }
 
 export async function writeFederationReports(
   _projects: ProjectFacts[],
   report: DoctorReport,
-  ui: DoctorUiPayload,
   directory: string,
   formats: OutputFormat[],
 ): Promise<void> {
@@ -114,6 +104,5 @@ export async function writeFederationReports(
       path.join(directory, "results.sarif"),
       stableStringify(sarif(report), 2) + "\n",
     );
-  if (formats.includes("html")) await writeHtmlDashboard(directory, ui);
   if (formats.includes("terminal")) process.stdout.write(terminal(report) + "\n");
 }
