@@ -232,6 +232,105 @@ async function detectFromManifest(
   }
 }
 
+function manifestAssetNames(manifest: NonNullable<ArtifactFacts["manifest"]>): string[] {
+  const names = new Set<string>();
+  if (manifest.remoteEntry?.name) names.add(manifest.remoteEntry.name);
+  if (manifest.remoteEntry?.path) {
+    const joined = normalizePath(
+      path.posix.join(manifest.remoteEntry.path, manifest.remoteEntry.name),
+    );
+    if (joined && joined !== manifest.remoteEntry.name) names.add(joined);
+  }
+  for (const expose of manifest.exposes) for (const asset of expose.assets) names.add(asset);
+  for (const shared of manifest.shared) for (const asset of shared.assets) names.add(asset);
+  return [...names];
+}
+
+/** Resolve byte sizes for manifest and emitted assets via on-disk `fs.stat`. */
+export async function attachAssetSizes(facts: ProjectFacts, root: string): Promise<void> {
+  const names = new Set<string>(facts.artifacts.emittedAssets);
+  if (facts.artifacts.manifest?.valid)
+    for (const name of manifestAssetNames(facts.artifacts.manifest)) names.add(name);
+  if (names.size === 0) {
+    delete facts.artifacts.assetSizes;
+    return;
+  }
+
+  const manifestDir = facts.artifacts.manifest?.path
+    ? path.dirname(path.join(root, facts.artifacts.manifest.path))
+    : root;
+  const sizes: Record<string, number> = {};
+
+  for (const name of names) {
+    const basename = path.basename(name);
+    const candidates = [
+      path.join(manifestDir, name),
+      path.join(manifestDir, basename),
+      path.join(root, name),
+      path.join(root, "dist", name),
+      path.join(root, "dist", basename),
+      path.join(root, "build", name),
+      path.join(root, "build", basename),
+      ...facts.artifacts.emittedAssets
+        .filter(
+          (emitted) =>
+            emitted === name ||
+            emitted.endsWith(`/${basename}`) ||
+            path.basename(emitted) === basename,
+        )
+        .map((emitted) => path.join(root, emitted)),
+    ];
+
+    for (const candidate of candidates) {
+      try {
+        const stat = await fs.stat(candidate);
+        if (!stat.isFile()) continue;
+        const relative = relativePath(root, candidate);
+        sizes[relative] = stat.size;
+        sizes[normalizePath(name)] = stat.size;
+        sizes[basename] = stat.size;
+        break;
+      } catch {
+        // Missing candidates are expected before a build or for remote-only names.
+      }
+    }
+  }
+
+  if (Object.keys(sizes).length > 0) facts.artifacts.assetSizes = sizes;
+  else delete facts.artifacts.assetSizes;
+}
+
+/** Look up a sized asset by relative path, listed name, or basename. */
+export function lookupAssetSize(
+  sizes: Record<string, number> | undefined,
+  asset: string,
+): number | undefined {
+  if (!sizes) return undefined;
+  const normalized = normalizePath(asset);
+  if (sizes[normalized] !== undefined) return sizes[normalized];
+  const basename = path.basename(normalized);
+  if (sizes[basename] !== undefined) return sizes[basename];
+  for (const [key, bytes] of Object.entries(sizes))
+    if (key === normalized || key.endsWith(`/${basename}`) || path.basename(key) === basename)
+      return bytes;
+  return undefined;
+}
+
+export function sumAssetSizes(
+  sizes: Record<string, number> | undefined,
+  assets: readonly string[],
+): number | undefined {
+  let total = 0;
+  let found = 0;
+  for (const asset of assets) {
+    const bytes = lookupAssetSize(sizes, asset);
+    if (bytes === undefined) continue;
+    total += bytes;
+    found += 1;
+  }
+  return found > 0 ? total : undefined;
+}
+
 async function collectArtifacts(root: string): Promise<ArtifactFacts> {
   const candidates = await fg(["**/mf-manifest.json", "**/mf-stats.json"], {
     cwd: root,
@@ -335,13 +434,19 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     artifacts,
   };
   if (normalizedMf) facts.moduleFederation = normalizedMf;
+  await attachAssetSizes(facts, options.root);
   return facts;
 }
 
-export function addBuildFacts(facts: ProjectFacts, assets: string[], root: string): ProjectFacts {
+export async function addBuildFacts(
+  facts: ProjectFacts,
+  assets: string[],
+  root: string,
+): Promise<ProjectFacts> {
   facts.artifacts.emittedAssets = assets
     .map((item) => relativePath(root, path.resolve(root, item)))
     .sort();
   facts.capabilities.emittedAssets = true;
+  await attachAssetSizes(facts, root);
   return facts;
 }

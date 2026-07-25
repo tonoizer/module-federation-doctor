@@ -169,6 +169,8 @@ export interface ArtifactFacts {
     valid: boolean;
   };
   emittedAssets: string[];
+  /** Relative path or asset basename → on-disk byte size when resolvable. */
+  assetSizes?: Record<string, number>;
 }
 
 export interface ProjectFacts {

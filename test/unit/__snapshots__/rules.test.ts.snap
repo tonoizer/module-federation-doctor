@@ -25,6 +25,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "reliability/external-runtime-provider-unverified",
   "reliability/async-startup-library-promise",
   "performance/version-first-startup",
+  "performance/asset-budget",
   "reliability/version-first-offline-remotes",
   "reliability/shared-import-false",
   "config/tree-shaking-server-calc-injection",

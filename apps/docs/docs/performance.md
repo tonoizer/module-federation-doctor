@@ -18,6 +18,40 @@ explicit recovery policy.
 Source:
 [shareStrategy](https://module-federation.io/configure/shareStrategy.html).
 
+## Asset budgets
+
+Doctor can fail (or warn on) federation assets whose on-disk sizes exceed project
+budgets. Sizes come from joining `mf-manifest.json` asset names to files under
+the project root (and emitted assets from a Doctor adapter build). Manifest and
+stats JSON do not carry byte sizes by themselves.
+
+Default limits for [`performance/asset-budget`](./rules/performance/asset-budget.md):
+
+- remote entry file: **512 KiB** (`524288`)
+- each shared package asset sum: **512 KiB** (`524288`)
+- each expose asset sum: **350 KiB** (`358400`)
+
+Default severity is `warning`. Override thresholds or severity in
+`mfdoctor.config`:
+
+```ts
+export default {
+  rules: {
+    "performance/asset-budget": [
+      "error",
+      {
+        remoteEntryMaxBytes: 150_000,
+        sharedMaxBytes: 400_000,
+        exposeMaxBytes: 250_000,
+      },
+    ],
+  },
+};
+```
+
+Set the rule to `"off"` to disable it. When no listed asset can be sized (for
+example before a build), the rule reports nothing.
+
 ## External runtime
 
 Issue: each remote can bundle its own `@module-federation/runtime-core`.
