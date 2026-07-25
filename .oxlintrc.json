@@ -1,6 +1,13 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "ignorePatterns": ["**/dist/**", "**/.mf/**", "**/coverage/**", "apps/docs/doc_build/**"],
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/.mf/**",
+    "**/coverage/**",
+    "apps/docs/doc_build/**",
+    ".agents/**",
+    ".claude/skills/**"
+  ],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
