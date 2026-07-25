@@ -1,0 +1,29 @@
+[
+  {
+    "text": "Guide",
+    "link": "/",
+    "activeMatch": "^/(?!rules).*"
+  },
+  {
+    "text": "Rules",
+    "link": "/rules/",
+    "activeMatch": "/rules/"
+  },
+  {
+    "text": "Ecosystem",
+    "items": [
+      {
+        "text": "Module Federation",
+        "link": "https://module-federation.io/"
+      },
+      {
+        "text": "Module Federation Core",
+        "link": "https://github.com/module-federation/core"
+      },
+      {
+        "text": "Rsdoctor",
+        "link": "https://rsdoctor.dev/"
+      }
+    ]
+  }
+]

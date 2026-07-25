@@ -1,4 +1,13 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["rspress.config.ts"]
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "paths": {
+      "@theme": ["./theme/index.tsx"],
+      "@site/*": ["./*"],
+      "@docs/*": ["./docs/*"],
+      "@public/*": ["./docs/public/*"]
+    }
+  },
+  "include": ["rspress.config.ts", "theme/**/*"]
 }

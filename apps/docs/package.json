@@ -6,12 +6,20 @@
   "scripts": {
     "dev": "rspress dev",
     "build": "node ../../scripts/generate-rule-docs.mjs --check && node ../../scripts/check-doc-snippets.mjs && node ../../scripts/check-doc-links.mjs && rspress build",
+    "preview": "rspress preview",
     "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('doc_build',{recursive:true,force:true}))\"",
     "typecheck": "tsc -p tsconfig.json"
   },
+  "dependencies": {
+    "@rspress/core": "2.0.14",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
   "devDependencies": {
     "@module-federation/doctor": "workspace:*",
-    "rspress": "1.47.1",
+    "@types/node": "26.1.1",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
     "typescript": "5.9.3"
   }
 }
