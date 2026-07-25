@@ -13,7 +13,6 @@ Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1
 | Gap                                               | Issue                                                                                  |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Compatibility matrix for v1 bundlers and runtimes | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) (`MFDOCTOR-106`) |
-| One-shot workspace federation gate for CI         | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) (`MFDOCTOR-109`) |
 | Shareable policy packs and named presets          | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) (`MFDOCTOR-110`) |
 
 Dynamic Module Federation import patterns are covered at the documented
@@ -26,8 +25,10 @@ arbitrary runtime JS
 
 The Doctor plugin analyzes the **current** app (config + emit). Cross-app
 host↔remote shared/integration issues need each app's `.mf/doctor/project.json`
-plus `mfdoctor federation` (or the workspace gate in `MFDOCTOR-109`). Opt-in
-`mfdoctor probe` inspects a deployed manifest.
+plus the one-shot workspace gate (`mfdoctor workspace` /
+`mfdoctor federation --workspace`) or manual `mfdoctor federation` globs
+([#25](https://github.com/tonoizer/module-federation-doctor/issues/25),
+`MFDOCTOR-109`). Opt-in `mfdoctor probe` inspects a deployed manifest.
 
 Opt-in browser runtime trace import is available through `mfdoctor runtime` when
 you supply an Observability Plugin export. Default `check` and `federation`

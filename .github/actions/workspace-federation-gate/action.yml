@@ -1,0 +1,136 @@
+name: Workspace federation gate
+description: Discover Doctor project.json facts across a monorepo and run the offline federation gate (JSON/SARIF).
+author: Module Federation Doctor
+
+branding:
+  icon: activity
+  color: blue
+
+inputs:
+  roots:
+    description: >-
+      Workspace roots to search for **/.mf/doctor/project.json (newline or
+      space separated). Defaults to the working directory.
+    required: false
+    default: "."
+  globs:
+    description: >-
+      Optional override globs (manual escape hatch). Newline or space
+      separated. When set, replaces the default Doctor project.json layout.
+    required: false
+    default: ""
+  formats:
+    description: Comma-separated output formats (terminal, json, sarif).
+    required: false
+    default: "terminal,json,sarif"
+  working-directory:
+    description: Directory to run the gate from (report output lands under .mf/doctor here).
+    required: false
+    default: "."
+  build-command:
+    description: >-
+      Optional shell command that builds each app with the Doctor plugin so
+      project.json facts exist before the gate. Leave empty when builds already ran.
+    required: false
+    default: ""
+  cli:
+    description: >-
+      Command used to invoke mfdoctor (for example `mfdoctor`,
+      `pnpm exec mfdoctor`, or `node dist/cli.js`).
+    required: false
+    default: "mfdoctor"
+  upload-sarif:
+    description: Upload .mf/doctor/results.sarif with github/codeql-action/upload-sarif.
+    required: false
+    default: "true"
+  sarif-category:
+    description: Code scanning category for the uploaded SARIF.
+    required: false
+    default: "module-federation-doctor"
+  upload-artifact:
+    description: Upload JSON/SARIF reports as a workflow artifact.
+    required: false
+    default: "true"
+  artifact-name:
+    description: Name for the uploaded reports artifact.
+    required: false
+    default: "mfdoctor-federation"
+
+outputs:
+  report-json:
+    description: Path to the federation report.json when json format is enabled.
+    value: ${{ steps.gate.outputs.report-json }}
+  report-sarif:
+    description: Path to results.sarif when sarif format is enabled.
+    value: ${{ steps.gate.outputs.report-sarif }}
+  exit-code:
+    description: Gate exit code (0 pass, 1 policy fail, 2 incomplete).
+    value: ${{ steps.gate.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build apps (optional)
+      if: ${{ inputs.build-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Run workspace federation gate
+      id: gate
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        MFDOCTOR_CLI: ${{ inputs.cli }}
+        MFDOCTOR_ROOTS: ${{ inputs.roots }}
+        MFDOCTOR_GLOBS: ${{ inputs.globs }}
+        MFDOCTOR_FORMATS: ${{ inputs.formats }}
+      run: |
+        set +e
+        args=(workspace)
+        # shellcheck disable=SC2206
+        roots=(${MFDOCTOR_ROOTS})
+        if [ "${#roots[@]}" -eq 0 ]; then
+          roots=(.)
+        fi
+        args+=("${roots[@]}")
+        if [ -n "${MFDOCTOR_GLOBS}" ]; then
+          # shellcheck disable=SC2206
+          globs=(${MFDOCTOR_GLOBS})
+          for glob in "${globs[@]}"; do
+            args+=(--glob "${glob}")
+          done
+        fi
+        args+=(--format "${MFDOCTOR_FORMATS}")
+        # shellcheck disable=SC2086
+        ${MFDOCTOR_CLI} "${args[@]}"
+        code=$?
+        set -e
+        echo "exit-code=${code}" >> "$GITHUB_OUTPUT"
+        report_json=".mf/doctor/report.json"
+        report_sarif=".mf/doctor/results.sarif"
+        if [ -f "${report_json}" ]; then
+          echo "report-json=${report_json}" >> "$GITHUB_OUTPUT"
+        fi
+        if [ -f "${report_sarif}" ]; then
+          echo "report-sarif=${report_sarif}" >> "$GITHUB_OUTPUT"
+        fi
+        exit "${code}"
+
+    - name: Upload federation reports
+      if: ${{ always() && inputs.upload-artifact == 'true' }}
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          ${{ inputs.working-directory }}/.mf/doctor/report.json
+          ${{ inputs.working-directory }}/.mf/doctor/results.sarif
+        if-no-files-found: ignore
+
+    - name: Upload SARIF
+      if: ${{ always() && inputs.upload-sarif == 'true' && hashFiles(format('{0}/.mf/doctor/results.sarif', inputs.working-directory)) != '' }}
+      continue-on-error: true
+      uses: github/codeql-action/upload-sarif@3b0bd1d116c0bde30213346b22d4f634d96a2fb0 # v3
+      with:
+        sarif_file: ${{ inputs.working-directory }}/.mf/doctor/results.sarif
+        category: ${{ inputs.sarif-category }}

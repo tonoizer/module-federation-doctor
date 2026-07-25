@@ -98,6 +98,16 @@ describe("adapter cases", () => {
       expect(stderr).not.toContain("Doctor could not complete");
       expect(stdout).toContain("Module Federation Doctor: no findings.");
     }
+
+    const { stdout: workspaceStdout } = await execFileAsync(
+      "node",
+      ["dist/cli.js", "workspace", "examples/mixed-federation", "--format", "terminal,json"],
+      { cwd: repository, env: baseEnvironment },
+    );
+    expect(workspaceStdout).toContain("Module Federation Doctor: no findings.");
+    await expect(
+      fs.access(path.join(repository, ".mf/doctor/report.json")),
+    ).resolves.toBeUndefined();
   }, 120_000);
 
   it("demos intentional showcase findings through the CLI", async () => {

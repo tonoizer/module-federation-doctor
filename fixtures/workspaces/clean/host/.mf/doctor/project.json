@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "host",
+    "root": "."
+  },
+  "bundler": {
+    "name": "vite",
+    "mode": "ci"
+  },
+  "capabilities": {
+    "config": true,
+    "sourceImports": true,
+    "manifest": false,
+    "stats": false,
+    "emittedAssets": false,
+    "installedVersions": true
+  },
+  "moduleFederation": {
+    "name": "host",
+    "exposes": {},
+    "remotes": {
+      "remote": {
+        "name": "remote",
+        "entry": "http://localhost:3001/mf-manifest.json"
+      }
+    },
+    "shared": {
+      "react": {
+        "package": "react",
+        "singleton": true,
+        "eager": false,
+        "requiredVersion": "^19.1.0",
+        "shareScope": ["default"]
+      }
+    }
+  },
+  "dependencies": {
+    "declared": {
+      "react": "^19.1.0"
+    },
+    "installed": {
+      "react": "19.2.8"
+    }
+  },
+  "imports": {
+    "sourceFiles": [],
+    "specifiers": [],
+    "packages": []
+  },
+  "artifacts": {
+    "emittedAssets": []
+  }
+}

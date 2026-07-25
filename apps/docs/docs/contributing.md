@@ -34,18 +34,18 @@ Close the matching GitHub issue and drop the row from
 
 ### v1.0
 
-| ID             | Issue                                                                 | Topic                                                                                                                                 |
-| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `MFDOCTOR-101` | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) | Webpack adapter _(shipped — see [setup](./setup.md#webpack))_                                                                         |
-| `MFDOCTOR-105` | [#14](https://github.com/tonoizer/module-federation-doctor/issues/14) | Dynamic-import completeness beyond static analysis _(shipped — see [capabilities](./capabilities.md#dynamic-import-completeness-v1))_ |
-| `MFDOCTOR-106` | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) | Compatibility matrix for v1 bundlers and runtimes                                                                                     |
-| `MFDOCTOR-109` | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) | One-shot workspace federation gate for CI                                                                                             |
-| `MFDOCTOR-110` | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) | Shareable policy packs and named presets                                                                                              |
-| `MFDOCTOR-111` | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) | Fingerprint baselines and suppressions _(shipped)_                                                                                    |
-| `MFDOCTOR-115` | [#32](https://github.com/tonoizer/module-federation-doctor/issues/32) | Build-time only / never in client bundle                                                                                              |
-| `MFDOCTOR-117` | [#34](https://github.com/tonoizer/module-federation-doctor/issues/34) | Runtime-only MF (no bundler plugin) out of scope                                                                                      |
-| `MFDOCTOR-112` | [#28](https://github.com/tonoizer/module-federation-doctor/issues/28) | First public npm publish _(after product items)_                                                                                      |
-| `MFDOCTOR-113` | [#29](https://github.com/tonoizer/module-federation-doctor/issues/29) | Propose Doctor to official MF org _(after publish)_                                                                                   |
+| ID             | Issue                                                                 | Topic                                                                                                                                         |
+| -------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MFDOCTOR-101` | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) | Webpack adapter _(shipped — see [setup](./setup.md#webpack))_                                                                                 |
+| `MFDOCTOR-105` | [#14](https://github.com/tonoizer/module-federation-doctor/issues/14) | Dynamic-import completeness beyond static analysis _(shipped — see [capabilities](./capabilities.md#dynamic-import-completeness-v1))_         |
+| `MFDOCTOR-106` | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) | Compatibility matrix for v1 bundlers and runtimes                                                                                             |
+| `MFDOCTOR-109` | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) | One-shot workspace federation gate for CI _(shipped — see [CLI](./cli.md#workspace-federation-gate) / [setup](./setup.md#multi-app-ci-loop))_ |
+| `MFDOCTOR-110` | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) | Shareable policy packs and named presets                                                                                                      |
+| `MFDOCTOR-111` | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) | Fingerprint baselines and suppressions _(shipped)_                                                                                            |
+| `MFDOCTOR-115` | [#32](https://github.com/tonoizer/module-federation-doctor/issues/32) | Build-time only / never in client bundle                                                                                                      |
+| `MFDOCTOR-117` | [#34](https://github.com/tonoizer/module-federation-doctor/issues/34) | Runtime-only MF (no bundler plugin) out of scope                                                                                              |
+| `MFDOCTOR-112` | [#28](https://github.com/tonoizer/module-federation-doctor/issues/28) | First public npm publish _(after product items)_                                                                                              |
+| `MFDOCTOR-113` | [#29](https://github.com/tonoizer/module-federation-doctor/issues/29) | Propose Doctor to official MF org _(after publish)_                                                                                           |
 
 ### post-v1
 

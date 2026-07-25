@@ -14,6 +14,12 @@ export {
   updateBaseline,
   writeBaselineFile,
 } from "./baseline.js";
+export {
+  DEFAULT_WORKSPACE_PROJECT_GLOBS,
+  WORKSPACE_IGNORE,
+  discoverWorkspaceProjects,
+} from "./workspace.js";
+export type { DiscoverWorkspaceProjectsOptions } from "./workspace.js";
 export { defineRule, builtInRules } from "./rules.js";
 export { ProbeError, probeManifest } from "./probe.js";
 export {
