@@ -11,7 +11,7 @@ Subpath imports bypass Module Federation shared-scope negotiation when only the 
 
 Prefer root imports (for example `import { cloneDeep } from "lodash"`), or add the exact subpath keys to `shared`. Suppress intentional cases with `rules["shared/deep-import-bypass"]` or `deepImportAllowlist`.
 
-Override this rule with `rules["shared/deep-import-bypass"]`.
+Suppress or retarget with `rules["shared/deep-import-bypass"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 
