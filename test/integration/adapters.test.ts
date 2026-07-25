@@ -15,13 +15,18 @@ async function project(bundler: BundlerName, kind: "clean" | "warning" | "error"
   roots.push(root);
   await fs.mkdir(path.join(root, "src"));
   await fs.writeFile(path.join(root, "src/Widget.ts"), 'import "@scope/pkg/deep";\nexport {};\n');
+  const federationPackage =
+    bundler === "rspack" || bundler === "webpack"
+      ? "enhanced"
+      : bundler === "rsbuild"
+        ? "rsbuild-plugin"
+        : "vite";
   await fs.writeFile(
     path.join(root, "package.json"),
     JSON.stringify({
       name: `${bundler}-${kind}`,
       dependencies: {
-        [`@module-federation/${bundler === "rspack" ? "enhanced" : bundler === "rsbuild" ? "rsbuild-plugin" : "vite"}`]:
-          "1.0.0",
+        [`@module-federation/${federationPackage}`]: "1.0.0",
         "@scope/pkg": "1.0.0",
       },
     }),
@@ -61,7 +66,7 @@ afterEach(async () => {
 });
 
 describe("adapter cases", () => {
-  for (const bundler of ["vite", "rspack", "rsbuild"] as const) {
+  for (const bundler of ["vite", "rspack", "rsbuild", "webpack"] as const) {
     it(`${bundler}: clean, warning, and error policy`, async () => {
       const clean = await project(bundler, "clean");
       const warning = await project(bundler, "warning");

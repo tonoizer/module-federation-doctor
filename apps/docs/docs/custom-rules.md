@@ -13,7 +13,7 @@ export const requireManifest = defineRule({
   meta: {
     id: "team/require-manifest",
     defaultSeverity: "error",
-    supportedBundlers: ["vite", "rspack", "rsbuild"],
+    supportedBundlers: ["vite", "rspack", "rsbuild", "webpack"],
     documentation: "/rules/team/require-manifest",
   },
   check(context) {

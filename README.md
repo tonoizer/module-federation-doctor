@@ -1,7 +1,8 @@
 # Module Federation Doctor
 
 `@module-federation/doctor` finds config, sharing, runtime, manifest, and output
-problems in Module Federation projects built with Vite, Rspack, and Rsbuild.
+problems in Module Federation projects built with Vite, Rspack, Rsbuild, and
+Webpack.
 
 Install as a **devDependency**. Doctor is **build/CI-only**: adapters run after
 emit in Node and are not part of the browser bundle. They add CI time, not
@@ -43,6 +44,18 @@ import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild"
 plugins: [
   pluginModuleFederation(mfOptions),
   pluginModuleFederationDoctor({ moduleFederation: mfOptions }),
+];
+```
+
+**Webpack**
+
+```ts
+import { ModuleFederationPlugin } from "@module-federation/enhanced/webpack";
+import { moduleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+
+plugins: [
+  new ModuleFederationPlugin(mfOptions),
+  moduleFederationDoctorPlugin({ moduleFederation: mfOptions }),
 ];
 ```
 
@@ -96,7 +109,7 @@ custom `defineRule` plugins. See
 - Whole federation: cross-project name, version, scope, and provider conflicts.
 
 MF `runtimePlugins` in bundler config are checked at build time. **Runtime-only**
-apps (`createInstance` / runtime plugins without a Vite/Rspack/Rsbuild MF
+apps (`createInstance` / runtime plugins without a Vite/Rspack/Rsbuild/Webpack MF
 **build** plugin) are out of scope for first-class support — use Observability +
 `mfdoctor runtime` instead of shipping Doctor into the browser. See
 [limitations](./apps/docs/docs/limitations.md) and

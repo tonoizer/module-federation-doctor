@@ -1,4 +1,4 @@
-# Vite, Rspack, and Rsbuild setup
+# Vite, Rspack, Rsbuild, and Webpack setup
 
 Install Doctor as a **devDependency** (`pnpm add -D @module-federation/doctor`).
 Keep one `mfOptions` object and pass it to both Module Federation and Doctor.
@@ -58,6 +58,21 @@ export default {
 };
 ```
 
+## Webpack
+
+```ts
+import { ModuleFederationPlugin } from "@module-federation/enhanced/webpack";
+import { moduleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+
+const mfOptions = { name: "remote", exposes: { "./App": "./src/App.tsx" } };
+export default {
+  plugins: [
+    new ModuleFederationPlugin(mfOptions),
+    moduleFederationDoctorPlugin({ moduleFederation: mfOptions }),
+  ],
+};
+```
+
 ## Supported analysis paths
 
 | Path                                                                                 | Covered?                                      |
@@ -78,8 +93,8 @@ export default {
 ## Out of scope: runtime-only apps
 
 Apps that use `@module-federation/runtime` / `createInstance` **without** a
-Vite, Rspack, or Rsbuild Module Federation **build** plugin are not first-class
-Doctor targets
+Vite, Rspack, Rsbuild, or Webpack Module Federation **build** plugin are not
+first-class Doctor targets
 ([#34](https://github.com/tonoizer/module-federation-doctor/issues/34),
 `MFDOCTOR-117`). There is no post-emit adapter hook, and Doctor does not parse
 runtime init from source.

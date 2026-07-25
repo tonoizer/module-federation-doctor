@@ -119,7 +119,7 @@ function toRuleMeta(
   return {
     id: rule.id,
     defaultSeverity: rule.severity,
-    supportedBundlers: ["vite", "rspack", "rsbuild"],
+    supportedBundlers: ["vite", "rspack", "rsbuild", "webpack"],
     documentation: `/rules/${rule.id}`,
     category: rule.category,
     impact: rule.impact,

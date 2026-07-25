@@ -1,7 +1,8 @@
 # Limitations
 
-MVP supports Vite, direct Rspack, and Rsbuild. Gaps below are tracked as GitHub
-issues and milestones so each one can be removed from this page when it ships.
+MVP supports Vite, direct Rspack, Rsbuild, and Webpack. Gaps below are tracked as
+GitHub issues and milestones so each one can be removed from this page when it
+ships.
 
 Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1)
 · [post-v1](https://github.com/tonoizer/module-federation-doctor/milestone/2)
@@ -11,7 +12,6 @@ Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1
 
 | Gap                                               | Issue                                                                                  |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Webpack adapter and compatibility matrix          | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) (`MFDOCTOR-101`) |
 | Compatibility matrix for v1 bundlers and runtimes | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) (`MFDOCTOR-106`) |
 | One-shot workspace federation gate for CI         | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) (`MFDOCTOR-109`) |
 | Fingerprint baselines and suppressions            | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) (`MFDOCTOR-111`) |
@@ -82,8 +82,8 @@ emit in Node and must not appear in the client bundle
 `MFDOCTOR-116`).
 
 **Runtime-only** Module Federation apps — `@module-federation/runtime` /
-`createInstance` / runtime plugins **without** a Vite, Rspack, Rsbuild (or
-future Webpack) Module Federation **build** plugin — are **out of scope** for
+`createInstance` / runtime plugins **without** a Vite, Rspack, Rsbuild, or
+Webpack Module Federation **build** plugin — are **out of scope** for
 first-class support
 ([#34](https://github.com/tonoizer/module-federation-doctor/issues/34),
 `MFDOCTOR-117`).
