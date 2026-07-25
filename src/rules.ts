@@ -1,0 +1,697 @@
+import semver from "semver";
+import { ruleGuidance } from "./rule-guidance.js";
+import type {
+  DoctorRule,
+  NormalizedMFConfig,
+  ProjectFacts,
+  RuleContext,
+  Severity,
+} from "./types.js";
+
+export function defineRule(rule: DoctorRule): DoctorRule {
+  return rule;
+}
+
+function createRule(
+  id: string,
+  defaultSeverity: Severity,
+  check: (context: RuleContext) => void | Promise<void>,
+): DoctorRule {
+  const guidance = ruleGuidance[id];
+  if (!guidance) throw new Error(`Missing rule guidance for ${id}`);
+  return defineRule({
+    meta: {
+      id,
+      defaultSeverity,
+      supportedBundlers: ["vite", "rspack", "rsbuild", "unknown"],
+      documentation: `/rules/${id}`,
+      ...guidance,
+    },
+    check,
+  });
+}
+
+function mf(context: RuleContext): NormalizedMFConfig | undefined {
+  return context.facts.moduleFederation;
+}
+
+function report(
+  context: RuleContext,
+  message: string,
+  evidence: Record<string, unknown>,
+  suggestion?: string,
+): void {
+  context.report({
+    message,
+    evidence,
+    ...(suggestion ? { suggestion } : {}),
+  });
+}
+
+function cleanRange(range: string): string {
+  return range === "*" || range === "workspace:*" ? "*" : range.replace(/^workspace:/, "");
+}
+
+function optionBoolean(options: Record<string, unknown>, key: string): boolean | undefined {
+  return typeof options[key] === "boolean" ? options[key] : undefined;
+}
+
+function scopeList(value: string | string[] | undefined): string[] {
+  return value === undefined ? ["default"] : Array.isArray(value) ? value : [value];
+}
+
+export const builtInRules: DoctorRule[] = [
+  createRule("config/name-required", "error", (context) => {
+    if (mf(context) && !mf(context)?.name?.trim())
+      report(context, "Module Federation config needs a non-empty name.", {}, "Set `name`.");
+  }),
+  createRule("config/expose-key-invalid", "error", (context) => {
+    for (const key of Object.keys(mf(context)?.exposes ?? {}))
+      if (!key.startsWith("./") || key === "./")
+        report(context, `Expose key "${key}" must start with "./".`, { key });
+  }),
+  createRule("config/expose-path-missing", "error", (context) => {
+    for (const [key, target] of Object.entries(mf(context)?.exposes ?? {})) {
+      const normalized = target.replaceAll("\\", "/").replace(/^\.\/+/, "");
+      if (!context.facts.imports.sourceFiles.includes(normalized))
+        report(
+          context,
+          `Exposed module "${key}" points to a missing file.`,
+          { key, target },
+          "Fix the path or create the file.",
+        );
+    }
+  }),
+  createRule("config/remote-entry-invalid", "error", (context) => {
+    for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {})) {
+      if (
+        !remote.version &&
+        (!remote.entry || (!remote.entry.includes("@") && !/^https?:\/\//.test(remote.entry)))
+      )
+        report(context, `Remote "${name}" has an invalid entry.`, {
+          name,
+          entry: remote.entry,
+        });
+    }
+  }),
+  createRule("config/filename-invalid", "error", (context) => {
+    const filename = mf(context)?.filename;
+    if (
+      filename &&
+      (filename.startsWith("/") ||
+        filename.includes("\\") ||
+        filename.split("/").includes("..") ||
+        !/\.m?js(?:$|\?)/.test(filename))
+    )
+      report(
+        context,
+        `Remote entry filename "${filename}" is unsafe or is not JavaScript.`,
+        { filename },
+        "Use a relative `.js` or `.mjs` filename without `..` path segments.",
+      );
+  }),
+  createRule("config/remote-http-insecure", "warning", (context) => {
+    for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {})) {
+      const url = remote.entry.includes("@")
+        ? remote.entry.slice(remote.entry.lastIndexOf("@") + 1)
+        : remote.entry;
+      if (
+        url.startsWith("http://") &&
+        !/^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/.test(url)
+      )
+        report(
+          context,
+          `Remote "${name}" uses plain HTTP outside localhost.`,
+          { name, entry: remote.entry },
+          "Use HTTPS so remote code cannot be changed in transit.",
+        );
+    }
+  }),
+  createRule("config/remote-manifest-recommended", "info", (context) => {
+    for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {}))
+      if (/remoteEntry(?:\.[cm]?js)?(?:[?#]|$)/i.test(remote.entry))
+        report(
+          context,
+          `Remote "${name}" points straight to a remote entry.`,
+          { name, entry: remote.entry },
+          "Prefer `mf-manifest.json` when you need dynamic type hints, preloading, and DevTools metadata.",
+        );
+  }),
+  createRule("config/library-remote-type-mismatch", "warning", (context) => {
+    const config = mf(context);
+    const libraryType = config?.library?.type;
+    if (
+      libraryType &&
+      config?.remoteType &&
+      ((libraryType === "module" &&
+        !["module", "import", "module-import"].includes(config.remoteType)) ||
+        (libraryType !== "module" &&
+          ["module", "import", "module-import"].includes(config.remoteType)))
+    )
+      report(
+        context,
+        "The container library type and remote loading type may not interoperate.",
+        { libraryType, remoteType: config.remoteType },
+        "Make the producer library format and consumer remote type agree.",
+      );
+  }),
+  createRule("config/share-scope-undeclared", "error", (context) => {
+    const config = mf(context);
+    if (!config) return;
+    const declared = new Set(config.shareScope ?? ["default"]);
+    for (const [name, shared] of Object.entries(config.shared))
+      for (const scope of scopeList(shared.shareScope))
+        if (!declared.has(scope))
+          report(
+            context,
+            `Shared package "${name}" uses undeclared scope "${scope}".`,
+            { package: name, scope, declaredScopes: [...declared] },
+            "Add the scope to the top-level `shareScope` option or use a declared scope.",
+          );
+  }),
+  createRule("config/runtime-plugin-missing", "error", (context) => {
+    const files = new Set(context.facts.imports.sourceFiles);
+    for (const plugin of mf(context)?.runtimePlugins ?? []) {
+      if (!plugin.startsWith(".") && !plugin.startsWith("/")) continue;
+      const normalized = plugin.replaceAll("\\", "/").replace(/^\.\/+/, "");
+      const candidates = [
+        normalized,
+        `${normalized}.ts`,
+        `${normalized}.tsx`,
+        `${normalized}.js`,
+        `${normalized}.mjs`,
+        `${normalized}/index.ts`,
+        `${normalized}/index.js`,
+      ];
+      if (!candidates.some((candidate) => files.has(candidate)))
+        report(
+          context,
+          `Runtime plugin "${plugin}" does not resolve to a scanned source file.`,
+          { plugin },
+          "Fix the runtime plugin path or include that file in Doctor's source scan.",
+        );
+    }
+  }),
+  createRule("config/get-public-path-invalid", "error", (context) => {
+    const source = mf(context)?.getPublicPath;
+    if (!source) return;
+    const looksValid =
+      /^\s*(?:async\s+)?function\b/.test(source) ||
+      /^\s*(?:\([^)]*\)|[\w$]+)\s*=>/.test(source) ||
+      /^\s*return\b/.test(source);
+    if (!looksValid)
+      report(
+        context,
+        "`getPublicPath` is not a stringified function or return statement.",
+        { valueLength: source.length },
+        "Use `function () { return ... }`, an arrow function, or `return ...`.",
+      );
+  }),
+  createRule("config/get-public-path-unused", "info", (context) => {
+    const config = mf(context);
+    if (config?.getPublicPath && Object.keys(config.exposes).length === 0)
+      report(
+        context,
+        "`getPublicPath` has no effect because this project exposes no modules.",
+        {},
+        "Remove it or add exposes.",
+      );
+  }),
+  createRule("security/get-public-path-dynamic-code", "warning", (context) => {
+    const source = mf(context)?.getPublicPath;
+    if (source)
+      report(
+        context,
+        "`getPublicPath` is executed as dynamic code at runtime.",
+        { valueLength: source.length },
+        "Keep it static, review it like executable code, and never build it from untrusted input.",
+      );
+  }),
+  createRule("config/implementation-suspicious", "warning", (context) => {
+    const implementation = mf(context)?.implementation;
+    if (
+      implementation &&
+      !implementation.includes("@module-federation/runtime-tools") &&
+      !implementation.startsWith(".") &&
+      !implementation.startsWith("/")
+    )
+      report(
+        context,
+        "The custom runtime implementation is not `@module-federation/runtime-tools` or a local path.",
+        { implementation },
+        "Verify that the implementation exports the runtime contract required by this plugin version.",
+      );
+  }),
+  createRule("config/external-runtime-with-exposes", "error", (context) => {
+    const config = mf(context);
+    if (config?.experiments?.provideExternalRuntime && Object.keys(config.exposes).length > 0)
+      report(
+        context,
+        "`provideExternalRuntime` is only valid for a pure consumer.",
+        { exposes: Object.keys(config.exposes) },
+        "Move the provider flag to the top-level consumer or remove exposes.",
+      );
+  }),
+  createRule("config/external-runtime-conflict", "error", (context) => {
+    const experiments = mf(context)?.experiments;
+    if (experiments?.externalRuntime && experiments.provideExternalRuntime)
+      report(
+        context,
+        "One build cannot both externalize and provide the shared runtime.",
+        {},
+        "Use `provideExternalRuntime` on the pure consumer and `externalRuntime` on its browser remotes.",
+      );
+  }),
+  createRule("config/remote-capability-disabled", "error", (context) => {
+    const config = mf(context);
+    if (
+      (config?.vite?.disableRemote || config?.experiments?.disableRemote) &&
+      Object.keys(config.remotes).length > 0
+    )
+      report(
+        context,
+        "Remote-consumption runtime code is disabled while remotes are configured.",
+        { remotes: Object.keys(config.remotes) },
+        "Remove `disableRemote` or remove all consumed remotes.",
+      );
+  }),
+  createRule("config/shared-capability-disabled", "error", (context) => {
+    const config = mf(context);
+    if (
+      (config?.vite?.disableShared || config?.experiments?.disableShared) &&
+      Object.keys(config.shared).length > 0
+    )
+      report(
+        context,
+        "Shared-dependency runtime code is disabled while shared packages are configured.",
+        { shared: Object.keys(config.shared) },
+        "Remove `disableShared` or remove the shared configuration.",
+      );
+  }),
+  createRule("reliability/snapshot-capability-disabled", "warning", (context) => {
+    const config = mf(context);
+    const disabled = config?.vite?.disableSnapshot || config?.experiments?.disableSnapshot;
+    if (
+      disabled &&
+      (config.manifest?.enabled ||
+        Object.values(config.remotes).some((remote) => /\.json(?:[?#]|$)/.test(remote.entry)))
+    )
+      report(
+        context,
+        "Snapshot support is disabled while manifest-powered features are configured.",
+        {},
+        "Enable snapshots, or accept losing manifest remotes, preload, dynamic types, HMR, and DevTools integration.",
+      );
+  }),
+  createRule("config/eager-tree-shaking-conflict", "error", (context) => {
+    for (const [name, shared] of Object.entries(mf(context)?.shared ?? {}))
+      if (shared.eager && shared.treeShaking)
+        report(
+          context,
+          `Shared package "${name}" enables both eager loading and tree shaking.`,
+          { package: name },
+          "Choose eager loading for a small initial dependency or tree shaking for on-demand exports.",
+        );
+  }),
+  createRule("reliability/external-runtime-provider-unverified", "warning", (context) => {
+    if (mf(context)?.experiments?.externalRuntime)
+      report(
+        context,
+        "This build requires `_FEDERATION_RUNTIME_CORE` to exist before its remote graph runs.",
+        {},
+        "Verify a top-level pure consumer enables `provideExternalRuntime` and loads first.",
+      );
+  }),
+  createRule("reliability/async-startup-library-promise", "warning", (context) => {
+    const config = mf(context);
+    if (
+      config?.experiments?.asyncStartup &&
+      config.library?.type &&
+      !["module", "commonjs", "commonjs2"].includes(config.library.type)
+    )
+      report(
+        context,
+        "Async startup makes this library entry return a Promise.",
+        { libraryType: config.library.type },
+        "Make consumers await the entry exports, or disable async startup for this library contract.",
+      );
+  }),
+  createRule("performance/version-first-startup", "info", (context) => {
+    const config = mf(context);
+    const threshold = Number(context.options["remoteThreshold"] ?? 3);
+    if (
+      config?.shareStrategy === "version-first" &&
+      Object.keys(config.remotes).length >= threshold
+    )
+      report(
+        context,
+        "`version-first` loads every configured remote entry during startup.",
+        { remoteCount: Object.keys(config.remotes).length, threshold },
+        "Consider `loaded-first` when on-demand loading matters more than highest-version selection.",
+      );
+  }),
+  createRule("reliability/version-first-offline-remotes", "warning", (context) => {
+    const config = mf(context);
+    if (
+      config?.shareStrategy === "version-first" &&
+      Object.keys(config.remotes).length > 0 &&
+      (config.runtimePlugins?.length ?? 0) === 0
+    )
+      report(
+        context,
+        "`version-first` can fail startup when a remote is offline and no runtime recovery plugin is configured.",
+        { remoteCount: Object.keys(config.remotes).length },
+        "Add an `errorLoadRemote` runtime plugin or use `loaded-first` when delayed failure is acceptable.",
+      );
+  }),
+  createRule("reliability/shared-import-false", "warning", (context) => {
+    for (const [name, shared] of Object.entries(mf(context)?.shared ?? {}))
+      if (shared.import === false)
+        report(
+          context,
+          `Shared package "${name}" has no local fallback.`,
+          { package: name, scopes: scopeList(shared.shareScope) },
+          "Verify another build always provides it before this project calls `loadShare`.",
+        );
+  }),
+  createRule("config/tree-shaking-server-calc-injection", "warning", (context) => {
+    const config = mf(context);
+    if (
+      config?.treeShaking?.injectUsedExports === true &&
+      Object.values(config.shared).some((shared) => shared.treeShaking?.mode === "server-calc")
+    )
+      report(
+        context,
+        "`injectTreeShakingUsedExports` should be false with `server-calc` shared tree shaking.",
+        {},
+        "Disable injection and let the deployment service merge used exports.",
+      );
+  }),
+  createRule("reliability/tree-shaking-server-calc-contract", "warning", (context) => {
+    const config = mf(context);
+    const packages = Object.entries(config?.shared ?? {})
+      .filter(([, shared]) => shared.treeShaking?.mode === "server-calc")
+      .map(([name]) => name);
+    if (packages.length > 0 && !config?.treeShaking?.directory)
+      report(
+        context,
+        "Server-calculated shared tree shaking has no fallback output directory.",
+        { packages },
+        "Set `treeShakingDir` and make the deployment service merge metadata and publish secondary artifacts.",
+      );
+  }),
+  createRule("performance/vite-bundle-all-css", "warning", (context) => {
+    const config = mf(context);
+    if (
+      context.facts.bundler.name === "vite" &&
+      config?.vite?.bundleAllCSS &&
+      Object.keys(config.exposes).length > 1
+    )
+      report(
+        context,
+        "Vite will attach all bundle CSS to every exposed module.",
+        { exposeCount: Object.keys(config.exposes).length },
+        "Disable `bundleAllCSS` unless every expose truly needs the full stylesheet set.",
+      );
+  }),
+  createRule("reliability/vite-fixed-parse-timeout", "info", (context) => {
+    const vite = mf(context)?.vite;
+    if (
+      context.facts.bundler.name === "vite" &&
+      vite?.moduleParseTimeout &&
+      !vite.moduleParseIdleTimeout
+    )
+      report(
+        context,
+        "Vite uses a fixed module-parse timeout.",
+        { seconds: vite.moduleParseTimeout },
+        "For large builds, prefer `moduleParseIdleTimeout` so active parsing does not end early.",
+      );
+  }),
+  createRule("artifact/manifest-assets-disabled", "warning", (context) => {
+    const config = mf(context);
+    if (
+      config?.manifest?.enabled &&
+      optionBoolean(config.manifest.options, "disableAssetsAnalyze") === true &&
+      Object.keys(config.exposes).length > 0
+    )
+      report(
+        context,
+        "Manifest asset analysis is disabled for a producer.",
+        { exposes: Object.keys(config.exposes) },
+        "Enable asset analysis for production manifests; disabled analysis omits shared and expose asset detail.",
+      );
+  }),
+  createRule("artifact/manifest-disabled", "info", (context) => {
+    const config = mf(context);
+    if (
+      config &&
+      !config.manifest?.enabled &&
+      (Object.keys(config.exposes).length > 0 || Object.keys(config.remotes).length > 0)
+    )
+      report(
+        context,
+        "Manifest generation is disabled.",
+        {},
+        "Enable `manifest` for runtime metadata, preload analysis, DevTools, and stronger Doctor checks.",
+      );
+  }),
+  createRule("artifact/dts-disabled", "warning", (context) => {
+    const config = mf(context);
+    if (config && config.dts?.enabled === false && Object.keys(config.exposes).length > 0)
+      report(
+        context,
+        "Federated type generation is disabled for a producer.",
+        { exposes: Object.keys(config.exposes) },
+        "Enable `dts.generateTypes`, or document how consumers receive compatible declarations.",
+      );
+  }),
+  createRule("config/shared-externals-conflict", "error", (context) => {
+    const externals = context.facts.dependencies.declared["doctor:externals"]?.split(",") ?? [];
+    for (const name of Object.keys(mf(context)?.shared ?? {}))
+      if (externals.includes(name))
+        report(context, `"${name}" is both shared and external.`, { package: name });
+  }),
+  createRule("shared/version-unsatisfied", "error", (context) => {
+    for (const [name, shared] of Object.entries(mf(context)?.shared ?? {})) {
+      const installed = context.facts.dependencies.installed[name];
+      if (
+        installed &&
+        typeof shared.requiredVersion === "string" &&
+        semver.valid(installed) &&
+        semver.validRange(cleanRange(shared.requiredVersion)) &&
+        !semver.satisfies(installed, cleanRange(shared.requiredVersion))
+      )
+        report(context, `"${name}" does not satisfy its shared version range.`, {
+          package: name,
+          installed,
+          requiredVersion: shared.requiredVersion,
+        });
+    }
+  }),
+  createRule("artifact/manifest-invalid", "error", (context) => {
+    const manifest = context.facts.artifacts.manifest;
+    if (manifest && !manifest.valid)
+      report(context, "Module Federation manifest is not valid JSON or has an invalid shape.", {
+        path: manifest.path,
+      });
+  }),
+  createRule("artifact/manifest-name-mismatch", "error", (context) => {
+    const configName = mf(context)?.name;
+    const manifestName = context.facts.artifacts.manifest?.name;
+    if (configName && manifestName && configName !== manifestName)
+      report(
+        context,
+        "The emitted manifest belongs to a different federation container name.",
+        { configName, manifestName },
+        "Clean the output directory and make the plugin and Doctor use the same options object.",
+      );
+  }),
+  createRule("artifact/manifest-remote-entry-missing", "error", (context) => {
+    const manifest = context.facts.artifacts.manifest;
+    const remoteEntry = manifest?.remoteEntry;
+    if (
+      manifest?.valid &&
+      remoteEntry &&
+      context.facts.capabilities.emittedAssets &&
+      !context.facts.artifacts.emittedAssets.some(
+        (asset) =>
+          asset.endsWith(`${remoteEntry.path}${remoteEntry.name}`) ||
+          asset.endsWith(remoteEntry.name),
+      )
+    )
+      report(
+        context,
+        "The remote entry named by the manifest was not emitted.",
+        { remoteEntry },
+        "Clean and rebuild; then verify filename, output path, and manifest generation use one config.",
+      );
+  }),
+  createRule("artifact/manifest-expose-assets-empty", "warning", (context) => {
+    const manifest = context.facts.artifacts.manifest;
+    if (!manifest?.valid || mf(context)?.manifest?.options["disableAssetsAnalyze"] === true) return;
+    for (const expose of manifest.exposes)
+      if (expose.assets.length === 0)
+        report(
+          context,
+          `Manifest expose "${expose.key}" has no asset metadata.`,
+          { expose: expose.key },
+          "Verify the expose was included in the build and asset analysis completed.",
+        );
+  }),
+  createRule("artifact/manifest-shared-version-mismatch", "warning", (context) => {
+    const installed = context.facts.dependencies.installed;
+    for (const shared of context.facts.artifacts.manifest?.shared ?? []) {
+      const local = installed[shared.name];
+      if (
+        local &&
+        shared.version &&
+        semver.valid(local) &&
+        semver.valid(shared.version) &&
+        local !== shared.version
+      )
+        report(
+          context,
+          `Manifest metadata for "${shared.name}" does not match the installed version.`,
+          { package: shared.name, installed: local, manifestVersion: shared.version },
+          "Clean the build and lockfile install; stale manifest metadata can break version negotiation.",
+        );
+    }
+  }),
+  createRule("artifact/types-metadata-missing", "warning", (context) => {
+    const manifest = context.facts.artifacts.manifest;
+    if (
+      manifest?.valid &&
+      manifest.exposes.length > 0 &&
+      mf(context)?.dts?.enabled !== false &&
+      !manifest.types
+    )
+      report(
+        context,
+        "Producer manifest has no federated type metadata.",
+        {},
+        "Check DTS generation errors and ensure the manifest plugin receives type output metadata.",
+      );
+  }),
+  createRule("artifact/remote-entry-missing", "error", (context) => {
+    const config = mf(context);
+    if (!config || !context.facts.capabilities.emittedAssets) return;
+    const expected = config.filename ?? "remoteEntry.js";
+    if (
+      Object.keys(config.exposes).length > 0 &&
+      !context.facts.artifacts.emittedAssets.some((asset) => asset.endsWith(expected))
+    )
+      report(context, `Expected remote entry "${expected}" was not emitted.`, { expected });
+  }),
+  createRule("artifact/expose-missing", "error", (context) => {
+    const config = mf(context);
+    const manifest = context.facts.artifacts.manifest;
+    if (!config || !manifest?.valid) return;
+    const found = new Set(manifest.exposes.map((item) => item.key));
+    for (const key of Object.keys(config.exposes))
+      if (!found.has(key))
+        report(context, `Expose "${key}" is missing from the manifest.`, { key });
+  }),
+  createRule("doctor/partial-analysis", "warning", (context) => {
+    const missing = Object.entries(context.facts.capabilities)
+      .filter(([, value]) => !value)
+      .map(([name]) => name)
+      .sort();
+    if (!mf(context)) missing.push("moduleFederation");
+    if (missing.length > 0)
+      report(
+        context,
+        "Doctor completed with partial input.",
+        { missing },
+        "Pass explicit MF options.",
+      );
+  }),
+  createRule("config/plugin-package-mismatch", "warning", (context) => {
+    const expected: Partial<Record<ProjectFacts["bundler"]["name"], string>> = {
+      vite: "@module-federation/vite",
+      rspack: "@module-federation/enhanced",
+      rsbuild: "@module-federation/rsbuild-plugin",
+    };
+    const packageName = expected[context.facts.bundler.name];
+    if (packageName && !context.facts.dependencies.declared[packageName])
+      report(context, `Expected "${packageName}" for ${context.facts.bundler.name}.`, {
+        bundler: context.facts.bundler.name,
+        expectedPackage: packageName,
+      });
+  }),
+  createRule("shared/singleton-risk", "warning", (context) => {
+    for (const [name, shared] of Object.entries(mf(context)?.shared ?? {}))
+      if (/^(react|react-dom|vue|@angular\/core)$/.test(name) && !shared.singleton)
+        report(context, `"${name}" normally needs singleton sharing.`, { package: name });
+  }),
+  createRule("shared/eager-without-singleton", "warning", (context) => {
+    for (const [name, shared] of Object.entries(mf(context)?.shared ?? {}))
+      if (shared.eager && !shared.singleton)
+        report(context, `"${name}" is eager but not singleton.`, { package: name });
+  }),
+  createRule("shared/unused", "warning", (context) => {
+    const imported = new Set(context.facts.imports.packages);
+    for (const name of Object.keys(mf(context)?.shared ?? {}))
+      if (!imported.has(name))
+        report(context, `Shared package "${name}" is not statically imported.`, { package: name });
+  }),
+  createRule("shared/candidate", "warning", (context) => {
+    const shared = new Set(Object.keys(mf(context)?.shared ?? {}));
+    for (const name of context.facts.imports.packages)
+      if (
+        context.facts.dependencies.declared[name] &&
+        !shared.has(name) &&
+        /^(react|react-dom|vue|@angular\/core)$/.test(name)
+      )
+        report(context, `"${name}" is a likely shared dependency.`, { package: name });
+  }),
+  createRule("artifact/public-path-suspicious", "warning", (context) => {
+    const publicPath = context.facts.artifacts.manifest?.publicPath;
+    if (publicPath && !/^(auto$|\/|https?:\/\/)/.test(publicPath))
+      report(context, `Manifest public path "${publicPath}" may not resolve.`, { publicPath });
+  }),
+  createRule("artifact/types-missing", "warning", (context) => {
+    const manifest = context.facts.artifacts.manifest;
+    if (
+      manifest?.valid &&
+      manifest.exposes.length > 0 &&
+      !context.facts.artifacts.emittedAssets.some((asset) =>
+        /(?:\.d\.(ts|mts)|@mf-types\.zip)$/.test(asset),
+      )
+    )
+      report(context, "No generated federation type files were found.", {});
+  }),
+];
+
+export const federationRuleMeta = [
+  {
+    id: "federation/name-conflict",
+    severity: "error",
+    ...ruleGuidance["federation/name-conflict"]!,
+  },
+  {
+    id: "federation/version-conflict",
+    severity: "error",
+    ...ruleGuidance["federation/version-conflict"]!,
+  },
+  {
+    id: "federation/share-scope-mismatch",
+    severity: "error",
+    ...ruleGuidance["federation/share-scope-mismatch"]!,
+  },
+  {
+    id: "federation/missing-provider",
+    severity: "error",
+    ...ruleGuidance["federation/missing-provider"]!,
+  },
+  {
+    id: "shared/singleton-mismatch",
+    severity: "warning",
+    ...ruleGuidance["shared/singleton-mismatch"]!,
+  },
+  {
+    id: "federation/external-runtime-provider-missing",
+    severity: "error",
+    ...ruleGuidance["federation/external-runtime-provider-missing"]!,
+  },
+] as const;

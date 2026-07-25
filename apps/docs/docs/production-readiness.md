@@ -1,0 +1,72 @@
+# Production readiness
+
+Doctor treats Module Federation as three linked surfaces:
+
+1. build configuration,
+2. emitted manifest/stats/type artifacts,
+3. federation-wide runtime contracts.
+
+A config can be valid by itself and still fail after deployment. For example,
+an `externalRuntime` remote is only safe when a pure top-level consumer provides
+the runtime first. Doctor therefore keeps local and cross-project checks
+separate.
+
+## Coverage map
+
+| Surface             | Examples                                                        | Main benefit                  |
+| ------------------- | --------------------------------------------------------------- | ----------------------------- |
+| Identity and format | `name`, `filename`, `library`, `remoteType`                     | Correctness                   |
+| Remote loading      | `remotes`, HTTPS, manifest entries, `shareStrategy`             | Reliability and startup speed |
+| Sharing             | scopes, versions, singleton, eager, fallback, tree shaking      | Correctness and bundle size   |
+| Runtime             | plugins, async startup, external runtime, snapshot capabilities | Reliability and performance   |
+| Output              | manifest, stats, remote entry, type metadata, asset maps        | Deploy safety                 |
+| Vite-only           | parse timeouts, CSS bundling, runtime feature removal           | Build and runtime performance |
+
+The [rule reference](./rules/index.md) groups every diagnostic by correctness,
+reliability, performance, security, or tooling. Each rule page includes the
+impact, a concrete fix, and upstream evidence.
+
+## Important distinctions
+
+Core/Rspack/Rsbuild options come from the
+[Module Federation plugin types](https://github.com/module-federation/core/blob/641a0b6edc0f30865586e7d021522bfa27051c4c/packages/sdk/src/types/plugins/ModuleFederationPlugin.ts).
+They include runtime plugins, manifest, DTS, async startup, external runtime,
+snapshot optimization, and shared tree shaking.
+
+Vite has its own integration and extra options. Its
+[normalized option type](https://github.com/module-federation/vite/blob/321d7db8a4b2a1764b3a7cdc16246222d97231ac/src/utils/normalizeModuleFederationOptions.ts)
+adds `publicPath`, `bundleAllCSS`, parser timeouts, injection location, SSR
+externals, and direct runtime capability flags. A Doctor rule says when it is
+Vite-only; it does not pretend the setting exists in every bundler.
+
+## Production policy
+
+Recommended CI policy:
+
+```ts
+doctor({
+  moduleFederation: mfOptions,
+  mode: "ci",
+  failOn: "error",
+  output: { formats: ["terminal", "json", "sarif", "html"] },
+});
+```
+
+Use `mfdoctor federation ".mf/doctor/**/project.json"` after every application
+has produced `project.json`. This is where name collisions, version/scope
+conflicts, missing providers, and external-runtime provider gaps become visible.
+
+Doctor stays offline by default. It records normalized config and artifact
+metadata, not source bodies, secrets, or live remote responses.
+
+## Research sources
+
+- [Official configuration index](https://module-federation.io/configure/index.html)
+- [Official `mf` agent skill](https://github.com/module-federation/agent-skills/tree/main/skills/mf)
+- [Module Federation Core](https://github.com/module-federation/core)
+- [Module Federation Vite](https://github.com/module-federation/vite)
+- [Vitest docs and UI](https://github.com/vitest-dev/vitest)
+
+The official agent-skill repository currently has no license file. Doctor does
+not vendor its code or browser asset. The repository skill in `.codex/skills`
+is original and links back to official sources.

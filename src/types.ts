@@ -1,0 +1,358 @@
+export type BundlerName = "vite" | "rspack" | "rsbuild" | "unknown";
+export type Severity = "info" | "warning" | "error";
+export type OutputFormat = "terminal" | "json" | "sarif" | "html";
+export type RuleSetting = "off" | Severity | readonly [Severity, Record<string, unknown>];
+
+export interface SourceLocation {
+  path: string;
+  line?: number;
+  column?: number;
+}
+
+export interface ProjectIdentity {
+  name: string;
+  root: string;
+}
+
+export interface BundlerFacts {
+  name: BundlerName;
+  version?: string;
+  mode: string;
+}
+
+export interface AnalysisCapabilities {
+  config: boolean;
+  sourceImports: boolean;
+  manifest: boolean;
+  stats: boolean;
+  emittedAssets: boolean;
+  installedVersions: boolean;
+}
+
+export interface NormalizedRemote {
+  name: string;
+  entry: string;
+  alias?: string;
+  type?: string;
+  version?: string;
+  entryGlobalName?: string;
+  shareScope: string | string[];
+}
+
+export interface NormalizedShared {
+  package: string;
+  singleton: boolean;
+  eager: boolean;
+  strictVersion?: boolean;
+  requiredVersion?: string | false;
+  version?: string | false;
+  import?: string | false;
+  shareKey?: string;
+  request?: string;
+  allowNodeModulesSuffixMatch?: boolean;
+  shareScope: string | string[];
+  treeShaking?: {
+    mode?: "server-calc" | "runtime-infer";
+    usedExports?: string[];
+  };
+}
+
+export interface NormalizedToggle {
+  enabled: boolean;
+  options: Record<string, unknown>;
+}
+
+export interface NormalizedMFConfig {
+  name?: string;
+  filename?: string;
+  library?: { type?: string; name?: unknown };
+  remoteType?: string;
+  shareScope?: string[];
+  exposes: Record<string, string>;
+  remotes: Record<string, NormalizedRemote>;
+  shared: Record<string, NormalizedShared>;
+  runtimePlugins?: string[];
+  getPublicPath?: string;
+  implementation?: string;
+  manifest?: NormalizedToggle;
+  dev?: NormalizedToggle;
+  dts?: NormalizedToggle;
+  shareStrategy?: "version-first" | "loaded-first";
+  virtualRuntimeEntry?: boolean;
+  experiments?: {
+    asyncStartup: boolean;
+    externalRuntime: boolean;
+    provideExternalRuntime: boolean;
+    disableSnapshot?: boolean;
+    disableRemote?: boolean;
+    disableShared?: boolean;
+    target?: "web" | "node";
+  };
+  treeShaking?: {
+    injectUsedExports?: boolean;
+    directory?: string;
+    plugins: string[];
+    excludePlugins: string[];
+  };
+  vite?: {
+    publicPath?: string;
+    bundleAllCSS: boolean;
+    ignoreOrigin: boolean;
+    virtualModuleDir?: string;
+    hostInitInjectLocation?: "entry" | "html";
+    moduleParseTimeout?: number;
+    moduleParseIdleTimeout?: number;
+    varFilename?: string;
+    target?: "web" | "node";
+    disableRemote?: boolean;
+    disableShared?: boolean;
+    disableSnapshot?: boolean;
+    ssrExternals: string[];
+  };
+}
+
+export interface DependencyFacts {
+  declared: Record<string, string>;
+  installed: Record<string, string>;
+}
+
+export interface ImportFacts {
+  sourceFiles: string[];
+  specifiers: string[];
+  packages: string[];
+}
+
+export interface ManifestExpose {
+  key: string;
+  assets: string[];
+}
+
+export interface ManifestShared {
+  name: string;
+  version?: string;
+  requiredVersion?: string;
+  singleton?: boolean;
+  assets: string[];
+}
+
+export interface ArtifactFacts {
+  manifest?: {
+    path: string;
+    valid: boolean;
+    id?: string;
+    name?: string;
+    publicPath?: string;
+    pluginVersion?: string;
+    buildVersion?: string;
+    remoteEntry?: {
+      name: string;
+      path: string;
+      type?: string;
+    };
+    types?: {
+      path?: string;
+      zip?: string;
+      api?: string;
+    };
+    exposes: ManifestExpose[];
+    shared: ManifestShared[];
+    remotes?: Array<{
+      name: string;
+      alias?: string;
+      entry?: string;
+      version?: string;
+      shareScope: string[];
+    }>;
+  };
+  stats?: {
+    path: string;
+    valid: boolean;
+  };
+  emittedAssets: string[];
+}
+
+export interface ProjectFacts {
+  schemaVersion: 1;
+  project: ProjectIdentity;
+  bundler: BundlerFacts;
+  capabilities: AnalysisCapabilities;
+  moduleFederation?: NormalizedMFConfig;
+  dependencies: DependencyFacts;
+  imports: ImportFacts;
+  artifacts: ArtifactFacts;
+}
+
+export interface DoctorFinding {
+  schemaVersion: 1;
+  ruleId: string;
+  severity: Severity;
+  message: string;
+  project: string;
+  location?: SourceLocation;
+  evidence: Record<string, unknown>;
+  suggestion?: string;
+  documentation?: string;
+  fingerprint: string;
+}
+
+export interface RuleMeta {
+  id: string;
+  defaultSeverity: Severity;
+  supportedBundlers: BundlerName[];
+  documentation: string;
+  category?: "correctness" | "performance" | "reliability" | "security" | "tooling";
+  impact?: string;
+  fix?: string;
+  sources?: string[];
+}
+
+export interface RuleContext {
+  facts: Readonly<ProjectFacts>;
+  options: Readonly<Record<string, unknown>>;
+  report(
+    finding: Omit<
+      DoctorFinding,
+      "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint"
+    >,
+  ): void;
+}
+
+export interface DoctorRule {
+  meta: RuleMeta;
+  check(context: RuleContext): void | DoctorFinding[] | Promise<void | DoctorFinding[]>;
+}
+
+export interface ModuleFederationConfigLike {
+  name?: string;
+  filename?: string;
+  library?: { type?: string; name?: unknown };
+  remoteType?: string;
+  shareScope?: string | string[];
+  exposes?: Record<string, string | { import: string | string[] }>;
+  remotes?: Record<
+    string,
+    | string
+    | {
+        alias?: string;
+        name?: string;
+        entry?: string;
+        external?: string | string[];
+        type?: string;
+        version?: string;
+        entryGlobalName?: string;
+        shareScope?: string | string[];
+      }
+  >;
+  shared?:
+    | string[]
+    | Record<
+        string,
+        | string
+        | {
+            singleton?: boolean;
+            eager?: boolean;
+            strictVersion?: boolean;
+            requiredVersion?: string | false;
+            version?: string | false;
+            import?: string | false;
+            shareKey?: string;
+            request?: string;
+            allowNodeModulesSuffixMatch?: boolean;
+            shareScope?: string | string[];
+            treeShaking?:
+              | boolean
+              | {
+                  mode?: "server-calc" | "runtime-infer";
+                  usedExports?: string[];
+                };
+          }
+      >;
+  runtimePlugins?: Array<string | [string, Record<string, unknown>]>;
+  getPublicPath?: string;
+  implementation?: string;
+  manifest?: boolean | Record<string, unknown>;
+  dev?: boolean | Record<string, unknown>;
+  dts?: boolean | Record<string, unknown>;
+  shareStrategy?: "version-first" | "loaded-first";
+  virtualRuntimeEntry?: boolean;
+  experiments?: {
+    asyncStartup?: boolean;
+    externalRuntime?: boolean;
+    provideExternalRuntime?: boolean;
+    optimization?: {
+      disableSnapshot?: boolean;
+      disableRemote?: boolean;
+      disableShared?: boolean;
+      target?: "web" | "node";
+    };
+  };
+  injectTreeShakingUsedExports?: boolean;
+  treeShakingDir?: string;
+  treeShakingSharedPlugins?: string[];
+  treeShakingSharedExcludePlugins?: string[];
+  publicPath?: string;
+  bundleAllCSS?: boolean;
+  ignoreOrigin?: boolean;
+  virtualModuleDir?: string;
+  hostInitInjectLocation?: "entry" | "html";
+  moduleParseTimeout?: number;
+  moduleParseIdleTimeout?: number;
+  varFilename?: string;
+  target?: "web" | "node";
+  disableRemote?: boolean;
+  disableShared?: boolean;
+  disableSnapshot?: boolean;
+  ssrExternals?: string[];
+}
+
+export interface DoctorOptions {
+  moduleFederation?: ModuleFederationConfigLike;
+  bundler?: BundlerName;
+  bundlerVersion?: string;
+  mode?: "development" | "ci";
+  root?: string;
+  output?: {
+    directory?: string;
+    formats?: OutputFormat[];
+  };
+  failOn?: "never" | "warning" | "error";
+  include?: string[];
+  exclude?: string[];
+  rules?: Record<string, RuleSetting>;
+  extends?: DoctorRule[];
+}
+
+export interface ResolvedDoctorOptions {
+  moduleFederation?: ModuleFederationConfigLike;
+  bundler: BundlerName;
+  bundlerVersion?: string;
+  mode: "development" | "ci";
+  root: string;
+  output: {
+    directory: string;
+    formats: OutputFormat[];
+  };
+  failOn: "never" | "warning" | "error";
+  include: string[];
+  exclude: string[];
+  rules: Record<string, RuleSetting>;
+  extends: DoctorRule[];
+}
+
+export interface DoctorReport {
+  schemaVersion: 1;
+  capabilities: AnalysisCapabilities;
+  summary: {
+    projects: number;
+    info: number;
+    warnings: number;
+    errors: number;
+  };
+  findings: DoctorFinding[];
+}
+
+export interface AnalysisResult {
+  facts: ProjectFacts;
+  report: DoctorReport;
+  exitCode: 0 | 1 | 2;
+}

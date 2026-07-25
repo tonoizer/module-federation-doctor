@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/report.schema.json",
+  "title": "Module Federation Doctor report",
+  "type": "object",
+  "required": ["schemaVersion", "capabilities", "summary", "findings"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "capabilities": {
+      "type": "object",
+      "required": [
+        "config",
+        "sourceImports",
+        "manifest",
+        "stats",
+        "emittedAssets",
+        "installedVersions"
+      ],
+      "properties": {
+        "config": { "type": "boolean" },
+        "sourceImports": { "type": "boolean" },
+        "manifest": { "type": "boolean" },
+        "stats": { "type": "boolean" },
+        "emittedAssets": { "type": "boolean" },
+        "installedVersions": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": ["projects", "info", "warnings", "errors"],
+      "properties": {
+        "projects": { "type": "integer", "minimum": 0 },
+        "info": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "errors": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "ruleId",
+          "severity",
+          "message",
+          "project",
+          "evidence",
+          "fingerprint"
+        ],
+        "properties": {
+          "schemaVersion": { "const": 1 },
+          "ruleId": { "type": "string", "minLength": 1 },
+          "severity": { "enum": ["info", "warning", "error"] },
+          "message": { "type": "string" },
+          "project": { "type": "string" },
+          "location": {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+              "path": { "type": "string" },
+              "line": { "type": "integer", "minimum": 1 },
+              "column": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          },
+          "evidence": { "type": "object" },
+          "suggestion": { "type": "string" },
+          "documentation": { "type": "string" },
+          "fingerprint": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

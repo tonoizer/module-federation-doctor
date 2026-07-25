@@ -1,0 +1,4 @@
+interface:
+  display_name: "Module Federation Doctor"
+  short_description: "Audit Module Federation config, artifacts, and runtime evidence"
+  default_prompt: "Use $mfdoctor to inspect this Module Federation project and produce evidence-backed fixes."

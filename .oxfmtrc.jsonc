@@ -1,0 +1,14 @@
+{
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/.mf/**",
+    "**/coverage/**",
+    "**/playwright-report/**",
+    "**/test-results/**",
+    "apps/docs/doc_build/**",
+    "apps/docs/docs/rules/**/*.md",
+    "fixtures/manifests/malformed.json",
+    "pnpm-lock.yaml",
+  ],
+  "sortPackageJson": false,
+}

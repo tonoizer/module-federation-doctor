@@ -1,0 +1,27 @@
+{
+  "name": "@mfdoctor-example/host-vite",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --port 5173 --strictPort",
+    "preview": "vite preview --port 5173 --strictPort",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@module-federation/doctor": "workspace:*",
+    "@module-federation/vite": "1.19.1",
+    "@mfdoctor-example/shared-ui": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "@vitejs/plugin-react": "6.0.4",
+    "typescript": "5.9.3",
+    "vite": "8.1.0"
+  }
+}

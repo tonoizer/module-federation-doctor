@@ -1,0 +1,76 @@
+name: Publish on release
+
+on:
+  release:
+    types: [released, prereleased]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or plain semver tag
+        required: true
+        default: main
+      dist_tag:
+        type: choice
+        options: [latest, next]
+        default: next
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish-${{ github.event.release.tag_name || inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.ref }}
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: Verify release tag
+        if: github.event_name == 'release'
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="$(node -p "require('./package.json').version")"
+          case "$TAG" in v*) echo "Tag must not start with v"; exit 1;; esac
+          test "$TAG" = "$VERSION" || { echo "Tag $TAG does not match package $VERSION"; exit 1; }
+      - run: pnpm check
+      - name: Select npm tag
+        id: npm
+        run: |
+          if [ "${{ github.event.action }}" = "prereleased" ]; then
+            echo "tag=next" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.dist_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Refuse existing version
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "@module-federation/doctor@$VERSION" version >/dev/null 2>&1; then
+            echo "Refusing to overwrite @module-federation/doctor@$VERSION"
+            exit 1
+          fi
+      - name: Publish with provenance
+        run: npm publish --provenance --access public --tag "${{ steps.npm.outputs.tag }}"
+      - name: Summary
+        if: always()
+        run: |
+          echo "## npm release" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Package: \`@module-federation/doctor\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: \`$(node -p "require('./package.json').version")\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- npm tag: \`${{ steps.npm.outputs.tag || 'unknown' }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Trusted publishing: GitHub OIDC, no NPM_TOKEN" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/probe.schema.json",
+  "title": "Module Federation Doctor manifest probe result",
+  "type": "object",
+  "required": ["schemaVersion", "manifest"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "manifest": {
+      "type": "object",
+      "required": ["url", "status", "bytes", "exposes", "shared", "remotes"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "name": { "type": "string" },
+        "id": { "type": "string" },
+        "publicPath": { "type": "string", "format": "uri" },
+        "remoteEntry": { "type": "string", "format": "uri" },
+        "exposes": { "type": "integer", "minimum": 0 },
+        "shared": { "type": "integer", "minimum": 0 },
+        "remotes": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "remoteEntry": {
+      "type": "object",
+      "required": ["url", "status"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "contentType": { "type": "string" },
+        "contentLength": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

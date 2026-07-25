@@ -1,0 +1,103 @@
+{
+  "name": "@module-federation/doctor",
+  "version": "0.1.0",
+  "description": "Module Federation diagnostics for Vite, Rspack, and Rsbuild",
+  "type": "module",
+  "bin": {
+    "mfdoctor": "dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./vite": "./dist/vite.js",
+    "./rspack": "./dist/rspack.js",
+    "./rsbuild": "./dist/rsbuild.js",
+    "./rules": "./dist/rules.js",
+    "./schemas/project.schema.json": "./schemas/project.schema.json",
+    "./schemas/report.schema.json": "./schemas/report.schema.json",
+    "./schemas/probe.schema.json": "./schemas/probe.schema.json",
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "schemas",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "packageManager": "pnpm@10.28.2",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tonoizer/module-federation-doctor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tonoizer/module-federation-doctor/issues"
+  },
+  "homepage": "https://github.com/tonoizer/module-federation-doctor#readme",
+  "keywords": [
+    "module-federation",
+    "vite",
+    "rspack",
+    "rsbuild",
+    "diagnostics",
+    "sarif"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "pnpm": {
+    "overrides": {
+      "rolldown-plugin-dts": "0.22.3",
+      "ast-kit": "3.0.0-beta.1"
+    }
+  },
+  "scripts": {
+    "prepare": "husky",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "clean": "node -e \"import('node:fs').then(fs=>{for(const p of ['dist','.mf','coverage'])fs.rmSync(p,{recursive:true,force:true})})\" && pnpm --filter './apps/**' --filter './examples/**' clean",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "lint": "oxlint --deny-warnings .",
+    "typecheck": "tsc -p tsconfig.json && pnpm --filter './apps/**' --filter './examples/**' typecheck",
+    "test": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
+    "test:e2e": "pnpm build && pnpm test:examples && playwright test",
+    "test:examples": "pnpm --filter './examples/**' build",
+    "docs:dev": "pnpm --filter @module-federation/doctor-docs dev",
+    "docs:build": "pnpm --filter @module-federation/doctor-docs build",
+    "pack:check": "pnpm build && publint && attw --pack . --profile esm-only && node scripts/pack-check.mjs",
+    "check": "pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm build && pnpm test:unit && pnpm test:integration && pnpm test:e2e && pnpm docs:build && pnpm pack:check",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release:dry-run": "pnpm pack:check && npm publish --dry-run --provenance --access public"
+  },
+  "dependencies": {
+    "fast-glob": "3.3.3",
+    "picocolors": "1.1.1",
+    "semver": "7.7.2",
+    "unconfig": "7.5.0",
+    "unplugin": "3.3.0"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@changesets/cli": "2.31.1",
+    "@playwright/test": "1.58.2",
+    "@types/node": "25.3.3",
+    "@types/semver": "7.7.1",
+    "husky": "9.1.7",
+    "oxfmt": "0.36.0",
+    "oxlint": "1.75.0",
+    "playwright": "1.58.2",
+    "publint": "0.3.22",
+    "tsdown": "0.21.0",
+    "typescript": "5.9.3",
+    "vitest": "4.0.18"
+  }
+}

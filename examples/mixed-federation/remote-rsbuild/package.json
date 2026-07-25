@@ -1,0 +1,27 @@
+{
+  "name": "@mfdoctor-example/remote-rsbuild",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rsbuild build",
+    "dev": "rsbuild dev --port 3002",
+    "preview": "rsbuild preview --port 3002",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@module-federation/doctor": "workspace:*",
+    "@module-federation/rsbuild-plugin": "2.8.0",
+    "@mfdoctor-example/shared-ui": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "2.1.5",
+    "@rsbuild/plugin-react": "2.1.0",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "typescript": "5.9.3"
+  }
+}

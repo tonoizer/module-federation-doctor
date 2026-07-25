@@ -1,0 +1,17 @@
+{
+  "name": "@module-federation/doctor-docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "rspress dev",
+    "build": "node ../../scripts/generate-rule-docs.mjs --check && node ../../scripts/check-doc-snippets.mjs && node ../../scripts/check-doc-links.mjs && rspress build",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('doc_build',{recursive:true,force:true}))\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@module-federation/doctor": "workspace:*",
+    "rspress": "1.47.1",
+    "typescript": "5.9.3"
+  }
+}

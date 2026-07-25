@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/project.schema.json",
+  "title": "Module Federation Doctor project facts",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "project",
+    "bundler",
+    "capabilities",
+    "dependencies",
+    "imports",
+    "artifacts"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "project": {
+      "type": "object",
+      "required": ["name", "root"],
+      "properties": {
+        "name": { "type": "string" },
+        "root": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "bundler": {
+      "type": "object",
+      "required": ["name", "mode"],
+      "properties": {
+        "name": { "enum": ["vite", "rspack", "rsbuild", "unknown"] },
+        "version": { "type": "string" },
+        "mode": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "capabilities": { "$ref": "#/$defs/capabilities" },
+    "moduleFederation": { "type": "object" },
+    "dependencies": {
+      "type": "object",
+      "required": ["declared", "installed"],
+      "properties": {
+        "declared": { "$ref": "#/$defs/stringMap" },
+        "installed": { "$ref": "#/$defs/stringMap" }
+      },
+      "additionalProperties": false
+    },
+    "imports": {
+      "type": "object",
+      "required": ["sourceFiles", "specifiers", "packages"],
+      "properties": {
+        "sourceFiles": { "$ref": "#/$defs/stringArray" },
+        "specifiers": { "$ref": "#/$defs/stringArray" },
+        "packages": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["emittedAssets"],
+      "properties": {
+        "manifest": { "type": "object" },
+        "stats": { "type": "object" },
+        "emittedAssets": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "stringMap": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "capabilities": {
+      "type": "object",
+      "required": [
+        "config",
+        "sourceImports",
+        "manifest",
+        "stats",
+        "emittedAssets",
+        "installedVersions"
+      ],
+      "properties": {
+        "config": { "type": "boolean" },
+        "sourceImports": { "type": "boolean" },
+        "manifest": { "type": "boolean" },
+        "stats": { "type": "boolean" },
+        "emittedAssets": { "type": "boolean" },
+        "installedVersions": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

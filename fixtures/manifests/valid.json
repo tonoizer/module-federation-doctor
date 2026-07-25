@@ -1,0 +1,30 @@
+{
+  "id": "remote",
+  "name": "remote",
+  "metaData": {
+    "publicPath": "auto",
+    "remoteEntry": {
+      "name": "remoteEntry.js",
+      "path": ""
+    }
+  },
+  "shared": [],
+  "remotes": [],
+  "exposes": [
+    {
+      "id": "remote:Widget",
+      "name": "Widget",
+      "path": "./Widget",
+      "assets": {
+        "js": {
+          "sync": ["Widget.js"],
+          "async": []
+        },
+        "css": {
+          "sync": [],
+          "async": []
+        }
+      }
+    }
+  ]
+}

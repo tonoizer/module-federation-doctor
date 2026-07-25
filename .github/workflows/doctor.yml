@@ -1,0 +1,42 @@
+name: Doctor dogfood
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  doctor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test:examples
+      - name: Analyze federation
+        run: node dist/cli.js federation "examples/mixed-federation/*/.mf/doctor/project.json" | tee federation-report.json
+      - if: always()
+        run: node scripts/github-annotations.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: doctor-reports
+          path: |
+            examples/mixed-federation/*/.mf/doctor
+            federation-report.json
+      - if: always() && hashFiles('examples/mixed-federation/*/.mf/doctor/results.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@3b0bd1d116c0bde30213346b22d4f634d96a2fb0 # v3
+        with:
+          sarif_file: examples/mixed-federation

@@ -1,0 +1,80 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`normalization > normalizes string and object forms in stable order 1`] = `
+{
+  "dev": {
+    "enabled": true,
+    "options": {},
+  },
+  "dts": {
+    "enabled": true,
+    "options": {},
+  },
+  "experiments": {
+    "asyncStartup": false,
+    "externalRuntime": false,
+    "provideExternalRuntime": false,
+  },
+  "exposes": {
+    "./A": "./a.ts",
+    "./Z": "./z.ts",
+  },
+  "manifest": {
+    "enabled": false,
+    "options": {},
+  },
+  "name": "app",
+  "remotes": {
+    "cart": {
+      "entry": "cart@/remoteEntry.js",
+      "name": "cart",
+      "shareScope": [
+        "cart",
+      ],
+    },
+    "shop": {
+      "entry": "shop@https://example.test/remoteEntry.js",
+      "name": "shop",
+      "shareScope": [
+        "default",
+      ],
+    },
+  },
+  "runtimePlugins": [],
+  "shareScope": [
+    "default",
+  ],
+  "shareStrategy": "version-first",
+  "shared": {
+    "react": {
+      "eager": false,
+      "package": "react",
+      "requiredVersion": "^19.0.0",
+      "shareScope": [
+        "default",
+      ],
+      "singleton": true,
+      "strictVersion": false,
+    },
+    "react-dom": {
+      "eager": false,
+      "package": "react-dom",
+      "requiredVersion": "^19.0.0",
+      "shareScope": [
+        "default",
+      ],
+      "singleton": false,
+      "strictVersion": false,
+    },
+  },
+  "treeShaking": {
+    "excludePlugins": [],
+    "plugins": [],
+  },
+  "vite": {
+    "bundleAllCSS": false,
+    "ignoreOrigin": false,
+    "ssrExternals": [],
+  },
+}
+`;

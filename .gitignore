@@ -1,0 +1,12 @@
+node_modules/
+dist/
+doc_build/
+.mf/
+coverage/
+playwright-report/
+test-results/
+*.tgz
+.DS_Store
+.idea/
+.playwright-mcp/
+nohup.out
