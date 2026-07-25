@@ -90,6 +90,95 @@ describe("built-in rules", () => {
     );
   });
 
+  it("reports oversized federation assets and honors budget overrides", async () => {
+    const root = await fixture();
+    await fs.mkdir(path.join(root, "dist"), { recursive: true });
+    await fs.writeFile(path.join(root, "dist/remoteEntry.js"), Buffer.alloc(600_000));
+    await fs.writeFile(path.join(root, "dist/Widget.js"), Buffer.alloc(10_000));
+    await fs.writeFile(
+      path.join(root, "dist/mf-manifest.json"),
+      JSON.stringify({
+        id: "fixture",
+        name: "fixture",
+        metaData: {
+          publicPath: "auto",
+          remoteEntry: { name: "remoteEntry.js", path: "", type: "module" },
+        },
+        shared: [],
+        remotes: [],
+        exposes: [
+          {
+            id: "fixture:Widget",
+            name: "Widget",
+            path: "./Widget",
+            assets: { js: { sync: ["Widget.js"], async: [] }, css: { sync: [], async: [] } },
+          },
+        ],
+      }),
+    );
+
+    const failing = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: { name: "fixture", exposes: { "./Widget": "./src/index.ts" } },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+        "artifact/remote-entry-missing": "off",
+        "config/plugin-package-mismatch": "off",
+      },
+    });
+    expect(failing.facts.artifacts.assetSizes?.["remoteEntry.js"]).toBe(600_000);
+    expect(
+      failing.report.findings.some(
+        (finding) =>
+          finding.ruleId === "performance/asset-budget" &&
+          finding.evidence["class"] === "remoteEntry",
+      ),
+    ).toBe(true);
+
+    const overridden = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: { name: "fixture", exposes: { "./Widget": "./src/index.ts" } },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+        "artifact/remote-entry-missing": "off",
+        "config/plugin-package-mismatch": "off",
+        "performance/asset-budget": ["warning", { remoteEntryMaxBytes: 700_000 }],
+      },
+    });
+    expect(
+      overridden.report.findings.some((finding) => finding.ruleId === "performance/asset-budget"),
+    ).toBe(false);
+
+    const disabled = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: { name: "fixture", exposes: { "./Widget": "./src/index.ts" } },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+        "artifact/remote-entry-missing": "off",
+        "config/plugin-package-mismatch": "off",
+        "performance/asset-budget": "off",
+      },
+    });
+    expect(
+      disabled.report.findings.some((finding) => finding.ruleId === "performance/asset-budget"),
+    ).toBe(false);
+  });
+
   const behaviorCases: Array<[string, (facts: ProjectFacts) => void]> = [
     ["config/name-required", (facts: ProjectFacts) => (facts.moduleFederation!.name = "")],
     [
@@ -266,6 +355,23 @@ describe("built-in rules", () => {
             { name, entry: `https://example.test/${name}/mf-manifest.json`, shareScope: "default" },
           ]),
         );
+      },
+    ],
+    [
+      "performance/asset-budget",
+      (facts: ProjectFacts) => {
+        facts.artifacts.manifest = {
+          path: "dist/mf-manifest.json",
+          valid: true,
+          remoteEntry: { name: "remoteEntry.js", path: "" },
+          exposes: [{ key: "./Widget", assets: ["Widget.js"] }],
+          shared: [{ name: "react", assets: ["__federation_shared_react.js"] }],
+        };
+        facts.artifacts.assetSizes = {
+          "remoteEntry.js": 600_000,
+          "Widget.js": 10_000,
+          "__federation_shared_react.js": 10_000,
+        };
       },
     ],
     [
