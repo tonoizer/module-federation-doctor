@@ -42,9 +42,12 @@ plugins: [
 ];
 ```
 
-Set `CI=true` (or `mode: "ci"` / `--ci`) to fail on error findings and include
-SARIF by default. Local development defaults to `failOn: "never"` so findings
-print without breaking the build.
+CI is auto-detected from the environment (`CI`, `GITHUB_ACTIONS`, and other
+common provider signals). In CI, Doctor fails on error findings and includes
+SARIF by default — you do **not** need `mode: "ci"` in plugin config. Local
+development defaults to `failOn: "never"` so findings print without breaking
+the build. Override with `--ci`, `mode: "ci"`, `mode: "development"`, or
+`failOn`.
 
 ## CLI (complementary)
 

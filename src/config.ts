@@ -10,10 +10,36 @@ export const DEFAULT_EXCLUDE = [
   "**/*.generated.*",
 ];
 
+const CI_FALSEY = new Set(["", "0", "false", "no", "off"]);
+
+/**
+ * Detect CI without requiring `mode: "ci"` in Doctor config.
+ * Honors common provider env vars and truthy `CI` values (`true`, `1`, …).
+ */
+export function isCiEnvironment(env: NodeJS.ProcessEnv = process.env): boolean {
+  const ci = env.CI;
+  if (ci !== undefined && !CI_FALSEY.has(ci.trim().toLowerCase())) return true;
+  return Boolean(
+    env.GITHUB_ACTIONS === "true" ||
+    env.GITLAB_CI === "true" ||
+    env.CIRCLECI === "true" ||
+    env.BUILDKITE === "true" ||
+    env.TRAVIS === "true" ||
+    env.APPVEYOR === "True" ||
+    env.TF_BUILD === "True" ||
+    env.TEAMCITY_VERSION ||
+    env.JENKINS_URL ||
+    env.BITBUCKET_BUILD_NUMBER ||
+    env.CODEBUILD_BUILD_ID,
+  );
+}
+
 export function resolveOptions(options: DoctorOptions = {}): ResolvedDoctorOptions {
-  // Auto-infer CI when CI=true (GitHub Actions, etc.) or mode: "ci" is set.
-  // CI defaults: failOn "error", formats include sarif.
-  const ci = options.mode === "ci" || (options.mode === undefined && process.env.CI === "true");
+  // Auto-infer CI from the environment. Explicit mode wins:
+  // - mode: "ci" forces CI defaults
+  // - mode: "development" forces local defaults even when CI=* is set
+  // - mode omitted → detect from CI / provider env vars
+  const ci = options.mode === "ci" || (options.mode === undefined && isCiEnvironment());
   const root = path.resolve(options.root ?? process.cwd());
   const resolved: ResolvedDoctorOptions = {
     bundler: options.bundler ?? "unknown",

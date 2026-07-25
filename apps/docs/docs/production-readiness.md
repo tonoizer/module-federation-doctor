@@ -41,18 +41,20 @@ Vite-only; it does not pretend the setting exists in every bundler.
 
 ## Production policy
 
-Recommended CI policy (also the default when `CI=true`):
+Recommended CI policy — register the plugin and let CI env auto-detect do the
+rest (`failOn: "error"` + SARIF when `CI` / provider vars are set):
 
 ```ts
 import { federationDoctor } from "@module-federation/doctor/vite";
 
 federationDoctor({
   moduleFederation: mfOptions,
-  // mode: "ci" is optional when CI=true is already set in the environment
-  failOn: "error",
-  output: { formats: ["terminal", "json", "sarif"] },
 });
 ```
+
+Force CI or local defaults only when needed: `mode: "ci"`, `mode: "development"`,
+or an explicit `failOn`. Use `mfdoctor check --ci` when running the CLI outside
+a CI provider.
 
 Use `mfdoctor federation ".mf/doctor/**/project.json"` after every application
 has produced `project.json`. This is where name collisions, version/scope

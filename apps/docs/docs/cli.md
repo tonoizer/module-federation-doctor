@@ -23,16 +23,20 @@ Doctor loads optional `mfdoctor.config.ts`; flags win over config. `check` exits
 it only reads a user-supplied Observability export and local `project.json`
 files.
 
-## CI auto-infer
+## CI auto-detect
 
-When `CI=true` (GitHub Actions and most CI providers) or you pass `--ci` /
-`mode: "ci"`:
+Doctor enables CI defaults automatically when the environment looks like CI
+(`CI=true` / `CI=1`, `GITHUB_ACTIONS`, `GITLAB_CI`, `CIRCLECI`, Jenkins,
+Azure Pipelines, and similar). No `mode: "ci"` is required in plugin config.
+
+When CI is detected (or you pass `--ci` / `mode: "ci"`):
 
 - `failOn` defaults to `"error"`
 - output formats default to `terminal`, `json`, and `sarif`
 
 Local development defaults to `failOn: "never"` so findings still print without
-breaking the build. Override with `failOn: "warning" | "error" | "never"`.
+breaking the build. Override with `failOn: "warning" | "error" | "never"`, or
+force local defaults in CI with `mode: "development"`.
 
 `rules` prints the machine-readable built-in rule catalog. Pass one rule id to
 get its default severity, category, impact, fix, supported bundlers, docs path,

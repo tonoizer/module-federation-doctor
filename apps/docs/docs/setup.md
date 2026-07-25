@@ -5,8 +5,9 @@ Explicit options give Doctor the safest and most complete input. Doctor runs
 after emit, prints findings to the terminal (and bundler logs), then fails the
 build only after every finding is collected when CI policy requires it.
 
-`CI=true` (or `mode: "ci"`) turns on `failOn: "error"` and SARIF output. You do
-not need to set `mode: "ci"` in every config when CI already exports `CI=true`.
+`CI` / provider env vars (or `mode: "ci"`) turn on `failOn: "error"` and SARIF
+output automatically. You do **not** need `mode: "ci"` in plugin config when CI
+already exports those variables.
 
 ## Vite
 

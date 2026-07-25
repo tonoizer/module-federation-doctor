@@ -42,8 +42,9 @@ Usage:
   mfdoctor probe https://host.example/mf-manifest.json
   mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
 
-CI tip: set CI=true (or pass --ci / mode: "ci") to fail the build on error findings
-and include SARIF output by default.`;
+CI tip: CI mode is auto-detected from CI / provider env vars (GitHub Actions,
+GitLab, Circle, Jenkins, …). No mode: "ci" needed in plugin config. Pass --ci
+or mode: "ci" to force it; mode: "development" to opt out.`;
 }
 
 export function parseArgs(argv: string[]): Parsed {

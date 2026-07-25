@@ -32,7 +32,7 @@ export default defineConfig({
   plugins: [
     react(),
     federation(mfOptions),
-    // CI=true (or mode: "ci") auto-enables failOn: "error" and SARIF output.
+    // CI is auto-detected (CI / GITHUB_ACTIONS / …) → failOn: "error" + SARIF.
     federationDoctor({
       moduleFederation: mfOptions,
       rules: {

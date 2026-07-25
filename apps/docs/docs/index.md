@@ -24,5 +24,5 @@ features:
   - title: Offline by default
     details: Local analysis stays offline. Use probe only when you intentionally inspect a deployed manifest.
   - title: CI-ready reports
-    details: Terminal, JSON, and SARIF output you can attach to pull requests. CI=true fails the build on error findings after every issue is collected.
+    details: Terminal, JSON, and SARIF output you can attach to pull requests. CI is auto-detected and fails the build on error findings after every issue is collected.
 ---

@@ -1,5 +1,5 @@
 export { analyze, analyzeFederation } from "./engine.js";
-export { resolveOptions, DEFAULT_EXCLUDE, DEFAULT_INCLUDE } from "./config.js";
+export { resolveOptions, isCiEnvironment, DEFAULT_EXCLUDE, DEFAULT_INCLUDE } from "./config.js";
 export { defineRule, builtInRules } from "./rules.js";
 export { ProbeError, probeManifest } from "./probe.js";
 export {

@@ -37,7 +37,8 @@ pnpm mfdoctor runtime ./.mf/observability/latest.json
 ```
 
 6. For build facts, run the real bundler build with the Doctor adapter.
-   `CI=true` (or `mode: "ci"`) fails the build on error findings after collect.
+   CI is auto-detected from the environment (`CI`, `GITHUB_ACTIONS`, …) and
+   fails the build on error findings after collect — no `mode: "ci"` needed.
 7. For a multi-app system, collect every `.mf/doctor/project.json` and run:
 
 ```bash

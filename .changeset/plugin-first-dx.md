@@ -2,8 +2,8 @@
 "@module-federation/doctor": minor
 ---
 
-Make the bundler plugins the primary DX with ecosystem-named exports
+Make the bundler plugins the primary Doctor DX with ecosystem-named exports
 (`federationDoctor`, `moduleFederationDoctorPlugin`,
-`pluginModuleFederationDoctor`), fail-after-collect diagnostics, CI auto-infer
-docs, and remove the HTML/`--ui` dashboard surface in favor of terminal, JSON,
-and SARIF.
+`pluginModuleFederationDoctor`), fail-after-collect diagnostics, drop the HTML
+UI, and auto-detect CI mode from common provider env vars so plugin configs do
+not need `mode: "ci"` by default.
