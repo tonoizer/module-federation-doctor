@@ -33,17 +33,41 @@ export interface ServeUiHandle {
   closed: Promise<void>;
 }
 
+function loopbackHttpUrl(port: number): string {
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid UI server port: ${String(port)}`);
+  }
+  return `http://127.0.0.1:${port}/`;
+}
+
 function openBrowser(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return;
+  }
+  if (parsed.protocol !== "http:" || parsed.hostname !== "127.0.0.1") return;
+  let safeUrl: string;
+  try {
+    safeUrl = loopbackHttpUrl(Number(parsed.port));
+  } catch {
+    return;
+  }
+
   const platform = process.platform;
-  if (platform === "darwin") void execFileAsync("open", [url]).catch(() => undefined);
+  if (platform === "darwin") void execFileAsync("open", [safeUrl]).catch(() => undefined);
   else if (platform === "win32")
-    void execFileAsync("cmd", ["/c", "start", "", url]).catch(() => undefined);
-  else void execFileAsync("xdg-open", [url]).catch(() => undefined);
+    void execFileAsync("rundll32", ["url.dll,FileProtocolHandler", safeUrl]).catch(() => undefined);
+  else void execFileAsync("xdg-open", [safeUrl]).catch(() => undefined);
 }
 
 export function serveUi(options: ServeUiOptions): Promise<ServeUiHandle> {
   const root = path.resolve(options.directory);
   const port = options.port ?? DEFAULT_UI_PORT;
+  if (port !== 0 && (!Number.isInteger(port) || port < 1 || port > 65535)) {
+    return Promise.reject(new Error(`Invalid UI server port: ${String(port)}`));
+  }
   const entry = options.entry ?? "report.html";
   const host = "127.0.0.1";
 
@@ -82,7 +106,14 @@ export function serveUi(options: ServeUiOptions): Promise<ServeUiHandle> {
     server.listen(port, host, () => {
       const address = server.address();
       const boundPort = address && typeof address === "object" ? address.port : port;
-      const url = `http://${host}:${boundPort}/`;
+      let url: string;
+      try {
+        url = loopbackHttpUrl(boundPort);
+      } catch (error) {
+        server.close();
+        reject(error);
+        return;
+      }
       process.stdout.write(`Module Federation Doctor UI: ${url}\n`);
       if (options.open !== false) openBrowser(url);
       resolve({
