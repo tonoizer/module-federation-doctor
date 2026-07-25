@@ -28,9 +28,20 @@ describe("UI server", () => {
           .on("error", reject);
       });
       expect(address).toContain("doctor-ui");
-      expect(handle.url.startsWith("http://127.0.0.1:")).toBe(true);
+      expect(handle.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
+      expect(handle.port).toBeGreaterThan(0);
+      expect(handle.port).toBeLessThanOrEqual(65535);
     } finally {
       await handle.close();
     }
+  });
+
+  it("rejects out-of-range ports before listening", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-ui-server-"));
+    roots.push(root);
+    await fs.writeFile(path.join(root, "report.html"), "<html>doctor-ui</html>");
+    await expect(serveUi({ directory: root, port: 70000, open: false })).rejects.toThrow(
+      /Invalid UI server port/,
+    );
   });
 });
