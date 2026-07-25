@@ -183,7 +183,9 @@ Examples:
 - From `examples/`: `pnpm --dir examples demo` runs showcase + mixed-issues
   (or `pnpm demo:examples` from the repo root)
 
-The repo also includes an original Codex skill at
-`.codex/skills/mfdoctor/SKILL.md` for repeatable diagnosis work.
+Doctor-specific agent UX prefers CLI/plugin finding output (rule id, fix,
+Doctor docs URL, official MF sources, exit codes). For Module Federation
+concepts, use `.agents/skills/mf`. Upstream evidence for rule work lives in
+[docs/sources](apps/docs/docs/sources.md).
 
 MIT © 2026 tonoizer and contributors.

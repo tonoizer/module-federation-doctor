@@ -36,6 +36,17 @@ When adding or extending a bundler adapter:
 This permanent non-goal is documented under
 [limitations](./limitations.md#permanent-guarantees--non-goals).
 
+## Agent skills
+
+Doctor-specific agent UX prefers the build plugin / CLI finding output (rule
+id, message, fix, Doctor rule docs URL, official `module-federation.io`
+sources, and reliable exit codes). There is no Codex `mfdoctor` skill.
+
+For Module Federation concepts (config, runtime, shared deps, observability),
+use [`.agents/skills/mf`](https://github.com/tonoizer/module-federation-doctor/tree/main/.agents/skills/mf)
+(from `module-federation/agent-skills`). When changing a Doctor rule or
+claiming upstream behavior, start from the [source map](./sources.md).
+
 ## Roadmap
 
 - **[v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1)** —
@@ -52,19 +63,20 @@ Close the matching GitHub issue and drop the row from
 
 ### v1.0
 
-| ID             | Issue                                                                 | Topic                                                                                                                                         |
-| -------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MFDOCTOR-101` | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) | Webpack adapter _(shipped — see [setup](./setup.md#webpack))_                                                                                 |
-| `MFDOCTOR-105` | [#14](https://github.com/tonoizer/module-federation-doctor/issues/14) | Dynamic-import completeness beyond static analysis _(shipped — see [capabilities](./capabilities.md#dynamic-import-completeness-v1))_         |
-| `MFDOCTOR-106` | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) | Compatibility matrix for v1 bundlers and runtimes _(shipped — see [compatibility](./compatibility.md))_                                       |
-| `MFDOCTOR-109` | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) | One-shot workspace federation gate for CI _(shipped — see [CLI](./cli.md#workspace-federation-gate) / [setup](./setup.md#multi-app-ci-loop))_ |
-| `MFDOCTOR-110` | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) | Shareable policy packs and named presets _(shipped — see [policy packs](./policy-packs.md))_                                                  |
-| `MFDOCTOR-111` | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) | Fingerprint baselines and suppressions _(shipped)_                                                                                            |
-| `MFDOCTOR-127` | [#55](https://github.com/tonoizer/module-federation-doctor/issues/55) | Wire showcase demos into PR CI _(shipped — see [showcase](./showcase.md) and release gates above)_                                            |
-| `MFDOCTOR-115` | [#32](https://github.com/tonoizer/module-federation-doctor/issues/32) | Build-time only / never in client bundle                                                                                                      |
-| `MFDOCTOR-117` | [#34](https://github.com/tonoizer/module-federation-doctor/issues/34) | Runtime-only MF (no bundler plugin) out of scope                                                                                              |
-| `MFDOCTOR-112` | [#28](https://github.com/tonoizer/module-federation-doctor/issues/28) | First public npm publish _(after product items)_                                                                                              |
-| `MFDOCTOR-113` | [#29](https://github.com/tonoizer/module-federation-doctor/issues/29) | Propose Doctor to official MF org _(after publish)_                                                                                           |
+| ID             | Issue                                                                 | Topic                                                                                                                                                   |
+| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MFDOCTOR-101` | [#10](https://github.com/tonoizer/module-federation-doctor/issues/10) | Webpack adapter _(shipped — see [setup](./setup.md#webpack))_                                                                                           |
+| `MFDOCTOR-105` | [#14](https://github.com/tonoizer/module-federation-doctor/issues/14) | Dynamic-import completeness beyond static analysis _(shipped — see [capabilities](./capabilities.md#dynamic-import-completeness-v1))_                   |
+| `MFDOCTOR-106` | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) | Compatibility matrix for v1 bundlers and runtimes _(shipped — see [compatibility](./compatibility.md))_                                                 |
+| `MFDOCTOR-109` | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) | One-shot workspace federation gate for CI _(shipped — see [CLI](./cli.md#workspace-federation-gate) / [setup](./setup.md#multi-app-ci-loop))_           |
+| `MFDOCTOR-110` | [#26](https://github.com/tonoizer/module-federation-doctor/issues/26) | Shareable policy packs and named presets _(shipped — see [policy packs](./policy-packs.md))_                                                            |
+| `MFDOCTOR-111` | [#27](https://github.com/tonoizer/module-federation-doctor/issues/27) | Fingerprint baselines and suppressions _(shipped)_                                                                                                      |
+| `MFDOCTOR-127` | [#55](https://github.com/tonoizer/module-federation-doctor/issues/55) | Wire showcase demos into PR CI _(shipped — see [showcase](./showcase.md) and release gates above)_                                                      |
+| `MFDOCTOR-125` | [#53](https://github.com/tonoizer/module-federation-doctor/issues/53) | Slim or remove Codex mfdoctor skill once CLI is agent-complete _(shipped — skill removed; see [Agent skills](#agent-skills) / [sources](./sources.md))_ |
+| `MFDOCTOR-115` | [#32](https://github.com/tonoizer/module-federation-doctor/issues/32) | Build-time only / never in client bundle                                                                                                                |
+| `MFDOCTOR-117` | [#34](https://github.com/tonoizer/module-federation-doctor/issues/34) | Runtime-only MF (no bundler plugin) out of scope                                                                                                        |
+| `MFDOCTOR-112` | [#28](https://github.com/tonoizer/module-federation-doctor/issues/28) | First public npm publish _(after product items)_                                                                                                        |
+| `MFDOCTOR-113` | [#29](https://github.com/tonoizer/module-federation-doctor/issues/29) | Propose Doctor to official MF org _(after publish)_                                                                                                     |
 
 ### post-v1
 
