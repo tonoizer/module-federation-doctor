@@ -518,6 +518,8 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
+  examples/showcase/config/dts-output-dir-mismatch: {}
+
   examples/showcase/config/expose-key-invalid: {}
 
   examples/showcase/config/expose-path-missing: {}
@@ -528,11 +530,21 @@ importers:
 
   examples/showcase/config/implementation-suspicious-suppressed: {}
 
+  examples/showcase/config/nested-producer-dts-extract: {}
+
+  examples/showcase/config/remote-alias-prefix-collision: {}
+
   examples/showcase/config/remote-entry-invalid: {}
 
   examples/showcase/config/remote-http-insecure: {}
 
+  examples/showcase/config/remote-localhost-in-production: {}
+
+  examples/showcase/config/remote-type-urls-missing: {}
+
   examples/showcase/config/share-scope-undeclared: {}
+
+  examples/showcase/federation/circular-remote-graph: {}
 
   examples/showcase/federation/ghost-shares: {}
 
@@ -543,6 +555,8 @@ importers:
   examples/showcase/federation/name-conflict: {}
 
   examples/showcase/federation/share-scope-mismatch: {}
+
+  examples/showcase/federation/share-strategy-mismatch: {}
 
   examples/showcase/federation/singleton-mismatch: {}
 

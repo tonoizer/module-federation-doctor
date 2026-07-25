@@ -42,6 +42,9 @@ export default defineConfig({
         // Keep version-first here because this fixture tests direct
         // Vite-to-Rspack/Rsbuild interoperability, not offline recovery.
         "reliability/version-first-offline-remotes": "off",
+        // Local preview remotes are intentional for this example.
+        "config/remote-localhost-in-production": "off",
+        "config/remote-type-urls-missing": "off",
       },
     }),
   ],

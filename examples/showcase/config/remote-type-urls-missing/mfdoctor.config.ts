@@ -7,16 +7,16 @@ export default {
     "config/plugin-package-mismatch": "off",
     "artifact/remote-entry-missing": "off",
     "config/remote-manifest-recommended": "off",
+    "reliability/version-first-offline-remotes": "off",
     "config/remote-localhost-in-production": "off",
-    "config/remote-type-urls-missing": "off",
   },
   moduleFederation: {
-    name: "version_first_offline",
+    name: "remote_type_urls_missing",
     manifest: true,
-    shareStrategy: "version-first",
     remotes: {
-      shop: "http://localhost:3001/remoteEntry.js",
+      shop: "https://example.test/remoteEntry.js",
     },
+    dts: true,
     shared: {},
   },
 };

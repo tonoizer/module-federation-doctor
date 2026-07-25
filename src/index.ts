@@ -88,6 +88,7 @@ export type {
   UnresolvedDynamicImport,
   NormalizedMFConfig,
   OutputFormat,
+  OutputPublicPathKind,
   ProjectFacts,
   ProjectIdentity,
   ResolvedDoctorOptions,

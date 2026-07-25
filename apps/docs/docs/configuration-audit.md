@@ -5,29 +5,37 @@ Use it as a review checklist even when a rule does not yet automate the check.
 
 ## Common and Core/Rspack/Rsbuild options
 
-| Option                         | Main risk                                         | Practical fix                                                  |
-| ------------------------------ | ------------------------------------------------- | -------------------------------------------------------------- |
-| `name`                         | Runtime/global collision                          | Use one stable unique name per container                       |
-| `filename`                     | Missing or unsafe remote entry                    | Use a relative JavaScript filename and verify emission         |
-| `library` + `remoteType`       | Producer/consumer format mismatch                 | Align global, module, CommonJS, or script contracts            |
-| `remotes`                      | Bad URL, alias, scope, or offline startup         | Prefer HTTPS manifest URLs; test failure recovery              |
-| `shareScope`                   | Isolated pools cannot reuse packages              | Align top-level, remote, and item scopes                       |
-| `exposes`                      | Bad public key or missing source                  | Use `./Name` keys and exact paths                              |
-| `shared`                       | Duplicate frameworks or unsatisfied versions      | Align singleton, versions, scope, strictness, and fallback     |
-| `runtimePlugins`               | Missing plugin or unsafe recovery                 | Resolve every plugin and test each hook path                   |
-| `getPublicPath`                | Dynamic-code and asset-base risk                  | Keep the stringified function small, static, and reviewed      |
-| `implementation`               | Runtime/plugin version skew                       | Resolve a compatible `runtime-tools` implementation            |
-| `dts`                          | Missing/stale consumer contracts                  | Generate types in CI and choose an explicit abort policy       |
-| `dev`                          | Reload/type-HMR behavior differs from build       | Document disabled reload features and test remote HMR          |
-| `manifest`                     | Missing runtime metadata or incomplete asset data | Emit it for releases; keep producer asset analysis enabled     |
-| `shareStrategy`                | Startup cost vs late remote failure               | Pick `version-first` or `loaded-first` intentionally           |
-| `experiments.asyncStartup`     | Entry exports become async                        | Ensure direct/UMD consumers await the Promise                  |
-| `externalRuntime` pair         | Hard load-order dependency                        | One pure provider; externalize only downstream browser remotes |
-| snapshot/remote/shared removal | Tree-shaken capability still used                 | Never disable a configured capability                          |
-| shared tree shaking            | Incomplete deployment union                       | Publish the merged secondary artifact and update snapshots     |
-| `injectTreeShakingUsedExports` | Conflicts with `server-calc`                      | Disable it for deployment-calculated exports                   |
-| `treeShakingDir`               | No known fallback artifact location               | Configure and publish the directory                            |
-| shared tree-shaking plugins    | Secondary build misses original transforms        | Package only the needed build plugins and pin versions         |
+| Option                          | Main risk                                          | Practical fix                                                  |
+| ------------------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
+| `name`                          | Runtime/global collision                           | Use one stable unique name per container                       |
+| `filename`                      | Missing or unsafe remote entry                     | Use a relative JavaScript filename and verify emission         |
+| `library` + `remoteType`        | Producer/consumer format mismatch                  | Align global, module, CommonJS, or script contracts            |
+| `remotes`                       | Bad URL, alias, scope, or offline startup          | Prefer HTTPS manifest URLs; test failure recovery              |
+| `shareScope`                    | Isolated pools cannot reuse packages               | Align top-level, remote, and item scopes                       |
+| `exposes`                       | Bad public key or missing source                   | Use `./Name` keys and exact paths                              |
+| `shared`                        | Duplicate frameworks or unsatisfied versions       | Align singleton, versions, scope, strictness, and fallback     |
+| `runtimePlugins`                | Missing plugin or unsafe recovery                  | Resolve every plugin and test each hook path                   |
+| `getPublicPath`                 | Dynamic-code and asset-base risk                   | Keep the stringified function small, static, and reviewed      |
+| `implementation`                | Runtime/plugin version skew                        | Resolve a compatible `runtime-tools` implementation            |
+| `dts`                           | Missing/stale consumer contracts                   | Generate types in CI and choose an explicit abort policy       |
+| `dev`                           | Reload/type-HMR behavior differs from build        | Document disabled reload features and test remote HMR          |
+| `manifest`                      | Missing runtime metadata or incomplete asset data  | Emit it for releases; keep producer asset analysis enabled     |
+| `shareStrategy`                 | Startup cost vs late remote failure                | Pick `version-first` or `loaded-first` intentionally           |
+| Host/remote `shareStrategy` mix | Inconsistent shared negotiation across the graph   | Align federation-wide, or document intentional exceptions      |
+| Circular remotes                | Nested init / type extraction can deadlock         | Keep the remotes graph a DAG                                   |
+| Remote alias prefixes           | Runtime rejects alias that prefixes another name   | Rename aliases so none is a prefix                             |
+| Nested producer DTS             | Missing extracted remote types in producer archive | Enable `dts.generateTypes.extractRemoteTypes`                  |
+| `dts.generateTypes.outputDir`   | Type zip path drifts from nested `filename`        | Align outputDir with the remote-entry directory layout         |
+| Direct `.js` remotes + DTS      | No type URL without manifests/`remoteTypeUrls`     | Prefer manifests or set `remoteTypeUrls`                       |
+| Non-string `output.publicPath`  | Manifest generation is skipped upstream            | Use a string/`auto` publicPath when manifests are required     |
+| Localhost remotes in CI         | Deployed builds cannot reach loopback remotes      | Use deployed URLs for CI/production Doctor runs                |
+| `experiments.asyncStartup`      | Entry exports become async                         | Ensure direct/UMD consumers await the Promise                  |
+| `externalRuntime` pair          | Hard load-order dependency                         | One pure provider; externalize only downstream browser remotes |
+| snapshot/remote/shared removal  | Tree-shaken capability still used                  | Never disable a configured capability                          |
+| shared tree shaking             | Incomplete deployment union                        | Publish the merged secondary artifact and update snapshots     |
+| `injectTreeShakingUsedExports`  | Conflicts with `server-calc`                       | Disable it for deployment-calculated exports                   |
+| `treeShakingDir`                | No known fallback artifact location                | Configure and publish the directory                            |
+| shared tree-shaking plugins     | Secondary build misses original transforms         | Package only the needed build plugins and pin versions         |
 
 Official option pages:
 [overview](https://module-federation.io/configure/index.html),

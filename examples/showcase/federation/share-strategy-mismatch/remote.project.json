@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "shop",
+    "root": "."
+  },
+  "bundler": {
+    "name": "rspack",
+    "mode": "ci"
+  },
+  "capabilities": {
+    "config": true,
+    "sourceImports": true,
+    "manifest": false,
+    "stats": false,
+    "emittedAssets": false,
+    "installedVersions": true
+  },
+  "moduleFederation": {
+    "name": "shop",
+    "shareStrategy": "loaded-first",
+    "exposes": {
+      "./Widget": "src/Widget.ts"
+    },
+    "remotes": {},
+    "shared": {}
+  },
+  "dependencies": {
+    "declared": {},
+    "installed": {}
+  },
+  "imports": {
+    "sourceFiles": [],
+    "specifiers": [],
+    "packages": []
+  },
+  "artifacts": {
+    "emittedAssets": []
+  }
+}

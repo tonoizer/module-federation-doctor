@@ -16,16 +16,21 @@ stay as rules, not showcases.
 
 ## Config
 
-| Setup                   | Command                                                                                     | Finding                                 |
-| ----------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------- |
-| Expose key without `./` | `node dist/cli.js check examples/showcase/config/expose-key-invalid --ci`                   | `config/expose-key-invalid` (error)     |
-| Missing expose path     | `node dist/cli.js check examples/showcase/config/expose-path-missing --ci`                  | `config/expose-path-missing` (error)    |
-| Invalid remote entry    | `node dist/cli.js check examples/showcase/config/remote-entry-invalid --ci`                 | `config/remote-entry-invalid` (error)   |
-| Invalid filename        | `node dist/cli.js check examples/showcase/config/filename-invalid --ci`                     | `config/filename-invalid` (error)       |
-| Undeclared share scope  | `node dist/cli.js check examples/showcase/config/share-scope-undeclared --ci`               | `config/share-scope-undeclared` (error) |
-| Insecure remote HTTP    | `node dist/cli.js check examples/showcase/config/remote-http-insecure --ci`                 | `config/remote-http-insecure` (warning) |
-| Local implementation    | `node dist/cli.js check examples/showcase/config/implementation-local --ci`                 | no findings (heuristic does not fire)   |
-| Suspicious impl muted   | `node dist/cli.js check examples/showcase/config/implementation-suspicious-suppressed --ci` | no findings (`"off"`)                   |
+| Setup                    | Command                                                                                     | Finding                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Expose key without `./`  | `node dist/cli.js check examples/showcase/config/expose-key-invalid --ci`                   | `config/expose-key-invalid` (error)               |
+| Missing expose path      | `node dist/cli.js check examples/showcase/config/expose-path-missing --ci`                  | `config/expose-path-missing` (error)              |
+| Invalid remote entry     | `node dist/cli.js check examples/showcase/config/remote-entry-invalid --ci`                 | `config/remote-entry-invalid` (error)             |
+| Invalid filename         | `node dist/cli.js check examples/showcase/config/filename-invalid --ci`                     | `config/filename-invalid` (error)                 |
+| Undeclared share scope   | `node dist/cli.js check examples/showcase/config/share-scope-undeclared --ci`               | `config/share-scope-undeclared` (error)           |
+| Insecure remote HTTP     | `node dist/cli.js check examples/showcase/config/remote-http-insecure --ci`                 | `config/remote-http-insecure` (warning)           |
+| Local implementation     | `node dist/cli.js check examples/showcase/config/implementation-local --ci`                 | no findings (heuristic does not fire)             |
+| Suspicious impl muted    | `node dist/cli.js check examples/showcase/config/implementation-suspicious-suppressed --ci` | no findings (`"off"`)                             |
+| Localhost remotes in CI  | `node dist/cli.js check examples/showcase/config/remote-localhost-in-production --ci`       | `config/remote-localhost-in-production` (warning) |
+| Alias prefix collision   | `node dist/cli.js check examples/showcase/config/remote-alias-prefix-collision --ci`        | `config/remote-alias-prefix-collision` (error)    |
+| Nested producer DTS      | `node dist/cli.js check examples/showcase/config/nested-producer-dts-extract --ci`          | `config/nested-producer-dts-extract` (warning)    |
+| DTS outputDir mismatch   | `node dist/cli.js check examples/showcase/config/dts-output-dir-mismatch --ci`              | `config/dts-output-dir-mismatch` (warning)        |
+| Remote type URLs missing | `node dist/cli.js check examples/showcase/config/remote-type-urls-missing --ci`             | `config/remote-type-urls-missing` (warning)       |
 
 ## Shared
 
@@ -50,15 +55,17 @@ stay as rules, not showcases.
 
 ## Federation
 
-| Setup                | Command                                                                                          | Finding                                   |
-| -------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------- |
-| Version conflict     | `node dist/cli.js federation "examples/showcase/federation/version-conflict/*.project.json"`     | `federation/version-conflict` (error)     |
-| Share scope mismatch | `node dist/cli.js federation "examples/showcase/federation/share-scope-mismatch/*.project.json"` | `federation/share-scope-mismatch` (error) |
-| Singleton mismatch   | `node dist/cli.js federation "examples/showcase/federation/singleton-mismatch/*.project.json"`   | `shared/singleton-mismatch` (warning)     |
-| Name conflict        | `node dist/cli.js federation "examples/showcase/federation/name-conflict/*.project.json"`        | `federation/name-conflict` (error)        |
-| Missing provider     | `node dist/cli.js federation "examples/showcase/federation/missing-provider/*.project.json"`     | `federation/missing-provider` (error)     |
-| Host gaps            | `node dist/cli.js federation "examples/showcase/federation/host-gaps/*.project.json"`            | `federation/host-gaps` (warning)          |
-| Ghost shares         | `node dist/cli.js federation "examples/showcase/federation/ghost-shares/*.project.json"`         | `federation/ghost-shares` (info)          |
+| Setup                   | Command                                                                                             | Finding                                        |
+| ----------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Version conflict        | `node dist/cli.js federation "examples/showcase/federation/version-conflict/*.project.json"`        | `federation/version-conflict` (error)          |
+| Share scope mismatch    | `node dist/cli.js federation "examples/showcase/federation/share-scope-mismatch/*.project.json"`    | `federation/share-scope-mismatch` (error)      |
+| Share strategy mismatch | `node dist/cli.js federation "examples/showcase/federation/share-strategy-mismatch/*.project.json"` | `federation/share-strategy-mismatch` (warning) |
+| Circular remote graph   | `node dist/cli.js federation "examples/showcase/federation/circular-remote-graph/*.project.json"`   | `federation/circular-remote-graph` (error)     |
+| Singleton mismatch      | `node dist/cli.js federation "examples/showcase/federation/singleton-mismatch/*.project.json"`      | `shared/singleton-mismatch` (warning)          |
+| Name conflict           | `node dist/cli.js federation "examples/showcase/federation/name-conflict/*.project.json"`           | `federation/name-conflict` (error)             |
+| Missing provider        | `node dist/cli.js federation "examples/showcase/federation/missing-provider/*.project.json"`        | `federation/missing-provider` (error)          |
+| Host gaps               | `node dist/cli.js federation "examples/showcase/federation/host-gaps/*.project.json"`               | `federation/host-gaps` (warning)               |
+| Ghost shares            | `node dist/cli.js federation "examples/showcase/federation/ghost-shares/*.project.json"`            | `federation/ghost-shares` (info)               |
 
 ## Runtime
 

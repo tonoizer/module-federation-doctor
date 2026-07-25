@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "app-b",
+    "root": "."
+  },
+  "bundler": {
+    "name": "rspack",
+    "mode": "ci"
+  },
+  "capabilities": {
+    "config": true,
+    "sourceImports": true,
+    "manifest": false,
+    "stats": false,
+    "emittedAssets": false,
+    "installedVersions": true
+  },
+  "moduleFederation": {
+    "name": "app_b",
+    "exposes": {
+      "./B": "src/B.ts"
+    },
+    "remotes": {
+      "a": {
+        "name": "app_a",
+        "entry": "https://example.test/a/mf-manifest.json",
+        "shareScope": ["default"]
+      }
+    },
+    "shared": {}
+  },
+  "dependencies": {
+    "declared": {},
+    "installed": {}
+  },
+  "imports": {
+    "sourceFiles": [],
+    "specifiers": [],
+    "packages": []
+  },
+  "artifacts": {
+    "emittedAssets": []
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "app-a",
+    "root": "."
+  },
+  "bundler": {
+    "name": "vite",
+    "mode": "ci"
+  },
+  "capabilities": {
+    "config": true,
+    "sourceImports": true,
+    "manifest": false,
+    "stats": false,
+    "emittedAssets": false,
+    "installedVersions": true
+  },
+  "moduleFederation": {
+    "name": "app_a",
+    "exposes": {
+      "./A": "src/A.ts"
+    },
+    "remotes": {
+      "b": {
+        "name": "app_b",
+        "entry": "https://example.test/b/mf-manifest.json",
+        "shareScope": ["default"]
+      }
+    },
+    "shared": {}
+  },
+  "dependencies": {
+    "declared": {},
+    "installed": {}
+  },
+  "imports": {
+    "sourceFiles": [],
+    "specifiers": [],
+    "packages": []
+  },
+  "artifacts": {
+    "emittedAssets": []
+  }
+}

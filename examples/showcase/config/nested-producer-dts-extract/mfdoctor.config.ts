@@ -1,5 +1,5 @@
 export default {
-  bundler: "vite",
+  bundler: "rspack",
   mode: "ci",
   output: { formats: ["terminal"] },
   rules: {
@@ -7,16 +7,19 @@ export default {
     "config/plugin-package-mismatch": "off",
     "artifact/remote-entry-missing": "off",
     "config/remote-manifest-recommended": "off",
-    "config/remote-localhost-in-production": "off",
+    "reliability/version-first-offline-remotes": "off",
     "config/remote-type-urls-missing": "off",
   },
   moduleFederation: {
-    name: "version_first_offline",
+    name: "nested_producer_dts_extract",
+    filename: "remoteEntry.js",
     manifest: true,
-    shareStrategy: "version-first",
+    exposes: { "./Widget": "./src/Widget.ts" },
     remotes: {
-      shop: "http://localhost:3001/remoteEntry.js",
+      shop: "https://example.test/shop/mf-manifest.json",
     },
+    // Nested producer without extractRemoteTypes.
+    dts: { generateTypes: true },
     shared: {},
   },
 };

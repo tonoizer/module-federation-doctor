@@ -12,8 +12,10 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`artifact/manifest-invalid`](./artifact/manifest-invalid.md) | error | The runtime and tooling cannot consume malformed or incomplete manifest JSON. |
 | [`artifact/manifest-name-mismatch`](./artifact/manifest-name-mismatch.md) | error | Stale output can register a different container than the current config. |
 | [`artifact/manifest-remote-entry-missing`](./artifact/manifest-remote-entry-missing.md) | error | Consumers follow manifest metadata to a remote entry that was not emitted. |
+| [`artifact/public-path-non-string-manifest`](./artifact/public-path-non-string-manifest.md) | warning | Module Federation skips manifest generation when bundler `output.publicPath` is not a string. |
 | [`artifact/public-path-suspicious`](./artifact/public-path-suspicious.md) | warning | A malformed asset base makes remote chunks and styles resolve from the wrong URL. |
 | [`artifact/remote-entry-missing`](./artifact/remote-entry-missing.md) | error | A producer has no executable container at its configured filename. |
+| [`config/duplicate-plugin-registration`](./config/duplicate-plugin-registration.md) | error | Registering Module Federation more than once on the same compiler breaks the core singleton contract. |
 | [`config/eager-tree-shaking-conflict`](./config/eager-tree-shaking-conflict.md) | error | Eager modules live in the initial entry and cannot use the on-demand shared tree-shaking path. |
 | [`config/expose-key-invalid`](./config/expose-key-invalid.md) | error | Consumers cannot address an expose whose public key does not follow the `./Name` form. |
 | [`config/expose-path-missing`](./config/expose-path-missing.md) | error | The producer build cannot include a module that does not exist at the configured path. |
@@ -23,6 +25,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`config/library-remote-type-mismatch`](./config/library-remote-type-mismatch.md) | warning | A consumer loader can fail when its remote type does not match the producer library format. |
 | [`config/name-required`](./config/name-required.md) | error | The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so Doctor keeps this for offline checks rather than a showcase fixture. |
 | [`config/plugin-package-mismatch`](./config/plugin-package-mismatch.md) | warning | Using the wrong integration can skip required bundler hooks and runtime generation. |
+| [`config/remote-alias-prefix-collision`](./config/remote-alias-prefix-collision.md) | error | An alias that prefixes another remote name/alias makes multi-level path references ambiguous and is rejected by the runtime. |
 | [`config/remote-capability-disabled`](./config/remote-capability-disabled.md) | error | Tree-shaken remote-consumption code cannot load configured remotes. |
 | [`config/remote-entry-invalid`](./config/remote-entry-invalid.md) | error | The runtime cannot resolve a remote without a usable entry or manifest address. |
 | [`config/runtime-plugin-missing`](./config/runtime-plugin-missing.md) | error | A missing runtime plugin stops injected runtime behavior from loading. |
@@ -30,6 +33,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`config/shared-capability-disabled`](./config/shared-capability-disabled.md) | error | Tree-shaken sharing code cannot register or consume configured shared packages. |
 | [`config/shared-externals-conflict`](./config/shared-externals-conflict.md) | error | A dependency cannot be provided by federation after the bundler removes it as an external. |
 | [`config/tree-shaking-server-calc-injection`](./config/tree-shaking-server-calc-injection.md) | warning | Runtime-injected used exports conflict with the deployment-owned `server-calc` contract. |
+| [`federation/circular-remote-graph`](./federation/circular-remote-graph.md) | error | Circular remotes can deadlock nested container initialization and type extraction. |
 | [`federation/external-runtime-provider-missing`](./federation/external-runtime-provider-missing.md) | error | External-runtime remotes cannot start without a federation-wide provider. |
 | [`federation/name-conflict`](./federation/name-conflict.md) | error | Duplicate container names collide in runtime data and global chunk storage. |
 | [`federation/share-scope-mismatch`](./federation/share-scope-mismatch.md) | error | Projects in different scopes cannot reuse the same shared provider. |
@@ -44,8 +48,12 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`artifact/manifest-assets-disabled`](./artifact/manifest-assets-disabled.md) | warning | Disabled asset analysis removes shared and expose asset details from producer metadata. |
 | [`artifact/manifest-expose-assets-empty`](./artifact/manifest-expose-assets-empty.md) | warning | Preload and debugging tools cannot map an expose to its assets. |
 | [`artifact/manifest-shared-version-mismatch`](./artifact/manifest-shared-version-mismatch.md) | warning | Stale version metadata can choose the wrong shared provider at runtime. |
+| [`config/dts-output-dir-mismatch`](./config/dts-output-dir-mismatch.md) | warning | A nested remote-entry `filename` that disagrees with `dts.generateTypes.outputDir` can publish type archives to the wrong path. |
 | [`config/implementation-suspicious`](./config/implementation-suspicious.md) | info | A custom implementation can violate the runtime contract expected by the build plugin. |
+| [`config/nested-producer-dts-extract`](./config/nested-producer-dts-extract.md) | warning | A nested producer that both exposes and consumes remotes may omit extracted remote types from its type archive. |
+| [`config/remote-localhost-in-production`](./config/remote-localhost-in-production.md) | warning | Localhost remotes in CI/production builds cannot resolve on other machines and break deployments. |
 | [`federation/missing-provider`](./federation/missing-provider.md) | error | Every consumer disabled its fallback, so no build can provide the package. |
+| [`federation/share-strategy-mismatch`](./federation/share-strategy-mismatch.md) | warning | Hosts and remotes that disagree on `version-first` vs `loaded-first` negotiate shared versions differently at startup. |
 | [`reliability/async-startup-library-promise`](./reliability/async-startup-library-promise.md) | warning | Async startup changes synchronous library entry exports into a Promise contract. |
 | [`reliability/external-runtime-provider-unverified`](./reliability/external-runtime-provider-unverified.md) | warning | A remote fails if `_FEDERATION_RUNTIME_CORE` is absent or initialized too late. |
 | [`reliability/shared-import-false`](./reliability/shared-import-false.md) | warning | With `import: false`, no local fallback exists if another provider is missing. |
@@ -91,5 +99,6 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`artifact/types-missing`](./artifact/types-missing.md) | warning | No emitted declaration artifact was found for a typed producer. |
 | [`config/get-public-path-unused`](./config/get-public-path-unused.md) | info | `getPublicPath` has no effect on a consumer that exposes no modules. |
 | [`config/remote-manifest-recommended`](./config/remote-manifest-recommended.md) | info | A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. |
+| [`config/remote-type-urls-missing`](./config/remote-type-urls-missing.md) | warning | Direct `.js` remote entries do not advertise type archives unless `remoteTypeUrls` or a manifest is configured. |
 | [`doctor/partial-analysis`](./doctor/partial-analysis.md) | warning | Missing facts or unresolved dynamic imports reduce confidence and can hide relevant findings. |
 | [`runtime/remote-unknown`](./runtime/remote-unknown.md) | warning | The trace names a remote that is absent from loaded Doctor project facts. |

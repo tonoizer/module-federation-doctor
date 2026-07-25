@@ -10,7 +10,7 @@ For mixed-federation Playwright flake triage, see
 ## Release gates
 
 `pnpm demo:showcase` (`scripts/demo-showcase.mjs`) is a release gate: it runs
-~20 one-rule CLI fixtures under `examples/showcase` (config, shared, federation,
+one-rule CLI fixtures under `examples/showcase` (config, shared, federation,
 and runtime) and asserts each fixture’s expected `ruleId` and exit code. The
 [Integration workflow](https://github.com/tonoizer/module-federation-doctor/blob/main/.github/workflows/integration.yml)
 runs the same script on every PR and on `main`. When a case fails, the log line

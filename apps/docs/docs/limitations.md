@@ -81,6 +81,22 @@ non-public compiler/plugin fields. Missing optional public input yields
 Adapter authors: see
 [architecture notes](./contributing.md#architecture-notes).
 
+### Topology / production governance evidence notes (MFDOCTOR-123)
+
+These rules are implemented; a few need compiler-observed facts that CLI-only
+`check` cannot invent:
+
+| Rule                                       | Evidence                                                                                     |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `config/duplicate-plugin-registration`     | Webpack/Rspack adapters count MF plugins via public `.name` (`ModuleFederationPlugin`, `RspackModuleFederationPlugin`) or `constructor.name` when `.name` is missing |
+| `artifact/public-path-non-string-manifest` | Webpack/Rspack adapters classify `output.publicPath`; Vite/Rsbuild do not surface this today                                                                         |
+| Remaining topology rules                   | Config / `project.json` / remotes graph (`mfdoctor federation`)                                                                                                      |
+
+Doctor does **not** scrape private Module Federation plugin fields for these
+checks — only public plugin `name` / `constructor.name` and public bundler
+`output.publicPath`. Vite/Rsbuild have no plugin-count or `publicPath` surface
+today (intentional deferral).
+
 Doctor is **build/CI-only**. Install it as a `devDependency`. Adapters run after
 emit in Node and must not appear in the client bundle
 ([#32](https://github.com/tonoizer/module-federation-doctor/issues/32),

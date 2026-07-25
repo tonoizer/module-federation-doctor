@@ -106,6 +106,53 @@ function deepImportAllowlist(context: RuleContext): Set<string> {
   ]);
 }
 
+function remoteEntryUrl(entry: string): string {
+  return entry.includes("@") ? entry.slice(entry.lastIndexOf("@") + 1) : entry;
+}
+
+function isLoopbackRemoteUrl(url: string): boolean {
+  return /^(?:https?:\/\/)?(?:localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(url);
+}
+
+/** Detect retry / errorLoadRemote recovery plugins from configured paths. */
+function hasRemoteRecoveryPlugin(plugins: string[] | undefined): boolean {
+  if (!plugins?.length) return false;
+  return plugins.some((plugin) =>
+    /(?:^|[/\\@])(?:retry-plugin|error-?load-?remote)|errorLoadRemote/i.test(plugin),
+  );
+}
+
+function dtsOptions(config: NormalizedMFConfig | undefined): Record<string, unknown> {
+  return config?.dts?.options ?? {};
+}
+
+function generateTypesOptions(config: NormalizedMFConfig | undefined): Record<string, unknown> {
+  const options = dtsOptions(config);
+  const generateTypes = options.generateTypes;
+  if (generateTypes && typeof generateTypes === "object")
+    return generateTypes as Record<string, unknown>;
+  return options;
+}
+
+function extractRemoteTypesEnabled(config: NormalizedMFConfig | undefined): boolean {
+  const generate = generateTypesOptions(config);
+  if (typeof generate.extractRemoteTypes === "boolean") return generate.extractRemoteTypes;
+  const top = dtsOptions(config).extractRemoteTypes;
+  return typeof top === "boolean" ? top : false;
+}
+
+function consumeTypesOptions(config: NormalizedMFConfig | undefined): Record<string, unknown> {
+  const options = dtsOptions(config);
+  const consumeTypes = options.consumeTypes;
+  if (consumeTypes && typeof consumeTypes === "object")
+    return consumeTypes as Record<string, unknown>;
+  return options;
+}
+
+function hasRemoteTypeUrls(config: NormalizedMFConfig | undefined): boolean {
+  return consumeTypesOptions(config).remoteTypeUrls !== undefined;
+}
+
 const DEFAULT_REMOTE_ENTRY_MAX_BYTES = 524_288;
 const DEFAULT_SHARED_MAX_BYTES = 524_288;
 const DEFAULT_EXPOSE_MAX_BYTES = 358_400;
@@ -162,9 +209,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("config/remote-http-insecure", "warning", (context) => {
     for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {})) {
-      const url = remote.entry.includes("@")
-        ? remote.entry.slice(remote.entry.lastIndexOf("@") + 1)
-        : remote.entry;
+      const url = remoteEntryUrl(remote.entry);
       if (
         url.startsWith("http://") &&
         !/^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/.test(url)
@@ -176,6 +221,112 @@ export const builtInRules: DoctorRule[] = [
           "Use HTTPS so remote code cannot be changed in transit.",
         );
     }
+  }),
+  createRule("config/remote-localhost-in-production", "warning", (context) => {
+    if (context.facts.bundler.mode !== "ci") return;
+    for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {})) {
+      const url = remoteEntryUrl(remote.entry);
+      if (!isLoopbackRemoteUrl(url)) continue;
+      report(
+        context,
+        `Remote "${name}" points at localhost in a CI/production Doctor run.`,
+        { name, entry: remote.entry, mode: context.facts.bundler.mode },
+        "Use deployed remote URLs for CI and production builds; keep localhost for local development mode.",
+      );
+    }
+  }),
+  createRule("config/duplicate-plugin-registration", "error", (context) => {
+    const count = context.facts.bundler.moduleFederationPluginCount;
+    if (count === undefined || count <= 1) return;
+    report(
+      context,
+      `Module Federation is registered ${count} times on this compiler.`,
+      { moduleFederationPluginCount: count },
+      "Keep a single Module Federation plugin instance per compiler.",
+    );
+  }),
+  createRule("config/remote-alias-prefix-collision", "error", (context) => {
+    const remotes = Object.values(mf(context)?.remotes ?? {});
+    for (const remote of remotes) {
+      const alias = remote.alias;
+      if (!alias) continue;
+      const collision = remotes.find(
+        (item) =>
+          item !== remote &&
+          (item.name.startsWith(alias) ||
+            (item.alias !== undefined && item.alias.startsWith(alias))),
+      );
+      if (!collision) continue;
+      report(
+        context,
+        `Remote alias "${alias}" is a prefix of remote "${collision.name}"${collision.alias ? ` (alias "${collision.alias}")` : ""}.`,
+        { alias, remote: remote.name, collision: collision.name, collisionAlias: collision.alias },
+        "Rename aliases so none is a prefix of another remote name or alias.",
+      );
+    }
+  }),
+  createRule("config/nested-producer-dts-extract", "warning", (context) => {
+    const config = mf(context);
+    if (!config || config.dts?.enabled === false) return;
+    const exposes = Object.keys(config.exposes);
+    const remotes = Object.keys(config.remotes);
+    if (exposes.length === 0 || remotes.length === 0) return;
+    if (extractRemoteTypesEnabled(config)) return;
+    report(
+      context,
+      "Nested producer exposes modules and consumes remotes without `extractRemoteTypes`.",
+      { exposes, remotes },
+      "Enable `dts.generateTypes.extractRemoteTypes` so remote types are included in the producer archive.",
+    );
+  }),
+  createRule("config/dts-output-dir-mismatch", "warning", (context) => {
+    const config = mf(context);
+    if (!config || config.dts?.enabled === false) return;
+    const filename = config.filename;
+    if (!filename || !filename.includes("/")) return;
+    const outputDir = generateTypesOptions(config).outputDir;
+    if (typeof outputDir !== "string" || !outputDir.trim()) return;
+    const filenameDir = filename.replace(/\/[^/]+$/, "").replace(/^\.\//, "");
+    const normalizedOutput = outputDir.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/$/, "");
+    if (
+      filenameDir === normalizedOutput ||
+      normalizedOutput.endsWith(`/${filenameDir}`) ||
+      filenameDir.endsWith(`/${normalizedOutput}`)
+    )
+      return;
+    report(
+      context,
+      `Remote entry filename directory "${filenameDir}" does not align with dts outputDir "${normalizedOutput}".`,
+      { filename, filenameDir, outputDir: normalizedOutput },
+      "Align `filename` nesting with `dts.generateTypes.outputDir` so type archives resolve next to the container.",
+    );
+  }),
+  createRule("config/remote-type-urls-missing", "warning", (context) => {
+    const config = mf(context);
+    if (!config || config.dts?.enabled === false || hasRemoteTypeUrls(config)) return;
+    for (const [name, remote] of Object.entries(config.remotes)) {
+      const url = remoteEntryUrl(remote.entry);
+      if (!/remoteEntry(?:\.[cm]?js)?(?:[?#]|$)/i.test(url) && !/\.m?js(?:[?#]|$)/i.test(url))
+        continue;
+      if (/\.json(?:[?#]|$)/i.test(url)) continue;
+      report(
+        context,
+        `Remote "${name}" uses a direct JS entry without type URLs or a manifest.`,
+        { name, entry: remote.entry },
+        "Prefer `mf-manifest.json`, or set `dts.consumeTypes.remoteTypeUrls` for this remote.",
+      );
+    }
+  }),
+  createRule("artifact/public-path-non-string-manifest", "warning", (context) => {
+    const config = mf(context);
+    if (!config?.manifest?.enabled) return;
+    if (context.facts.bundler.outputPublicPathKind !== "non-string") return;
+    report(
+      context,
+      "Manifest generation is skipped because bundler `output.publicPath` is not a string.",
+      { outputPublicPathKind: context.facts.bundler.outputPublicPathKind },
+      "Set `output.publicPath` to a string URL, root-relative path, or `auto`.",
+    );
   }),
   createRule("config/remote-manifest-recommended", "info", (context) => {
     for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {}))
@@ -473,13 +624,16 @@ export const builtInRules: DoctorRule[] = [
     if (
       config?.shareStrategy === "version-first" &&
       Object.keys(config.remotes).length > 0 &&
-      (config.runtimePlugins?.length ?? 0) === 0
+      !hasRemoteRecoveryPlugin(config.runtimePlugins)
     )
       report(
         context,
-        "`version-first` can fail startup when a remote is offline and no runtime recovery plugin is configured.",
-        { remoteCount: Object.keys(config.remotes).length },
-        "Add an `errorLoadRemote` runtime plugin or use `loaded-first` when delayed failure is acceptable.",
+        "`version-first` can fail startup when a remote is offline and no retry/`errorLoadRemote` recovery plugin is configured.",
+        {
+          remoteCount: Object.keys(config.remotes).length,
+          runtimePlugins: config.runtimePlugins ?? [],
+        },
+        "Add `@module-federation/retry-plugin` or an `errorLoadRemote` runtime plugin, or use `loaded-first` when delayed failure is acceptable.",
       );
   }),
   createRule("reliability/shared-import-false", "warning", (context) => {
@@ -884,6 +1038,16 @@ export const federationRuleMeta = [
     id: "federation/share-scope-mismatch",
     severity: "error",
     ...ruleGuidance["federation/share-scope-mismatch"]!,
+  },
+  {
+    id: "federation/share-strategy-mismatch",
+    severity: "warning",
+    ...ruleGuidance["federation/share-strategy-mismatch"]!,
+  },
+  {
+    id: "federation/circular-remote-graph",
+    severity: "error",
+    ...ruleGuidance["federation/circular-remote-graph"]!,
   },
   {
     id: "federation/missing-provider",

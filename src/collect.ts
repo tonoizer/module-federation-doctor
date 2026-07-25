@@ -8,6 +8,7 @@ import type {
   ImportDepth,
   ImportEvidenceSource,
   ImportFacts,
+  OutputPublicPathKind,
   ProjectFacts,
   ResolvedDoctorOptions,
   UnresolvedDynamicApi,
@@ -721,15 +722,25 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
   return facts;
 }
 
+export interface BuildDiagnostics {
+  moduleFederationPluginCount?: number;
+  outputPublicPathKind?: OutputPublicPathKind;
+}
+
 export async function addBuildFacts(
   facts: ProjectFacts,
   assets: string[],
   root: string,
+  diagnostics?: BuildDiagnostics,
 ): Promise<ProjectFacts> {
   facts.artifacts.emittedAssets = assets
     .map((item) => relativePath(root, path.resolve(root, item)))
     .sort();
   facts.capabilities.emittedAssets = true;
+  if (diagnostics?.moduleFederationPluginCount !== undefined)
+    facts.bundler.moduleFederationPluginCount = diagnostics.moduleFederationPluginCount;
+  if (diagnostics?.outputPublicPathKind)
+    facts.bundler.outputPublicPathKind = diagnostics.outputPublicPathKind;
   await attachAssetSizes(facts, root);
   return facts;
 }
