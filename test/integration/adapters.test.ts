@@ -74,7 +74,7 @@ describe("adapter cases", () => {
     });
   }
 
-  it("builds clean, warning, and error cases through real bundler hooks", async () => {
+  it("builds the clean mixed-federation example through real bundler hooks", async () => {
     const repository = path.resolve(import.meta.dirname, "../..");
     const packages = [
       "@mfdoctor-example/host-vite",
@@ -86,35 +86,25 @@ describe("adapter cases", () => {
     delete baseEnvironment.VITEST_WORKER_ID;
 
     for (const packageName of packages) {
-      for (const doctorCase of ["clean", "warning"] as const) {
-        const { stdout, stderr } = await execFileAsync("pnpm", ["--filter", packageName, "build"], {
-          cwd: repository,
-          env: { ...baseEnvironment, DOCTOR_CASE: doctorCase },
-        });
-        expect(stderr).not.toContain("Doctor could not complete");
-        expect(stdout).toContain(
-          doctorCase === "clean"
-            ? "Module Federation Doctor: no findings."
-            : "warning shared/eager-without-singleton",
-        );
-      }
-
-      const failedBuild = await execFileAsync("pnpm", ["--filter", packageName, "build"], {
+      const { stdout, stderr } = await execFileAsync("pnpm", ["--filter", packageName, "build"], {
         cwd: repository,
-        env: { ...baseEnvironment, DOCTOR_CASE: "error" },
-      }).then(
-        () => undefined,
-        (error: { code?: number; stdout?: string; stderr?: string }) => error,
-      );
-      expect(failedBuild?.code).toBeGreaterThan(0);
-      expect(`${failedBuild?.stdout ?? ""}${failedBuild?.stderr ?? ""}`).toMatch(
-        /config\/(name-required|expose-key-invalid)/,
-      );
+        env: baseEnvironment,
+      });
+      expect(stderr).not.toContain("Doctor could not complete");
+      expect(stdout).toContain("Module Federation Doctor: no findings.");
     }
-
-    // Leave the example output in the clean state used by the browser test and checked-in reports.
-    await execFileAsync("pnpm", ["test:examples"], { cwd: repository, env: baseEnvironment });
   }, 120_000);
+
+  it("demos intentional showcase findings through the CLI", async () => {
+    const repository = path.resolve(import.meta.dirname, "../..");
+    await execFileAsync("pnpm", ["build"], { cwd: repository });
+    const { stdout } = await execFileAsync("node", ["scripts/demo-showcase.mjs"], {
+      cwd: repository,
+    });
+    expect(stdout).toContain("ok examples/showcase/name-required");
+    expect(stdout).toContain("ok examples/showcase/expose-key-invalid");
+    expect(stdout).toContain("ok examples/showcase/eager-without-singleton");
+  }, 60_000);
 });
 
 describe("cross-project analysis", () => {

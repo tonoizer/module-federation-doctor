@@ -13,6 +13,7 @@ export default defineConfig({
         { text: "Setup", link: "/setup" },
         { text: "CLI and CI", link: "/cli" },
         { text: "Mixed example", link: "/mixed-example" },
+        { text: "Finding showcase", link: "/showcase" },
         { text: "Rules", link: "/rules/" },
         { text: "Custom rules", link: "/custom-rules" },
         { text: "Report schemas", link: "/report-schemas" },
