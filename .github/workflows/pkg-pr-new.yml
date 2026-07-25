@@ -5,7 +5,11 @@ on:
     branches: [main]
   pull_request:
 
-permissions: {}
+# Private repos need contents:read for checkout. pull-requests:write lets
+# pkg.pr.new comment install URLs when the GitHub App is installed.
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
   preview:
@@ -21,4 +25,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm dlx pkg-pr-new@0.0.80 publish --compact
+      # Requires https://github.com/apps/pkg-pr-new on this repo.
+      # --compact needs the package on npm; omit until first publish.
+      - run: pnpm dlx pkg-pr-new@0.0.80 publish
