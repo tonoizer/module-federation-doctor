@@ -5,6 +5,7 @@
 - `diagnostics`: rule, redaction, ordering, and failure cases.
 - `dynamic-imports`: supported and unresolved dynamic MF import patterns (MFDOCTOR-105).
 - `manifests`: valid and malformed Module Federation artifacts.
+- `policy-packs`: shareable Doctor policy pack example (`@acme/mfdoctor-policy`).
 - `runtime-traces`: Observability-style exports for `mfdoctor runtime` correlation.
 - `workspaces`: portable multi-app `.mf/doctor/project.json` trees for the
   workspace federation gate (`clean` exit 0, `conflict` exit 1).

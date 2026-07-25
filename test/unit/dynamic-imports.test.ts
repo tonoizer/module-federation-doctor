@@ -35,7 +35,7 @@ async function projectWith(
     await fs.writeFile(absolute, content);
   }
   const facts = await collectProjectFacts(
-    resolveOptions({
+    await resolveOptions({
       root,
       bundler: "vite",
       mode: "development",
@@ -200,7 +200,7 @@ describe("dynamic-import completeness", () => {
       }),
     );
     const facts = await collectProjectFacts(
-      resolveOptions({
+      await resolveOptions({
         root,
         bundler: "vite",
         mode: "development",

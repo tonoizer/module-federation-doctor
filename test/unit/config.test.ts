@@ -54,10 +54,10 @@ describe("isCiEnvironment", () => {
 });
 
 describe("resolveOptions", () => {
-  it("uses safe development defaults", () => {
+  it("uses safe development defaults", async () => {
     stubLocalEnv();
     const root = path.resolve("fixture");
-    expect(resolveOptions({ root })).toMatchObject({
+    expect(await resolveOptions({ root })).toMatchObject({
       mode: "development",
       failOn: "never",
       include: DEFAULT_INCLUDE,
@@ -67,50 +67,50 @@ describe("resolveOptions", () => {
         formats: ["terminal", "json"],
       },
     });
-    expect(resolveOptions({ root }).baseline).toBeUndefined();
+    expect((await resolveOptions({ root })).baseline).toBeUndefined();
   });
 
-  it("resolves baseline path options", () => {
+  it("resolves baseline path options", async () => {
     stubLocalEnv();
     const root = path.resolve("fixture");
-    expect(resolveOptions({ root, baseline: "./mfdoctor.baseline.json" }).baseline).toEqual({
+    expect((await resolveOptions({ root, baseline: "./mfdoctor.baseline.json" })).baseline).toEqual({
       path: path.resolve(root, "./mfdoctor.baseline.json"),
       failOnSuppressed: false,
       reportStale: true,
     });
   });
 
-  it("auto-infers CI defaults from CI=true without mode", () => {
+  it("auto-infers CI defaults from CI=true without mode", async () => {
     stubLocalEnv();
     vi.stubEnv("CI", "true");
-    expect(resolveOptions({ root: "fixture" })).toMatchObject({
+    expect(await resolveOptions({ root: "fixture" })).toMatchObject({
       mode: "ci",
       failOn: "error",
       output: { formats: ["terminal", "json", "sarif"] },
     });
   });
 
-  it("auto-infers CI defaults from CI=1 and GitHub Actions", () => {
+  it("auto-infers CI defaults from CI=1 and GitHub Actions", async () => {
     stubLocalEnv();
     vi.stubEnv("CI", "1");
-    expect(resolveOptions({ root: "fixture" }).mode).toBe("ci");
+    expect((await resolveOptions({ root: "fixture" })).mode).toBe("ci");
     stubLocalEnv();
     vi.stubEnv("GITHUB_ACTIONS", "true");
-    expect(resolveOptions({ root: "fixture" })).toMatchObject({
+    expect(await resolveOptions({ root: "fixture" })).toMatchObject({
       mode: "ci",
       failOn: "error",
     });
   });
 
-  it("lets explicit mode override environment detection", () => {
+  it("lets explicit mode override environment detection", async () => {
     stubLocalEnv();
     vi.stubEnv("CI", "true");
-    expect(resolveOptions({ root: "fixture", mode: "development" })).toMatchObject({
+    expect(await resolveOptions({ root: "fixture", mode: "development" })).toMatchObject({
       mode: "development",
       failOn: "never",
     });
     stubLocalEnv();
-    expect(resolveOptions({ root: "fixture", mode: "ci" })).toMatchObject({
+    expect(await resolveOptions({ root: "fixture", mode: "ci" })).toMatchObject({
       mode: "ci",
       failOn: "error",
     });

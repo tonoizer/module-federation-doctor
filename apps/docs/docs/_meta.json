@@ -59,6 +59,11 @@
   },
   {
     "type": "file",
+    "name": "policy-packs",
+    "label": "Policy packs"
+  },
+  {
+    "type": "file",
     "name": "report-schemas",
     "label": "Report schemas"
   },
