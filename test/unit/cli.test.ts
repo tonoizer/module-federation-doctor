@@ -162,6 +162,26 @@ describe("CLI arguments", () => {
     await expect(main(["check", root, "--ci", "--baseline", baselinePath])).resolves.toBe(0);
   });
 
+  it("refuses baseline update when an existing file is corrupt", async () => {
+    const root = await temporaryProject(
+      'export default { output: { formats: ["json"] }, rules: { "doctor/partial-analysis": "off" } };',
+    );
+    await expect(main(["check", root])).resolves.toBe(0);
+    const reportPath = path.join(root, ".mf/doctor/report.json");
+    const baselinePath = path.join(root, "mfdoctor.baseline.json");
+    await fs.writeFile(baselinePath, "{ not valid json");
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      await expect(main(["baseline", "update", reportPath, "--out", baselinePath])).resolves.toBe(
+        2,
+      );
+      await expect(fs.readFile(baselinePath, "utf8")).resolves.toBe("{ not valid json");
+    } finally {
+      process.chdir(cwd);
+    }
+  });
+
   it("returns exit 2 for invalid config", async () => {
     const root = await temporaryProject("export default { this is not valid");
     await expect(main(["check", root])).resolves.toBe(2);

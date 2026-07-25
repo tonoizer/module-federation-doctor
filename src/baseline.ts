@@ -72,7 +72,7 @@ export function parseBaseline(raw: unknown): BaselineFile {
   return { schemaVersion: BASELINE_SCHEMA_VERSION, entries };
 }
 
-/** Load a baseline from disk. JSON and JSON-compatible YAML content are accepted. */
+/** Load a baseline from disk. Baseline files are JSON (`mfdoctor.baseline.json`). */
 export async function loadBaseline(filePath: string): Promise<BaselineFile> {
   const text = await fs.readFile(filePath, "utf8");
   let raw: unknown;

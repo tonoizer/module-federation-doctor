@@ -5,6 +5,7 @@ import {
   applyBaseline,
   loadBaseline,
   policyFails,
+  resolveBaselineOptions,
   summarizeFindings,
   type ResolvedBaselineOptions,
 } from "./baseline.js";
@@ -317,20 +318,7 @@ export async function analyzeFederation(
       );
   }
   const root = path.resolve(options.root ?? process.cwd());
-  const baselineOptions =
-    options.baseline === undefined
-      ? undefined
-      : typeof options.baseline === "string"
-        ? {
-            path: path.resolve(root, options.baseline),
-            failOnSuppressed: false,
-            reportStale: true,
-          }
-        : {
-            path: path.resolve(root, options.baseline.path),
-            failOnSuppressed: options.baseline.failOnSuppressed ?? false,
-            reportStale: options.baseline.reportStale ?? true,
-          };
+  const baselineOptions = resolveBaselineOptions(options.baseline, root);
   const { findings: baselined, failOnSuppressed } = await withBaseline(
     sortFindings(findings),
     baselineOptions,

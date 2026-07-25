@@ -219,12 +219,20 @@ async function runBaseline(parsed: Parsed): Promise<number> {
     let existing;
     try {
       existing = await loadBaseline(outPath);
-    } catch {
-      if (action === "update") {
+    } catch (error) {
+      const missing =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as NodeJS.ErrnoException).code === "ENOENT";
+      if (action === "update" && missing) {
+        // First update without a file is equivalent to generate.
         existing = parseBaseline({ schemaVersion: 1, entries: [] });
-      } else {
+      } else if (missing) {
         process.stderr.write(`No baseline file at ${outPath}. Run baseline generate first.\n`);
         return 2;
+      } else {
+        throw error;
       }
     }
     const next =
