@@ -83,6 +83,7 @@ export async function loadBaseline(filePath: string): Promise<BaselineFile> {
       `Failed to parse baseline file ${filePath} as JSON: ${
         error instanceof Error ? error.message : String(error)
       }`,
+      { cause: error },
     );
   }
   return parseBaseline(raw);
