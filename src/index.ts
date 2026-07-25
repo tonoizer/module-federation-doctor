@@ -1,5 +1,14 @@
 export { analyze, analyzeFederation } from "./engine.js";
 export { resolveOptions, isCiEnvironment, DEFAULT_EXCLUDE, DEFAULT_INCLUDE } from "./config.js";
+export {
+  DOCTOR_PRESET_NAMES,
+  definePolicyPack,
+  isDoctorPresetName,
+  presets,
+  recommendedPreset,
+  resolvePolicy,
+  strictPreset,
+} from "./policy.js";
 export { defineRule, builtInRules } from "./rules.js";
 export { ProbeError, probeManifest } from "./probe.js";
 export {
@@ -18,8 +27,11 @@ export type {
   BundlerFacts,
   BundlerName,
   DependencyFacts,
+  DoctorExtendEntry,
   DoctorFinding,
   DoctorOptions,
+  DoctorPolicyPack,
+  DoctorPresetName,
   DoctorReport,
   DoctorRule,
   DoctorUiPayload,

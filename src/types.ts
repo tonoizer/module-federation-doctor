@@ -343,6 +343,25 @@ export interface ModuleFederationConfigLike {
   ssrExternals?: string[];
 }
 
+/** Built-in named severity presets (`recommended` / `strict`). */
+export type DoctorPresetName = "recommended" | "strict";
+
+/**
+ * Shareable policy pack: severity map plus optional custom rules (`defineRule`).
+ * Publish as a package default export or load via a relative config path.
+ */
+export interface DoctorPolicyPack {
+  name?: string;
+  rules?: Record<string, RuleSetting>;
+  plugins?: DoctorRule[];
+}
+
+/**
+ * `extends` entry: built-in preset name, inline/imported pack, custom rule, or
+ * a package/path string that resolves to one of those (no remote HTTP).
+ */
+export type DoctorExtendEntry = DoctorPresetName | DoctorPolicyPack | DoctorRule | (string & {});
+
 export interface DoctorOptions {
   moduleFederation?: ModuleFederationConfigLike;
   bundler?: BundlerName;
@@ -359,8 +378,16 @@ export interface DoctorOptions {
   failOn?: "never" | "warning" | "error";
   include?: string[];
   exclude?: string[];
+  /**
+   * Local severity / option overrides. Wins over pack and preset maps.
+   * CLI flag merges into DoctorOptions before resolve, so flags win over file config.
+   */
   rules?: Record<string, RuleSetting>;
-  extends?: DoctorRule[];
+  /**
+   * Policy layers to apply left → right: preset names, shareable packs, and/or
+   * `defineRule` custom rules. Later entries override earlier severity maps.
+   */
+  extends?: DoctorExtendEntry | DoctorExtendEntry[];
 }
 
 export interface ResolvedDoctorOptions {
@@ -378,7 +405,10 @@ export interface ResolvedDoctorOptions {
   include: string[];
   exclude: string[];
   rules: Record<string, RuleSetting>;
+  /** Custom rules contributed by packs and direct `extends` rule entries. */
   extends: DoctorRule[];
+  /** Preset / pack labels applied while resolving `extends`. */
+  appliedPolicies: string[];
 }
 
 export interface RuntimeTraceReport {

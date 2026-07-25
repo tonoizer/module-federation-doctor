@@ -65,6 +65,10 @@ assert.equal(typeof vite.default, "function");
 assert.equal(typeof rspack.default, "function");
 assert.equal(typeof rsbuild.default, "function");
 assert.equal(typeof rules.defineRule, "function");
+const policy = await import("@module-federation/doctor/policy");
+assert.equal(typeof policy.definePolicyPack, "function");
+assert.equal(typeof policy.presets.recommended, "object");
+assert.equal(typeof policy.presets.strict, "object");
 assert.equal(reportSchema.default.title, "Module Federation Doctor report");
 assert.equal(packageJson.default.bin.mfdoctor, "dist/cli.js");
 `,

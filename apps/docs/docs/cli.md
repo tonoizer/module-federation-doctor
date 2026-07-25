@@ -17,11 +17,12 @@ mfdoctor probe https://cdn.example.com/mf-manifest.json
 mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
 ```
 
-Doctor loads optional `mfdoctor.config.ts`; flags win over config. `check` exits
-0 when policy passes, 1 for policy findings, and 2 when analysis cannot finish.
-`check` and `federation` make no network requests. `runtime` also stays offline:
-it only reads a user-supplied Observability export and local `project.json`
-files.
+Doctor loads optional `mfdoctor.config.ts`; flags win over config. Use
+`extends` for [named presets and shareable policy packs](./policy-packs.md).
+`check` exits 0 when policy passes, 1 for policy findings, and 2 when analysis
+cannot finish. `check` and `federation` make no network requests. `runtime` also
+stays offline: it only reads a user-supplied Observability export and local
+`project.json` files.
 
 ## CI auto-detect
 

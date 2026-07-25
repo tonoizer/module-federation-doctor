@@ -32,6 +32,11 @@
       "import": "./dist/rules.js",
       "default": "./dist/rules.js"
     },
+    "./policy": {
+      "types": "./dist/policy.d.ts",
+      "import": "./dist/policy.js",
+      "default": "./dist/policy.js"
+    },
     "./schemas/project.schema.json": "./schemas/project.schema.json",
     "./schemas/report.schema.json": "./schemas/report.schema.json",
     "./schemas/probe.schema.json": "./schemas/probe.schema.json",

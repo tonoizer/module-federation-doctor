@@ -79,6 +79,13 @@ pnpm mfdoctor rules config/name-required
 `check`, `federation`, and `runtime` stay offline. `probe` is the only command
 that fetches over the network, and it never executes remote JavaScript.
 
+## Policy packs and presets
+
+Share org governance with built-in presets (`recommended`, `strict`) and
+package-level policy packs via `extends`. Packs can ship severity maps plus
+custom `defineRule` plugins. See
+[policy packs](./apps/docs/docs/policy-packs.md).
+
 ## What it checks
 
 - Core config: names, exposes, remotes, scopes, runtime plugins, public paths.
