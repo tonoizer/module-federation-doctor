@@ -76,6 +76,8 @@ pnpm add -D @module-federation/doctor
 pnpm mfdoctor check --ci
 pnpm mfdoctor check --format terminal,json,sarif
 pnpm mfdoctor check --baseline ./mfdoctor.baseline.json
+pnpm mfdoctor workspace
+pnpm mfdoctor federation --workspace
 pnpm mfdoctor federation ".mf/doctor/**/project.json"
 pnpm mfdoctor baseline generate .mf/doctor/report.json
 pnpm mfdoctor runtime ./.mf/observability/latest.json
@@ -87,13 +89,15 @@ pnpm mfdoctor rules config/name-required
 | --------------- | ----------------------------------------------------------- |
 | Plugin on build | Gate the real emit; strongest artifact evidence             |
 | `check`         | Offline config analysis without a full bundler run          |
-| `federation`    | Host↔remote integration after each app wrote `project.json` |
+| `workspace`     | One-shot host↔remote gate; auto-discovers `project.json`    |
+| `federation`    | Same gate with `--workspace` or manual globs (escape hatch) |
 | `baseline`      | Generate/update fingerprint baselines for incremental CI    |
 | `runtime`       | Correlate an Observability Plugin export with project facts |
 | `probe`         | Inspect a deployed manifest / remoteEntry HEAD (network)    |
 
-`check`, `federation`, and `runtime` stay offline. `probe` is the only command
-that fetches over the network, and it never executes remote JavaScript.
+`check`, `workspace`, `federation`, and `runtime` stay offline. `probe` is the
+only command that fetches over the network, and it never executes remote
+JavaScript. Exit codes: `0` pass, `1` policy fail, `2` analysis incomplete.
 Fingerprint baselines keep known debt visible in reports without failing policy
 by default — see the docs page on baselines.
 

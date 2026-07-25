@@ -24,6 +24,9 @@ describe("CLI arguments", () => {
       command: "check",
       root: "app",
       patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
       ci: true,
       formats: ["terminal", "json", "sarif"],
     });
@@ -33,6 +36,9 @@ describe("CLI arguments", () => {
     expect(parseArgs(["check", "--baseline", "./mfdoctor.baseline.json"])).toEqual({
       command: "check",
       patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
       ci: false,
       baseline: "./mfdoctor.baseline.json",
     });
@@ -48,6 +54,9 @@ describe("CLI arguments", () => {
       command: "baseline",
       baselineAction: "generate",
       patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
       ci: false,
       reportPath: ".mf/doctor/report.json",
       outPath: "mfdoctor.baseline.json",
@@ -59,6 +68,47 @@ describe("CLI arguments", () => {
     expect(parseArgs(["federation", ".mf/doctor/**/project.json"])).toEqual({
       command: "federation",
       patterns: [".mf/doctor/**/project.json"],
+      roots: [],
+      globs: [],
+      workspace: false,
+      ci: false,
+    });
+  });
+
+  it("parses workspace auto-discovery and federation --workspace", () => {
+    expect(parseArgs(["workspace", "apps", "packages"])).toEqual({
+      command: "workspace",
+      patterns: [],
+      roots: ["apps", "packages"],
+      globs: [],
+      workspace: true,
+      ci: false,
+    });
+    expect(
+      parseArgs([
+        "federation",
+        "--workspace",
+        "examples/mixed-federation",
+        "--glob",
+        "**/.mf/doctor/project.json",
+        "--format",
+        "json,sarif",
+      ]),
+    ).toEqual({
+      command: "federation",
+      patterns: [],
+      roots: ["examples/mixed-federation"],
+      globs: ["**/.mf/doctor/project.json"],
+      workspace: true,
+      ci: false,
+      formats: ["json", "sarif"],
+    });
+    expect(parseArgs(["federation", "apps", "--workspace"])).toEqual({
+      command: "federation",
+      patterns: [],
+      roots: ["apps"],
+      globs: [],
+      workspace: true,
       ci: false,
     });
   });
@@ -76,6 +126,9 @@ describe("CLI arguments", () => {
       command: "runtime",
       trace: "./trace.json",
       patterns: [".mf/doctor/**/project.json"],
+      roots: [],
+      globs: [],
+      workspace: false,
       ci: false,
       formats: ["terminal", "json"],
     });
@@ -103,6 +156,9 @@ describe("CLI arguments", () => {
       command: "probe",
       url: "https://example.com/mf-manifest.json",
       patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
       ci: false,
       timeoutMs: 5000,
       maxBytes: 100000,
@@ -114,8 +170,35 @@ describe("CLI arguments", () => {
       command: "rules",
       ruleId: "config/name-required",
       patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
       ci: false,
     });
+  });
+
+  it("runs the workspace federation gate with fixture exit codes", async () => {
+    const repository = path.resolve(import.meta.dirname, "../..");
+    const previous = process.cwd();
+    process.chdir(repository);
+    try {
+      await expect(main(["workspace", "fixtures/workspaces/clean"])).resolves.toBe(0);
+      await expect(
+        main(["federation", "--workspace", "fixtures/workspaces/conflict"]),
+      ).resolves.toBe(1);
+      await expect(main(["workspace", "fixtures/manifests"])).resolves.toBe(2);
+      await expect(
+        main([
+          "federation",
+          "--workspace",
+          "examples/showcase/federation/version-conflict",
+          "--glob",
+          "*.project.json",
+        ]),
+      ).resolves.toBe(1);
+    } finally {
+      process.chdir(previous);
+    }
   });
 
   it("loads a TypeScript config and returns exit 0 for a clean check", async () => {
