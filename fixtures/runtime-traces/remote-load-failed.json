@@ -1,0 +1,36 @@
+{
+  "traceId": "mf-remote-fail-001",
+  "status": "error",
+  "errorCode": "RUNTIME-003",
+  "summary": {
+    "outcome": "failed",
+    "phases": {
+      "manifest": { "status": "error" },
+      "remoteEntry": { "status": "pending" },
+      "init": { "status": "pending" },
+      "shared": { "status": "pending" }
+    }
+  },
+  "remote": {
+    "name": "checkout",
+    "entry": "https://user:pass@cdn.internal.example/apps/checkout/v1/mf-manifest.json?token=secret-token"
+  },
+  "moduleInfo": {
+    "name": "host",
+    "id": "host",
+    "publicPath": "https://cdn.internal.example/apps/host/private/build/"
+  },
+  "diagnosis": {
+    "owner": "remote",
+    "summary": "Manifest fetch failed before remote entry download."
+  },
+  "events": [
+    {
+      "phase": "manifest",
+      "status": "error",
+      "errorCode": "RUNTIME-003"
+    }
+  ],
+  "authorization": "Bearer should-not-leak",
+  "cookie": "session=should-not-leak"
+}

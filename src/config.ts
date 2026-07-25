@@ -30,5 +30,7 @@ export function resolveOptions(options: DoctorOptions = {}): ResolvedDoctorOptio
   };
   if (options.moduleFederation !== undefined) resolved.moduleFederation = options.moduleFederation;
   if (options.bundlerVersion !== undefined) resolved.bundlerVersion = options.bundlerVersion;
+  if (options.runtimeTrace !== undefined)
+    resolved.runtimeTrace = path.resolve(root, options.runtimeTrace);
   return resolved;
 }

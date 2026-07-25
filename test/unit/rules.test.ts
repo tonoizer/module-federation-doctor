@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { analyze } from "../../src/engine.js";
-import { builtInRules, federationRuleMeta } from "../../src/rules.js";
+import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "../../src/rules.js";
 import type { DoctorFinding, ProjectFacts } from "../../src/types.js";
 
 const roots: string[] = [];
@@ -32,6 +32,7 @@ describe("built-in rules", () => {
     const ids = [
       ...builtInRules.map((item) => item.meta.id),
       ...federationRuleMeta.map((item) => item.id),
+      ...runtimeRuleMeta.map((item) => item.id),
     ];
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toMatchSnapshot();

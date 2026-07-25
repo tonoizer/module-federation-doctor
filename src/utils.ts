@@ -52,6 +52,27 @@ export function redact(value: unknown, root?: string, key = ""): unknown {
   return value;
 }
 
+/** Strip credentials/query/fragment and collapse private path to origin + basename. */
+export function redactRuntimeUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    url.username = "";
+    url.password = "";
+    url.search = "";
+    url.hash = "";
+    const parts = url.pathname.split("/").filter(Boolean);
+    const basename = parts.at(-1);
+    url.pathname = basename ? (parts.length > 1 ? `/.../${basename}` : `/${basename}`) : "/";
+    return url.href;
+  } catch {
+    return value.replace(CREDENTIAL_URL, "$1[REDACTED]@").replace(SECRET_QUERY, "$1[REDACTED]");
+  }
+}
+
+export function looksLikeUrl(value: string): boolean {
+  return /^[a-z][a-z\d+.-]*:\/\//i.test(value);
+}
+
 export function fingerprint(input: {
   ruleId: string;
   project: string;

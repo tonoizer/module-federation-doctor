@@ -14,4 +14,3 @@ GitHub issue when ready for issue tracking.
 - `MFDOCTOR-103`: Modern.js adapter without hiding direct Rspack coverage.
 - `MFDOCTOR-106`: Broader Node, bundler, framework, and package-manager matrix.
 - `MFDOCTOR-107`: User-defined performance budgets from manifest/stats assets.
-- `MFDOCTOR-108`: Opt-in browser runtime trace import and correlation.

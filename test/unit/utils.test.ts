@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { fingerprint, normalizePath, redact, stableStringify } from "../../src/utils.js";
+import {
+  fingerprint,
+  normalizePath,
+  redact,
+  redactRuntimeUrl,
+  stableStringify,
+} from "../../src/utils.js";
 
 describe("deterministic privacy helpers", () => {
   it("normalizes Windows paths", () => {
@@ -21,6 +27,14 @@ describe("deterministic privacy helpers", () => {
       url: "https://[REDACTED]@example.test/x?token=[REDACTED]&safe=yes",
       path: "./src/a.ts",
     });
+  });
+
+  it("collapses private runtime URLs to origin and basename", () => {
+    expect(
+      redactRuntimeUrl(
+        "https://user:pass@cdn.internal.example/apps/checkout/v1/mf-manifest.json?token=secret",
+      ),
+    ).toBe("https://cdn.internal.example/.../mf-manifest.json");
   });
 
   it("sorts evidence before hashing", () => {
