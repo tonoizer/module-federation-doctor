@@ -25,19 +25,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      # --compact requires the package on npm; drop it until first publish.
-      # Install https://github.com/apps/pkg-pr-new on this repo to enable previews.
-      - name: Publish package preview
-        run: |
-          set +e
-          output="$(pnpm dlx pkg-pr-new@0.0.80 publish 2>&1)"
-          status=$?
-          printf '%s\n' "$output"
-          if [ "$status" -eq 0 ]; then
-            exit 0
-          fi
-          if printf '%s' "$output" | grep -q 'is not installed'; then
-            echo "::warning::pkg.pr.new GitHub App is not installed. Install https://github.com/apps/pkg-pr-new to enable package previews."
-            exit 0
-          fi
-          exit "$status"
+      # Requires https://github.com/apps/pkg-pr-new on this repo.
+      # --compact needs the package on npm; omit until first publish.
+      - run: pnpm dlx pkg-pr-new@0.0.80 publish
