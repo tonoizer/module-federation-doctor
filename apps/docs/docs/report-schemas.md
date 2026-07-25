@@ -30,8 +30,8 @@ changes require a new `schemaVersion` (or an intentional, documented exception).
 
 `ui.schema.json` is **not** a persisted CLI artifact (Doctor no longer ships an
 HTML dashboard). It remains the published shape for programmatic consumers of
-`buildUiPayload` / graph payloads. Orphan HTML-UI cleanup is tracked separately
-(#59 / #131); do not treat this schema as an HTML report format.
+`buildUiPayload` / graph payloads — see below. Do not treat it as an HTML report
+format.
 
 Use the schemas in editors, artifact validators, or deployment gates. They are
 strict about the stable outer contract and leave normalized federation
