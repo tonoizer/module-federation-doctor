@@ -148,6 +148,11 @@
   },
   {
     "type": "file",
+    "name": "sources",
+    "label": "Source map"
+  },
+  {
+    "type": "file",
     "name": "releasing",
     "label": "Releasing"
   },

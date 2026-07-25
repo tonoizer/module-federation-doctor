@@ -1,6 +1,7 @@
 # Source map
 
-Use primary sources:
+Use primary sources when changing a Doctor rule or claiming upstream Module
+Federation behavior:
 
 - Configuration: https://module-federation.io/configure/index.html
 - Core option types:
@@ -16,14 +17,10 @@ Use primary sources:
 - Observability:
   https://module-federation.io/plugin/plugins/observability-plugin
 
-Check the local upstream repositories when available:
-
-- `/Users/evin/Downloads/open source contributing/core`
-- `/Users/evin/Downloads/open source contributing/vite`
-- `/Users/evin/Downloads/open source contributing/vitest`
-
-Record the commit before citing a source. Do not treat dirty files or a fork-only
-branch as official upstream behavior.
+When local clones of `module-federation/core`, `module-federation/vite`, or
+`vitest` are available, prefer them for deeper reading — but record the commit
+before citing a source. Do not treat dirty files or a fork-only branch as
+official upstream behavior.
 
 The public `module-federation/agent-skills` repository is useful research, but
 it currently has no license file. Do not copy its code or bundled assets into

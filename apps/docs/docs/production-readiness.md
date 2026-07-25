@@ -73,6 +73,9 @@ shared bundler `mfOptions` object — not by shipping Doctor into the runtime.
 
 ## Research sources
 
+See the [source map](./sources.md) for pinned upstream URLs used when changing
+rules or claiming Module Federation behavior. High-level entry points:
+
 - [Official configuration index](https://module-federation.io/configure/index.html)
 - [Official `mf` agent skill](https://github.com/module-federation/agent-skills/tree/main/skills/mf)
 - [Module Federation Core](https://github.com/module-federation/core)
@@ -80,5 +83,6 @@ shared bundler `mfOptions` object — not by shipping Doctor into the runtime.
 - [Vitest docs and UI](https://github.com/vitest-dev/vitest)
 
 The official agent-skill repository currently has no license file. Doctor does
-not vendor its code or browser asset. The repository skill in `.codex/skills`
-is original and links back to official sources.
+not vendor its code or browser asset. Doctor-specific agent UX prefers CLI and
+plugin finding output; `.agents/skills/mf` remains for Module Federation
+concepts.
