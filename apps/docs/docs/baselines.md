@@ -4,6 +4,9 @@ Baselines let teams turn on CI `failOn` without fixing every legacy finding on
 day one. New fingerprints still fail the gate; known debt is tracked in a
 checked-in file and should shrink over time.
 
+For whole-rule `"off"`, severity overrides, packs, and `failOn`, see
+[Suppressions and allowlists](./suppressions.md).
+
 **Baselines are debt, not a permanent mute.** Prefer fixing findings. Use a
 baseline only for incremental adoption, and prune entries as debt is paid. Do
 not add per-line `eslint-disable`-style source comments — fingerprint baselines

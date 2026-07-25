@@ -66,6 +66,25 @@ development defaults to `failOn: "never"` so findings print without breaking
 the build. Override with `--ci`, `mode: "ci"`, `mode: "development"`, or
 `failOn`.
 
+### Noisy finding? Mute intentionally
+
+When a rule is known and accepted (for example a host that keeps direct
+`remoteEntry` URLs), turn that rule off — do not disable Doctor:
+
+```ts
+federationDoctor({
+  moduleFederation: mfOptions,
+  rules: {
+    // Intentional: no manifest server in this app yet.
+    "config/remote-manifest-recommended": "off",
+  },
+});
+```
+
+See [Suppressions and allowlists](./apps/docs/docs/suppressions.md) for
+severity overrides, policy packs, fingerprint baselines, `failOn`, and the
+canonical `examples/mixed-federation` host pattern.
+
 ## CLI (complementary)
 
 Use the CLI when you are not running a bundler build, or for cross-project and
@@ -99,7 +118,8 @@ pnpm mfdoctor rules config/name-required
 only command that fetches over the network, and it never executes remote
 JavaScript. Exit codes: `0` pass, `1` policy fail, `2` analysis incomplete.
 Fingerprint baselines keep known debt visible in reports without failing policy
-by default — see the docs page on baselines.
+by default — see [baselines](./apps/docs/docs/baselines.md) and
+[suppressions](./apps/docs/docs/suppressions.md).
 
 ## Policy packs and presets
 

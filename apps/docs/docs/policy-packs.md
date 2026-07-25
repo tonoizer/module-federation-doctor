@@ -1,7 +1,9 @@
 # Policy packs and named presets
 
 Encode Module Federation governance once and reuse it across hosts and remotes —
-the same idea as ESLint shareable configs.
+the same idea as ESLint shareable configs. For per-app `"off"` / severity
+overrides, baselines, and `failOn`, see
+[Suppressions and allowlists](./suppressions.md).
 
 ## Built-in presets
 

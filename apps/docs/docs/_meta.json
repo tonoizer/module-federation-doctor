@@ -25,6 +25,11 @@
   },
   {
     "type": "file",
+    "name": "suppressions",
+    "label": "Suppressions and allowlists"
+  },
+  {
+    "type": "file",
     "name": "mixed-example",
     "label": "Mixed example"
   },
