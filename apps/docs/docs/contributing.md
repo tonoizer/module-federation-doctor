@@ -60,7 +60,8 @@ dashboard.
 
 `MFDOCTOR-116` / [#33](https://github.com/tonoizer/module-federation-doctor/issues/33)
 (in-browser Doctor runtime agent) was closed as not planned — Doctor stays
-build/CI-only and must not add bundle size or runtime cost.
+build/CI-only and must not add bundle size or runtime cost. Adapters must not
+add `transform` / `load` / `banner` hooks that inject Doctor into assets.
 
 Permanent non-goals (documented under
 [limitations](./limitations.md#permanent-guarantees--non-goals)): no

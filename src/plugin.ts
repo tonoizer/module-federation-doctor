@@ -3,6 +3,12 @@ import fg from "fast-glob";
 import { analyzeBuild } from "./engine.js";
 import type { BundlerName, DoctorOptions } from "./types.js";
 
+/**
+ * Build/CI-only invariant (#32): adapters may hook post-emit surfaces only
+ * (`writeBundle` / `afterEmit` / `onAfterBuild`). Never register
+ * `transform` / `load` / `banner` (or similar) hooks that inject Doctor into
+ * client assets.
+ */
 function createDoctorPlugin(bundler: BundlerName) {
   return createUnplugin<DoctorOptions | undefined>((options = {}) => {
     const configured: DoctorOptions = {
