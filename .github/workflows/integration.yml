@@ -21,9 +21,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test:integration
+      # Red multi-bundler demo: asserts planted findings and federation conflicts.
+      - run: node scripts/demo-mixed-issues.mjs
       - if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: doctor-integration
-          path: examples/mixed-federation/*/.mf/doctor
+          path: |
+            examples/mixed-federation/*/.mf/doctor
+            examples/mixed-federation-issues/*/.mf/doctor
           if-no-files-found: ignore

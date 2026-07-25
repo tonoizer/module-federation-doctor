@@ -1,0 +1,12 @@
+{
+  "name": "@mfdoctor-example/demos",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "demo": "pnpm demo:showcase && pnpm demo:mixed-issues",
+    "demo:showcase": "pnpm --dir .. run demo:showcase",
+    "demo:mixed-issues": "pnpm --dir .. run demo:mixed-issues",
+    "build:green": "pnpm --dir .. run test:examples",
+    "test:e2e": "pnpm --dir .. run test:e2e"
+  }
+}
