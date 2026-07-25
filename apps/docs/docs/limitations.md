@@ -36,9 +36,12 @@ analysis stay offline. When `runtimeTrace` is set on Doctor options, `check`
 also merges shared/remote hints from that export into import facts without
 fetching URLs or executing remote JavaScript.
 
-Doctor does not ship an HTML dashboard today. Use terminal, JSON, and SARIF
-reports. Restoring a richer HTML analysis UI is tracked in
-[#13](https://github.com/tonoizer/module-federation-doctor/issues/13).
+Doctor does not ship an HTML dashboard or `--ui` server. Use terminal, JSON, and
+SARIF reports. `buildUiPayload` / `schemas/ui.schema.json` remain as a
+programmatic federation graph contract for custom tooling — see
+[report schemas](./report-schemas.md). An HTML analysis UI
+([#13](https://github.com/tonoizer/module-federation-doctor/issues/13)) was
+closed as not planned.
 
 ## post-v1
 

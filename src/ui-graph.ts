@@ -323,6 +323,12 @@ function buildOrchestrationGraph(projects: ProjectFacts[], findings: DoctorFindi
   };
 }
 
+/**
+ * Build the programmatic federation graph payload (`DoctorUiPayload`).
+ * This is not an HTML report — use it for custom visualizations or validators
+ * against `schemas/ui.schema.json`. Supported CLI/plugin report surfaces remain
+ * terminal, JSON, and SARIF only.
+ */
 export function buildUiPayload(projects: ProjectFacts[], report: DoctorReport): DoctorUiPayload {
   const findings = report.findings;
   return {

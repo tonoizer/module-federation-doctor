@@ -62,6 +62,7 @@ const reportSchema = await import("@module-federation/doctor/schemas/report.sche
 const packageJson = await import("@module-federation/doctor/package.json", { with: { type: "json" } });
 assert.equal(typeof api.analyze, "function");
 assert.equal(typeof api.probeManifest, "function");
+assert.equal(typeof api.buildUiPayload, "function");
 assert.equal(typeof vite.federationDoctor, "function");
 assert.equal(typeof rspack.moduleFederationDoctorPlugin, "function");
 assert.equal(typeof rsbuild.pluginModuleFederationDoctor, "function");
@@ -77,6 +78,8 @@ assert.equal(typeof policy.definePolicyPack, "function");
 assert.equal(typeof policy.presets.recommended, "object");
 assert.equal(typeof policy.presets.strict, "object");
 assert.equal(reportSchema.default.title, "Module Federation Doctor report");
+const uiSchema = await import("@module-federation/doctor/schemas/ui.schema.json", { with: { type: "json" } });
+assert.equal(uiSchema.default.title, "Module Federation Doctor federation graph payload");
 assert.equal(packageJson.default.bin.mfdoctor, "dist/cli.js");
 `,
   );
