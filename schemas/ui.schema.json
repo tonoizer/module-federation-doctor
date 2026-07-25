@@ -1,7 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/ui.schema.json",
-  "title": "Module Federation Doctor UI payload",
+  "title": "Module Federation Doctor federation graph payload",
+  "description": "Programmatic remotes/shared/orchestration graph contract from buildUiPayload. Not an HTML report — Doctor ships terminal, JSON, and SARIF only.",
   "type": "object",
   "required": ["schemaVersion", "report", "projects", "graphs"],
   "properties": {

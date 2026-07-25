@@ -14,7 +14,9 @@ icon for hero and social surfaces.
 - machine-readable reports you can attach to CI (`report.json`, `results.sarif`).
 
 Doctor no longer ships an HTML dashboard or `--ui` server. Terminal output plus
-JSON/SARIF are the supported report surfaces.
+JSON/SARIF are the supported report surfaces. The `buildUiPayload` API and
+`schemas/ui.schema.json` stay as a programmatic federation graph contract for
+custom tooling — not an HTML UI (see [report schemas](./report-schemas.md)).
 
 ## What Doctor does not copy
 

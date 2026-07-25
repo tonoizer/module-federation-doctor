@@ -104,6 +104,11 @@ pnpm mfdoctor probe https://cdn.example.com/mf-manifest.json --remote-entry
 pnpm mfdoctor rules config/name-required
 ```
 
+Supported report formats are **terminal**, **JSON**, and **SARIF** only — there
+is no HTML report or `--ui` dashboard. For a programmatic remotes/shared graph,
+use `buildUiPayload` and `schemas/ui.schema.json` (see report schemas in the
+docs).
+
 | Command         | When to use it                                              |
 | --------------- | ----------------------------------------------------------- |
 | Plugin on build | Gate the real emit; strongest artifact evidence             |
