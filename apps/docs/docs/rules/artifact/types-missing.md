@@ -11,7 +11,7 @@ No emitted declaration artifact was found for a typed producer.
 
 Enable DTS output and fail CI when type generation fails.
 
-Override this rule with `rules["artifact/types-missing"]`.
+Suppress or retarget with `rules["artifact/types-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

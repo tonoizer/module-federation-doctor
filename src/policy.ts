@@ -54,10 +54,11 @@ function elevateStrict(severity: Severity): Severity {
   return "error";
 }
 
-/** Keep advisory / tooling signals from becoming hard CI failures under `strict`. */
+/** Keep advisory / tooling / soft-heuristic signals from becoming hard CI failures under `strict`. */
 const STRICT_KEEP: Record<string, RuleSetting> = {
   "doctor/partial-analysis": "warning",
   "shared/candidate": "warning",
+  "config/implementation-suspicious": "warning",
 };
 
 export const recommendedPreset: DoctorPolicyPack = definePolicyPack({

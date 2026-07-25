@@ -11,7 +11,7 @@ Preload and debugging tools cannot map an expose to its assets.
 
 Ensure the expose is built and manifest asset analysis completes.
 
-Override this rule with `rules["artifact/manifest-expose-assets-empty"]`.
+Suppress or retarget with `rules["artifact/manifest-expose-assets-empty"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

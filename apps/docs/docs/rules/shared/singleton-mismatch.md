@@ -11,7 +11,7 @@ Projects disagree on whether multiple instances are allowed.
 
 Use one federation-wide singleton policy for stateful packages.
 
-Override this rule with `rules["shared/singleton-mismatch"]`.
+Suppress or retarget with `rules["shared/singleton-mismatch"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

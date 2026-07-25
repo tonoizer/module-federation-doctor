@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(root, "dist/cli.js");
 
-/** @type {Array<{ dir?: string; pattern?: string; ruleId?: string; expectNoFindings?: boolean; expectedExit: number; command?: "check" | "federation" | "runtime" }>} */
+/** @type {Array<{ dir?: string; pattern?: string; ruleId?: string; forbiddenRuleIds?: string[]; expectNoFindings?: boolean; expectedExit: number; command?: "check" | "federation" | "runtime" }>} */
 const cases = [
   {
     dir: "examples/showcase/config/expose-key-invalid",
@@ -38,6 +38,16 @@ const cases = [
     expectedExit: 0,
   },
   {
+    dir: "examples/showcase/config/implementation-local",
+    expectNoFindings: true,
+    expectedExit: 0,
+  },
+  {
+    dir: "examples/showcase/config/implementation-suspicious-suppressed",
+    expectNoFindings: true,
+    expectedExit: 0,
+  },
+  {
     dir: "examples/showcase/shared/eager-without-singleton",
     ruleId: "shared/eager-without-singleton",
     expectedExit: 0,
@@ -53,13 +63,29 @@ const cases = [
     expectedExit: 0,
   },
   {
+    dir: "examples/showcase/shared/singleton-risk-suppressed",
+    expectNoFindings: true,
+    expectedExit: 0,
+  },
+  {
     dir: "examples/showcase/shared/unused",
     ruleId: "shared/unused",
     expectedExit: 0,
   },
   {
+    dir: "examples/showcase/shared/unused-unresolved",
+    ruleId: "doctor/partial-analysis",
+    forbiddenRuleIds: ["shared/unused"],
+    expectedExit: 0,
+  },
+  {
     dir: "examples/showcase/shared/candidate",
     ruleId: "shared/candidate",
+    expectedExit: 0,
+  },
+  {
+    dir: "examples/showcase/shared/candidate-suppressed",
+    expectNoFindings: true,
     expectedExit: 0,
   },
   {
@@ -142,9 +168,10 @@ for (const item of cases) {
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
   const exitCode = result.status ?? 1;
   const hasExpectation = item.expectNoFindings
-    ? !output.includes("Module Federation Doctor") && !/\b(error|warning)\b/.test(output)
+    ? !output.includes("Module Federation Doctor") && !/\b(error|warning|info)\b/.test(output)
     : Boolean(item.ruleId && output.includes(item.ruleId));
-  const ok = exitCode === item.expectedExit && hasExpectation;
+  const forbidsOk = !(item.forbiddenRuleIds ?? []).some((id) => output.includes(id));
+  const ok = exitCode === item.expectedExit && hasExpectation && forbidsOk;
   const expectation = item.expectNoFindings ? "quiet success (no findings)" : item.ruleId;
   process.stdout.write(
     `${ok ? "ok" : "FAIL"} ${label} → ${expectation} (exit ${exitCode}, expected ${item.expectedExit})\n`,

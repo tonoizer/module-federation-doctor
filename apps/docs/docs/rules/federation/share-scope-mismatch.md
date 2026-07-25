@@ -11,7 +11,7 @@ Projects in different scopes cannot reuse the same shared provider.
 
 Align top-level, remote, and shared-item scopes intentionally.
 
-Override this rule with `rules["federation/share-scope-mismatch"]`.
+Suppress or retarget with `rules["federation/share-scope-mismatch"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

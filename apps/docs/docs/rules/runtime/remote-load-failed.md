@@ -11,7 +11,7 @@ A browser Observability trace failed while loading a remote manifest, entry, exp
 
 Compare the redacted entry URL and manifest metadata with the producer build output.
 
-Override this rule with `rules["runtime/remote-load-failed"]`.
+Suppress or retarget with `rules["runtime/remote-load-failed"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

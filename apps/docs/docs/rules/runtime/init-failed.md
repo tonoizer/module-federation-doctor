@@ -11,7 +11,7 @@ Container initialization failed before exposes or shared resolution could finish
 
 Verify async startup, external runtime provider order, and runtime plugins against Doctor project facts.
 
-Override this rule with `rules["runtime/init-failed"]`.
+Suppress or retarget with `rules["runtime/init-failed"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

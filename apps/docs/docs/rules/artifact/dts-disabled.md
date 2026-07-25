@@ -11,7 +11,7 @@ Consumers receive no automatic contract for exposed TypeScript modules.
 
 Enable DTS generation or document and test another declaration delivery path.
 
-Override this rule with `rules["artifact/dts-disabled"]`.
+Suppress or retarget with `rules["artifact/dts-disabled"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

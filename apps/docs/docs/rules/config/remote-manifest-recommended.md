@@ -11,7 +11,7 @@ A direct remote entry lacks manifest-powered type hints, preloading data, and ri
 
 Point consumers at `mf-manifest.json` when those capabilities are wanted.
 
-Override this rule with `rules["config/remote-manifest-recommended"]`.
+Suppress or retarget with `rules["config/remote-manifest-recommended"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

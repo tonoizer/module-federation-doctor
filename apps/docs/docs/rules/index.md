@@ -44,7 +44,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`artifact/manifest-assets-disabled`](./artifact/manifest-assets-disabled.md) | warning | Disabled asset analysis removes shared and expose asset details from producer metadata. |
 | [`artifact/manifest-expose-assets-empty`](./artifact/manifest-expose-assets-empty.md) | warning | Preload and debugging tools cannot map an expose to its assets. |
 | [`artifact/manifest-shared-version-mismatch`](./artifact/manifest-shared-version-mismatch.md) | warning | Stale version metadata can choose the wrong shared provider at runtime. |
-| [`config/implementation-suspicious`](./config/implementation-suspicious.md) | warning | A custom implementation can violate the runtime contract expected by the build plugin. |
+| [`config/implementation-suspicious`](./config/implementation-suspicious.md) | info | A custom implementation can violate the runtime contract expected by the build plugin. |
 | [`federation/missing-provider`](./federation/missing-provider.md) | error | Every consumer disabled its fallback, so no build can provide the package. |
 | [`reliability/async-startup-library-promise`](./reliability/async-startup-library-promise.md) | warning | Async startup changes synchronous library entry exports into a Promise contract. |
 | [`reliability/external-runtime-provider-unverified`](./reliability/external-runtime-provider-unverified.md) | warning | A remote fails if `_FEDERATION_RUNTIME_CORE` is absent or initialized too late. |
@@ -67,7 +67,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`performance/asset-budget`](./performance/asset-budget.md) | warning | Federation assets that exceed project budgets slow startup and transfer more bytes than planned. |
 | [`performance/version-first-startup`](./performance/version-first-startup.md) | info | `version-first` loads all remote entries during initialization, adding startup work. |
 | [`performance/vite-bundle-all-css`](./performance/vite-bundle-all-css.md) | warning | Vite attaches all bundle CSS to every expose, which can duplicate transfer and style work. |
-| [`shared/candidate`](./shared/candidate.md) | warning | A stateful framework dependency may be bundled separately by host and remote. |
+| [`shared/candidate`](./shared/candidate.md) | info | A stateful framework dependency may be bundled separately by host and remote. |
 | [`shared/eager-without-singleton`](./shared/eager-without-singleton.md) | warning | An eager non-singleton can add copies to initial chunks without guaranteeing reuse. |
 | [`shared/unused`](./shared/unused.md) | warning | Unused shared declarations add runtime bookkeeping and can signal stale config. |
 

@@ -11,7 +11,7 @@ An unavailable remote can break startup before its exposed module is requested.
 
 Add `errorLoadRemote` recovery or choose `loaded-first` for delayed failure.
 
-Override this rule with `rules["reliability/version-first-offline-remotes"]`.
+Suppress or retarget with `rules["reliability/version-first-offline-remotes"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

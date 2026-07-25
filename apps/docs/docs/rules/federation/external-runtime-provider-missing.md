@@ -11,7 +11,7 @@ External-runtime remotes cannot start without a federation-wide provider.
 
 Enable `provideExternalRuntime` on one top-level pure consumer.
 
-Override this rule with `rules["federation/external-runtime-provider-missing"]`.
+Suppress or retarget with `rules["federation/external-runtime-provider-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

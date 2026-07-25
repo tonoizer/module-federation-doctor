@@ -11,7 +11,7 @@ A missing runtime plugin stops injected runtime behavior from loading.
 
 Correct the path/package and include local plugin files in the Doctor scan.
 
-Override this rule with `rules["config/runtime-plugin-missing"]`.
+Suppress or retarget with `rules["config/runtime-plugin-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

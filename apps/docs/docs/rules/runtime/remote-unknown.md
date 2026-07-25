@@ -11,7 +11,7 @@ The trace names a remote that is absent from loaded Doctor project facts.
 
 Collect project.json for every host and remote, or correct the remote name in the trace source.
 
-Override this rule with `rules["runtime/remote-unknown"]`.
+Suppress or retarget with `rules["runtime/remote-unknown"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

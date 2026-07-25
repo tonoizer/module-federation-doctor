@@ -11,7 +11,7 @@ A stable RUNTIME error code from an imported browser trace was matched to offlin
 
 Use the RUNTIME code with the matched build facts; do not infer browser behavior from static analysis alone.
 
-Override this rule with `rules["runtime/error-correlated"]`.
+Suppress or retarget with `rules["runtime/error-correlated"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

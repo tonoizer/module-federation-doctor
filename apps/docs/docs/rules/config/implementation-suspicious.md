@@ -1,7 +1,7 @@
 # `config/implementation-suspicious`
 
 - Category: **reliability**
-- Default severity: **warning**
+- Default severity: **info**
 
 ## Issue
 
@@ -11,7 +11,7 @@ A custom implementation can violate the runtime contract expected by the build p
 
 Use a compatible `@module-federation/runtime-tools` path and pin compatible versions.
 
-Override this rule with `rules["config/implementation-suspicious"]`.
+Suppress or retarget with `rules["config/implementation-suspicious"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

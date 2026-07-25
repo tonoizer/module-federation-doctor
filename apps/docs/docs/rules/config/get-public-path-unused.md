@@ -11,7 +11,7 @@
 
 Remove dead config or move it to the producer that owns the assets.
 
-Override this rule with `rules["config/get-public-path-unused"]`.
+Suppress or retarget with `rules["config/get-public-path-unused"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

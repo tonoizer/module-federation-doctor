@@ -511,6 +511,10 @@ importers:
 
   examples/showcase/config/filename-invalid: {}
 
+  examples/showcase/config/implementation-local: {}
+
+  examples/showcase/config/implementation-suspicious-suppressed: {}
+
   examples/showcase/config/remote-entry-invalid: {}
 
   examples/showcase/config/remote-http-insecure: {}
@@ -537,11 +541,21 @@ importers:
         specifier: 19.2.8
         version: 19.2.8
 
+  examples/showcase/shared/candidate-suppressed:
+    dependencies:
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+
   examples/showcase/shared/eager-without-singleton: {}
 
   examples/showcase/shared/singleton-risk: {}
 
+  examples/showcase/shared/singleton-risk-suppressed: {}
+
   examples/showcase/shared/unused: {}
+
+  examples/showcase/shared/unused-unresolved: {}
 
   examples/showcase/shared/version-unsatisfied:
     dependencies:

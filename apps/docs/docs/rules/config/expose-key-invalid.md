@@ -11,7 +11,7 @@ Consumers cannot address an expose whose public key does not follow the `./Name`
 
 Rename the key to start with `./` and update consumer imports.
 
-Override this rule with `rules["config/expose-key-invalid"]`.
+Suppress or retarget with `rules["config/expose-key-invalid"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

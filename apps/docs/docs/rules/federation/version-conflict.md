@@ -11,7 +11,7 @@ No installed provider version satisfies every consumer range.
 
 Align lockfiles and compatible `requiredVersion` ranges.
 
-Override this rule with `rules["federation/version-conflict"]`.
+Suppress or retarget with `rules["federation/version-conflict"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

@@ -33,10 +33,29 @@ Local `rules` win over pack and preset maps
 export default {
   rules: {
     "config/remote-manifest-recommended": "off",
-    "shared/singleton-risk": "warning", // was error / default
+    "shared/singleton-risk": "warning", // was elevated / pack default
   },
 };
 ```
+
+### Heuristic shared / config rules
+
+These rules use package-name or path heuristics. Defaults stay advisory so teams
+(and agents) do not learn to ignore Doctor:
+
+| Rule                               | Default   | Why it stays soft                                      |
+| ---------------------------------- | --------- | ------------------------------------------------------ |
+| `shared/candidate`                 | `info`    | Likely-share guess from framework package names        |
+| `config/implementation-suspicious` | `info`    | Custom `implementation` string is not a hard contract  |
+| `shared/singleton-risk`            | `warning` | Framework shared without `singleton` — config evidence |
+| `shared/unused`                    | `warning` | Fires only when import evidence is complete enough     |
+
+Mute intentional exceptions with `rules: { "<id>": "off" }` (comment why). When
+dynamic `import()` / `loadShare*` cannot be resolved, Doctor prefers
+`doctor/partial-analysis` over a confident `shared/unused` finding — see
+[capabilities](./capabilities.md#dynamic-import-completeness-v1). Showcase
+fixtures under `examples/showcase/shared/*-suppressed` and
+`shared/unused-unresolved` prove quiet suppression and the partial-analysis path.
 
 The same map works on adapter options:
 

@@ -11,7 +11,7 @@ Using the wrong integration can skip required bundler hooks and runtime generati
 
 Use the official package for Vite, Rspack, Rsbuild, or Webpack.
 
-Override this rule with `rules["config/plugin-package-mismatch"]`.
+Suppress or retarget with `rules["config/plugin-package-mismatch"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

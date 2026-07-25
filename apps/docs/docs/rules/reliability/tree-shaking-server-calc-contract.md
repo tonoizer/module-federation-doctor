@@ -11,7 +11,7 @@ Server-calculated shared artifacts need a known fallback output and deployment p
 
 Set `treeShakingDir`, merge all consumer exports, and publish matching secondary artifacts.
 
-Override this rule with `rules["reliability/tree-shaking-server-calc-contract"]`.
+Suppress or retarget with `rules["reliability/tree-shaking-server-calc-contract"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

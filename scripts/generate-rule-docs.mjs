@@ -28,7 +28,7 @@ for (const rule of rules) {
   const { id, severity, category, impact, fix, sources } = rule;
   const file = path.join(root, `${id}.md`);
   const links = (sources ?? []).map((source) => `- [Official source](${source})`).join("\n");
-  const content = `# \`${id}\`\n\n- Category: **${category ?? "tooling"}**\n- Default severity: **${severity}**\n\n## Issue\n\n${impact ?? "Doctor found a configuration or artifact risk."}\n\n## How to fix it\n\n${fix ?? "Review the finding evidence and align the federation configuration."}\n\nOverride this rule with \`rules["${id}"]\`.\n\n## Sources\n\n${links || "- [Configuration overview](https://module-federation.io/configure/index.html)"}\n`;
+  const content = `# \`${id}\`\n\n- Category: **${category ?? "tooling"}**\n- Default severity: **${severity}**\n\n## Issue\n\n${impact ?? "Doctor found a configuration or artifact risk."}\n\n## How to fix it\n\n${fix ?? "Review the finding evidence and align the federation configuration."}\n\nSuppress or retarget with \`rules["${id}"]\` set to \`"off"\` or a severity — see [Suppressions and allowlists](../../suppressions.md).\n\n## Sources\n\n${links || "- [Configuration overview](https://module-federation.io/configure/index.html)"}\n`;
   await writeGenerated(file, content);
 }
 

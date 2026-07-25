@@ -11,7 +11,7 @@ Consumers follow manifest metadata to a remote entry that was not emitted.
 
 Clean and rebuild; verify output path, filename, and manifest settings.
 
-Override this rule with `rules["artifact/manifest-remote-entry-missing"]`.
+Suppress or retarget with `rules["artifact/manifest-remote-entry-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

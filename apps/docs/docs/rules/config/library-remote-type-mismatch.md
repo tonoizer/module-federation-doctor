@@ -11,7 +11,7 @@ A consumer loader can fail when its remote type does not match the producer libr
 
 Align `library.type`, `remoteType`, and each remote object's `type`.
 
-Override this rule with `rules["config/library-remote-type-mismatch"]`.
+Suppress or retarget with `rules["config/library-remote-type-mismatch"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

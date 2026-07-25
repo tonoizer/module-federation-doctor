@@ -11,7 +11,7 @@ A remote fails if `_FEDERATION_RUNTIME_CORE` is absent or initialized too late.
 
 Verify a pure top consumer provides the runtime before remote execution.
 
-Override this rule with `rules["reliability/external-runtime-provider-unverified"]`.
+Suppress or retarget with `rules["reliability/external-runtime-provider-unverified"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 
