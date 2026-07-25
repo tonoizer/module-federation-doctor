@@ -679,9 +679,12 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     rspack: "@rspack/core",
     rsbuild: "@rsbuild/core",
     webpack: "webpack",
+    modern: "@modern-js/app-tools",
     unknown: "",
   }[options.bundler];
-  const bundlerVersion = options.bundlerVersion ?? installed[bundlerPackage];
+  const bundlerVersion = bundlerPackage
+    ? (options.bundlerVersion ?? installed[bundlerPackage])
+    : options.bundlerVersion;
   const lifecycle =
     options.bundler === "vite"
       ? (options.viteLifecycle ?? (await detectViteLifecycle(options.root)))

@@ -2,9 +2,10 @@
 
 MVP supports Vite (including Rolldown-integrated Vite and Vite Plus as a
 **partial** matrix cell — lifecycle coverage without a dedicated CI smoke
-build yet), direct Rspack, Rsbuild, and Webpack. Gaps below are tracked as
-GitHub issues and milestones so each one can be removed from this page when it
-ships.
+build yet), direct Rspack, Rsbuild, Webpack, and Modern.js as a **partial**
+matrix cell — adapter API plus an Rspack-under-the-hood smoke (not a full
+`@modern-js/app-tools` build yet). Gaps below are tracked as GitHub issues and
+milestones so each one can be removed from this page when it ships.
 
 Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1)
 · [post-v1](https://github.com/tonoizer/module-federation-doctor/milestone/2)
@@ -13,8 +14,8 @@ Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1
 ## v1.0 (governance-ready)
 
 The v1 [compatibility matrix](./compatibility.md) for Vite / Rolldown /
-Vite Plus / Rspack / Rsbuild / Webpack, Node engines, package managers, and
-report surfaces has shipped
+Vite Plus / Rspack / Rsbuild / Webpack / Modern.js (partial), Node engines,
+package managers, and report surfaces has shipped
 ([#15](https://github.com/tonoizer/module-federation-doctor/issues/15),
 `MFDOCTOR-106`).
 
@@ -48,9 +49,9 @@ closed as not planned.
 
 ## post-v1
 
-| Gap                                              | Issue                                                                                  |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| Modern.js adapter (without hiding direct Rspack) | [#12](https://github.com/tonoizer/module-federation-doctor/issues/12) (`MFDOCTOR-103`) |
+No open post-v1 adapter gaps right now. Rolldown / Vite Plus (#11) and Modern.js
+(#12) shipped as **partial** matrix cells — see
+[compatibility](./compatibility.md).
 
 ## What Doctor covers
 
@@ -88,9 +89,9 @@ emit in Node and must not appear in the client bundle
 `MFDOCTOR-116`).
 
 **Runtime-only** Module Federation apps — `@module-federation/runtime` /
-`createInstance` / runtime plugins **without** a Vite, Rspack, Rsbuild, or
-Webpack Module Federation **build** plugin — are **out of scope** for
-first-class support
+`createInstance` / runtime plugins **without** a Vite, Rspack, Rsbuild,
+Webpack, or Modern.js Module Federation **build** plugin — are **out of scope**
+for first-class support
 ([#34](https://github.com/tonoizer/module-federation-doctor/issues/34),
 `MFDOCTOR-117`).
 
@@ -101,8 +102,9 @@ reliable emit/manifest from that app, and Doctor does not parse
 whole runtime-only host.”
 
 Doctor analysis and the terminal findings showcase run **only post-emit /
-after-build** (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild`).
-Adapters never register `transform` / `load` / client-injection hooks
+after-build** (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild` /
+Modern.js `modifyBundlerChain` → `afterEmit`). Adapters never register
+`transform` / `load` / client-injection hooks
 ([#54](https://github.com/tonoizer/module-federation-doctor/issues/54)).
 
 Do **not** ship Doctor into the browser to close that gap. Prefer Observability

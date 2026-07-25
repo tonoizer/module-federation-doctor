@@ -1,7 +1,7 @@
 # Fixtures
 
 - `adapters`: clean, warning, and error policy inputs for Vite, Rspack, Rsbuild,
-  and Webpack.
+  Webpack, and Modern.js.
 - `diagnostics`: rule, redaction, ordering, and failure cases.
 - `dynamic-imports`: supported and unresolved dynamic MF import patterns (MFDOCTOR-105).
 - `manifests`: valid and malformed Module Federation artifacts.

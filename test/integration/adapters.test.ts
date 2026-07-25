@@ -20,7 +20,9 @@ async function project(bundler: BundlerName, kind: "clean" | "warning" | "error"
       ? "enhanced"
       : bundler === "rsbuild"
         ? "rsbuild-plugin"
-        : "vite";
+        : bundler === "modern"
+          ? "modern-js"
+          : "vite";
   await fs.writeFile(
     path.join(root, "package.json"),
     JSON.stringify({
@@ -66,7 +68,7 @@ afterEach(async () => {
 });
 
 describe("adapter cases", () => {
-  for (const bundler of ["vite", "rspack", "rsbuild", "webpack"] as const) {
+  for (const bundler of ["vite", "rspack", "rsbuild", "webpack", "modern"] as const) {
     it(`${bundler}: clean, warning, and error policy`, async () => {
       const clean = await project(bundler, "clean");
       const warning = await project(bundler, "warning");

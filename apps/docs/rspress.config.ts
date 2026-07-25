@@ -20,7 +20,7 @@ export default defineConfig({
   root: path.join(docsAppDir, "docs"),
   llms: true,
   title: "Module Federation Doctor",
-  description: "Diagnostics for Vite, Rspack, Rsbuild, and Webpack federation projects",
+  description: "Diagnostics for Vite, Rspack, Rsbuild, Webpack, and Modern.js federation projects",
   icon: siteIcon,
   logo: {
     light: "/doctor-logo.svg",
