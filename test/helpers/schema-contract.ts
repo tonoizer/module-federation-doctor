@@ -28,7 +28,9 @@ type JsonSchemaDocument = {
   };
 };
 
-let ajv: Ajv2020 | undefined;
+type SchemaAjv = InstanceType<typeof Ajv2020>;
+
+let ajv: SchemaAjv | undefined;
 const validators = new Map<string, ValidateFunction>();
 
 async function loadSchema(fileName: string): Promise<JsonSchemaDocument> {
@@ -36,7 +38,7 @@ async function loadSchema(fileName: string): Promise<JsonSchemaDocument> {
   return JSON.parse(text) as JsonSchemaDocument;
 }
 
-function createAjv(): Ajv2020 {
+function createAjv(): SchemaAjv {
   const instance = new Ajv2020({
     allErrors: true,
     strict: true,
@@ -76,8 +78,8 @@ export async function validatePayload(
 ): Promise<void> {
   const validate = await validatorFor(fileName);
   if (validate(payload)) return;
-  const details = ((validate.errors ?? []) as ErrorObject[])
-    .map((error) => `${error.instancePath || "/"} ${error.message ?? "invalid"}`)
+  const details = (validate.errors ?? [])
+    .map((error: ErrorObject) => `${error.instancePath || "/"} ${error.message ?? "invalid"}`)
     .join("\n");
   throw new Error(`Schema validation failed for ${label}:\n${details}`);
 }
@@ -91,11 +93,11 @@ export async function assertPackageExportsMatchSchemas(): Promise<void> {
   const packageJson = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8")) as {
     exports?: Record<string, unknown>;
   };
-  const exports = packageJson.exports ?? {};
+  const exportsMap = packageJson.exports ?? {};
   const contracts = await listSchemaContracts();
   const schemaFiles = contracts.map((contract) => contract.file);
 
-  const exportedSchemaFiles = Object.keys(exports)
+  const exportedSchemaFiles = Object.keys(exportsMap)
     .filter((key) => key.startsWith("./schemas/") && key.endsWith(".schema.json"))
     .map((key) => key.slice("./schemas/".length))
     .sort();
@@ -107,7 +109,7 @@ export async function assertPackageExportsMatchSchemas(): Promise<void> {
 
   for (const contract of contracts) {
     assert.equal(
-      exports[contract.export],
+      exportsMap[contract.export],
       contract.export,
       `package.json must export ${contract.export}`,
     );
@@ -130,7 +132,7 @@ export async function validateFixturePayloads(): Promise<void> {
     "fixtures/workspaces/clean/host/.mf/doctor/project.json",
   ];
   for (const relativePath of projectFixtures) {
-    const payload = JSON.parse(await fs.readFile(path.join(root, relativePath), "utf8"));
+    const payload: unknown = JSON.parse(await fs.readFile(path.join(root, relativePath), "utf8"));
     await validatePayload("project.schema.json", payload, relativePath);
   }
 

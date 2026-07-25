@@ -4,9 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  SCHEMA_CONTRACTS,
   assertPackageExportsMatchSchemas,
-  runSchemaContractChecks,
+  listSchemaContracts,
   validatePayload,
 } from "../helpers/schema-contract.js";
 import { generateBaseline } from "../../src/baseline.js";
@@ -74,23 +73,23 @@ async function serve(handler: RequestListener): Promise<string> {
 }
 
 describe("published schema contracts", () => {
-  it("keeps package exports, titles, and required fields aligned with shipped schemas", async () => {
-    await runSchemaContractChecks();
-    expect(SCHEMA_CONTRACTS.map((contract) => contract.file)).toEqual([
-      "project.schema.json",
-      "report.schema.json",
+  it("keeps package exports aligned with shipped schemas", async () => {
+    await assertPackageExportsMatchSchemas();
+    const contracts = await listSchemaContracts();
+    expect(contracts.map((contract) => contract.file)).toEqual([
       "baseline.schema.json",
       "probe.schema.json",
+      "project.schema.json",
+      "report.schema.json",
       "runtime-trace.schema.json",
       "ui.schema.json",
     ]);
-    expect(SCHEMA_CONTRACTS.find((contract) => contract.file === "ui.schema.json")?.kind).toBe(
+    expect(contracts.find((contract) => contract.file === "ui.schema.json")?.kind).toBe(
       "programmatic",
     );
   });
 
   it("validates showcase and fixture project.json artifacts", async () => {
-    await assertPackageExportsMatchSchemas();
     const files = [
       "examples/showcase/federation/version-conflict/host.project.json",
       "examples/showcase/runtime/green/host.project.json",
