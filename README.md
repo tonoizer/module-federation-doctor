@@ -10,9 +10,10 @@ runtime size or performance cost.
 
 ## Primary DX: build plugin
 
-Register Doctor next to your Module Federation plugin. It runs after emit, prints
-**all** findings in the terminal (and bundler logs), then fails the build when
-policy says so — only after every finding is collected.
+Register Doctor next to your Module Federation plugin. It runs **after emit**,
+prints **all** findings once at the end of the build (severity, rule, message,
+fix, docs links), then fails when policy says so — only after every finding is
+collected. Clean builds stay quiet by default.
 
 **Vite**
 
@@ -95,6 +96,7 @@ pnpm add -D @module-federation/doctor
 pnpm mfdoctor check --ci
 pnpm mfdoctor check --format terminal,json,sarif
 pnpm mfdoctor check --baseline ./mfdoctor.baseline.json
+pnpm mfdoctor check --verbose
 pnpm mfdoctor workspace
 pnpm mfdoctor federation --workspace
 pnpm mfdoctor federation ".mf/doctor/**/project.json"
@@ -108,6 +110,10 @@ Supported report formats are **terminal**, **JSON**, and **SARIF** only — ther
 is no HTML report or `--ui` dashboard. For a programmatic remotes/shared graph,
 use `buildUiPayload` and `schemas/ui.schema.json` (see report schemas in the
 docs).
+
+Quiet success is the default: zero findings print nothing. Use `--verbose`,
+`printLog: { success: true }`, `quiet: false`, or `MFDOCTOR_QUIET=0` for the
+legacy "no findings" line. `MFDOCTOR_QUIET=1` forces quiet.
 
 | Command         | When to use it                                              |
 | --------------- | ----------------------------------------------------------- |

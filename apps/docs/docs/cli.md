@@ -9,9 +9,11 @@ mfdoctor check
 mfdoctor check packages/host --ci
 mfdoctor check --format terminal,json,sarif
 mfdoctor check --baseline ./mfdoctor.baseline.json
+mfdoctor check --verbose
 mfdoctor workspace
 mfdoctor workspace apps packages --format terminal,json,sarif
 mfdoctor federation --workspace
+mfdoctor federation --workspace apps packages --format terminal,json,sarif
 mfdoctor federation ".mf/doctor/**/project.json"
 mfdoctor federation ".mf/doctor/**/project.json" --baseline ./mfdoctor.baseline.json
 mfdoctor baseline generate .mf/doctor/report.json --out mfdoctor.baseline.json
@@ -32,6 +34,20 @@ policy findings, and `2` when analysis cannot finish (invalid args, no matching
 `project.json`, or a hard failure). `check`, `workspace`, and `federation` make
 no network requests. `runtime` also stays offline: it only reads a
 user-supplied Observability export and local `project.json` files.
+
+## Quiet success and terminal format
+
+By default Doctor prints **nothing** when there are zero findings (agent-friendly
+quiet success). Restore the green success line with any of:
+
+- CLI `--verbose`
+- `printLog: { success: true }` / `quiet: false` in config or plugin options
+- `MFDOCTOR_QUIET=0` (env wins over config; `MFDOCTOR_QUIET=1` forces quiet)
+
+When findings exist, the terminal block includes severity, rule id, message, a
+short fix, the Doctor rule docs URL, and official `module-federation.io` sources
+when available. Adapters share this single print path — they do not also push
+per-finding bundler warnings.
 
 ## Workspace federation gate
 

@@ -60,6 +60,8 @@ describe("resolveOptions", () => {
     expect(await resolveOptions({ root })).toMatchObject({
       mode: "development",
       failOn: "never",
+      quiet: true,
+      printLog: { success: false },
       include: DEFAULT_INCLUDE,
       exclude: DEFAULT_EXCLUDE,
       output: {
@@ -68,6 +70,17 @@ describe("resolveOptions", () => {
       },
     });
     expect((await resolveOptions({ root })).baseline).toBeUndefined();
+  });
+
+  it("resolves quiet / printLog / MFDOCTOR_QUIET knobs", async () => {
+    stubLocalEnv();
+    const root = path.resolve("fixture");
+    expect((await resolveOptions({ root, printLog: { success: true } })).quiet).toBe(false);
+    expect((await resolveOptions({ root, quiet: false })).printLog.success).toBe(true);
+    vi.stubEnv("MFDOCTOR_QUIET", "1");
+    expect((await resolveOptions({ root, quiet: false })).quiet).toBe(true);
+    vi.stubEnv("MFDOCTOR_QUIET", "0");
+    expect((await resolveOptions({ root })).quiet).toBe(false);
   });
 
   it("resolves baseline path options", async () => {

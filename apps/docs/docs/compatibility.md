@@ -74,14 +74,15 @@ CLI binary name remains `mfdoctor`.
 
 | Surface  | Local default        | CI / `--ci` / `mode: "ci"` | Artifact                   |
 | -------- | -------------------- | -------------------------- | -------------------------- |
-| terminal | yes                  | yes                        | stdout / bundler logs      |
+| terminal | yes (quiet on clean) | yes (quiet on clean)       | stdout when findings exist |
 | JSON     | yes (`report.json`)  | yes                        | `.mf/doctor/report.json`   |
 | SARIF    | off unless requested | yes                        | `.mf/doctor/results.sarif` |
 
 CI auto-detect (`CI`, `GITHUB_ACTIONS`, …) enables `failOn: "error"` and
 terminal + JSON + SARIF without setting `mode: "ci"` in plugin config. The
-`compatibility` workflow asserts all three surfaces after each supported
-bundler build.
+`compatibility` workflow asserts report artifacts after each supported bundler
+build. Terminal success lines stay off unless `--verbose` /
+`printLog.success` / `MFDOCTOR_QUIET=0` is set.
 
 ```bash
 pnpm mfdoctor check --format terminal,json,sarif

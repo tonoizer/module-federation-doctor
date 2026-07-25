@@ -138,9 +138,13 @@ async function runAnalysis(
     );
     const { findings, failOnSuppressed } = await withBaseline(rawFindings, resolved.baseline);
     // Write the full report before any caller decides to fail the build.
+    // Terminal showcase is the single print path (adapters must not re-print).
     const report = reportFor(facts, findings);
     const safeFacts = redact(facts, resolved.root) as ProjectFacts;
-    await writeReports(safeFacts, report, resolved.output.directory, resolved.output.formats);
+    await writeReports(safeFacts, report, resolved.output.directory, resolved.output.formats, {
+      quiet: resolved.quiet,
+      printLog: resolved.printLog,
+    });
     return {
       facts: safeFacts,
       report,
@@ -194,6 +198,8 @@ export async function analyzeFederation(
     failOn?: "never" | "warning" | "error";
     baseline?: string | { path: string; failOnSuppressed?: boolean; reportStale?: boolean };
     root?: string;
+    quiet?: boolean;
+    printLog?: { success?: boolean };
   } = {},
 ): Promise<FederationAnalysisResult> {
   const projects = (
@@ -327,7 +333,10 @@ export async function analyzeFederation(
   const ui = buildUiPayload(projects, report);
   const formats = options.formats ?? [];
   if (options.outputDirectory && formats.length > 0)
-    await writeFederationReports(projects, report, options.outputDirectory, formats);
+    await writeFederationReports(projects, report, options.outputDirectory, formats, {
+      ...(options.quiet !== undefined ? { quiet: options.quiet } : {}),
+      ...(options.printLog !== undefined ? { printLog: options.printLog } : {}),
+    });
   const failOn = options.failOn ?? "error";
   return {
     projects,

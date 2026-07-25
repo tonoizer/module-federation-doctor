@@ -1,11 +1,7 @@
 import { createUnplugin } from "unplugin";
 import fg from "fast-glob";
 import { analyzeBuild } from "./engine.js";
-import type { AnalysisResult, BundlerName, DoctorFinding, DoctorOptions } from "./types.js";
-
-function formatFinding(finding: DoctorFinding): string {
-  return `Module Federation Doctor [${finding.severity}] ${finding.ruleId}: ${finding.message}`;
-}
+import type { AnalysisResult, BundlerName, DoctorOptions } from "./types.js";
 
 /**
  * Fail only after every finding has already been collected and reported.
@@ -27,7 +23,6 @@ export function failAfterCollect(result: AnalysisResult): void {
 
 type CompilationLike = {
   assets: Record<string, unknown>;
-  warnings: Error[];
   errors: Error[];
 };
 
@@ -41,31 +36,33 @@ type CompilerLike = {
   webpack?: { WebpackError?: new (message: string) => Error };
 };
 
+/**
+ * Post-emit only: analyze emitted assets, print via the shared terminal reporter
+ * inside analyzeBuild, then fail the compilation once if policy requires it.
+ * Do not push per-finding warnings — that double-prints with the terminal block.
+ */
 function attachCompilationAfterEmit(compiler: CompilerLike, configured: DoctorOptions): void {
   if (!configured.root) configured.root = compiler.context;
   compiler.hooks.afterEmit.tapPromise("ModuleFederationDoctor", async (compilation) => {
     const result = await analyzeBuild(configured, Object.keys(compilation.assets));
+    if (result.exitCode === 0) return;
     const ErrorCtor = compiler.webpack?.WebpackError ?? Error;
-    const policyErrors: Error[] = [];
-    // Pass 1: publish every finding (as warnings) so nothing is lost mid-hook.
-    for (const finding of result.report.findings) {
-      const diagnostic = new ErrorCtor(formatFinding(finding));
-      compilation.warnings.push(diagnostic);
-      if (finding.severity === "error" && result.exitCode === 1) {
-        policyErrors.push(diagnostic);
-      }
-    }
-    // Pass 2: attach all policy errors together, then throw once.
-    for (const diagnostic of policyErrors) compilation.errors.push(diagnostic);
+    // Single policy failure diagnostic — findings already printed by writeReports.
+    compilation.errors.push(
+      new ErrorCtor(
+        `Module Federation Doctor policy failed. See terminal output and .mf/doctor/report.json.`,
+      ),
+    );
     failAfterCollect(result);
   });
 }
 
 /**
- * Build/CI-only invariant (#32): adapters may hook post-emit surfaces only
+ * Build/CI-only invariant (#32 / #54): adapters may hook post-emit surfaces only
  * (`writeBundle` / `afterEmit` / `onAfterBuild`). Never register
  * `transform` / `load` / `banner` (or similar) hooks that inject Doctor into
- * client assets.
+ * client assets. Findings print once via the shared terminal reporter at the
+ * end of analysis — adapters must not re-emit per-finding bundler logs (#46).
  */
 function createDoctorPlugin(bundler: BundlerName) {
   return createUnplugin<DoctorOptions | undefined>((options = {}) => {
@@ -96,13 +93,8 @@ function createDoctorPlugin(bundler: BundlerName) {
                 cwd: root,
                 onlyFiles: true,
               });
-              // Collect every finding first (analyzeBuild runs all rules).
+              // analyzeBuild prints the findings block once; preserve severity via failOn.
               const result = await analyzeBuild(configured, emittedAssets);
-              const context = this as unknown as { warn?: (message: string) => void };
-              // Report every finding before any throw.
-              for (const finding of result.report.findings) {
-                context.warn?.(formatFinding(finding));
-              }
               failAfterCollect(result);
             },
           }
@@ -129,19 +121,6 @@ function createDoctorPlugin(bundler: BundlerName) {
                 api.onAfterBuild(async ({ stats }) => {
                   const assets = stats ? statsAssets(stats.toJson({ assets: true })) : [];
                   const result = await analyzeBuild(configured, assets);
-                  const logger = api.logger as
-                    | {
-                        error?: (message: string) => void;
-                        warn?: (message: string) => void;
-                        info?: (message: string) => void;
-                      }
-                    | undefined;
-                  for (const finding of result.report.findings) {
-                    const message = formatFinding(finding);
-                    if (finding.severity === "error") logger?.error?.(message);
-                    else if (finding.severity === "warning") logger?.warn?.(message);
-                    else logger?.info?.(message);
-                  }
                   failAfterCollect(result);
                 });
               },

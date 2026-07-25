@@ -1,12 +1,70 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import pc from "picocolors";
-import type { DoctorReport, OutputFormat, ProjectFacts } from "./types.js";
+import { resolvePrintLog, resolveQuiet } from "./config.js";
+import { ruleGuidance } from "./rule-guidance.js";
+import type {
+  DoctorFinding,
+  DoctorPrintLog,
+  DoctorReport,
+  OutputFormat,
+  ProjectFacts,
+} from "./types.js";
 import { stableStringify } from "./utils.js";
 
-function terminal(report: DoctorReport): string {
-  if (report.findings.length === 0) return pc.green("Module Federation Doctor: no findings.");
-  const lines: string[] = [];
+/** Published Doctor docs origin (Rspress site). */
+export const DOCTOR_DOCS_ORIGIN = "https://module-federation.github.io";
+
+/** Hosts allowed when printing official Module Federation source links. */
+const OFFICIAL_SOURCE_HOSTS = new Set(["module-federation.io", "www.module-federation.io"]);
+
+export interface TerminalReportOptions {
+  /** When true (default), omit output on zero findings. */
+  quiet?: boolean;
+  printLog?: DoctorPrintLog;
+}
+
+function doctorRuleDocUrl(finding: DoctorFinding): string {
+  const docPath = finding.documentation?.startsWith("/")
+    ? finding.documentation
+    : `/rules/${finding.ruleId}`;
+  return `${DOCTOR_DOCS_ORIGIN}${docPath}`;
+}
+
+function isOfficialSourceUrl(urlString: string): boolean {
+  try {
+    return OFFICIAL_SOURCE_HOSTS.has(new URL(urlString).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function officialSources(ruleId: string): string[] {
+  const sources = ruleGuidance[ruleId]?.sources ?? [];
+  return sources.filter(isOfficialSourceUrl);
+}
+
+function suggestionFor(finding: DoctorFinding): string | undefined {
+  if (finding.suggestion) return finding.suggestion;
+  return ruleGuidance[finding.ruleId]?.fix;
+}
+
+/**
+ * Format the single end-of-build Doctor findings block for humans and agents.
+ * Returns an empty string when quiet success applies (zero findings).
+ */
+export function formatTerminalReport(
+  report: DoctorReport,
+  options: TerminalReportOptions = {},
+): string {
+  const quiet = resolveQuiet(options);
+  const printLog = resolvePrintLog(options);
+  if (report.findings.length === 0) {
+    if (quiet || !printLog.success) return "";
+    return pc.green("Module Federation Doctor: no findings.");
+  }
+
+  const lines: string[] = [pc.bold("Module Federation Doctor")];
   let project = "";
   for (const finding of report.findings) {
     if (finding.project !== project) {
@@ -21,7 +79,14 @@ function terminal(report: DoctorReport): string {
           : pc.blue("info");
     const location = finding.location ? ` ${finding.location.path}` : "";
     const suppressed = finding.suppressed ? pc.dim(" [suppressed]") : "";
-    lines.push(`  ${icon} ${finding.ruleId}${location}${suppressed}\n    ${finding.message}`);
+    lines.push(`  ${icon} ${finding.ruleId}${location}${suppressed}`);
+    lines.push(`    ${finding.message}`);
+    const suggestion = suggestionFor(finding);
+    if (suggestion) lines.push(`    fix: ${suggestion}`);
+    lines.push(`    docs: ${doctorRuleDocUrl(finding)}`);
+    for (const source of officialSources(finding.ruleId)) {
+      lines.push(`    source: ${source}`);
+    }
   }
   const suppressed =
     report.summary.suppressed && report.summary.suppressed > 0
@@ -31,6 +96,11 @@ function terminal(report: DoctorReport): string {
     `\n${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info${suppressed}`,
   );
   return lines.join("\n");
+}
+
+function writeTerminal(report: DoctorReport, options: TerminalReportOptions = {}): void {
+  const text = formatTerminalReport(report, options);
+  if (text) process.stdout.write(text + "\n");
 }
 
 function sarif(report: DoctorReport): Record<string, unknown> {
@@ -93,6 +163,7 @@ export async function writeReports(
   report: DoctorReport,
   directory: string,
   formats: OutputFormat[],
+  terminal: TerminalReportOptions = {},
 ): Promise<void> {
   await fs.mkdir(directory, { recursive: true });
   await fs.writeFile(path.join(directory, "project.json"), stableStringify(facts, 2) + "\n");
@@ -103,7 +174,7 @@ export async function writeReports(
       path.join(directory, "results.sarif"),
       stableStringify(sarif(report), 2) + "\n",
     );
-  if (formats.includes("terminal")) process.stdout.write(terminal(report) + "\n");
+  if (formats.includes("terminal")) writeTerminal(report, terminal);
 }
 
 export async function writeFederationReports(
@@ -111,6 +182,7 @@ export async function writeFederationReports(
   report: DoctorReport,
   directory: string,
   formats: OutputFormat[],
+  terminal: TerminalReportOptions = {},
 ): Promise<void> {
   await fs.mkdir(directory, { recursive: true });
   if (formats.includes("json"))
@@ -120,5 +192,5 @@ export async function writeFederationReports(
       path.join(directory, "results.sarif"),
       stableStringify(sarif(report), 2) + "\n",
     );
-  if (formats.includes("terminal")) process.stdout.write(terminal(report) + "\n");
+  if (formats.includes("terminal")) writeTerminal(report, terminal);
 }

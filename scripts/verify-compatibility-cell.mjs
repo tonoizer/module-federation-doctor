@@ -56,11 +56,12 @@ const terminalLog = terminalLogArg;
 if (terminalLog) {
   const log = await fs.readFile(path.resolve(terminalLog), "utf8");
   assert.ok(log.trim().length > 0, `terminal log empty: ${terminalLog}`);
-  assert.match(
-    log,
-    /Module Federation Doctor|doctor\/|findings|mfdoctor/i,
-    `terminal log missing Doctor output: ${terminalLog}`,
-  );
+  // Quiet success (#46): clean builds may omit the Doctor findings block.
+  // Still require some Doctor-related signal in the captured build log, or
+  // accept quiet success when the report itself has zero findings.
+  const hasDoctorSignal = /Module Federation Doctor|doctor\/|findings|mfdoctor/i.test(log);
+  const quietClean = report.findings.length === 0;
+  assert.ok(hasDoctorSignal || quietClean, `terminal log missing Doctor output: ${terminalLog}`);
 }
 
 const capabilities = project.capabilities ?? {};

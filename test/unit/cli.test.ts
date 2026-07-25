@@ -19,6 +19,18 @@ afterEach(async () => {
 });
 
 describe("CLI arguments", () => {
+  it("parses --verbose for quiet-success opt-out", () => {
+    expect(parseArgs(["check", "--verbose"])).toEqual({
+      command: "check",
+      patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
+      ci: false,
+      verbose: true,
+    });
+  });
+
   it("parses check flags over config", () => {
     expect(parseArgs(["check", "app", "--ci", "--format", "terminal,json,sarif"])).toEqual({
       command: "check",
@@ -28,6 +40,7 @@ describe("CLI arguments", () => {
       globs: [],
       workspace: false,
       ci: true,
+      verbose: false,
       formats: ["terminal", "json", "sarif"],
     });
   });
@@ -40,6 +53,7 @@ describe("CLI arguments", () => {
       globs: [],
       workspace: false,
       ci: false,
+      verbose: false,
       baseline: "./mfdoctor.baseline.json",
     });
     expect(
@@ -58,6 +72,7 @@ describe("CLI arguments", () => {
       globs: [],
       workspace: false,
       ci: false,
+      verbose: false,
       reportPath: ".mf/doctor/report.json",
       outPath: "mfdoctor.baseline.json",
     });
@@ -72,6 +87,7 @@ describe("CLI arguments", () => {
       globs: [],
       workspace: false,
       ci: false,
+      verbose: false,
     });
   });
 
@@ -83,6 +99,7 @@ describe("CLI arguments", () => {
       globs: [],
       workspace: true,
       ci: false,
+      verbose: false,
     });
     expect(
       parseArgs([
@@ -101,6 +118,7 @@ describe("CLI arguments", () => {
       globs: ["**/.mf/doctor/project.json"],
       workspace: true,
       ci: false,
+      verbose: false,
       formats: ["json", "sarif"],
     });
     expect(parseArgs(["federation", "apps", "--workspace"])).toEqual({
@@ -110,6 +128,7 @@ describe("CLI arguments", () => {
       globs: [],
       workspace: true,
       ci: false,
+      verbose: false,
     });
   });
 
@@ -130,6 +149,7 @@ describe("CLI arguments", () => {
       globs: [],
       workspace: false,
       ci: false,
+      verbose: false,
       formats: ["terminal", "json"],
     });
   });
@@ -160,6 +180,7 @@ describe("CLI arguments", () => {
       globs: [],
       workspace: false,
       ci: false,
+      verbose: false,
       timeoutMs: 5000,
       maxBytes: 100000,
       remoteEntry: true,
@@ -174,6 +195,7 @@ describe("CLI arguments", () => {
       globs: [],
       workspace: false,
       ci: false,
+      verbose: false,
     });
   });
 

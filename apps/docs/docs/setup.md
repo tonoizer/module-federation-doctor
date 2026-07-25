@@ -8,16 +8,35 @@ Explicit options give Doctor the safest and most complete input — including MF
 Supported / partial / unsupported cells (bundlers, Node, package managers,
 report surfaces) are listed in the [compatibility matrix](./compatibility.md).
 
-Doctor runs after emit (`writeBundle` / `afterEmit` / `onAfterBuild`), prints
-findings to the terminal (and bundler logs), then fails the build only after
-every finding is collected when CI policy requires it. Adapters must not inject
-Doctor into client assets. Analysis costs CI/build time only; it is not shipped
-in the published bundle
-([#32](https://github.com/tonoizer/module-federation-doctor/issues/32)).
+Doctor runs **only after emit** (`writeBundle` / `afterEmit` /
+`onAfterBuild`), prints **one** findings block to the terminal when there are
+findings, then fails the build only after every finding is collected when CI
+policy requires it. Clean runs stay quiet by default (no "no findings" noise).
+Adapters must not inject Doctor into client assets and must not re-print
+findings into bundler warning streams. Analysis costs CI/build time only; it is
+not shipped in the published bundle
+([#32](https://github.com/tonoizer/module-federation-doctor/issues/32),
+[#46](https://github.com/tonoizer/module-federation-doctor/issues/46),
+[#54](https://github.com/tonoizer/module-federation-doctor/issues/54)).
 
 `CI` / provider env vars (or `mode: "ci"`) turn on `failOn: "error"` and SARIF
 output automatically. You do **not** need `mode: "ci"` in plugin config when CI
 already exports those variables.
+
+## Terminal output knobs
+
+| Knob                          | Effect                                                     |
+| ----------------------------- | ---------------------------------------------------------- |
+| default                       | Quiet success — print nothing when there are zero findings |
+| `printLog: { success: true }` | Restore the green "no findings" line                       |
+| `quiet: false`                | Same as enabling `printLog.success`                        |
+| `quiet: true`                 | Force quiet success (default)                              |
+| `MFDOCTOR_QUIET=1`            | Force quiet (wins over config)                             |
+| `MFDOCTOR_QUIET=0`            | Allow the success line (wins over config)                  |
+| CLI `--verbose`               | Sets `quiet: false` / `printLog.success: true`             |
+
+Each printed finding includes severity, rule id, message, short fix, a Doctor
+rule docs URL, and official `module-federation.io` sources when available.
 
 ## Vite
 
