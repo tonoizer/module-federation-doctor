@@ -7,9 +7,9 @@ overrides, baselines, and `failOn`, see
 
 ## Built-in presets
 
-| Preset        | Intent                                                                                                                                                                                                                           |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `recommended` | Documented severity map matching built-in / federation / runtime catalog defaults.                                                                                                                                               |
+| Preset        | Intent                                                                                                                                                                                                                     |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `recommended` | Documented severity map matching built-in / federation / runtime catalog defaults.                                                                                                                                         |
 | `strict`      | Production gate: `info` → `warning`, `warning` → `error`, except advisory tooling / soft-heuristic signals (`doctor/partial-analysis`, `shared/candidate`, `config/implementation-suspicious`, `federation/ghost-shares`). |
 
 ```ts
