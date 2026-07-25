@@ -15,6 +15,9 @@ import { stableStringify } from "./utils.js";
 /** Published Doctor docs origin (Rspress site). */
 export const DOCTOR_DOCS_ORIGIN = "https://module-federation.github.io";
 
+/** Hosts allowed when printing official Module Federation source links. */
+const OFFICIAL_SOURCE_HOSTS = new Set(["module-federation.io", "www.module-federation.io"]);
+
 export interface TerminalReportOptions {
   /** When true (default), omit output on zero findings. */
   quiet?: boolean;
@@ -28,9 +31,17 @@ function doctorRuleDocUrl(finding: DoctorFinding): string {
   return `${DOCTOR_DOCS_ORIGIN}${docPath}`;
 }
 
+function isOfficialSourceUrl(urlString: string): boolean {
+  try {
+    return OFFICIAL_SOURCE_HOSTS.has(new URL(urlString).hostname);
+  } catch {
+    return false;
+  }
+}
+
 function officialSources(ruleId: string): string[] {
   const sources = ruleGuidance[ruleId]?.sources ?? [];
-  return sources.filter((url) => url.includes("module-federation.io"));
+  return sources.filter(isOfficialSourceUrl);
 }
 
 function suggestionFor(finding: DoctorFinding): string | undefined {
