@@ -336,6 +336,13 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Evaluate sharing it as a singleton across all participating projects.",
     sources: [shared],
   },
+  "shared/deep-import-bypass": {
+    category: "performance",
+    impact:
+      "Subpath imports bypass Module Federation shared-scope negotiation when only the root package is declared in `shared`, so each microfrontend may bundle its own copy.",
+    fix: 'Prefer root imports (for example `import { cloneDeep } from "lodash"`), or add the exact subpath keys to `shared`. Suppress intentional cases with `rules["shared/deep-import-bypass"]` or `deepImportAllowlist`.',
+    sources: [shared],
+  },
   "artifact/public-path-suspicious": {
     category: "correctness",
     impact: "A malformed asset base makes remote chunks and styles resolve from the wrong URL.",
@@ -370,6 +377,20 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     category: "reliability",
     impact: "Every consumer disabled its fallback, so no build can provide the package.",
     fix: "Let at least one build provide the package or restore a local fallback.",
+    sources: [shared],
+  },
+  "federation/host-gaps": {
+    category: "performance",
+    impact:
+      "A package used by two or more federation projects is missing from every `shared` config, so each app may bundle its own copy.",
+    fix: "Add the package to `shared` (usually as a singleton) in every participating project that imports it.",
+    sources: [shared],
+  },
+  "federation/ghost-shares": {
+    category: "performance",
+    impact:
+      "A package is declared in `shared` by only one project and is unused elsewhere in the federation graph, creating one-sided version coupling.",
+    fix: "Remove the unused shared entry, or add matching `shared` declarations where other projects actually consume the package.",
     sources: [shared],
   },
   "shared/singleton-mismatch": {

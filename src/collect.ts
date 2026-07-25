@@ -2,8 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import fg from "fast-glob";
 import { packageName, normalizeModuleFederation } from "./normalize.js";
+import { isDeepImportSpecifier } from "./shared-policy.js";
 import type {
   ArtifactFacts,
+  ImportDepth,
   ImportEvidenceSource,
   ImportFacts,
   ProjectFacts,
@@ -64,12 +66,20 @@ interface RawImportScan {
   sourceFiles: string[];
   /** Specifier → whether any reference was dynamic (import()/require/runtime API). */
   specifierDynamic: Map<string, boolean>;
+  /**
+   * Specifiers observed only via `export … from` (re-exports).
+   * Counted in `local-graph` depth; ignored in `direct` depth.
+   */
+  reexportOnly: Set<string>;
+  /** Specifier → files that reference it (any kind). */
+  specifierFiles: Map<string, Set<string>>;
   /** Specifiers that come from loadRemote / registerRemotes (always remotes, not packages). */
   remoteSpecifiers: Set<string>;
   unresolvedDynamic: UnresolvedDynamicImport[];
 }
 
-const STATIC_IMPORT_PATTERN = /(?:import|export)\s+(?:[\s\S]*?\sfrom\s*)?["']([^"'`]+)["']/g;
+const STATIC_IMPORT_FROM = /\bimport\s+(?:type\s+)?(?:[\s\S]*?\sfrom\s*)?["']([^"'`]+)["']/g;
+const STATIC_EXPORT_FROM = /\bexport\s+(?:type\s+)?(?:[\s\S]*?\sfrom\s*)["']([^"'`]+)["']/g;
 const DYNAMIC_IMPORT_LITERAL = /import\s*\(\s*["']([^"'`]+)["']\s*\)/g;
 const REQUIRE_LITERAL = /require\s*\(\s*["']([^"'`]+)["']\s*\)/g;
 const LOAD_REMOTE_LITERAL = /\bloadRemote\s*\(\s*["']([^"'`]+)["']\s*\)/g;
@@ -82,24 +92,41 @@ const REMOTE_NAME_IN_OBJECT = /\b(?:name|alias)\s*:\s*["']([^"'`]+)["']/g;
 const UNRESOLVED_DYNAMIC_CALL =
   /\b(import|loadRemote|loadShare(?:Sync)?|registerRemotes)\s*\(\s*(?!["'])/g;
 
-function recordSpecifier(map: Map<string, boolean>, specifier: string, dynamic: boolean): void {
-  map.set(specifier, Boolean(map.get(specifier)) || dynamic);
+function recordSpecifier(
+  scan: RawImportScan,
+  specifier: string,
+  dynamic: boolean,
+  file: string,
+  kind: "import" | "reexport",
+): void {
+  const hadNonReexport = scan.specifierDynamic.has(specifier) && !scan.reexportOnly.has(specifier);
+  scan.specifierDynamic.set(specifier, Boolean(scan.specifierDynamic.get(specifier)) || dynamic);
+  let files = scan.specifierFiles.get(specifier);
+  if (!files) {
+    files = new Set();
+    scan.specifierFiles.set(specifier, files);
+  }
+  files.add(file);
+  if (kind === "import") scan.reexportOnly.delete(specifier);
+  else if (!hadNonReexport) scan.reexportOnly.add(specifier);
 }
 
 function scanSourceImports(source: string, file: string, scan: RawImportScan): void {
-  for (const match of source.matchAll(STATIC_IMPORT_PATTERN))
-    if (match[1]) recordSpecifier(scan.specifierDynamic, match[1], false);
+  for (const match of source.matchAll(STATIC_IMPORT_FROM))
+    if (match[1]) recordSpecifier(scan, match[1], false, file, "import");
+  for (const match of source.matchAll(STATIC_EXPORT_FROM))
+    if (match[1]) recordSpecifier(scan, match[1], false, file, "reexport");
   for (const match of source.matchAll(DYNAMIC_IMPORT_LITERAL))
-    if (match[1]) recordSpecifier(scan.specifierDynamic, match[1], true);
+    if (match[1]) recordSpecifier(scan, match[1], true, file, "import");
   for (const match of source.matchAll(REQUIRE_LITERAL))
-    if (match[1]) recordSpecifier(scan.specifierDynamic, match[1], true);
+    if (match[1]) recordSpecifier(scan, match[1], true, file, "import");
   for (const match of source.matchAll(LOAD_REMOTE_LITERAL))
     if (match[1]) {
-      recordSpecifier(scan.specifierDynamic, match[1], true);
+      recordSpecifier(scan, match[1], true, file, "import");
       scan.remoteSpecifiers.add(match[1]);
     }
   for (const match of source.matchAll(LOAD_SHARE_LITERAL))
-    if (match[1]) recordSpecifier(scan.specifierDynamic, match[1], true);
+    if (match[1]) recordSpecifier(scan, match[1], true, file, "import");
 
   for (const match of source.matchAll(REGISTER_REMOTES_NAME)) {
     const body = match[1] ?? "";
@@ -107,7 +134,7 @@ function scanSourceImports(source: string, file: string, scan: RawImportScan): v
     for (const nameMatch of body.matchAll(REMOTE_NAME_IN_OBJECT)) {
       if (!nameMatch[1]) continue;
       foundName = true;
-      recordSpecifier(scan.specifierDynamic, nameMatch[1], true);
+      recordSpecifier(scan, nameMatch[1], true, file, "import");
       scan.remoteSpecifiers.add(nameMatch[1]);
     }
     if (!foundName) scan.unresolvedDynamic.push({ api: "registerRemotes", file });
@@ -144,6 +171,8 @@ async function scanProjectImports(options: ResolvedDoctorOptions): Promise<RawIm
   const scan: RawImportScan = {
     sourceFiles: files.sort(),
     specifierDynamic: new Map(),
+    reexportOnly: new Set(),
+    specifierFiles: new Map(),
     remoteSpecifiers: new Set(),
     unresolvedDynamic: [],
   };
@@ -162,18 +191,24 @@ function finalizeImports(input: {
   runtimePackages: string[];
   runtimeRemotes: string[];
   evidenceSources: Set<ImportEvidenceSource>;
+  depth: ImportDepth;
 }): ImportFacts {
   const packages = new Set<string>();
   const dynamicPackages = new Set<string>();
   const remotes = new Set<string>(input.manifestRemotes);
-  const specifiers = [...input.scan.specifierDynamic.keys()].sort();
+  const deepImports = new Set<string>();
+  const deepImportFiles = new Map<string, Set<string>>();
+  const includeReexports = input.depth === "local-graph";
+  const specifiers = [...input.scan.specifierDynamic.keys()]
+    .filter((specifier) => includeReexports || !input.scan.reexportOnly.has(specifier))
+    .sort();
 
   for (const specifier of input.scan.remoteSpecifiers) {
     const name = packageName(specifier);
     remotes.add(name);
   }
 
-  for (const [specifier, dynamic] of input.scan.specifierDynamic) {
+  for (const specifier of specifiers) {
     if (input.scan.remoteSpecifiers.has(specifier)) continue;
     if (specifier.startsWith(".") || specifier.startsWith("/")) continue;
     const name = packageName(specifier);
@@ -182,7 +217,16 @@ function finalizeImports(input: {
       continue;
     }
     packages.add(name);
-    if (dynamic) dynamicPackages.add(name);
+    if (input.scan.specifierDynamic.get(specifier)) dynamicPackages.add(name);
+    if (isDeepImportSpecifier(specifier, name)) {
+      deepImports.add(specifier);
+      let files = deepImportFiles.get(name);
+      if (!files) {
+        files = new Set();
+        deepImportFiles.set(name, files);
+      }
+      for (const file of input.scan.specifierFiles.get(specifier) ?? []) files.add(file);
+    }
   }
 
   for (const name of input.runtimePackages) {
@@ -212,6 +256,13 @@ function finalizeImports(input: {
     remotes: [...remotes].sort(),
     unresolvedDynamic,
     evidenceSources: [...input.evidenceSources].sort(),
+    depth: input.depth,
+    deepImports: [...deepImports].sort(),
+    deepImportFiles: Object.fromEntries(
+      [...deepImportFiles.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([pkg, files]) => [pkg, [...files].sort()] as const),
+    ),
   };
 }
 
@@ -618,6 +669,7 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     runtimePackages: traceHints.packages,
     runtimeRemotes: traceHints.remotes,
     evidenceSources,
+    depth: options.sharedPolicy.importDepth,
   });
 
   const installed = await installedVersions(options.root, declared);

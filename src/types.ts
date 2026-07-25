@@ -133,6 +133,9 @@ export interface UnresolvedDynamicImport {
   file: string;
 }
 
+/** How far the import collector walks local modules (MFDOCTOR-122). */
+export type ImportDepth = "direct" | "local-graph";
+
 export interface ImportFacts {
   sourceFiles: string[];
   specifiers: string[];
@@ -156,6 +159,22 @@ export interface ImportFacts {
   unresolvedDynamic: UnresolvedDynamicImport[];
   /** Evidence channels that contributed to packages/remotes. */
   evidenceSources: ImportEvidenceSource[];
+  /**
+   * Collector depth used for this facts snapshot.
+   * `direct` counts import/require/dynamic only; `local-graph` also counts
+   * `export … from` package re-exports (default).
+   */
+  depth?: ImportDepth;
+  /**
+   * Package subpath specifiers observed (e.g. `lodash/cloneDeep`).
+   * Used by `shared/deep-import-bypass`.
+   */
+  deepImports?: string[];
+  /**
+   * Workspace-relative files that contain at least one deep import of a root package.
+   * Keys are package names (`lodash`), values are file paths.
+   */
+  deepImportFiles?: Record<string, string[]>;
 }
 
 export interface ManifestExpose {
@@ -251,6 +270,12 @@ export interface RuleMeta {
 export interface RuleContext {
   facts: Readonly<ProjectFacts>;
   options: Readonly<Record<string, unknown>>;
+  /**
+   * Resolved shared-usage governance (package lists + import depth).
+   * Present for project analysis; absent for hand-built federation fixtures
+   * that only exercise `analyzeFederation`.
+   */
+  sharedPolicy?: Readonly<ResolvedDoctorOptions["sharedPolicy"]>;
   report(
     finding: Omit<
       DoctorFinding,
@@ -378,6 +403,23 @@ export interface BaselineOptions {
 export type DoctorPresetName = "recommended" | "strict";
 
 /**
+ * Shared-dependency governance knobs for packs and local config (MFDOCTOR-122).
+ * Lists extend built-in defaults; they do not replace them.
+ */
+export interface DoctorSharedPolicy {
+  /** Import scan depth. Default `local-graph`. */
+  importDepth?: ImportDepth;
+  /** Extra packages treated as share candidates. */
+  additionalCandidates?: string[];
+  /** Extra packages that should be singleton when shared. */
+  additionalSingletonRisks?: string[];
+  /** Packages never flagged as unused / host-gap / ghost by default. */
+  alwaysShared?: string[];
+  /** Deep-import specifiers to ignore (extends the JSX runtime allowlist). */
+  deepImportAllowlist?: string[];
+}
+
+/**
  * Shareable policy pack: severity map plus optional custom rules (`defineRule`).
  * Publish as a package default export or load via a relative config path.
  */
@@ -385,6 +427,8 @@ export interface DoctorPolicyPack {
   name?: string;
   rules?: Record<string, RuleSetting>;
   plugins?: DoctorRule[];
+  /** Package lists / import depth for shared-usage governance. */
+  sharedPolicy?: DoctorSharedPolicy;
 }
 
 /**
@@ -444,6 +488,16 @@ export interface DoctorOptions {
    * `defineRule` custom rules. Later entries override earlier severity maps.
    */
   extends?: DoctorExtendEntry | DoctorExtendEntry[];
+  /** Import scan depth. Default `local-graph` (pack knobs merge underneath). */
+  importDepth?: ImportDepth;
+  /** Extra packages treated as share candidates (extends built-in list). */
+  additionalCandidates?: string[];
+  /** Extra packages that should be singleton when shared. */
+  additionalSingletonRisks?: string[];
+  /** Packages never flagged as unused / host-gap / ghost. */
+  alwaysShared?: string[];
+  /** Deep-import specifiers to ignore (extends JSX runtime allowlist). */
+  deepImportAllowlist?: string[];
 }
 
 export interface ResolvedDoctorOptions {
@@ -473,6 +527,14 @@ export interface ResolvedDoctorOptions {
   extends: DoctorRule[];
   /** Preset / pack labels applied while resolving `extends`. */
   appliedPolicies: string[];
+  /** Resolved shared-usage governance (package lists + import depth). */
+  sharedPolicy: {
+    importDepth: ImportDepth;
+    alwaysShared: string[];
+    singletonRisks: string[];
+    shareCandidates: string[];
+    deepImportAllowlist: string[];
+  };
 }
 
 export interface RuntimeTraceReport {

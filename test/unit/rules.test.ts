@@ -582,6 +582,14 @@ describe("built-in rules", () => {
     [
       "shared/unused",
       (facts: ProjectFacts) => {
+        facts.moduleFederation!.shared = {
+          lodash: {
+            package: "lodash",
+            singleton: false,
+            eager: false,
+            shareScope: "default",
+          },
+        };
         facts.imports.packages = [];
       },
     ],
@@ -590,6 +598,23 @@ describe("built-in rules", () => {
       (facts: ProjectFacts) => {
         facts.moduleFederation!.shared = {};
         facts.imports.packages = ["react"];
+      },
+    ],
+    [
+      "shared/deep-import-bypass",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.shared = {
+          lodash: {
+            package: "lodash",
+            singleton: false,
+            eager: false,
+            shareScope: "default",
+          },
+        };
+        facts.imports.specifiers = ["lodash/cloneDeep"];
+        facts.imports.packages = ["lodash"];
+        facts.imports.deepImports = ["lodash/cloneDeep"];
+        facts.imports.deepImportFiles = { lodash: ["src/Widget.ts"] };
       },
     ],
     [

@@ -521,6 +521,10 @@ importers:
 
   examples/showcase/config/share-scope-undeclared: {}
 
+  examples/showcase/federation/ghost-shares: {}
+
+  examples/showcase/federation/host-gaps: {}
+
   examples/showcase/federation/missing-provider: {}
 
   examples/showcase/federation/name-conflict: {}
@@ -546,6 +550,8 @@ importers:
       react:
         specifier: 19.2.8
         version: 19.2.8
+
+  examples/showcase/shared/deep-import-bypass: {}
 
   examples/showcase/shared/eager-without-singleton: {}
 

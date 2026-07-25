@@ -106,3 +106,12 @@ register `transform` / `load` / client-injection hooks
 Do **not** ship Doctor into the browser to close that gap. Prefer Observability
 exports + `mfdoctor runtime`, or add a bundler MF plugin + Doctor adapter. See
 [setup](./setup.md).
+
+## Shared-usage governance (non-goals)
+
+Doctor closes high-value `shared` config gaps inspired by
+`@mf-toolkit/shared-inspector` (deep-import bypass, local-graph import depth,
+federation host gaps / ghost shares, expandable singleton/candidate lists via
+policy packs). Doctor does **not** duplicate RS Doctor duplicate-package
+treemaps, chunk graphs, or general bundle-size visualization — use RS Doctor or
+a bundler analyzer for those questions.

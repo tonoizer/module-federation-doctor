@@ -89,6 +89,11 @@ const cases = [
     expectedExit: 0,
   },
   {
+    dir: "examples/showcase/shared/deep-import-bypass",
+    ruleId: "shared/deep-import-bypass",
+    expectedExit: 0,
+  },
+  {
     dir: "examples/showcase/reliability/version-first-offline-remotes",
     ruleId: "reliability/version-first-offline-remotes",
     expectedExit: 0,
@@ -127,6 +132,18 @@ const cases = [
     pattern: "examples/showcase/federation/missing-provider/*.project.json",
     ruleId: "federation/missing-provider",
     expectedExit: 1,
+  },
+  {
+    command: "federation",
+    pattern: "examples/showcase/federation/host-gaps/*.project.json",
+    ruleId: "federation/host-gaps",
+    expectedExit: 0,
+  },
+  {
+    command: "federation",
+    pattern: "examples/showcase/federation/ghost-shares/*.project.json",
+    ruleId: "federation/ghost-shares",
+    expectedExit: 0,
   },
   {
     command: "runtime",

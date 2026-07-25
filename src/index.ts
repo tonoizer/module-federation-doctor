@@ -48,6 +48,14 @@ export {
 export { buildUiPayload } from "./ui-graph.js";
 export type { ManifestProbeResult, ProbeOptions } from "./probe.js";
 export type { ApplyBaselineResult, ResolvedBaselineOptions } from "./baseline.js";
+export {
+  DEFAULT_ALWAYS_SHARED,
+  DEFAULT_DEEP_IMPORT_ALLOWLIST,
+  DEFAULT_IMPORT_DEPTH,
+  DEFAULT_SHARE_CANDIDATE_PACKAGES,
+  DEFAULT_SINGLETON_RISK_PACKAGES,
+  mergeSharedPolicy,
+} from "./shared-policy.js";
 export type {
   AnalysisCapabilities,
   AnalysisResult,
@@ -66,8 +74,10 @@ export type {
   DoctorPrintLog,
   DoctorReport,
   DoctorRule,
+  DoctorSharedPolicy,
   DoctorUiPayload,
   FederationAnalysisResult,
+  ImportDepth,
   ImportEvidenceSource,
   ImportFacts,
   ModuleFederationConfigLike,

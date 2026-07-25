@@ -36,11 +36,13 @@ describe("built-in presets", () => {
     expect(strictPreset.rules?.["doctor/partial-analysis"]).toBe("warning");
     expect(strictPreset.rules?.["shared/candidate"]).toBe("warning");
     expect(strictPreset.rules?.["config/implementation-suspicious"]).toBe("warning");
+    expect(strictPreset.rules?.["federation/ghost-shares"]).toBe("warning");
   });
 
   it("keeps soft heuristics at info/warning in recommended (not error)", () => {
     expect(recommendedPreset.rules?.["shared/candidate"]).toBe("info");
     expect(recommendedPreset.rules?.["config/implementation-suspicious"]).toBe("info");
+    expect(recommendedPreset.rules?.["federation/ghost-shares"]).toBe("info");
     expect(recommendedPreset.rules?.["shared/singleton-risk"]).toBe("warning");
     expect(recommendedPreset.rules?.["shared/unused"]).toBe("warning");
   });

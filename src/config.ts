@@ -1,6 +1,7 @@
 import path from "node:path";
 import { resolveBaselineOptions } from "./baseline.js";
 import { resolvePolicy } from "./policy.js";
+import { mergeSharedPolicy, serializeSharedPolicy } from "./shared-policy.js";
 import type { DoctorOptions, DoctorPrintLog, ResolvedDoctorOptions } from "./types.js";
 
 export const DEFAULT_INCLUDE = ["src/**/*.{ts,tsx,js,jsx,mts,mjs}"];
@@ -99,6 +100,24 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   const policy = await resolvePolicy(options.extends, root);
   // Local / CLI `rules` override pack and preset maps.
   const rules = { ...policy.rules, ...options.rules };
+  const sharedPolicy = serializeSharedPolicy(
+    mergeSharedPolicy([
+      ...policy.sharedPolicyLayers,
+      {
+        ...(options.importDepth !== undefined ? { importDepth: options.importDepth } : {}),
+        ...(options.additionalCandidates !== undefined
+          ? { additionalCandidates: options.additionalCandidates }
+          : {}),
+        ...(options.additionalSingletonRisks !== undefined
+          ? { additionalSingletonRisks: options.additionalSingletonRisks }
+          : {}),
+        ...(options.alwaysShared !== undefined ? { alwaysShared: options.alwaysShared } : {}),
+        ...(options.deepImportAllowlist !== undefined
+          ? { deepImportAllowlist: options.deepImportAllowlist }
+          : {}),
+      },
+    ]),
+  );
   const printLog = resolvePrintLog(options);
   const quiet = resolveQuiet(options);
   const resolved: ResolvedDoctorOptions = {
@@ -118,6 +137,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
     rules,
     extends: policy.plugins,
     appliedPolicies: policy.applied,
+    sharedPolicy,
   };
   const baseline = resolveBaselineOptions(options.baseline, root);
   if (baseline) resolved.baseline = baseline;
