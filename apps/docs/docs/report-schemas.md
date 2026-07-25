@@ -12,19 +12,30 @@ import-analysis fields (`dynamicPackages`, `remotes`, `unresolvedDynamic`,
 `evidenceSources`) document Doctor’s dynamic-import completeness bar without
 breaking older `project.json` files that omit them.
 
-The npm package ships JSON Schema files:
+## Public v1 schema contracts
 
-- `@module-federation/doctor/schemas/project.schema.json`
-- `@module-federation/doctor/schemas/report.schema.json`
-- `@module-federation/doctor/schemas/baseline.schema.json`
-- `@module-federation/doctor/schemas/probe.schema.json`
-- `@module-federation/doctor/schemas/runtime-trace.schema.json`
-- `@module-federation/doctor/schemas/ui.schema.json` — programmatic federation
-  graph payload (not an HTML report)
+These JSON Schema files are **public contracts for schema version 1**. They are
+exported from the npm package and enforced in CI via `pnpm schema:check` (also
+wired into `pnpm pack:check`) against representative Doctor output. Breaking
+changes require a new `schemaVersion` (or an intentional, documented exception).
 
-Use them in editors, artifact validators, or deployment gates. They are strict
-about the stable outer contract and leave normalized federation internals open
-for additive fields within schema version 1.
+| Schema export                                                 | Produced by                        | Contract kind           |
+| ------------------------------------------------------------- | ---------------------------------- | ----------------------- |
+| `@module-federation/doctor/schemas/project.schema.json`       | Build / collect → `project.json`   | Persisted artifact      |
+| `@module-federation/doctor/schemas/report.schema.json`        | Analyze → `report.json`            | Persisted artifact      |
+| `@module-federation/doctor/schemas/baseline.schema.json`      | Baseline generate / update         | Persisted artifact      |
+| `@module-federation/doctor/schemas/probe.schema.json`         | `mfdoctor probe` / `probeManifest` | CLI / API result        |
+| `@module-federation/doctor/schemas/runtime-trace.schema.json` | `analyzeRuntime` summary           | Correlation summary     |
+| `@module-federation/doctor/schemas/ui.schema.json`            | `buildUiPayload`                   | Programmatic graph only |
+
+`ui.schema.json` is **not** a persisted CLI artifact (Doctor no longer ships an
+HTML dashboard). It remains the published shape for programmatic consumers of
+`buildUiPayload` / graph payloads — see below. Do not treat it as an HTML report
+format.
+
+Use the schemas in editors, artifact validators, or deployment gates. They are
+strict about the stable outer contract and leave normalized federation
+internals open for additive fields within schema version 1.
 
 ## Programmatic federation graph (`buildUiPayload`)
 
