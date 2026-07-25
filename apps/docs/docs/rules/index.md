@@ -51,6 +51,10 @@ Rule pages are generated from package metadata. Each page explains the issue, im
 | [`reliability/tree-shaking-server-calc-contract`](./reliability/tree-shaking-server-calc-contract.md) | warning | Server-calculated shared artifacts need a known fallback output and deployment pipeline. |
 | [`reliability/version-first-offline-remotes`](./reliability/version-first-offline-remotes.md) | warning | An unavailable remote can break startup before its exposed module is requested. |
 | [`reliability/vite-fixed-parse-timeout`](./reliability/vite-fixed-parse-timeout.md) | info | A busy large build can exceed a fixed timeout and produce incomplete remote/shared analysis. |
+| [`runtime/error-correlated`](./runtime/error-correlated.md) | error | A stable RUNTIME error code from an imported browser trace was matched to offline build evidence. |
+| [`runtime/init-failed`](./runtime/init-failed.md) | error | Container initialization failed before exposes or shared resolution could finish. |
+| [`runtime/remote-load-failed`](./runtime/remote-load-failed.md) | error | A browser Observability trace failed while loading a remote manifest, entry, expose, or factory. |
+| [`runtime/shared-mismatch`](./runtime/shared-mismatch.md) | error | Runtime shared selection conflicts with installed versions, required ranges, or provider config. |
 | [`shared/singleton-mismatch`](./shared/singleton-mismatch.md) | warning | Projects disagree on whether multiple instances are allowed. |
 | [`shared/singleton-risk`](./shared/singleton-risk.md) | warning | Multiple framework runtimes can split global state, contexts, hooks, or renderers. |
 
@@ -83,3 +87,4 @@ Rule pages are generated from package metadata. Each page explains the issue, im
 | [`config/get-public-path-unused`](./config/get-public-path-unused.md) | info | `getPublicPath` has no effect on a consumer that exposes no modules. |
 | [`config/remote-manifest-recommended`](./config/remote-manifest-recommended.md) | info | A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. |
 | [`doctor/partial-analysis`](./doctor/partial-analysis.md) | warning | Missing facts reduce confidence and can hide relevant findings. |
+| [`runtime/remote-unknown`](./runtime/remote-unknown.md) | warning | The trace names a remote that is absent from loaded Doctor project facts. |

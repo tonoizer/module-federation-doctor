@@ -313,6 +313,8 @@ export interface DoctorOptions {
   bundlerVersion?: string;
   mode?: "development" | "ci";
   root?: string;
+  /** Default Observability export path for `mfdoctor runtime` when no trace arg is given. */
+  runtimeTrace?: string;
   output?: {
     directory?: string;
     formats?: OutputFormat[];
@@ -330,6 +332,7 @@ export interface ResolvedDoctorOptions {
   bundlerVersion?: string;
   mode: "development" | "ci";
   root: string;
+  runtimeTrace?: string;
   output: {
     directory: string;
     formats: OutputFormat[];
@@ -339,6 +342,57 @@ export interface ResolvedDoctorOptions {
   exclude: string[];
   rules: Record<string, RuleSetting>;
   extends: DoctorRule[];
+}
+
+export interface RuntimeTraceReport {
+  schemaVersion: 1;
+  traceId?: string;
+  status?: string;
+  errorCode?: string;
+  outcome?: string;
+  remote?: {
+    name?: string;
+    alias?: string;
+    entry?: string;
+  };
+  shared?: {
+    package?: string;
+    provider?: string;
+    requiredVersion?: string;
+    selectedVersion?: string;
+    availableVersions?: string[];
+    reason?: string;
+  };
+  moduleInfo?: {
+    name?: string;
+    id?: string;
+    publicPath?: string;
+  };
+  phases?: Record<string, { status?: string }>;
+  events: Array<{
+    phase?: string;
+    status?: string;
+    errorCode?: string;
+  }>;
+  diagnosis?: {
+    owner?: string;
+    summary?: string;
+  };
+}
+
+export interface RuntimeAnalysisResult {
+  traces: RuntimeTraceReport[];
+  projects: ProjectFacts[];
+  findings: DoctorFinding[];
+  report: DoctorReport;
+  ui: DoctorUiPayload;
+  summary: {
+    schemaVersion: 1;
+    traces: number;
+    projects: number;
+    findings: number;
+  };
+  exitCode: 0 | 1;
 }
 
 export interface DoctorReport {

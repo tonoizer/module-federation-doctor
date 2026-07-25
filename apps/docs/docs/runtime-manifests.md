@@ -69,8 +69,18 @@ Do not guess from a generic network error:
 
 1. keep the stable `RUNTIME-xxx` code;
 2. capture the failed URL/status and original browser exception;
-3. use an observability trace when available;
-4. match the live report with Doctor's build facts and manifest metadata.
+3. export an observability report when available;
+4. correlate that export with Doctor build facts:
+
+```bash
+mfdoctor check --format json
+mfdoctor runtime ./.mf/observability/latest.json ".mf/doctor/**/project.json"
+```
+
+`mfdoctor runtime` imports the user-supplied report, redacts secrets and full
+private URLs, and emits `runtime/*` findings that join remotes, shared packages,
+and init phases with `.mf/doctor/project.json` evidence. It does not fetch live
+remotes or execute remote JavaScript.
 
 This separates a bad deployment URL from valid JavaScript that downloaded and
 then failed during execution.

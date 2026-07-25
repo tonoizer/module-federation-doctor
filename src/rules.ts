@@ -772,3 +772,31 @@ export const federationRuleMeta = [
     ...ruleGuidance["federation/external-runtime-provider-missing"]!,
   },
 ] as const;
+
+export const runtimeRuleMeta = [
+  {
+    id: "runtime/remote-load-failed",
+    severity: "error",
+    ...ruleGuidance["runtime/remote-load-failed"]!,
+  },
+  {
+    id: "runtime/init-failed",
+    severity: "error",
+    ...ruleGuidance["runtime/init-failed"]!,
+  },
+  {
+    id: "runtime/shared-mismatch",
+    severity: "error",
+    ...ruleGuidance["runtime/shared-mismatch"]!,
+  },
+  {
+    id: "runtime/remote-unknown",
+    severity: "warning",
+    ...ruleGuidance["runtime/remote-unknown"]!,
+  },
+  {
+    id: "runtime/error-correlated",
+    severity: "error",
+    ...ruleGuidance["runtime/error-correlated"]!,
+  },
+] as const;

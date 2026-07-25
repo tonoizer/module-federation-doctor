@@ -39,6 +39,25 @@ describe("CLI arguments", () => {
     });
   });
 
+  it("parses runtime trace and project globs", () => {
+    expect(
+      parseArgs([
+        "runtime",
+        "./trace.json",
+        ".mf/doctor/**/project.json",
+        "--format",
+        "terminal,json",
+      ]),
+    ).toEqual({
+      command: "runtime",
+      trace: "./trace.json",
+      patterns: [".mf/doctor/**/project.json"],
+      ci: false,
+      formats: ["terminal", "json"],
+      ui: false,
+    });
+  });
+
   it("parses --ui and --ui-port for check and federation", () => {
     expect(parseArgs(["check", "--ui", "--ui-port", "51205"])).toEqual({
       command: "check",
@@ -54,7 +73,7 @@ describe("CLI arguments", () => {
       ui: true,
     });
     expect(() => parseArgs(["probe", "https://example.com/mf-manifest.json", "--ui"])).toThrow(
-      "--ui is only supported",
+      "--ui is only supported for check, federation, and runtime.",
     );
   });
 

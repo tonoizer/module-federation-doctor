@@ -382,4 +382,37 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Enable `provideExternalRuntime` on one top-level pure consumer.",
     sources: [experiments],
   },
+  "runtime/remote-load-failed": {
+    category: "reliability",
+    impact:
+      "A browser Observability trace failed while loading a remote manifest, entry, expose, or factory.",
+    fix: "Compare the redacted entry URL and manifest metadata with the producer build output.",
+    sources: ["https://module-federation.io/plugin/plugins/observability-plugin"],
+  },
+  "runtime/init-failed": {
+    category: "reliability",
+    impact: "Container initialization failed before exposes or shared resolution could finish.",
+    fix: "Verify async startup, external runtime provider order, and runtime plugins against Doctor project facts.",
+    sources: ["https://module-federation.io/plugin/plugins/observability-plugin", experiments],
+  },
+  "runtime/shared-mismatch": {
+    category: "reliability",
+    impact:
+      "Runtime shared selection conflicts with installed versions, required ranges, or provider config.",
+    fix: "Align shared versions, singleton/import settings, and providers across hosts and remotes.",
+    sources: ["https://module-federation.io/plugin/plugins/observability-plugin", shared],
+  },
+  "runtime/remote-unknown": {
+    category: "tooling",
+    impact: "The trace names a remote that is absent from loaded Doctor project facts.",
+    fix: "Collect project.json for every host and remote, or correct the remote name in the trace source.",
+    sources: ["https://module-federation.io/plugin/plugins/observability-plugin"],
+  },
+  "runtime/error-correlated": {
+    category: "reliability",
+    impact:
+      "A stable RUNTIME error code from an imported browser trace was matched to offline build evidence.",
+    fix: "Use the RUNTIME code with the matched build facts; do not infer browser behavior from static analysis alone.",
+    sources: ["https://module-federation.io/plugin/plugins/observability-plugin"],
+  },
 };

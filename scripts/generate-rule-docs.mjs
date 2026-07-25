@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { builtInRules, federationRuleMeta } from "../dist/rules.js";
+import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "../dist/rules.js";
 
 const check = process.argv.includes("--check");
 const repository = path.resolve(import.meta.dirname, "..");
@@ -8,6 +8,7 @@ const root = path.join(repository, "apps/docs/docs/rules");
 const rules = [
   ...builtInRules.map((rule) => Object.assign({ severity: rule.meta.defaultSeverity }, rule.meta)),
   ...federationRuleMeta,
+  ...runtimeRuleMeta,
 ].sort((a, b) => a.id.localeCompare(b.id));
 let drift = false;
 async function writeGenerated(file, content) {

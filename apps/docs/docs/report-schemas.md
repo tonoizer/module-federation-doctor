@@ -19,6 +19,7 @@ The npm package ships JSON Schema files:
 - `@module-federation/doctor/schemas/project.schema.json`
 - `@module-federation/doctor/schemas/report.schema.json`
 - `@module-federation/doctor/schemas/probe.schema.json`
+- `@module-federation/doctor/schemas/runtime-trace.schema.json`
 - `@module-federation/doctor/schemas/ui.schema.json`
 
 Use them in editors, artifact validators, or deployment gates. They are strict

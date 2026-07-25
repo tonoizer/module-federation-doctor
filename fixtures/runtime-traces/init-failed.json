@@ -1,0 +1,32 @@
+{
+  "traceId": "mf-init-fail-002",
+  "status": "error",
+  "errorCode": "RUNTIME-008",
+  "summary": {
+    "outcome": "failed",
+    "phases": {
+      "manifest": { "status": "complete" },
+      "remoteEntry": { "status": "complete" },
+      "init": { "status": "error" },
+      "shared": { "status": "pending" }
+    }
+  },
+  "remote": {
+    "name": "checkout",
+    "entry": "https://cdn.example.com/checkout/mf-manifest.json"
+  },
+  "moduleInfo": {
+    "name": "host"
+  },
+  "diagnosis": {
+    "owner": "host",
+    "summary": "Container init failed while waiting for external runtime."
+  },
+  "events": [
+    {
+      "phase": "init",
+      "status": "error",
+      "errorCode": "RUNTIME-008"
+    }
+  ]
+}

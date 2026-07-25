@@ -1,0 +1,35 @@
+{
+  "traceId": "mf-shared-fail-003",
+  "status": "error",
+  "errorCode": "RUNTIME-021",
+  "summary": {
+    "outcome": "failed",
+    "phases": {
+      "manifest": { "status": "complete" },
+      "remoteEntry": { "status": "complete" },
+      "init": { "status": "complete" },
+      "shared": { "status": "error" }
+    }
+  },
+  "remote": {
+    "name": "checkout"
+  },
+  "shared": {
+    "name": "react",
+    "provider": "checkout",
+    "requiredVersion": "^19.0.0",
+    "selectedVersion": "18.3.1",
+    "availableVersions": ["18.3.1"],
+    "reason": "version-unsatisfied"
+  },
+  "moduleInfo": {
+    "name": "host"
+  },
+  "events": [
+    {
+      "phase": "shared",
+      "status": "error",
+      "errorCode": "RUNTIME-021"
+    }
+  ]
+}
