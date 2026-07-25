@@ -33,12 +33,25 @@ export interface ProjectIdentity {
   root: string;
 }
 
+/** How the bundler `output.publicPath` was typed when Doctor observed the compiler. */
+export type OutputPublicPathKind = "string" | "non-string" | "auto" | "unknown";
+
 export interface BundlerFacts {
   name: BundlerName;
   version?: string;
   mode: string;
   /** Present for Vite-family adapters when the emit lifecycle is known. */
   lifecycle?: ViteLifecycleFacts;
+  /**
+   * Count of Module Federation plugins on the compiler (webpack/rspack adapters).
+   * Absent when Doctor did not observe the compiler plugin list (CLI-only runs).
+   */
+  moduleFederationPluginCount?: number;
+  /**
+   * Classification of bundler `output.publicPath` from the compiler (webpack/rspack).
+   * Absent when Doctor did not observe compiler output options.
+   */
+  outputPublicPathKind?: OutputPublicPathKind;
 }
 
 export interface AnalysisCapabilities {

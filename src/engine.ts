@@ -9,7 +9,7 @@ import {
   summarizeFindings,
   type ResolvedBaselineOptions,
 } from "./baseline.js";
-import { addBuildFacts, collectProjectFacts } from "./collect.js";
+import { addBuildFacts, collectProjectFacts, type BuildDiagnostics } from "./collect.js";
 import { resolveOptions } from "./config.js";
 import { builtInRules, federationRuleMeta } from "./rules.js";
 import { DEFAULT_ALWAYS_SHARED } from "./shared-policy.js";
@@ -136,11 +136,12 @@ async function withBaseline(
 async function runAnalysis(
   options: DoctorOptions = {},
   emittedAssets?: string[],
+  diagnostics?: BuildDiagnostics,
 ): Promise<AnalysisResult> {
   const resolved = await resolveOptions(options);
   try {
     const facts = await collectProjectFacts(resolved);
-    if (emittedAssets) await addBuildFacts(facts, emittedAssets, resolved.root);
+    if (emittedAssets) await addBuildFacts(facts, emittedAssets, resolved.root, diagnostics);
     const rawFindings = sortFindings(
       (
         await Promise.all(
@@ -187,8 +188,9 @@ export async function analyze(options: DoctorOptions = {}): Promise<AnalysisResu
 export async function analyzeBuild(
   options: DoctorOptions,
   emittedAssets: string[],
+  diagnostics?: BuildDiagnostics,
 ): Promise<AnalysisResult> {
-  return runAnalysis(options, emittedAssets);
+  return runAnalysis(options, emittedAssets, diagnostics);
 }
 
 function federationFinding(
@@ -266,6 +268,94 @@ export async function analyzeFederation(
         `Module Federation name "${name}" is used by more than one project.`,
         { name, projects: owners.sort() },
       );
+
+  const strategyOwners = new Map<string, string[]>();
+  for (const project of projects) {
+    if (!project.moduleFederation) continue;
+    const strategy = project.moduleFederation.shareStrategy ?? "version-first";
+    strategyOwners.set(strategy, [...(strategyOwners.get(strategy) ?? []), project.project.name]);
+  }
+  if (strategyOwners.size > 1)
+    findings.push(
+      federationFinding(
+        "federation/share-strategy-mismatch",
+        "warning",
+        [...strategyOwners.values()][0]?.[0] ?? "federation",
+        "Federation projects disagree on `shareStrategy`.",
+        {
+          strategies: Object.fromEntries(
+            [...strategyOwners.entries()]
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([strategy, owners]) => [strategy, [...owners].sort()]),
+          ),
+        },
+      ),
+    );
+
+  const projectByFederationName = new Map<string, string>();
+  for (const project of projects) {
+    const federationName = project.moduleFederation?.name;
+    if (!federationName) continue;
+    projectByFederationName.set(federationName, project.project.name);
+  }
+  const remoteAdj = new Map<string, string[]>();
+  for (const project of projects) {
+    const from = project.moduleFederation?.name;
+    if (!from) continue;
+    const targets = new Set<string>();
+    for (const remote of Object.values(project.moduleFederation?.remotes ?? {})) {
+      if (projectByFederationName.has(remote.name)) targets.add(remote.name);
+    }
+    remoteAdj.set(from, [...targets].sort());
+  }
+  const cycles: string[][] = [];
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const stack: string[] = [];
+  const visit = (node: string) => {
+    if (visited.has(node)) return;
+    if (visiting.has(node)) {
+      const start = stack.indexOf(node);
+      if (start >= 0) cycles.push([...stack.slice(start), node]);
+      return;
+    }
+    visiting.add(node);
+    stack.push(node);
+    for (const next of remoteAdj.get(node) ?? []) visit(next);
+    stack.pop();
+    visiting.delete(node);
+    visited.add(node);
+  };
+  for (const node of [...remoteAdj.keys()].sort()) visit(node);
+  const uniqueCycles = new Map<string, string[]>();
+  for (const cycle of cycles) {
+    const body = cycle.slice(0, -1);
+    let best = body;
+    let bestKey = body.join(">");
+    for (let index = 1; index < body.length; index += 1) {
+      const candidate = body.slice(index).concat(body.slice(0, index));
+      const key = candidate.join(">");
+      if (key.localeCompare(bestKey) < 0) {
+        best = candidate;
+        bestKey = key;
+      }
+    }
+    uniqueCycles.set(best.join("->"), best.concat(best[0]!));
+  }
+  for (const cycle of [...uniqueCycles.values()].sort((a, b) =>
+    a.join(">").localeCompare(b.join(">")),
+  )) {
+    const projectName = projectByFederationName.get(cycle[0]!) ?? cycle[0]!;
+    findings.push(
+      federationFinding(
+        "federation/circular-remote-graph",
+        "error",
+        projectName,
+        `Remote graph contains a cycle: ${cycle.join(" -> ")}.`,
+        { cycle, projects: cycle.map((name) => projectByFederationName.get(name) ?? name) },
+      ),
+    );
+  }
 
   const externalRuntimeConsumers = projects.filter(
     (project) => project.moduleFederation?.experiments?.externalRuntime,

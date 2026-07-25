@@ -13,16 +13,21 @@ failure—such as a missing `name`—stay in the catalog but are not demoed here
 
 ## Config
 
-| Directory                                     | Expected rule                   | Severity / note                                     |
-| --------------------------------------------- | ------------------------------- | --------------------------------------------------- |
-| `config/expose-key-invalid`                   | `config/expose-key-invalid`     | error                                               |
-| `config/expose-path-missing`                  | `config/expose-path-missing`    | error                                               |
-| `config/remote-entry-invalid`                 | `config/remote-entry-invalid`   | error                                               |
-| `config/filename-invalid`                     | `config/filename-invalid`       | error                                               |
-| `config/share-scope-undeclared`               | `config/share-scope-undeclared` | error                                               |
-| `config/remote-http-insecure`                 | `config/remote-http-insecure`   | warning                                             |
-| `config/implementation-local`                 | _(none)_                        | local `implementation` does not fire                |
-| `config/implementation-suspicious-suppressed` | _(none)_                        | `rules["config/implementation-suspicious"] = "off"` |
+| Directory                                     | Expected rule                           | Severity / note                                     |
+| --------------------------------------------- | --------------------------------------- | --------------------------------------------------- |
+| `config/expose-key-invalid`                   | `config/expose-key-invalid`             | error                                               |
+| `config/expose-path-missing`                  | `config/expose-path-missing`            | error                                               |
+| `config/remote-entry-invalid`                 | `config/remote-entry-invalid`           | error                                               |
+| `config/filename-invalid`                     | `config/filename-invalid`               | error                                               |
+| `config/share-scope-undeclared`               | `config/share-scope-undeclared`         | error                                               |
+| `config/remote-http-insecure`                 | `config/remote-http-insecure`           | warning                                             |
+| `config/implementation-local`                 | _(none)_                                | local `implementation` does not fire                |
+| `config/implementation-suspicious-suppressed` | _(none)_                                | `rules["config/implementation-suspicious"] = "off"` |
+| `config/remote-localhost-in-production`       | `config/remote-localhost-in-production` | warning (CI mode)                                   |
+| `config/remote-alias-prefix-collision`        | `config/remote-alias-prefix-collision`  | error                                               |
+| `config/nested-producer-dts-extract`          | `config/nested-producer-dts-extract`    | warning                                             |
+| `config/dts-output-dir-mismatch`              | `config/dts-output-dir-mismatch`        | warning                                             |
+| `config/remote-type-urls-missing`             | `config/remote-type-urls-missing`       | warning                                             |
 
 ## Shared
 
@@ -48,13 +53,15 @@ failure—such as a missing `name`—stay in the catalog but are not demoed here
 
 Committed `.project.json` facts for `mfdoctor federation`:
 
-| Directory                         | Expected rule                     | Severity |
-| --------------------------------- | --------------------------------- | -------- |
-| `federation/version-conflict`     | `federation/version-conflict`     | error    |
-| `federation/share-scope-mismatch` | `federation/share-scope-mismatch` | error    |
-| `federation/singleton-mismatch`   | `shared/singleton-mismatch`       | warning  |
-| `federation/name-conflict`        | `federation/name-conflict`        | error    |
-| `federation/missing-provider`     | `federation/missing-provider`     | error    |
+| Directory                            | Expected rule                        | Severity |
+| ------------------------------------ | ------------------------------------ | -------- |
+| `federation/version-conflict`        | `federation/version-conflict`        | error    |
+| `federation/share-scope-mismatch`    | `federation/share-scope-mismatch`    | error    |
+| `federation/share-strategy-mismatch` | `federation/share-strategy-mismatch` | warning  |
+| `federation/circular-remote-graph`   | `federation/circular-remote-graph`   | error    |
+| `federation/singleton-mismatch`      | `shared/singleton-mismatch`          | warning  |
+| `federation/name-conflict`           | `federation/name-conflict`           | error    |
+| `federation/missing-provider`        | `federation/missing-provider`        | error    |
 
 ## Runtime
 

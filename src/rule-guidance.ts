@@ -56,6 +56,61 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Serve non-local remotes over HTTPS and keep HTTP only for local development.",
     sources: ["https://module-federation.io/configure/remotes.html"],
   },
+  "config/remote-localhost-in-production": {
+    category: "reliability",
+    impact:
+      "Localhost remotes in CI/production builds cannot resolve on other machines and break deployments.",
+    fix: "Point remotes at deployed HTTPS (or manifest) URLs for CI and production builds.",
+    sources: ["https://module-federation.io/configure/remotes.html"],
+  },
+  "config/duplicate-plugin-registration": {
+    category: "correctness",
+    impact:
+      "Registering Module Federation more than once on the same compiler breaks the core singleton contract.",
+    fix: "Keep a single Module Federation plugin instance per compiler.",
+    sources: [core, "https://module-federation.io/guide/installation.html"],
+  },
+  "config/remote-alias-prefix-collision": {
+    category: "correctness",
+    impact:
+      "An alias that prefixes another remote name/alias makes multi-level path references ambiguous and is rejected by the runtime.",
+    fix: "Rename aliases so none is a prefix of another remote name or alias.",
+    sources: ["https://module-federation.io/configure/remotes.html", core],
+  },
+  "config/nested-producer-dts-extract": {
+    category: "reliability",
+    impact:
+      "A nested producer that both exposes and consumes remotes may omit extracted remote types from its type archive.",
+    fix: "Enable `dts.generateTypes.extractRemoteTypes` for producers that also consume remotes.",
+    sources: ["https://module-federation.io/configure/dts.html"],
+  },
+  "config/dts-output-dir-mismatch": {
+    category: "reliability",
+    impact:
+      "A nested remote-entry `filename` that disagrees with `dts.generateTypes.outputDir` can publish type archives to the wrong path.",
+    fix: "Align `filename` directory layout with `dts.generateTypes.outputDir`, or keep both at the output root.",
+    sources: [
+      "https://module-federation.io/configure/dts.html",
+      "https://module-federation.io/configure/filename.html",
+    ],
+  },
+  "config/remote-type-urls-missing": {
+    category: "tooling",
+    impact:
+      "Direct `.js` remote entries do not advertise type archives unless `remoteTypeUrls` or a manifest is configured.",
+    fix: "Prefer `mf-manifest.json`, or set `dts.consumeTypes.remoteTypeUrls` for each `.js` remote.",
+    sources: [
+      "https://module-federation.io/configure/dts.html",
+      "https://module-federation.io/configure/remotes.html",
+    ],
+  },
+  "artifact/public-path-non-string-manifest": {
+    category: "correctness",
+    impact:
+      "Module Federation skips manifest generation when bundler `output.publicPath` is not a string.",
+    fix: "Set `output.publicPath` to a string URL, root-relative path, or `auto` when manifests are required.",
+    sources: [manifest, core],
+  },
   "config/remote-manifest-recommended": {
     category: "tooling",
     impact:
@@ -178,8 +233,25 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "reliability/version-first-offline-remotes": {
     category: "reliability",
     impact: "An unavailable remote can break startup before its exposed module is requested.",
-    fix: "Add `errorLoadRemote` recovery or choose `loaded-first` for delayed failure.",
-    sources: ["https://module-federation.io/configure/shareStrategy.html", runtimePlugins],
+    fix: "Add `@module-federation/retry-plugin`, an `errorLoadRemote` recovery plugin, or choose `loaded-first` for delayed failure.",
+    sources: [
+      "https://module-federation.io/configure/shareStrategy.html",
+      runtimePlugins,
+      "https://github.com/module-federation/core/tree/main/packages/retry-plugin",
+    ],
+  },
+  "federation/share-strategy-mismatch": {
+    category: "reliability",
+    impact:
+      "Hosts and remotes that disagree on `version-first` vs `loaded-first` negotiate shared versions differently at startup.",
+    fix: "Pick one federation-wide `shareStrategy`, or document intentional per-app exceptions.",
+    sources: ["https://module-federation.io/configure/shareStrategy.html"],
+  },
+  "federation/circular-remote-graph": {
+    category: "correctness",
+    impact: "Circular remotes can deadlock nested container initialization and type extraction.",
+    fix: "Break the cycle so remotes form a DAG, or isolate shared code outside the remote graph.",
+    sources: ["https://module-federation.io/configure/remotes.html", core],
   },
   "reliability/shared-import-false": {
     category: "reliability",

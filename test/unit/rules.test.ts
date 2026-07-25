@@ -213,6 +213,87 @@ describe("built-in rules", () => {
         }),
     ],
     [
+      "config/remote-localhost-in-production",
+      (facts: ProjectFacts) => {
+        facts.bundler.mode = "ci";
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:3001/remoteEntry.js",
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "config/duplicate-plugin-registration",
+      (facts: ProjectFacts) => {
+        facts.bundler.moduleFederationPluginCount = 2;
+      },
+    ],
+    [
+      "config/remote-alias-prefix-collision",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.remotes = {
+          scope: {
+            name: "@scope/component",
+            entry: "https://example.test/a/mf-manifest.json",
+            alias: "@scope",
+            shareScope: "default",
+          },
+          other: {
+            name: "@scope/other",
+            entry: "https://example.test/b/mf-manifest.json",
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "config/nested-producer-dts-extract",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/mf-manifest.json",
+            shareScope: "default",
+          },
+        };
+        facts.moduleFederation!.dts = { enabled: true, options: {} };
+      },
+    ],
+    [
+      "config/dts-output-dir-mismatch",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.filename = "static/js/remoteEntry.js";
+        facts.moduleFederation!.dts = {
+          enabled: true,
+          options: { generateTypes: { outputDir: "dist/types" } },
+        };
+      },
+    ],
+    [
+      "config/remote-type-urls-missing",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.dts = { enabled: true, options: {} };
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/remoteEntry.js",
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "artifact/public-path-non-string-manifest",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.manifest = { enabled: true, options: {} };
+        facts.bundler.outputPublicPathKind = "non-string";
+      },
+    ],
+    [
       "config/remote-manifest-recommended",
       (facts: ProjectFacts) =>
         (facts.moduleFederation!.remotes = {
@@ -690,5 +771,52 @@ describe("built-in rules", () => {
     const selected = builtInRules.find((item) => item.meta.id === id)!;
     await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
     expect(findings, id).not.toHaveLength(0);
+  });
+
+  it("skips version-first offline remotes when a retry recovery plugin is configured", async () => {
+    const facts: ProjectFacts = {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: true,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        shareStrategy: "version-first",
+        runtimePlugins: ["@module-federation/retry-plugin"],
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/mf-manifest.json",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+    const findings: Array<unknown> = [];
+    const selected = builtInRules.find(
+      (item) => item.meta.id === "reliability/version-first-offline-remotes",
+    )!;
+    await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toHaveLength(0);
   });
 });

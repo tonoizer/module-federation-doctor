@@ -48,6 +48,31 @@ const cases = [
     expectedExit: 0,
   },
   {
+    dir: "examples/showcase/config/remote-localhost-in-production",
+    ruleId: "config/remote-localhost-in-production",
+    expectedExit: 0,
+  },
+  {
+    dir: "examples/showcase/config/remote-alias-prefix-collision",
+    ruleId: "config/remote-alias-prefix-collision",
+    expectedExit: 1,
+  },
+  {
+    dir: "examples/showcase/config/nested-producer-dts-extract",
+    ruleId: "config/nested-producer-dts-extract",
+    expectedExit: 0,
+  },
+  {
+    dir: "examples/showcase/config/dts-output-dir-mismatch",
+    ruleId: "config/dts-output-dir-mismatch",
+    expectedExit: 0,
+  },
+  {
+    dir: "examples/showcase/config/remote-type-urls-missing",
+    ruleId: "config/remote-type-urls-missing",
+    expectedExit: 0,
+  },
+  {
     dir: "examples/showcase/shared/eager-without-singleton",
     ruleId: "shared/eager-without-singleton",
     expectedExit: 0,
@@ -113,6 +138,18 @@ const cases = [
     command: "federation",
     pattern: "examples/showcase/federation/share-scope-mismatch/*.project.json",
     ruleId: "federation/share-scope-mismatch",
+    expectedExit: 1,
+  },
+  {
+    command: "federation",
+    pattern: "examples/showcase/federation/share-strategy-mismatch/*.project.json",
+    ruleId: "federation/share-strategy-mismatch",
+    expectedExit: 0,
+  },
+  {
+    command: "federation",
+    pattern: "examples/showcase/federation/circular-remote-graph/*.project.json",
+    ruleId: "federation/circular-remote-graph",
     expectedExit: 1,
   },
   {

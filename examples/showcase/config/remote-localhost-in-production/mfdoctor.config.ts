@@ -7,14 +7,14 @@ export default {
     "config/plugin-package-mismatch": "off",
     "artifact/remote-entry-missing": "off",
     "config/remote-manifest-recommended": "off",
-    "config/remote-localhost-in-production": "off",
     "config/remote-type-urls-missing": "off",
+    "reliability/version-first-offline-remotes": "off",
   },
   moduleFederation: {
-    name: "version_first_offline",
+    name: "remote_localhost_in_production",
     manifest: true,
-    shareStrategy: "version-first",
     remotes: {
+      // Loopback remotes break when the build is promoted beyond this machine.
       shop: "http://localhost:3001/remoteEntry.js",
     },
     shared: {},

@@ -1,7 +1,8 @@
 import { createUnplugin, type UnpluginOptions } from "unplugin";
 import fg from "fast-glob";
 import { analyze, analyzeBuild } from "./engine.js";
-import type { AnalysisResult, BundlerName, DoctorOptions } from "./types.js";
+import type { BuildDiagnostics } from "./collect.js";
+import type { AnalysisResult, BundlerName, DoctorOptions, OutputPublicPathKind } from "./types.js";
 import { detectViteLifecycle, withPostEmitHook, type ViteHookMeta } from "./vite-lifecycle.js";
 
 /**
@@ -35,7 +36,53 @@ export type CompilerLike = {
     };
   };
   webpack?: { WebpackError?: new (message: string) => Error };
+  options?: {
+    plugins?: unknown[];
+    output?: { publicPath?: unknown };
+  };
 };
+
+// Public instance names: enhanced webpack sets `.name = "ModuleFederationPlugin"`
+// (not "EnhancedModuleFederationPlugin"); rspack sets `"RspackModuleFederationPlugin"`.
+// Native webpack often omits `.name`, so fall back to `constructor.name`.
+const MF_PLUGIN_NAMES = new Set(["ModuleFederationPlugin", "RspackModuleFederationPlugin"]);
+
+function moduleFederationPluginName(plugin: object): string | undefined {
+  const named = (plugin as { name?: unknown }).name;
+  if (typeof named === "string" && named.length > 0) return named;
+  const ctorName = (plugin as { constructor?: { name?: unknown } }).constructor?.name;
+  return typeof ctorName === "string" && ctorName.length > 0 ? ctorName : undefined;
+}
+
+/** Count public Module Federation plugin instances on the compiler (core singleton check). */
+export function countModuleFederationPlugins(compiler: {
+  options?: { plugins?: unknown[] };
+}): number {
+  const plugins = compiler.options?.plugins;
+  if (!Array.isArray(plugins)) return 0;
+  return plugins.filter((plugin) => {
+    if (!plugin || typeof plugin !== "object") return false;
+    const name = moduleFederationPluginName(plugin);
+    return typeof name === "string" && MF_PLUGIN_NAMES.has(name);
+  }).length;
+}
+
+/** Classify bundler `output.publicPath` the way MF manifest generation does. */
+export function classifyOutputPublicPath(publicPath: unknown): OutputPublicPathKind {
+  if (publicPath === undefined) return "unknown";
+  if (typeof publicPath !== "string") return "non-string";
+  if (publicPath === "auto") return "auto";
+  return "string";
+}
+
+function collectCompilerDiagnostics(compiler: CompilerLike): BuildDiagnostics {
+  const diagnostics: BuildDiagnostics = {};
+  const count = countModuleFederationPlugins(compiler);
+  if (compiler.options?.plugins) diagnostics.moduleFederationPluginCount = count;
+  if (compiler.options?.output && "publicPath" in compiler.options.output)
+    diagnostics.outputPublicPathKind = classifyOutputPublicPath(compiler.options.output.publicPath);
+  return diagnostics;
+}
 
 /**
  * Post-emit only: analyze emitted assets, print via the shared terminal reporter
@@ -46,7 +93,8 @@ export type CompilerLike = {
 export function attachDoctorAfterEmit(compiler: CompilerLike, configured: DoctorOptions): void {
   if (!configured.root) configured.root = compiler.context;
   compiler.hooks.afterEmit.tapPromise("ModuleFederationDoctor", async (compilation) => {
-    const result = await analyzeBuild(configured, Object.keys(compilation.assets));
+    const diagnostics = collectCompilerDiagnostics(compiler);
+    const result = await analyzeBuild(configured, Object.keys(compilation.assets), diagnostics);
     if (result.exitCode === 0) return;
     const ErrorCtor = compiler.webpack?.WebpackError ?? Error;
     // Single policy failure diagnostic — findings already printed by writeReports.
