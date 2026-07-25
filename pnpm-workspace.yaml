@@ -5,6 +5,7 @@ packages:
   - "examples/compatibility/*"
   - "examples/mixed-federation/*"
   - "examples/mixed-federation-issues/*"
+  - "examples/nested-federation/*"
   - "examples/showcase/**"
   - "fixtures/**/*"
 

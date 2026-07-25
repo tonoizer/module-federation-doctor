@@ -13,6 +13,9 @@ host intentionally turns off `config/remote-manifest-recommended` and
 canonical suppression pattern for accepted host choices (see
 [Suppressions and allowlists](./suppressions.md)).
 
+For nested multi-bundler orchestration (Vite → Vite/Rsbuild → Rspack/Webpack),
+see [Nested federation example](./nested-example.md).
+
 For intentional Doctor findings:
 
 - [Finding showcase](./showcase.md) — themed one-rule demos

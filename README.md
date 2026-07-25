@@ -175,12 +175,14 @@ pnpm release:dry-run
 Examples:
 
 - `examples/mixed-federation` — healthy Vite + Rspack + Rsbuild e2e path
+- `examples/nested-federation` — nested Vite host → Vite/Rsbuild → Rspack/Webpack;
+  run `pnpm demo:nested` or `pnpm test:nested`
 - `examples/compatibility/webpack` — Webpack build+Doctor smoke for the matrix
-- `examples/mixed-federation-issues` — same topology with intentional Doctor
+- `examples/mixed-federation-issues` — same flat topology with intentional Doctor
   findings; run `pnpm demo:mixed-issues`
 - `examples/showcase` — themed misconfigs + runtime green/fail demos; run
   `pnpm demo:showcase`
-- From `examples/`: `pnpm --dir examples demo` runs showcase + mixed-issues
+- From `examples/`: `pnpm --dir examples demo` runs showcase + mixed-issues + nested
   (or `pnpm demo:examples` from the repo root)
 
 The repo also includes an original Codex skill at

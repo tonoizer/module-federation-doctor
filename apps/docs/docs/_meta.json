@@ -40,6 +40,11 @@
   },
   {
     "type": "file",
+    "name": "nested-example",
+    "label": "Nested example"
+  },
+  {
+    "type": "file",
     "name": "showcase",
     "label": "Finding showcase"
   },

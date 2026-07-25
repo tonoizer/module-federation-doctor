@@ -1,0 +1,19 @@
+{
+  "name": "@mfdoctor-example/nested-remote-webpack",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "webpack --mode production",
+    "preview": "node ../../../scripts/serve-dist.mjs dist 3013",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\""
+  },
+  "dependencies": {
+    "@module-federation/enhanced": "2.8.0"
+  },
+  "devDependencies": {
+    "@module-federation/doctor": "workspace:*",
+    "webpack": "5.105.4",
+    "webpack-cli": "6.0.1"
+  }
+}
