@@ -11,7 +11,7 @@ Runtime shared selection conflicts with installed versions, required ranges, or 
 
 Align shared versions, singleton/import settings, and providers across hosts and remotes.
 
-Override this rule with `rules["runtime/shared-mismatch"]`.
+Suppress or retarget with `rules["runtime/shared-mismatch"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

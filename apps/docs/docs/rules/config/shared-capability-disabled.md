@@ -11,7 +11,7 @@ Tree-shaken sharing code cannot register or consume configured shared packages.
 
 Remove `disableShared` or remove the shared configuration.
 
-Override this rule with `rules["config/shared-capability-disabled"]`.
+Suppress or retarget with `rules["config/shared-capability-disabled"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

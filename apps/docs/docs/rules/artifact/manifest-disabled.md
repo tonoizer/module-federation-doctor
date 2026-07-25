@@ -11,7 +11,7 @@ Without manifests, consumers lose metadata-powered preloading, type hints, and r
 
 Enable `manifest` where those production and debugging features are needed.
 
-Override this rule with `rules["artifact/manifest-disabled"]`.
+Suppress or retarget with `rules["artifact/manifest-disabled"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

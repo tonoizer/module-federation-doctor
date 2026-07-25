@@ -11,7 +11,7 @@ Disabled asset analysis removes shared and expose asset details from producer me
 
 Enable asset analysis for production producer manifests.
 
-Override this rule with `rules["artifact/manifest-assets-disabled"]`.
+Suppress or retarget with `rules["artifact/manifest-assets-disabled"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

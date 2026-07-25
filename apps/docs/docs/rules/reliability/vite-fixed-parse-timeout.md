@@ -11,7 +11,7 @@ A busy large build can exceed a fixed timeout and produce incomplete remote/shar
 
 Prefer `moduleParseIdleTimeout` so only inactivity ends parsing.
 
-Override this rule with `rules["reliability/vite-fixed-parse-timeout"]`.
+Suppress or retarget with `rules["reliability/vite-fixed-parse-timeout"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

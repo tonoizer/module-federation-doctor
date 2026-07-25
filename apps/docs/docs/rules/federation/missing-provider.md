@@ -11,7 +11,7 @@ Every consumer disabled its fallback, so no build can provide the package.
 
 Let at least one build provide the package or restore a local fallback.
 
-Override this rule with `rules["federation/missing-provider"]`.
+Suppress or retarget with `rules["federation/missing-provider"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

@@ -11,7 +11,7 @@ Unsafe paths can escape output layout; a non-JavaScript entry cannot run as a co
 
 Use a relative `.js` or `.mjs` filename without absolute or `..` segments.
 
-Override this rule with `rules["config/filename-invalid"]`.
+Suppress or retarget with `rules["config/filename-invalid"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

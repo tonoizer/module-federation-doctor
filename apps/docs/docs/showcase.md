@@ -13,24 +13,29 @@ stay as rules, not showcases.
 
 ## Config
 
-| Setup                   | Command                                                                       | Finding                                 |
-| ----------------------- | ----------------------------------------------------------------------------- | --------------------------------------- |
-| Expose key without `./` | `node dist/cli.js check examples/showcase/config/expose-key-invalid --ci`     | `config/expose-key-invalid` (error)     |
-| Missing expose path     | `node dist/cli.js check examples/showcase/config/expose-path-missing --ci`    | `config/expose-path-missing` (error)    |
-| Invalid remote entry    | `node dist/cli.js check examples/showcase/config/remote-entry-invalid --ci`   | `config/remote-entry-invalid` (error)   |
-| Invalid filename        | `node dist/cli.js check examples/showcase/config/filename-invalid --ci`       | `config/filename-invalid` (error)       |
-| Undeclared share scope  | `node dist/cli.js check examples/showcase/config/share-scope-undeclared --ci` | `config/share-scope-undeclared` (error) |
-| Insecure remote HTTP    | `node dist/cli.js check examples/showcase/config/remote-http-insecure --ci`   | `config/remote-http-insecure` (warning) |
+| Setup                   | Command                                                                                     | Finding                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Expose key without `./` | `node dist/cli.js check examples/showcase/config/expose-key-invalid --ci`                   | `config/expose-key-invalid` (error)     |
+| Missing expose path     | `node dist/cli.js check examples/showcase/config/expose-path-missing --ci`                  | `config/expose-path-missing` (error)    |
+| Invalid remote entry    | `node dist/cli.js check examples/showcase/config/remote-entry-invalid --ci`                 | `config/remote-entry-invalid` (error)   |
+| Invalid filename        | `node dist/cli.js check examples/showcase/config/filename-invalid --ci`                     | `config/filename-invalid` (error)       |
+| Undeclared share scope  | `node dist/cli.js check examples/showcase/config/share-scope-undeclared --ci`               | `config/share-scope-undeclared` (error) |
+| Insecure remote HTTP    | `node dist/cli.js check examples/showcase/config/remote-http-insecure --ci`                 | `config/remote-http-insecure` (warning) |
+| Local implementation    | `node dist/cli.js check examples/showcase/config/implementation-local --ci`                 | no findings (heuristic does not fire)   |
+| Suspicious impl muted   | `node dist/cli.js check examples/showcase/config/implementation-suspicious-suppressed --ci` | no findings (`"off"`)                   |
 
 ## Shared
 
-| Setup                   | Command                                                                        | Finding                                    |
-| ----------------------- | ------------------------------------------------------------------------------ | ------------------------------------------ |
-| Eager without singleton | `node dist/cli.js check examples/showcase/shared/eager-without-singleton --ci` | `shared/eager-without-singleton` (warning) |
-| Version unsatisfied     | `node dist/cli.js check examples/showcase/shared/version-unsatisfied --ci`     | `shared/version-unsatisfied` (error)       |
-| Singleton risk          | `node dist/cli.js check examples/showcase/shared/singleton-risk --ci`          | `shared/singleton-risk` (warning)          |
-| Unused shared           | `node dist/cli.js check examples/showcase/shared/unused --ci`                  | `shared/unused` (warning)                  |
-| Shared candidate        | `node dist/cli.js check examples/showcase/shared/candidate --ci`               | `shared/candidate` (warning)               |
+| Setup                   | Command                                                                          | Finding                                        |
+| ----------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Eager without singleton | `node dist/cli.js check examples/showcase/shared/eager-without-singleton --ci`   | `shared/eager-without-singleton` (warning)     |
+| Version unsatisfied     | `node dist/cli.js check examples/showcase/shared/version-unsatisfied --ci`       | `shared/version-unsatisfied` (error)           |
+| Singleton risk          | `node dist/cli.js check examples/showcase/shared/singleton-risk --ci`            | `shared/singleton-risk` (warning)              |
+| Singleton risk muted    | `node dist/cli.js check examples/showcase/shared/singleton-risk-suppressed --ci` | no findings (`"off"`)                          |
+| Unused shared           | `node dist/cli.js check examples/showcase/shared/unused --ci`                    | `shared/unused` (warning)                      |
+| Unused + unresolved dyn | `node dist/cli.js check examples/showcase/shared/unused-unresolved --ci`         | `doctor/partial-analysis` (no `shared/unused`) |
+| Shared candidate        | `node dist/cli.js check examples/showcase/shared/candidate --ci`                 | `shared/candidate` (info)                      |
+| Shared candidate muted  | `node dist/cli.js check examples/showcase/shared/candidate-suppressed --ci`      | no findings (`"off"`)                          |
 
 ## Reliability
 

@@ -11,7 +11,7 @@ The runtime cannot evaluate an invalid stringified public-path function.
 
 Use a stringified function, arrow function, or return statement.
 
-Override this rule with `rules["config/get-public-path-invalid"]`.
+Suppress or retarget with `rules["config/get-public-path-invalid"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

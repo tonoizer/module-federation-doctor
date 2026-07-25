@@ -11,7 +11,7 @@ Snapshot removal disables manifest remotes, preload, dynamic type hints, HMR, an
 
 Enable snapshots when those features are part of the deployment contract.
 
-Override this rule with `rules["reliability/snapshot-capability-disabled"]`.
+Suppress or retarget with `rules["reliability/snapshot-capability-disabled"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

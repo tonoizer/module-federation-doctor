@@ -11,7 +11,7 @@ Stale version metadata can choose the wrong shared provider at runtime.
 
 Clean output, reinstall from the lockfile, and rebuild the manifest.
 
-Override this rule with `rules["artifact/manifest-shared-version-mismatch"]`.
+Suppress or retarget with `rules["artifact/manifest-shared-version-mismatch"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

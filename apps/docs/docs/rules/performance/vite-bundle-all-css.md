@@ -11,7 +11,7 @@ Vite attaches all bundle CSS to every expose, which can duplicate transfer and s
 
 Disable `bundleAllCSS` unless every expose needs the complete stylesheet set.
 
-Override this rule with `rules["performance/vite-bundle-all-css"]`.
+Suppress or retarget with `rules["performance/vite-bundle-all-css"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

@@ -9,24 +9,29 @@ failure—such as a missing `name`—stay in the catalog but are not demoed here
 
 ## Config
 
-| Directory                       | Expected rule                   | Severity |
-| ------------------------------- | ------------------------------- | -------- |
-| `config/expose-key-invalid`     | `config/expose-key-invalid`     | error    |
-| `config/expose-path-missing`    | `config/expose-path-missing`    | error    |
-| `config/remote-entry-invalid`   | `config/remote-entry-invalid`   | error    |
-| `config/filename-invalid`       | `config/filename-invalid`       | error    |
-| `config/share-scope-undeclared` | `config/share-scope-undeclared` | error    |
-| `config/remote-http-insecure`   | `config/remote-http-insecure`   | warning  |
+| Directory                                     | Expected rule                   | Severity / note                                     |
+| --------------------------------------------- | ------------------------------- | --------------------------------------------------- |
+| `config/expose-key-invalid`                   | `config/expose-key-invalid`     | error                                               |
+| `config/expose-path-missing`                  | `config/expose-path-missing`    | error                                               |
+| `config/remote-entry-invalid`                 | `config/remote-entry-invalid`   | error                                               |
+| `config/filename-invalid`                     | `config/filename-invalid`       | error                                               |
+| `config/share-scope-undeclared`               | `config/share-scope-undeclared` | error                                               |
+| `config/remote-http-insecure`                 | `config/remote-http-insecure`   | warning                                             |
+| `config/implementation-local`                 | _(none)_                        | local `implementation` does not fire                |
+| `config/implementation-suspicious-suppressed` | _(none)_                        | `rules["config/implementation-suspicious"] = "off"` |
 
 ## Shared
 
-| Directory                        | Expected rule                    | Severity |
-| -------------------------------- | -------------------------------- | -------- |
-| `shared/eager-without-singleton` | `shared/eager-without-singleton` | warning  |
-| `shared/version-unsatisfied`     | `shared/version-unsatisfied`     | error    |
-| `shared/singleton-risk`          | `shared/singleton-risk`          | warning  |
-| `shared/unused`                  | `shared/unused`                  | warning  |
-| `shared/candidate`               | `shared/candidate`               | warning  |
+| Directory                          | Expected rule                    | Severity / note                          |
+| ---------------------------------- | -------------------------------- | ---------------------------------------- |
+| `shared/eager-without-singleton`   | `shared/eager-without-singleton` | warning                                  |
+| `shared/version-unsatisfied`       | `shared/version-unsatisfied`     | error                                    |
+| `shared/singleton-risk`            | `shared/singleton-risk`          | warning                                  |
+| `shared/singleton-risk-suppressed` | _(none)_                         | `rules["shared/singleton-risk"] = "off"` |
+| `shared/unused`                    | `shared/unused`                  | warning                                  |
+| `shared/unused-unresolved`         | `doctor/partial-analysis`        | no `shared/unused` (unresolved dynamics) |
+| `shared/candidate`                 | `shared/candidate`               | info                                     |
+| `shared/candidate-suppressed`      | _(none)_                         | `rules["shared/candidate"] = "off"`      |
 
 ## Reliability
 

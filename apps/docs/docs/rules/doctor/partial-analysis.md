@@ -11,7 +11,7 @@ Missing facts or unresolved dynamic imports reduce confidence and can hide relev
 
 Pass explicit MF options, run Doctor through the bundler adapter after emit, and prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.
 
-Override this rule with `rules["doctor/partial-analysis"]`.
+Suppress or retarget with `rules["doctor/partial-analysis"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

@@ -11,7 +11,7 @@ A producer has no executable container at its configured filename.
 
 Check output naming and plugin order, then clean and rebuild.
 
-Override this rule with `rules["artifact/remote-entry-missing"]`.
+Suppress or retarget with `rules["artifact/remote-entry-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

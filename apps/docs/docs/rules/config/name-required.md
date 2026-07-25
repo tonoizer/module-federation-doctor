@@ -11,7 +11,7 @@ The runtime uses the container name for global state and module lookup. Official
 
 Set `name` to a stable, federation-wide unique id such as "host" or "shop".
 
-Override this rule with `rules["config/name-required"]`.
+Suppress or retarget with `rules["config/name-required"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

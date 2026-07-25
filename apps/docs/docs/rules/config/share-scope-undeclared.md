@@ -11,7 +11,7 @@ A dependency placed in a scope the container does not initialize cannot be reuse
 
 Declare the scope at top level or move the shared item into an initialized scope.
 
-Override this rule with `rules["config/share-scope-undeclared"]`.
+Suppress or retarget with `rules["config/share-scope-undeclared"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

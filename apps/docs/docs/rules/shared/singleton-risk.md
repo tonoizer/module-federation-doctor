@@ -11,7 +11,7 @@ Multiple framework runtimes can split global state, contexts, hooks, or renderer
 
 Share stateful framework runtimes as singletons and align their versions.
 
-Override this rule with `rules["shared/singleton-risk"]`.
+Suppress or retarget with `rules["shared/singleton-risk"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

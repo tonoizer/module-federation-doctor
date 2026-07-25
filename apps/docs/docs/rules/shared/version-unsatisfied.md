@@ -11,7 +11,7 @@ The installed provider does not satisfy the configured consumer range.
 
 Align installed versions and `requiredVersion` across the federation.
 
-Override this rule with `rules["shared/version-unsatisfied"]`.
+Suppress or retarget with `rules["shared/version-unsatisfied"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

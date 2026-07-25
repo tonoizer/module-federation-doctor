@@ -11,7 +11,7 @@
 
 Use `loaded-first` when on-demand loading is more important than highest-version selection.
 
-Override this rule with `rules["performance/version-first-startup"]`.
+Suppress or retarget with `rules["performance/version-first-startup"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

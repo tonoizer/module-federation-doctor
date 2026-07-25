@@ -11,7 +11,7 @@ The config promises an expose that the emitted manifest does not contain.
 
 Fix the expose build or remove the stale public contract.
 
-Override this rule with `rules["artifact/expose-missing"]`.
+Suppress or retarget with `rules["artifact/expose-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

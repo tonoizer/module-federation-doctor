@@ -11,7 +11,7 @@ Eager modules live in the initial entry and cannot use the on-demand shared tree
 
 Choose eager loading for small dependencies or tree shaking for larger libraries.
 
-Override this rule with `rules["config/eager-tree-shaking-conflict"]`.
+Suppress or retarget with `rules["config/eager-tree-shaking-conflict"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

@@ -11,7 +11,7 @@ Runtime-injected used exports conflict with the deployment-owned `server-calc` c
 
 Disable injection and let the deployment service merge consumer export metadata.
 
-Override this rule with `rules["config/tree-shaking-server-calc-injection"]`.
+Suppress or retarget with `rules["config/tree-shaking-server-calc-injection"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

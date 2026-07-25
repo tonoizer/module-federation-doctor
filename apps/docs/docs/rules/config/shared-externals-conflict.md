@@ -11,7 +11,7 @@ A dependency cannot be provided by federation after the bundler removes it as an
 
 Remove the package from either `shared` or `externals`.
 
-Override this rule with `rules["config/shared-externals-conflict"]`.
+Suppress or retarget with `rules["config/shared-externals-conflict"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

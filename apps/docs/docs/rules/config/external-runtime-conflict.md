@@ -11,7 +11,7 @@ The same build cannot externalize the runtime it is responsible for providing.
 
 Provide at the top consumer and externalize only its browser remotes.
 
-Override this rule with `rules["config/external-runtime-conflict"]`.
+Suppress or retarget with `rules["config/external-runtime-conflict"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

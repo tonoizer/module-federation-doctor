@@ -11,7 +11,7 @@ The runtime and tooling cannot consume malformed or incomplete manifest JSON.
 
 Rebuild the manifest and verify `metaData`, `exposes`, and `shared` are present.
 
-Override this rule with `rules["artifact/manifest-invalid"]`.
+Suppress or retarget with `rules["artifact/manifest-invalid"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

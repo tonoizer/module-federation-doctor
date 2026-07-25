@@ -237,7 +237,8 @@ export const builtInRules: DoctorRule[] = [
         "Keep it static, review it like executable code, and never build it from untrusted input.",
       );
   }),
-  createRule("config/implementation-suspicious", "warning", (context) => {
+  // Heuristic package/path check — advisory `info` unless teams elevate it.
+  createRule("config/implementation-suspicious", "info", (context) => {
     const implementation = mf(context)?.implementation;
     if (
       implementation &&
@@ -740,7 +741,8 @@ export const builtInRules: DoctorRule[] = [
           },
         );
   }),
-  createRule("shared/candidate", "warning", (context) => {
+  // Package-name heuristic — advisory `info` (strict keeps it from becoming a hard error).
+  createRule("shared/candidate", "info", (context) => {
     const shared = new Set(Object.keys(mf(context)?.shared ?? {}));
     for (const name of context.facts.imports.packages)
       if (
