@@ -11,7 +11,7 @@ An alias that prefixes another remote name/alias makes multi-level path referenc
 
 Rename aliases so none is a prefix of another remote name or alias.
 
-Override this rule with `rules["config/remote-alias-prefix-collision"]`.
+Suppress or retarget with `rules["config/remote-alias-prefix-collision"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

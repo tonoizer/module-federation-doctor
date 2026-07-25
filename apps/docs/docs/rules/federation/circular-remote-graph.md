@@ -11,7 +11,7 @@ Circular remotes can deadlock nested container initialization and type extractio
 
 Break the cycle so remotes form a DAG, or isolate shared code outside the remote graph.
 
-Override this rule with `rules["federation/circular-remote-graph"]`.
+Suppress or retarget with `rules["federation/circular-remote-graph"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

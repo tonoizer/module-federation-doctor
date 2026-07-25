@@ -11,7 +11,7 @@ Direct `.js` remote entries do not advertise type archives unless `remoteTypeUrl
 
 Prefer `mf-manifest.json`, or set `dts.consumeTypes.remoteTypeUrls` for each `.js` remote.
 
-Override this rule with `rules["config/remote-type-urls-missing"]`.
+Suppress or retarget with `rules["config/remote-type-urls-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

@@ -11,7 +11,7 @@ Localhost remotes in CI/production builds cannot resolve on other machines and b
 
 Point remotes at deployed HTTPS (or manifest) URLs for CI and production builds.
 
-Override this rule with `rules["config/remote-localhost-in-production"]`.
+Suppress or retarget with `rules["config/remote-localhost-in-production"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

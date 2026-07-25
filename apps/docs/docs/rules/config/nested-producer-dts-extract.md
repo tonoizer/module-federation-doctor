@@ -11,7 +11,7 @@ A nested producer that both exposes and consumes remotes may omit extracted remo
 
 Enable `dts.generateTypes.extractRemoteTypes` for producers that also consume remotes.
 
-Override this rule with `rules["config/nested-producer-dts-extract"]`.
+Suppress or retarget with `rules["config/nested-producer-dts-extract"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 
