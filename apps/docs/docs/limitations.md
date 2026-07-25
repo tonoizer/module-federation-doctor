@@ -10,22 +10,13 @@ Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1
 
 ## v1.0 (governance-ready)
 
-<<<<<<< HEAD
 The v1 [compatibility matrix](./compatibility.md) for Vite / Rspack / Rsbuild /
 Webpack, Node engines, package managers, and report surfaces has shipped
 ([#15](https://github.com/tonoizer/module-federation-doctor/issues/15),
 `MFDOCTOR-106`).
 
-Dynamic Module Federation import patterns are covered at the documented[completeness bar](./capabilities.md#dynamic-import-completeness-v1): supported
-=======
-| Gap                                               | Issue                                                                                  |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Compatibility matrix for v1 bundlers and runtimes | [#15](https://github.com/tonoizer/module-federation-doctor/issues/15) (`MFDOCTOR-106`) |
-| One-shot workspace federation gate for CI         | [#25](https://github.com/tonoizer/module-federation-doctor/issues/25) (`MFDOCTOR-109`) |
-
 Dynamic Module Federation import patterns are covered at the documented
 [completeness bar](./capabilities.md#dynamic-import-completeness-v1): supported
->>>>>>> ca3c771 (fix: reject HTTP policy packs and sync with baselines)
 literals and runtime/manifest hints when evidence exists, with honest
 `doctor/partial-analysis` for unresolved dynamics — not a claim of 100%
 arbitrary runtime JS
