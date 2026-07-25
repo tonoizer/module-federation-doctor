@@ -123,7 +123,10 @@ privacy notes, current limits, and the upstream research behind the checks.
 
 ## Development
 
-Requires Node `>=22.12.0` and pnpm 11.
+Requires Node `>=22.12.0` and pnpm 11 (primary). See the
+[compatibility matrix](./apps/docs/docs/compatibility.md) for supported /
+partial / unsupported cells (Vite, Rspack, Rsbuild, Webpack; npm / yarn
+consumer notes; terminal / JSON / SARIF on CI).
 
 ```bash
 pnpm install --frozen-lockfile
@@ -134,6 +137,7 @@ pnpm release:dry-run
 Examples:
 
 - `examples/mixed-federation` — healthy Vite + Rspack + Rsbuild e2e path
+- `examples/compatibility/webpack` — Webpack build+Doctor smoke for the matrix
 - `examples/mixed-federation-issues` — same topology with intentional Doctor
   findings; run `pnpm demo:mixed-issues`
 - `examples/showcase` — themed misconfigs + runtime green/fail demos; run

@@ -1,5 +1,9 @@
 # Capability matrix
 
+Analysis depth per supported bundler. For supported / partial / unsupported
+**product** cells (Node, package managers, report surfaces), see the
+[compatibility matrix](./compatibility.md).
+
 | Capability                             | Vite                                                            | Rspack            | Rsbuild               | Webpack           |
 | -------------------------------------- | --------------------------------------------------------------- | ----------------- | --------------------- | ----------------- |
 | Explicit MF config                     | Yes                                                             | Yes               | Yes                   | Yes               |

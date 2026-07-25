@@ -1,0 +1,105 @@
+name: Compatibility
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compatibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # High-value cells: real build + Doctor path per supported bundler on
+  # engines floor (Node 22) and current line (Node 24).
+  bundler:
+    name: ${{ matrix.bundler.id }} / Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+        bundler:
+          - id: vite
+            filter: "@mfdoctor-example/host-vite"
+            dir: examples/mixed-federation/host-vite
+          - id: rspack
+            filter: "@mfdoctor-example/remote-rspack"
+            dir: examples/mixed-federation/remote-rspack
+          - id: rsbuild
+            filter: "@mfdoctor-example/remote-rsbuild"
+            dir: examples/mixed-federation/remote-rsbuild
+          - id: webpack
+            filter: "@mfdoctor-example/webpack-smoke"
+            dir: examples/compatibility/webpack
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Build ${{ matrix.bundler.id }} example with Doctor
+        # CI env enables failOn:error + terminal/json/sarif from the adapter.
+        run: |
+          set -o pipefail
+          pnpm --filter ${{ matrix.bundler.filter }} build 2>&1 | tee "${{ matrix.bundler.dir }}/doctor-terminal.txt"
+      - name: Assert Doctor project + JSON + SARIF + terminal
+        run: >
+          node scripts/verify-compatibility-cell.mjs
+          ${{ matrix.bundler.dir }}
+          ${{ matrix.bundler.id }}
+          ${{ matrix.bundler.dir }}/doctor-terminal.txt
+      - if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: compatibility-${{ matrix.bundler.id }}-node${{ matrix.node }}
+          path: |
+            ${{ matrix.bundler.dir }}/.mf/doctor
+            ${{ matrix.bundler.dir }}/doctor-terminal.txt
+          if-no-files-found: ignore
+
+  # CLI report-surface smoke (terminal, json, sarif) on a config-only partial path.
+  cli-reports:
+    name: CLI report surfaces / Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: CLI check with terminal,json,sarif
+        working-directory: examples/showcase/config/filename-invalid
+        run: |
+          set +e
+          node ../../../../dist/cli.js check --format terminal,json,sarif 2>&1 | tee doctor-terminal.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          test -s doctor-terminal.txt
+          test -f .mf/doctor/report.json
+          test -f .mf/doctor/results.sarif
+          # Intentional misconfig fixture: policy exit 1 is expected.
+          test "$code" -eq 1
+      - if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: compatibility-cli-reports-node${{ matrix.node }}
+          path: |
+            examples/showcase/config/filename-invalid/.mf/doctor
+            examples/showcase/config/filename-invalid/doctor-terminal.txt
+          if-no-files-found: ignore
