@@ -9,6 +9,8 @@ import { probeManifest } from "./probe.js";
 import { builtInRules, federationRuleMeta } from "./rules.js";
 import type { DoctorOptions, ModuleFederationConfigLike, OutputFormat, RuleMeta } from "./types.js";
 import { stableStringify } from "./utils.js";
+import { DEFAULT_UI_PORT, serveUiUntilClosed } from "./ui-server.js";
+import { resolveOptions } from "./config.js";
 
 interface Parsed {
   command: "check" | "federation" | "probe" | "rules" | "help";
@@ -21,6 +23,8 @@ interface Parsed {
   maxBytes?: number;
   remoteEntry?: boolean;
   ruleId?: string;
+  ui: boolean;
+  uiPort?: number;
 }
 
 const outputFormats = new Set<OutputFormat>(["terminal", "json", "sarif", "html"]);
@@ -32,21 +36,43 @@ Usage:
   mfdoctor check [root]
   mfdoctor check --ci
   mfdoctor check --format terminal,json,sarif,html
+  mfdoctor check --ui
+  mfdoctor check --ui --ui-port 51205
   mfdoctor federation ".mf/doctor/**/project.json"
+  mfdoctor federation ".mf/doctor/**/project.json" --ui
   mfdoctor rules [rule-id]
   mfdoctor probe https://host.example/mf-manifest.json
   mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry`;
 }
 
+function shouldHoldUi(): boolean {
+  return process.env.MFDOCTOR_UI_NO_HOLD !== "1" && process.env.VITEST !== "true";
+}
+
+function withHtml(formats: OutputFormat[] | undefined): OutputFormat[] {
+  const base = formats ? [...formats] : [];
+  if (!base.includes("html")) base.push("html");
+  return base;
+}
+
 export function parseArgs(argv: string[]): Parsed {
   const command = argv[0];
   if (command !== "check" && command !== "federation" && command !== "probe" && command !== "rules")
-    return { command: "help", patterns: [], ci: false };
-  const parsed: Parsed = { command, patterns: [], ci: false };
+    return { command: "help", patterns: [], ci: false, ui: false };
+  const parsed: Parsed = { command, patterns: [], ci: false, ui: false };
   for (let index = 1; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === "--ci") parsed.ci = true;
-    else if (value === "--remote-entry" && command === "probe") parsed.remoteEntry = true;
+    else if (value === "--ui") parsed.ui = true;
+    else if (value === "--ui-port") {
+      const next = argv[index + 1];
+      if (!next) throw new Error("--ui-port needs an integer value.");
+      const port = Number(next);
+      if (!Number.isSafeInteger(port) || port <= 0 || port > 65535)
+        throw new Error("--ui-port needs an integer port between 1 and 65535.");
+      parsed.uiPort = port;
+      index += 1;
+    } else if (value === "--remote-entry" && command === "probe") parsed.remoteEntry = true;
     else if ((value === "--timeout" || value === "--max-bytes") && command === "probe") {
       const next = argv[index + 1];
       if (!next) throw new Error(`${value} needs an integer value.`);
@@ -69,6 +95,8 @@ export function parseArgs(argv: string[]): Parsed {
     else if (!parsed.root && value) parsed.root = value;
     else throw new Error(`Unexpected argument: ${value}`);
   }
+  if (parsed.ui && (command === "probe" || command === "rules"))
+    throw new Error(`--ui is only supported for check and federation.`);
   return parsed;
 }
 
@@ -92,6 +120,15 @@ async function configAt(root: string): Promise<DoctorOptions> {
     cwd: root,
   });
   return federation.config ? { ...config, moduleFederation: federation.config } : config;
+}
+
+async function maybeServeUi(directory: string, parsed: Parsed): Promise<void> {
+  if (!parsed.ui || !shouldHoldUi()) return;
+  await serveUiUntilClosed({
+    directory,
+    port: parsed.uiPort ?? DEFAULT_UI_PORT,
+    open: true,
+  });
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
@@ -159,9 +196,15 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     try {
       const files = await fg(parsed.patterns, { absolute: true, onlyFiles: true });
       if (files.length === 0) throw new Error("No project reports matched.");
-      const findings = await analyzeFederation(files);
-      process.stdout.write(stableStringify({ schemaVersion: 1, findings }, 2) + "\n");
-      return findings.some((item) => item.severity === "error") ? 1 : 0;
+      const formats = parsed.ui ? withHtml(parsed.formats ?? ["terminal", "json"]) : parsed.formats;
+      const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
+      const result = await analyzeFederation(files, formats ? { formats, outputDirectory } : {});
+      if (!formats)
+        process.stdout.write(
+          stableStringify({ schemaVersion: 1, findings: result.findings }, 2) + "\n",
+        );
+      await maybeServeUi(outputDirectory, parsed);
+      return result.exitCode;
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
       return 2;
@@ -172,8 +215,12 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     const config = await configAt(root);
     const options: DoctorOptions = { ...config, root };
     if (parsed.ci) options.mode = "ci";
-    if (parsed.formats) options.output = { ...config.output, formats: parsed.formats };
-    return (await analyze(options)).exitCode;
+    const formats = parsed.ui ? withHtml(parsed.formats ?? config.output?.formats) : parsed.formats;
+    if (formats) options.output = { ...config.output, formats };
+    const result = await analyze(options);
+    const directory = resolveOptions(options).output.directory;
+    await maybeServeUi(directory, parsed);
+    return result.exitCode;
   } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     return 2;

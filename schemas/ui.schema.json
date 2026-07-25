@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/ui.schema.json",
+  "title": "Module Federation Doctor UI payload",
+  "type": "object",
+  "required": ["schemaVersion", "report", "projects", "graphs"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "report": { "type": "object" },
+    "projects": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "graphs": {
+      "type": "object",
+      "required": ["remotes", "shared", "orchestration"],
+      "properties": {
+        "remotes": { "$ref": "#/$defs/graph" },
+        "shared": { "$ref": "#/$defs/graph" },
+        "orchestration": { "$ref": "#/$defs/graph" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "graph": {
+      "type": "object",
+      "required": ["nodes", "edges"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "kind"],
+            "properties": {
+              "id": { "type": "string" },
+              "label": { "type": "string" },
+              "kind": {
+                "type": "string",
+                "enum": ["project", "remote", "shared", "expose", "runtime"]
+              },
+              "project": { "type": "string" },
+              "severity": { "type": "string", "enum": ["info", "warning", "error"] },
+              "meta": { "type": "object" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "source", "target"],
+            "properties": {
+              "id": { "type": "string" },
+              "source": { "type": "string" },
+              "target": { "type": "string" },
+              "label": { "type": "string" },
+              "severity": { "type": "string", "enum": ["info", "warning", "error"] }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

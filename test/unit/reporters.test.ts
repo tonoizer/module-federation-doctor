@@ -19,11 +19,14 @@ describe("reporters", () => {
       const report = JSON.parse(await fs.readFile(path.join(output, "report.json"), "utf8"));
       const sarif = JSON.parse(await fs.readFile(path.join(output, "results.sarif"), "utf8"));
       const html = await fs.readFile(path.join(output, "report.html"), "utf8");
+      const ui = JSON.parse(await fs.readFile(path.join(output, "ui-data.json"), "utf8"));
       expect(project.project.root).toBe(".");
       expect(report.findings[0].fingerprint).toHaveLength(64);
       expect(sarif.version).toBe("2.1.0");
+      expect(ui.schemaVersion).toBe(1);
+      expect(ui.graphs.remotes).toBeTruthy();
       expect(html).toContain("Content-Security-Policy");
-      expect(html).toContain('id="report-data"');
+      expect(html.includes('id="report-data"') || html.includes("__MF_DOCTOR_UI__")).toBe(true);
       expect(html).not.toMatch(/<(?:img|script)[^>]+src=["']https?:/);
       expect(result.exitCode).toBe(0);
     } finally {

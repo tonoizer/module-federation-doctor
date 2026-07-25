@@ -156,7 +156,7 @@ describe("cross-project analysis", () => {
     missing.moduleFederation!.name = "a";
     enableExternalRuntime(missing);
     await fs.writeFile(files[2]!, JSON.stringify(missing));
-    const ids = (await analyzeFederation(files)).map((item) => item.ruleId);
+    const ids = (await analyzeFederation(files)).findings.map((item) => item.ruleId);
     expect(ids).toEqual(
       expect.arrayContaining([
         "federation/version-conflict",
