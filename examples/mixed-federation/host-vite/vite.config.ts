@@ -10,14 +10,14 @@ const mfOptions = {
     rspackRemote: {
       type: "global",
       name: "rspack_remote",
-      entry: "http://localhost:3001/remoteEntry.js",
+      entry: "http://127.0.0.1:3001/remoteEntry.js",
       entryGlobalName: "rspack_remote",
       shareScope: "default",
     },
     rsbuildRemote: {
       type: "global",
       name: "rsbuild_remote",
-      entry: "http://localhost:3002/remoteEntry.js",
+      entry: "http://127.0.0.1:3002/remoteEntry.js",
       entryGlobalName: "rsbuild_remote",
       shareScope: "default",
     },
@@ -45,7 +45,9 @@ export default defineConfig({
       },
     }),
   ],
-  server: { port: 5173, strictPort: true },
-  preview: { port: 5173, strictPort: true },
+  // Bind IPv4 loopback explicitly — `localhost` can resolve to ::1 in CI while
+  // the rspack static server (and Playwright probes) use 127.0.0.1.
+  server: { host: "127.0.0.1", port: 5173, strictPort: true },
+  preview: { host: "127.0.0.1", port: 5173, strictPort: true },
   build: { target: "esnext" },
 });

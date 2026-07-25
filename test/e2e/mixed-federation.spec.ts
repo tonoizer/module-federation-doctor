@@ -1,14 +1,33 @@
 import { expect, test } from "@playwright/test";
+import { waitForFederationServers } from "./helpers/federation-servers";
 
-test("renders both federation remotes without browser errors", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
+test.describe("mixed-federation green path", () => {
+  test.beforeEach(async ({ request }) => {
+    await waitForFederationServers(request);
   });
-  page.on("pageerror", (error) => errors.push(error.message));
 
-  await page.goto("/");
-  await expect(page.getByTestId("rspack-remote")).toContainText("Direct Rspack remote");
-  await expect(page.getByTestId("rsbuild-remote")).toContainText("Rsbuild remote");
-  expect(errors).toEqual([]);
+  test("renders both federation remotes without browser errors", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    page.on("pageerror", (error) => errors.push(error.message));
+
+    await page.goto("/");
+    await expect(
+      page.getByTestId("remote-loading"),
+      "host (http://127.0.0.1:5173) remotes did not finish loading",
+    ).toBeHidden({ timeout: 15_000 });
+
+    await expect(
+      page.getByTestId("rspack-remote"),
+      "rspack remote (http://127.0.0.1:3001/remoteEntry.js) did not render",
+    ).toContainText("Direct Rspack remote");
+    await expect(
+      page.getByTestId("rsbuild-remote"),
+      "rsbuild remote (http://127.0.0.1:3002/remoteEntry.js) did not render",
+    ).toContainText("Rsbuild remote");
+
+    expect(errors, "browser console errors while loading remotes").toEqual([]);
+  });
 });

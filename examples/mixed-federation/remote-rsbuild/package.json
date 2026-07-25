@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "rsbuild build",
-    "dev": "rsbuild dev --port 3002",
-    "preview": "rsbuild preview --port 3002",
+    "dev": "rsbuild dev --host 127.0.0.1 --port 3002",
+    "preview": "rsbuild preview --host 127.0.0.1 --port 3002",
     "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\"",
     "typecheck": "tsc -p tsconfig.json"
   },
