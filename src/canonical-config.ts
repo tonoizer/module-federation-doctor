@@ -155,7 +155,13 @@ const SENSITIVE_KEY =
   /(?:token|secret|password|passwd|credential|private[-_ ]?key|api[-_]?key|authorization|cookie|session[-_]?id|pem|certificate|cert)/i;
 
 function safeKey(key: string): string {
-  return SENSITIVE_KEY.test(key) ? "[REDACTED_KEY]" : key;
+  if (!SENSITIVE_KEY.test(key)) return key;
+  let hash = 2166136261;
+  for (let index = 0; index < key.length; index += 1) {
+    hash ^= key.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `[REDACTED_KEY:${(hash >>> 0).toString(16)}]`;
 }
 
 function budgetFor(limits: Required<CanonicalConfigLimits>): TraversalBudget {
@@ -535,6 +541,34 @@ function collectionEntries(
       else if (plainObject(item)) {
         const name = descriptor(item, "name")?.value;
         if (typeof name === "string") key = name;
+        else {
+          const itemKeys = ownKeys(item) ?? [];
+          if (itemKeys.length > 0) {
+            for (const itemKey of itemKeys) {
+              const itemProperty = descriptor(item, itemKey);
+              result.push({
+                id: `${path}/${index}/${itemKey}`,
+                key: itemKey,
+                value:
+                  itemProperty && "value" in itemProperty
+                    ? cell(itemProperty.value, `${path}/${index}/${itemKey}`, diagnostics, budget)
+                    : {
+                        state: "unknown",
+                        origin: "unknown",
+                        evidenceIds: [],
+                        value: opaque(
+                          undefined,
+                          `${path}/${index}/${itemKey}`,
+                          diagnostics,
+                          "access-error",
+                          "Accessor properties are not executed or persisted.",
+                        ),
+                      },
+              });
+            }
+            continue;
+          }
+        }
       }
       result.push({
         id: `${path}/${index}`,
@@ -631,8 +665,20 @@ function snapshot(
     fields.push({
       id: `/${safeKey(key)}`,
       key: safeKey(key),
-      value:
-        property && "value" in property
+      value: SENSITIVE_KEY.test(key)
+        ? {
+            state: "unknown",
+            origin: "unknown",
+            evidenceIds: [],
+            value: opaque(
+              property && "value" in property ? property.value : undefined,
+              `/${key}`,
+              diagnostics,
+              "opaque-value",
+              "Sensitive values are not persisted.",
+            ),
+          }
+        : property && "value" in property
           ? cell(property.value, `/${key}`, diagnostics, budget)
           : {
               state: "unknown",
@@ -703,15 +749,23 @@ export function readCanonicalModuleFederationConfig(
     extensions.push({
       path: `/${safeKey(key)}`,
       value: redact(
-        property && "value" in property
-          ? toJsonValue(property.value, `/${key}`, diagnostics, budget)
-          : opaque(
-              undefined,
+        SENSITIVE_KEY.test(key)
+          ? opaque(
+              property && "value" in property ? property.value : undefined,
               `/${key}`,
               diagnostics,
-              "access-error",
-              "Accessor properties are not executed or persisted.",
-            ),
+              "opaque-value",
+              "Sensitive values are not persisted.",
+            )
+          : property && "value" in property
+            ? toJsonValue(property.value, `/${key}`, diagnostics, budget)
+            : opaque(
+                undefined,
+                `/${key}`,
+                diagnostics,
+                "access-error",
+                "Accessor properties are not executed or persisted.",
+              ),
         budget,
       ),
       reason: "extension",

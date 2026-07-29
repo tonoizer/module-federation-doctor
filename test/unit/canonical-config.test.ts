@@ -6,9 +6,9 @@ describe("canonical config boundary", () => {
   it("keeps real upstream outer arrays, fallback order, false, and extensions", () => {
     const config = readCanonicalModuleFederationConfig(
       {
-        exposes: ["./button", { import: ["./card", "./fallback"], name: "./card" }],
-        remotes: [{ name: "cart", external: ["cart@one", "cart@two"], type: "script" }],
-        shared: ["react", { name: "react-dom", singleton: false, import: false }],
+        exposes: ["./button", { "./card": { import: ["./card", "./fallback"] } }],
+        remotes: [{ cart: { external: ["cart@one", "cart@two"], type: "script" } }],
+        shared: ["react", { "react-dom": { singleton: false, import: false } }],
         runtimePlugins: [["./plugin", { token: "not-persisted" }]],
         runtime: { plugins: ["./runtime"] },
         bridge: { react: true },
@@ -26,16 +26,13 @@ describe("canonical config boundary", () => {
     ]);
     expect(config?.declared.collections.exposes[1]?.value.value).toEqual({
       import: ["./card", "./fallback"],
-      name: "./card",
     });
     expect(config?.declared.collections.remotes[0]?.value.value).toEqual({
-      name: "cart",
       external: ["cart@one", "cart@two"],
       type: "script",
     });
     expect(config?.declared.collections.shared[1]?.value.value).toEqual({
       import: false,
-      name: "react-dom",
       singleton: false,
     });
     expect(config?.extensions[0]?.path).toBe("/customExtension");
@@ -201,6 +198,24 @@ describe("canonical config boundary", () => {
     expect(() => readCanonicalModuleFederationConfig(throwing)).not.toThrow();
     expect(() => readCanonicalModuleFederationConfig(revokedState.proxy)).not.toThrow();
     expect(traps).toBe(0);
+  });
+
+  it("does not persist sensitive root values or collide redacted keys", () => {
+    const config = readCanonicalModuleFederationConfig({ token: "secret-token", secret: "secret" });
+    const fields = config?.declared.fields ?? [];
+    expect(fields.map((field) => field.key)).toHaveLength(2);
+    expect(new Set(fields.map((field) => field.id)).size).toBe(2);
+    expect(
+      fields.every(
+        (field) =>
+          field.value.value !== null &&
+          typeof field.value.value === "object" &&
+          !Array.isArray(field.value.value) &&
+          "kind" in field.value.value &&
+          field.value.value.kind === "opaque",
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(config)).not.toContain("secret-token");
   });
 
   it("matches the strict shipped schema and rejects malformed documents", async () => {
