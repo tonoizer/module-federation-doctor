@@ -1,0 +1,580 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/identity.schema.json",
+  "title": "Module Federation Doctor semantic identity",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "kind",
+    "key",
+    "aliases",
+    "completeness",
+    "confidence",
+    "provenance"
+  ],
+  "maxProperties": 30,
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "type": "string" },
+    "key": { "type": "string", "maxLength": 64 },
+    "aliases": {
+      "type": "array",
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/safeShortId" },
+      "uniqueItems": true
+    },
+    "completeness": { "enum": ["complete", "partial", "unknown"] },
+    "confidence": { "enum": ["exact", "strong", "weak", "unknown"] },
+    "provenance": {
+      "type": "object",
+      "required": ["source", "evidenceIds"],
+      "properties": {
+        "source": {
+          "enum": ["config", "ci", "compiler", "artifact", "deployment", "runtime", "unknown"]
+        },
+        "evidenceIds": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/safeShortId" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "parentKey": { "type": "string", "pattern": "^mfid:v1:[a-z-]+:[a-f0-9]{24}$", "maxLength": 64 },
+    "displayName": { "$ref": "#/$defs/safeId" },
+    "organizationId": { "$ref": "#/$defs/safeId" },
+    "applicationId": { "$ref": "#/$defs/safeId" },
+    "containerName": { "$ref": "#/$defs/safeId" },
+    "adapter": { "$ref": "#/$defs/safeId" },
+    "bundler": { "$ref": "#/$defs/safeId" },
+    "bundlerVersion": { "$ref": "#/$defs/safeId" },
+    "target": { "enum": ["browser", "ssr", "worker", "mobile", "node", "unknown"] },
+    "mode": { "$ref": "#/$defs/safeId" },
+    "buildEnvironment": { "$ref": "#/$defs/safeId" },
+    "lane": { "$ref": "#/$defs/safeId" },
+    "environment": { "$ref": "#/$defs/safeId" },
+    "adapterTargetKey": { "$ref": "#/$defs/adapterTargetKey" },
+    "buildLineageKey": { "$ref": "#/$defs/buildLineageKey" },
+    "buildId": { "$ref": "#/$defs/safeId" },
+    "buildKey": { "$ref": "#/$defs/buildKey" },
+    "artifactKind": { "$ref": "#/$defs/safeId" },
+    "digest": { "$ref": "#/$defs/digest" },
+    "artifactSetDigest": { "$ref": "#/$defs/digest" },
+    "environmentKey": { "$ref": "#/$defs/environmentKey" },
+    "deploymentId": { "$ref": "#/$defs/safeId" },
+    "artifactKeys": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/artifactKey" },
+      "uniqueItems": true
+    },
+    "deploymentKey": { "$ref": "#/$defs/deploymentKey" },
+    "realm": { "enum": ["top-frame", "iframe", "worker", "node", "react-native", "unknown"] },
+    "realmId": { "$ref": "#/$defs/safeId" },
+    "realmKey": { "$ref": "#/$defs/realmKey" },
+    "runtimeInstanceId": { "$ref": "#/$defs/safeId" },
+    "runtimePackage": { "$ref": "#/$defs/safeId" },
+    "runtimeVersion": { "$ref": "#/$defs/safeId" },
+    "occurrenceId": { "$ref": "#/$defs/safeId" }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "kind": { "const": "organization" },
+        "key": { "type": "string", "pattern": "^mfid:v1:organization:[a-f0-9]{24}$" }
+      },
+      "required": ["kind", "organizationId"]
+    },
+    {
+      "properties": {
+        "kind": { "const": "application" },
+        "key": { "type": "string", "pattern": "^mfid:v1:application:[a-f0-9]{24}$" },
+        "parentKey": { "$ref": "#/$defs/organizationKey" }
+      },
+      "required": ["kind", "organizationId", "applicationId", "parentKey"]
+    },
+    {
+      "properties": {
+        "kind": { "const": "container" },
+        "key": { "type": "string", "pattern": "^mfid:v1:container:[a-f0-9]{24}$" },
+        "parentKey": { "$ref": "#/$defs/applicationKey" }
+      },
+      "required": ["kind", "organizationId", "applicationId", "containerName", "parentKey"]
+    },
+    {
+      "properties": {
+        "kind": { "const": "adapter-target" },
+        "key": { "type": "string", "pattern": "^mfid:v1:adapter-target:[a-f0-9]{24}$" },
+        "parentKey": { "$ref": "#/$defs/containerKey" }
+      },
+      "required": [
+        "kind",
+        "organizationId",
+        "applicationId",
+        "containerName",
+        "adapter",
+        "bundler",
+        "target",
+        "parentKey"
+      ]
+    },
+    {
+      "properties": {
+        "kind": { "const": "build-lineage" },
+        "key": { "type": "string", "pattern": "^mfid:v1:build-lineage:[a-f0-9]{24}$" },
+        "parentKey": { "$ref": "#/$defs/adapterTargetKey" }
+      },
+      "required": [
+        "kind",
+        "organizationId",
+        "applicationId",
+        "adapterTargetKey",
+        "lane",
+        "target",
+        "environment",
+        "parentKey"
+      ]
+    },
+    {
+      "properties": {
+        "kind": { "const": "build" },
+        "key": { "type": "string", "pattern": "^mfid:v1:build:[a-f0-9]{24}$" },
+        "parentKey": { "$ref": "#/$defs/buildLineageKey" }
+      },
+      "required": ["kind", "buildLineageKey", "buildId", "occurrenceId", "parentKey"]
+    },
+    {
+      "properties": {
+        "kind": { "const": "artifact" },
+        "key": { "type": "string", "pattern": "^mfid:v1:artifact:[a-f0-9]{24}$" },
+        "parentKey": { "$ref": "#/$defs/buildKey" }
+      },
+      "required": ["kind", "buildKey", "artifactKind", "digest", "parentKey"]
+    },
+    {
+      "properties": {
+        "kind": { "const": "environment" },
+        "key": { "type": "string", "pattern": "^mfid:v1:environment:[a-f0-9]{24}$" },
+        "parentKey": { "$ref": "#/$defs/organizationKey" }
+      },
+      "required": ["kind", "organizationId", "environment", "parentKey"]
+    },
+    {
+      "properties": {
+        "kind": { "const": "deployment" },
+        "key": { "type": "string", "pattern": "^mfid:v1:deployment:[a-f0-9]{24}$" },
+        "parentKey": { "$ref": "#/$defs/environmentKey" }
+      },
+      "required": [
+        "kind",
+        "environmentKey",
+        "deploymentId",
+        "artifactSetDigest",
+        "artifactKeys",
+        "occurrenceId",
+        "parentKey"
+      ]
+    },
+    {
+      "properties": {
+        "kind": { "const": "runtime-realm" },
+        "key": { "type": "string", "pattern": "^mfid:v1:runtime-realm:[a-f0-9]{24}$" },
+        "parentKey": { "$ref": "#/$defs/deploymentKey" }
+      },
+      "required": ["kind", "deploymentKey", "realm", "realmId", "parentKey"]
+    },
+    {
+      "properties": {
+        "kind": { "const": "runtime-instance" },
+        "key": { "type": "string", "pattern": "^mfid:v1:runtime-instance:[a-f0-9]{24}$" },
+        "parentKey": { "$ref": "#/$defs/realmKey" }
+      },
+      "required": [
+        "kind",
+        "realmKey",
+        "runtimeInstanceId",
+        "runtimePackage",
+        "runtimeVersion",
+        "occurrenceId",
+        "parentKey"
+      ]
+    }
+  ],
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "organization" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["applicationId"] },
+            { "required": ["containerName"] },
+            { "required": ["adapterTargetKey"] },
+            { "required": ["adapter"] },
+            { "required": ["bundler"] },
+            { "required": ["bundlerVersion"] },
+            { "required": ["target"] },
+            { "required": ["mode"] },
+            { "required": ["buildEnvironment"] },
+            { "required": ["lane"] },
+            { "required": ["environment"] },
+            { "required": ["buildLineageKey"] },
+            { "required": ["buildId"] },
+            { "required": ["buildKey"] },
+            { "required": ["artifactKind"] },
+            { "required": ["digest"] },
+            { "required": ["artifactSetDigest"] },
+            { "required": ["environmentKey"] },
+            { "required": ["deploymentId"] },
+            { "required": ["artifactKeys"] },
+            { "required": ["deploymentKey"] },
+            { "required": ["realm"] },
+            { "required": ["realmId"] },
+            { "required": ["realmKey"] },
+            { "required": ["runtimeInstanceId"] },
+            { "required": ["runtimePackage"] },
+            { "required": ["runtimeVersion"] },
+            { "required": ["occurrenceId"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "application" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["containerName"] },
+            { "required": ["adapterTargetKey"] },
+            { "required": ["adapter"] },
+            { "required": ["bundler"] },
+            { "required": ["bundlerVersion"] },
+            { "required": ["target"] },
+            { "required": ["mode"] },
+            { "required": ["buildEnvironment"] },
+            { "required": ["lane"] },
+            { "required": ["environment"] },
+            { "required": ["buildLineageKey"] },
+            { "required": ["buildId"] },
+            { "required": ["buildKey"] },
+            { "required": ["artifactKind"] },
+            { "required": ["digest"] },
+            { "required": ["artifactSetDigest"] },
+            { "required": ["environmentKey"] },
+            { "required": ["deploymentId"] },
+            { "required": ["artifactKeys"] },
+            { "required": ["deploymentKey"] },
+            { "required": ["realm"] },
+            { "required": ["realmId"] },
+            { "required": ["realmKey"] },
+            { "required": ["runtimeInstanceId"] },
+            { "required": ["runtimePackage"] },
+            { "required": ["runtimeVersion"] },
+            { "required": ["occurrenceId"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "container" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["adapter"] },
+            { "required": ["adapterTargetKey"] },
+            { "required": ["bundler"] },
+            { "required": ["bundlerVersion"] },
+            { "required": ["target"] },
+            { "required": ["mode"] },
+            { "required": ["buildEnvironment"] },
+            { "required": ["lane"] },
+            { "required": ["environment"] },
+            { "required": ["buildLineageKey"] },
+            { "required": ["buildId"] },
+            { "required": ["buildKey"] },
+            { "required": ["artifactKind"] },
+            { "required": ["digest"] },
+            { "required": ["environmentKey"] },
+            { "required": ["deploymentKey"] },
+            { "required": ["realm"] },
+            { "required": ["realmKey"] },
+            { "required": ["runtimeInstanceId"] },
+            { "required": ["runtimePackage"] },
+            { "required": ["runtimeVersion"] },
+            { "required": ["occurrenceId"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "adapter-target" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["lane"] },
+            { "required": ["adapterTargetKey"] },
+            { "required": ["environment"] },
+            { "required": ["buildLineageKey"] },
+            { "required": ["buildId"] },
+            { "required": ["buildKey"] },
+            { "required": ["artifactKind"] },
+            { "required": ["digest"] },
+            { "required": ["artifactSetDigest"] },
+            { "required": ["environmentKey"] },
+            { "required": ["deploymentKey"] },
+            { "required": ["realm"] },
+            { "required": ["realmKey"] },
+            { "required": ["runtimeInstanceId"] },
+            { "required": ["runtimePackage"] },
+            { "required": ["runtimeVersion"] },
+            { "required": ["occurrenceId"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "build-lineage" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["containerName"] },
+            { "required": ["adapter"] },
+            { "required": ["bundler"] },
+            { "required": ["bundlerVersion"] },
+            { "required": ["mode"] },
+            { "required": ["buildEnvironment"] },
+            { "required": ["buildLineageKey"] },
+            { "required": ["buildId"] },
+            { "required": ["buildKey"] },
+            { "required": ["artifactKind"] },
+            { "required": ["digest"] },
+            { "required": ["artifactSetDigest"] },
+            { "required": ["environmentKey"] },
+            { "required": ["deploymentKey"] },
+            { "required": ["realm"] },
+            { "required": ["realmKey"] },
+            { "required": ["runtimeInstanceId"] },
+            { "required": ["runtimePackage"] },
+            { "required": ["runtimeVersion"] },
+            { "required": ["occurrenceId"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "build" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["organizationId"] },
+            { "required": ["adapterTargetKey"] },
+            { "required": ["applicationId"] },
+            { "required": ["containerName"] },
+            { "required": ["adapter"] },
+            { "required": ["bundler"] },
+            { "required": ["bundlerVersion"] },
+            { "required": ["target"] },
+            { "required": ["mode"] },
+            { "required": ["buildEnvironment"] },
+            { "required": ["target"] },
+            { "required": ["lane"] },
+            { "required": ["environment"] },
+            { "required": ["artifactKind"] },
+            { "required": ["digest"] },
+            { "required": ["artifactSetDigest"] },
+            { "required": ["environmentKey"] },
+            { "required": ["deploymentKey"] },
+            { "required": ["realm"] },
+            { "required": ["realmKey"] },
+            { "required": ["runtimeInstanceId"] },
+            { "required": ["runtimePackage"] },
+            { "required": ["runtimeVersion"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "artifact" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["organizationId"] },
+            { "required": ["adapterTargetKey"] },
+            { "required": ["applicationId"] },
+            { "required": ["containerName"] },
+            { "required": ["adapter"] },
+            { "required": ["bundler"] },
+            { "required": ["bundlerVersion"] },
+            { "required": ["mode"] },
+            { "required": ["buildEnvironment"] },
+            { "required": ["target"] },
+            { "required": ["lane"] },
+            { "required": ["environment"] },
+            { "required": ["buildLineageKey"] },
+            { "required": ["buildId"] },
+            { "required": ["environmentKey"] },
+            { "required": ["deploymentKey"] },
+            { "required": ["realm"] },
+            { "required": ["realmKey"] },
+            { "required": ["runtimeInstanceId"] },
+            { "required": ["runtimePackage"] },
+            { "required": ["runtimeVersion"] },
+            { "required": ["occurrenceId"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "environment" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["applicationId"] },
+            { "required": ["adapterTargetKey"] },
+            { "required": ["containerName"] },
+            { "required": ["adapter"] },
+            { "required": ["bundler"] },
+            { "required": ["bundlerVersion"] },
+            { "required": ["target"] },
+            { "required": ["mode"] },
+            { "required": ["buildEnvironment"] },
+            { "required": ["target"] },
+            { "required": ["lane"] },
+            { "required": ["buildLineageKey"] },
+            { "required": ["buildId"] },
+            { "required": ["buildKey"] },
+            { "required": ["artifactKind"] },
+            { "required": ["digest"] },
+            { "required": ["artifactSetDigest"] },
+            { "required": ["deploymentKey"] },
+            { "required": ["realm"] },
+            { "required": ["realmKey"] },
+            { "required": ["runtimeInstanceId"] },
+            { "required": ["runtimePackage"] },
+            { "required": ["runtimeVersion"] },
+            { "required": ["occurrenceId"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "deployment" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["organizationId"] },
+            { "required": ["adapterTargetKey"] },
+            { "required": ["applicationId"] },
+            { "required": ["containerName"] },
+            { "required": ["adapter"] },
+            { "required": ["bundler"] },
+            { "required": ["bundlerVersion"] },
+            { "required": ["target"] },
+            { "required": ["mode"] },
+            { "required": ["buildEnvironment"] },
+            { "required": ["target"] },
+            { "required": ["lane"] },
+            { "required": ["environment"] },
+            { "required": ["buildLineageKey"] },
+            { "required": ["buildId"] },
+            { "required": ["buildKey"] },
+            { "required": ["artifactKind"] },
+            { "required": ["digest"] },
+            { "required": ["realm"] },
+            { "required": ["realmKey"] },
+            { "required": ["runtimeInstanceId"] },
+            { "required": ["runtimePackage"] },
+            { "required": ["runtimeVersion"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "runtime-realm" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["organizationId"] },
+            { "required": ["adapterTargetKey"] },
+            { "required": ["applicationId"] },
+            { "required": ["containerName"] },
+            { "required": ["adapter"] },
+            { "required": ["bundler"] },
+            { "required": ["bundlerVersion"] },
+            { "required": ["target"] },
+            { "required": ["mode"] },
+            { "required": ["buildEnvironment"] },
+            { "required": ["target"] },
+            { "required": ["lane"] },
+            { "required": ["environment"] },
+            { "required": ["buildLineageKey"] },
+            { "required": ["buildId"] },
+            { "required": ["buildKey"] },
+            { "required": ["artifactKind"] },
+            { "required": ["digest"] },
+            { "required": ["artifactSetDigest"] },
+            { "required": ["environmentKey"] },
+            { "required": ["runtimeInstanceId"] },
+            { "required": ["runtimePackage"] },
+            { "required": ["runtimeVersion"] },
+            { "required": ["occurrenceId"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "runtime-instance" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["organizationId"] },
+            { "required": ["adapterTargetKey"] },
+            { "required": ["applicationId"] },
+            { "required": ["containerName"] },
+            { "required": ["adapter"] },
+            { "required": ["bundler"] },
+            { "required": ["target"] },
+            { "required": ["lane"] },
+            { "required": ["environment"] },
+            { "required": ["buildLineageKey"] },
+            { "required": ["buildId"] },
+            { "required": ["buildKey"] },
+            { "required": ["artifactKind"] },
+            { "required": ["digest"] },
+            { "required": ["environmentKey"] },
+            { "required": ["deploymentKey"] },
+            { "required": ["realm"] }
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!\\\\\\\\)(?!.*[A-Za-z][A-Za-z\\d+.-]*://)(?!.*[?&](?:(?:[Tt][Oo][Kk][Ee][Nn])|(?:[Ss][Ii][Gg])|(?:[Ss][Ii][Gg][Nn][Aa][Tt][Uu][Rr][Ee])|(?:[Ee][Xx][Pp][Ii][Rr][Ee][Ss])|(?:[Aa][Uu][Tt][Hh])|(?:[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn])|(?:[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd])|(?:[Ss][Ee][Cc][Rr][Ee][Tt])|(?:[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll])|(?:[Ss][Ee][Ss][Ss][Ii][Oo][Nn])|[Kk][Ee][Yy])(?:=|&|$))(?!\\d{4}-\\d{2}-\\d{2})(?!\\d{10,13}$)(?!(?:[Pp]rocess|[Ss]ession|[Tt]ab|[Pp][Ii][Dd]|[Ss][Ii][Dd])[-_:]).+$"
+    },
+    "safeShortId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!\\\\\\\\)(?!.*[A-Za-z][A-Za-z\\d+.-]*://)(?!.*[?&](?:(?:[Tt][Oo][Kk][Ee][Nn])|(?:[Ss][Ii][Gg])|(?:[Ss][Ii][Gg][Nn][Aa][Tt][Uu][Rr][Ee])|(?:[Ee][Xx][Pp][Ii][Rr][Ee][Ss])|(?:[Aa][Uu][Tt][Hh])|(?:[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn])|(?:[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd])|(?:[Ss][Ee][Cc][Rr][Ee][Tt])|(?:[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll])|(?:[Ss][Ee][Ss][Ss][Ii][Oo][Nn])|[Kk][Ee][Yy])(?:=|&|$))(?!\\d{4}-\\d{2}-\\d{2})(?!\\d{10,13}$)(?!(?:[Pp]rocess|[Ss]ession|[Tt]ab|[Pp][Ii][Dd]|[Ss][Ii][Dd])[-_:]).+$"
+    },
+    "digest": { "type": "string", "pattern": "^(?:sha256:)?[a-f0-9]{64}$" },
+    "organizationKey": { "type": "string", "pattern": "^mfid:v1:organization:[a-f0-9]{24}$" },
+    "applicationKey": { "type": "string", "pattern": "^mfid:v1:application:[a-f0-9]{24}$" },
+    "containerKey": { "type": "string", "pattern": "^mfid:v1:container:[a-f0-9]{24}$" },
+    "adapterTargetKey": { "type": "string", "pattern": "^mfid:v1:adapter-target:[a-f0-9]{24}$" },
+    "buildLineageKey": { "type": "string", "pattern": "^mfid:v1:build-lineage:[a-f0-9]{24}$" },
+    "buildKey": { "type": "string", "pattern": "^mfid:v1:build:[a-f0-9]{24}$" },
+    "artifactKey": { "type": "string", "pattern": "^mfid:v1:artifact:[a-f0-9]{24}$" },
+    "environmentKey": { "type": "string", "pattern": "^mfid:v1:environment:[a-f0-9]{24}$" },
+    "deploymentKey": { "type": "string", "pattern": "^mfid:v1:deployment:[a-f0-9]{24}$" },
+    "realmKey": { "type": "string", "pattern": "^mfid:v1:runtime-realm:[a-f0-9]{24}$" }
+  },
+  "unevaluatedProperties": false
+}
