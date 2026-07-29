@@ -93,6 +93,7 @@ describe("evidence protocol helpers", () => {
         "cookie=session=abc123",
         "file:///var/lib/app.js",
         "Error at /Users/alice/app/index.js:12:3, next",
+        "at f (/Users/alice/private.ts:1)",
       ],
     });
     expect(redacted).toMatchObject({
@@ -109,6 +110,7 @@ describe("evidence protocol helpers", () => {
         "cookie=[REDACTED]",
         "[PATH]",
         "Error at [PATH], next",
+        "at f ([PATH])",
       ],
     });
     expect(typeof (redacted as { url: string }).url).toBe("string");
@@ -180,6 +182,7 @@ describe("evidence protocol helpers", () => {
     expect(() => stableEvidenceId("deep", deep as never, { maxDepth: 8 })).toThrow(/maxDepth/);
     expect(() => stableEvidenceId("large", "x".repeat(100), { maxBytes: 32 })).toThrow(/maxBytes/);
     expect(() => stableEvidenceId("escaped", "\\".repeat(600_000))).toThrow(/maxBytes/);
+    expect(() => stableEvidenceId("expanded", "basic x,".repeat(120_000))).toThrow(/maxBytes/);
     expect(() =>
       stableEvidenceId(
         "wide",
@@ -192,6 +195,22 @@ describe("evidence protocol helpers", () => {
     );
     expect(() => stableEvidenceId("raised", "x", { maxNodes: 50_001 })).toThrow(/maxNodes/);
     expect(() => stableEvidenceId("raised", "x", { maxWidth: 10_001 })).toThrow(/maxWidth/);
+  });
+
+  it("stops proxy object enumeration at the width ceiling", () => {
+    const describedKeys = new Set<PropertyKey>();
+    const target = Object.fromEntries(
+      Array.from({ length: 5_000 }, (_, index) => [`key${index}`, "x"]),
+    );
+    const value = new Proxy(target, {
+      getOwnPropertyDescriptor(object, key) {
+        describedKeys.add(key);
+        return Object.getOwnPropertyDescriptor(object, key);
+      },
+    });
+
+    expect(() => stableEvidenceId("proxy", value as never)).toThrow(/maxWidth/);
+    expect(describedKeys.size).toBeLessThanOrEqual(1_001);
   });
 
   it("gives equivalent object keys the same stable ID", () => {

@@ -60,7 +60,8 @@ from the v2 schema, including `identity.sessionId`, keep their names while
 values are redacted. URL
 schemes and paths are parsed before redaction: URL credentials and sensitive
 query parameters are removed while the URL remains a URL; POSIX, Windows, and
-UNC filesystem paths become `[PATH]`. Other strings are left unchanged.
+UNC filesystem paths become `[PATH]`. Stack paths are also redacted after
+opening punctuation such as `(`, `[` or `{`. Other strings are left unchanged.
 
 | Schema export                                                 | Produced by                        | Contract kind           |
 | ------------------------------------------------------------- | ---------------------------------- | ----------------------- |

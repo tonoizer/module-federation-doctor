@@ -225,20 +225,15 @@ export function assertEvidenceValue(
     } else if (isRecord(current)) {
       if (seen.has(current)) throw new EvidenceResourceError("Evidence value contains a cycle.");
       seen.add(current);
-      let width = 0;
-      for (const key in current) {
-        if (Object.prototype.hasOwnProperty.call(current, key)) width += 1;
-      }
-      if (width > limits.maxWidth) {
-        throw new EvidenceResourceError(`Evidence object exceeds maxWidth (${limits.maxWidth}).`);
-      }
-      bytes += 2 + Math.max(0, width - 1);
       const entries: Array<[string, unknown]> = [];
       for (const key in current) {
-        if (Object.prototype.hasOwnProperty.call(current, key)) {
-          entries.push([key, current[key]]);
+        if (!Object.prototype.hasOwnProperty.call(current, key)) continue;
+        entries.push([key, current[key]]);
+        if (entries.length > limits.maxWidth) {
+          throw new EvidenceResourceError(`Evidence object exceeds maxWidth (${limits.maxWidth}).`);
         }
       }
+      bytes += 2 + Math.max(0, entries.length - 1);
       for (let index = entries.length - 1; index >= 0; index -= 1) {
         const [key, child] = entries[index] ?? ["", undefined];
         bytes += Buffer.byteLength(JSON.stringify(key)) + 1;
@@ -359,7 +354,7 @@ function redactString(value: string): string {
   return redactSecretAssignment(value)
     .replace(/file:\/\/[^\s"'<>]+/gi, "[PATH]")
     .replace(
-      /(?:[A-Za-z]:[\\/](?!\/)|\\\\[^\\/]+[\\/])[^\s"'<>;,)\]}]*|(^|[\s"'=])\/(?!\/)[^\s"'<>;,)\]}]*/g,
+      /(?:[A-Za-z]:[\\/](?!\/)|\\\\[^\\/]+[\\/])[^\s"'<>;,)\]}]*|(^|[\s"'=([{])\/(?!\/)[^\s"'<>;,)\]}]*/g,
       (_match, boundary: string | undefined) => `${boundary ?? ""}[PATH]`,
     );
 }
@@ -427,7 +422,9 @@ export function redactEvidenceValue(value: EvidenceValue, options?: EvidenceLimi
     if (Array.isArray(item.output)) item.output.push(output);
     else if (item.key !== undefined) item.output[item.key] = output;
   }
-  return (root[0] ?? null) as EvidenceValue;
+  const redacted = (root[0] ?? null) as EvidenceValue;
+  assertEvidenceValue(redacted, options);
+  return redacted;
 }
 
 function canonicalizeValue(value: EvidenceValue): EvidenceValue {
