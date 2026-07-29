@@ -133,6 +133,172 @@ describe("runtime capture contract", () => {
     }
   });
 
+  it("keeps capability kind, state, and source claims in runtime/schema parity", async () => {
+    const allowedSources = {
+      reports: ["observability"],
+      "shared-lifecycle": ["observability"],
+      snapshot: ["snapshot"],
+      instance: ["instance"],
+      "network-error": ["network", "error"],
+      devtools: ["devtools"],
+    } as const;
+    const states = ["exact", "partial", "unavailable", "not-applicable", "unknown"] as const;
+    const sources = [
+      "observability",
+      "devtools",
+      "snapshot",
+      "instance",
+      "network",
+      "error",
+    ] as const;
+
+    for (const [capabilityKind, permitted] of Object.entries(allowedSources)) {
+      for (const state of states) {
+        for (const source of sources) {
+          const value = envelope();
+          value.capabilities.observations[0] = {
+            ...value.capabilities.observations[0]!,
+            capabilityKind:
+              capabilityKind as (typeof value.capabilities.observations)[number]["capabilityKind"],
+            state,
+            source,
+            priority: (
+              {
+                observability: 1,
+                devtools: 2,
+                snapshot: 3,
+                instance: 3,
+                network: 4,
+                error: 4,
+              } as const
+            )[source],
+          };
+          const allowed = (permitted as readonly string[]).includes(source);
+          if (allowed) {
+            expect(
+              () => validateRuntimeCaptureEnvelope(value),
+              `${capabilityKind}/${state}/${source}`,
+            ).not.toThrow();
+            await expect(
+              validatePayload("runtime-capture.schema.json", value, "capability parity"),
+            ).resolves.toBeUndefined();
+          } else {
+            expect(
+              () => validateRuntimeCaptureEnvelope(value),
+              `${capabilityKind}/${state}/${source}`,
+            ).toThrow("is invalid");
+            await expect(
+              validatePayload("runtime-capture.schema.json", value, "capability parity"),
+            ).rejects.toThrow("Schema validation failed");
+          }
+        }
+      }
+    }
+  });
+
+  it("keeps 4096-character envelope strings in runtime/schema parity", async () => {
+    const boundary = "x".repeat(4096);
+    const over = "x".repeat(4097);
+    const fields: Array<[string, (value: RuntimeCaptureEnvelope, text: string) => void, boolean]> =
+      [
+        [
+          "captureId",
+          (value, text) => {
+            value.captureId = text;
+            value.reports[0]!.identity.captureId = text;
+            value.reports[0]!.id = runtimeCaptureRecordId(
+              "observability",
+              value.reports[0]!.identity,
+              value.reports[0]!.value as never,
+            );
+          },
+          true,
+        ],
+        ["collector name", (value, text) => (value.collector.name = text), true],
+        ["collector version", (value, text) => (value.collector.version = text), true],
+        [
+          "truncation reason",
+          (value, text) => (value.truncation = [{ collection: "total", dropped: 1, reason: text }]),
+          true,
+        ],
+        [
+          "relation id",
+          (value, text) =>
+            (value.relations = [
+              {
+                id: text,
+                from: value.reports[0]!.id,
+                to: value.reports[0]!.id,
+                relation: "exact-id",
+                reason: "linked",
+              },
+            ]),
+          true,
+        ],
+        [
+          "relation from",
+          (value, text) =>
+            (value.relations = [
+              {
+                id: "relation",
+                from: text,
+                to: value.reports[0]!.id,
+                relation: "exact-id",
+                reason: "linked",
+              },
+            ]),
+          false,
+        ],
+        [
+          "relation to",
+          (value, text) =>
+            (value.relations = [
+              {
+                id: "relation",
+                from: value.reports[0]!.id,
+                to: text,
+                relation: "exact-id",
+                reason: "linked",
+              },
+            ]),
+          false,
+        ],
+        [
+          "relation reason",
+          (value, text) =>
+            (value.relations = [
+              {
+                id: "relation",
+                from: value.reports[0]!.id,
+                to: value.reports[0]!.id,
+                relation: "exact-id",
+                reason: text,
+              },
+            ]),
+          true,
+        ],
+      ];
+    for (const [label, mutate, acceptsBoundary] of fields) {
+      const accepted = envelope();
+      mutate(accepted, boundary);
+      if (acceptsBoundary) {
+        expect(() => validateRuntimeCaptureEnvelope(accepted), `${label} 4096`).not.toThrow();
+        await expect(
+          validatePayload("runtime-capture.schema.json", accepted, `${label} 4096`),
+        ).resolves.toBeUndefined();
+      }
+
+      const rejected = envelope();
+      mutate(rejected, over);
+      expect(() => validateRuntimeCaptureEnvelope(rejected), `${label} 4097`).toThrow(
+        "maxStringLength",
+      );
+      await expect(
+        validatePayload("runtime-capture.schema.json", rejected, `${label} 4097`),
+      ).rejects.toThrow("Schema validation failed");
+    }
+  });
+
   it("keeps schema collections discriminated and provenance required", async () => {
     const wrongCollection = envelope();
     wrongCollection.reports = [

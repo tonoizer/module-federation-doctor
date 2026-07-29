@@ -28,7 +28,7 @@
     "transport": {
       "enum": ["file", "browser-debug", "devtools-export", "node-file", "app-export"]
     },
-    "captureId": { "type": "string", "minLength": 1 },
+    "captureId": { "$ref": "#/$defs/string" },
     "capabilities": { "$ref": "#/$defs/capabilities" },
     "limits": { "$ref": "#/$defs/limits" },
     "truncation": { "type": "array", "items": { "$ref": "#/$defs/truncation" } },
@@ -47,8 +47,8 @@
       "type": "object",
       "required": ["name", "version"],
       "properties": {
-        "name": { "type": "string", "minLength": 1 },
-        "version": { "type": "string", "minLength": 1 }
+        "name": { "$ref": "#/$defs/string" },
+        "version": { "$ref": "#/$defs/string" }
       },
       "additionalProperties": false
     },
@@ -100,6 +100,26 @@
         {
           "if": { "properties": { "source": { "enum": ["network", "error"] } } },
           "then": { "properties": { "priority": { "const": 4 } } }
+        },
+        {
+          "if": { "properties": { "capabilityKind": { "enum": ["reports", "shared-lifecycle"] } } },
+          "then": { "properties": { "source": { "const": "observability" } } }
+        },
+        {
+          "if": { "properties": { "capabilityKind": { "const": "snapshot" } } },
+          "then": { "properties": { "source": { "const": "snapshot" } } }
+        },
+        {
+          "if": { "properties": { "capabilityKind": { "const": "instance" } } },
+          "then": { "properties": { "source": { "const": "instance" } } }
+        },
+        {
+          "if": { "properties": { "capabilityKind": { "const": "network-error" } } },
+          "then": { "properties": { "source": { "enum": ["network", "error"] } } }
+        },
+        {
+          "if": { "properties": { "capabilityKind": { "const": "devtools" } } },
+          "then": { "properties": { "source": { "const": "devtools" } } }
         }
       ],
       "additionalProperties": false
@@ -429,7 +449,7 @@
         "dropped": { "type": "integer", "minimum": 1 },
         "firstSequence": { "type": "integer", "minimum": 0 },
         "lastSequence": { "type": "integer", "minimum": 0 },
-        "reason": { "type": "string", "minLength": 1 }
+        "reason": { "$ref": "#/$defs/string" }
       },
       "additionalProperties": false
     },
@@ -437,9 +457,9 @@
       "type": "object",
       "required": ["id", "from", "to", "relation", "reason"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "from": { "type": "string", "minLength": 1 },
-        "to": { "type": "string", "minLength": 1 },
+        "id": { "$ref": "#/$defs/string" },
+        "from": { "$ref": "#/$defs/string" },
+        "to": { "$ref": "#/$defs/string" },
         "relation": {
           "enum": [
             "exact-id",
@@ -449,7 +469,7 @@
             "unknown"
           ]
         },
-        "reason": { "type": "string", "minLength": 1 }
+        "reason": { "$ref": "#/$defs/string" }
       },
       "additionalProperties": false
     }

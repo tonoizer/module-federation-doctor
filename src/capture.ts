@@ -294,6 +294,17 @@ const CAPABILITY_KINDS = new Set<RuntimeCaptureCapabilityKind>([
   "network-error",
   "devtools",
 ]);
+/** Sources that can make each capability claim. Keep this in lockstep with the shipped schema. */
+const CAPABILITY_SOURCES: Readonly<
+  Record<RuntimeCaptureCapabilityKind, readonly RuntimeCaptureSource[]>
+> = Object.freeze({
+  reports: ["observability"],
+  "shared-lifecycle": ["observability"],
+  snapshot: ["snapshot"],
+  instance: ["instance"],
+  "network-error": ["network", "error"],
+  devtools: ["devtools"],
+});
 const VALUE_KEYS: Record<RuntimeCaptureSource, ReadonlySet<string>> = {
   observability: new Set([
     "traceId",
@@ -803,6 +814,9 @@ export function validateRuntimeCaptureEnvelope(
       typeof observation.state !== "string" ||
       !CAPABILITY_STATES.has(observation.state as RuntimeCaptureCapability) ||
       typeof observation.source !== "string" ||
+      !CAPABILITY_SOURCES[observation.capabilityKind as RuntimeCaptureCapabilityKind]?.includes(
+        observation.source as RuntimeCaptureSource,
+      ) ||
       typeof observation.scope !== "string" ||
       typeof observation.sourceSchemaVersion !== "string" ||
       observation.sourceSchemaVersion.length === 0 ||
