@@ -22,11 +22,11 @@ function sanitizeReport(value, label) {
   const safeStartedAt = 1_700_000_000_000;
   if (typeof source.startedAt === "number") {
     source.startedAt = safeStartedAt;
-    source.updatedAt = safeStartedAt + 1;
+    source.updatedAt = safeStartedAt;
     if (Array.isArray(source.events)) {
-      source.events = source.events.map((event, index) => ({
+      source.events = source.events.map((event) => ({
         ...event,
-        timestamp: safeStartedAt + Math.min(index, 1),
+        timestamp: safeStartedAt,
       }));
     }
   }
@@ -77,7 +77,7 @@ function sanitizeReport(value, label) {
       } else if (childKey === "startedAt" && typeof child === "number") {
         result[childKey] = safeStartedAt;
       } else if (childKey === "updatedAt" && typeof child === "number") {
-        result[childKey] = safeStartedAt + 1;
+        result[childKey] = safeStartedAt;
       } else if (childKey === "timestamp" && typeof child === "number") {
         result[childKey] = child;
       } else if (childKey === "errorStack" && typeof child === "string") {

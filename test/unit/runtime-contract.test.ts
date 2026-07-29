@@ -22,6 +22,7 @@ function assertReportRelationships(report: Record<string, unknown>): void {
   const startedAt = report.startedAt as number;
   const updatedAt = report.updatedAt as number;
 
+  expect(report.duration).toBe(updatedAt - startedAt);
   expect(events.length).toBe(summary.eventCount);
   expect(events.every((event) => event.traceId === report.traceId)).toBe(true);
   expect(events.every((event) => (event.timestamp as number) >= startedAt)).toBe(true);
@@ -31,7 +32,9 @@ function assertReportRelationships(report: Record<string, unknown>): void {
     const phaseEvents = events.filter((event) => event.phase === phase);
     expect(phaseEvents.length).toBeGreaterThan(0);
     expect(phaseSummary.status).toBe(phaseEvents.at(-1)?.status);
+    expect(phaseSummary.duration).toBe(0);
   }
+  for (const event of events) expect(event.duration ?? 0).toBe(0);
 }
 
 describe("runtime Observability contract fixtures", () => {
@@ -159,6 +162,7 @@ describe("runtime Observability contract fixtures", () => {
     expect(envelope.stored).toBe(false);
     expect((envelope.config as Record<string, unknown>).level).toBe("verbose");
     expect(report.duration).toBe(0);
+    expect(report.duration).toBe((report.updatedAt as number) - (report.startedAt as number));
     expect("runtimeVersion" in report).toBe(false);
     expect("summary" in report).toBe(false);
     expect("moduleInfo" in report).toBe(false);

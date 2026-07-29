@@ -3,10 +3,9 @@
 These fixtures are sanitized replays from the pinned upstream harness. They
 are not invented reports.
 
-Replay uses Node 20.x and pnpm 10.28.0. The sanitizer fixes the clock at
-`1700000000000`, gives events deterministic order timestamps, sets durations
-to `0`, and replaces every stack frame with a stable marker so fresh captures
-produce the same bytes.
+Replay uses Node 20.x and pnpm 10.28.0. The sanitizer fixes all report and
+event timestamps at `1700000000000`, sets durations to `0`, and replaces every
+stack frame with a stable marker so fresh captures produce the same bytes.
 
 - `current-2.5.3.json` is the serialized result of upstream
   `records a successful loadRemote report when enabled`.

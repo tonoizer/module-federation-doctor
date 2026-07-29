@@ -11,7 +11,7 @@
   "expose": "./Button",
   "sanitizedUrl": "https://cdn.example.com/remote/mf-manifest.json",
   "startedAt": 1700000000000,
-  "updatedAt": 1700000000001,
+  "updatedAt": 1700000000000,
   "duration": 0,
   "events": [
     {
@@ -27,7 +27,7 @@
     },
     {
       "traceId": "mf-capture-runtime-loaded-success",
-      "timestamp": 1700000000001,
+      "timestamp": 1700000000000,
       "phase": "loadRemote",
       "status": "success",
       "requestId": "remote/Button",

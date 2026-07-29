@@ -11,7 +11,7 @@
   "expose": "./Button",
   "sanitizedUrl": "https://cdn.example.com/remote/mf-manifest.json",
   "startedAt": 1700000000000,
-  "updatedAt": 1700000000001,
+  "updatedAt": 1700000000000,
   "duration": 0,
   "failedPhase": "loadRemote",
   "errorCode": "RUNTIME-007",
@@ -40,7 +40,7 @@
     },
     {
       "traceId": "mf-capture-snapshot-failure",
-      "timestamp": 1700000000001,
+      "timestamp": 1700000000000,
       "phase": "loadRemote",
       "status": "error",
       "requestId": "remote/Button",

@@ -24,7 +24,7 @@
       "traceId": "mf-capture-trace-unknown-version",
       "status": "pending",
       "startedAt": 1700000000000,
-      "updatedAt": 1700000000001,
+      "updatedAt": 1700000000000,
       "duration": 0,
       "events": [],
       "__scope": "runtime_host"

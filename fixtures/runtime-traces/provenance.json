@@ -44,10 +44,11 @@
     ]
   },
   "replay": {
-    "checkout": "git clone --filter=blob:none https://github.com/module-federation/core.git && git checkout --detach d92724217184f5ab7d7171b2cbd93c36f5808969",
+    "checkout": "git clone --filter=blob:none https://github.com/module-federation/core.git <clone-dir> && git -C <clone-dir> checkout --detach d92724217184f5ab7d7171b2cbd93c36f5808969",
     "install": "pnpm install --frozen-lockfile --filter @module-federation/observability-plugin... --filter @module-federation/devtools...",
     "buildDependencies": "pnpm --filter @module-federation/sdk --filter @module-federation/runtime build",
     "runtime": "node 20.x; pnpm 10.28.0",
+    "rawDigestPolicy": "rawSha256 is capture-specific metadata and is intentionally excluded from replay comparison; sanitizedSha256 is authoritative and reproducible.",
     "capture": "cp <repo>/fixtures/runtime-traces/upstream-capture.spec.ts packages/observability-plugin/__tests__/doctor-capture.spec.ts && DOCTOR_CAPTURE_DIR=<raw-dir> pnpm exec rstest -c packages/observability-plugin/rstest.config.ts --include packages/observability-plugin/__tests__/doctor-capture.spec.ts && node <repo>/scripts/capture-runtime-devtools-partial.mjs <pinned-core-dir> <raw-dir>",
     "sanitize": "node scripts/capture-runtime-observability-fixtures.mjs <raw-dir> fixtures/runtime-traces"
   },
@@ -59,21 +60,21 @@
       "upstreamReference": "observability.spec.ts :: records a successful loadRemote report when enabled",
       "rawFile": "upstream-component-success.json",
       "rawSha256": "edf81de5f382c669c53959c11369680ca0d1ff3291cdbb94a9db7a574413fa50",
-      "sanitizedSha256": "e69d29e9a54092446064907b2d6dbd613f905152765773ba2c00d5558f439290"
+      "sanitizedSha256": "b4a953fa8c60c85e2785a0bdf86d12502d6ad88361534d3d0c9f7ac5bb3b5d0a"
     },
     {
       "fixture": "snapshot-failure-2.5.3.json",
       "upstreamFile": "packages/observability-plugin/__tests__/observability.spec.ts",
       "captureTest": "Doctor fixture capture > serializes upstream snapshot failure",
-      "upstreamReference": "observability.spec.ts :: does not return hook args from the default browser entry",
+      "upstreamReference": "observability.spec.ts :: attaches clipped global moduleInfo only for snapshot dependent failures",
       "rawFile": "upstream-snapshot-failure.json",
       "rawSha256": "0bad0188949b2a939552e38d517d2e6ad0f692593200e81e41802308e3ba4b21",
-      "sanitizedSha256": "625fb2c855e029e6b1c114c5c75173d54531cbee6d1972df1fd3ba52d1390b54"
+      "sanitizedSha256": "e135a1a8e83b194976fe7613c0ee96590b0112f32bc5ee4624a26d8191468524"
     },
     {
       "fixture": "partial-devtools.json",
       "rawSha256": "cac399d9384c4cc76cd9695d5a75ab88eac4de9156d281d58d40e1973fc055ad",
-      "sanitizedSha256": "bafb2d6599c7b8485fb0fb578f060c6711ddeba58df22144a84d40e296a71b3f",
+      "sanitizedSha256": "4006983943b5eaf05b872a7bb247df128347d7e6e68a07a9c03cbe3578a97291",
       "upstreamFile": "packages/chrome-devtools/__tests__/observability-devtools.spec.ts",
       "captureTest": "Doctor DevTools fixture capture > serializes the pinned readObservabilitySnapshot partial report",
       "upstreamReference": "chrome-devtools/__tests__/observability-devtools.spec.ts :: keeps reports without runtime version as basic observability regardless of scope",
@@ -86,7 +87,7 @@
       ["traceId", "stable fixture id by case"],
       [
         "startedAt/updatedAt/events[].timestamp",
-        "fixed epoch 1700000000000 with deterministic event ordering"
+        "fixed epoch 1700000000000 for startedAt, updatedAt, and event timestamps"
       ],
       ["http://localhost:3001", "https://cdn.example.com/remote"],
       ["?token=secret#hash", "removed from locator values"],
