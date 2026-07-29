@@ -12,6 +12,8 @@ export interface RuleInventoryEntry extends EvidenceAwareRuleMeta {
   group: RuleMigrationGroup;
   status: RuleMigrationStatus;
   migrationNote: string;
+  /** Fact paths read by the legacy implementation; prerequisites must cover every path. */
+  evidenceReads: readonly string[];
 }
 
 const ids = [
@@ -804,14 +806,152 @@ const plans: Record<string, RulePlan> = {
   ),
 };
 
-function requirementFor(spec: RulePlan): EvidenceRequirement {
+const evidenceReadsByRule: Record<string, readonly string[]> = {
+  "artifact/dts-disabled": ["project.scope", "moduleFederation"],
+  "artifact/expose-missing": ["project.scope", "moduleFederation", "artifacts.manifest"],
+  "artifact/manifest-assets-disabled": ["project.scope", "moduleFederation"],
+  "artifact/manifest-disabled": ["project.scope", "moduleFederation"],
+  "artifact/manifest-expose-assets-empty": [
+    "project.scope",
+    "moduleFederation",
+    "artifacts.manifest",
+  ],
+  "artifact/manifest-invalid": ["project.scope", "artifacts.manifest"],
+  "artifact/manifest-name-mismatch": ["project.scope", "moduleFederation", "artifacts.manifest"],
+  "artifact/manifest-remote-entry-missing": [
+    "project.scope",
+    "artifacts.manifest",
+    "artifacts.emittedAssets",
+    "capabilities.emittedAssets",
+  ],
+  "artifact/manifest-shared-version-mismatch": [
+    "project.scope",
+    "artifacts.manifest",
+    "dependencies.installed",
+  ],
+  "artifact/public-path-non-string-manifest": [
+    "project.scope",
+    "moduleFederation",
+    "bundler.outputPublicPathKind",
+  ],
+  "artifact/public-path-suspicious": ["project.scope", "artifacts.manifest"],
+  "artifact/remote-entry-missing": [
+    "project.scope",
+    "moduleFederation",
+    "artifacts.emittedAssets",
+    "capabilities.emittedAssets",
+  ],
+  "artifact/types-metadata-missing": ["project.scope", "moduleFederation", "artifacts.manifest"],
+  "artifact/types-missing": ["project.scope", "artifacts.manifest", "artifacts.emittedAssets"],
+  "config/dts-output-dir-mismatch": ["project.scope", "moduleFederation"],
+  "config/duplicate-plugin-registration": ["project.scope", "bundler.moduleFederationPluginCount"],
+  "config/eager-tree-shaking-conflict": ["project.scope", "moduleFederation"],
+  "config/expose-key-invalid": ["project.scope", "moduleFederation"],
+  "config/expose-path-missing": ["project.scope", "moduleFederation", "imports.sourceFiles"],
+  "config/external-runtime-conflict": ["project.scope", "moduleFederation"],
+  "config/external-runtime-with-exposes": ["project.scope", "moduleFederation"],
+  "config/filename-invalid": ["project.scope", "moduleFederation"],
+  "config/get-public-path-invalid": ["project.scope", "moduleFederation"],
+  "config/get-public-path-unused": ["project.scope", "moduleFederation"],
+  "config/implementation-suspicious": ["project.scope", "moduleFederation"],
+  "config/library-remote-type-mismatch": ["project.scope", "moduleFederation"],
+  "config/name-required": ["project.scope", "moduleFederation"],
+  "config/nested-producer-dts-extract": ["project.scope", "moduleFederation"],
+  "config/plugin-package-mismatch": ["project.scope", "bundler.name", "dependencies.declared"],
+  "config/remote-alias-prefix-collision": ["project.scope", "moduleFederation"],
+  "config/remote-capability-disabled": ["project.scope", "moduleFederation"],
+  "config/remote-entry-invalid": ["project.scope", "moduleFederation"],
+  "config/remote-http-insecure": ["project.scope", "moduleFederation"],
+  "config/remote-localhost-in-production": ["project.scope", "moduleFederation", "bundler.mode"],
+  "config/remote-manifest-recommended": ["project.scope", "moduleFederation"],
+  "config/remote-type-urls-missing": ["project.scope", "moduleFederation"],
+  "config/runtime-plugin-missing": ["project.scope", "moduleFederation", "imports.sourceFiles"],
+  "config/share-scope-undeclared": ["project.scope", "moduleFederation"],
+  "config/shared-capability-disabled": ["project.scope", "moduleFederation"],
+  "config/shared-externals-conflict": [
+    "project.scope",
+    "moduleFederation",
+    "dependencies.declared.doctor:externals",
+  ],
+  "config/tree-shaking-server-calc-injection": ["project.scope", "moduleFederation"],
+  "doctor/partial-analysis": [
+    "project.scope",
+    "moduleFederation",
+    "capabilities",
+    "imports.unresolvedDynamic",
+  ],
+  "federation/circular-remote-graph": ["project.scope", "federation.graph"],
+  "federation/external-runtime-provider-missing": ["project.scope", "federation.graph"],
+  "federation/ghost-shares": ["project.scope", "federation.graph"],
+  "federation/host-gaps": ["project.scope", "federation.graph"],
+  "federation/missing-provider": ["project.scope", "federation.graph"],
+  "federation/name-conflict": ["project.scope", "federation.graph"],
+  "federation/share-scope-mismatch": ["project.scope", "federation.graph"],
+  "federation/share-strategy-mismatch": ["project.scope", "federation.graph"],
+  "federation/version-conflict": ["project.scope", "federation.graph"],
+  "performance/asset-budget": ["project.scope", "artifacts.manifest", "artifacts.assetSizes"],
+  "performance/version-first-startup": ["project.scope", "moduleFederation"],
+  "performance/vite-bundle-all-css": ["project.scope", "moduleFederation", "bundler.name"],
+  "reliability/async-startup-library-promise": ["project.scope", "moduleFederation"],
+  "reliability/external-runtime-provider-unverified": ["project.scope", "moduleFederation"],
+  "reliability/shared-import-false": ["project.scope", "moduleFederation"],
+  "reliability/snapshot-capability-disabled": ["project.scope", "moduleFederation"],
+  "reliability/tree-shaking-server-calc-contract": ["project.scope", "moduleFederation"],
+  "reliability/version-first-offline-remotes": ["project.scope", "moduleFederation"],
+  "reliability/vite-fixed-parse-timeout": ["project.scope", "moduleFederation", "bundler.name"],
+  "runtime/error-correlated": ["project.scope", "runtime.trace"],
+  "runtime/init-failed": ["project.scope", "runtime.trace"],
+  "runtime/remote-load-failed": ["project.scope", "runtime.trace"],
+  "runtime/remote-unknown": ["project.scope", "runtime.trace"],
+  "runtime/shared-mismatch": ["project.scope", "runtime.trace"],
+  "security/get-public-path-dynamic-code": ["project.scope", "moduleFederation"],
+  "shared/candidate": [
+    "project.scope",
+    "moduleFederation",
+    "imports.packages",
+    "dependencies.declared",
+  ],
+  "shared/deep-import-bypass": [
+    "project.scope",
+    "moduleFederation",
+    "imports.deepImports",
+    "imports.deepImportFiles",
+  ],
+  "shared/eager-without-singleton": ["project.scope", "moduleFederation"],
+  "shared/singleton-mismatch": ["project.scope", "federation.graph"],
+  "shared/singleton-risk": ["project.scope", "moduleFederation"],
+  "shared/unused": [
+    "project.scope",
+    "moduleFederation",
+    "imports.packages",
+    "imports.dynamicPackages",
+    "imports.unresolvedDynamic",
+  ],
+  "shared/version-unsatisfied": ["project.scope", "moduleFederation", "dependencies.installed"],
+};
+
+function selectorFor(path: string, spec: RulePlan): EvidenceRequirement {
+  const layer =
+    path === "runtime.trace" ? "runtime" : path === "federation.graph" ? "declared" : spec.layer;
+  const subjectKind =
+    path === "runtime.trace"
+      ? "runtime-instance"
+      : path.startsWith("artifacts.")
+        ? "artifact"
+        : spec.subjectKind;
   return {
-    predicate: spec.predicate,
-    layer: spec.layer,
-    subjectKind: spec.subjectKind,
+    predicate: path,
+    layer,
+    subjectKind,
     minimumConfidence: spec.confidenceCeiling,
     minimumCompleteness: "complete",
   };
+}
+
+function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
+  const reads = evidenceReadsByRule[id];
+  if (!reads) throw new Error(`Evidence prerequisites are missing for ${id}`);
+  return { allOf: reads.map((path) => selectorFor(path, spec)) };
 }
 
 function applicabilityFor(spec: RulePlan): RuleApplicability {
@@ -825,7 +965,9 @@ function applicabilityFor(spec: RulePlan): RuleApplicability {
 export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
   const spec = plans[id];
   const guidance = ruleGuidance[id];
-  if (!spec || !guidance) throw new Error(`Rule inventory is incomplete for ${id}`);
+  const evidenceReads = evidenceReadsByRule[id];
+  if (!spec || !guidance || !evidenceReads)
+    throw new Error(`Rule inventory is incomplete for ${id}`);
   return {
     id,
     version: "1",
@@ -835,12 +977,13 @@ export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
       documentation: `/rules/${id}`,
       fix: guidance.fix,
     },
-    prerequisites: requirementFor(spec),
+    prerequisites: requirementFor(id, spec),
     applicability: applicabilityFor(spec),
     confidenceCeiling: spec.confidenceCeiling,
     defaultSeverity: spec.severity,
     group: spec.group,
     status: "legacy",
+    evidenceReads,
     migrationNote: `Planned group ${spec.group}; ${spec.confidenceReason} Current v1 behavior remains unchanged until migration.`,
   };
 });

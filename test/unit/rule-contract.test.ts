@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "../../src/rules.js";
 import { ruleGuidance } from "../../src/rule-guidance.js";
@@ -23,13 +24,10 @@ describe("evidence-aware rule contract", () => {
     for (const entry of ruleInventory) {
       expect(entry.version).not.toBe("");
       expect(entry.owner.name).not.toBe("");
-      expect(entry.prerequisites).toMatchObject({
-        predicate: expect.any(String),
-        layer: expect.any(String),
-        subjectKind: expect.any(String),
-        minimumConfidence: expect.any(String),
-        minimumCompleteness: "complete",
-      });
+      const requirements = (entry.prerequisites as { allOf: Array<{ predicate: string }> }).allOf;
+      expect(requirements.length).toBeGreaterThanOrEqual(2);
+      expect(requirements.map((requirement) => requirement.predicate)).toEqual(entry.evidenceReads);
+      expect(requirements.every((requirement) => requirement.predicate.length > 0)).toBe(true);
       expect(entry.applicability.adapters?.length).toBeGreaterThan(0);
       expect(entry.applicability.bundlers?.length).toBeGreaterThan(0);
       expect(entry.remediation.summary).toBe(ruleGuidance[entry.id]?.impact);
@@ -45,6 +43,54 @@ describe("evidence-aware rule contract", () => {
     expect(
       ruleInventory.find((entry) => entry.id === "performance/asset-budget")?.defaultSeverity,
     ).toBe("warning");
+  });
+
+  it("keeps declared reads aligned with the current built-in rule source", () => {
+    const source = fs.readFileSync(new URL("../../src/rules.ts", import.meta.url), "utf8");
+    const sourceFor = (id: string) => {
+      const start = source.indexOf(`createRule("${id}"`);
+      const end = source.indexOf('\n  createRule("', start + 1);
+      return source.slice(start, end < 0 ? source.length : end);
+    };
+    const patterns: Record<string, string> = {
+      moduleFederation: "mf(context)",
+      "bundler.name": "context.facts.bundler.name",
+      "bundler.mode": "context.facts.bundler.mode",
+      "bundler.moduleFederationPluginCount": "context.facts.bundler.moduleFederationPluginCount",
+      "bundler.outputPublicPathKind": "context.facts.bundler.outputPublicPathKind",
+      "imports.sourceFiles": "context.facts.imports.sourceFiles",
+      "imports.packages": "context.facts.imports.packages",
+      "imports.dynamicPackages": "context.facts.imports.dynamicPackages",
+      "imports.unresolvedDynamic": "context.facts.imports.unresolvedDynamic",
+      "imports.deepImports": "context.facts.imports.deepImports",
+      "imports.deepImportFiles": "context.facts.imports.deepImportFiles",
+      "dependencies.declared": "context.facts.dependencies.declared",
+      "dependencies.declared.doctor:externals": 'dependencies.declared["doctor:externals"]',
+      "dependencies.installed": "context.facts.dependencies.installed",
+      "artifacts.manifest": "context.facts.artifacts.manifest",
+      "artifacts.emittedAssets": "context.facts.artifacts.emittedAssets",
+      "artifacts.assetSizes": "context.facts.artifacts.assetSizes",
+      capabilities: "context.facts.capabilities",
+      "capabilities.emittedAssets": "context.facts.capabilities.emittedAssets",
+    };
+    for (const entry of ruleInventory.filter(
+      (item) =>
+        item.id.startsWith("config/") ||
+        item.id.startsWith("artifact/") ||
+        item.id.startsWith("performance/") ||
+        item.id.startsWith("reliability/") ||
+        item.id.startsWith("security/") ||
+        (item.id.startsWith("shared/") && item.id !== "shared/singleton-mismatch") ||
+        item.id === "doctor/partial-analysis",
+    )) {
+      const body = sourceFor(entry.id);
+      expect(body, entry.id).not.toBe("");
+      for (const read of entry.evidenceReads) {
+        if (read === "project.scope") continue;
+        if (read === "moduleFederation" && body.includes("_context")) continue;
+        expect(body, `${entry.id} must read ${read}`).toContain(patterns[read] ?? read);
+      }
+    }
   });
 
   it("does not allow invalid outcome and reason combinations", () => {
