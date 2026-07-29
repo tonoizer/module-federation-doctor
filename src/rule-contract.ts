@@ -64,24 +64,32 @@ interface RuleEvaluationBase {
   id: string;
   rule: { id: string; version: string };
   subject: string;
-  confidence: EvidenceConfidence;
   evidenceIds: string[];
+}
+
+interface RuleConclusiveEvaluationBase extends RuleEvaluationBase {
+  confidence: Exclude<EvidenceConfidence, "unknown">;
+  completeness: "complete";
+}
+
+interface RuleNonConclusiveEvaluationBase extends RuleEvaluationBase {
+  confidence: EvidenceConfidence;
   completeness: EvidenceCompleteness;
 }
 
-export type RulePassResult = RuleEvaluationBase & {
+export type RulePassResult = RuleConclusiveEvaluationBase & {
   outcome: "pass";
   reasonCode: "rule-result";
   reason: string;
 };
 
-export type RuleFailResult = RuleEvaluationBase & {
+export type RuleFailResult = RuleConclusiveEvaluationBase & {
   outcome: "fail";
   reasonCode: "rule-result";
   reason: string;
 };
 
-export type RuleUnknownResult = RuleEvaluationBase & {
+export type RuleUnknownResult = RuleNonConclusiveEvaluationBase & {
   outcome: "unknown";
   reasonCode:
     | "prerequisite-missing"
@@ -93,7 +101,7 @@ export type RuleUnknownResult = RuleEvaluationBase & {
   missingRequirements: EvidenceRequirement[];
 };
 
-export type RuleNotApplicableResult = RuleEvaluationBase & {
+export type RuleNotApplicableResult = RuleNonConclusiveEvaluationBase & {
   outcome: "not-applicable";
   reasonCode: "not-applicable";
   reason: string;

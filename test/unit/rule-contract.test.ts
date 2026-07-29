@@ -130,6 +130,62 @@ describe("evidence-aware rule contract", () => {
     expect([missingDetails, invalidReason, disabled]).toHaveLength(3);
   });
 
+  it("does not allow non-conclusive evidence on pass or fail", () => {
+    const base = {
+      id: "evaluation:2",
+      rule: { id: "x", version: "1" },
+      subject: "project:shop",
+      confidence: "high" as const,
+      evidenceIds: [],
+      reasonCode: "rule-result" as const,
+      reason: "conclusive",
+    };
+    // @ts-expect-error partial evidence cannot pass
+    const partialPass: RuleEvaluationResult = { ...base, outcome: "pass", completeness: "partial" };
+    // @ts-expect-error partial evidence cannot fail
+    const partialFail: RuleEvaluationResult = { ...base, outcome: "fail", completeness: "partial" };
+    // @ts-expect-error unknown completeness cannot pass
+    const unknownPass: RuleEvaluationResult = { ...base, outcome: "pass", completeness: "unknown" };
+    // @ts-expect-error unknown completeness cannot fail
+    const unknownFail: RuleEvaluationResult = { ...base, outcome: "fail", completeness: "unknown" };
+    // @ts-expect-error not-collected evidence cannot pass
+    const notCollectedPass: RuleEvaluationResult = {
+      ...base,
+      outcome: "pass",
+      completeness: "not-collected",
+    };
+    // @ts-expect-error not-collected evidence cannot fail
+    const notCollectedFail: RuleEvaluationResult = {
+      ...base,
+      outcome: "fail",
+      completeness: "not-collected",
+    };
+    // @ts-expect-error unknown confidence cannot pass
+    const unknownConfidencePass: RuleEvaluationResult = {
+      ...base,
+      outcome: "pass",
+      confidence: "unknown",
+      completeness: "complete",
+    };
+    // @ts-expect-error unknown confidence cannot fail
+    const unknownConfidenceFail: RuleEvaluationResult = {
+      ...base,
+      outcome: "fail",
+      confidence: "unknown",
+      completeness: "complete",
+    };
+    expect([
+      partialPass,
+      partialFail,
+      unknownPass,
+      unknownFail,
+      notCollectedPass,
+      notCollectedFail,
+      unknownConfidencePass,
+      unknownConfidenceFail,
+    ]).toHaveLength(8);
+  });
+
   it("calculates weakest evidence confidence and applies the rule ceiling", () => {
     expect(weakestConfidence("exact", "medium")).toBe("medium");
     expect(weakestConfidence("unknown", "exact")).toBe("unknown");
