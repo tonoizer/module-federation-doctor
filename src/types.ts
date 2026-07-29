@@ -232,41 +232,40 @@ export interface ArtifactRecord {
   path: string;
   valid: boolean;
   source: ArtifactSource;
+  manifest?: ArtifactManifest;
+  stats?: ArtifactStats;
+}
+
+export interface ArtifactManifest {
+  path: string;
+  valid: boolean;
+  id?: string;
+  name?: string;
+  publicPath?: string;
+  pluginVersion?: string;
+  buildVersion?: string;
+  remoteEntry?: { name: string; path: string; type?: string };
+  types?: { path?: string; zip?: string; api?: string };
+  exposes: ManifestExpose[];
+  shared: ManifestShared[];
+  remotes?: Array<{
+    name: string;
+    alias?: string;
+    entry?: string;
+    version?: string;
+    shareScope: string[];
+  }>;
+}
+
+export interface ArtifactStats {
+  path: string;
+  valid: boolean;
+  data?: Record<string, unknown>;
 }
 
 export interface ArtifactFacts {
-  manifest?: {
-    path: string;
-    valid: boolean;
-    id?: string;
-    name?: string;
-    publicPath?: string;
-    pluginVersion?: string;
-    buildVersion?: string;
-    remoteEntry?: {
-      name: string;
-      path: string;
-      type?: string;
-    };
-    types?: {
-      path?: string;
-      zip?: string;
-      api?: string;
-    };
-    exposes: ManifestExpose[];
-    shared: ManifestShared[];
-    remotes?: Array<{
-      name: string;
-      alias?: string;
-      entry?: string;
-      version?: string;
-      shareScope: string[];
-    }>;
-  };
-  stats?: {
-    path: string;
-    valid: boolean;
-  };
+  manifest?: ArtifactManifest;
+  stats?: ArtifactStats;
   /** Every discovered artifact, kept in deterministic path order. */
   records?: ArtifactRecord[];
   emittedAssets: string[];

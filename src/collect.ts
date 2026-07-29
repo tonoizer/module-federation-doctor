@@ -5,7 +5,9 @@ import { packageName, normalizeModuleFederation } from "./normalize.js";
 import { isDeepImportSpecifier } from "./shared-policy.js";
 import type {
   ArtifactKind,
+  ArtifactManifest,
   ArtifactRecord,
+  ArtifactStats,
   ArtifactFacts,
   ImportDepth,
   ImportEvidenceSource,
@@ -335,7 +337,7 @@ async function runtimeTraceHints(
   }
 }
 
-function manifestFrom(value: unknown, file: string): NonNullable<ArtifactFacts["manifest"]> {
+function manifestFrom(value: unknown, file: string): ArtifactManifest {
   if (!value || typeof value !== "object")
     return { path: file, valid: false, exposes: [], shared: [], remotes: [] };
   const data = value as Record<string, unknown>;
@@ -587,60 +589,80 @@ async function collectArtifacts(
   root: string,
   names: ResolvedDoctorOptions["artifactNames"],
 ): Promise<ArtifactFacts> {
-  const manifestNames = names.manifest.map((name) => normalizePath(name).replace(/^\.\//, ""));
-  const statsNames = names.stats.map((name) => normalizePath(name).replace(/^\.\//, ""));
-  const candidates = await fg(
-    [...manifestNames, ...statsNames].map((name) => (name.includes("/") ? name : `**/${name}`)),
-    {
-      cwd: root,
-      ignore: ["**/node_modules/**", "**/.mf/**"],
-      onlyFiles: true,
-    },
-  );
-  const kindFor = (file: string): ArtifactKind | undefined => {
+  const validateName = (name: string): string => {
+    if (!name || path.isAbsolute(name) || path.win32.isAbsolute(name) || /^[A-Za-z]:/.test(name))
+      throw new Error(`Artifact name must be a safe literal relative path: ${name}`);
+    const normalized = normalizePath(name).replace(/^\.\//, "");
+    if (!normalized || normalized.split("/").some((part) => part === ".."))
+      throw new Error(`Artifact name must stay inside the project root: ${name}`);
+    return normalized;
+  };
+  const manifestNames = names.manifest.map(validateName);
+  const statsNames = names.stats.map(validateName);
+  const rootReal = await fs.realpath(root);
+  const candidates = await fg("**/*", {
+    cwd: root,
+    ignore: ["**/node_modules/**", "**/.mf/**"],
+    onlyFiles: true,
+    followSymbolicLinks: false,
+  });
+  const kindsFor = (file: string): ArtifactKind[] => {
     const normalized = normalizePath(file);
-    if (manifestNames.some((name) => normalized === name || normalized.endsWith(`/${name}`)))
-      return "manifest";
-    if (statsNames.some((name) => normalized === name || normalized.endsWith(`/${name}`)))
-      return "stats";
-    return undefined;
+    const basename = path.posix.basename(normalized);
+    return [
+      ...(manifestNames.some(
+        (name) => normalized === name || (!name.includes("/") && basename === name),
+      )
+        ? (["manifest"] as const)
+        : []),
+      ...(statsNames.some(
+        (name) => normalized === name || (!name.includes("/") && basename === name),
+      )
+        ? (["stats"] as const)
+        : []),
+    ];
   };
   const records: ArtifactRecord[] = [];
   const artifact: ArtifactFacts = { records, emittedAssets: [] };
   for (const file of candidates.sort()) {
     const relative = normalizePath(file);
-    const kind = kindFor(relative);
-    if (!kind) continue;
-    const record: ArtifactRecord = { kind, path: relative, valid: false, source: "discovered" };
+    const kinds = kindsFor(relative);
+    if (kinds.length === 0) continue;
+    const real = await fs.realpath(path.join(root, file)).catch(() => undefined);
+    if (!real || (path.relative(rootReal, real) || ".").startsWith("..")) continue;
+    let data: unknown;
     try {
-      const data = await readJson(path.join(root, file));
+      data = await readJson(path.join(root, file));
+    } catch {
+      data = undefined;
+    }
+    for (const kind of kinds) {
+      const record: ArtifactRecord = { kind, path: relative, valid: false, source: "discovered" };
       if (kind === "manifest") {
         const manifest = manifestFrom(data, relative);
         record.valid = manifest.valid;
+        record.manifest = manifest;
         records.push(record);
-        if (!artifact.manifest) artifact.manifest = manifest;
       } else {
-        record.valid = !!data && typeof data === "object";
-        records.push(record);
-        if (!artifact.stats) artifact.stats = { path: relative, valid: record.valid };
-      }
-    } catch {
-      records.push(record);
-      if (kind === "manifest" && !artifact.manifest)
-        artifact.manifest = {
+        const valid = !!data && typeof data === "object" && !Array.isArray(data);
+        const stats: ArtifactStats = {
           path: relative,
-          valid: false,
-          exposes: [],
-          shared: [],
-          remotes: [],
+          valid,
+          ...(valid ? { data: data as Record<string, unknown> } : {}),
         };
-      else if (kind === "stats" && !artifact.stats)
-        artifact.stats = { path: relative, valid: false };
+        record.valid = valid;
+        record.stats = stats;
+        records.push(record);
+      }
     }
   }
   records.sort((left, right) =>
     `${left.kind}:${left.path}`.localeCompare(`${right.kind}:${right.path}`),
   );
+  const firstManifest = records.find((record) => record.kind === "manifest")?.manifest;
+  const firstStats = records.find((record) => record.kind === "stats")?.stats;
+  if (firstManifest) artifact.manifest = firstManifest;
+  if (firstStats) artifact.stats = firstStats;
   return artifact;
 }
 

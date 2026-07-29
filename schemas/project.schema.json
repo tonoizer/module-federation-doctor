@@ -106,20 +106,6 @@
       "properties": {
         "manifest": { "type": "object" },
         "stats": { "type": "object" },
-        "records": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["kind", "path", "valid", "source"],
-            "properties": {
-              "kind": { "enum": ["manifest", "stats"] },
-              "path": { "type": "string" },
-              "valid": { "type": "boolean" },
-              "source": { "enum": ["discovered", "emitted"] }
-            },
-            "additionalProperties": false
-          }
-        },
         "emittedAssets": { "$ref": "#/$defs/stringArray" },
         "assetSizes": {
           "type": "object",
