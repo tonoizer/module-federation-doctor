@@ -1,0 +1,98 @@
+{
+  "traceId": "mf-capture-runtime-loaded-success",
+  "status": "success",
+  "requestId": "remote/Button",
+  "hostName": "host",
+  "runtimeVersion": "2.5.0",
+  "remote": {
+    "name": "remote",
+    "entry": "https://cdn.example.com/remote/mf-manifest.json"
+  },
+  "expose": "./Button",
+  "sanitizedUrl": "https://cdn.example.com/remote/mf-manifest.json",
+  "startedAt": 1700000000000,
+  "updatedAt": 1700000000000,
+  "duration": 0,
+  "events": [
+    {
+      "traceId": "mf-capture-runtime-loaded-success",
+      "timestamp": 1700000000000,
+      "phase": "loadRemote",
+      "status": "start",
+      "requestId": "remote/Button",
+      "hostName": "host",
+      "runtimeVersion": "2.5.0",
+      "message": "remote:load-start",
+      "lifecycle": "beforeRequest"
+    },
+    {
+      "traceId": "mf-capture-runtime-loaded-success",
+      "timestamp": 1700000000000,
+      "phase": "loadRemote",
+      "status": "success",
+      "requestId": "remote/Button",
+      "hostName": "host",
+      "runtimeVersion": "2.5.0",
+      "remote": {
+        "name": "remote",
+        "entry": "https://cdn.example.com/remote/mf-manifest.json"
+      },
+      "expose": "./Button",
+      "sanitizedUrl": "https://cdn.example.com/remote/mf-manifest.json",
+      "message": "remote:loaded",
+      "duration": 0,
+      "lifecycle": "onLoad"
+    }
+  ],
+  "summary": {
+    "eventCount": 2,
+    "recovered": false,
+    "loadCompleted": false,
+    "runtimeLoaded": true,
+    "sharedResolved": false,
+    "preloaded": false,
+    "componentLoaded": false,
+    "outcome": "runtime-loaded",
+    "lastPhase": "loadRemote",
+    "phases": {
+      "loadRemote": {
+        "status": "success",
+        "lifecycle": "onLoad",
+        "duration": 0
+      }
+    },
+    "flags": {
+      "cached": false,
+      "fallback": false,
+      "recovered": false
+    }
+  },
+  "diagnosis": {
+    "title": "Remote loaded successfully",
+    "outcome": "runtime-loaded",
+    "status": "success",
+    "ownerHint": "remote",
+    "facts": {
+      "traceId": "mf-capture-runtime-loaded-success",
+      "status": "success",
+      "outcome": "runtime-loaded",
+      "ownerHint": "remote",
+      "requestId": "remote/Button",
+      "hostName": "host",
+      "remoteName": "remote",
+      "remoteEntry": "https://cdn.example.com/remote/mf-manifest.json",
+      "url": "https://cdn.example.com/remote/mf-manifest.json",
+      "expose": "./Button",
+      "cached": false,
+      "fallback": false,
+      "recovered": false,
+      "loadCompleted": false,
+      "runtimeLoaded": true,
+      "componentLoaded": false
+    },
+    "completedPhases": ["loadRemote"],
+    "pendingPhases": [],
+    "warnings": ["Business component readiness signal was not recorded"],
+    "actions": []
+  }
+}
