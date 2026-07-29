@@ -242,11 +242,15 @@ export async function validateFixturePayloads(): Promise<void> {
       transport: "file",
       captureId: "capture-schema-check",
       capabilities: {
-        reports: { state: "unavailable", reason: "file fixture" },
-        sharedLifecycle: { state: "unknown", reason: "not observed" },
-        snapshot: { state: "not-applicable", reason: "not attached" },
-        instance: { state: "unavailable", reason: "file fixture" },
-        networkError: { state: "not-applicable", reason: "not attached" },
+        observations: [
+          {
+            state: "unavailable",
+            reason: "file fixture",
+            source: "observability",
+            scope: "none",
+            priority: 1,
+          },
+        ],
       },
       limits: {
         maxBytes: 5242880,

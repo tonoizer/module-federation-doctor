@@ -32,14 +32,14 @@
     "capabilities": { "$ref": "#/$defs/capabilities" },
     "limits": { "$ref": "#/$defs/limits" },
     "truncation": { "type": "array", "items": { "$ref": "#/$defs/truncation" } },
-    "reports": { "$ref": "#/$defs/records" },
-    "events": { "$ref": "#/$defs/records" },
-    "devtools": { "$ref": "#/$defs/records" },
-    "snapshots": { "$ref": "#/$defs/records" },
-    "instances": { "$ref": "#/$defs/records" },
-    "network": { "$ref": "#/$defs/records" },
-    "errors": { "$ref": "#/$defs/records" },
-    "relations": { "type": "array", "items": { "$ref": "#/$defs/relation" } }
+    "reports": { "$ref": "#/$defs/observabilityRecords" },
+    "events": { "$ref": "#/$defs/observabilityEventRecords" },
+    "devtools": { "$ref": "#/$defs/devtoolsRecords" },
+    "snapshots": { "$ref": "#/$defs/snapshotRecords" },
+    "instances": { "$ref": "#/$defs/instanceRecords" },
+    "network": { "$ref": "#/$defs/networkRecords" },
+    "errors": { "$ref": "#/$defs/errorRecords" },
+    "relations": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/relation" } }
   },
   "additionalProperties": false,
   "$defs": {
@@ -57,23 +57,25 @@
       "required": ["state", "reason"],
       "properties": {
         "state": { "enum": ["exact", "partial", "unavailable", "not-applicable", "unknown"] },
-        "reason": { "type": "string", "minLength": 1 },
+        "reason": { "$ref": "#/$defs/string" },
         "source": {
           "enum": ["observability", "devtools", "snapshot", "instance", "network", "error"]
         },
+        "scope": { "$ref": "#/$defs/string" },
+        "priority": { "type": "integer", "minimum": 1, "maximum": 4 },
         "runtimeVersion": { "type": "string" }
       },
       "additionalProperties": false
     },
     "capabilities": {
       "type": "object",
-      "required": ["reports", "sharedLifecycle", "snapshot", "instance", "networkError"],
+      "required": ["observations"],
       "properties": {
-        "reports": { "$ref": "#/$defs/capability" },
-        "sharedLifecycle": { "$ref": "#/$defs/capability" },
-        "snapshot": { "$ref": "#/$defs/capability" },
-        "instance": { "$ref": "#/$defs/capability" },
-        "networkError": { "$ref": "#/$defs/capability" }
+        "observations": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/capability" }
+        }
       },
       "additionalProperties": false
     },
@@ -93,17 +95,17 @@
         "maxObjectKeys"
       ],
       "properties": {
-        "maxBytes": { "type": "integer", "minimum": 0, "maximum": 26214400 },
-        "maxReports": { "type": "integer", "minimum": 0, "maximum": 100 },
-        "maxEvents": { "type": "integer", "minimum": 0, "maximum": 5000 },
-        "maxSnapshots": { "type": "integer", "minimum": 0, "maximum": 500 },
-        "maxInstances": { "type": "integer", "minimum": 0, "maximum": 100 },
-        "maxNetworkRecords": { "type": "integer", "minimum": 0, "maximum": 2000 },
-        "maxErrors": { "type": "integer", "minimum": 0, "maximum": 200 },
-        "maxStringLength": { "type": "integer", "minimum": 0, "maximum": 4096 },
-        "maxDiagnosisStringLength": { "type": "integer", "minimum": 0, "maximum": 16384 },
-        "maxDepth": { "type": "integer", "minimum": 0, "maximum": 12 },
-        "maxObjectKeys": { "type": "integer", "minimum": 0, "maximum": 100 }
+        "maxBytes": { "type": "integer", "minimum": 1, "maximum": 26214400 },
+        "maxReports": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "maxEvents": { "type": "integer", "minimum": 1, "maximum": 5000 },
+        "maxSnapshots": { "type": "integer", "minimum": 1, "maximum": 500 },
+        "maxInstances": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "maxNetworkRecords": { "type": "integer", "minimum": 1, "maximum": 2000 },
+        "maxErrors": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "maxStringLength": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "maxDiagnosisStringLength": { "type": "integer", "minimum": 1, "maximum": 16384 },
+        "maxDepth": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "maxObjectKeys": { "type": "integer", "minimum": 1, "maximum": 100 }
       },
       "additionalProperties": false
     },
@@ -111,44 +113,39 @@
       "type": "object",
       "required": ["captureId", "navigationId", "realmId", "sequence"],
       "properties": {
-        "captureId": { "type": "string", "minLength": 1 },
-        "navigationId": { "type": "string", "minLength": 1 },
-        "realmId": { "type": "string", "minLength": 1 },
+        "captureId": { "$ref": "#/$defs/string" },
+        "navigationId": { "$ref": "#/$defs/string" },
+        "realmId": { "$ref": "#/$defs/string" },
         "sequence": { "type": "integer", "minimum": 0 },
-        "runtimeVersion": { "type": "string" },
-        "sourceScope": { "type": "string" },
-        "traceId": { "type": "string" },
-        "requestId": { "type": "string" },
-        "hostName": { "type": "string" },
-        "instanceName": { "type": "string" },
-        "remoteName": { "type": "string" },
-        "remoteAlias": { "type": "string" },
-        "sharedPackage": { "type": "string" }
+        "runtimeVersion": { "$ref": "#/$defs/string" },
+        "sourceScope": { "$ref": "#/$defs/string" },
+        "traceId": { "$ref": "#/$defs/string" },
+        "requestId": { "$ref": "#/$defs/string" },
+        "hostName": { "$ref": "#/$defs/string" },
+        "instanceName": { "$ref": "#/$defs/string" },
+        "remoteName": { "$ref": "#/$defs/string" },
+        "remoteAlias": { "$ref": "#/$defs/string" },
+        "sharedPackage": { "$ref": "#/$defs/string" }
       },
       "additionalProperties": false
     },
-    "value": { "type": "object", "additionalProperties": { "$ref": "#/$defs/jsonValue" } },
-    "jsonValue": {
-      "oneOf": [
-        { "type": "null" },
-        { "type": "boolean" },
-        { "type": "number" },
-        { "type": "string" },
-        { "type": "array", "items": { "$ref": "#/$defs/jsonValue" } },
-        { "type": "object", "additionalProperties": { "$ref": "#/$defs/jsonValue" } }
-      ]
-    },
+    "string": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "stringArray": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/string" } },
     "provenance": {
       "type": "object",
-      "required": ["collector", "inputKind"],
+      "required": ["collector", "inputKind", "source", "sourceSchemaVersion"],
       "properties": {
         "collector": { "$ref": "#/$defs/nameVersion" },
-        "inputKind": { "type": "string", "minLength": 1 },
-        "source": { "type": "string" },
-        "sourceSchemaVersion": { "type": "string" },
-        "location": { "type": "string" },
-        "contentDigest": { "type": "string" },
-        "parentEvidenceIds": { "type": "array", "items": { "type": "string" } }
+        "inputKind": { "$ref": "#/$defs/string" },
+        "source": { "$ref": "#/$defs/string" },
+        "sourceSchemaVersion": { "$ref": "#/$defs/string" },
+        "location": { "$ref": "#/$defs/string" },
+        "contentDigest": { "$ref": "#/$defs/digest" },
+        "parentEvidenceIds": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/string" }
+        }
       },
       "additionalProperties": false
     },
@@ -159,26 +156,226 @@
         "status": { "enum": ["complete", "partial", "unknown", "not-collected"] },
         "expectedCount": { "type": "integer", "minimum": 0 },
         "observedCount": { "type": "integer", "minimum": 0 },
-        "missing": { "type": "array", "items": { "type": "string" } },
-        "reason": { "type": "string", "minLength": 1 }
+        "missing": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/string" } },
+        "reason": { "$ref": "#/$defs/string" }
       },
       "additionalProperties": false
     },
-    "record": {
+    "recordBase": {
       "type": "object",
-      "required": ["identity", "source", "provenance", "completeness", "value"],
+      "required": [
+        "id",
+        "identity",
+        "source",
+        "capturedAt",
+        "contentDigest",
+        "provenance",
+        "completeness",
+        "value"
+      ],
       "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 100 },
         "identity": { "$ref": "#/$defs/identity" },
-        "source": {
-          "enum": ["observability", "devtools", "snapshot", "instance", "network", "error"]
-        },
+        "source": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "capturedAt": { "type": "number", "minimum": 0 },
+        "contentDigest": { "$ref": "#/$defs/digest" },
         "provenance": { "$ref": "#/$defs/provenance" },
         "completeness": { "$ref": "#/$defs/completeness" },
-        "value": { "$ref": "#/$defs/value" }
+        "value": { "type": "object" }
       },
       "additionalProperties": false
     },
-    "records": { "type": "array", "items": { "$ref": "#/$defs/record" } },
+    "observabilityValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "traceId": { "$ref": "#/$defs/string" },
+        "requestId": { "$ref": "#/$defs/string" },
+        "requestAlias": { "$ref": "#/$defs/string" },
+        "hostName": { "$ref": "#/$defs/string" },
+        "runtimeVersion": { "$ref": "#/$defs/string" },
+        "outcome": { "$ref": "#/$defs/string" },
+        "phase": { "$ref": "#/$defs/string" },
+        "errorCode": { "$ref": "#/$defs/string" },
+        "ownerHint": { "$ref": "#/$defs/string" },
+        "loadedBefore": { "type": "boolean" },
+        "diagnosisTitle": { "$ref": "#/$defs/string" },
+        "moduleInfoReason": { "$ref": "#/$defs/string" },
+        "moduleInfoNames": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "devtoolsValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recordId": { "$ref": "#/$defs/string" },
+        "scope": { "$ref": "#/$defs/string" },
+        "runtimeVersion": { "$ref": "#/$defs/string" },
+        "reportIds": { "$ref": "#/$defs/stringArray" },
+        "fields": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "snapshotValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/string" },
+        "publicPath": { "$ref": "#/$defs/string" },
+        "remoteEntry": { "$ref": "#/$defs/string" },
+        "globalName": { "$ref": "#/$defs/string" },
+        "availableNames": { "$ref": "#/$defs/stringArray" },
+        "entryCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "instanceValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/string" },
+        "hostName": { "$ref": "#/$defs/string" },
+        "runtimeVersion": { "$ref": "#/$defs/string" },
+        "remoteNames": { "$ref": "#/$defs/stringArray" },
+        "shareScopes": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "networkValue": {
+      "type": "object",
+      "required": ["url", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "url": { "$ref": "#/$defs/string" },
+        "kind": { "enum": ["manifest", "remote-entry", "preload", "chunk", "unknown"] },
+        "status": { "type": "integer", "minimum": 0, "maximum": 999 },
+        "failureClass": { "$ref": "#/$defs/string" },
+        "durationMs": { "type": "number", "minimum": 0 },
+        "initiatorClass": { "$ref": "#/$defs/string" }
+      }
+    },
+    "errorValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": { "$ref": "#/$defs/string" },
+        "name": { "$ref": "#/$defs/string" },
+        "message": { "$ref": "#/$defs/string" },
+        "phase": { "$ref": "#/$defs/string" },
+        "runtimeVersion": { "$ref": "#/$defs/string" }
+      }
+    },
+    "observabilityRecord": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "properties": {
+            "source": { "const": "observability" },
+            "value": { "$ref": "#/$defs/observabilityValue" }
+          },
+          "required": ["value"]
+        }
+      ]
+    },
+    "devtoolsRecord": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "properties": {
+            "source": { "const": "devtools" },
+            "value": { "$ref": "#/$defs/devtoolsValue" }
+          },
+          "required": ["value"]
+        }
+      ]
+    },
+    "snapshotRecord": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "properties": {
+            "source": { "const": "snapshot" },
+            "value": { "$ref": "#/$defs/snapshotValue" }
+          },
+          "required": ["value"]
+        }
+      ]
+    },
+    "instanceRecord": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "properties": {
+            "source": { "const": "instance" },
+            "value": { "$ref": "#/$defs/instanceValue" }
+          },
+          "required": ["value"]
+        }
+      ]
+    },
+    "networkRecord": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "properties": {
+            "source": { "const": "network" },
+            "value": { "$ref": "#/$defs/networkValue" }
+          },
+          "required": ["value"]
+        }
+      ]
+    },
+    "errorRecord": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "properties": {
+            "source": { "const": "error" },
+            "value": { "$ref": "#/$defs/errorValue" }
+          },
+          "required": ["value"]
+        }
+      ]
+    },
+    "observabilityRecords": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/observabilityRecord" }
+    },
+    "observabilityEventRecords": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": { "$ref": "#/$defs/observabilityRecord" }
+    },
+    "devtoolsRecords": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/devtoolsRecord" }
+    },
+    "snapshotRecords": {
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/snapshotRecord" }
+    },
+    "instanceRecords": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/instanceRecord" }
+    },
+    "networkRecords": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": { "$ref": "#/$defs/networkRecord" }
+    },
+    "errorRecords": {
+      "type": "array",
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/errorRecord" }
+    },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "truncation": {
       "type": "object",
       "required": ["collection", "dropped", "reason"],
