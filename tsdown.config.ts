@@ -11,6 +11,7 @@ export default defineConfig({
     "src/modern.ts",
     "src/rules.ts",
     "src/policy.ts",
+    "src/capture.ts",
   ],
   format: ["esm"],
   outDir: "dist",

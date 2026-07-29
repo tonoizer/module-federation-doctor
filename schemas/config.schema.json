@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/config.schema.json",
+  "title": "Module Federation Doctor canonical config v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "contract",
+    "declared",
+    "effectiveByBuild",
+    "diagnostics",
+    "extensions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "contract": { "$ref": "#/$defs/contract" },
+    "declared": { "$ref": "#/$defs/snapshot" },
+    "effectiveByBuild": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/snapshot" }
+    },
+    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+    "extensions": { "type": "array", "items": { "$ref": "#/$defs/unknownField" } }
+  },
+  "$defs": {
+    "evidenceValue": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        { "type": "array", "items": { "$ref": "#/$defs/evidenceValue" } },
+        { "type": "object", "additionalProperties": { "$ref": "#/$defs/evidenceValue" } }
+      ]
+    },
+    "contract": {
+      "type": "object",
+      "required": ["family", "sourceVersion", "adapter", "bundler", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "family": { "type": "string", "minLength": 1 },
+        "sourceVersion": { "type": "string", "minLength": 1 },
+        "adapter": { "$ref": "#/$defs/adapter" },
+        "bundler": { "$ref": "#/$defs/bundler" },
+        "target": { "type": "string", "minLength": 1 }
+      }
+    },
+    "adapter": {
+      "type": "object",
+      "required": ["name", "version", "packId"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "packId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "bundler": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "required": ["state", "origin", "evidenceIds"],
+      "additionalProperties": false,
+      "properties": {
+        "state": { "enum": ["known", "absent", "unknown", "invalid"] },
+        "value": { "$ref": "#/$defs/evidenceValue" },
+        "origin": { "$ref": "#/$defs/origin" },
+        "evidenceIds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "effectiveCell": {
+      "type": "object",
+      "required": ["state", "origin", "evidenceIds"],
+      "additionalProperties": false,
+      "properties": {
+        "state": { "enum": ["known", "defaulted", "mutated", "not-observed", "unknown"] },
+        "value": { "$ref": "#/$defs/evidenceValue" },
+        "origin": { "$ref": "#/$defs/origin" },
+        "evidenceIds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "origin": {
+      "enum": [
+        "user",
+        "adapter-default",
+        "adapter-mutation",
+        "bundler-default",
+        "artifact-inference",
+        "unknown"
+      ]
+    },
+    "entry": {
+      "type": "object",
+      "required": ["id", "key", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "key": { "type": "string" },
+        "value": { "$ref": "#/$defs/cell" }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "required": ["fields", "collections"],
+      "additionalProperties": false,
+      "properties": {
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+        "collections": { "$ref": "#/$defs/collections" }
+      }
+    },
+    "collections": {
+      "type": "object",
+      "required": ["exposes", "remotes", "shared"],
+      "additionalProperties": false,
+      "properties": {
+        "exposes": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+        "remotes": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+        "shared": { "type": "array", "items": { "$ref": "#/$defs/entry" } }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["code", "path", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "invalid-root",
+            "invalid-collection",
+            "opaque-value",
+            "access-error",
+            "cycle",
+            "limit-depth",
+            "limit-nodes",
+            "limit-bytes",
+            "limit-string",
+            "limit-width"
+          ]
+        },
+        "path": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "unknownField": {
+      "type": "object",
+      "required": ["path", "value", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "value": { "$ref": "#/$defs/evidenceValue" },
+        "reason": { "enum": ["extension", "opaque"] }
+      }
+    }
+  }
+}

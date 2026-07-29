@@ -224,39 +224,64 @@ export interface ManifestShared {
   assets: string[];
 }
 
+export type ArtifactKind = "manifest" | "stats";
+export type ArtifactSource = "discovered" | "emitted";
+export type ArtifactState = "valid" | "malformed";
+
+interface ArtifactRecordBase {
+  kind: ArtifactKind;
+  path: string;
+  valid: boolean;
+  source: ArtifactSource;
+  state: ArtifactState;
+}
+
+export type ArtifactManifestRecord = ArtifactRecordBase & {
+  kind: "manifest";
+  manifest: ArtifactManifest;
+  stats?: never;
+};
+
+export type ArtifactStatsRecord = ArtifactRecordBase & {
+  kind: "stats";
+  manifest?: never;
+  stats: ArtifactStats;
+};
+
+export type ArtifactRecord = ArtifactManifestRecord | ArtifactStatsRecord;
+
+export interface ArtifactManifest {
+  path: string;
+  valid: boolean;
+  id?: string;
+  name?: string;
+  publicPath?: string;
+  pluginVersion?: string;
+  buildVersion?: string;
+  remoteEntry?: { name: string; path: string; type?: string };
+  types?: { path?: string; zip?: string; api?: string };
+  exposes: ManifestExpose[];
+  shared: ManifestShared[];
+  remotes?: Array<{
+    name: string;
+    alias?: string;
+    entry?: string;
+    version?: string;
+    shareScope: string[];
+  }>;
+}
+
+export interface ArtifactStats {
+  path: string;
+  valid: boolean;
+  data?: Record<string, unknown>;
+}
+
 export interface ArtifactFacts {
-  manifest?: {
-    path: string;
-    valid: boolean;
-    id?: string;
-    name?: string;
-    publicPath?: string;
-    pluginVersion?: string;
-    buildVersion?: string;
-    remoteEntry?: {
-      name: string;
-      path: string;
-      type?: string;
-    };
-    types?: {
-      path?: string;
-      zip?: string;
-      api?: string;
-    };
-    exposes: ManifestExpose[];
-    shared: ManifestShared[];
-    remotes?: Array<{
-      name: string;
-      alias?: string;
-      entry?: string;
-      version?: string;
-      shareScope: string[];
-    }>;
-  };
-  stats?: {
-    path: string;
-    valid: boolean;
-  };
+  manifest?: ArtifactManifest;
+  stats?: ArtifactStats;
+  /** Every discovered artifact, kept in deterministic path order. */
+  records?: ArtifactRecord[];
   emittedAssets: string[];
   /** Relative path or asset basename → on-disk byte size when resolvable. */
   assetSizes?: Record<string, number>;
@@ -487,6 +512,11 @@ export interface DoctorOptions {
   moduleFederation?: ModuleFederationConfigLike;
   bundler?: BundlerName;
   bundlerVersion?: string;
+  /** Optional public artifact names used to bound post-build discovery. */
+  artifactNames?: {
+    manifest?: string[];
+    stats?: string[];
+  };
   /**
    * Vite-family lifecycle override. Adapters normally detect this from
    * package.json / public plugin meta; set only in tests or unusual setups.
@@ -543,6 +573,10 @@ export interface ResolvedDoctorOptions {
   moduleFederation?: ModuleFederationConfigLike;
   bundler: BundlerName;
   bundlerVersion?: string;
+  artifactNames: {
+    manifest: string[];
+    stats: string[];
+  };
   viteLifecycle?: ViteLifecycleFacts;
   mode: "development" | "ci";
   root: string;

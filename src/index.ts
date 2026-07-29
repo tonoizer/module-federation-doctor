@@ -1,4 +1,5 @@
 export { analyze, analyzeFederation } from "./engine.js";
+export { readCanonicalModuleFederationConfig } from "./canonical-config.js";
 export {
   resolveOptions,
   resolveQuiet,
@@ -75,6 +76,14 @@ export {
 export type {
   AnalysisCapabilities,
   AnalysisResult,
+  ArtifactManifest,
+  ArtifactManifestRecord,
+  ArtifactKind,
+  ArtifactRecord,
+  ArtifactSource,
+  ArtifactState,
+  ArtifactStatsRecord,
+  ArtifactStats,
   ArtifactFacts,
   BaselineEntry,
   BaselineFile,
@@ -120,6 +129,21 @@ export type {
   UiGraphNode,
   UiGraphNodeKind,
 } from "./types.js";
+export type {
+  CanonicalConfigCell,
+  CanonicalConfigContext,
+  CanonicalConfigDiagnosticCode,
+  CanonicalConfigDiagnostic,
+  CanonicalConfigEntry,
+  CanonicalConfigOrigin,
+  CanonicalConfigSnapshot,
+  CanonicalConfigState,
+  CanonicalConfigLimits,
+  CanonicalEffectiveCell,
+  CanonicalEffectiveState,
+  CanonicalMFConfigV1,
+  CanonicalUnknownField,
+} from "./canonical-config.js";
 export {
   canonicalIdentityKey,
   createAdapterTargetIdentity,
@@ -184,6 +208,30 @@ export {
   stableEvidenceId,
 } from "./evidence.js";
 export { EvidenceIntegrityError, EvidenceResourceError } from "./evidence.js";
+export { capConfidence, stableEvaluationId, weakestConfidence } from "./rule-contract.js";
+export type {
+  EvidenceAwareRuleMeta,
+  EvidenceRequirement,
+  EvidenceSelector,
+  RuleApplicability,
+  RuleEvaluationIdentity,
+  RuleEvaluationResult,
+  RuleExecutionState,
+  RuleEngineErrorState,
+  RuleFailResult,
+  RuleNotApplicableResult,
+  RuleOwner,
+  RulePassResult,
+  RuleReasonCode,
+  RuleRemediation,
+  RuleUnknownResult,
+} from "./rule-contract.js";
+export { ruleInventory, ruleInventoryIds } from "./rule-inventory.js";
+export type {
+  RuleInventoryEntry,
+  RuleMigrationGroup,
+  RuleMigrationStatus,
+} from "./rule-inventory.js";
 export type {
   EvidenceAssertion,
   EvidenceCompleteness,

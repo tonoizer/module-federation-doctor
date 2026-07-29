@@ -77,6 +77,24 @@ HTML dashboard). It remains the published shape for programmatic consumers of
 `buildUiPayload` / graph payloads — see below. Do not treat it as an HTML report
 format.
 
+## Runtime Observability source fixtures
+
+Runtime input is a user-supplied JSON export and stays opt-in. The contract
+fixture set lives in `fixtures/runtime-traces/`:
+
+- `current-2.5.3.json` is a sanitized serialized success report replayed from
+  the upstream 2.5.3 harness; `snapshot-failure-2.5.3.json` is the matching
+  serialized moduleInfo/snapshot failure.
+- `partial-devtools.json` is the pinned `readObservabilitySnapshot()` Chrome
+  DevTools result; omitted report data is unknown/not collected.
+- `fixtures/runtime-traces/provenance.json` records the exact upstream commit,
+  replay commands, test names, and raw/sanitized digests.
+- The other fixtures are legacy Doctor input and are kept separate for the
+  later migration adapter.
+
+The upstream report has no schema-version field. Doctor must track the source
+contract separately from `runtimeVersion`, which identifies the MF runtime.
+
 Use the schemas in editors, artifact validators, or deployment gates. They are
 strict about the stable outer contract and leave normalized federation
 internals open for additive fields within schema version 1.

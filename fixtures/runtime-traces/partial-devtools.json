@@ -1,0 +1,34 @@
+{
+  "config": {
+    "enabled": true,
+    "level": "verbose",
+    "maxEvents": 300,
+    "console": true,
+    "browser": {
+      "enabled": true,
+      "scope": "chrome_extension",
+      "mode": "development"
+    },
+    "trace": {
+      "printStart": true
+    },
+    "react": {
+      "injectLoadedCallback": false,
+      "remoteIds": []
+    }
+  },
+  "stored": false,
+  "scopes": ["runtime_host"],
+  "reports": [
+    {
+      "traceId": "mf-capture-trace-unknown-version",
+      "status": "pending",
+      "startedAt": 1700000000000,
+      "updatedAt": 1700000000000,
+      "duration": 0,
+      "events": [],
+      "__scope": "runtime_host"
+    }
+  ],
+  "hasUserObservabilityPlugin": true
+}
