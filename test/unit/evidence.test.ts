@@ -8,6 +8,7 @@ import {
   EvidenceResourceError,
   type EvidenceGraphV2,
 } from "../../src/evidence.js";
+import { validatePayload } from "../helpers/schema-contract.js";
 
 const assertion = (id: string, parentEvidenceIds: string[] = []) => ({
   id,
@@ -85,6 +86,14 @@ describe("evidence protocol helpers", () => {
       unc: "\\\\server\\share\\secret.txt",
       posix: "/srv/project/file.ts",
       posixOther: "/etc/project/file.ts",
+      samples: [
+        "api_key=abc123",
+        "passwd=abc123",
+        "authorization=Basic dXNlcjpwYXNz",
+        "cookie=session=abc123",
+        "file:///var/lib/app.js",
+        "Error at /Users/alice/app/index.js:12:3, next",
+      ],
     });
     expect(redacted).toMatchObject({
       "[REDACTED_KEY]": ["[REDACTED]", "[REDACTED]"],
@@ -93,6 +102,14 @@ describe("evidence protocol helpers", () => {
       unc: "[PATH]",
       posix: "[PATH]",
       posixOther: "[PATH]",
+      samples: [
+        "api_key=[REDACTED]",
+        "passwd=[REDACTED]",
+        "authorization=[REDACTED] [REDACTED]",
+        "cookie=[REDACTED]",
+        "[PATH]",
+        "Error at [PATH], next",
+      ],
     });
     expect(typeof (redacted as { url: string }).url).toBe("string");
     expect((redacted as { url: string }).url).toMatch(/^https:\/\//);
@@ -108,6 +125,16 @@ describe("evidence protocol helpers", () => {
     expect(first.assertions[0]?.provenance.parentEvidenceIds).toEqual(["project:shop"]);
     expect(first.assertions[0]?.completeness.missing).toEqual(["a-first", "z-last"]);
     expect(first.evaluations[0]?.evidenceIds).toEqual(["assertion:cart", "assertion:shop"]);
+    expect(first.identity).toHaveProperty("sessionId", "[REDACTED]");
+  });
+
+  it("schema-validates the normalized graph and preserves fixed keys", async () => {
+    const normalized = normalizeEvidenceGraph(graph());
+    await validatePayload(
+      "evidence.schema.json",
+      JSON.parse(JSON.stringify(normalized)),
+      "normalized evidence graph",
+    );
   });
 
   it("rejects duplicate and dangling graph references", () => {
@@ -123,6 +150,20 @@ describe("evidence protocol helpers", () => {
     const dangling = graph();
     dangling.evaluations[0]!.evidenceIds = ["assertion:missing"];
     expect(() => assertEvidenceGraphIntegrity(dangling)).toThrow(/missing assertion/);
+
+    const secretId = graph();
+    secretId.subjects[0]!.id = "token=a";
+    expect(() => normalizeEvidenceGraph(secretId)).toThrow(/secret or path/);
+  });
+
+  it("keeps hostile object keys inert and JSON-compatible", async () => {
+    const hostile = JSON.parse(
+      '{"__proto__":{"polluted":true},"constructor":{"prototype":{"polluted":true}}}',
+    ) as never;
+    const redacted = redactEvidenceValue(hostile);
+    expect(Object.getPrototypeOf(redacted)).toBeNull();
+    expect(({} as { polluted?: boolean }).polluted).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(redacted))).toEqual(hostile);
   });
 
   it("rejects non-finite numbers and distinguishes JSON values", () => {
@@ -138,6 +179,19 @@ describe("evidence protocol helpers", () => {
     for (let index = 0; index < 100; index += 1) deep = { next: deep };
     expect(() => stableEvidenceId("deep", deep as never, { maxDepth: 8 })).toThrow(/maxDepth/);
     expect(() => stableEvidenceId("large", "x".repeat(100), { maxBytes: 32 })).toThrow(/maxBytes/);
+    expect(() => stableEvidenceId("escaped", "\\".repeat(600_000))).toThrow(/maxBytes/);
+    expect(() =>
+      stableEvidenceId(
+        "wide",
+        Array.from({ length: 1_001 }, () => "x"),
+      ),
+    ).toThrow(/maxWidth/);
+    expect(() => stableEvidenceId("raised", { next: "x" }, { maxDepth: 129 })).toThrow(/maxDepth/);
+    expect(() => stableEvidenceId("raised", "x", { maxBytes: 8 * 1_048_576 + 1 })).toThrow(
+      /maxBytes/,
+    );
+    expect(() => stableEvidenceId("raised", "x", { maxNodes: 50_001 })).toThrow(/maxNodes/);
+    expect(() => stableEvidenceId("raised", "x", { maxWidth: 10_001 })).toThrow(/maxWidth/);
   });
 
   it("gives equivalent object keys the same stable ID", () => {

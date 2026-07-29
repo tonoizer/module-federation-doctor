@@ -132,12 +132,21 @@ export interface EvidenceLimits {
   maxDepth?: number;
   maxNodes?: number;
   maxBytes?: number;
+  maxWidth?: number;
 }
 
 const DEFAULT_LIMITS: Required<EvidenceLimits> = {
   maxDepth: 64,
   maxNodes: 10_000,
   maxBytes: 1_048_576,
+  maxWidth: 1_000,
+};
+
+const HARD_LIMITS: Required<EvidenceLimits> = {
+  maxDepth: 128,
+  maxNodes: 50_000,
+  maxBytes: 8 * 1_048_576,
+  maxWidth: 10_000,
 };
 
 export class EvidenceResourceError extends Error {
@@ -161,7 +170,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function limitsWithDefaults(options?: EvidenceLimits): Required<EvidenceLimits> {
   const limits = { ...DEFAULT_LIMITS, ...options };
   for (const [name, value] of Object.entries(limits)) {
-    if (!Number.isSafeInteger(value) || value < 1) {
+    if (
+      !Number.isSafeInteger(value) ||
+      value < 1 ||
+      value > HARD_LIMITS[name as keyof EvidenceLimits]
+    ) {
       throw new EvidenceResourceError(`${name} must be a positive safe integer.`);
     }
   }
@@ -192,28 +205,43 @@ export function assertEvidenceValue(
 
     const current = item.value;
     if (current === null || typeof current === "boolean") {
-      bytes += 5;
+      bytes += Buffer.byteLength(JSON.stringify(current));
     } else if (typeof current === "number") {
       if (!Number.isFinite(current))
         throw new EvidenceResourceError("Evidence numbers must be finite.");
-      bytes += 8;
+      bytes += Buffer.byteLength(JSON.stringify(current));
     } else if (typeof current === "string") {
-      bytes += Buffer.byteLength(current) + 2;
+      bytes += Buffer.byteLength(JSON.stringify(current));
     } else if (Array.isArray(current)) {
       if (seen.has(current)) throw new EvidenceResourceError("Evidence value contains a cycle.");
       seen.add(current);
-      bytes += 2;
+      if (current.length > limits.maxWidth) {
+        throw new EvidenceResourceError(`Evidence array exceeds maxWidth (${limits.maxWidth}).`);
+      }
+      bytes += 2 + Math.max(0, current.length - 1);
       for (let index = current.length - 1; index >= 0; index -= 1) {
         pending.push({ value: current[index], depth: item.depth + 1 });
       }
     } else if (isRecord(current)) {
       if (seen.has(current)) throw new EvidenceResourceError("Evidence value contains a cycle.");
       seen.add(current);
-      bytes += 2;
-      const entries = Object.entries(current);
+      let width = 0;
+      for (const key in current) {
+        if (Object.prototype.hasOwnProperty.call(current, key)) width += 1;
+      }
+      if (width > limits.maxWidth) {
+        throw new EvidenceResourceError(`Evidence object exceeds maxWidth (${limits.maxWidth}).`);
+      }
+      bytes += 2 + Math.max(0, width - 1);
+      const entries: Array<[string, unknown]> = [];
+      for (const key in current) {
+        if (Object.prototype.hasOwnProperty.call(current, key)) {
+          entries.push([key, current[key]]);
+        }
+      }
       for (let index = entries.length - 1; index >= 0; index -= 1) {
         const [key, child] = entries[index] ?? ["", undefined];
-        bytes += Buffer.byteLength(key) + 3;
+        bytes += Buffer.byteLength(JSON.stringify(key)) + 1;
         pending.push({ value: child, depth: item.depth + 1 });
       }
     } else {
@@ -229,6 +257,80 @@ function isSensitiveKey(key: string): boolean {
   return /(?:token|secret|password|passwd|credential|private[-_ ]?key|api[-_]?key|authorization|cookie|session[-_]?id|pem|certificate|cert)/i.test(
     key,
   );
+}
+
+const SCHEMA_DEFINED_KEYS = new Set([
+  "protocolVersion",
+  "schemaVersion",
+  "producer",
+  "source",
+  "kind",
+  "collector",
+  "version",
+  "adapter",
+  "bundler",
+  "name",
+  "target",
+  "project",
+  "workspace",
+  "buildId",
+  "artifactDigest",
+  "deploymentId",
+  "releaseId",
+  "runtimeInstanceId",
+  "sessionId",
+  "traceId",
+  "subjects",
+  "assertions",
+  "edges",
+  "evaluations",
+  "id",
+  "subject",
+  "predicate",
+  "value",
+  "layer",
+  "scope",
+  "identity",
+  "provenance",
+  "confidence",
+  "completeness",
+  "inputKind",
+  "sourceSchemaVersion",
+  "location",
+  "contentDigest",
+  "parentEvidenceIds",
+  "status",
+  "expectedCount",
+  "observedCount",
+  "missing",
+  "reason",
+  "level",
+  "attributes",
+  "rule",
+  "outcome",
+  "evidenceIds",
+  "from",
+  "to",
+]);
+
+function isSchemaDefinedKey(key: string): boolean {
+  return SCHEMA_DEFINED_KEYS.has(key);
+}
+
+function redactSecretAssignment(value: string): string {
+  return value
+    .replace(
+      /(?:authorization|proxy-authorization)\s*=\s*(?:basic|bearer)\s+[^\s,;]+/gi,
+      (_match) => _match.replace(/(=\s*(?:basic|bearer)\s+).*/i, "$1[REDACTED]"),
+    )
+    .replace(
+      /(?:token|secret|password|passwd|api[-_]?key|credential|authorization|cookie|session[-_]?id)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi,
+      (_match, _captured: string | undefined) => {
+        const equals = _match.search(/=/);
+        return `${_match.slice(0, equals + 1)}[REDACTED]`;
+      },
+    )
+    .replace(/(?:bearer|basic)\s+[^\s,;]+/gi, (_match) => `${_match.split(/\s+/)[0]} [REDACTED]`);
 }
 
 function redactUrl(value: string): string | undefined {
@@ -254,14 +356,10 @@ function redactUrl(value: string): string | undefined {
 function redactString(value: string): string {
   const withUris = redactUrl(value);
   if (withUris !== undefined) value = withUris;
-  return value
+  return redactSecretAssignment(value)
+    .replace(/file:\/\/[^\s"'<>]+/gi, "[PATH]")
     .replace(
-      /(?:bearer\s+)[^\s]+|(?:token|secret|password|apikey|credential)=([^&\s]+)/gi,
-      (_match, captured: string | undefined) =>
-        captured ? _match.replace(captured, "[REDACTED]") : "[REDACTED]",
-    )
-    .replace(
-      /(?:[A-Za-z]:[\\/](?!\/)|\\\\[^\\/]+[\\/])[^\s"']*|(^|[\s"'=])\/(?!\/)[^\s"'<>]*/g,
+      /(?:[A-Za-z]:[\\/](?!\/)|\\\\[^\\/]+[\\/])[^\s"'<>;,)\]}]*|(^|[\s"'=])\/(?!\/)[^\s"'<>;,)\]}]*/g,
       (_match, boundary: string | undefined) => `${boundary ?? ""}[PATH]`,
     );
 }
@@ -291,11 +389,18 @@ export function redactEvidenceValue(value: EvidenceValue, options?: EvidenceLimi
         pending.push({ input: input[index] ?? null, output: array });
       }
     } else if (isRecord(input)) {
-      const record: Record<string, EvidenceValue> = {};
+      const record: Record<string, EvidenceValue> = Object.create(null) as Record<
+        string,
+        EvidenceValue
+      >;
       output = record;
       const groups = new Map<string, Array<[string, EvidenceValue]>>();
       for (const [key, child] of Object.entries(input)) {
-        const safeKey = isSensitiveKey(key) ? "[REDACTED_KEY]" : redactString(key);
+        const safeKey = isSchemaDefinedKey(key)
+          ? key
+          : isSensitiveKey(key)
+            ? "[REDACTED_KEY]"
+            : redactString(key);
         const group = groups.get(safeKey) ?? [];
         group.push([key, isSensitiveKey(key) ? "[REDACTED]" : (child as EvidenceValue)]);
         groups.set(safeKey, group);
@@ -391,6 +496,9 @@ function assertUniqueIds(
   for (const record of records) {
     if (!record.id || typeof record.id !== "string")
       throw new EvidenceIntegrityError(`${kind} ID must be a non-empty string.`);
+    if (redactString(record.id) !== record.id) {
+      throw new EvidenceIntegrityError(`${kind} ID ${record.id} contains secret or path data.`);
+    }
     const previous = ids.get(record.id);
     if (previous)
       throw new EvidenceIntegrityError(
@@ -400,12 +508,26 @@ function assertUniqueIds(
   }
 }
 
+function assertSafeReference(reference: string, label: string): void {
+  if (typeof reference !== "string" || !reference || redactString(reference) !== reference) {
+    throw new EvidenceIntegrityError(`${label} contains secret or path data.`);
+  }
+}
+
 /** Validate graph IDs and every subject/evidence/edge reference before persistence. */
 export function assertEvidenceGraphIntegrity(
   graph: EvidenceGraphV2,
   options?: EvidenceLimits,
 ): void {
   assertEvidenceValue(graph as unknown as EvidenceValue, options);
+  if (
+    !Array.isArray(graph.subjects) ||
+    !Array.isArray(graph.assertions) ||
+    !Array.isArray(graph.edges) ||
+    !Array.isArray(graph.evaluations)
+  ) {
+    throw new EvidenceIntegrityError("Evidence graph collections must be arrays.");
+  }
   const ids = new Map<string, string>();
   assertUniqueIds(graph.subjects, "subjects", ids);
   assertUniqueIds(graph.assertions, "assertions", ids);
@@ -415,11 +537,13 @@ export function assertEvidenceGraphIntegrity(
   const assertions = new Set(graph.assertions.map((assertion) => assertion.id));
   const all = new Set(ids.keys());
   for (const assertion of graph.assertions) {
+    assertSafeReference(assertion.subject, `Assertion ${assertion.id} subject`);
     if (!subjects.has(assertion.subject))
       throw new EvidenceIntegrityError(
         `Assertion ${assertion.id} references missing subject ${assertion.subject}.`,
       );
     for (const parent of assertion.provenance.parentEvidenceIds ?? []) {
+      assertSafeReference(parent, `Assertion ${assertion.id} parent evidence`);
       if (!all.has(parent))
         throw new EvidenceIntegrityError(
           `Assertion ${assertion.id} references missing parent evidence ${parent}.`,
@@ -427,15 +551,19 @@ export function assertEvidenceGraphIntegrity(
     }
   }
   for (const edge of graph.edges) {
+    assertSafeReference(edge.from, `Edge ${edge.id} source`);
+    assertSafeReference(edge.to, `Edge ${edge.id} target`);
     if (!all.has(edge.from) || !all.has(edge.to))
       throw new EvidenceIntegrityError(`Edge ${edge.id} references missing evidence.`);
   }
   for (const evaluation of graph.evaluations) {
+    assertSafeReference(evaluation.subject, `Evaluation ${evaluation.id} subject`);
     if (!subjects.has(evaluation.subject))
       throw new EvidenceIntegrityError(
         `Evaluation ${evaluation.id} references missing subject ${evaluation.subject}.`,
       );
     for (const evidenceId of evaluation.evidenceIds) {
+      assertSafeReference(evidenceId, `Evaluation ${evaluation.id} evidence`);
       if (!assertions.has(evidenceId))
         throw new EvidenceIntegrityError(
           `Evaluation ${evaluation.id} references missing assertion ${evidenceId}.`,
@@ -450,8 +578,13 @@ export function normalizeEvidenceGraph(
   options?: EvidenceLimits,
 ): EvidenceGraphV2 {
   assertEvidenceGraphIntegrity(graph, options);
+  const redacted = redactEvidenceValue(
+    graph as unknown as EvidenceValue,
+    options,
+  ) as unknown as EvidenceGraphV2;
+  assertEvidenceGraphIntegrity(redacted, options);
   const canonical = canonicalizeEvidenceValue(
-    redactEvidenceValue(graph as unknown as EvidenceValue, options),
+    redacted as unknown as EvidenceValue,
     options,
   ) as unknown as EvidenceGraphV2;
   const sortSet = <T extends { id: string }>(records: T[]): T[] =>

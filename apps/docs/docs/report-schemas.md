@@ -37,8 +37,10 @@ the supported default until a later migration issue changes that policy.
 ### Stable IDs and safe persistence
 
 `stableEvidenceId(prefix, value)` first validates finite JSON values and the
-default resource limits (64 levels, 10,000 nodes, 1 MiB), redacts secrets and
-machine paths, sorts object keys, and serializes with JSON semantics. It then
+default resource limits (64 levels, 10,000 nodes, 1 MiB, 1,000 children per
+object or array), redacts secrets and machine paths, sorts object keys, and
+counts the exact UTF-8 bytes of JSON escaping. Hard ceilings reject caller
+limits above 128 levels, 50,000 nodes, 8 MiB, or 10,000 children. It then
 returns `<prefix>:<first 16 lowercase hex characters of SHA-256>`. The prefix
 must contain only letters, numbers, `.`, `_`, or `-`. Ordered arrays keep their
 order; graph collections, `evidenceIds`, `parentEvidenceIds`, and `missing` are
@@ -53,7 +55,9 @@ rejected before hashing. Callers may provide lower resource limits and get a
 typed `EvidenceResourceError`.
 
 Secret-like keys (`credential`, `token`, `private-key`, `authorization`, and
-similar) become `[REDACTED_KEY]` and their values become `[REDACTED]`. URL
+similar) become `[REDACTED_KEY]` and their values become `[REDACTED]`. Fixed keys
+from the v2 schema, including `identity.sessionId`, keep their names while
+values are redacted. URL
 schemes and paths are parsed before redaction: URL credentials and sensitive
 query parameters are removed while the URL remains a URL; POSIX, Windows, and
 UNC filesystem paths become `[PATH]`. Other strings are left unchanged.
