@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://module-federation.github.io/doctor/schemas/config.schema.json",
+  "title": "Module Federation Doctor canonical config",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "contract",
+    "declared",
+    "effectiveByBuild",
+    "diagnostics",
+    "extensions"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "contract": {
+      "type": "object",
+      "required": ["family", "sourceVersion", "adapter", "bundler", "target"]
+    },
+    "declared": { "$ref": "#/$defs/snapshot" },
+    "effectiveByBuild": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/snapshot" }
+    },
+    "diagnostics": { "type": "array" },
+    "extensions": { "type": "array" }
+  },
+  "$defs": {
+    "snapshot": {
+      "type": "object",
+      "required": ["fields", "collections"],
+      "properties": {
+        "fields": { "type": "array" },
+        "collections": {
+          "type": "object",
+          "required": ["exposes", "remotes", "shared"],
+          "properties": {
+            "exposes": { "type": "array" },
+            "remotes": { "type": "array" },
+            "shared": { "type": "array" }
+          }
+        }
+      }
+    }
+  }
+}
