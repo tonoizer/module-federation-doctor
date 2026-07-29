@@ -116,6 +116,12 @@ describe("canonical config boundary", () => {
     );
     expect(limited?.diagnostics.some((item) => item.code === "limit-string")).toBe(true);
     expect(limited?.diagnostics.some((item) => item.code === "limit-nodes")).toBe(true);
+    const width = readCanonicalModuleFederationConfig(
+      { many: { a: 1, b: 2 } },
+      {},
+      { maxWidth: 1 },
+    );
+    expect(width?.diagnostics.some((item) => item.code === "limit-width")).toBe(true);
   });
 
   it("does not invoke throwing proxies or revoked proxies", () => {

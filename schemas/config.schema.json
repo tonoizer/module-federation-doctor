@@ -141,7 +141,8 @@
             "limit-depth",
             "limit-nodes",
             "limit-bytes",
-            "limit-string"
+            "limit-string",
+            "limit-width"
           ]
         },
         "path": { "type": "string", "minLength": 1 },

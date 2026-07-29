@@ -55,7 +55,8 @@ export type CanonicalConfigDiagnosticCode =
   | "limit-depth"
   | "limit-nodes"
   | "limit-bytes"
-  | "limit-string";
+  | "limit-string"
+  | "limit-width";
 
 export interface CanonicalConfigDiagnostic {
   code: CanonicalConfigDiagnosticCode;
@@ -100,6 +101,7 @@ const DEFAULT_LIMITS: Required<CanonicalConfigLimits> = {
   maxDepth: 64,
   maxNodes: 10_000,
   maxBytes: 1_048_576,
+  maxWidth: 1_000,
   maxStringBytes: 262_144,
 };
 const COLLECTIONS = new Set(["exposes", "remotes", "shared"]);
@@ -330,14 +332,16 @@ function toJsonValue(
         typeof lengthDescriptor.value === "number"
           ? lengthDescriptor.value
           : -1;
-      if (length < 0 || length > limits.maxNodes) {
+      if (length < 0 || length > limits.maxWidth) {
         task.set(
           opaque(
             value,
             task.path,
             diagnostics,
-            "access-error",
-            "Array length could not be read safely.",
+            length < 0 ? "access-error" : "limit-width",
+            length < 0
+              ? "Array length could not be read safely."
+              : `Array exceeds maxWidth (${limits.maxWidth}).`,
           ),
         );
         continue;
@@ -377,6 +381,18 @@ function toJsonValue(
             diagnostics,
             "access-error",
             "Object keys could not be read safely.",
+          ),
+        );
+        continue;
+      }
+      if (keys.length > limits.maxWidth) {
+        task.set(
+          opaque(
+            value,
+            task.path,
+            diagnostics,
+            "limit-width",
+            `Object exceeds maxWidth (${limits.maxWidth}).`,
           ),
         );
         continue;
@@ -441,9 +457,10 @@ function cell(
 
 function redact(value: EvidenceValue, limits: Required<CanonicalConfigLimits>): EvidenceValue {
   return redactEvidenceValue(value, {
-    maxDepth: Math.max(limits.maxDepth, 64),
-    maxNodes: Number.MAX_SAFE_INTEGER,
-    maxBytes: Number.MAX_SAFE_INTEGER,
+    maxDepth: Math.max(limits.maxDepth, 128),
+    maxNodes: 50_000,
+    maxBytes: 8 * 1_048_576,
+    maxWidth: 10_000,
   });
 }
 
