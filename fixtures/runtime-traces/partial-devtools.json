@@ -1,26 +1,13 @@
 {
   "reports": [
     {
-      "traceId": "mf-devtools-partial-001",
+      "traceId": "mf-capture-trace-unknown-version",
       "status": "pending",
-      "runtimeVersion": "preview",
-      "hostName": "host",
-      "remote": { "name": "checkout", "alias": "shop" },
-      "summary": {
-        "eventCount": 1,
-        "recovered": false,
-        "loadCompleted": false,
-        "runtimeLoaded": true,
-        "sharedResolved": false,
-        "preloaded": false,
-        "componentLoaded": false,
-        "outcome": "pending",
-        "phases": {
-          "matchRemote": { "status": "complete" }
-        },
-        "flags": { "cached": false, "fallback": false, "recovered": false }
-      },
-      "events": []
+      "startedAt": 1700000000000,
+      "updatedAt": 1700000000001,
+      "duration": 1,
+      "events": [],
+      "__scope": "runtime_host"
     }
   ]
 }

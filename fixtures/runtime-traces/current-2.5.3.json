@@ -1,114 +1,98 @@
 {
-  "traceId": "mf-current-2.5.3-001",
+  "traceId": "mf-capture-runtime-loaded-success",
   "status": "success",
-  "requestId": "request-checkout-001",
-  "requestAlias": "checkout",
+  "requestId": "remote/Button",
   "hostName": "host",
-  "runtimeVersion": "0.20.0",
+  "runtimeVersion": "2.5.0",
   "remote": {
-    "name": "checkout",
-    "alias": "checkout",
-    "entry": "https://cdn.example.com/checkout/mf-manifest.json",
-    "entryGlobalName": "checkout",
-    "type": "module"
+    "name": "remote",
+    "entry": "https://cdn.example.com/remote/mf-manifest.json"
   },
   "expose": "./Button",
-  "startedAt": 1720000000000,
-  "updatedAt": 1720000000125,
-  "duration": 125,
-  "ownerHint": "host",
-  "retryable": false,
-  "moduleInfo": {
-    "reason": "matched remote module",
-    "clipped": true,
-    "totalCount": 1,
-    "matchedCount": 1,
-    "entries": [
-      {
-        "name": "checkout",
-        "publicPath": "https://cdn.example.com/checkout/",
-        "getPublicPath": "https://cdn.example.com/checkout/",
-        "remoteEntry": "https://cdn.example.com/checkout/remoteEntry.js",
-        "globalName": "checkout"
-      }
-    ],
-    "availableNames": ["checkout"]
-  },
-  "loadedBefore": {
-    "producer": false,
-    "expose": false,
-    "consumers": []
-  },
+  "sanitizedUrl": "https://cdn.example.com/remote/mf-manifest.json",
+  "startedAt": 1700000000000,
+  "updatedAt": 1700000000000,
+  "duration": 0,
   "events": [
     {
-      "traceId": "mf-current-2.5.3-001",
-      "timestamp": 1720000000010,
-      "phase": "matchRemote",
+      "traceId": "mf-capture-runtime-loaded-success",
+      "timestamp": 1700000000000,
+      "phase": "loadRemote",
+      "status": "start",
+      "requestId": "remote/Button",
+      "hostName": "host",
+      "runtimeVersion": "2.5.0",
+      "message": "remote:load-start",
+      "lifecycle": "beforeRequest"
+    },
+    {
+      "traceId": "mf-capture-runtime-loaded-success",
+      "timestamp": 1700000000000,
+      "phase": "loadRemote",
       "status": "success",
+      "requestId": "remote/Button",
       "hostName": "host",
-      "remote": { "name": "checkout", "alias": "checkout" },
-      "requestAlias": "checkout",
-      "runtimeVersion": "0.20.0",
-      "source": "runtime"
-    },
-    {
-      "traceId": "mf-current-2.5.3-001",
-      "timestamp": 1720000000100,
-      "phase": "remoteEntryInit",
-      "status": "complete",
-      "hostName": "host",
-      "remote": { "name": "checkout" },
-      "source": "runtime"
-    },
-    {
-      "traceId": "mf-current-2.5.3-001",
-      "timestamp": 1720000000120,
-      "phase": "component",
-      "status": "complete",
-      "hostName": "host",
-      "remote": { "name": "checkout" },
+      "runtimeVersion": "2.5.0",
+      "remote": {
+        "name": "remote",
+        "entry": "https://cdn.example.com/remote/mf-manifest.json"
+      },
       "expose": "./Button",
-      "source": "business"
+      "sanitizedUrl": "https://cdn.example.com/remote/mf-manifest.json",
+      "message": "remote:loaded",
+      "duration": 0,
+      "lifecycle": "onLoad"
     }
   ],
   "summary": {
-    "eventCount": 3,
+    "eventCount": 2,
     "recovered": false,
-    "loadCompleted": true,
+    "loadCompleted": false,
     "runtimeLoaded": true,
-    "sharedResolved": true,
+    "sharedResolved": false,
     "preloaded": false,
-    "componentLoaded": true,
-    "outcome": "component-loaded",
-    "lastPhase": "component",
+    "componentLoaded": false,
+    "outcome": "runtime-loaded",
+    "lastPhase": "loadRemote",
     "phases": {
-      "matchRemote": { "status": "success", "duration": 2 },
-      "manifest": { "status": "complete", "duration": 20 },
-      "remoteEntry": { "status": "complete", "duration": 50 },
-      "remoteEntryInit": { "status": "complete", "duration": 10 },
-      "expose": { "status": "complete", "duration": 15 },
-      "moduleFactory": { "status": "complete", "duration": 8 },
-      "loadRemote": { "status": "complete", "duration": 12 },
-      "shared": { "status": "complete", "duration": 5 },
-      "preload": { "status": "complete", "cached": true },
-      "component": { "status": "complete", "duration": 3 }
+      "loadRemote": {
+        "status": "success",
+        "lifecycle": "onLoad",
+        "duration": 0
+      }
     },
-    "flags": { "cached": false, "fallback": false, "recovered": false },
-    "shared": {
-      "name": "react",
-      "provider": "host",
-      "selectedVersion": "19.1.1",
-      "shareScope": ["default"]
+    "flags": {
+      "cached": false,
+      "fallback": false,
+      "recovered": false
     }
   },
   "diagnosis": {
-    "title": "Remote component loaded",
-    "outcome": "component-loaded",
+    "title": "Remote loaded successfully",
+    "outcome": "runtime-loaded",
     "status": "success",
-    "ownerHint": "host",
-    "facts": { "remote": "checkout", "expose": "./Button" },
-    "completedPhases": ["matchRemote", "remoteEntryInit", "component"],
+    "ownerHint": "remote",
+    "facts": {
+      "traceId": "mf-capture-runtime-loaded-success",
+      "status": "success",
+      "outcome": "runtime-loaded",
+      "ownerHint": "remote",
+      "requestId": "remote/Button",
+      "hostName": "host",
+      "remoteName": "remote",
+      "remoteEntry": "https://cdn.example.com/remote/mf-manifest.json",
+      "url": "https://cdn.example.com/remote/mf-manifest.json",
+      "expose": "./Button",
+      "cached": false,
+      "fallback": false,
+      "recovered": false,
+      "loadCompleted": false,
+      "runtimeLoaded": true,
+      "componentLoaded": false
+    },
+    "completedPhases": ["loadRemote"],
     "pendingPhases": [],
+    "warnings": ["Business component readiness signal was not recorded"],
     "actions": []
   }
 }

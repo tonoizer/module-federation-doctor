@@ -1,26 +1,30 @@
 # Runtime Observability fixtures
 
-These fixtures are split by source contract:
+These fixtures are sanitized replays from the pinned upstream harness. They
+are not invented reports.
 
-- `current-2.5.3.json` is a sanitized contract fixture derived from the public
-  `@module-federation/observability-plugin` 2.5.3 report assertions around
-  `getLatestReport()`/`exportReport()` in the upstream observability tests at
-  Module Federation Core commit
-  `d92724217184f5ab7d7171b2cbd93c36f5808969`.
-  Source: <https://github.com/module-federation/core/blob/d92724217184f5ab7d7171b2cbd93c36f5808969/packages/observability-plugin/__tests__/observability.spec.ts>.
-  Construction method: retain the JSON field names and value kinds from the public
-  report, replace test-specific names/URLs/timestamps with deterministic safe
-  values, and omit raw stacks and private locators.
-- `partial-devtools.json` is a `{ "reports": [...] }` snapshot with only
-  partial report data. Missing fields mean “not collected”, not success.
+- `current-2.5.3.json` is the serialized result of upstream
+  `records a successful loadRemote report when enabled`.
+- `snapshot-failure-2.5.3.json` is the serialized snapshot/moduleInfo failure
+  from `does not return hook args from the default browser entry`.
+- `partial-devtools.json` is the serialized partial page snapshot from
+  `keeps reports without runtime version as basic observability regardless of
+scope` in the Chrome DevTools package.
 - `healthy.json`, `init-failed.json`, `remote-load-failed.json`, and
-  `shared-mismatch.json` are legacy Doctor fixtures. They remain here so the
-  migration adapter can prove the documented compatibility window.
+  `shared-mismatch.json` are legacy Doctor fixtures. They remain separate for
+  the later migration adapter.
+
+Replay and sanitization details, original digests, sanitized digests, and the
+field mapping are in `provenance.json`. The upstream package is MIT licensed;
+these small JSON fixtures contain no copied source code and retain attribution
+to the upstream repository.
 
 The upstream package has no runtime report schema version. Doctor must keep its
 source-contract marker separate from `runtimeVersion`, which is the Module
 Federation runtime version.
 
-The fixture matrix intentionally covers `component-loaded` and `pending` in
-this first contract slice. Failure, recovery, preload, and shared mismatch
-captures are added with the behavior slices that consume those semantics.
+Failure/recovery, preload, shared-recovery, and future/unsupported-contract
+captures are intentionally deferred until the behavior slices consume them.
+The current and snapshot fixtures cover success, error summaries/context,
+warnings/actions, and actual moduleInfo attribution without claiming those
+deferred cases.
