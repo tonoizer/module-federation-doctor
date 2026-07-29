@@ -1,4 +1,5 @@
 export { analyze, analyzeFederation } from "./engine.js";
+export { readCanonicalModuleFederationConfig } from "./canonical-config.js";
 export {
   resolveOptions,
   resolveQuiet,
@@ -128,6 +129,21 @@ export type {
   UiGraphNode,
   UiGraphNodeKind,
 } from "./types.js";
+export type {
+  CanonicalConfigCell,
+  CanonicalConfigContext,
+  CanonicalConfigDiagnosticCode,
+  CanonicalConfigDiagnostic,
+  CanonicalConfigEntry,
+  CanonicalConfigOrigin,
+  CanonicalConfigSnapshot,
+  CanonicalConfigState,
+  CanonicalConfigLimits,
+  CanonicalEffectiveCell,
+  CanonicalEffectiveState,
+  CanonicalMFConfigV1,
+  CanonicalUnknownField,
+} from "./canonical-config.js";
 export {
   assertEvidenceGraphIntegrity,
   assertEvidenceValue,
