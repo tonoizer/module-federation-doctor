@@ -47,6 +47,7 @@ function createAjv(): SchemaAjv {
   const instance = new Ajv2020({
     allErrors: true,
     strict: true,
+    strictRequired: false,
     validateSchema: true,
   });
   addFormats(instance);

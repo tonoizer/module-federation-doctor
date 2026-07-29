@@ -80,6 +80,7 @@ describe("published schema contracts", () => {
       "baseline.schema.json",
       "config.schema.json",
       "evidence.schema.json",
+      "identity.schema.json",
       "probe.schema.json",
       "project.schema.json",
       "report.schema.json",
@@ -90,6 +91,94 @@ describe("published schema contracts", () => {
     expect(contracts.find((contract) => contract.file === "ui.schema.json")?.kind).toBe(
       "programmatic",
     );
+  });
+
+  it("validates an identity contract", async () => {
+    const identity = {
+      schemaVersion: 1,
+      kind: "application",
+      key: "mfid:v1:application:0123456789abcdef01234567",
+      parentKey: "mfid:v1:organization:0123456789abcdef01234567",
+      organizationId: "acme",
+      applicationId: "checkout",
+      aliases: ["checkout"],
+      completeness: "complete",
+      confidence: "strong",
+      provenance: { source: "config", evidenceIds: ["config-1"] },
+    };
+    await validatePayload("identity.schema.json", identity, "identity");
+    await expect(
+      validatePayload("identity.schema.json", { ...identity, kind: "container" }, "wrong kind"),
+    ).rejects.toThrow("Schema validation failed");
+    await expect(
+      validatePayload("identity.schema.json", { ...identity, unexpected: true }, "extra field"),
+    ).rejects.toThrow("Schema validation failed");
+    for (const organizationId of [
+      "/Users/alice/app",
+      "file:///tmp/app",
+      "https://user:pass@example.com/app",
+      "https://example.com/app?token=secret",
+      "2026-07-29T12:00:00Z",
+      "process-123",
+      "session-abc",
+      "pROCESS-123",
+      "SESSION-abc",
+    ]) {
+      await expect(
+        validatePayload(
+          "identity.schema.json",
+          { ...identity, organizationId },
+          "unsafe organizationId",
+        ),
+      ).rejects.toThrow("Schema validation failed");
+    }
+    await validatePayload(
+      "identity.schema.json",
+      { ...identity, organizationId: "2026-07-29-build" },
+      "stable date-prefixed organizationId",
+    );
+    await expect(
+      validatePayload(
+        "identity.schema.json",
+        { ...identity, containerName: "wrong-kind" },
+        "wrong kind field",
+      ),
+    ).rejects.toThrow("Schema validation failed");
+    await expect(
+      validatePayload(
+        "identity.schema.json",
+        { ...identity, artifactKind: "remote-entry" },
+        "foreign artifact field",
+      ),
+    ).rejects.toThrow("Schema validation failed");
+    await expect(
+      validatePayload(
+        "identity.schema.json",
+        { ...identity, aliases: ["prefixHTTPS://credentials"] },
+        "unsafe alias",
+      ),
+    ).rejects.toThrow("Schema validation failed");
+    const adapterTarget = {
+      ...identity,
+      kind: "adapter-target",
+      key: "mfid:v1:adapter-target:0123456789abcdef01234567",
+      parentKey: "mfid:v1:container:0123456789abcdef01234567",
+      containerName: "shop",
+      adapter: "vite",
+      bundler: "vite",
+      target: "browser",
+      bundlerVersion: "8",
+      mode: "production",
+      buildEnvironment: "prod",
+    };
+    await validatePayload("identity.schema.json", adapterTarget, "adapter optional fields");
+    await expect(
+      validatePayload(
+        "identity.schema.json",
+        { ...identity, bundlerVersion: "wrong-kind" },
+        "wrong optional field",
+      ),
+    ).rejects.toThrow("Schema validation failed");
   });
 
   it("validates showcase and fixture project.json artifacts", async () => {

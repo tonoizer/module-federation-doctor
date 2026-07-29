@@ -116,3 +116,12 @@ disk by default and is unrelated to terminal / JSON / SARIF report formats.
 Findings may include `suppressed` / `suppressionReason` when a
 [fingerprint baseline](./baselines.md) matches. Report `summary.suppressed`
 counts those findings when present.
+
+## Semantic identity schema
+
+`@module-federation/doctor/schemas/identity.schema.json` is the additive
+identity contract for correlation work. Identity keys use
+`mfid:v1:<kind>:<digest>` and use semantic dimensions only. Checkout paths,
+timestamps, display labels, runtime session values, and occurrence IDs never
+change a semantic key. Unknown values are explicit and scoped to their source;
+they are not one global unknown node.

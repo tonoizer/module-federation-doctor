@@ -57,6 +57,7 @@
     "./schemas/baseline.schema.json": "./schemas/baseline.schema.json",
     "./schemas/probe.schema.json": "./schemas/probe.schema.json",
     "./schemas/runtime-trace.schema.json": "./schemas/runtime-trace.schema.json",
+    "./schemas/identity.schema.json": "./schemas/identity.schema.json",
     "./schemas/config.schema.json": "./schemas/config.schema.json",
     "./schemas/runtime-capture.schema.json": "./schemas/runtime-capture.schema.json",
     "./schemas/ui.schema.json": "./schemas/ui.schema.json",
