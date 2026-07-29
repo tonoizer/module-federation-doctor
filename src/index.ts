@@ -124,11 +124,13 @@ export type {
 export type {
   CanonicalConfigCell,
   CanonicalConfigContext,
+  CanonicalConfigDiagnosticCode,
   CanonicalConfigDiagnostic,
   CanonicalConfigEntry,
   CanonicalConfigOrigin,
   CanonicalConfigSnapshot,
   CanonicalConfigState,
+  CanonicalConfigLimits,
   CanonicalEffectiveCell,
   CanonicalEffectiveState,
   CanonicalMFConfigV1,

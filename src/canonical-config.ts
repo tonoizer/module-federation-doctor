@@ -1,4 +1,6 @@
-import type { EvidenceValue } from "./evidence.js";
+import { isProxy } from "node:util/types";
+import type { EvidenceLimits, EvidenceValue } from "./evidence.js";
+import { redactEvidenceValue } from "./evidence.js";
 
 export type CanonicalConfigState = "known" | "absent" | "unknown" | "invalid";
 export type CanonicalEffectiveState =
@@ -36,9 +38,7 @@ export interface CanonicalConfigEntry {
 }
 
 export interface CanonicalConfigSnapshot {
-  /** Top-level fields. Keys stay sorted; collection order lives in `collections`. */
   fields: CanonicalConfigEntry[];
-  /** Exposes, remotes, and shared entries retain outer and fallback array order. */
   collections: {
     exposes: CanonicalConfigEntry[];
     remotes: CanonicalConfigEntry[];
@@ -46,8 +46,19 @@ export interface CanonicalConfigSnapshot {
   };
 }
 
+export type CanonicalConfigDiagnosticCode =
+  | "invalid-root"
+  | "invalid-collection"
+  | "opaque-value"
+  | "access-error"
+  | "cycle"
+  | "limit-depth"
+  | "limit-nodes"
+  | "limit-bytes"
+  | "limit-string";
+
 export interface CanonicalConfigDiagnostic {
-  code: "invalid-root" | "invalid-collection" | "opaque-value";
+  code: CanonicalConfigDiagnosticCode;
   path: string;
   message: string;
 }
@@ -81,6 +92,16 @@ export interface CanonicalConfigContext {
   target?: string;
 }
 
+export interface CanonicalConfigLimits extends EvidenceLimits {
+  maxStringBytes?: number;
+}
+
+const DEFAULT_LIMITS: Required<CanonicalConfigLimits> = {
+  maxDepth: 64,
+  maxNodes: 10_000,
+  maxBytes: 1_048_576,
+  maxStringBytes: 262_144,
+};
 const COLLECTIONS = new Set(["exposes", "remotes", "shared"]);
 const KNOWN_FIELDS = new Set([
   "name",
@@ -88,15 +109,18 @@ const KNOWN_FIELDS = new Set([
   "library",
   "remoteType",
   "shareScope",
+  "runtime",
   "runtimePlugins",
-  "getPublicPath",
-  "implementation",
+  "bridge",
+  "async",
   "manifest",
   "dev",
   "dts",
+  "experiments",
   "shareStrategy",
   "virtualRuntimeEntry",
-  "experiments",
+  "getPublicPath",
+  "implementation",
   "injectTreeShakingUsedExports",
   "treeShakingDir",
   "treeShakingSharedPlugins",
@@ -118,160 +142,509 @@ const KNOWN_FIELDS = new Set([
   "remotes",
   "shared",
 ]);
+const SENSITIVE_KEY =
+  /(?:token|secret|password|passwd|credential|private[-_ ]?key|api[-_]?key|authorization|cookie|session[-_]?id|pem|certificate|cert)/i;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function safeKey(key: string): string {
+  return SENSITIVE_KEY.test(key) ? "[REDACTED_KEY]" : key;
 }
 
-function jsonValue(
-  value: unknown,
-  path: string,
-  diagnostics: CanonicalConfigDiagnostic[],
-): EvidenceValue {
-  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
-  if (typeof value === "number")
-    return Number.isFinite(value) ? value : opaque(value, path, diagnostics);
-  if (typeof value === "bigint" || typeof value === "function" || typeof value === "symbol")
-    return opaque(value, path, diagnostics);
-  if (Array.isArray(value))
-    return value.map((_item, index) => {
-      const item = Object.getOwnPropertyDescriptor(value, String(index));
-      return item && "value" in item
-        ? jsonValue(item.value, `${path}/${index}`, diagnostics)
-        : opaque(undefined, `${path}/${index}`, diagnostics);
-    });
-  if (isRecord(value))
-    return Object.fromEntries(
-      Object.keys(value)
-        .sort()
-        .map((key) => {
-          const property = Object.getOwnPropertyDescriptor(value, key);
-          return [
-            key,
-            property && "value" in property
-              ? jsonValue(property.value, `${path}/${key}`, diagnostics)
-              : opaque(undefined, `${path}/${key}`, diagnostics),
-          ];
-        }),
-    );
-  return opaque(value, path, diagnostics);
+function limitsWithDefaults(options?: CanonicalConfigLimits): Required<CanonicalConfigLimits> {
+  const limits = { ...DEFAULT_LIMITS, ...options };
+  for (const value of Object.values(limits)) {
+    if (!Number.isSafeInteger(value) || value < 1) {
+      throw new RangeError("Canonical config limits must be positive safe integers.");
+    }
+  }
+  return limits;
+}
+
+function safeArray(value: unknown): value is unknown[] {
+  try {
+    return Array.isArray(value);
+  } catch {
+    return false;
+  }
+}
+
+function proxyValue(value: unknown): boolean {
+  try {
+    return isProxy(value);
+  } catch {
+    return true;
+  }
+}
+
+function safePrototype(value: object): object | null | undefined {
+  try {
+    return Object.getPrototypeOf(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function plainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || proxyValue(value) || safeArray(value))
+    return false;
+  const prototype = safePrototype(value);
+  return prototype === null || prototype === Object.prototype;
+}
+
+function descriptor(value: object, key: string): PropertyDescriptor | undefined {
+  try {
+    return Object.getOwnPropertyDescriptor(value, key);
+  } catch {
+    return undefined;
+  }
+}
+
+function ownKeys(value: object): string[] | undefined {
+  try {
+    return Object.keys(value).sort();
+  } catch {
+    return undefined;
+  }
 }
 
 function opaque(
   value: unknown,
   path: string,
   diagnostics: CanonicalConfigDiagnostic[],
+  code: CanonicalConfigDiagnosticCode = "opaque-value",
+  message = "Value was not persisted because it is executable or non-JSON data.",
 ): EvidenceValue {
-  diagnostics.push({
-    code: "opaque-value",
-    path,
-    message: "Value was not persisted because it is executable or non-JSON data.",
-  });
-  return { kind: "opaque", valueType: typeof value };
+  let objectType: string | undefined;
+  if (typeof value === "object" && value !== null) {
+    try {
+      const tag = Object.prototype.toString.call(value);
+      objectType = tag.startsWith("[object ") ? tag.slice(8, -1) : "object";
+    } catch {
+      objectType = "uninspectable";
+    }
+  }
+  diagnostics.push({ code, path, message });
+  return { kind: "opaque", valueType: typeof value, ...(objectType ? { objectType } : {}) };
+}
+
+function safeString(
+  value: string,
+  path: string,
+  diagnostics: CanonicalConfigDiagnostic[],
+  limits: Required<CanonicalConfigLimits>,
+): EvidenceValue {
+  if (Buffer.byteLength(value) > limits.maxStringBytes) {
+    return opaque(
+      value,
+      path,
+      diagnostics,
+      "limit-string",
+      `String exceeds maxStringBytes (${limits.maxStringBytes}).`,
+    );
+  }
+  return value;
+}
+
+function toJsonValue(
+  input: unknown,
+  path: string,
+  diagnostics: CanonicalConfigDiagnostic[],
+  limits: Required<CanonicalConfigLimits>,
+): EvidenceValue {
+  const holder: { value: EvidenceValue | undefined } = { value: undefined };
+  const pending: Array<{
+    input: unknown;
+    path: string;
+    depth: number;
+    set: (value: EvidenceValue) => void;
+  }> = [{ input, path, depth: 0, set: (value) => (holder.value = value) }];
+  const seen = new WeakSet<object>();
+  let nodes = 0;
+  let bytes = 0;
+
+  while (pending.length > 0) {
+    const task = pending.pop();
+    if (!task) continue;
+    nodes += 1;
+    if (nodes > limits.maxNodes) {
+      task.set(
+        opaque(
+          task.input,
+          task.path,
+          diagnostics,
+          "limit-nodes",
+          `Value exceeds maxNodes (${limits.maxNodes}).`,
+        ),
+      );
+      continue;
+    }
+    if (task.depth > limits.maxDepth) {
+      task.set(
+        opaque(
+          task.input,
+          task.path,
+          diagnostics,
+          "limit-depth",
+          `Value exceeds maxDepth (${limits.maxDepth}).`,
+        ),
+      );
+      continue;
+    }
+    const value = task.input;
+    if (value === null || typeof value === "boolean") {
+      task.set(value);
+      bytes += 5;
+    } else if (typeof value === "number") {
+      task.set(Number.isFinite(value) ? value : opaque(value, task.path, diagnostics));
+      bytes += 8;
+    } else if (typeof value === "string") {
+      task.set(safeString(value, task.path, diagnostics, limits));
+      bytes += Buffer.byteLength(value) + 2;
+    } else if (
+      typeof value === "bigint" ||
+      typeof value === "function" ||
+      typeof value === "symbol"
+    ) {
+      task.set(opaque(value, task.path, diagnostics));
+    } else if (typeof value !== "object") {
+      task.set(opaque(value, task.path, diagnostics));
+    } else if (proxyValue(value)) {
+      task.set(
+        opaque(value, task.path, diagnostics, "access-error", "Proxy values are not traversed."),
+      );
+    } else if (seen.has(value)) {
+      task.set(
+        opaque(
+          value,
+          task.path,
+          diagnostics,
+          "cycle",
+          "Cycle or repeated object reference was replaced with an opaque value.",
+        ),
+      );
+    } else if (safeArray(value)) {
+      seen.add(value);
+      const lengthDescriptor = descriptor(value, "length");
+      const length =
+        lengthDescriptor &&
+        "value" in lengthDescriptor &&
+        typeof lengthDescriptor.value === "number"
+          ? lengthDescriptor.value
+          : -1;
+      if (length < 0 || length > limits.maxNodes) {
+        task.set(
+          opaque(
+            value,
+            task.path,
+            diagnostics,
+            "access-error",
+            "Array length could not be read safely.",
+          ),
+        );
+        continue;
+      }
+      const output: EvidenceValue[] = [];
+      task.set(output);
+      for (let index = length - 1; index >= 0; index -= 1) {
+        const child = descriptor(value, String(index));
+        if (child && !("value" in child)) {
+          output[index] = opaque(
+            undefined,
+            `${task.path}/${index}`,
+            diagnostics,
+            "access-error",
+            "Accessor properties are not executed or persisted.",
+          );
+          continue;
+        }
+        const childValue = child && "value" in child ? child.value : undefined;
+        const childPath = `${task.path}/${index}`;
+        pending.push({
+          input: childValue,
+          path: childPath,
+          depth: task.depth + 1,
+          set: (item) => (output[index] = item),
+        });
+      }
+      bytes += 2;
+    } else if (plainObject(value)) {
+      seen.add(value);
+      const keys = ownKeys(value);
+      if (!keys) {
+        task.set(
+          opaque(
+            value,
+            task.path,
+            diagnostics,
+            "access-error",
+            "Object keys could not be read safely.",
+          ),
+        );
+        continue;
+      }
+      const output: Record<string, EvidenceValue> = {};
+      task.set(output);
+      for (let index = keys.length - 1; index >= 0; index -= 1) {
+        const key = keys[index] ?? "";
+        const property = descriptor(value, key);
+        const childPath = `${task.path}/${key.replaceAll("~", "~0").replaceAll("/", "~1")}`;
+        if (!property || !("value" in property)) {
+          output[key] = opaque(
+            undefined,
+            childPath,
+            diagnostics,
+            "access-error",
+            "Accessor properties are not executed or persisted.",
+          );
+          continue;
+        }
+        pending.push({
+          input: property.value,
+          path: childPath,
+          depth: task.depth + 1,
+          set: (item) => (output[key] = item),
+        });
+        bytes += Buffer.byteLength(key) + 3;
+      }
+      bytes += 2;
+    } else {
+      task.set(opaque(value, task.path, diagnostics));
+    }
+    if (bytes > limits.maxBytes) {
+      task.set(
+        opaque(
+          value,
+          task.path,
+          diagnostics,
+          "limit-bytes",
+          `Value exceeds maxBytes (${limits.maxBytes}).`,
+        ),
+      );
+    }
+  }
+  return holder.value ?? null;
 }
 
 function cell(
   value: unknown,
   path: string,
   diagnostics: CanonicalConfigDiagnostic[],
+  limits: Required<CanonicalConfigLimits>,
 ): CanonicalConfigCell {
+  const converted = toJsonValue(value, path, diagnostics, limits);
   return {
     state: "known",
-    value: jsonValue(value, path, diagnostics),
+    value: redact(converted, limits),
     origin: "user",
     evidenceIds: [],
   };
 }
 
-function entries(
+function redact(value: EvidenceValue, limits: Required<CanonicalConfigLimits>): EvidenceValue {
+  return redactEvidenceValue(value, {
+    maxDepth: Math.max(limits.maxDepth, 64),
+    maxNodes: Number.MAX_SAFE_INTEGER,
+    maxBytes: Number.MAX_SAFE_INTEGER,
+  });
+}
+
+function collectionEntries(
   value: unknown,
   path: string,
   diagnostics: CanonicalConfigDiagnostic[],
+  limits: Required<CanonicalConfigLimits>,
 ): CanonicalConfigEntry[] {
   if (value === undefined) return [];
-  if (!Array.isArray(value) && !isRecord(value)) {
+  if (!safeArray(value) && !plainObject(value)) {
     diagnostics.push({
       code: "invalid-collection",
       path,
-      message: "Expected an object or array collection.",
+      message: "Expected a plain object or array collection.",
     });
     return [];
   }
-  const outerArray = Array.isArray(value);
-  const keys = outerArray ? value.map((_item, index) => String(index)) : Object.keys(value);
-  return keys.map((key, index) => {
-    const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    const item = descriptor && "value" in descriptor ? descriptor.value : undefined;
-    const [entryKey, entry] = outerArray && Array.isArray(item) ? item : [key, item];
-    return {
-      id: `${path}/${index}`,
-      key: entryKey,
-      value: cell(entry, `${path}/${index}`, diagnostics),
-    };
-  });
+  const result: CanonicalConfigEntry[] = [];
+  if (safeArray(value)) {
+    const lengthDescriptor = descriptor(value, "length");
+    const length =
+      lengthDescriptor && "value" in lengthDescriptor && typeof lengthDescriptor.value === "number"
+        ? lengthDescriptor.value
+        : 0;
+    for (let index = 0; index < length; index += 1) {
+      const property = descriptor(value, String(index));
+      if (property && !("value" in property)) {
+        result.push({
+          id: `${path}/${index}`,
+          key: String(index),
+          value: {
+            state: "unknown",
+            origin: "unknown",
+            evidenceIds: [],
+            value: opaque(
+              undefined,
+              `${path}/${index}`,
+              diagnostics,
+              "access-error",
+              "Accessor properties are not executed or persisted.",
+            ),
+          },
+        });
+        continue;
+      }
+      const item = property && "value" in property ? property.value : undefined;
+      let key = String(index);
+      if (typeof item === "string") key = safeKey(item);
+      else if (plainObject(item)) {
+        const name = descriptor(item, "name")?.value;
+        if (typeof name === "string") key = safeKey(name);
+      }
+      result.push({
+        id: `${path}/${index}`,
+        key,
+        value: cell(item, `${path}/${index}`, diagnostics, limits),
+      });
+    }
+    return result;
+  }
+  const keys = ownKeys(value) ?? [];
+  for (const key of keys) {
+    const property = descriptor(value, key);
+    result.push({
+      id: `${path}/${safeKey(key)}`,
+      key: safeKey(key),
+      value:
+        property && "value" in property
+          ? cell(property.value, `${path}/${key}`, diagnostics, limits)
+          : {
+              state: "unknown",
+              origin: "unknown",
+              evidenceIds: [],
+              value: opaque(
+                undefined,
+                `${path}/${key}`,
+                diagnostics,
+                "access-error",
+                "Accessor properties are not executed or persisted.",
+              ),
+            },
+    });
+  }
+  return result;
+}
+
+function emptySnapshot(): CanonicalConfigSnapshot {
+  return { fields: [], collections: { exposes: [], remotes: [], shared: [] } };
 }
 
 function snapshot(
   input: Record<string, unknown>,
   diagnostics: CanonicalConfigDiagnostic[],
+  limits: Required<CanonicalConfigLimits>,
 ): CanonicalConfigSnapshot {
-  const fields = Object.keys(input)
-    .filter((key) => !COLLECTIONS.has(key))
-    .sort()
-    .map((key) => ({
-      id: `/${key}`,
-      key,
-      value: cell(Object.getOwnPropertyDescriptor(input, key)?.value, `/${key}`, diagnostics),
-    }));
+  const fields: CanonicalConfigEntry[] = [];
+  const keys = ownKeys(input);
+  if (!keys) {
+    diagnostics.push({
+      code: "access-error",
+      path: "/",
+      message: "Object keys could not be read safely.",
+    });
+  }
+  for (const key of keys ?? []) {
+    if (COLLECTIONS.has(key)) continue;
+    const property = descriptor(input, key);
+    fields.push({
+      id: `/${safeKey(key)}`,
+      key: safeKey(key),
+      value:
+        property && "value" in property
+          ? cell(property.value, `/${key}`, diagnostics, limits)
+          : {
+              state: "unknown",
+              origin: "unknown",
+              evidenceIds: [],
+              value: opaque(
+                undefined,
+                `/${key}`,
+                diagnostics,
+                "access-error",
+                "Accessor properties are not executed or persisted.",
+              ),
+            },
+    });
+  }
   return {
     fields,
     collections: {
-      exposes: entries(input.exposes, "/exposes", diagnostics),
-      remotes: entries(input.remotes, "/remotes", diagnostics),
-      shared: entries(input.shared, "/shared", diagnostics),
+      exposes: collectionEntries(
+        descriptor(input, "exposes")?.value,
+        "/exposes",
+        diagnostics,
+        limits,
+      ),
+      remotes: collectionEntries(
+        descriptor(input, "remotes")?.value,
+        "/remotes",
+        diagnostics,
+        limits,
+      ),
+      shared: collectionEntries(descriptor(input, "shared")?.value, "/shared", diagnostics, limits),
     },
   };
 }
 
-/** Read a config-shaped value without executing it or applying adapter defaults. */
+/** Read a config-shaped value without executing getters or applying adapter defaults. */
 export function readCanonicalModuleFederationConfig(
   input: unknown,
   context: CanonicalConfigContext = {},
+  options: CanonicalConfigLimits = {},
 ): CanonicalMFConfigV1 | undefined {
   if (input === undefined) return undefined;
+  const limits = limitsWithDefaults(options);
   const diagnostics: CanonicalConfigDiagnostic[] = [];
-  if (!isRecord(input)) {
+  if (!plainObject(input)) {
     diagnostics.push({
       code: "invalid-root",
       path: "/",
-      message: "Expected a Module Federation config object.",
+      message: "Expected a plain Module Federation config object.",
     });
     return {
       schemaVersion: 1,
       contract: contract(context),
-      declared: { fields: [], collections: { exposes: [], remotes: [], shared: [] } },
+      declared: emptySnapshot(),
       effectiveByBuild: {},
       diagnostics,
       extensions: [],
     };
   }
+  const declared = snapshot(input, diagnostics, limits);
+  const extensions: CanonicalUnknownField[] = [];
+  for (const key of ownKeys(input) ?? []) {
+    if (KNOWN_FIELDS.has(key)) continue;
+    const property = descriptor(input, key);
+    extensions.push({
+      path: `/${safeKey(key)}`,
+      value: redact(
+        property && "value" in property
+          ? toJsonValue(property.value, `/${key}`, diagnostics, limits)
+          : opaque(
+              undefined,
+              `/${key}`,
+              diagnostics,
+              "access-error",
+              "Accessor properties are not executed or persisted.",
+            ),
+        limits,
+      ),
+      reason: "extension",
+    });
+  }
   return {
     schemaVersion: 1,
     contract: contract(context),
-    declared: snapshot(input, diagnostics),
+    declared,
     effectiveByBuild: {},
     diagnostics,
-    extensions: Object.keys(input)
-      .filter((key) => !KNOWN_FIELDS.has(key))
-      .map((key) => ({
-        path: `/${key}`,
-        value: jsonValue(
-          Object.getOwnPropertyDescriptor(input, key)?.value,
-          `/${key}`,
-          diagnostics,
-        ),
-        reason: "extension" as const,
-      })),
+    extensions,
   };
 }
 
