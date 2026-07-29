@@ -1,0 +1,79 @@
+{
+  "protocol": {
+    "protocolVersion": 2,
+    "schemaVersion": 2,
+    "producer": { "name": "@module-federation/doctor", "version": "0.1.0" },
+    "source": { "kind": "project", "schemaVersion": "1" }
+  },
+  "scope": {
+    "adapter": "vite",
+    "bundler": { "name": "vite", "version": "7" },
+    "target": "web"
+  },
+  "identity": { "project": "checkout", "workspace": "shop" },
+  "subjects": [
+    { "id": "project:checkout", "kind": "project", "name": "checkout" },
+    { "id": "shared-package:react", "kind": "shared-package", "name": "react" }
+  ],
+  "assertions": [
+    {
+      "id": "assertion:react-declared",
+      "subject": "shared-package:react",
+      "predicate": "version",
+      "value": "^18.0.0",
+      "layer": "declared",
+      "scope": {
+        "adapter": "vite",
+        "bundler": { "name": "vite", "version": "7" },
+        "target": "web"
+      },
+      "provenance": {
+        "collector": { "name": "package-json", "version": "1" },
+        "inputKind": "package.json",
+        "source": "package.json",
+        "sourceSchemaVersion": "1"
+      },
+      "confidence": { "level": "exact", "reason": "Read from package.json." },
+      "completeness": { "status": "complete", "reason": "The declared dependency was present." }
+    },
+    {
+      "id": "assertion:react-artifact",
+      "subject": "shared-package:react",
+      "predicate": "version",
+      "value": "19.0.0",
+      "layer": "artifact",
+      "scope": {
+        "adapter": "vite",
+        "bundler": { "name": "vite", "version": "7" },
+        "target": "web"
+      },
+      "provenance": {
+        "collector": { "name": "manifest", "version": "1" },
+        "inputKind": "mf-manifest.json",
+        "source": "dist/mf-manifest.json",
+        "sourceSchemaVersion": "1"
+      },
+      "confidence": { "level": "high", "reason": "Read from the emitted manifest." },
+      "completeness": { "status": "complete", "reason": "The artifact shared entry was present." }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:react-conflict",
+      "kind": "conflicts-with",
+      "from": "assertion:react-declared",
+      "to": "assertion:react-artifact"
+    }
+  ],
+  "evaluations": [
+    {
+      "id": "evaluation:shared-version-conflict",
+      "rule": { "id": "shared/version-conflict", "version": "1" },
+      "subject": "shared-package:react",
+      "outcome": "fail",
+      "evidenceIds": ["assertion:react-declared", "assertion:react-artifact"],
+      "reason": "Declared and artifact versions conflict.",
+      "completeness": { "status": "complete", "reason": "Both compared assertions were available." }
+    }
+  ]
+}

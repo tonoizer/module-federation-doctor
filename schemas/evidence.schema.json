@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/evidence.schema.json",
+  "title": "Module Federation Doctor evidence protocol v2",
+  "type": "object",
+  "required": ["protocol", "scope", "identity", "subjects", "assertions", "edges", "evaluations"],
+  "properties": {
+    "protocol": { "$ref": "#/$defs/protocol" },
+    "scope": { "$ref": "#/$defs/scope" },
+    "identity": { "$ref": "#/$defs/identity" },
+    "subjects": { "type": "array", "items": { "$ref": "#/$defs/subject" } },
+    "assertions": { "type": "array", "items": { "$ref": "#/$defs/assertion" } },
+    "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
+    "evaluations": { "type": "array", "items": { "$ref": "#/$defs/evaluation" } }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "value": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        { "type": "array", "items": { "$ref": "#/$defs/value" } },
+        { "type": "object", "additionalProperties": { "$ref": "#/$defs/value" } }
+      ]
+    },
+    "map": { "type": "object", "additionalProperties": { "$ref": "#/$defs/value" } },
+    "protocol": {
+      "type": "object",
+      "required": ["protocolVersion", "schemaVersion", "producer", "source"],
+      "properties": {
+        "protocolVersion": { "const": 2 },
+        "schemaVersion": { "const": 2 },
+        "producer": { "$ref": "#/$defs/nameVersion" },
+        "source": {
+          "type": "object",
+          "required": ["kind", "schemaVersion"],
+          "properties": {
+            "kind": { "type": "string", "minLength": 1 },
+            "schemaVersion": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "nameVersion": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "required": ["adapter", "bundler", "target"],
+      "properties": {
+        "adapter": { "type": "string", "minLength": 1 },
+        "bundler": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "version": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "target": { "enum": ["web", "node", "browser", "ssr", "unknown"] }
+      },
+      "additionalProperties": false
+    },
+    "identity": {
+      "type": "object",
+      "properties": {
+        "project": { "type": "string" },
+        "workspace": { "type": "string" },
+        "buildId": { "type": "string" },
+        "artifactDigest": { "type": "string" },
+        "deploymentId": { "type": "string" },
+        "releaseId": { "type": "string" },
+        "runtimeInstanceId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "traceId": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "subject": {
+      "type": "object",
+      "required": ["id", "kind", "name"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": [
+            "project",
+            "dependency",
+            "remote",
+            "expose",
+            "shared-package",
+            "build",
+            "artifact",
+            "deployment",
+            "runtime-instance"
+          ]
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "attributes": { "$ref": "#/$defs/map" }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["collector", "inputKind", "source", "sourceSchemaVersion"],
+      "properties": {
+        "collector": { "$ref": "#/$defs/nameVersion" },
+        "inputKind": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "sourceSchemaVersion": { "type": "string", "minLength": 1 },
+        "location": { "type": "string" },
+        "contentDigest": { "type": "string" },
+        "parentEvidenceIds": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "completeness": {
+      "type": "object",
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "enum": ["complete", "partial", "unknown", "not-collected"] },
+        "expectedCount": { "type": "integer", "minimum": 0 },
+        "observedCount": { "type": "integer", "minimum": 0 },
+        "missing": { "type": "array", "items": { "type": "string" } },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "confidence": {
+      "type": "object",
+      "required": ["level", "reason"],
+      "properties": {
+        "level": { "enum": ["exact", "high", "medium", "low", "unknown"] },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "assertion": {
+      "type": "object",
+      "required": [
+        "id",
+        "subject",
+        "predicate",
+        "value",
+        "layer",
+        "scope",
+        "provenance",
+        "confidence",
+        "completeness"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "subject": { "type": "string", "minLength": 1 },
+        "predicate": { "type": "string", "minLength": 1 },
+        "value": { "$ref": "#/$defs/value" },
+        "layer": { "enum": ["declared", "effective", "artifact", "deployment", "runtime"] },
+        "scope": { "$ref": "#/$defs/scope" },
+        "identity": { "$ref": "#/$defs/identity" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "completeness": { "$ref": "#/$defs/completeness" }
+      },
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "kind", "from", "to"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["derived-from", "conflicts-with", "supersedes", "identity"] },
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "evaluation": {
+      "type": "object",
+      "required": ["id", "rule", "subject", "outcome", "evidenceIds", "reason", "completeness"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "rule": {
+          "type": "object",
+          "required": ["id", "version"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "version": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "subject": { "type": "string", "minLength": 1 },
+        "outcome": { "enum": ["pass", "fail", "unknown", "not-applicable"] },
+        "evidenceIds": { "type": "array", "items": { "type": "string" } },
+        "reason": { "type": "string", "minLength": 1 },
+        "completeness": { "$ref": "#/$defs/completeness" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

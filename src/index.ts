@@ -104,3 +104,34 @@ export type {
   UiGraphNode,
   UiGraphNodeKind,
 } from "./types.js";
+export {
+  assertEvidenceGraphIntegrity,
+  assertEvidenceValue,
+  canonicalizeEvidenceValue,
+  normalizeEvidenceGraph,
+  redactEvidenceValue,
+  stableEvidenceId,
+} from "./evidence.js";
+export { EvidenceIntegrityError, EvidenceResourceError } from "./evidence.js";
+export type {
+  EvidenceAssertion,
+  EvidenceCompleteness,
+  EvidenceCompletenessInfo,
+  EvidenceConfidence,
+  EvidenceConfidenceInfo,
+  EvidenceEdge,
+  EvidenceEdgeKind,
+  EvidenceGraphV2,
+  EvidenceIdentity,
+  EvidenceLayer,
+  EvidenceLimits,
+  EvidenceProtocolIdentity,
+  EvidenceProtocolVersion,
+  EvidenceProvenance,
+  EvidenceRuleEvaluation,
+  EvidenceScope,
+  EvidenceSubject,
+  EvidenceSubjectKind,
+  EvidenceValue,
+  RuleOutcome,
+} from "./evidence.js";

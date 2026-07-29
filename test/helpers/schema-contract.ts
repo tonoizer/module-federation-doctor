@@ -25,6 +25,10 @@ type JsonSchemaDocument = {
   required?: string[];
   properties?: {
     schemaVersion?: { const?: unknown };
+    protocol?: { $ref?: string };
+  };
+  $defs?: {
+    protocol?: { properties?: { schemaVersion?: { const?: unknown } } };
   };
 };
 
@@ -116,16 +120,23 @@ export async function assertPackageExportsMatchSchemas(): Promise<void> {
     const schema = await loadSchema(contract.file);
     assert.equal(typeof schema.title, "string", `${contract.file} must declare a title`);
     assert.ok((schema.title ?? "").length > 0, `${contract.file} title must be non-empty`);
-    assert.equal(
-      schema.properties?.schemaVersion?.const,
-      1,
-      `${contract.file} schemaVersion must be 1`,
+    const schemaVersion =
+      schema.properties?.schemaVersion?.const ??
+      schema.$defs?.protocol?.properties?.schemaVersion?.const;
+    assert.ok(
+      schemaVersion === 1 || schemaVersion === 2,
+      `${contract.file} must declare a supported schema version`,
     );
   }
 }
 
 /** Representative on-disk fixtures for pack:check (no Doctor runtime required). */
 export async function validateFixturePayloads(): Promise<void> {
+  const evidence: unknown = JSON.parse(
+    await fs.readFile(path.join(root, "examples/evidence/v2-conflict.json"), "utf8"),
+  );
+  await validatePayload("evidence.schema.json", evidence, "examples/evidence/v2-conflict.json");
+
   const projectFixtures = [
     "examples/showcase/federation/version-conflict/host.project.json",
     "examples/showcase/runtime/green/host.project.json",
