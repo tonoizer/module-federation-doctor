@@ -75,6 +75,9 @@ export {
 export type {
   AnalysisCapabilities,
   AnalysisResult,
+  ArtifactKind,
+  ArtifactRecord,
+  ArtifactSource,
   ArtifactFacts,
   BaselineEntry,
   BaselineFile,

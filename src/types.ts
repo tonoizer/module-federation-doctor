@@ -224,6 +224,16 @@ export interface ManifestShared {
   assets: string[];
 }
 
+export type ArtifactKind = "manifest" | "stats";
+export type ArtifactSource = "discovered" | "emitted";
+
+export interface ArtifactRecord {
+  kind: ArtifactKind;
+  path: string;
+  valid: boolean;
+  source: ArtifactSource;
+}
+
 export interface ArtifactFacts {
   manifest?: {
     path: string;
@@ -257,6 +267,8 @@ export interface ArtifactFacts {
     path: string;
     valid: boolean;
   };
+  /** Every discovered artifact, kept in deterministic path order. */
+  records?: ArtifactRecord[];
   emittedAssets: string[];
   /** Relative path or asset basename → on-disk byte size when resolvable. */
   assetSizes?: Record<string, number>;
@@ -487,6 +499,11 @@ export interface DoctorOptions {
   moduleFederation?: ModuleFederationConfigLike;
   bundler?: BundlerName;
   bundlerVersion?: string;
+  /** Optional public artifact names used to bound post-build discovery. */
+  artifactNames?: {
+    manifest?: string[];
+    stats?: string[];
+  };
   /**
    * Vite-family lifecycle override. Adapters normally detect this from
    * package.json / public plugin meta; set only in tests or unusual setups.
@@ -543,6 +560,10 @@ export interface ResolvedDoctorOptions {
   moduleFederation?: ModuleFederationConfigLike;
   bundler: BundlerName;
   bundlerVersion?: string;
+  artifactNames: {
+    manifest: string[];
+    stats: string[];
+  };
   viteLifecycle?: ViteLifecycleFacts;
   mode: "development" | "ci";
   root: string;
