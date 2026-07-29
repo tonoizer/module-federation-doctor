@@ -119,6 +119,8 @@ describe("published schema contracts", () => {
       "2026-07-29T12:00:00Z",
       "process-123",
       "session-abc",
+      "pROCESS-123",
+      "SESSION-abc",
     ]) {
       await expect(
         validatePayload(
@@ -128,6 +130,11 @@ describe("published schema contracts", () => {
         ),
       ).rejects.toThrow("Schema validation failed");
     }
+    await validatePayload(
+      "identity.schema.json",
+      { ...identity, organizationId: "2026-07-29-build" },
+      "stable date-prefixed organizationId",
+    );
     await expect(
       validatePayload(
         "identity.schema.json",

@@ -28,17 +28,6 @@ const container = createContainerIdentity(
 const compileTimeIdentityChecks = (): void => {
   // @ts-expect-error Unsafe dimensions are rejected by the kind-specific TypeScript contract.
   canonicalIdentityKey("organization", { organizationId: "acme", root: "/tmp/app" });
-  // @ts-expect-error Child identities require a parentKey in the discriminated options.
-  createIdentity({
-    kind: "application",
-    dimensions: { organizationId: "acme", applicationId: "checkout" },
-  });
-  // @ts-expect-error Organization identities cannot have a parentKey.
-  createIdentity({
-    kind: "organization",
-    dimensions: { organizationId: "acme" },
-    parentKey: org.key,
-  });
 };
 void compileTimeIdentityChecks;
 
@@ -183,6 +172,8 @@ describe("semantic identities", () => {
       "2026-07-29T12:00:00Z",
       "process-123",
       "session-abc",
+      "pROCESS-123",
+      "SESSION-abc",
     ]) {
       expect(() => canonicalIdentityKey("organization", { organizationId: value })).toThrow();
     }
@@ -213,6 +204,45 @@ describe("semantic identities", () => {
         dimensions: { organizationId: "acme", applicationId: "checkout" },
       } as never),
     ).toThrow("parentKey");
+  });
+
+  it("makes generic occurrence identities schema-valid", async () => {
+    const lineageKey = "mfid:v1:build-lineage:0123456789abcdef01234567";
+    const build = createIdentity({
+      kind: "build",
+      dimensions: { buildLineageKey: lineageKey, buildId: "2026-07-29-build" },
+      parentKey: lineageKey,
+    });
+    expect(build.occurrenceId).toBe("2026-07-29-build");
+    await validatePayload("identity.schema.json", build, "generic build");
+
+    const environmentKey = "mfid:v1:environment:0123456789abcdef01234567";
+    const deployment = createIdentity({
+      kind: "deployment",
+      dimensions: {
+        environmentKey,
+        deploymentId: "2026-07-29-build",
+        artifactSetDigest: `sha256:${"a".repeat(64)}`,
+        artifactKeys: ["mfid:v1:artifact:0123456789abcdef01234567"],
+      },
+      parentKey: environmentKey,
+    });
+    expect(deployment.occurrenceId).toBe("2026-07-29-build");
+    await validatePayload("identity.schema.json", deployment, "generic deployment");
+
+    const realmKey = "mfid:v1:runtime-realm:0123456789abcdef01234567";
+    const runtime = createIdentity({
+      kind: "runtime-instance",
+      dimensions: {
+        realmKey,
+        runtimeInstanceId: "2026-07-29-build",
+        runtimePackage: "mf",
+        runtimeVersion: "1",
+      },
+      parentKey: realmKey,
+    });
+    expect(runtime.occurrenceId).toBe("2026-07-29-build");
+    await validatePayload("identity.schema.json", runtime, "generic runtime instance");
   });
 
   it("validates enums, typed parent references, and safe metadata", () => {

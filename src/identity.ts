@@ -124,6 +124,20 @@ export type AnySemanticIdentity =
   | RuntimeRealmIdentity
   | RuntimeInstanceIdentity;
 
+type IdentityByKind = {
+  organization: OrganizationIdentity;
+  application: ApplicationIdentity;
+  container: ContainerIdentity;
+  "adapter-target": AdapterTargetIdentity;
+  "build-lineage": BuildLineageIdentity;
+  build: BuildIdentity;
+  artifact: ArtifactIdentity;
+  environment: EnvironmentIdentity;
+  deployment: DeploymentIdentity;
+  "runtime-realm": RuntimeRealmIdentity;
+  "runtime-instance": RuntimeInstanceIdentity;
+};
+
 export interface OrganizationDimensions {
   organizationId: string;
 }
@@ -609,10 +623,56 @@ export type CreateIdentityOptions =
     }[Exclude<IdentityKind, "organization">];
 
 /** Generic escape hatch with the same validation as kind-specific constructors. */
+export function createIdentity(
+  options: Extract<CreateIdentityOptions, { kind: "organization" }>,
+): IdentityByKind["organization"];
+export function createIdentity(
+  options: Extract<CreateIdentityOptions, { kind: "application" }>,
+): IdentityByKind["application"];
+export function createIdentity(
+  options: Extract<CreateIdentityOptions, { kind: "container" }>,
+): IdentityByKind["container"];
+export function createIdentity(
+  options: Extract<CreateIdentityOptions, { kind: "adapter-target" }>,
+): IdentityByKind["adapter-target"];
+export function createIdentity(
+  options: Extract<CreateIdentityOptions, { kind: "build-lineage" }>,
+): IdentityByKind["build-lineage"];
+export function createIdentity(
+  options: Extract<CreateIdentityOptions, { kind: "build" }>,
+): IdentityByKind["build"];
+export function createIdentity(
+  options: Extract<CreateIdentityOptions, { kind: "artifact" }>,
+): IdentityByKind["artifact"];
+export function createIdentity(
+  options: Extract<CreateIdentityOptions, { kind: "environment" }>,
+): IdentityByKind["environment"];
+export function createIdentity(
+  options: Extract<CreateIdentityOptions, { kind: "deployment" }>,
+): IdentityByKind["deployment"];
+export function createIdentity(
+  options: Extract<CreateIdentityOptions, { kind: "runtime-realm" }>,
+): IdentityByKind["runtime-realm"];
+export function createIdentity(
+  options: Extract<CreateIdentityOptions, { kind: "runtime-instance" }>,
+): IdentityByKind["runtime-instance"];
 export function createIdentity(options: CreateIdentityOptions): SemanticIdentity {
   if (options.kind !== "organization" && typeof options.parentKey !== "string")
     throw new IdentityValidationError("child identity requires parentKey.");
-  return common(options.kind, options.dimensions, options, options.parentKey);
+  const identity = common(options.kind, options.dimensions, options, options.parentKey);
+  switch (options.kind) {
+    case "build":
+      return { ...identity, occurrenceId: options.dimensions.buildId } as BuildIdentity;
+    case "deployment":
+      return { ...identity, occurrenceId: options.dimensions.deploymentId } as DeploymentIdentity;
+    case "runtime-instance":
+      return {
+        ...identity,
+        occurrenceId: options.dimensions.runtimeInstanceId,
+      } as RuntimeInstanceIdentity;
+    default:
+      return identity;
+  }
 }
 
 function child<K extends IdentityKind>(

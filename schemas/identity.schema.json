@@ -556,13 +556,13 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 256,
-      "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!\\\\\\\\)(?!.*[A-Za-z][A-Za-z\\d+.-]*://)(?!.*[?&](?:(?:[Tt][Oo][Kk][Ee][Nn])|(?:[Ss][Ii][Gg])|(?:[Ss][Ii][Gg][Nn][Aa][Tt][Uu][Rr][Ee])|(?:[Ee][Xx][Pp][Ii][Rr][Ee][Ss])|(?:[Aa][Uu][Tt][Hh])|(?:[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn])|(?:[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd])|(?:[Ss][Ee][Cc][Rr][Ee][Tt])|(?:[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll])|(?:[Ss][Ee][Ss][Ss][Ii][Oo][Nn])|[Kk][Ee][Yy])(?:=|&|$))(?!\\d{4}-\\d{2}-\\d{2})(?!\\d{10,13}$)(?!(?:[Pp]rocess|[Ss]ession|[Tt]ab|[Pp][Ii][Dd]|[Ss][Ii][Dd])[-_:]).+$"
+      "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!\\\\\\\\)(?!.*[A-Za-z][A-Za-z\\d+.-]*://)(?!.*[?&](?:(?:[Tt][Oo][Kk][Ee][Nn])|(?:[Ss][Ii][Gg])|(?:[Ss][Ii][Gg][Nn][Aa][Tt][Uu][Rr][Ee])|(?:[Ee][Xx][Pp][Ii][Rr][Ee][Ss])|(?:[Aa][Uu][Tt][Hh])|(?:[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn])|(?:[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd])|(?:[Ss][Ee][Cc][Rr][Ee][Tt])|(?:[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll])|(?:[Ss][Ee][Ss][Ss][Ii][Oo][Nn])|[Kk][Ee][Yy])(?:=|&|$))(?!\\d{4}-\\d{2}-\\d{2}(?:[Tt ]|$))(?!\\d{10,13}$)(?!(?:[Pp][Rr][Oo][Cc][Ee][Ss][Ss]|[Ss][Ee][Ss][Ss][Ii][Oo][Nn]|[Tt][Aa][Bb]|[Pp][Ii][Dd]|[Ss][Ii][Dd])[-_:]).+$"
     },
     "safeShortId": {
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!\\\\\\\\)(?!.*[A-Za-z][A-Za-z\\d+.-]*://)(?!.*[?&](?:(?:[Tt][Oo][Kk][Ee][Nn])|(?:[Ss][Ii][Gg])|(?:[Ss][Ii][Gg][Nn][Aa][Tt][Uu][Rr][Ee])|(?:[Ee][Xx][Pp][Ii][Rr][Ee][Ss])|(?:[Aa][Uu][Tt][Hh])|(?:[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn])|(?:[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd])|(?:[Ss][Ee][Cc][Rr][Ee][Tt])|(?:[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll])|(?:[Ss][Ee][Ss][Ss][Ii][Oo][Nn])|[Kk][Ee][Yy])(?:=|&|$))(?!\\d{4}-\\d{2}-\\d{2})(?!\\d{10,13}$)(?!(?:[Pp]rocess|[Ss]ession|[Tt]ab|[Pp][Ii][Dd]|[Ss][Ii][Dd])[-_:]).+$"
+      "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!\\\\\\\\)(?!.*[A-Za-z][A-Za-z\\d+.-]*://)(?!.*[?&](?:(?:[Tt][Oo][Kk][Ee][Nn])|(?:[Ss][Ii][Gg])|(?:[Ss][Ii][Gg][Nn][Aa][Tt][Uu][Rr][Ee])|(?:[Ee][Xx][Pp][Ii][Rr][Ee][Ss])|(?:[Aa][Uu][Tt][Hh])|(?:[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn])|(?:[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd])|(?:[Ss][Ee][Cc][Rr][Ee][Tt])|(?:[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll])|(?:[Ss][Ee][Ss][Ss][Ii][Oo][Nn])|[Kk][Ee][Yy])(?:=|&|$))(?!\\d{4}-\\d{2}-\\d{2}(?:[Tt ]|$))(?!\\d{10,13}$)(?!(?:[Pp][Rr][Oo][Cc][Ee][Ss][Ss]|[Ss][Ee][Ss][Ss][Ii][Oo][Nn]|[Tt][Aa][Bb]|[Pp][Ii][Dd]|[Ss][Ii][Dd])[-_:]).+$"
     },
     "digest": { "type": "string", "pattern": "^(?:sha256:)?[a-f0-9]{64}$" },
     "organizationKey": { "type": "string", "pattern": "^mfid:v1:organization:[a-f0-9]{24}$" },
