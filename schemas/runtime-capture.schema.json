@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/runtime-capture.schema.json",
+  "title": "Module Federation Doctor external runtime capture v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "contractVersion",
+    "collector",
+    "transport",
+    "captureId",
+    "capabilities",
+    "limits",
+    "truncation",
+    "reports",
+    "events",
+    "devtools",
+    "snapshots",
+    "instances",
+    "network",
+    "errors",
+    "relations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "contractVersion": { "const": 1 },
+    "collector": { "$ref": "#/$defs/nameVersion" },
+    "transport": {
+      "enum": ["file", "browser-debug", "devtools-export", "node-file", "app-export"]
+    },
+    "captureId": { "type": "string", "minLength": 1 },
+    "capabilities": { "$ref": "#/$defs/capabilities" },
+    "limits": { "$ref": "#/$defs/limits" },
+    "truncation": { "type": "array", "items": { "$ref": "#/$defs/truncation" } },
+    "reports": { "$ref": "#/$defs/records" },
+    "events": { "$ref": "#/$defs/records" },
+    "devtools": { "$ref": "#/$defs/records" },
+    "snapshots": { "$ref": "#/$defs/records" },
+    "instances": { "$ref": "#/$defs/records" },
+    "network": { "$ref": "#/$defs/records" },
+    "errors": { "$ref": "#/$defs/records" },
+    "relations": { "type": "array", "items": { "$ref": "#/$defs/relation" } }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nameVersion": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "capability": {
+      "type": "object",
+      "required": ["state", "reason"],
+      "properties": {
+        "state": { "enum": ["exact", "partial", "unavailable", "not-applicable", "unknown"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "source": {
+          "enum": ["observability", "devtools", "snapshot", "instance", "network", "error"]
+        },
+        "runtimeVersion": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["reports", "sharedLifecycle", "snapshot", "instance", "networkError"],
+      "properties": {
+        "reports": { "$ref": "#/$defs/capability" },
+        "sharedLifecycle": { "$ref": "#/$defs/capability" },
+        "snapshot": { "$ref": "#/$defs/capability" },
+        "instance": { "$ref": "#/$defs/capability" },
+        "networkError": { "$ref": "#/$defs/capability" }
+      },
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "maxBytes",
+        "maxReports",
+        "maxEvents",
+        "maxSnapshots",
+        "maxInstances",
+        "maxNetworkRecords",
+        "maxErrors",
+        "maxStringLength",
+        "maxDiagnosisStringLength",
+        "maxDepth",
+        "maxObjectKeys"
+      ],
+      "properties": {
+        "maxBytes": { "type": "integer", "minimum": 0, "maximum": 26214400 },
+        "maxReports": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "maxEvents": { "type": "integer", "minimum": 0, "maximum": 5000 },
+        "maxSnapshots": { "type": "integer", "minimum": 0, "maximum": 500 },
+        "maxInstances": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "maxNetworkRecords": { "type": "integer", "minimum": 0, "maximum": 2000 },
+        "maxErrors": { "type": "integer", "minimum": 0, "maximum": 200 },
+        "maxStringLength": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "maxDiagnosisStringLength": { "type": "integer", "minimum": 0, "maximum": 16384 },
+        "maxDepth": { "type": "integer", "minimum": 0, "maximum": 12 },
+        "maxObjectKeys": { "type": "integer", "minimum": 0, "maximum": 100 }
+      },
+      "additionalProperties": false
+    },
+    "identity": {
+      "type": "object",
+      "required": ["captureId", "navigationId", "realmId", "sequence"],
+      "properties": {
+        "captureId": { "type": "string", "minLength": 1 },
+        "navigationId": { "type": "string", "minLength": 1 },
+        "realmId": { "type": "string", "minLength": 1 },
+        "sequence": { "type": "integer", "minimum": 0 },
+        "runtimeVersion": { "type": "string" },
+        "sourceScope": { "type": "string" },
+        "traceId": { "type": "string" },
+        "requestId": { "type": "string" },
+        "hostName": { "type": "string" },
+        "instanceName": { "type": "string" },
+        "remoteName": { "type": "string" },
+        "remoteAlias": { "type": "string" },
+        "sharedPackage": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "value": { "type": "object", "additionalProperties": { "$ref": "#/$defs/jsonValue" } },
+    "jsonValue": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        { "type": "array", "items": { "$ref": "#/$defs/jsonValue" } },
+        { "type": "object", "additionalProperties": { "$ref": "#/$defs/jsonValue" } }
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["collector", "inputKind"],
+      "properties": {
+        "collector": { "$ref": "#/$defs/nameVersion" },
+        "inputKind": { "type": "string", "minLength": 1 },
+        "source": { "type": "string" },
+        "sourceSchemaVersion": { "type": "string" },
+        "location": { "type": "string" },
+        "contentDigest": { "type": "string" },
+        "parentEvidenceIds": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "completeness": {
+      "type": "object",
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "enum": ["complete", "partial", "unknown", "not-collected"] },
+        "expectedCount": { "type": "integer", "minimum": 0 },
+        "observedCount": { "type": "integer", "minimum": 0 },
+        "missing": { "type": "array", "items": { "type": "string" } },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "record": {
+      "type": "object",
+      "required": ["identity", "source", "provenance", "completeness", "value"],
+      "properties": {
+        "identity": { "$ref": "#/$defs/identity" },
+        "source": {
+          "enum": ["observability", "devtools", "snapshot", "instance", "network", "error"]
+        },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "completeness": { "$ref": "#/$defs/completeness" },
+        "value": { "$ref": "#/$defs/value" }
+      },
+      "additionalProperties": false
+    },
+    "records": { "type": "array", "items": { "$ref": "#/$defs/record" } },
+    "truncation": {
+      "type": "object",
+      "required": ["collection", "dropped", "reason"],
+      "properties": {
+        "collection": {
+          "enum": ["observability", "devtools", "snapshot", "instance", "network", "error", "total"]
+        },
+        "dropped": { "type": "integer", "minimum": 1 },
+        "firstSequence": { "type": "integer", "minimum": 0 },
+        "lastSequence": { "type": "integer", "minimum": 0 },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "relation": {
+      "type": "object",
+      "required": ["id", "from", "to", "relation", "reason"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "relation": {
+          "enum": [
+            "exact-id",
+            "exact-safe-locator",
+            "source-supplied",
+            "time-window-candidate",
+            "unknown"
+          ]
+        },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}
