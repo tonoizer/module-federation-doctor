@@ -5,6 +5,8 @@ Doctor writes:
 - `.mf/doctor/project.json`: portable, schema-versioned project facts.
 - `.mf/doctor/report.json`: capabilities, summary, and sorted findings.
 - `.mf/doctor/results.sarif`: source locations and stable fingerprints.
+- `.mf/doctor/evidence.json` will be the v2 evidence graph output in the next
+  compatibility slice. Its public contract ships now.
 
 Comparable content has no timestamps. Paths are workspace relative. Schema
 version 1 changes only through an intentional compatibility change. Additive
@@ -18,6 +20,19 @@ These JSON Schema files are **public contracts for schema version 1**. They are
 exported from the npm package and enforced in CI via `pnpm schema:check` (also
 wired into `pnpm pack:check`) against representative Doctor output. Breaking
 changes require a new `schemaVersion` (or an intentional, documented exception).
+
+## Evidence protocol v2
+
+`@module-federation/doctor/schemas/evidence.schema.json` defines the canonical
+v2 evidence graph. It keeps declared, effective, artifact, deployment, and
+runtime claims separate. Every assertion names its subject, scope, provenance,
+confidence, and completeness. Rule evaluations use exactly one outcome:
+`pass`, `fail`, `unknown`, or `not-applicable`.
+
+IDs and collections are deterministic. Paths and secret-like values must be
+redacted before persistence. Timestamps are source data only and must not be
+used in fingerprints. v2 is additive in this release; v1 files and outputs stay
+the supported default until a later migration issue changes that policy.
 
 | Schema export                                                 | Produced by                        | Contract kind           |
 | ------------------------------------------------------------- | ---------------------------------- | ----------------------- |
