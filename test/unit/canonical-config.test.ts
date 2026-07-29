@@ -75,6 +75,49 @@ describe("canonical config boundary", () => {
     });
   });
 
+  it("does not invoke Symbol.toStringTag getters for opaque values", () => {
+    let called = false;
+    class Tagged {
+      get [Symbol.toStringTag]() {
+        called = true;
+        return "SecretTag";
+      }
+    }
+    const config = readCanonicalModuleFederationConfig({ extension: new Tagged() });
+    expect(called).toBe(false);
+    expect(config?.extensions[0]?.value).toMatchObject({ kind: "opaque", objectType: "object" });
+    expect(
+      readCanonicalModuleFederationConfig({ regex: /x/, date: new Date(0) })?.declared.fields.map(
+        (field) => field.value.value,
+      ),
+    ).toEqual([
+      { kind: "opaque", objectType: "Date", valueType: "object" },
+      { kind: "opaque", objectType: "RegExp", valueType: "object" },
+    ]);
+  });
+
+  it("marks accessor collections opaque and preserves semantic collection names", () => {
+    let called = false;
+    const config = readCanonicalModuleFederationConfig({
+      get exposes() {
+        called = true;
+        return ["should-not-run"];
+      },
+      exposesFallback: ["unused"],
+      shared: ["token", "tokenizer", "secret"],
+      remotes: { token: "token@https://example.test/remote.js" },
+    });
+    expect(called).toBe(false);
+    expect(config?.declared.collections.exposes[0]?.key).toBe("[opaque]");
+    expect(config?.declared.collections.shared.map((entry) => entry.key)).toEqual([
+      "token",
+      "tokenizer",
+      "secret",
+    ]);
+    expect(config?.declared.collections.remotes[0]?.key).toBe("token");
+    expect(config?.diagnostics.some((item) => item.code === "access-error")).toBe(true);
+  });
+
   it("is cycle-safe, bounded, deterministic, and redacts sensitive values", () => {
     const cycle: Record<string, unknown> = {
       password: "secret",
@@ -122,6 +165,20 @@ describe("canonical config boundary", () => {
       { maxWidth: 1 },
     );
     expect(width?.diagnostics.some((item) => item.code === "limit-width")).toBe(true);
+    const documentWidth = readCanonicalModuleFederationConfig(
+      { exposes: ["a", "b"] },
+      {},
+      { maxWidth: 1 },
+    );
+    expect(documentWidth?.diagnostics.some((item) => item.code === "limit-width")).toBe(true);
+    const documentNodes = readCanonicalModuleFederationConfig({ a: 1, b: 2 }, {}, { maxNodes: 1 });
+    expect(documentNodes?.diagnostics.some((item) => item.code === "limit-nodes")).toBe(true);
+    const documentBytes = readCanonicalModuleFederationConfig(
+      { a: "long", b: "also-long" },
+      {},
+      { maxBytes: 3 },
+    );
+    expect(documentBytes?.diagnostics.some((item) => item.code === "limit-bytes")).toBe(true);
   });
 
   it("does not invoke throwing proxies or revoked proxies", () => {
