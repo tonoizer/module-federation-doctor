@@ -54,9 +54,27 @@
     },
     "capability": {
       "type": "object",
-      "required": ["capability", "reason", "source", "scope", "priority", "sourceSchemaVersion"],
+      "required": [
+        "capabilityKind",
+        "state",
+        "reason",
+        "source",
+        "scope",
+        "priority",
+        "sourceSchemaVersion"
+      ],
       "properties": {
-        "capability": { "enum": ["exact", "partial", "unavailable", "not-applicable", "unknown"] },
+        "capabilityKind": {
+          "enum": [
+            "reports",
+            "shared-lifecycle",
+            "snapshot",
+            "instance",
+            "network-error",
+            "devtools"
+          ]
+        },
+        "state": { "enum": ["exact", "partial", "unavailable", "not-applicable", "unknown"] },
         "reason": { "$ref": "#/$defs/string" },
         "source": {
           "enum": ["observability", "devtools", "snapshot", "instance", "network", "error"]

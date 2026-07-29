@@ -31,6 +31,13 @@ export type RuntimeCaptureCapability =
   | "unavailable"
   | "not-applicable"
   | "unknown";
+export type RuntimeCaptureCapabilityKind =
+  | "reports"
+  | "shared-lifecycle"
+  | "snapshot"
+  | "instance"
+  | "network-error"
+  | "devtools";
 export type RuntimeCaptureRelation =
   | "exact-id"
   | "exact-safe-locator"
@@ -81,7 +88,8 @@ export const HARD_RUNTIME_CAPTURE_LIMITS: RuntimeCaptureLimits = Object.freeze({
 });
 
 export interface RuntimeCaptureCapabilityInfo {
-  capability: RuntimeCaptureCapability;
+  capabilityKind: RuntimeCaptureCapabilityKind;
+  state: RuntimeCaptureCapability;
   reason: string;
   source: RuntimeCaptureSource;
   scope: string;
@@ -278,6 +286,14 @@ const CAPABILITY_STATES = new Set<RuntimeCaptureCapability>([
   "not-applicable",
   "unknown",
 ]);
+const CAPABILITY_KINDS = new Set<RuntimeCaptureCapabilityKind>([
+  "reports",
+  "shared-lifecycle",
+  "snapshot",
+  "instance",
+  "network-error",
+  "devtools",
+]);
 const VALUE_KEYS: Record<RuntimeCaptureSource, ReadonlySet<string>> = {
   observability: new Set([
     "traceId",
@@ -435,6 +451,7 @@ function parseSafeValue(
         limits.maxInstances,
         limits.maxNetworkRecords,
         limits.maxErrors,
+        10_000,
       );
       if (
         !lengthDescriptor ||
@@ -558,12 +575,18 @@ function assertProvenance(
   assertString(provenance.collector.version, `${path}.collector.version`);
   for (const key of ["inputKind", "source", "sourceSchemaVersion"])
     assertString(provenance[key], `${path}.${key}`);
-  for (const key of ["location", "contentDigest"])
-    if (provenance[key] !== undefined) assertString(provenance[key], `${path}.${key}`);
+  if (provenance.location !== undefined) assertString(provenance.location, `${path}.location`);
+  if (provenance.contentDigest !== undefined) {
+    assertString(provenance.contentDigest, `${path}.contentDigest`);
+    const digest = provenance.contentDigest as unknown as string;
+    if (!/^[a-f0-9]{64}$/.test(digest))
+      throw new RuntimeCaptureValidationError(`${path}.contentDigest is invalid`);
+  }
   if (
     provenance.parentEvidenceIds !== undefined &&
     (!Array.isArray(provenance.parentEvidenceIds) ||
-      provenance.parentEvidenceIds.some((item) => typeof item !== "string"))
+      provenance.parentEvidenceIds.length > 100 ||
+      provenance.parentEvidenceIds.some((item) => typeof item !== "string" || item.length === 0))
   )
     throw new RuntimeCaptureValidationError(`${path}.parentEvidenceIds is invalid`);
 }
@@ -585,7 +608,8 @@ function assertCompleteness(
   if (
     completeness.missing !== undefined &&
     (!Array.isArray(completeness.missing) ||
-      completeness.missing.some((item) => typeof item !== "string"))
+      completeness.missing.length > 100 ||
+      completeness.missing.some((item) => typeof item !== "string" || item.length === 0))
   )
     throw new RuntimeCaptureValidationError(`${path}.missing is invalid`);
 }
@@ -645,7 +669,7 @@ function assertRecordValue(source: RuntimeCaptureSource, value: unknown, path: s
       ].includes(key) &&
       (!Array.isArray(child) ||
         child.length > 100 ||
-        child.some((item) => typeof item !== "string"))
+        child.some((item) => typeof item !== "string" || item.length === 0))
     )
       throw new RuntimeCaptureValidationError(`${path}.${key} must be a string array`);
     if (
@@ -655,9 +679,26 @@ function assertRecordValue(source: RuntimeCaptureSource, value: unknown, path: s
       throw new RuntimeCaptureValidationError(`${path}.${key} must be a non-negative integer`);
     if (key === "durationMs" && (typeof child !== "number" || !Number.isFinite(child) || child < 0))
       throw new RuntimeCaptureValidationError(`${path}.${key} must be a non-negative number`);
+    if (key === "loadedBefore" && typeof child !== "boolean")
+      throw new RuntimeCaptureValidationError(`${path}.${key} must be a boolean`);
   }
-  if (source === "network" && (typeof value.url !== "string" || typeof value.kind !== "string"))
-    throw new RuntimeCaptureValidationError(`${path} network records need url and kind`);
+  if (source === "network") {
+    if (typeof value.url !== "string" || typeof value.kind !== "string")
+      throw new RuntimeCaptureValidationError(`${path} network records need url and kind`);
+    if (!["manifest", "remote-entry", "preload", "chunk", "unknown"].includes(value.kind))
+      throw new RuntimeCaptureValidationError(`${path}.kind is invalid`);
+    const status = value.status;
+    if (
+      status !== undefined &&
+      (!Number.isInteger(status) || (status as number) < 0 || (status as number) > 999)
+    )
+      throw new RuntimeCaptureValidationError(`${path}.status is invalid`);
+  }
+  if (source === "snapshot") {
+    const entryCount = value.entryCount;
+    if (entryCount !== undefined && (!Number.isInteger(entryCount) || (entryCount as number) < 0))
+      throw new RuntimeCaptureValidationError(`${path}.entryCount is invalid`);
+  }
 }
 
 function recordId(record: RuntimeCaptureRecordBase<object, RuntimeCaptureSource>): string {
@@ -737,13 +778,15 @@ export function validateRuntimeCaptureEnvelope(
   assertString(envelope.collector.version, "/collector.version");
   if (!isObject(envelope.capabilities) || !Array.isArray(envelope.capabilities.observations))
     throw new RuntimeCaptureValidationError("capability observations are required");
+  assertKnownKeys(envelope.capabilities, new Set(["observations"]), "/capabilities");
   if (envelope.capabilities.observations.length > 20)
     throw new RuntimeCaptureValidationError("capability observations exceed maxItems");
   for (const [index, observation] of envelope.capabilities.observations.entries()) {
     assertKnownKeys(
       observation,
       new Set([
-        "capability",
+        "capabilityKind",
+        "state",
         "reason",
         "source",
         "scope",
@@ -755,11 +798,13 @@ export function validateRuntimeCaptureEnvelope(
     );
     if (
       !isObject(observation) ||
+      typeof observation.capabilityKind !== "string" ||
+      !CAPABILITY_KINDS.has(observation.capabilityKind as RuntimeCaptureCapabilityKind) ||
+      typeof observation.state !== "string" ||
+      !CAPABILITY_STATES.has(observation.state as RuntimeCaptureCapability) ||
       typeof observation.source !== "string" ||
       typeof observation.scope !== "string" ||
       typeof observation.sourceSchemaVersion !== "string" ||
-      typeof observation.capability !== "string" ||
-      !CAPABILITY_STATES.has(observation.capability as RuntimeCaptureCapability) ||
       observation.sourceSchemaVersion.length === 0 ||
       !Number.isInteger(observation.priority) ||
       observation.priority < 1 ||
@@ -773,6 +818,11 @@ export function validateRuntimeCaptureEnvelope(
       observation.sourceSchemaVersion,
       `/capabilities.observations[${index}].sourceSchemaVersion`,
     );
+    if (observation.runtimeVersion !== undefined)
+      assertString(
+        observation.runtimeVersion,
+        `/capabilities.observations[${index}].runtimeVersion`,
+      );
   }
   if (!Array.isArray(envelope.truncation))
     throw new RuntimeCaptureValidationError("truncation must be an array");
@@ -796,6 +846,12 @@ export function validateRuntimeCaptureEnvelope(
       item.dropped < 1
     )
       throw new RuntimeCaptureValidationError(`/truncation/${index} is invalid`);
+    for (const key of ["firstSequence", "lastSequence"])
+      if (
+        item[key] !== undefined &&
+        (!Number.isSafeInteger(item[key]) || (item[key] as number) < 0)
+      )
+        throw new RuntimeCaptureValidationError(`/truncation/${index}.${key} is invalid`);
     assertString(item.reason, `/truncation/${index}.reason`);
   }
   const collections = [
@@ -841,7 +897,7 @@ export function validateRuntimeCaptureEnvelope(
         record.provenanceRefs !== undefined &&
         (!Array.isArray(record.provenanceRefs) ||
           record.provenanceRefs.length > 20 ||
-          record.provenanceRefs.some((ref) => typeof ref !== "string"))
+          record.provenanceRefs.some((ref) => typeof ref !== "string" || ref.length === 0))
       )
         throw new RuntimeCaptureValidationError(
           `${collection}[${index}].provenanceRefs is invalid`,
@@ -870,6 +926,10 @@ export function validateRuntimeCaptureEnvelope(
         throw new RuntimeCaptureValidationError(
           `${collection}[${index}] lacks provenance source version`,
         );
+      if (typeof record.id !== "string" || record.id.length === 0 || record.id.length > 100)
+        throw new RuntimeCaptureValidationError(`${collection}[${index}].id is invalid`);
+      if (typeof record.contentDigest !== "string" || !/^[a-f0-9]{64}$/.test(record.contentDigest))
+        throw new RuntimeCaptureValidationError(`${collection}[${index}].contentDigest is invalid`);
     }
   }
   const records = allRecords(envelope).sort((left, right) => {
@@ -900,7 +960,7 @@ export function validateRuntimeCaptureEnvelope(
     if (sequences.has(sequenceKey))
       throw new RuntimeCaptureValidationError(`duplicate realm sequence: ${sequenceKey}`);
     sequences.add(sequenceKey);
-    const realmKey = `${identity.navigationId}:${identity.realmId}`;
+    const realmKey = JSON.stringify([identity.navigationId, identity.realmId]);
     const previous = lastSequence.get(realmKey);
     if (previous !== undefined && identity.sequence <= previous)
       throw new RuntimeCaptureValidationError(`realm sequence is not increasing: ${realmKey}`);

@@ -48,7 +48,8 @@ const envelope = (): RuntimeCaptureEnvelope => ({
   capabilities: {
     observations: [
       {
-        capability: "exact",
+        capabilityKind: "reports",
+        state: "exact",
         reason: "official report fixture",
         source: "observability",
         scope: "top-page",
@@ -81,6 +82,55 @@ describe("runtime capture contract", () => {
     const value = envelope();
     validateRuntimeCaptureEnvelope(value);
     await validatePayload("runtime-capture.schema.json", value, "capture fixture");
+  });
+
+  it("rejects schema-invalid fields in both the runtime parser and AJV", async () => {
+    const networkValue = { url: "https://cdn.example.test/mf-manifest.json", kind: "manifest" };
+    const networkIdentity = { ...identity(1) };
+    const networkRecord = {
+      id: runtimeCaptureRecordId("network", networkIdentity, networkValue),
+      identity: networkIdentity,
+      source: "network" as const,
+      capturedAt: 123,
+      contentDigest: runtimeCaptureContentDigest(networkValue),
+      provenance: {
+        collector: { name: "test-capture", version: "1" },
+        inputKind: "network-record",
+        source: "official-network",
+        sourceSchemaVersion: "1",
+      },
+      completeness: { status: "complete" as const, reason: "fixture is complete" },
+      value: networkValue,
+    };
+    const cases: Array<[string, (value: RuntimeCaptureEnvelope) => void]> = [
+      [
+        "loadedBefore type",
+        (value) =>
+          ((value.reports[0]!.value as unknown as Record<string, unknown>).loadedBefore = "yes"),
+      ],
+      [
+        "runtimeVersion type",
+        (value) =>
+          ((value.reports[0]!.value as unknown as Record<string, unknown>).runtimeVersion = 42),
+      ],
+      [
+        "network kind enum",
+        (value) => {
+          value.network = [
+            { ...networkRecord, value: { ...networkValue, kind: "made-up" } } as never,
+          ];
+        },
+      ],
+      ["empty provenance ref", (value) => (value.reports[0]!.provenanceRefs = [""])],
+    ];
+    for (const [label, mutate] of cases) {
+      const value = envelope();
+      mutate(value);
+      expect(() => validateRuntimeCaptureEnvelope(value), label).toThrow();
+      await expect(validatePayload("runtime-capture.schema.json", value, label)).rejects.toThrow(
+        "Schema validation failed",
+      );
+    }
   });
 
   it("keeps schema collections discriminated and provenance required", async () => {
@@ -236,6 +286,20 @@ describe("runtime capture contract", () => {
     const value = envelope();
     value.reports = [report(2)];
     value.events = [report(1)];
+    expect(() => validateRuntimeCaptureEnvelope(value)).not.toThrow();
+  });
+
+  it("keeps navigation and realm tuple scopes collision-safe", () => {
+    const first = report(2);
+    first.identity.navigationId = "a";
+    first.identity.realmId = "b:c";
+    first.id = runtimeCaptureRecordId("observability", first.identity, first.value);
+    const second = report(1);
+    second.identity.navigationId = "a:b";
+    second.identity.realmId = "c";
+    second.id = runtimeCaptureRecordId("observability", second.identity, second.value);
+    const value = envelope();
+    value.reports = [first, second];
     expect(() => validateRuntimeCaptureEnvelope(value)).not.toThrow();
   });
 
