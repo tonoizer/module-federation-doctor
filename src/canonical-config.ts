@@ -160,6 +160,10 @@ function safeKey(key: string): string {
   return `[REDACTED_KEY:${createHash("sha256").update(key).digest("hex")}]`;
 }
 
+function pointerSegment(value: string): string {
+  return value.replaceAll("~", "~0").replaceAll("/", "~1");
+}
+
 function diagnosticPath(path: string): string {
   return path
     .split("/")
@@ -667,9 +671,11 @@ function snapshot(
   for (const key of keys ?? []) {
     if (COLLECTIONS.has(key)) continue;
     const property = descriptor(input, key);
+    const safeFieldKey = safeKey(key);
+    const fieldPath = `/${pointerSegment(key)}`;
     fields.push({
-      id: `/${safeKey(key)}`,
-      key: safeKey(key),
+      id: `/${pointerSegment(safeFieldKey)}`,
+      key: safeFieldKey,
       value: SENSITIVE_KEY.test(key)
         ? {
             state: "unknown",
@@ -677,21 +683,21 @@ function snapshot(
             evidenceIds: [],
             value: opaque(
               property && "value" in property ? property.value : undefined,
-              `/${key}`,
+              fieldPath,
               diagnostics,
               "opaque-value",
               "Sensitive values are not persisted.",
             ),
           }
         : property && "value" in property
-          ? cell(property.value, `/${key}`, diagnostics, budget)
+          ? cell(property.value, fieldPath, diagnostics, budget)
           : {
               state: "unknown",
               origin: "unknown",
               evidenceIds: [],
               value: opaque(
                 undefined,
-                `/${key}`,
+                fieldPath,
                 diagnostics,
                 "access-error",
                 "Accessor properties are not executed or persisted.",
@@ -752,7 +758,7 @@ export function readCanonicalModuleFederationConfig(
     if (KNOWN_FIELDS.has(key)) continue;
     const field = declared.fields.find((entry) => entry.key === safeKey(key));
     extensions.push({
-      path: `/${safeKey(key)}`,
+      path: `/${pointerSegment(safeKey(key))}`,
       value: field?.value.value ?? null,
       reason: "extension",
     });

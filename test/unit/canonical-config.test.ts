@@ -205,12 +205,14 @@ describe("canonical config boundary", () => {
     const config = readCanonicalModuleFederationConfig({
       token: "supersecret",
       secret: "secret",
+      "token/abcd1234": "slash-secret",
+      "secret~suffix": "tilde-secret",
       "token-174ivmy-iz2pcm": "supersecret",
       "token-1uhluvd-2eh2pd": "supersecret",
     });
     const fields = config?.declared.fields ?? [];
-    expect(fields.map((field) => field.key)).toHaveLength(4);
-    expect(new Set(fields.map((field) => field.id)).size).toBe(4);
+    expect(fields.map((field) => field.key)).toHaveLength(6);
+    expect(new Set(fields.map((field) => field.id)).size).toBe(6);
     expect(
       fields.every(
         (field) =>
@@ -223,6 +225,10 @@ describe("canonical config boundary", () => {
     ).toBe(true);
     expect(JSON.stringify(config)).not.toContain("token=supersecret");
     expect(JSON.stringify(config)).not.toContain("supersecret");
+    expect(JSON.stringify(config)).not.toContain("abcd1234");
+    expect(JSON.stringify(config)).not.toContain("secret~suffix");
+    expect(JSON.stringify(config)).not.toContain("slash-secret");
+    expect(JSON.stringify(config)).not.toContain("tilde-secret");
     expect(
       config?.diagnostics.every((diagnostic) => !diagnostic.path.includes("supersecret")),
     ).toBe(true);
