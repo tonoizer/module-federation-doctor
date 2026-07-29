@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { isDate, isProxy, isRegExp } from "node:util/types";
 import type { EvidenceLimits, EvidenceValue } from "./evidence.js";
 import { redactEvidenceValue } from "./evidence.js";
@@ -156,12 +157,14 @@ const SENSITIVE_KEY =
 
 function safeKey(key: string): string {
   if (!SENSITIVE_KEY.test(key)) return key;
-  let hash = 2166136261;
-  for (let index = 0; index < key.length; index += 1) {
-    hash ^= key.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return `[REDACTED_KEY:${(hash >>> 0).toString(16)}]`;
+  return `[REDACTED_KEY:${createHash("sha256").update(key).digest("hex")}]`;
+}
+
+function diagnosticPath(path: string): string {
+  return path
+    .split("/")
+    .map((segment) => safeKey(segment))
+    .join("/");
 }
 
 function budgetFor(limits: Required<CanonicalConfigLimits>): TraversalBudget {
@@ -178,7 +181,7 @@ function consumeWidth(
   if (budget.width <= budget.maxWidth) return true;
   diagnostics.push({
     code: "limit-width",
-    path,
+    path: diagnosticPath(path),
     message: `Document exceeds maxWidth (${budget.maxWidth}).`,
   });
   return false;
@@ -258,7 +261,7 @@ function opaque(
       objectType = "object";
     }
   }
-  diagnostics.push({ code, path, message });
+  diagnostics.push({ code, path: diagnosticPath(path), message });
   return { kind: "opaque", valueType: typeof value, ...(objectType ? { objectType } : {}) };
 }
 
@@ -540,8 +543,10 @@ function collectionEntries(
       if (typeof item === "string") key = item;
       else if (plainObject(item)) {
         const name = descriptor(item, "name")?.value;
-        if (typeof name === "string") key = name;
-        else {
+        if (typeof name === "string") {
+          const separator = name.indexOf("@");
+          key = separator > 0 ? name.slice(0, separator) : name;
+        } else {
           const itemKeys = ownKeys(item) ?? [];
           if (itemKeys.length > 0) {
             for (const itemKey of itemKeys) {
@@ -614,7 +619,7 @@ function opaqueCollection(
 ): CanonicalConfigEntry {
   diagnostics.push({
     code,
-    path,
+    path: diagnosticPath(path),
     message:
       code === "access-error"
         ? "Collection could not be read without executing accessors."
@@ -745,29 +750,10 @@ export function readCanonicalModuleFederationConfig(
   const extensions: CanonicalUnknownField[] = [];
   for (const key of ownKeys(input) ?? []) {
     if (KNOWN_FIELDS.has(key)) continue;
-    const property = descriptor(input, key);
+    const field = declared.fields.find((entry) => entry.key === safeKey(key));
     extensions.push({
       path: `/${safeKey(key)}`,
-      value: redact(
-        SENSITIVE_KEY.test(key)
-          ? opaque(
-              property && "value" in property ? property.value : undefined,
-              `/${key}`,
-              diagnostics,
-              "opaque-value",
-              "Sensitive values are not persisted.",
-            )
-          : property && "value" in property
-            ? toJsonValue(property.value, `/${key}`, diagnostics, budget)
-            : opaque(
-                undefined,
-                `/${key}`,
-                diagnostics,
-                "access-error",
-                "Accessor properties are not executed or persisted.",
-              ),
-        budget,
-      ),
+      value: field?.value.value ?? null,
       reason: "extension",
     });
   }

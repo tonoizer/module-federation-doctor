@@ -37,6 +37,7 @@ describe("canonical config boundary", () => {
     });
     expect(config?.extensions[0]?.path).toBe("/customExtension");
     expect(config?.effectiveByBuild).toEqual({});
+    expect(config?.diagnostics.some((diagnostic) => diagnostic.code === "cycle")).toBe(false);
   });
 
   it("does not apply defaults and marks executable values opaque", () => {
@@ -201,10 +202,15 @@ describe("canonical config boundary", () => {
   });
 
   it("does not persist sensitive root values or collide redacted keys", () => {
-    const config = readCanonicalModuleFederationConfig({ token: "secret-token", secret: "secret" });
+    const config = readCanonicalModuleFederationConfig({
+      token: "supersecret",
+      secret: "secret",
+      "token-174ivmy-iz2pcm": "supersecret",
+      "token-1uhluvd-2eh2pd": "supersecret",
+    });
     const fields = config?.declared.fields ?? [];
-    expect(fields.map((field) => field.key)).toHaveLength(2);
-    expect(new Set(fields.map((field) => field.id)).size).toBe(2);
+    expect(fields.map((field) => field.key)).toHaveLength(4);
+    expect(new Set(fields.map((field) => field.id)).size).toBe(4);
     expect(
       fields.every(
         (field) =>
@@ -215,7 +221,21 @@ describe("canonical config boundary", () => {
           field.value.value.kind === "opaque",
       ),
     ).toBe(true);
-    expect(JSON.stringify(config)).not.toContain("secret-token");
+    expect(JSON.stringify(config)).not.toContain("token=supersecret");
+    expect(JSON.stringify(config)).not.toContain("supersecret");
+    expect(
+      config?.diagnostics.every((diagnostic) => !diagnostic.path.includes("supersecret")),
+    ).toBe(true);
+  });
+
+  it("uses semantic names for public remote mapping entries", () => {
+    const config = readCanonicalModuleFederationConfig({
+      remotes: [{ name: "name@url" }],
+      exposes: [{ "./Button": "./src/Button" }],
+    });
+    expect(config?.declared.collections.remotes[0]?.key).toBe("name");
+    expect(config?.declared.collections.remotes[0]?.value.value).toEqual({ name: "name@url" });
+    expect(config?.declared.collections.exposes[0]?.key).toBe("./Button");
   });
 
   it("matches the strict shipped schema and rejects malformed documents", async () => {
