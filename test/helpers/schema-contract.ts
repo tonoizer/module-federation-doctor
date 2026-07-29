@@ -25,6 +25,9 @@ type JsonSchemaDocument = {
   required?: string[];
   properties?: {
     schemaVersion?: { const?: unknown };
+    protocol?: { $ref?: string };
+  };
+  $defs?: {
     protocol?: { properties?: { schemaVersion?: { const?: unknown } } };
   };
 };
@@ -118,9 +121,10 @@ export async function assertPackageExportsMatchSchemas(): Promise<void> {
     assert.equal(typeof schema.title, "string", `${contract.file} must declare a title`);
     assert.ok((schema.title ?? "").length > 0, `${contract.file} title must be non-empty`);
     const schemaVersion =
-      contract.file === "evidence.schema.json" ? 2 : schema.properties?.schemaVersion?.const;
+      schema.properties?.schemaVersion?.const ??
+      schema.$defs?.protocol?.properties?.schemaVersion?.const;
     assert.ok(
-      schemaVersion === 1 || (contract.file === "evidence.schema.json" && schemaVersion === 2),
+      schemaVersion === 1 || schemaVersion === 2,
       `${contract.file} must declare a supported schema version`,
     );
   }

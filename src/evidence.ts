@@ -54,10 +54,11 @@ export interface EvidenceIdentity {
 export interface EvidenceProvenance {
   collector: { name: string; version: string };
   inputKind: string;
-  source?: string;
-  sourceSchemaVersion?: string;
+  source: string;
+  sourceSchemaVersion: string;
   location?: string;
   contentDigest?: string;
+  /** Set-like IDs. Order is ignored during graph normalization. */
   parentEvidenceIds?: string[];
 }
 
@@ -65,6 +66,7 @@ export interface EvidenceCompletenessInfo {
   status: EvidenceCompleteness;
   expectedCount?: number;
   observedCount?: number;
+  /** Set-like names. Order is ignored during graph normalization. */
   missing?: string[];
   reason: string;
 }
@@ -106,6 +108,7 @@ export interface EvidenceRuleEvaluation {
   rule: { id: string; version: string };
   subject: string;
   outcome: RuleOutcome;
+  /** Set-like assertion IDs. Order is ignored during graph normalization. */
   evidenceIds: string[];
   reason: string;
   completeness: EvidenceCompletenessInfo;
@@ -115,85 +118,372 @@ export interface EvidenceGraphV2 {
   protocol: EvidenceProtocolIdentity;
   scope: EvidenceScope;
   identity: EvidenceIdentity;
+  /** Set-like records, sorted by ID and then full record. */
   subjects: EvidenceSubject[];
+  /** Set-like records, sorted by ID and then full record. */
   assertions: EvidenceAssertion[];
+  /** Set-like records, sorted by ID and then full record. */
   edges: EvidenceEdge[];
+  /** Set-like records, sorted by ID and then full record. */
   evaluations: EvidenceRuleEvaluation[];
 }
 
-function isRecord(value: EvidenceValue): value is { [key: string]: EvidenceValue } {
+export interface EvidenceLimits {
+  maxDepth?: number;
+  maxNodes?: number;
+  maxBytes?: number;
+}
+
+const DEFAULT_LIMITS: Required<EvidenceLimits> = {
+  maxDepth: 64,
+  maxNodes: 10_000,
+  maxBytes: 1_048_576,
+};
+
+export class EvidenceResourceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EvidenceResourceError";
+  }
+}
+
+export class EvidenceIntegrityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EvidenceIntegrityError";
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Return a JSON-safe value with object keys sorted recursively. */
-export function canonicalizeEvidenceValue(value: EvidenceValue): EvidenceValue {
-  if (Array.isArray(value)) return value.map(canonicalizeEvidenceValue);
+function limitsWithDefaults(options?: EvidenceLimits): Required<EvidenceLimits> {
+  const limits = { ...DEFAULT_LIMITS, ...options };
+  for (const [name, value] of Object.entries(limits)) {
+    if (!Number.isSafeInteger(value) || value < 1) {
+      throw new EvidenceResourceError(`${name} must be a positive safe integer.`);
+    }
+  }
+  return limits;
+}
+
+/** Validate JSON-safe values without recursive traversal or unbounded work. */
+export function assertEvidenceValue(
+  value: unknown,
+  options?: EvidenceLimits,
+): asserts value is EvidenceValue {
+  const limits = limitsWithDefaults(options);
+  const pending: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }];
+  const seen = new WeakSet<object>();
+  let nodes = 0;
+  let bytes = 0;
+
+  while (pending.length > 0) {
+    const item = pending.pop();
+    if (!item) continue;
+    nodes += 1;
+    if (nodes > limits.maxNodes) {
+      throw new EvidenceResourceError(`Evidence value exceeds maxNodes (${limits.maxNodes}).`);
+    }
+    if (item.depth > limits.maxDepth) {
+      throw new EvidenceResourceError(`Evidence value exceeds maxDepth (${limits.maxDepth}).`);
+    }
+
+    const current = item.value;
+    if (current === null || typeof current === "boolean") {
+      bytes += 5;
+    } else if (typeof current === "number") {
+      if (!Number.isFinite(current))
+        throw new EvidenceResourceError("Evidence numbers must be finite.");
+      bytes += 8;
+    } else if (typeof current === "string") {
+      bytes += Buffer.byteLength(current) + 2;
+    } else if (Array.isArray(current)) {
+      if (seen.has(current)) throw new EvidenceResourceError("Evidence value contains a cycle.");
+      seen.add(current);
+      bytes += 2;
+      for (let index = current.length - 1; index >= 0; index -= 1) {
+        pending.push({ value: current[index], depth: item.depth + 1 });
+      }
+    } else if (isRecord(current)) {
+      if (seen.has(current)) throw new EvidenceResourceError("Evidence value contains a cycle.");
+      seen.add(current);
+      bytes += 2;
+      const entries = Object.entries(current);
+      for (let index = entries.length - 1; index >= 0; index -= 1) {
+        const [key, child] = entries[index] ?? ["", undefined];
+        bytes += Buffer.byteLength(key) + 3;
+        pending.push({ value: child, depth: item.depth + 1 });
+      }
+    } else {
+      throw new EvidenceResourceError("Evidence value contains a non-JSON value.");
+    }
+    if (bytes > limits.maxBytes) {
+      throw new EvidenceResourceError(`Evidence value exceeds maxBytes (${limits.maxBytes}).`);
+    }
+  }
+}
+
+function isSensitiveKey(key: string): boolean {
+  return /(?:token|secret|password|passwd|credential|private[-_ ]?key|api[-_]?key|authorization|cookie|session[-_]?id|pem|certificate|cert)/i.test(
+    key,
+  );
+}
+
+function redactUrl(value: string): string | undefined {
+  const urlPattern = /\b[a-z][a-z\d+.-]*:\/\/[^\s"'<>]+/gi;
+  if (!urlPattern.test(value)) return undefined;
+  return value.replace(urlPattern, (candidate) => {
+    try {
+      const url = new URL(candidate);
+      if (url.username || url.password) {
+        url.username = "[REDACTED]";
+        url.password = "[REDACTED]";
+      }
+      for (const key of url.searchParams.keys()) {
+        if (isSensitiveKey(key)) url.searchParams.set(key, "[REDACTED]");
+      }
+      return url.toString();
+    } catch {
+      return "[URI]";
+    }
+  });
+}
+
+function redactString(value: string): string {
+  const withUris = redactUrl(value);
+  if (withUris !== undefined) value = withUris;
+  return value
+    .replace(
+      /(?:bearer\s+)[^\s]+|(?:token|secret|password|apikey|credential)=([^&\s]+)/gi,
+      (_match, captured: string | undefined) =>
+        captured ? _match.replace(captured, "[REDACTED]") : "[REDACTED]",
+    )
+    .replace(
+      /(?:[A-Za-z]:[\\/](?!\/)|\\\\[^\\/]+[\\/])[^\s"']*|(^|[\s"'=])\/(?!\/)[^\s"'<>]*/g,
+      (_match, boundary: string | undefined) => `${boundary ?? ""}[PATH]`,
+    );
+}
+
+/** Sanitize secret keys/values and machine paths while preserving safe URLs. */
+export function redactEvidenceValue(value: EvidenceValue, options?: EvidenceLimits): EvidenceValue {
+  assertEvidenceValue(value, options);
+  const pending: Array<{
+    input: EvidenceValue;
+    output: EvidenceValue[] | Record<string, EvidenceValue>;
+    key?: string;
+  }> = [];
+  const root: EvidenceValue[] = [];
+  pending.push({ input: value, output: root });
+
+  while (pending.length > 0) {
+    const item = pending.pop();
+    if (!item) continue;
+    const input = item.input;
+    let output: EvidenceValue;
+    if (typeof input === "string") {
+      output = redactString(input);
+    } else if (Array.isArray(input)) {
+      const array: EvidenceValue[] = [];
+      output = array;
+      for (let index = input.length - 1; index >= 0; index -= 1) {
+        pending.push({ input: input[index] ?? null, output: array });
+      }
+    } else if (isRecord(input)) {
+      const record: Record<string, EvidenceValue> = {};
+      output = record;
+      const groups = new Map<string, Array<[string, EvidenceValue]>>();
+      for (const [key, child] of Object.entries(input)) {
+        const safeKey = isSensitiveKey(key) ? "[REDACTED_KEY]" : redactString(key);
+        const group = groups.get(safeKey) ?? [];
+        group.push([key, isSensitiveKey(key) ? "[REDACTED]" : (child as EvidenceValue)]);
+        groups.set(safeKey, group);
+      }
+      for (const [safeKey, group] of [...groups.entries()].sort(([left], [right]) =>
+        left.localeCompare(right),
+      )) {
+        const values = group
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([, child]) => child);
+        if (values.length === 1) {
+          pending.push({ input: values[0] ?? null, output: record, key: safeKey });
+        } else {
+          const grouped: EvidenceValue[] = [];
+          record[safeKey] = grouped;
+          for (let index = values.length - 1; index >= 0; index -= 1) {
+            pending.push({ input: values[index] ?? null, output: grouped });
+          }
+        }
+      }
+    } else {
+      output = input;
+    }
+    if (Array.isArray(item.output)) item.output.push(output);
+    else if (item.key !== undefined) item.output[item.key] = output;
+  }
+  return (root[0] ?? null) as EvidenceValue;
+}
+
+function canonicalizeValue(value: EvidenceValue): EvidenceValue {
+  if (Array.isArray(value)) return value.map(canonicalizeValue);
   if (!isRecord(value)) return value;
   return Object.fromEntries(
     Object.keys(value)
       .sort()
-      .map((key) => [key, canonicalizeEvidenceValue(value[key] ?? null)]),
+      .map((key) => [key, canonicalizeValue(value[key] ?? null)]),
   );
 }
 
-const SECRET_KEY = /(token|secret|password|passwd|api[-_]?key|authorization|cookie)/i;
-const SECRET_VALUE = /(?:bearer\s+)[^\s]+|(?:token|secret|password|apikey)=([^&\s]+)/gi;
-const ABSOLUTE_PATH = /(?:[A-Za-z]:[\\/]|\/(?:Users|home|private|tmp|var)\/)[^\s"']+/g;
-
-/** Redact common secrets and machine-specific absolute paths before persistence. */
-export function redactEvidenceValue(value: EvidenceValue, key?: string): EvidenceValue {
-  if (key && SECRET_KEY.test(key)) return "[REDACTED]";
-  if (typeof value === "string") {
-    return value
-      .replace(SECRET_VALUE, (_match, captured: string | undefined) =>
-        captured ? _match.replace(captured, "[REDACTED]") : "[REDACTED]",
-      )
-      .replace(ABSOLUTE_PATH, "[PATH]");
-  }
-  if (Array.isArray(value)) return value.map((item) => redactEvidenceValue(item));
-  if (isRecord(value)) {
-    return Object.fromEntries(
-      Object.entries(value).map(([entryKey, entryValue]) => [
-        entryKey,
-        redactEvidenceValue(entryValue, entryKey),
-      ]),
-    );
-  }
-  return value;
+/** Return a JSON-safe value with object keys sorted recursively. */
+export function canonicalizeEvidenceValue(
+  value: EvidenceValue,
+  options?: EvidenceLimits,
+): EvidenceValue {
+  assertEvidenceValue(value, options);
+  return canonicalizeValue(value);
 }
 
-function stableJson(value: EvidenceValue): string {
-  return JSON.stringify(canonicalizeEvidenceValue(redactEvidenceValue(value)));
+function stableJson(value: EvidenceValue, options?: EvidenceLimits): string {
+  const redacted = redactEvidenceValue(value, options);
+  const canonical = canonicalizeEvidenceIdValue(redacted);
+  return JSON.stringify(canonical);
 }
 
-/** Create a deterministic ID from a semantic evidence value. */
-export function stableEvidenceId(prefix: string, value: EvidenceValue): string {
-  const digest = createHash("sha256").update(stableJson(value)).digest("hex").slice(0, 16);
+const VOLATILE_KEY = /^(?:timestamp|time|createdAt|updatedAt|sessionId|traceId)$/i;
+
+function canonicalizeEvidenceIdValue(value: EvidenceValue): EvidenceValue {
+  if (Array.isArray(value)) return value.map((item) => canonicalizeEvidenceIdValue(item));
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .filter((key) => !VOLATILE_KEY.test(key))
+      .sort()
+      .map((key) => [key, canonicalizeEvidenceIdValue(value[key] ?? null)]),
+  );
+}
+
+/** Create a deterministic `<prefix>:<sha256 first 16 hex chars>` ID. */
+export function stableEvidenceId(
+  prefix: string,
+  value: EvidenceValue,
+  options?: EvidenceLimits,
+): string {
+  if (!prefix || !/^[A-Za-z0-9._-]+$/.test(prefix))
+    throw new EvidenceIntegrityError("Evidence ID prefix is invalid.");
+  const digest = createHash("sha256").update(stableJson(value, options)).digest("hex").slice(0, 16);
   return `${prefix}:${digest}`;
 }
 
-function byId<T extends { id: string }>(left: T, right: T): number {
-  return left.id.localeCompare(right.id);
+function recordJson(value: Record<string, unknown>): string {
+  return JSON.stringify(canonicalizeValue(value as EvidenceValue));
 }
 
-/** Return a redacted graph with all ID-bearing collections sorted for stable output. */
-export function normalizeEvidenceGraph(graph: EvidenceGraphV2): EvidenceGraphV2 {
-  const redacted = redactEvidenceValue(
-    graph as unknown as EvidenceValue,
-  ) as unknown as EvidenceGraphV2;
+function compareRecords<T extends { id: string }>(left: T, right: T): number {
+  return left.id.localeCompare(right.id) || recordJson(left).localeCompare(recordJson(right));
+}
+
+function assertUniqueIds(
+  records: Array<{ id: string }>,
+  kind: string,
+  ids: Map<string, string>,
+): void {
+  for (const record of records) {
+    if (!record.id || typeof record.id !== "string")
+      throw new EvidenceIntegrityError(`${kind} ID must be a non-empty string.`);
+    const previous = ids.get(record.id);
+    if (previous)
+      throw new EvidenceIntegrityError(
+        `Duplicate evidence ID ${record.id} in ${previous} and ${kind}.`,
+      );
+    ids.set(record.id, kind);
+  }
+}
+
+/** Validate graph IDs and every subject/evidence/edge reference before persistence. */
+export function assertEvidenceGraphIntegrity(
+  graph: EvidenceGraphV2,
+  options?: EvidenceLimits,
+): void {
+  assertEvidenceValue(graph as unknown as EvidenceValue, options);
+  const ids = new Map<string, string>();
+  assertUniqueIds(graph.subjects, "subjects", ids);
+  assertUniqueIds(graph.assertions, "assertions", ids);
+  assertUniqueIds(graph.edges, "edges", ids);
+  assertUniqueIds(graph.evaluations, "evaluations", ids);
+  const subjects = new Set(graph.subjects.map((subject) => subject.id));
+  const assertions = new Set(graph.assertions.map((assertion) => assertion.id));
+  const all = new Set(ids.keys());
+  for (const assertion of graph.assertions) {
+    if (!subjects.has(assertion.subject))
+      throw new EvidenceIntegrityError(
+        `Assertion ${assertion.id} references missing subject ${assertion.subject}.`,
+      );
+    for (const parent of assertion.provenance.parentEvidenceIds ?? []) {
+      if (!all.has(parent))
+        throw new EvidenceIntegrityError(
+          `Assertion ${assertion.id} references missing parent evidence ${parent}.`,
+        );
+    }
+  }
+  for (const edge of graph.edges) {
+    if (!all.has(edge.from) || !all.has(edge.to))
+      throw new EvidenceIntegrityError(`Edge ${edge.id} references missing evidence.`);
+  }
+  for (const evaluation of graph.evaluations) {
+    if (!subjects.has(evaluation.subject))
+      throw new EvidenceIntegrityError(
+        `Evaluation ${evaluation.id} references missing subject ${evaluation.subject}.`,
+      );
+    for (const evidenceId of evaluation.evidenceIds) {
+      if (!assertions.has(evidenceId))
+        throw new EvidenceIntegrityError(
+          `Evaluation ${evaluation.id} references missing assertion ${evidenceId}.`,
+        );
+    }
+  }
+}
+
+/** Normalize a graph without depending on input order. Set-like arrays are sorted; value arrays stay ordered. */
+export function normalizeEvidenceGraph(
+  graph: EvidenceGraphV2,
+  options?: EvidenceLimits,
+): EvidenceGraphV2 {
+  assertEvidenceGraphIntegrity(graph, options);
   const canonical = canonicalizeEvidenceValue(
-    redacted as unknown as EvidenceValue,
+    redactEvidenceValue(graph as unknown as EvidenceValue, options),
+    options,
   ) as unknown as EvidenceGraphV2;
+  const sortSet = <T extends { id: string }>(records: T[]): T[] =>
+    records.slice().sort(compareRecords);
   return {
     ...canonical,
-    identity: canonical.identity,
-    subjects: canonical.subjects.sort(byId),
-    assertions: canonical.assertions.sort(byId),
-    edges: canonical.edges.sort(byId),
-    evaluations: canonical.evaluations
-      .sort(byId)
-      .map((evaluation) =>
-        Object.assign({}, evaluation, { evidenceIds: evaluation.evidenceIds.slice().sort() }),
-      ),
+    subjects: sortSet(canonical.subjects),
+    assertions: sortSet(canonical.assertions).map((assertion) => {
+      const normalized = Object.assign({}, assertion);
+      if (assertion.provenance.parentEvidenceIds) {
+        normalized.provenance = Object.assign({}, assertion.provenance, {
+          parentEvidenceIds: assertion.provenance.parentEvidenceIds.slice().sort(),
+        });
+      }
+      if (assertion.completeness.missing) {
+        normalized.completeness = Object.assign({}, assertion.completeness, {
+          missing: assertion.completeness.missing.slice().sort(),
+        });
+      }
+      return normalized;
+    }),
+    edges: sortSet(canonical.edges),
+    evaluations: sortSet(canonical.evaluations).map((evaluation) => {
+      const normalized = Object.assign({}, evaluation, {
+        evidenceIds: evaluation.evidenceIds.slice().sort(),
+      });
+      if (evaluation.completeness.missing) {
+        normalized.completeness = Object.assign({}, evaluation.completeness, {
+          missing: evaluation.completeness.missing.slice().sort(),
+        });
+      }
+      return normalized;
+    }),
   };
 }

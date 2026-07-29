@@ -112,12 +112,12 @@
     },
     "provenance": {
       "type": "object",
-      "required": ["collector", "inputKind"],
+      "required": ["collector", "inputKind", "source", "sourceSchemaVersion"],
       "properties": {
         "collector": { "$ref": "#/$defs/nameVersion" },
         "inputKind": { "type": "string", "minLength": 1 },
-        "source": { "type": "string" },
-        "sourceSchemaVersion": { "type": "string" },
+        "source": { "type": "string", "minLength": 1 },
+        "sourceSchemaVersion": { "type": "string", "minLength": 1 },
         "location": { "type": "string" },
         "contentDigest": { "type": "string" },
         "parentEvidenceIds": { "type": "array", "items": { "type": "string" } }

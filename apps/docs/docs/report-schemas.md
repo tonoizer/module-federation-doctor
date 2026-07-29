@@ -34,6 +34,30 @@ redacted before persistence. Timestamps are source data only and must not be
 used in fingerprints. v2 is additive in this release; v1 files and outputs stay
 the supported default until a later migration issue changes that policy.
 
+### Stable IDs and safe persistence
+
+`stableEvidenceId(prefix, value)` first validates finite JSON values and the
+default resource limits (64 levels, 10,000 nodes, 1 MiB), redacts secrets and
+machine paths, sorts object keys, and serializes with JSON semantics. It then
+returns `<prefix>:<first 16 lowercase hex characters of SHA-256>`. The prefix
+must contain only letters, numbers, `.`, `_`, or `-`. Ordered arrays keep their
+order; graph collections, `evidenceIds`, `parentEvidenceIds`, and `missing` are
+set-like and are sorted during graph normalization. Stable IDs omit object keys
+named `timestamp`, `time`, `createdAt`, `updatedAt`, `sessionId`, or `traceId`
+(case-insensitive), including nested occurrences. Other fields are included.
+
+Duplicate IDs and dangling references are rejected. A full-record comparison is
+used as a defensive sort tie-breaker, but it cannot hide duplicate IDs. JSON
+`null` is distinct from a string such as `"null"`; `NaN` and infinities are
+rejected before hashing. Callers may provide lower resource limits and get a
+typed `EvidenceResourceError`.
+
+Secret-like keys (`credential`, `token`, `private-key`, `authorization`, and
+similar) become `[REDACTED_KEY]` and their values become `[REDACTED]`. URL
+schemes and paths are parsed before redaction: URL credentials and sensitive
+query parameters are removed while the URL remains a URL; POSIX, Windows, and
+UNC filesystem paths become `[PATH]`. Other strings are left unchanged.
+
 | Schema export                                                 | Produced by                        | Contract kind           |
 | ------------------------------------------------------------- | ---------------------------------- | ----------------------- |
 | `@module-federation/doctor/schemas/project.schema.json`       | Build / collect → `project.json`   | Persisted artifact      |
