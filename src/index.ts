@@ -121,14 +121,29 @@ export type {
   UiGraphNodeKind,
 } from "./types.js";
 export {
-  assertEvidenceGraphIntegrity,
-  assertEvidenceValue,
   canonicalizeEvidenceValue,
   normalizeEvidenceGraph,
   redactEvidenceValue,
   stableEvidenceId,
 } from "./evidence.js";
-export { EvidenceIntegrityError, EvidenceResourceError } from "./evidence.js";
+export { capConfidence, stableEvaluationId, weakestConfidence } from "./rule-contract.js";
+export type {
+  EvidenceAwareRuleMeta,
+  EvidenceRequirement,
+  EvidenceSelector,
+  RuleApplicability,
+  RuleEvaluationIdentity,
+  RuleEvaluationResult,
+  RuleOwner,
+  RuleReasonCode,
+  RuleRemediation,
+} from "./rule-contract.js";
+export { ruleInventory, ruleInventoryIds } from "./rule-inventory.js";
+export type {
+  RuleInventoryEntry,
+  RuleMigrationGroup,
+  RuleMigrationStatus,
+} from "./rule-inventory.js";
 export type {
   EvidenceAssertion,
   EvidenceCompleteness,
@@ -140,7 +155,6 @@ export type {
   EvidenceGraphV2,
   EvidenceIdentity,
   EvidenceLayer,
-  EvidenceLimits,
   EvidenceProtocolIdentity,
   EvidenceProtocolVersion,
   EvidenceProvenance,
