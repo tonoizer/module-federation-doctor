@@ -135,11 +135,11 @@ describe("runtime capture contract", () => {
 
   it("keeps capability kind, state, and source claims in runtime/schema parity", async () => {
     const allowedSources = {
-      reports: ["observability"],
-      "shared-lifecycle": ["observability"],
-      snapshot: ["snapshot"],
-      instance: ["instance"],
-      "network-error": ["network", "error"],
+      reports: ["observability", "devtools"],
+      "shared-lifecycle": ["observability", "devtools"],
+      snapshot: ["snapshot", "devtools"],
+      instance: ["instance", "devtools"],
+      "network-error": ["network", "error", "devtools"],
       devtools: ["devtools"],
     } as const;
     const states = ["exact", "partial", "unavailable", "not-applicable", "unknown"] as const;
@@ -194,6 +194,33 @@ describe("runtime capture contract", () => {
         }
       }
     }
+  });
+
+  it("allows devtools as a secondary capability source for official exports", async () => {
+    const value = envelope();
+    value.transport = "devtools-export";
+    value.capabilities.observations[0] = {
+      ...value.capabilities.observations[0]!,
+      capabilityKind: "reports",
+      source: "devtools",
+      priority: 2,
+      reason: "devtools export reports capability",
+    };
+    expect(() => validateRuntimeCaptureEnvelope(value)).not.toThrow();
+    await validatePayload("runtime-capture.schema.json", value, "reports/devtools");
+
+    const invalid = envelope();
+    invalid.capabilities.observations[0] = {
+      ...invalid.capabilities.observations[0]!,
+      capabilityKind: "reports",
+      source: "snapshot",
+      priority: 3,
+      reason: "illegal reports/snapshot pairing",
+    };
+    expect(() => validateRuntimeCaptureEnvelope(invalid)).toThrow("is invalid");
+    await expect(
+      validatePayload("runtime-capture.schema.json", invalid, "reports/snapshot"),
+    ).rejects.toThrow("Schema validation failed");
   });
 
   it("keeps 4096-character envelope strings in runtime/schema parity", async () => {

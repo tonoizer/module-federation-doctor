@@ -298,11 +298,11 @@ const CAPABILITY_KINDS = new Set<RuntimeCaptureCapabilityKind>([
 const CAPABILITY_SOURCES: Readonly<
   Record<RuntimeCaptureCapabilityKind, readonly RuntimeCaptureSource[]>
 > = Object.freeze({
-  reports: ["observability"],
-  "shared-lifecycle": ["observability"],
-  snapshot: ["snapshot"],
-  instance: ["instance"],
-  "network-error": ["network", "error"],
+  reports: ["observability", "devtools"],
+  "shared-lifecycle": ["observability", "devtools"],
+  snapshot: ["snapshot", "devtools"],
+  instance: ["instance", "devtools"],
+  "network-error": ["network", "error", "devtools"],
   devtools: ["devtools"],
 });
 const VALUE_KEYS: Record<RuntimeCaptureSource, ReadonlySet<string>> = {

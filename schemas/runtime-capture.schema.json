@@ -103,19 +103,19 @@
         },
         {
           "if": { "properties": { "capabilityKind": { "enum": ["reports", "shared-lifecycle"] } } },
-          "then": { "properties": { "source": { "const": "observability" } } }
+          "then": { "properties": { "source": { "enum": ["observability", "devtools"] } } }
         },
         {
           "if": { "properties": { "capabilityKind": { "const": "snapshot" } } },
-          "then": { "properties": { "source": { "const": "snapshot" } } }
+          "then": { "properties": { "source": { "enum": ["snapshot", "devtools"] } } }
         },
         {
           "if": { "properties": { "capabilityKind": { "const": "instance" } } },
-          "then": { "properties": { "source": { "const": "instance" } } }
+          "then": { "properties": { "source": { "enum": ["instance", "devtools"] } } }
         },
         {
           "if": { "properties": { "capabilityKind": { "const": "network-error" } } },
-          "then": { "properties": { "source": { "enum": ["network", "error"] } } }
+          "then": { "properties": { "source": { "enum": ["network", "error", "devtools"] } } }
         },
         {
           "if": { "properties": { "capabilityKind": { "const": "devtools" } } },
