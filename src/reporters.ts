@@ -168,7 +168,14 @@ export async function writeReports(
   terminal: TerminalReportOptions = {},
 ): Promise<void> {
   await fs.mkdir(directory, { recursive: true });
-  await fs.writeFile(path.join(directory, "project.json"), stableStringify(facts, 2) + "\n");
+  const persistedFacts =
+    facts.schemaVersion === 1
+      ? { ...facts, artifacts: { ...facts.artifacts, records: undefined } }
+      : facts;
+  await fs.writeFile(
+    path.join(directory, "project.json"),
+    stableStringify(persistedFacts, 2) + "\n",
+  );
   if (formats.includes("json"))
     await fs.writeFile(path.join(directory, "report.json"), stableStringify(report, 2) + "\n");
   if (formats.includes("sarif"))

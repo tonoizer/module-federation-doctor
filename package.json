@@ -47,12 +47,18 @@
       "import": "./dist/policy.js",
       "default": "./dist/policy.js"
     },
+    "./capture": {
+      "types": "./dist/capture.d.ts",
+      "import": "./dist/capture.js",
+      "default": "./dist/capture.js"
+    },
     "./schemas/project.schema.json": "./schemas/project.schema.json",
     "./schemas/report.schema.json": "./schemas/report.schema.json",
     "./schemas/baseline.schema.json": "./schemas/baseline.schema.json",
     "./schemas/probe.schema.json": "./schemas/probe.schema.json",
     "./schemas/runtime-trace.schema.json": "./schemas/runtime-trace.schema.json",
     "./schemas/config.schema.json": "./schemas/config.schema.json",
+    "./schemas/runtime-capture.schema.json": "./schemas/runtime-capture.schema.json",
     "./schemas/ui.schema.json": "./schemas/ui.schema.json",
     "./schemas/evidence.schema.json": "./schemas/evidence.schema.json",
     "./package.json": "./package.json"
@@ -115,8 +121,9 @@
     "docs:dev": "pnpm --filter @module-federation/doctor-docs dev",
     "docs:build": "pnpm --filter @module-federation/doctor-docs build",
     "pack:check": "pnpm build && publint && attw --pack . --profile esm-only && pnpm schema:check && node scripts/pack-check.mjs",
+    "changeset:check": "node scripts/changeset-contract.mjs",
     "schema:check": "node --experimental-strip-types scripts/schema-contract.mjs",
-    "check": "pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm build && pnpm test:unit && pnpm test:integration && pnpm demo:showcase && pnpm test:e2e && pnpm docs:build && pnpm pack:check",
+    "check": "pnpm fmt:check && pnpm lint && pnpm changeset:check && pnpm typecheck && pnpm build && pnpm test:unit && pnpm test:integration && pnpm demo:showcase && pnpm test:e2e && pnpm docs:build && pnpm pack:check",
     "changeset": "changeset",
     "version": "changeset version",
     "release:dry-run": "pnpm pack:check && npm publish --dry-run --provenance --access public"

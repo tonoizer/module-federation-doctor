@@ -76,6 +76,14 @@ export {
 export type {
   AnalysisCapabilities,
   AnalysisResult,
+  ArtifactManifest,
+  ArtifactManifestRecord,
+  ArtifactKind,
+  ArtifactRecord,
+  ArtifactSource,
+  ArtifactState,
+  ArtifactStatsRecord,
+  ArtifactStats,
   ArtifactFacts,
   BaselineEntry,
   BaselineFile,
@@ -145,6 +153,30 @@ export {
   stableEvidenceId,
 } from "./evidence.js";
 export { EvidenceIntegrityError, EvidenceResourceError } from "./evidence.js";
+export { capConfidence, stableEvaluationId, weakestConfidence } from "./rule-contract.js";
+export type {
+  EvidenceAwareRuleMeta,
+  EvidenceRequirement,
+  EvidenceSelector,
+  RuleApplicability,
+  RuleEvaluationIdentity,
+  RuleEvaluationResult,
+  RuleExecutionState,
+  RuleEngineErrorState,
+  RuleFailResult,
+  RuleNotApplicableResult,
+  RuleOwner,
+  RulePassResult,
+  RuleReasonCode,
+  RuleRemediation,
+  RuleUnknownResult,
+} from "./rule-contract.js";
+export { ruleInventory, ruleInventoryIds } from "./rule-inventory.js";
+export type {
+  RuleInventoryEntry,
+  RuleMigrationGroup,
+  RuleMigrationStatus,
+} from "./rule-inventory.js";
 export type {
   EvidenceAssertion,
   EvidenceCompleteness,

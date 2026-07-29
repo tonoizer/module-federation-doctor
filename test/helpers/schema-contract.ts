@@ -36,6 +36,7 @@ type SchemaAjv = InstanceType<typeof Ajv2020>;
 
 let ajv: SchemaAjv | undefined;
 const validators = new Map<string, ValidateFunction>();
+const validatorPromises = new Map<string, Promise<ValidateFunction>>();
 
 async function loadSchema(fileName: string): Promise<JsonSchemaDocument> {
   const text = await fs.readFile(path.join(schemasDir, fileName), "utf8");
@@ -55,9 +56,16 @@ function createAjv(): SchemaAjv {
 async function validatorFor(fileName: string): Promise<ValidateFunction> {
   let validate = validators.get(fileName);
   if (!validate) {
-    if (!ajv) ajv = createAjv();
-    const schema = await loadSchema(fileName);
-    validate = ajv.compile(schema);
+    let pending = validatorPromises.get(fileName);
+    if (!pending) {
+      pending = (async () => {
+        if (!ajv) ajv = createAjv();
+        const schema = await loadSchema(fileName);
+        return ajv!.compile(schema);
+      })();
+      validatorPromises.set(fileName, pending);
+    }
+    validate = await pending;
     validators.set(fileName, validate);
   }
   return validate;
@@ -223,6 +231,53 @@ export async function validateFixturePayloads(): Promise<void> {
       findings: 0,
     },
     "representative runtime-trace summary",
+  );
+
+  await validatePayload(
+    "runtime-capture.schema.json",
+    {
+      schemaVersion: 1,
+      contractVersion: 1,
+      collector: { name: "schema-check", version: "1" },
+      transport: "file",
+      captureId: "capture-schema-check",
+      capabilities: {
+        observations: [
+          {
+            capabilityKind: "reports",
+            state: "unavailable",
+            reason: "file fixture",
+            source: "observability",
+            scope: "none",
+            priority: 1,
+            sourceSchemaVersion: "1",
+          },
+        ],
+      },
+      limits: {
+        maxBytes: 5242880,
+        maxReports: 100,
+        maxEvents: 5000,
+        maxSnapshots: 500,
+        maxInstances: 100,
+        maxNetworkRecords: 2000,
+        maxErrors: 200,
+        maxStringLength: 4096,
+        maxDiagnosisStringLength: 16384,
+        maxDepth: 12,
+        maxObjectKeys: 100,
+      },
+      truncation: [],
+      reports: [],
+      events: [],
+      devtools: [],
+      snapshots: [],
+      instances: [],
+      network: [],
+      errors: [],
+      relations: [],
+    },
+    "representative runtime capture",
   );
 
   await validatePayload(

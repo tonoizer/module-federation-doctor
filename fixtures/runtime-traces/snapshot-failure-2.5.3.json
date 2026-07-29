@@ -1,0 +1,175 @@
+{
+  "traceId": "mf-capture-snapshot-failure",
+  "status": "error",
+  "requestId": "remote/Button",
+  "hostName": "host",
+  "runtimeVersion": "2.5.0",
+  "remote": {
+    "name": "remote",
+    "entry": "https://cdn.example.com/remote/mf-manifest.json"
+  },
+  "expose": "./Button",
+  "sanitizedUrl": "https://cdn.example.com/remote/mf-manifest.json",
+  "startedAt": 1700000000000,
+  "updatedAt": 1700000000000,
+  "duration": 0,
+  "failedPhase": "loadRemote",
+  "errorCode": "RUNTIME-007",
+  "errorName": "Error",
+  "errorMessage": "[ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007",
+  "errorStack": "Error: [ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]",
+  "ownerHint": "host",
+  "errorContext": {
+    "lifecycle": "onLoad",
+    "requestId": "remote/Button",
+    "remoteName": "remote",
+    "url": "https://cdn.example.com/remote/mf-manifest.json",
+    "expose": "./Button"
+  },
+  "events": [
+    {
+      "traceId": "mf-capture-snapshot-failure",
+      "timestamp": 1700000000000,
+      "phase": "loadRemote",
+      "status": "start",
+      "requestId": "remote/Button",
+      "hostName": "host",
+      "runtimeVersion": "2.5.0",
+      "message": "remote:load-start",
+      "lifecycle": "beforeRequest"
+    },
+    {
+      "traceId": "mf-capture-snapshot-failure",
+      "timestamp": 1700000000000,
+      "phase": "loadRemote",
+      "status": "error",
+      "requestId": "remote/Button",
+      "hostName": "host",
+      "runtimeVersion": "2.5.0",
+      "remote": {
+        "name": "remote",
+        "entry": "https://cdn.example.com/remote/mf-manifest.json"
+      },
+      "expose": "./Button",
+      "sanitizedUrl": "https://cdn.example.com/remote/mf-manifest.json",
+      "message": "remote:onLoad:failed",
+      "errorCode": "RUNTIME-007",
+      "errorName": "Error",
+      "errorMessage": "[ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007",
+      "errorStack": "Error: [ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]",
+      "duration": 0,
+      "lifecycle": "onLoad",
+      "ownerHint": "host",
+      "errorContext": {
+        "lifecycle": "onLoad",
+        "requestId": "remote/Button",
+        "remoteName": "remote",
+        "url": "https://cdn.example.com/remote/mf-manifest.json",
+        "expose": "./Button"
+      }
+    }
+  ],
+  "summary": {
+    "eventCount": 2,
+    "recovered": false,
+    "loadCompleted": false,
+    "runtimeLoaded": false,
+    "sharedResolved": false,
+    "preloaded": false,
+    "componentLoaded": false,
+    "outcome": "failed",
+    "lastPhase": "loadRemote",
+    "phases": {
+      "loadRemote": {
+        "status": "error",
+        "lifecycle": "onLoad",
+        "duration": 0
+      }
+    },
+    "flags": {
+      "cached": false,
+      "fallback": false,
+      "recovered": false
+    },
+    "error": {
+      "errorCode": "RUNTIME-007",
+      "errorName": "Error",
+      "errorMessage": "[ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007",
+      "failedPhase": "loadRemote",
+      "lifecycle": "onLoad",
+      "ownerHint": "host",
+      "context": {
+        "lifecycle": "onLoad",
+        "requestId": "remote/Button",
+        "remoteName": "remote",
+        "url": "https://cdn.example.com/remote/mf-manifest.json",
+        "expose": "./Button"
+      }
+    }
+  },
+  "diagnosis": {
+    "title": "Deployment moduleInfo did not match the requested remote",
+    "outcome": "failed",
+    "status": "error",
+    "ownerHint": "host",
+    "failedPhase": "loadRemote",
+    "errorCode": "RUNTIME-007",
+    "errorName": "Error",
+    "errorMessage": "[ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007",
+    "docLink": "https://module-federation.io/guide/troubleshooting/runtime",
+    "facts": {
+      "traceId": "mf-capture-snapshot-failure",
+      "status": "error",
+      "outcome": "failed",
+      "errorCode": "RUNTIME-007",
+      "failedPhase": "loadRemote",
+      "lifecycle": "onLoad",
+      "ownerHint": "host",
+      "requestId": "remote/Button",
+      "hostName": "host",
+      "remoteName": "remote",
+      "remoteEntry": "https://cdn.example.com/remote/mf-manifest.json",
+      "url": "https://cdn.example.com/remote/mf-manifest.json",
+      "expose": "./Button",
+      "moduleInfoReason": "remote-snapshot",
+      "moduleInfoTotalCount": 2,
+      "moduleInfoMatchedCount": 1,
+      "moduleInfoNames": "remote:https://cdn.example.com/remote/mf-manifest.json",
+      "cached": false,
+      "fallback": false,
+      "recovered": false,
+      "loadCompleted": false,
+      "runtimeLoaded": false,
+      "componentLoaded": false
+    },
+    "completedPhases": [],
+    "pendingPhases": [],
+    "actions": [
+      {
+        "id": "check-module-info",
+        "ownerHint": "host",
+        "title": "Check deployment-provided __FEDERATION__.moduleInfo for the requested remote"
+      },
+      {
+        "id": "check-host-remotes",
+        "ownerHint": "host",
+        "title": "Check that the runtime remote name or alias matches moduleInfo"
+      }
+    ]
+  },
+  "moduleInfo": {
+    "reason": "remote-snapshot",
+    "clipped": true,
+    "totalCount": 2,
+    "matchedCount": 1,
+    "entries": [
+      {
+        "name": "remote:https://cdn.example.com/remote/mf-manifest.json",
+        "publicPath": "https://cdn.example.com/remote/",
+        "getPublicPath": "return \"https://cdn.example.com/remote/\";",
+        "remoteEntry": "https://cdn.example.com/remote/remoteEntry.js",
+        "globalName": "remote_global"
+      }
+    ]
+  }
+}
