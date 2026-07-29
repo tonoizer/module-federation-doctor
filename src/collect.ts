@@ -600,10 +600,19 @@ async function collectArtifacts(
   const manifestNames = names.manifest.map(validateName);
   const statsNames = names.stats.map(validateName);
   const rootReal = await fs.realpath(root);
-  const candidates = await fg("**/*", {
+  const patterns = [
+    ...manifestNames.flatMap((name) =>
+      name.includes("/") ? [fg.escapePath(name)] : [`**/${fg.escapePath(name)}`],
+    ),
+    ...statsNames.flatMap((name) =>
+      name.includes("/") ? [fg.escapePath(name)] : [`**/${fg.escapePath(name)}`],
+    ),
+  ];
+  const candidates = await fg([...new Set(patterns)], {
     cwd: root,
     ignore: ["**/node_modules/**", "**/.mf/**"],
     onlyFiles: true,
+    dot: true,
     followSymbolicLinks: false,
   });
   const kindsFor = (file: string): ArtifactKind[] => {
@@ -637,12 +646,16 @@ async function collectArtifacts(
       data = undefined;
     }
     for (const kind of kinds) {
-      const record: ArtifactRecord = { kind, path: relative, valid: false, source: "discovered" };
       if (kind === "manifest") {
         const manifest = manifestFrom(data, relative);
-        record.valid = manifest.valid;
-        record.manifest = manifest;
-        records.push(record);
+        records.push({
+          kind,
+          path: relative,
+          valid: manifest.valid,
+          state: manifest.valid ? "valid" : "malformed",
+          source: "discovered",
+          manifest,
+        });
       } else {
         const valid = !!data && typeof data === "object" && !Array.isArray(data);
         const stats: ArtifactStats = {
@@ -650,9 +663,14 @@ async function collectArtifacts(
           valid,
           ...(valid ? { data: data as Record<string, unknown> } : {}),
         };
-        record.valid = valid;
-        record.stats = stats;
-        records.push(record);
+        records.push({
+          kind,
+          path: relative,
+          valid,
+          state: valid ? "valid" : "malformed",
+          source: "discovered",
+          stats,
+        });
       }
     }
   }

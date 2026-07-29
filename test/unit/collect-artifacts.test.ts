@@ -6,6 +6,24 @@ import { collectProjectFacts } from "../../src/collect.js";
 import { resolveOptions } from "../../src/config.js";
 import { writeReports } from "../../src/reporters.js";
 import { validatePayload } from "../helpers/schema-contract.js";
+import type { ArtifactRecord, ArtifactStats } from "../../src/types.js";
+
+const validManifestRecord = {
+  kind: "manifest",
+  path: "mf-manifest.json",
+  valid: true,
+  state: "valid",
+  source: "discovered",
+  manifest: { path: "mf-manifest.json", valid: true, exposes: [], shared: [] },
+} satisfies ArtifactRecord;
+
+const invalidManifestRecord = {
+  ...validManifestRecord,
+  stats: { path: "mf-stats.json", valid: true } satisfies ArtifactStats,
+  // @ts-expect-error manifest records cannot carry stats payloads
+} satisfies ArtifactRecord;
+
+void invalidManifestRecord;
 
 const roots: string[] = [];
 
@@ -68,7 +86,7 @@ describe("artifact collection", () => {
 
   it("collects configured custom names without scanning unrelated names", async () => {
     const root = await fixture({
-      "build/custom[manifest].json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+      ".output/custom[manifest].json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
       "build/custom-stats.json": JSON.stringify({ assets: ["remote.js"] }),
       "build/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
     });
@@ -76,7 +94,10 @@ describe("artifact collection", () => {
     const facts = await collectProjectFacts(
       await resolveOptions({
         root,
-        artifactNames: { manifest: ["custom[manifest].json"], stats: ["custom-stats.json"] },
+        artifactNames: {
+          manifest: [".output/custom[manifest].json"],
+          stats: ["custom-stats.json"],
+        },
       }),
     );
 
@@ -87,7 +108,7 @@ describe("artifact collection", () => {
         valid,
       })),
     ).toEqual([
-      { kind: "manifest", path: "build/custom[manifest].json", valid: true },
+      { kind: "manifest", path: ".output/custom[manifest].json", valid: true },
       { kind: "stats", path: "build/custom-stats.json", valid: true },
     ]);
   });

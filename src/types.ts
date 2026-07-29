@@ -226,15 +226,29 @@ export interface ManifestShared {
 
 export type ArtifactKind = "manifest" | "stats";
 export type ArtifactSource = "discovered" | "emitted";
+export type ArtifactState = "valid" | "malformed";
 
-export interface ArtifactRecord {
+interface ArtifactRecordBase {
   kind: ArtifactKind;
   path: string;
   valid: boolean;
   source: ArtifactSource;
-  manifest?: ArtifactManifest;
-  stats?: ArtifactStats;
+  state: ArtifactState;
 }
+
+export type ArtifactManifestRecord = ArtifactRecordBase & {
+  kind: "manifest";
+  manifest: ArtifactManifest;
+  stats?: never;
+};
+
+export type ArtifactStatsRecord = ArtifactRecordBase & {
+  kind: "stats";
+  manifest?: never;
+  stats: ArtifactStats;
+};
+
+export type ArtifactRecord = ArtifactManifestRecord | ArtifactStatsRecord;
 
 export interface ArtifactManifest {
   path: string;
