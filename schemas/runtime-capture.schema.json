@@ -54,17 +54,36 @@
     },
     "capability": {
       "type": "object",
-      "required": ["state", "reason"],
+      "required": ["capability", "reason", "source", "scope", "priority", "sourceSchemaVersion"],
       "properties": {
-        "state": { "enum": ["exact", "partial", "unavailable", "not-applicable", "unknown"] },
+        "capability": { "enum": ["exact", "partial", "unavailable", "not-applicable", "unknown"] },
         "reason": { "$ref": "#/$defs/string" },
         "source": {
           "enum": ["observability", "devtools", "snapshot", "instance", "network", "error"]
         },
         "scope": { "$ref": "#/$defs/string" },
         "priority": { "type": "integer", "minimum": 1, "maximum": 4 },
-        "runtimeVersion": { "type": "string" }
+        "sourceSchemaVersion": { "$ref": "#/$defs/string" },
+        "runtimeVersion": { "$ref": "#/$defs/string" }
       },
+      "allOf": [
+        {
+          "if": { "properties": { "source": { "const": "observability" } } },
+          "then": { "properties": { "priority": { "const": 1 } } }
+        },
+        {
+          "if": { "properties": { "source": { "const": "devtools" } } },
+          "then": { "properties": { "priority": { "const": 2 } } }
+        },
+        {
+          "if": { "properties": { "source": { "enum": ["snapshot", "instance"] } } },
+          "then": { "properties": { "priority": { "const": 3 } } }
+        },
+        {
+          "if": { "properties": { "source": { "enum": ["network", "error"] } } },
+          "then": { "properties": { "priority": { "const": 4 } } }
+        }
+      ],
       "additionalProperties": false
     },
     "capabilities": {
@@ -130,6 +149,7 @@
       "additionalProperties": false
     },
     "string": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "diagnosisString": { "type": "string", "minLength": 1, "maxLength": 16384 },
     "stringArray": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/string" } },
     "provenance": {
       "type": "object",
@@ -180,6 +200,11 @@
         "capturedAt": { "type": "number", "minimum": 0 },
         "contentDigest": { "$ref": "#/$defs/digest" },
         "provenance": { "$ref": "#/$defs/provenance" },
+        "provenanceRefs": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/string" }
+        },
         "completeness": { "$ref": "#/$defs/completeness" },
         "value": { "type": "object" }
       },
@@ -199,7 +224,7 @@
         "errorCode": { "$ref": "#/$defs/string" },
         "ownerHint": { "$ref": "#/$defs/string" },
         "loadedBefore": { "type": "boolean" },
-        "diagnosisTitle": { "$ref": "#/$defs/string" },
+        "diagnosisTitle": { "$ref": "#/$defs/diagnosisString" },
         "moduleInfoReason": { "$ref": "#/$defs/string" },
         "moduleInfoNames": { "$ref": "#/$defs/stringArray" }
       }
@@ -257,7 +282,7 @@
       "properties": {
         "code": { "$ref": "#/$defs/string" },
         "name": { "$ref": "#/$defs/string" },
-        "message": { "$ref": "#/$defs/string" },
+        "message": { "$ref": "#/$defs/diagnosisString" },
         "phase": { "$ref": "#/$defs/string" },
         "runtimeVersion": { "$ref": "#/$defs/string" }
       }

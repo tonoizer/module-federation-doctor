@@ -244,11 +244,12 @@ export async function validateFixturePayloads(): Promise<void> {
       capabilities: {
         observations: [
           {
-            state: "unavailable",
+            capability: "unavailable",
             reason: "file fixture",
             source: "observability",
             scope: "none",
             priority: 1,
+            sourceSchemaVersion: "1",
           },
         ],
       },

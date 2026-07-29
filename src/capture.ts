@@ -81,11 +81,12 @@ export const HARD_RUNTIME_CAPTURE_LIMITS: RuntimeCaptureLimits = Object.freeze({
 });
 
 export interface RuntimeCaptureCapabilityInfo {
-  state: RuntimeCaptureCapability;
+  capability: RuntimeCaptureCapability;
   reason: string;
   source: RuntimeCaptureSource;
   scope: string;
   priority: 1 | 2 | 3 | 4;
+  sourceSchemaVersion: string;
   runtimeVersion?: string;
 }
 
@@ -174,6 +175,7 @@ interface RuntimeCaptureRecordBase<T extends object, S extends RuntimeCaptureSou
   capturedAt: number;
   contentDigest: string;
   provenance: EvidenceProvenance;
+  provenanceRefs?: string[];
   completeness: EvidenceCompletenessInfo;
   value: T;
 }
@@ -261,6 +263,21 @@ const COLLECTION_LIMITS: Record<RuntimeCaptureSource, keyof RuntimeCaptureLimits
   network: "maxNetworkRecords",
   error: "maxErrors",
 };
+const SOURCE_PRIORITIES: Record<RuntimeCaptureSource, 1 | 2 | 3 | 4> = {
+  observability: 1,
+  devtools: 2,
+  snapshot: 3,
+  instance: 3,
+  network: 4,
+  error: 4,
+};
+const CAPABILITY_STATES = new Set<RuntimeCaptureCapability>([
+  "exact",
+  "partial",
+  "unavailable",
+  "not-applicable",
+  "unknown",
+]);
 const VALUE_KEYS: Record<RuntimeCaptureSource, ReadonlySet<string>> = {
   observability: new Set([
     "traceId",
@@ -290,6 +307,68 @@ const VALUE_KEYS: Record<RuntimeCaptureSource, ReadonlySet<string>> = {
   network: new Set(["url", "kind", "status", "failureClass", "durationMs", "initiatorClass"]),
   error: new Set(["code", "name", "message", "phase", "runtimeVersion"]),
 };
+const ROOT_KEYS = new Set([
+  "schemaVersion",
+  "contractVersion",
+  "collector",
+  "transport",
+  "captureId",
+  "capabilities",
+  "limits",
+  "truncation",
+  "reports",
+  "events",
+  "devtools",
+  "snapshots",
+  "instances",
+  "network",
+  "errors",
+  "relations",
+]);
+const LIMIT_KEYS = new Set(Object.keys(DEFAULT_RUNTIME_CAPTURE_LIMITS));
+const RECORD_KEYS = new Set([
+  "id",
+  "identity",
+  "source",
+  "capturedAt",
+  "contentDigest",
+  "provenance",
+  "provenanceRefs",
+  "completeness",
+  "value",
+]);
+const IDENTITY_KEYS = new Set([
+  "captureId",
+  "navigationId",
+  "realmId",
+  "sequence",
+  "runtimeVersion",
+  "sourceScope",
+  "traceId",
+  "requestId",
+  "hostName",
+  "instanceName",
+  "remoteName",
+  "remoteAlias",
+  "sharedPackage",
+]);
+const PROVENANCE_KEYS = new Set([
+  "collector",
+  "inputKind",
+  "source",
+  "sourceSchemaVersion",
+  "location",
+  "contentDigest",
+  "parentEvidenceIds",
+]);
+const COMPLETENESS_KEYS = new Set([
+  "status",
+  "expectedCount",
+  "observedCount",
+  "missing",
+  "reason",
+]);
+const RELATION_KEYS = new Set(["id", "from", "to", "relation", "reason"]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -319,60 +398,206 @@ function ownDataEntries(value: Record<string, unknown>, path: string): [string, 
   }
 }
 
-function assertSafeValue(value: unknown, limits: RuntimeCaptureLimits, path: string): void {
-  const pending: Array<{ value: unknown; depth: number; path: string }> = [
-    { value, depth: 0, path },
-  ];
-  const seen = new WeakSet<object>();
-  let bytes = 0;
-  while (pending.length) {
-    const item = pending.pop()!;
-    if (item.depth > limits.maxDepth)
-      throw new RuntimeCaptureValidationError(`${item.path} exceeds maxDepth`);
-    if (typeof item.value === "string") {
-      if (item.value.length > limits.maxStringLength)
-        throw new RuntimeCaptureValidationError(`${item.path} exceeds maxStringLength`);
-      bytes += Buffer.byteLength(item.value);
-    } else if (
-      item.value === null ||
-      typeof item.value === "boolean" ||
-      typeof item.value === "number"
-    ) {
-      if (typeof item.value === "number" && !Number.isFinite(item.value))
-        throw new RuntimeCaptureValidationError(`${item.path} has non-finite number`);
-      bytes += 8;
-    } else if (Array.isArray(item.value)) {
-      if (seen.has(item.value))
-        throw new RuntimeCaptureValidationError(`${item.path} contains a cycle`);
-      seen.add(item.value);
-      if (item.value.length > limits.maxObjectKeys)
-        throw new RuntimeCaptureValidationError(`${item.path} exceeds maxObjectKeys`);
-      for (let i = item.value.length - 1; i >= 0; i--)
-        pending.push({ value: item.value[i], depth: item.depth + 1, path: `${item.path}[${i}]` });
-    } else if (isObject(item.value)) {
-      if (seen.has(item.value))
-        throw new RuntimeCaptureValidationError(`${item.path} contains a cycle`);
-      seen.add(item.value);
-      const entries = ownDataEntries(item.value, item.path);
-      if (entries.length > limits.maxObjectKeys)
-        throw new RuntimeCaptureValidationError(`${item.path} exceeds maxObjectKeys`);
-      for (let i = entries.length - 1; i >= 0; i--) {
-        const [key, child] = entries[i]!;
-        pending.push({ value: child, depth: item.depth + 1, path: `${item.path}.${key}` });
+function parseSafeValue(
+  value: unknown,
+  limits: RuntimeCaptureLimits,
+  path: string,
+  depth = 0,
+  seen = new WeakSet<object>(),
+): unknown {
+  if (depth > limits.maxDepth) throw new RuntimeCaptureValidationError(`${path} exceeds maxDepth`);
+  if (typeof value === "string") {
+    const maxLength = /(?:diagnosisTitle|message)$/.test(path)
+      ? limits.maxDiagnosisStringLength
+      : limits.maxStringLength;
+    if (value.length > maxLength)
+      throw new RuntimeCaptureValidationError(
+        `${path} exceeds ${maxLength === limits.maxDiagnosisStringLength ? "maxDiagnosisStringLength" : "maxStringLength"}`,
+      );
+    return value;
+  }
+  if (value === null || typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value))
+      throw new RuntimeCaptureValidationError(`${path} has non-finite number`);
+    return value;
+  }
+  if (Array.isArray(value)) {
+    try {
+      if (seen.has(value)) throw new RuntimeCaptureValidationError(`${path} contains a cycle`);
+      seen.add(value);
+      const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+      const maxArrayLength = Math.max(
+        limits.maxObjectKeys,
+        limits.maxReports,
+        limits.maxEvents,
+        limits.maxSnapshots,
+        limits.maxInstances,
+        limits.maxNetworkRecords,
+        limits.maxErrors,
+      );
+      if (
+        !lengthDescriptor ||
+        !("value" in lengthDescriptor) ||
+        lengthDescriptor.value > maxArrayLength
+      )
+        throw new RuntimeCaptureValidationError(`${path} exceeds collection array limit`);
+      const result: unknown[] = [];
+      for (let index = 0; index < lengthDescriptor.value; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || !("value" in descriptor))
+          throw new RuntimeCaptureValidationError(`${path}[${index}] must be an own data property`);
+        result.push(parseSafeValue(descriptor.value, limits, `${path}[${index}]`, depth + 1, seen));
       }
-    } else {
-      throw new RuntimeCaptureValidationError(`${item.path} contains an unsupported value`);
+      return result;
+    } catch (error) {
+      if (error instanceof RuntimeCaptureValidationError) throw error;
+      throw new RuntimeCaptureValidationError(`${path} cannot be safely read`);
     }
-    if (bytes > limits.maxBytes)
-      throw new RuntimeCaptureValidationError(`${path} exceeds maxBytes`);
+  }
+  if (!isObject(value))
+    throw new RuntimeCaptureValidationError(`${path} contains an unsupported value`);
+  if (seen.has(value)) throw new RuntimeCaptureValidationError(`${path} contains a cycle`);
+  seen.add(value);
+  const entries = ownDataEntries(value, path);
+  if (entries.length > limits.maxObjectKeys)
+    throw new RuntimeCaptureValidationError(`${path} exceeds maxObjectKeys`);
+  return Object.fromEntries(
+    entries.map(([key, child]) => [
+      key,
+      parseSafeValue(child, limits, `${path}.${key}`, depth + 1, seen),
+    ]),
+  );
+}
+
+function normalizedJson(value: unknown): string {
+  return JSON.stringify(canonicalizeEvidenceValue(value as EvidenceValue));
+}
+
+function assertKnownKeys(
+  value: unknown,
+  allowed: ReadonlySet<string>,
+  path: string,
+): asserts value is Record<string, unknown> {
+  if (!isObject(value)) throw new RuntimeCaptureValidationError(`${path} must be an object`);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) throw new RuntimeCaptureValidationError(`${path}.${key} is unknown`);
   }
 }
 
+function assertFinalEncodedBytes(value: unknown, limits: RuntimeCaptureLimits): void {
+  const bytes = Buffer.byteLength(normalizedJson(value), "utf8");
+  if (bytes > limits.maxBytes)
+    throw new RuntimeCaptureValidationError(`/ exceeds maxBytes (${limits.maxBytes})`);
+}
+
+function assertCanonicalPart(value: unknown, limits: RuntimeCaptureLimits, path: string): void {
+  const redacted = redactEvidenceValue(value as EvidenceValue, {
+    maxDepth: limits.maxDepth,
+    maxNodes: 10_000,
+    maxBytes: Math.min(limits.maxBytes, 8 * 1_048_576),
+  });
+  if (normalizedJson(value) !== normalizedJson(redacted))
+    throw new RuntimeCaptureValidationError(
+      `${path} contains values that are not canonically redacted`,
+    );
+}
+
+function assertDiagnosisLimits(
+  source: RuntimeCaptureSource,
+  value: object,
+  limits: RuntimeCaptureLimits,
+  path: string,
+): void {
+  const diagnosisKeys =
+    source === "observability" ? ["diagnosisTitle"] : source === "error" ? ["message"] : [];
+  for (const key of diagnosisKeys) {
+    const candidate = (value as Record<string, unknown>)[key];
+    if (typeof candidate === "string" && candidate.length > limits.maxDiagnosisStringLength)
+      throw new RuntimeCaptureValidationError(`${path}.${key} exceeds maxDiagnosisStringLength`);
+  }
+}
+
+function assertString(value: unknown, path: string): void {
+  if (typeof value !== "string" || value.length === 0)
+    throw new RuntimeCaptureValidationError(`${path} must be a non-empty string`);
+}
+
+function assertIdentity(
+  identity: unknown,
+  path: string,
+): asserts identity is RuntimeCaptureIdentity {
+  assertKnownKeys(identity, IDENTITY_KEYS, path);
+  const safeIdentity = identity as unknown as RuntimeCaptureIdentity;
+  const identityFields = safeIdentity as unknown as Record<string, unknown>;
+  for (const key of ["captureId", "navigationId", "realmId"])
+    assertString(identityFields[key], `${path}.${key}`);
+  if (!Number.isSafeInteger(safeIdentity.sequence) || safeIdentity.sequence < 0)
+    throw new RuntimeCaptureValidationError(`${path}.sequence is invalid`);
+  for (const key of [
+    "runtimeVersion",
+    "sourceScope",
+    "traceId",
+    "requestId",
+    "hostName",
+    "instanceName",
+    "remoteName",
+    "remoteAlias",
+    "sharedPackage",
+  ])
+    if (identityFields[key] !== undefined) assertString(identityFields[key], `${path}.${key}`);
+}
+
+function assertProvenance(
+  provenance: unknown,
+  path: string,
+): asserts provenance is EvidenceProvenance {
+  assertKnownKeys(provenance, PROVENANCE_KEYS, path);
+  assertKnownKeys(provenance.collector, new Set(["name", "version"]), `${path}.collector`);
+  assertString(provenance.collector.name, `${path}.collector.name`);
+  assertString(provenance.collector.version, `${path}.collector.version`);
+  for (const key of ["inputKind", "source", "sourceSchemaVersion"])
+    assertString(provenance[key], `${path}.${key}`);
+  for (const key of ["location", "contentDigest"])
+    if (provenance[key] !== undefined) assertString(provenance[key], `${path}.${key}`);
+  if (
+    provenance.parentEvidenceIds !== undefined &&
+    (!Array.isArray(provenance.parentEvidenceIds) ||
+      provenance.parentEvidenceIds.some((item) => typeof item !== "string"))
+  )
+    throw new RuntimeCaptureValidationError(`${path}.parentEvidenceIds is invalid`);
+}
+
+function assertCompleteness(
+  completeness: unknown,
+  path: string,
+): asserts completeness is EvidenceCompletenessInfo {
+  assertKnownKeys(completeness, COMPLETENESS_KEYS, path);
+  if (!["complete", "partial", "unknown", "not-collected"].includes(completeness.status as string))
+    throw new RuntimeCaptureValidationError(`${path}.status is invalid`);
+  assertString(completeness.reason, `${path}.reason`);
+  for (const key of ["expectedCount", "observedCount"])
+    if (
+      completeness[key] !== undefined &&
+      (!Number.isSafeInteger(completeness[key]) || (completeness[key] as number) < 0)
+    )
+      throw new RuntimeCaptureValidationError(`${path}.${key} is invalid`);
+  if (
+    completeness.missing !== undefined &&
+    (!Array.isArray(completeness.missing) ||
+      completeness.missing.some((item) => typeof item !== "string"))
+  )
+    throw new RuntimeCaptureValidationError(`${path}.missing is invalid`);
+}
+
 function assertLimits(limits: RuntimeCaptureLimits): void {
-  for (const [name, value] of Object.entries(limits)) {
+  for (const name of Object.keys(
+    DEFAULT_RUNTIME_CAPTURE_LIMITS,
+  ) as (keyof RuntimeCaptureLimits)[]) {
+    const value = limits[name];
     if (!Number.isSafeInteger(value) || value < 1)
       throw new RuntimeCaptureValidationError(`${name} must be positive`);
-    const ceiling = HARD_RUNTIME_CAPTURE_LIMITS[name as keyof RuntimeCaptureLimits];
+    const ceiling = HARD_RUNTIME_CAPTURE_LIMITS[name];
     if (value > ceiling) throw new RuntimeCaptureValidationError(`${name} exceeds hard ceiling`);
   }
 }
@@ -382,6 +607,54 @@ function assertRecordValue(source: RuntimeCaptureSource, value: unknown, path: s
   for (const [key] of ownDataEntries(value, path)) {
     if (!VALUE_KEYS[source].has(key))
       throw new RuntimeCaptureValidationError(`${path}.${key} is not allowed for ${source}`);
+  }
+  const stringKeys = new Set([
+    "traceId",
+    "requestId",
+    "requestAlias",
+    "hostName",
+    "runtimeVersion",
+    "outcome",
+    "phase",
+    "errorCode",
+    "ownerHint",
+    "diagnosisTitle",
+    "moduleInfoReason",
+    "recordId",
+    "scope",
+    "name",
+    "publicPath",
+    "remoteEntry",
+    "globalName",
+    "failureClass",
+    "initiatorClass",
+    "code",
+    "message",
+  ]);
+  for (const [key, child] of ownDataEntries(value, path)) {
+    if (stringKeys.has(key) && typeof child !== "string")
+      throw new RuntimeCaptureValidationError(`${path}.${key} must be a string`);
+    if (
+      [
+        "moduleInfoNames",
+        "reportIds",
+        "fields",
+        "availableNames",
+        "remoteNames",
+        "shareScopes",
+      ].includes(key) &&
+      (!Array.isArray(child) ||
+        child.length > 100 ||
+        child.some((item) => typeof item !== "string"))
+    )
+      throw new RuntimeCaptureValidationError(`${path}.${key} must be a string array`);
+    if (
+      ["entryCount", "status"].includes(key) &&
+      (!Number.isInteger(child) || (child as number) < 0)
+    )
+      throw new RuntimeCaptureValidationError(`${path}.${key} must be a non-negative integer`);
+    if (key === "durationMs" && (typeof child !== "number" || !Number.isFinite(child) || child < 0))
+      throw new RuntimeCaptureValidationError(`${path}.${key} must be a non-negative number`);
   }
   if (source === "network" && (typeof value.url !== "string" || typeof value.kind !== "string"))
     throw new RuntimeCaptureValidationError(`${path} network records need url and kind`);
@@ -409,27 +682,121 @@ function allRecords(
 export function validateRuntimeCaptureEnvelope(
   input: unknown,
 ): asserts input is RuntimeCaptureEnvelope {
-  if (!isObject(input)) throw new RuntimeCaptureValidationError("capture must be an object");
-  const envelope = input as unknown as RuntimeCaptureEnvelope;
+  const hardInput = parseSafeValue(input, HARD_RUNTIME_CAPTURE_LIMITS, "/");
+  if (!isObject(hardInput)) throw new RuntimeCaptureValidationError("capture must be an object");
+  assertKnownKeys(hardInput, ROOT_KEYS, "/");
+  const root = hardInput;
+  if (root.schemaVersion !== 1 || root.contractVersion !== 1)
+    throw new RuntimeCaptureValidationError("unsupported capture contract version");
+  if (!isObject(root.limits)) throw new RuntimeCaptureValidationError("limits are required");
+  assertKnownKeys(root.limits, LIMIT_KEYS, "/limits");
+  assertLimits(root.limits as unknown as RuntimeCaptureLimits);
+  const normalizedInput = parseSafeValue(
+    hardInput,
+    root.limits as unknown as RuntimeCaptureLimits,
+    "/",
+  );
+  if (!isObject(normalizedInput))
+    throw new RuntimeCaptureValidationError("capture must be an object");
+  const limits = root.limits as unknown as RuntimeCaptureLimits;
+  for (const key of [
+    "collector",
+    "transport",
+    "captureId",
+    "capabilities",
+    "limits",
+    "truncation",
+    "relations",
+  ])
+    assertCanonicalPart(normalizedInput[key], limits, `/${key}`);
+  for (const key of [
+    "reports",
+    "events",
+    "devtools",
+    "snapshots",
+    "instances",
+    "network",
+    "errors",
+  ])
+    for (const [index, record] of (normalizedInput[key] as unknown[]).entries())
+      assertCanonicalPart(record, limits, `/${key}/${index}`);
+  assertFinalEncodedBytes(normalizedInput, limits);
+  const envelope = normalizedInput as unknown as RuntimeCaptureEnvelope;
   if (envelope.schemaVersion !== 1 || envelope.contractVersion !== 1)
     throw new RuntimeCaptureValidationError("unsupported capture contract version");
   if (typeof envelope.captureId !== "string" || envelope.captureId.length === 0)
     throw new RuntimeCaptureValidationError("captureId is required");
-  if (!envelope.limits) throw new RuntimeCaptureValidationError("limits are required");
-  assertLimits(envelope.limits);
-  assertSafeValue(input, envelope.limits, "/");
+  if (
+    !new Set(["file", "browser-debug", "devtools-export", "node-file", "app-export"]).has(
+      envelope.transport,
+    )
+  )
+    throw new RuntimeCaptureValidationError("transport is invalid");
+  assertKnownKeys(envelope.collector, new Set(["name", "version"]), "/collector");
+  assertString(envelope.collector.name, "/collector.name");
+  assertString(envelope.collector.version, "/collector.version");
   if (!isObject(envelope.capabilities) || !Array.isArray(envelope.capabilities.observations))
     throw new RuntimeCaptureValidationError("capability observations are required");
+  if (envelope.capabilities.observations.length > 20)
+    throw new RuntimeCaptureValidationError("capability observations exceed maxItems");
   for (const [index, observation] of envelope.capabilities.observations.entries()) {
+    assertKnownKeys(
+      observation,
+      new Set([
+        "capability",
+        "reason",
+        "source",
+        "scope",
+        "priority",
+        "sourceSchemaVersion",
+        "runtimeVersion",
+      ]),
+      `/capabilities.observations[${index}]`,
+    );
     if (
       !isObject(observation) ||
       typeof observation.source !== "string" ||
       typeof observation.scope !== "string" ||
+      typeof observation.sourceSchemaVersion !== "string" ||
+      typeof observation.capability !== "string" ||
+      !CAPABILITY_STATES.has(observation.capability as RuntimeCaptureCapability) ||
+      observation.sourceSchemaVersion.length === 0 ||
       !Number.isInteger(observation.priority) ||
       observation.priority < 1 ||
-      observation.priority > 4
+      observation.priority > 4 ||
+      SOURCE_PRIORITIES[observation.source as RuntimeCaptureSource] !== observation.priority
     )
       throw new RuntimeCaptureValidationError(`capabilities.observations[${index}] is invalid`);
+    assertString(observation.reason, `/capabilities.observations[${index}].reason`);
+    assertString(observation.scope, `/capabilities.observations[${index}].scope`);
+    assertString(
+      observation.sourceSchemaVersion,
+      `/capabilities.observations[${index}].sourceSchemaVersion`,
+    );
+  }
+  if (!Array.isArray(envelope.truncation))
+    throw new RuntimeCaptureValidationError("truncation must be an array");
+  for (const [index, item] of envelope.truncation.entries()) {
+    assertKnownKeys(
+      item,
+      new Set(["collection", "dropped", "firstSequence", "lastSequence", "reason"]),
+      `/truncation/${index}`,
+    );
+    if (
+      !new Set([
+        "observability",
+        "devtools",
+        "snapshot",
+        "instance",
+        "network",
+        "error",
+        "total",
+      ]).has(item.collection) ||
+      !Number.isSafeInteger(item.dropped) ||
+      item.dropped < 1
+    )
+      throw new RuntimeCaptureValidationError(`/truncation/${index} is invalid`);
+    assertString(item.reason, `/truncation/${index}.reason`);
   }
   const collections = [
     "reports",
@@ -463,9 +830,23 @@ export function validateRuntimeCaptureEnvelope(
     if (records.length > collectionLimit)
       throw new RuntimeCaptureValidationError(`${collection} exceeds its quota`);
     for (const [index, record] of records.entries()) {
+      assertKnownKeys(record, RECORD_KEYS, `${collection}[${index}]`);
       if (!isObject(record) || record.source !== source)
         throw new RuntimeCaptureValidationError(`${collection}[${index}] has the wrong source`);
       assertRecordValue(source, record.value, `${collection}[${index}].value`);
+      assertDiagnosisLimits(source, record.value, envelope.limits, `${collection}[${index}].value`);
+      assertIdentity(record.identity, `${collection}[${index}].identity`);
+      assertProvenance(record.provenance, `${collection}[${index}].provenance`);
+      if (
+        record.provenanceRefs !== undefined &&
+        (!Array.isArray(record.provenanceRefs) ||
+          record.provenanceRefs.length > 20 ||
+          record.provenanceRefs.some((ref) => typeof ref !== "string"))
+      )
+        throw new RuntimeCaptureValidationError(
+          `${collection}[${index}].provenanceRefs is invalid`,
+        );
+      assertCompleteness(record.completeness, `${collection}[${index}].completeness`);
       if (
         !isObject(record.identity) ||
         (record.identity as RuntimeCaptureIdentity).captureId !== envelope.captureId
@@ -491,7 +872,16 @@ export function validateRuntimeCaptureEnvelope(
         );
     }
   }
-  const records = allRecords(envelope);
+  const records = allRecords(envelope).sort((left, right) => {
+    const a = left.identity;
+    const b = right.identity;
+    return (
+      a.navigationId.localeCompare(b.navigationId) ||
+      a.realmId.localeCompare(b.realmId) ||
+      a.sequence - b.sequence ||
+      left.id.localeCompare(right.id)
+    );
+  });
   const ids = new Set<string>();
   const sequences = new Set<string>();
   const lastSequence = new Map<string, number>();
@@ -502,7 +892,11 @@ export function validateRuntimeCaptureEnvelope(
     const identity = record.identity;
     if (!Number.isSafeInteger(identity.sequence) || identity.sequence < 0)
       throw new RuntimeCaptureValidationError(`invalid realm sequence: ${record.id}`);
-    const sequenceKey = `${identity.navigationId}:${identity.realmId}:${identity.sequence}`;
+    const sequenceKey = JSON.stringify([
+      identity.navigationId,
+      identity.realmId,
+      identity.sequence,
+    ]);
     if (sequences.has(sequenceKey))
       throw new RuntimeCaptureValidationError(`duplicate realm sequence: ${sequenceKey}`);
     sequences.add(sequenceKey);
@@ -527,7 +921,22 @@ export function validateRuntimeCaptureEnvelope(
   if (!Array.isArray(envelope.relations))
     throw new RuntimeCaptureValidationError("relations must be an array");
   const relationIds = new Set<string>();
-  for (const relation of envelope.relations) {
+  for (const [index, relation] of envelope.relations.entries()) {
+    assertKnownKeys(relation, RELATION_KEYS, `/relations/${index}`);
+    assertString(relation.id, `/relations/${index}.id`);
+    assertString(relation.from, `/relations/${index}.from`);
+    assertString(relation.to, `/relations/${index}.to`);
+    assertString(relation.reason, `/relations/${index}.reason`);
+    if (
+      !new Set([
+        "exact-id",
+        "exact-safe-locator",
+        "source-supplied",
+        "time-window-candidate",
+        "unknown",
+      ]).has(relation.relation)
+    )
+      throw new RuntimeCaptureValidationError(`/relations/${index}.relation is invalid`);
     if (relationIds.has(relation.id))
       throw new RuntimeCaptureValidationError(`duplicate relation id: ${relation.id}`);
     relationIds.add(relation.id);

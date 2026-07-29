@@ -34,6 +34,7 @@ const report = (sequence = 0, captureId = "capture-1") => {
       sourceSchemaVersion: "2.5",
     },
     completeness: { status: "complete" as const, reason: "fixture is complete" },
+    provenanceRefs: ["scope:top-page"],
     value,
   };
 };
@@ -47,11 +48,12 @@ const envelope = (): RuntimeCaptureEnvelope => ({
   capabilities: {
     observations: [
       {
-        state: "exact",
+        capability: "exact",
         reason: "official report fixture",
         source: "observability",
         scope: "top-page",
         priority: 1,
+        sourceSchemaVersion: "2.5",
         runtimeVersion: "2.5.3",
       },
     ],
@@ -130,6 +132,40 @@ describe("runtime capture contract", () => {
       validateRuntimeCaptureEnvelope({
         ...envelope(),
         reports: [
+          { ...report(), value: { traceId: "https://user:pass@example.test/a?token=secret" } },
+        ],
+      }),
+    ).toThrow("canonically redacted");
+    expect(() =>
+      validateRuntimeCaptureEnvelope({
+        ...envelope(),
+        reports: [{ ...report(), value: { traceId: "/Users/alice/project/main.ts" } }],
+      }),
+    ).toThrow("canonically redacted");
+    expect(() =>
+      validateRuntimeCaptureEnvelope({
+        ...envelope(),
+        errors: [{ ...report(), source: "error", value: { message: "token=secret" } } as never],
+      }),
+    ).toThrow("canonically redacted");
+    expect(() =>
+      validateRuntimeCaptureEnvelope({
+        ...envelope(),
+        errors: [{ ...report(), source: "error", value: { message: 42 } } as never],
+      }),
+    ).toThrow("must be a string");
+    expect(() =>
+      validateRuntimeCaptureEnvelope({
+        ...envelope(),
+        errors: [
+          { ...report(), source: "error", value: { message: "x".repeat(16 * 1024 + 1) } } as never,
+        ],
+      }),
+    ).toThrow("maxDiagnosisStringLength");
+    expect(() =>
+      validateRuntimeCaptureEnvelope({
+        ...envelope(),
+        reports: [
           {
             ...report(),
             value: Object.fromEntries(Array.from({ length: 101 }, (_, i) => [`k${i}`, "v"])),
@@ -194,6 +230,13 @@ describe("runtime capture contract", () => {
         ],
       }),
     ).toThrow("dangling relation");
+  });
+
+  it("orders sequence checks independently of collection order", () => {
+    const value = envelope();
+    value.reports = [report(2)];
+    value.events = [report(1)];
+    expect(() => validateRuntimeCaptureEnvelope(value)).not.toThrow();
   });
 
   it("does not execute hostile proxy or getter-backed values", () => {
