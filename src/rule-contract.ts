@@ -4,7 +4,6 @@ import {
   type EvidenceConfidence,
   type EvidenceLayer,
   type EvidenceSubjectKind,
-  type RuleOutcome,
 } from "./evidence.js";
 
 /** A small, declarative selector for evidence a rule needs before it can judge. */
@@ -59,21 +58,69 @@ export type RuleReasonCode =
   | "unsupported"
   | "applicability-unknown"
   | "not-applicable"
-  | "disabled"
-  | "engine-error"
   | "rule-result";
 
-export interface RuleEvaluationResult {
+interface RuleEvaluationBase {
   id: string;
   rule: { id: string; version: string };
   subject: string;
-  outcome: RuleOutcome;
   confidence: EvidenceConfidence;
-  reasonCode: RuleReasonCode;
-  reason: string;
   evidenceIds: string[];
   completeness: EvidenceCompleteness;
 }
+
+export type RulePassResult = RuleEvaluationBase & {
+  outcome: "pass";
+  reasonCode: "rule-result";
+  reason: string;
+};
+
+export type RuleFailResult = RuleEvaluationBase & {
+  outcome: "fail";
+  reasonCode: "rule-result";
+  reason: string;
+};
+
+export type RuleUnknownResult = RuleEvaluationBase & {
+  outcome: "unknown";
+  reasonCode:
+    | "prerequisite-missing"
+    | "prerequisite-incomplete"
+    | "prerequisite-below-confidence"
+    | "unsupported"
+    | "applicability-unknown";
+  reason: string;
+  missingRequirements: EvidenceRequirement[];
+};
+
+export type RuleNotApplicableResult = RuleEvaluationBase & {
+  outcome: "not-applicable";
+  reasonCode: "not-applicable";
+  reason: string;
+};
+
+/** A rule result has exactly one valid outcome-specific shape. */
+export type RuleEvaluationResult =
+  | RulePassResult
+  | RuleFailResult
+  | RuleUnknownResult
+  | RuleNotApplicableResult;
+
+export interface RuleDisabledState {
+  state: "disabled";
+  rule: { id: string; version: string };
+  reason: string;
+}
+
+export interface RuleEngineErrorState {
+  state: "engine-error";
+  rule: { id: string; version: string };
+  reason: string;
+  error: string;
+}
+
+/** Execution states are not rule evaluation outcomes. */
+export type RuleExecutionState = RuleDisabledState | RuleEngineErrorState;
 
 /** Inputs used to derive an evaluation ID. Do not add messages, paths, or timestamps. */
 export interface RuleEvaluationIdentity {
