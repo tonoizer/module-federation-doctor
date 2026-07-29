@@ -46,6 +46,22 @@ export {
   parseRuntimeTraces,
 } from "./runtime-trace.js";
 export { buildUiPayload } from "./ui-graph.js";
+export {
+  EVIDENCE_LEGACY_ENV,
+  RELEASE_GATES,
+  ROLLOUT_SCOPES,
+  RolloutGateError,
+  createEvidenceRolloutController,
+} from "./evidence-rollout.js";
+export type {
+  EvidenceRolloutController,
+  EvidenceRolloutOptions,
+  ReleaseGate,
+  ReleaseGateStatus,
+  RolloutMode,
+  RolloutScope,
+  ScopedRolloutModes,
+} from "./evidence-rollout.js";
 export type { ManifestProbeResult, ProbeOptions } from "./probe.js";
 export type { ApplyBaselineResult, ResolvedBaselineOptions } from "./baseline.js";
 export {
