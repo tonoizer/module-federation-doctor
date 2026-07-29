@@ -77,6 +77,22 @@ HTML dashboard). It remains the published shape for programmatic consumers of
 `buildUiPayload` / graph payloads — see below. Do not treat it as an HTML report
 format.
 
+## Runtime Observability source fixtures
+
+Runtime input is a user-supplied JSON export and stays opt-in. The contract
+fixture set lives in `fixtures/runtime-traces/`:
+
+- `current-2.5.3.json` models the public Observability report shape from
+  `@module-federation/observability-plugin` 2.5.3 at core commit
+  `d92724217184f5ab7d7171b2cbd93c36f5808969`.
+- `partial-devtools.json` models a `{ "reports": [...] }` snapshot where
+  omitted data is unknown/not collected.
+- The other fixtures are legacy Doctor input and are kept separate for the
+  later migration adapter.
+
+The upstream report has no schema-version field. Doctor must track the source
+contract separately from `runtimeVersion`, which identifies the MF runtime.
+
 Use the schemas in editors, artifact validators, or deployment gates. They are
 strict about the stable outer contract and leave normalized federation
 internals open for additive fields within schema version 1.

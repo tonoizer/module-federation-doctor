@@ -1,0 +1,26 @@
+{
+  "reports": [
+    {
+      "traceId": "mf-devtools-partial-001",
+      "status": "pending",
+      "runtimeVersion": "preview",
+      "hostName": "host",
+      "remote": { "name": "checkout", "alias": "shop" },
+      "summary": {
+        "eventCount": 1,
+        "recovered": false,
+        "loadCompleted": false,
+        "runtimeLoaded": true,
+        "sharedResolved": false,
+        "preloaded": false,
+        "componentLoaded": false,
+        "outcome": "pending",
+        "phases": {
+          "matchRemote": { "status": "complete" }
+        },
+        "flags": { "cached": false, "fallback": false, "recovered": false }
+      },
+      "events": []
+    }
+  ]
+}

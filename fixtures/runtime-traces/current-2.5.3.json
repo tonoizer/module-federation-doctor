@@ -1,0 +1,114 @@
+{
+  "traceId": "mf-current-2.5.3-001",
+  "status": "success",
+  "requestId": "request-checkout-001",
+  "requestAlias": "checkout",
+  "hostName": "host",
+  "runtimeVersion": "0.20.0",
+  "remote": {
+    "name": "checkout",
+    "alias": "checkout",
+    "entry": "https://cdn.example.com/checkout/mf-manifest.json",
+    "entryGlobalName": "checkout",
+    "type": "module"
+  },
+  "expose": "./Button",
+  "startedAt": 1720000000000,
+  "updatedAt": 1720000000125,
+  "duration": 125,
+  "ownerHint": "host",
+  "retryable": false,
+  "moduleInfo": {
+    "reason": "matched remote module",
+    "clipped": true,
+    "totalCount": 1,
+    "matchedCount": 1,
+    "entries": [
+      {
+        "name": "checkout",
+        "publicPath": "https://cdn.example.com/checkout/",
+        "getPublicPath": "https://cdn.example.com/checkout/",
+        "remoteEntry": "https://cdn.example.com/checkout/remoteEntry.js",
+        "globalName": "checkout"
+      }
+    ],
+    "availableNames": ["checkout"]
+  },
+  "loadedBefore": {
+    "producer": false,
+    "expose": false,
+    "consumers": []
+  },
+  "events": [
+    {
+      "traceId": "mf-current-2.5.3-001",
+      "timestamp": 1720000000010,
+      "phase": "matchRemote",
+      "status": "success",
+      "hostName": "host",
+      "remote": { "name": "checkout", "alias": "checkout" },
+      "requestAlias": "checkout",
+      "runtimeVersion": "0.20.0",
+      "source": "runtime"
+    },
+    {
+      "traceId": "mf-current-2.5.3-001",
+      "timestamp": 1720000000100,
+      "phase": "remoteEntryInit",
+      "status": "complete",
+      "hostName": "host",
+      "remote": { "name": "checkout" },
+      "source": "runtime"
+    },
+    {
+      "traceId": "mf-current-2.5.3-001",
+      "timestamp": 1720000000120,
+      "phase": "component",
+      "status": "complete",
+      "hostName": "host",
+      "remote": { "name": "checkout" },
+      "expose": "./Button",
+      "source": "business"
+    }
+  ],
+  "summary": {
+    "eventCount": 3,
+    "recovered": false,
+    "loadCompleted": true,
+    "runtimeLoaded": true,
+    "sharedResolved": true,
+    "preloaded": false,
+    "componentLoaded": true,
+    "outcome": "component-loaded",
+    "lastPhase": "component",
+    "phases": {
+      "matchRemote": { "status": "success", "duration": 2 },
+      "manifest": { "status": "complete", "duration": 20 },
+      "remoteEntry": { "status": "complete", "duration": 50 },
+      "remoteEntryInit": { "status": "complete", "duration": 10 },
+      "expose": { "status": "complete", "duration": 15 },
+      "moduleFactory": { "status": "complete", "duration": 8 },
+      "loadRemote": { "status": "complete", "duration": 12 },
+      "shared": { "status": "complete", "duration": 5 },
+      "preload": { "status": "complete", "cached": true },
+      "component": { "status": "complete", "duration": 3 }
+    },
+    "flags": { "cached": false, "fallback": false, "recovered": false },
+    "shared": {
+      "name": "react",
+      "provider": "host",
+      "selectedVersion": "19.1.1",
+      "shareScope": ["default"]
+    }
+  },
+  "diagnosis": {
+    "title": "Remote component loaded",
+    "outcome": "component-loaded",
+    "status": "success",
+    "ownerHint": "host",
+    "facts": { "remote": "checkout", "expose": "./Button" },
+    "completedPhases": ["matchRemote", "remoteEntryInit", "component"],
+    "pendingPhases": [],
+    "actions": []
+  }
+}
