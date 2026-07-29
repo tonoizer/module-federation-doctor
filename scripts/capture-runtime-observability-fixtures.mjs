@@ -19,8 +19,17 @@ function sanitizeReport(value, label) {
   if (Array.isArray(source.reports)) {
     return { ...source, reports: source.reports.map((report) => sanitizeReport(report, label)) };
   }
-  const originalStartedAt = source.startedAt;
   const safeStartedAt = 1_700_000_000_000;
+  if (typeof source.startedAt === "number") {
+    source.startedAt = safeStartedAt;
+    source.updatedAt = safeStartedAt + 1;
+    if (Array.isArray(source.events)) {
+      source.events = source.events.map((event, index) => ({
+        ...event,
+        timestamp: safeStartedAt + Math.min(index, 1),
+      }));
+    }
+  }
 
   function visit(item) {
     if (Array.isArray(item)) return item.map((child) => visit(child));
@@ -63,13 +72,19 @@ function sanitizeReport(value, label) {
     const result = {};
     for (const [childKey, child] of Object.entries(item)) {
       if (["traceId"].includes(childKey)) result[childKey] = `mf-capture-${label}`;
-      else if (
-        ["startedAt", "updatedAt", "timestamp"].includes(childKey) &&
-        typeof child === "number"
-      ) {
-        result[childKey] = safeStartedAt + (child - originalStartedAt);
-      } else if (childKey === "errorStack") {
-        result[childKey] = visit(child);
+      else if (childKey === "duration" && typeof child === "number") {
+        result[childKey] = 0;
+      } else if (childKey === "startedAt" && typeof child === "number") {
+        result[childKey] = safeStartedAt;
+      } else if (childKey === "updatedAt" && typeof child === "number") {
+        result[childKey] = safeStartedAt + 1;
+      } else if (childKey === "timestamp" && typeof child === "number") {
+        result[childKey] = child;
+      } else if (childKey === "errorStack" && typeof child === "string") {
+        result[childKey] = child
+          .split("\n")
+          .map((line, index) => (index === 0 ? visit(line) : "    at [UPSTREAM_FRAME]"))
+          .join("\n");
       } else result[childKey] = visit(child);
     }
     return result;

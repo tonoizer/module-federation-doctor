@@ -11,13 +11,13 @@
   "expose": "./Button",
   "sanitizedUrl": "https://cdn.example.com/remote/mf-manifest.json",
   "startedAt": 1700000000000,
-  "updatedAt": 1700000000010,
-  "duration": 10,
+  "updatedAt": 1700000000001,
+  "duration": 0,
   "failedPhase": "loadRemote",
   "errorCode": "RUNTIME-007",
   "errorName": "Error",
   "errorMessage": "[ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007",
-  "errorStack": "Error: [ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007\n    at [UPSTREAM_TEST]:61:14\n    at file://[UPSTREAM_RUNTIME]\n    at runTestsCase (file://[UPSTREAM_RUNTIME])\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at file://[UPSTREAM_RUNTIME]\n    at runTest (file://[UPSTREAM_RUNTIME])\n    at runTests (file://[UPSTREAM_RUNTIME])\n    at file://[UPSTREAM_RUNTIME]\n    at runTest (file://[UPSTREAM_RUNTIME])\n    at runTests (file://[UPSTREAM_RUNTIME])",
+  "errorStack": "Error: [ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]",
   "ownerHint": "host",
   "errorContext": {
     "lifecycle": "onLoad",
@@ -40,7 +40,7 @@
     },
     {
       "traceId": "mf-capture-snapshot-failure",
-      "timestamp": 1700000000010,
+      "timestamp": 1700000000001,
       "phase": "loadRemote",
       "status": "error",
       "requestId": "remote/Button",
@@ -56,8 +56,8 @@
       "errorCode": "RUNTIME-007",
       "errorName": "Error",
       "errorMessage": "[ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007",
-      "errorStack": "Error: [ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007\n    at [UPSTREAM_TEST]:61:14\n    at file://[UPSTREAM_RUNTIME]\n    at runTestsCase (file://[UPSTREAM_RUNTIME])\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at file://[UPSTREAM_RUNTIME]\n    at runTest (file://[UPSTREAM_RUNTIME])\n    at runTests (file://[UPSTREAM_RUNTIME])\n    at file://[UPSTREAM_RUNTIME]\n    at runTest (file://[UPSTREAM_RUNTIME])\n    at runTests (file://[UPSTREAM_RUNTIME])",
-      "duration": 10,
+      "errorStack": "Error: [ Federation Runtime ]: Failed to get remote snapshot. #RUNTIME-007\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]\n    at [UPSTREAM_FRAME]",
+      "duration": 0,
       "lifecycle": "onLoad",
       "ownerHint": "host",
       "errorContext": {
@@ -83,7 +83,7 @@
       "loadRemote": {
         "status": "error",
         "lifecycle": "onLoad",
-        "duration": 10
+        "duration": 0
       }
     },
     "flags": {

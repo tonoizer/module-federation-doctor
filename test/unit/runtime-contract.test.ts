@@ -1,9 +1,12 @@
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const fixtureRoot = path.resolve("fixtures/runtime-traces");
+const execFileAsync = promisify(execFile);
 
 async function readFixture(name: string): Promise<Record<string, unknown>> {
   return JSON.parse(await fs.readFile(path.join(fixtureRoot, name), "utf8")) as Record<
@@ -42,6 +45,29 @@ describe("runtime Observability contract fixtures", () => {
       expect(digest).toBe(item.sanitizedSha256);
     }
     expect(JSON.stringify(provenance)).not.toContain("TO_BE_FILLED");
+  });
+
+  it("replays sanitized fixture bytes and recorded digests", async () => {
+    const rawDir = await fs.mkdtemp(path.join("/tmp", "mfdoctor-replay-input-"));
+    await Promise.all([
+      fs.copyFile(
+        path.join(fixtureRoot, "current-2.5.3.json"),
+        path.join(rawDir, "upstream-component-success.json"),
+      ),
+      fs.copyFile(
+        path.join(fixtureRoot, "snapshot-failure-2.5.3.json"),
+        path.join(rawDir, "upstream-snapshot-failure.json"),
+      ),
+      fs.copyFile(
+        path.join(fixtureRoot, "partial-devtools.json"),
+        path.join(rawDir, "upstream-devtools-partial.json"),
+      ),
+    ]);
+    await execFileAsync(process.execPath, [
+      "scripts/check-runtime-observability-replay.mjs",
+      rawDir,
+      fixtureRoot,
+    ]);
   });
 
   it("preserves the serialized upstream success report and relationships", async () => {
@@ -128,6 +154,11 @@ describe("runtime Observability contract fixtures", () => {
     expect(report.status).toBe("pending");
     expect(report.events).toEqual([]);
     expect(report["__scope"]).toBe("runtime_host");
+    expect(envelope.scopes).toEqual(["runtime_host"]);
+    expect(envelope.hasUserObservabilityPlugin).toBe(true);
+    expect(envelope.stored).toBe(false);
+    expect((envelope.config as Record<string, unknown>).level).toBe("verbose");
+    expect(report.duration).toBe(0);
     expect("runtimeVersion" in report).toBe(false);
     expect("summary" in report).toBe(false);
     expect("moduleInfo" in report).toBe(false);

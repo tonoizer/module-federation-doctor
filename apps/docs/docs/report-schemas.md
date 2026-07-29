@@ -85,8 +85,8 @@ fixture set lives in `fixtures/runtime-traces/`:
 - `current-2.5.3.json` is a sanitized serialized success report replayed from
   the upstream 2.5.3 harness; `snapshot-failure-2.5.3.json` is the matching
   serialized moduleInfo/snapshot failure.
-- `partial-devtools.json` is a serialized `{ "reports": [...] }` Chrome
-  DevTools snapshot where omitted data is unknown/not collected.
+- `partial-devtools.json` is the pinned `readObservabilitySnapshot()` Chrome
+  DevTools result; omitted report data is unknown/not collected.
 - `fixtures/runtime-traces/provenance.json` records the exact upstream commit,
   replay commands, test names, and raw/sanitized digests.
 - The other fixtures are legacy Doctor input and are kept separate for the

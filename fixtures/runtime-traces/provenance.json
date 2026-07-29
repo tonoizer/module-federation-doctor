@@ -10,18 +10,45 @@
         "licenseSource": "https://github.com/module-federation/core/blob/d92724217184f5ab7d7171b2cbd93c36f5808969/packages/observability-plugin/package.json"
       },
       {
-        "name": "@module-federation/chrome-devtools",
-        "version": "2.5.3",
+        "name": "@module-federation/devtools",
+        "version": "2.7.0",
         "license": "MIT",
-        "licenseSource": "https://github.com/module-federation/core/blob/d92724217184f5ab7d7171b2cbd93c36f5808969/packages/chrome-devtools/package.json"
+        "licenseSource": "https://github.com/module-federation/core/blob/d92724217184f5ab7d7171b2cbd93c36f5808969/packages/chrome-devtools/package.json",
+        "dependencies": {
+          "@arco-design/web-react": "2.66.7",
+          "@module-federation/observability-plugin": "workspace:*",
+          "@module-federation/sdk": "workspace:*",
+          "@modern-js/runtime": "2.70.8",
+          "ahooks": "3.7.10",
+          "dagre": "0.8.5",
+          "echarts": "6.1.0",
+          "echarts-for-react": "3.0.5",
+          "i18next": "23.0.0",
+          "lucide-react": "0.364.0",
+          "react-i18next": "15.0.0",
+          "reactflow": "11.11.4"
+        },
+        "devDependencies": {
+          "@module-federation/runtime": "workspace:*",
+          "@module-federation/sdk": "workspace:*",
+          "@playwright/test": "1.57.0",
+          "@types/chrome": "^0.0.272",
+          "@types/node": "^20.19.5",
+          "@types/react": "^19.2.2",
+          "@types/react-dom": "^19.2.2",
+          "react": "^19.2.0",
+          "react-dom": "^19.2.0",
+          "typescript": "6.0.3"
+        }
       }
     ]
   },
   "replay": {
     "checkout": "git clone --filter=blob:none https://github.com/module-federation/core.git && git checkout --detach d92724217184f5ab7d7171b2cbd93c36f5808969",
-    "install": "pnpm install --frozen-lockfile --filter @module-federation/observability-plugin...",
+    "install": "pnpm install --frozen-lockfile --filter @module-federation/observability-plugin... --filter @module-federation/devtools...",
     "buildDependencies": "pnpm --filter @module-federation/sdk --filter @module-federation/runtime build",
-    "capture": "cp <repo>/fixtures/runtime-traces/upstream-capture.spec.ts packages/observability-plugin/__tests__/doctor-capture.spec.ts && DOCTOR_CAPTURE_DIR=<raw-dir> pnpm exec rstest -c packages/observability-plugin/rstest.config.ts --include packages/observability-plugin/__tests__/doctor-capture.spec.ts && node <repo>/scripts/capture-runtime-devtools-partial.mjs <raw-dir>",
+    "runtime": "node 20.x; pnpm 10.28.0",
+    "capture": "cp <repo>/fixtures/runtime-traces/upstream-capture.spec.ts packages/observability-plugin/__tests__/doctor-capture.spec.ts && DOCTOR_CAPTURE_DIR=<raw-dir> pnpm exec rstest -c packages/observability-plugin/rstest.config.ts --include packages/observability-plugin/__tests__/doctor-capture.spec.ts && node <repo>/scripts/capture-runtime-devtools-partial.mjs <pinned-core-dir> <raw-dir>",
     "sanitize": "node scripts/capture-runtime-observability-fixtures.mjs <raw-dir> fixtures/runtime-traces"
   },
   "cases": [
@@ -32,7 +59,7 @@
       "upstreamReference": "observability.spec.ts :: records a successful loadRemote report when enabled",
       "rawFile": "upstream-component-success.json",
       "rawSha256": "edf81de5f382c669c53959c11369680ca0d1ff3291cdbb94a9db7a574413fa50",
-      "sanitizedSha256": "b4a953fa8c60c85e2785a0bdf86d12502d6ad88361534d3d0c9f7ac5bb3b5d0a"
+      "sanitizedSha256": "e69d29e9a54092446064907b2d6dbd613f905152765773ba2c00d5558f439290"
     },
     {
       "fixture": "snapshot-failure-2.5.3.json",
@@ -41,14 +68,14 @@
       "upstreamReference": "observability.spec.ts :: does not return hook args from the default browser entry",
       "rawFile": "upstream-snapshot-failure.json",
       "rawSha256": "0bad0188949b2a939552e38d517d2e6ad0f692593200e81e41802308e3ba4b21",
-      "sanitizedSha256": "9dde028714a3dfc194c1a4fe5cccff006d0b73d539f87945310b6e51c9b76bdf"
+      "sanitizedSha256": "625fb2c855e029e6b1c114c5c75173d54531cbee6d1972df1fd3ba52d1390b54"
     },
     {
       "fixture": "partial-devtools.json",
-      "rawSha256": "c1575c0b5fe0748cc72b0bd57aa6b6f5a295d6c947c8b8ffc5cb8bc54627e19",
-      "sanitizedSha256": "64ac5d17164604d98cc87d30339599cb365a7a6e425d8b3f49ea79e20a3e7169",
+      "rawSha256": "cac399d9384c4cc76cd9695d5a75ab88eac4de9156d281d58d40e1973fc055ad",
+      "sanitizedSha256": "bafb2d6599c7b8485fb0fb578f060c6711ddeba58df22144a84d40e296a71b3f",
       "upstreamFile": "packages/chrome-devtools/__tests__/observability-devtools.spec.ts",
-      "captureTest": "capture-runtime-devtools-partial.mjs",
+      "captureTest": "Doctor DevTools fixture capture > serializes the pinned readObservabilitySnapshot partial report",
       "upstreamReference": "chrome-devtools/__tests__/observability-devtools.spec.ts :: keeps reports without runtime version as basic observability regardless of scope",
       "captureMethod": "serializes the exact report returned by readObservabilitySnapshot() from that test's getReports() stub; no runtime report data was invented"
     }
@@ -59,11 +86,12 @@
       ["traceId", "stable fixture id by case"],
       [
         "startedAt/updatedAt/events[].timestamp",
-        "fixed epoch 1700000000000 while preserving offsets"
+        "fixed epoch 1700000000000 with deterministic event ordering"
       ],
       ["http://localhost:3001", "https://cdn.example.com/remote"],
       ["?token=secret#hash", "removed from locator values"],
-      ["upstream absolute paths in errorStack", "[UPSTREAM_TEST] / [UPSTREAM_RUNTIME]"],
+      ["duration", "0"],
+      ["errorStack frames", "stable [UPSTREAM_FRAME] entries without paths or line numbers"],
       [
         "all other report fields in these fixtures",
         "preserved exactly from serialized upstream output"
