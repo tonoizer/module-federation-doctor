@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import fg from "fast-glob";
+import { parseSync, visitorKeys } from "oxc-parser";
 import { packageName, normalizeModuleFederation } from "./normalize.js";
 import { isDeepImportSpecifier } from "./shared-policy.js";
 import type {
@@ -84,19 +85,70 @@ interface RawImportScan {
   unresolvedDynamic: UnresolvedDynamicImport[];
 }
 
-const STATIC_IMPORT_FROM = /\bimport\s+(?:type\s+)?(?:[\s\S]*?\sfrom\s*)?["']([^"'`]+)["']/g;
-const STATIC_EXPORT_FROM = /\bexport\s+(?:type\s+)?(?:[\s\S]*?\sfrom\s*)["']([^"'`]+)["']/g;
-const DYNAMIC_IMPORT_LITERAL = /import\s*\(\s*["']([^"'`]+)["']\s*\)/g;
-const REQUIRE_LITERAL = /require\s*\(\s*["']([^"'`]+)["']\s*\)/g;
-const LOAD_REMOTE_LITERAL = /\bloadRemote\s*\(\s*["']([^"'`]+)["']\s*\)/g;
-const LOAD_SHARE_LITERAL = /\bloadShare(?:Sync)?\s*\(\s*["']([^"'`]+)["']\s*\)/g;
-const REGISTER_REMOTES_NAME =
-  /\bregisterRemotes\s*\(\s*\[([\s\S]*?)\]\s*(?:,\s*\{[\s\S]*?\})?\s*\)/g;
-const REMOTE_NAME_IN_OBJECT = /\b(?:name|alias)\s*:\s*["']([^"'`]+)["']/g;
+const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
+const MAX_AST_NODES = 100_000;
 
-/** Dynamic call with a non-literal first argument (variable, template, expression). */
-const UNRESOLVED_DYNAMIC_CALL =
-  /\b(import|loadRemote|loadShare(?:Sync)?|registerRemotes)\s*\(\s*(?!["'])/g;
+type AstNode = {
+  type?: string;
+  [key: string]: unknown;
+};
+
+const DYNAMIC_APIS = new Set<UnresolvedDynamicApi>([
+  "import",
+  "loadRemote",
+  "loadShare",
+  "loadShareSync",
+  "registerRemotes",
+]);
+
+function parserLanguage(file: string): "js" | "jsx" | "ts" | "tsx" | "dts" {
+  const normalized = file.toLowerCase();
+  if (normalized.endsWith(".d.ts")) return "dts";
+  if (normalized.endsWith(".tsx")) return "tsx";
+  if (normalized.endsWith(".jsx")) return "jsx";
+  if (normalized.endsWith(".ts")) return "ts";
+  return "js";
+}
+
+function literalString(node: unknown): string | undefined {
+  if (!node || typeof node !== "object") return undefined;
+  const value = (node as { type?: string; value?: unknown }).value;
+  return (node as { type?: string }).type === "Literal" && typeof value === "string"
+    ? value
+    : undefined;
+}
+
+function identifierName(node: unknown): string | undefined {
+  if (!node || typeof node !== "object") return undefined;
+  const value = node as { type?: string; name?: unknown };
+  return value.type === "Identifier" && typeof value.name === "string" ? value.name : undefined;
+}
+
+function propertyName(node: unknown): string | undefined {
+  if (!node || typeof node !== "object") return undefined;
+  const value = node as { computed?: unknown; key?: unknown };
+  if (value.computed) return literalString(value.key);
+  return identifierName(value.key) ?? literalString(value.key);
+}
+
+/** Keep source parsing and AST traversal bounded for untrusted project files. */
+function walkAst(program: AstNode, visit: (node: AstNode) => void): void {
+  let count = 0;
+  const visitNode = (node: unknown): void => {
+    if (!node || typeof node !== "object") return;
+    const value = node as AstNode;
+    if (typeof value.type !== "string") return;
+    count += 1;
+    if (count > MAX_AST_NODES) throw new Error("AST node limit exceeded");
+    visit(value);
+    for (const key of visitorKeys[value.type] ?? []) {
+      const child = value[key];
+      if (Array.isArray(child)) for (const item of child) visitNode(item);
+      else visitNode(child);
+    }
+  };
+  visitNode(program);
+}
 
 function recordSpecifier(
   scan: RawImportScan,
@@ -118,50 +170,91 @@ function recordSpecifier(
 }
 
 function scanSourceImports(source: string, file: string, scan: RawImportScan): void {
-  for (const match of source.matchAll(STATIC_IMPORT_FROM))
-    if (match[1]) recordSpecifier(scan, match[1], false, file, "import");
-  for (const match of source.matchAll(STATIC_EXPORT_FROM))
-    if (match[1]) recordSpecifier(scan, match[1], false, file, "reexport");
-  for (const match of source.matchAll(DYNAMIC_IMPORT_LITERAL))
-    if (match[1]) recordSpecifier(scan, match[1], true, file, "import");
-  for (const match of source.matchAll(REQUIRE_LITERAL))
-    if (match[1]) recordSpecifier(scan, match[1], true, file, "import");
-  for (const match of source.matchAll(LOAD_REMOTE_LITERAL))
-    if (match[1]) {
-      recordSpecifier(scan, match[1], true, file, "import");
-      scan.remoteSpecifiers.add(match[1]);
-    }
-  for (const match of source.matchAll(LOAD_SHARE_LITERAL))
-    if (match[1]) recordSpecifier(scan, match[1], true, file, "import");
+  const unresolved = (api: UnresolvedDynamicApi): void => {
+    scan.unresolvedDynamic.push({ api, file });
+  };
 
-  for (const match of source.matchAll(REGISTER_REMOTES_NAME)) {
-    const body = match[1] ?? "";
-    let foundName = false;
-    for (const nameMatch of body.matchAll(REMOTE_NAME_IN_OBJECT)) {
-      if (!nameMatch[1]) continue;
-      foundName = true;
-      recordSpecifier(scan, nameMatch[1], true, file, "import");
-      scan.remoteSpecifiers.add(nameMatch[1]);
-    }
-    if (!foundName) scan.unresolvedDynamic.push({ api: "registerRemotes", file });
+  if (Buffer.byteLength(source, "utf8") > MAX_SOURCE_BYTES) {
+    unresolved("import");
+    return;
   }
 
-  for (const match of source.matchAll(UNRESOLVED_DYNAMIC_CALL)) {
-    const apiRaw = match[1] ?? "import";
-    const api: UnresolvedDynamicApi =
-      apiRaw === "loadShareSync"
-        ? "loadShareSync"
-        : apiRaw === "loadShare"
-          ? "loadShare"
-          : apiRaw === "loadRemote"
-            ? "loadRemote"
-            : apiRaw === "registerRemotes"
-              ? "registerRemotes"
-              : "import";
-    const after = source.slice((match.index ?? 0) + match[0].length);
-    // Array-literal registerRemotes is handled by REGISTER_REMOTES_NAME above.
-    if (api === "registerRemotes" && /^\s*\[/.test(after)) continue;
-    scan.unresolvedDynamic.push({ api, file });
+  try {
+    const parsed = parseSync(file, source, {
+      lang: parserLanguage(file),
+      sourceType: "unambiguous",
+    });
+    if (parsed.errors.length > 0) {
+      unresolved("import");
+      return;
+    }
+
+    walkAst(parsed.program as unknown as AstNode, (node) => {
+      if (node.type === "ImportDeclaration" || node.type === "ExportNamedDeclaration") {
+        const specifier = literalString(node.source);
+        if (specifier)
+          recordSpecifier(
+            scan,
+            specifier,
+            false,
+            file,
+            node.type === "ImportDeclaration" ? "import" : "reexport",
+          );
+        return;
+      }
+      if (node.type === "ExportAllDeclaration") {
+        const specifier = literalString(node.source);
+        if (specifier) recordSpecifier(scan, specifier, false, file, "reexport");
+        return;
+      }
+      if (node.type === "ImportExpression") {
+        const specifier = literalString(node.source);
+        if (specifier) recordSpecifier(scan, specifier, true, file, "import");
+        else unresolved("import");
+        return;
+      }
+      if (node.type !== "CallExpression") return;
+
+      const apiName = identifierName(node.callee);
+      if (!apiName || !DYNAMIC_APIS.has(apiName as UnresolvedDynamicApi)) return;
+      const api = apiName as UnresolvedDynamicApi;
+      const args = Array.isArray(node.arguments) ? node.arguments : [];
+      const specifier = literalString(args[0]);
+      if (api === "registerRemotes") {
+        let foundName = false;
+        const first = args[0] as AstNode | undefined;
+        const entries =
+          first?.type === "ArrayExpression" && Array.isArray(first.elements) ? first.elements : [];
+        for (const entry of entries) {
+          if (!entry || typeof entry !== "object" || (entry as AstNode).type !== "ObjectExpression")
+            continue;
+          const rawProperties = (entry as AstNode).properties;
+          const properties: unknown[] = Array.isArray(rawProperties) ? rawProperties : [];
+          for (const property of properties) {
+            if (!property || typeof property !== "object") continue;
+            const item = property as AstNode;
+            const name = propertyName(item);
+            if ((name === "name" || name === "alias") && literalString(item.value)) {
+              const remote = literalString(item.value)!;
+              foundName = true;
+              recordSpecifier(scan, remote, true, file, "import");
+              scan.remoteSpecifiers.add(remote);
+            }
+          }
+        }
+        if (!foundName) unresolved(api);
+        return;
+      }
+      if (!specifier) {
+        unresolved(api);
+        return;
+      }
+      recordSpecifier(scan, specifier, true, file, "import");
+      if (api === "loadRemote") scan.remoteSpecifiers.add(specifier);
+    });
+  } catch {
+    // A bounded parser failure is incomplete evidence, never a confident import result.
+    unresolved("import");
   }
 }
 
