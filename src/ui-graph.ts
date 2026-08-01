@@ -9,6 +9,7 @@ import type {
   UiGraphNode,
 } from "./types.js";
 import { summarizeFindings } from "./baseline.js";
+import { computeHealthScore } from "./health-score.js";
 import { buildFederationModel, type FederationModel } from "./federation-model.js";
 
 function emptyGraph(): UiGraph {
@@ -349,6 +350,7 @@ export function reportFromFindings(
   findings: DoctorFinding[],
 ): DoctorReport {
   const summary = summarizeFindings(findings);
+  const health = computeHealthScore(findings);
   return {
     schemaVersion: 1,
     capabilities: {
@@ -365,6 +367,8 @@ export function reportFromFindings(
       warnings: summary.warnings,
       errors: summary.errors,
       ...(summary.suppressed > 0 ? { suppressed: summary.suppressed } : {}),
+      score: health.score,
+      scoreLabel: health.scoreLabel,
     },
     findings,
   };

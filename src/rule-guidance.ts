@@ -295,6 +295,20 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Prefer `moduleParseIdleTimeout` so only inactivity ends parsing.",
     sources: [vite],
   },
+  "vite/remotes-prefer-module": {
+    category: "correctness",
+    impact:
+      "Vite string remotes and missing/`var` type default to script-style loading. Vite↔Vite ESM remotes need explicit `type: 'module'`; mixed bundlers should declare an explicit non-default type (for example `global`) or document a `varFilename` producer interop path.",
+    fix: "Prefer object remotes with `type: 'module'` for Vite↔Vite ESM. For webpack/rspack remotes, set an explicit type such as `global`, or keep `varFilename` when this app intentionally emits a var entry for var hosts.",
+    sources: [vite, "https://module-federation.io/configure/remotes.html"],
+  },
+  "vite/var-filename-interop": {
+    category: "tooling",
+    impact:
+      "`varFilename` emits an additional global-format remote entry so var hosts (webpack/rspack) can load this Vite producer.",
+    fix: "Keep `varFilename` when serving webpack/rspack var hosts. Prefer `type: 'module'` remotes when this app is a Vite consumer talking to Vite producers.",
+    sources: [vite],
+  },
   "artifact/manifest-assets-disabled": {
     category: "reliability",
     impact:

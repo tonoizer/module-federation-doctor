@@ -39,6 +39,8 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "reliability/tree-shaking-server-calc-contract",
   "performance/vite-bundle-all-css",
   "reliability/vite-fixed-parse-timeout",
+  "vite/remotes-prefer-module",
+  "vite/var-filename-interop",
   "artifact/manifest-assets-disabled",
   "artifact/manifest-disabled",
   "artifact/dts-disabled",

@@ -487,6 +487,36 @@ describe("built-in rules", () => {
         }),
     ],
     [
+      "vite/remotes-prefer-module",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/remoteEntry.js",
+            shareScope: ["default"],
+          },
+        };
+      },
+    ],
+    [
+      "vite/var-filename-interop",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.vite = {
+          bundleAllCSS: false,
+          ignoreOrigin: false,
+          ssrExternals: [],
+          varFilename: "remoteEntry.js",
+        };
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/remoteEntry.js",
+            shareScope: ["default"],
+          },
+        };
+      },
+    ],
+    [
       "artifact/manifest-assets-disabled",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.manifest = {
@@ -1051,5 +1081,138 @@ describe("Vite/Nuxt artifact false positives", () => {
 
   it("skips all-empty Vite expose asset lists", async () => {
     expect(await runRule("artifact/manifest-expose-assets-empty", viteBase())).toHaveLength(0);
+  });
+});
+
+describe("vite remotes typing dialect", () => {
+  function baseFacts(bundler: ProjectFacts["bundler"]["name"] = "vite"): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: bundler, mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {},
+        shared: {},
+        vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [] },
+      },
+      dependencies: { declared: { "@module-federation/vite": "1.19.1" }, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  async function run(id: string, facts: ProjectFacts, options: Record<string, unknown> = {}) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const selected = builtInRules.find((item) => item.meta.id === id)!;
+    await selected.check({ facts, options, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  it("warns on string/default var remotes without varFilename", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "http://localhost:4174/remoteEntry.js",
+        shareScope: ["default"],
+      },
+    };
+    expect(await run("vite/remotes-prefer-module", facts)).not.toHaveLength(0);
+  });
+
+  it("stays quiet for explicit type module remotes", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "http://localhost:4174/remoteEntry.js",
+        type: "module",
+        shareScope: ["default"],
+      },
+    };
+    expect(await run("vite/remotes-prefer-module", facts)).toHaveLength(0);
+    expect(await run("vite/var-filename-interop", facts)).toHaveLength(0);
+  });
+
+  it("stays quiet for explicit global remotes used with webpack/rspack producers", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "http://localhost:4174/remoteEntry.js",
+        type: "global",
+        shareScope: ["default"],
+      },
+    };
+    expect(await run("vite/remotes-prefer-module", facts)).toHaveLength(0);
+  });
+
+  it("honors preferModuleRemotes false and allowVarRemotesWithVarFilename false", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "http://localhost:4174/remoteEntry.js",
+        shareScope: ["default"],
+      },
+    };
+    expect(
+      await run("vite/remotes-prefer-module", facts, { preferModuleRemotes: false }),
+    ).toHaveLength(0);
+
+    facts.moduleFederation!.vite!.varFilename = "remoteEntry.js";
+    expect(
+      await run("vite/remotes-prefer-module", facts, { allowVarRemotesWithVarFilename: false }),
+    ).not.toHaveLength(0);
+  });
+
+  it("allows var remotes when varFilename is set and emits interop info", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.vite!.varFilename = "remoteEntry.js";
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "http://localhost:4174/remoteEntry.js",
+        shareScope: ["default"],
+      },
+    };
+    expect(await run("vite/remotes-prefer-module", facts)).toHaveLength(0);
+    expect(await run("vite/var-filename-interop", facts)).not.toHaveLength(0);
+  });
+
+  it("stays silent on rspack and when remotes facts are missing", async () => {
+    const rspack = baseFacts("rspack");
+    rspack.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "http://localhost:4174/remoteEntry.js",
+        shareScope: ["default"],
+      },
+    };
+    expect(await run("vite/remotes-prefer-module", rspack)).toHaveLength(0);
+
+    const empty = baseFacts();
+    expect(await run("vite/remotes-prefer-module", empty)).toHaveLength(0);
+    expect(await run("vite/var-filename-interop", empty)).toHaveLength(0);
   });
 });

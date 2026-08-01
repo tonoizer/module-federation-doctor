@@ -134,6 +134,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
         options.output?.formats ?? (ci ? ["terminal", "json", "sarif"] : ["terminal", "json"]),
     },
     failOn: options.failOn ?? (ci ? "error" : "never"),
+    score: options.score !== false,
     quiet,
     printLog,
     include: options.include ?? DEFAULT_INCLUDE,
