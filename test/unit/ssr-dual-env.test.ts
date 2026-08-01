@@ -154,9 +154,28 @@ describe("ssr dual-env rules (#122)", () => {
     );
   });
 
-  it("applies dual-env mixed builds", async () => {
+  it("applies dual-env mixed builds only when ssrMode forces dual", async () => {
     const facts = baseFacts();
     delete facts.moduleFederation!.experiments!.target;
+    facts.builds = [buildRecord("web", "web"), buildRecord("ssr", "ssr")];
+    facts.moduleFederation!.remotes = {
+      shop: { name: "shop", entry: "http://x/mf-manifest.json", shareScope: "default" },
+    };
+    expect(isSsrNodeEnvApplicable(facts)).toBe(false);
+    expect(await run("ssr/node-remote-manifest", facts)).toHaveLength(0);
+    expect(isSsrNodeEnvApplicable(facts, "dual")).toBe(true);
+    expect(await run("ssr/node-remote-manifest", facts, { ssrMode: "dual" })).not.toHaveLength(0);
+  });
+
+  it("applies when vite.target is node even with mixed build records", async () => {
+    const facts = baseFacts();
+    delete facts.moduleFederation!.experiments!.target;
+    facts.moduleFederation!.vite = {
+      bundleAllCSS: false,
+      ignoreOrigin: false,
+      ssrExternals: [],
+      target: "node",
+    };
     facts.builds = [buildRecord("web", "web"), buildRecord("ssr", "ssr")];
     facts.moduleFederation!.remotes = {
       shop: { name: "shop", entry: "http://x/mf-manifest.json", shareScope: "default" },
