@@ -23,13 +23,48 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  resolve-ref:
+    name: Resolve release ref
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.ref }}
+      - id: resolve
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  verify:
+    needs: resolve-ref
+    name: Verify (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 24]
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ needs.resolve-ref.outputs.sha }}
+      - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+
   publish:
+    needs: [resolve-ref, verify]
     runs-on: ubuntu-latest
     environment: npm
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
-          ref: ${{ github.event.release.tag_name || inputs.ref }}
+          ref: ${{ needs.resolve-ref.outputs.sha }}
       - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
@@ -44,7 +79,7 @@ jobs:
           VERSION="$(node -p "require('./package.json').version")"
           case "$TAG" in v*) echo "Tag must not start with v"; exit 1;; esac
           test "$TAG" = "$VERSION" || { echo "Tag $TAG does not match package $VERSION"; exit 1; }
-      - run: pnpm check
+      - run: pnpm release:dry-run
       - name: Select npm tag
         id: npm
         run: |

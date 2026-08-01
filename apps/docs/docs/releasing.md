@@ -12,17 +12,18 @@ tags such as `1.2.3` (never `v1.2.3`).
 
    ```bash
    pnpm install --frozen-lockfile
-   pnpm fmt:check
-   pnpm lint
-   pnpm typecheck
-   pnpm build
-   pnpm test:unit
-   pnpm test:integration
-   pnpm test:e2e
-   pnpm docs:build
-   pnpm pack:check
+   pnpm check
    pnpm release:dry-run
    ```
+
+   `pnpm check` runs formatting, linting, and Changesets first, then builds
+   before typechecking and runs unit and integration tests, demos, end-to-end
+   tests, docs, and package checks. The package checks include the schema
+   contract and packed package consumer checks. The examples and end-to-end
+   tests cover consumers resolving the built package. Release CI runs this
+   gate on Node 22 and 24, then runs `pnpm release:dry-run` on Node 24 before
+   publishing. The dry run repeats the pack gate and verifies npm packaging
+   without publishing.
 
 5. Push the version commit without a tag.
 6. Create a GitHub release whose tag exactly matches `package.json`.
