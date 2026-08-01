@@ -28,6 +28,11 @@ CI.
 
 ## Architecture notes
 
+Delivery model:
+[plugin primary / CLI complementary](./adr/hybrid-plugin-cli.md) — not
+CLI-only, not an in-browser agent. Adapters are post-emit only; install Doctor
+as a `devDependency`.
+
 When adding or extending a bundler adapter:
 
 - Pass through the same public MF options object the app gives Module Federation.
