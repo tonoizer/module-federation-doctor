@@ -456,26 +456,33 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
       })
       .filter((item) => item.name)
       .sort((a, b) => a.name.localeCompare(b.name)),
-    remotes: rawRemotes
-      .map((item) => {
-        const remote = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
-        const name = String(remote.federationContainerName ?? remote.name ?? "");
-        const normalized: NonNullable<NonNullable<ArtifactFacts["manifest"]>["remotes"]>[number] = {
-          name,
-          shareScope:
-            typeof remote.shareScope === "string"
-              ? [remote.shareScope]
-              : Array.isArray(remote.shareScope)
-                ? remote.shareScope.map(String).sort()
-                : ["default"],
-        };
-        if (typeof remote.alias === "string") normalized.alias = remote.alias;
-        if (typeof remote.entry === "string") normalized.entry = remote.entry;
-        if (typeof remote.version === "string") normalized.version = remote.version;
-        return normalized;
-      })
-      .filter((item) => item.name)
-      .sort((a, b) => a.name.localeCompare(b.name)),
+    remotes: [
+      ...new Map(
+        rawRemotes
+          .map((item) => {
+            const remote =
+              item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+            const name = String(remote.federationContainerName ?? remote.name ?? "");
+            const normalized: NonNullable<
+              NonNullable<ArtifactFacts["manifest"]>["remotes"]
+            >[number] = {
+              name,
+              shareScope:
+                typeof remote.shareScope === "string"
+                  ? [remote.shareScope]
+                  : Array.isArray(remote.shareScope)
+                    ? remote.shareScope.map(String).sort()
+                    : ["default"],
+            };
+            if (typeof remote.alias === "string") normalized.alias = remote.alias;
+            if (typeof remote.entry === "string") normalized.entry = remote.entry;
+            if (typeof remote.version === "string") normalized.version = remote.version;
+            return normalized;
+          })
+          .filter((item) => item.name)
+          .map((item) => [`${item.name}\0${item.alias ?? ""}\0${item.entry ?? ""}`, item] as const),
+      ).values(),
+    ].sort((a, b) => a.name.localeCompare(b.name)),
   };
   const metadata =
     data.metaData && typeof data.metaData === "object"
