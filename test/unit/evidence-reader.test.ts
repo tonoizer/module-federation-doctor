@@ -94,6 +94,9 @@ describe("public evidence reader", () => {
     expect(() => readEvidenceDocument({ schemaVersion: 1, project: new Map() })).toThrowError(
       expect.objectContaining({ failureCode: "malformed-json", pointer: "/project" }),
     );
+    expect(() => readEvidenceDocument({ schemaVersion: 1, project: 1n })).toThrowError(
+      expect.objectContaining({ failureCode: "malformed-json", pointer: "/project" }),
+    );
   });
 
   it("keeps document context when a v1 value is not JSON-safe", () => {
@@ -166,6 +169,35 @@ describe("public evidence reader", () => {
     expect(new Set(first.assertions.map((item) => item.id)).size).toBe(first.assertions.length);
     expect(new Set(first.evaluations.map((item) => item.id)).size).toBe(first.evaluations.length);
     expect(first).toEqual(second);
+  });
+
+  it("keeps distinct same-key findings unique and stable when reordered", () => {
+    const findings = [
+      { ...reportFixture.findings[0], message: "first", evidence: { detail: "a" } },
+      { ...reportFixture.findings[0], message: "second", evidence: { detail: "b" } },
+    ];
+    const first = migrateDoctorReport({ ...reportFixture, findings } as never);
+    const second = migrateDoctorReport({
+      ...reportFixture,
+      findings: [findings[1]!, findings[0]!],
+    } as never);
+
+    expect(new Set(first.evaluations.map((item) => item.id)).size).toBe(2);
+    expect(second).toEqual(first);
+  });
+
+  it("uses canonical finding data to order findings with volatile differences", () => {
+    const findings = [
+      { ...reportFixture.findings[0], evidence: { timestamp: "2026-01-02T00:00:00Z" } },
+      { ...reportFixture.findings[0], evidence: { timestamp: "2026-01-01T00:00:00Z" } },
+    ];
+    const first = migrateDoctorReport({ ...reportFixture, findings } as never);
+    const second = migrateDoctorReport({
+      ...reportFixture,
+      findings: [findings[1]!, findings[0]!],
+    } as never);
+
+    expect(second).toEqual(first);
   });
 
   it("keeps report metadata and v2 IDs stable when findings are reordered", () => {

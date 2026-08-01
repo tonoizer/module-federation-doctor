@@ -4,6 +4,7 @@ import evidenceSchema from "../schemas/evidence.schema.json";
 import projectSchema from "../schemas/project.schema.json";
 import reportSchema from "../schemas/report.schema.json";
 import {
+  canonicalizeEvidenceValue,
   normalizeEvidenceGraph,
   stableEvidenceId,
   type EvidenceAssertion,
@@ -121,6 +122,8 @@ function jsonValue(
   seen = new WeakSet<object>(),
 ): EvidenceValue {
   if (value === undefined || typeof value === "function" || typeof value === "symbol")
+    throwReader(options, "unknown", undefined, "malformed-json", path, "Value is not JSON-safe.");
+  if (typeof value === "bigint")
     throwReader(options, "unknown", undefined, "malformed-json", path, "Value is not JSON-safe.");
   if (typeof value === "number" && !Number.isFinite(value))
     throwReader(options, "unknown", undefined, "malformed-json", path, "Number must be finite.");
@@ -437,14 +440,19 @@ export function migrateDoctorReport(
   const canonicalFindings = findingEntries
     .slice()
     .sort(
-      (left, right) => left.key.localeCompare(right.key) || left.findingIndex - right.findingIndex,
+      (left, right) =>
+        left.key.localeCompare(right.key) ||
+        JSON.stringify(canonicalizeEvidenceValue(left.value)).localeCompare(
+          JSON.stringify(canonicalizeEvidenceValue(right.value)),
+        ) ||
+        left.findingIndex - right.findingIndex,
     );
   for (const entry of canonicalFindings) {
     const occurrence = occurrenceByKey.get(entry.key) ?? 0;
     occurrenceByKey.set(entry.key, occurrence + 1);
     entry.occurrence = occurrence;
   }
-  for (const { finding, value: findingValue, occurrence } of findingEntries) {
+  for (const { finding, value: findingValue, key: findingKey, occurrence } of findingEntries) {
     const subject = subjectFor(finding.project);
     const evidence = assertion(
       subject,
@@ -461,6 +469,7 @@ export function migrateDoctorReport(
         project: finding.project,
         ruleId: finding.ruleId,
         fingerprint: finding.fingerprint,
+        findingKey,
         occurrence,
       }),
       rule: { id: finding.ruleId, version: "1" },
