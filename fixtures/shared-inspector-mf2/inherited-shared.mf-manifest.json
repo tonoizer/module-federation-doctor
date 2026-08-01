@@ -1,0 +1,42 @@
+{
+  "id": "remote-a:1.0.0",
+  "name": "remote-a",
+  "metaData": {
+    "name": "remote-a",
+    "type": "lib",
+    "buildInfo": { "buildVersion": "1.0.0", "buildName": "remote-a" },
+    "remoteEntry": { "name": "remoteEntry.js", "path": "", "type": "global" },
+    "publicPath": "auto",
+    "globalName": "remote_a",
+    "pluginVersion": "0.6.0"
+  },
+  "shared": [
+    {
+      "id": "remote-a:lodash",
+      "name": "lodash",
+      "version": "4.17.21",
+      "from": "remote-a",
+      "deps": [],
+      "assets": { "js": { "async": [], "sync": [] }, "css": { "async": [], "sync": [] } }
+    },
+    {
+      "id": "host:react",
+      "name": "react",
+      "version": "18.2.0",
+      "singleton": true,
+      "requiredVersion": "^18.0.0",
+      "from": "host",
+      "deps": [],
+      "assets": { "js": { "async": [], "sync": [] }, "css": { "async": [], "sync": [] } }
+    }
+  ],
+  "remotes": [],
+  "exposes": [
+    {
+      "id": "remote-a:Widget",
+      "name": "Widget",
+      "path": "./Widget",
+      "assets": { "js": { "async": [], "sync": [] }, "css": { "async": [], "sync": [] } }
+    }
+  ]
+}
