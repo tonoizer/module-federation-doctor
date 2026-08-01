@@ -142,8 +142,9 @@ Excluded from the score surface by default: `info` findings, tooling-category
 rules, `doctor/*` advisories, and baseline-suppressed findings. Bands: **≥75
 Great**, **≥50 OK**, else **Needs work**. The score does not change `failOn`
 semantics. Terminal printing can be disabled with `--no-score` / `score: false`
-while JSON still includes the fields. Pair with [CLI agent prompts](./cli.md)
-(#124) for top-3 handoff after the score footer.
+while JSON still includes the fields. After the score footer, Doctor prints
+[top-3 agent fix prompts](./cli.md) (`--no-prompt` to hide; `mfdoctor prompt`
+and `--diagnostics-dir` for offline handoff).
 
 ## Versioned finding details (`detailsSchema` + `details`)
 

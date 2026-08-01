@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import pc from "picocolors";
 import { resolvePrintLog, resolveQuiet } from "./config.js";
+import { formatTopAgentPrompts } from "./agent-prompt.js";
 import { ruleGuidance } from "./rule-guidance.js";
 import type {
   DoctorFinding,
@@ -29,6 +30,11 @@ export interface TerminalReportOptions {
    * Defaults to true when omitted.
    */
   score?: boolean;
+  /**
+   * When false, omit top-N agent prompts after the score footer.
+   * Defaults to true when omitted. Skipped automatically for quiet empty success.
+   */
+  prompt?: boolean;
 }
 
 function doctorRuleDocUrl(finding: DoctorFinding): string {
@@ -121,6 +127,10 @@ export function formatTerminalReport(
     const footer = formatScoreFooter(report);
     if (footer) lines.push(footer);
     else if (report.summary.score === null) lines.push(pc.dim("Score: n/a (partial analysis)"));
+  }
+  if (options.prompt !== false) {
+    const prompts = formatTopAgentPrompts(report.findings);
+    if (prompts) lines.push("", prompts);
   }
   return lines.join("\n");
 }

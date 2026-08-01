@@ -44,6 +44,15 @@ export {
 export { computeHealthScore, isExcludedFromScore, labelForScore } from "./health-score.js";
 export type { HealthScoreResult } from "./health-score.js";
 export {
+  buildAgentPrompt,
+  findPromptTarget,
+  formatTopAgentPrompts,
+  resolveDiagnosticsDir,
+  selectTopFindings,
+  writeDiagnosticsDump,
+} from "./agent-prompt.js";
+export type { AgentPromptOptions, DiagnosticsDumpResult } from "./agent-prompt.js";
+export {
   DEFAULT_WORKSPACE_PROJECT_GLOBS,
   WORKSPACE_IGNORE,
   discoverWorkspaceProjects,
