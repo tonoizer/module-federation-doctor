@@ -45,14 +45,27 @@ export function hasMfBridgeEntryExpose(facts: ProjectFacts): boolean {
   return Boolean(exposes && Object.hasOwn(exposes, MF_BRIDGE_ENTRY_EXPOSE));
 }
 
+/** Expose target path whose basename is the bridge entry module (`entry.ts`, …). */
+const BRIDGE_ENTRY_TARGET_RE = /(?:^|[/\\])entry(?:\.[cm]?[tj]sx?)?$/i;
+
+function isBridgeEntryTarget(target: string | undefined): boolean {
+  if (!target || typeof target !== "string") return false;
+  return BRIDGE_ENTRY_TARGET_RE.test(target.replaceAll("\\", "/").trim());
+}
+
 /**
- * True when exposes are bridge-entry shaped (only `./entry`, or `./entry` plus
- * no classic component-style exposes that would still need DTS guidance).
+ * True when exposes are mf-bridge entry shaped: public key `./entry` whose target
+ * is an `entry` module (toolkit register / createMFEntry / defineMFEntry contract),
+ * optionally alongside `./fragment` only — no classic component-style exposes.
  * Used to quiet component/DTS producer guidance for intentional bridge remotes.
+ *
+ * Note: Doctor project facts do not carry export graphs, so `register` is inferred
+ * from the `./entry` → `entry.*` convention used by mf-bridge (see fixtures).
  */
 export function isMfBridgeEntryProducer(facts: ProjectFacts): boolean {
   const exposes = mf(facts)?.exposes;
   if (!exposes || !Object.hasOwn(exposes, MF_BRIDGE_ENTRY_EXPOSE)) return false;
+  if (!isBridgeEntryTarget(exposes[MF_BRIDGE_ENTRY_EXPOSE])) return false;
   const keys = Object.keys(exposes);
   // Pure bridge entry, or bridge entry + fragment (toolkit hybrids).
   return keys.every((key) => key === MF_BRIDGE_ENTRY_EXPOSE || key === MF_SSR_FRAGMENT_EXPOSE);

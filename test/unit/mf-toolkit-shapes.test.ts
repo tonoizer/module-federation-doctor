@@ -109,6 +109,18 @@ describe("mf-toolkit shape recognition (#127)", () => {
     expect(classicFindings).toHaveLength(1);
   });
 
+  it("does not treat ./entry pointing at a non-entry module as bridge producer", async () => {
+    const remote = await readFacts("fixtures/mf-bridge-entry/remote/.mf/doctor/project.json");
+    remote.moduleFederation = {
+      ...remote.moduleFederation!,
+      exposes: { "./entry": "./src/Widget.tsx" },
+      dts: { enabled: false, options: {} },
+    };
+    expect(isMfBridgeEntryProducer(remote)).toBe(false);
+    const findings = await runRule("artifact/dts-disabled", remote);
+    expect(findings).toHaveLength(1);
+  });
+
   it("skips shared/unused on shared-inspector MF2 manifest-only fixtures", async () => {
     const project = await readFacts("fixtures/shared-inspector-mf2/.mf/doctor/project.json");
     expect(isMf2SharedArrayManifestOnly(project)).toBe(true);

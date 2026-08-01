@@ -125,11 +125,11 @@ Reds that **do not** block other cells:
 Doctor soft-recognizes intentional **mf-toolkit** config shapes so agents do not
 get false broken-remote / component-DTS guidance:
 
-| Shape                           | Signal                                                                 | Soft-exception                                                                                                                    |
-| ------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **mf-bridge**                   | expose `./entry` (register / `createMFEntry` / `defineMFEntry`)        | Skip component-style DTS producer guidance (`artifact/dts-disabled`, `artifact/types-missing`, `artifact/types-metadata-missing`) |
-| **mf-ssr**                      | fragment URL/path remotes (`/api/fragments/...`, not `remoteEntry.js`) | Skip `config/remote-entry-invalid` for those entries                                                                              |
-| **shared-inspector** (optional) | MF2 shared-array on manifest-only evidence                             | Skip `shared/unused` certainty; prefer `doctor/partial-analysis`                                                                  |
+| Shape                           | Signal                                                                                                | Soft-exception                                                                                                                    |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **mf-bridge**                   | expose `./entry` → `entry.*` module (toolkit `register` / `createMFEntry` / `defineMFEntry` contract) | Skip component-style DTS producer guidance (`artifact/dts-disabled`, `artifact/types-missing`, `artifact/types-metadata-missing`) |
+| **mf-ssr**                      | fragment URL/path remotes (`/api/fragments/...`, not `remoteEntry.js`)                                | Skip `config/remote-entry-invalid` for those entries                                                                              |
+| **shared-inspector** (optional) | MF2 shared-array on manifest-only evidence                                                            | Skip `shared/unused` certainty; prefer `doctor/partial-analysis`                                                                  |
 
 Recognition defaults **on when these signals are present**. Disable with
 `recognizeMfToolkit: false` in `mfdoctor.config` / adapter options, or turn the
