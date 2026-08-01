@@ -59,6 +59,11 @@ function doctorOptions(root: string): DoctorOptions {
       "artifact/remote-entry-missing": "off",
       "artifact/types-missing": "off",
       "config/plugin-package-mismatch": "off",
+      "vite/host-init-inject-ssr": "off",
+      "vite/manual-chunks-conflict": "off",
+      "vite/server-origin": "off",
+      "vite/alias-share-bypass": "off",
+      "vite/remote-hmr-dev": "off",
     } satisfies Record<string, RuleSetting>,
   };
 }

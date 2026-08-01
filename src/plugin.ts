@@ -119,9 +119,55 @@ type ViteResolvedConfigLike = {
   root?: string;
   command?: string;
   mode?: string;
-  build?: { outDir?: string; write?: boolean; ssr?: boolean; target?: string };
+  build?: {
+    outDir?: string;
+    write?: boolean;
+    ssr?: boolean;
+    target?: string;
+    rollupOptions?: {
+      output?: { manualChunks?: unknown } | Array<{ manualChunks?: unknown }>;
+    };
+    // Rolldown / Vite Plus
+    codeSplitting?: { groups?: unknown };
+  };
   ssr?: { target?: string };
+  resolve?: { alias?: unknown };
+  server?: { origin?: string };
 };
+
+function extractViteConfigFacts(
+  config: ViteResolvedConfigLike,
+): import("./types.js").ViteBundlerConfigFacts {
+  const facts: import("./types.js").ViteBundlerConfigFacts = {};
+  const output = config.build?.rollupOptions?.output;
+  const outputs = Array.isArray(output) ? output : output ? [output] : [];
+  if (outputs.some((item) => item.manualChunks !== undefined)) facts.manualChunks = true;
+  if (config.build?.codeSplitting?.groups !== undefined) facts.codeSplittingGroups = true;
+
+  const aliases: Record<string, string> = {};
+  const alias = config.resolve?.alias;
+  if (alias && typeof alias === "object" && !Array.isArray(alias)) {
+    for (const [key, value] of Object.entries(alias as Record<string, unknown>)) {
+      if (typeof value === "string") aliases[key] = value;
+    }
+  } else if (Array.isArray(alias)) {
+    for (const entry of alias) {
+      if (!entry || typeof entry !== "object") continue;
+      const find = (entry as { find?: unknown }).find;
+      const replacement = (entry as { replacement?: unknown }).replacement;
+      if (typeof find === "string" && typeof replacement === "string") aliases[find] = replacement;
+    }
+  }
+  if (Object.keys(aliases).length > 0) facts.resolveAliases = aliases;
+
+  // Record origin observation whenever `server` is present on the resolved config.
+  if (config.server) {
+    const origin = config.server.origin;
+    facts.serverOrigin = typeof origin === "string" && origin.length > 0 ? origin : null;
+  }
+
+  return facts;
+}
 
 type ViteOutputOptionsLike = { dir?: string; file?: string };
 
@@ -278,6 +324,8 @@ function createViteFamilyHooks(configured: DoctorOptions) {
     configResolved(config: ViteResolvedConfigLike) {
       resolvedConfig = config;
       if (!configured.root && config.root) configured.root = config.root;
+      const facts = extractViteConfigFacts(config);
+      if (Object.keys(facts).length > 0) configured.viteConfigFacts = facts;
     },
     buildStart() {
       outputs = [];

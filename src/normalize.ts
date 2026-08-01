@@ -175,6 +175,7 @@ export function normalizeModuleFederation(
       ...(input.disableSnapshot !== undefined ? { disableSnapshot: input.disableSnapshot } : {}),
       ssrExternals: [...(input.ssrExternals ?? [])].sort(),
       ...(input.ssrEntryLoader ? { ssrEntryLoader: input.ssrEntryLoader } : {}),
+      ...(input.remoteHmr !== undefined ? { remoteHmr: input.remoteHmr } : {}),
     },
   };
   if (input.name !== undefined) normalized.name = input.name;

@@ -149,6 +149,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   if (options.moduleFederation !== undefined) resolved.moduleFederation = options.moduleFederation;
   if (options.bundlerVersion !== undefined) resolved.bundlerVersion = options.bundlerVersion;
   if (options.viteLifecycle !== undefined) resolved.viteLifecycle = options.viteLifecycle;
+  if (options.viteConfigFacts !== undefined) resolved.viteConfigFacts = options.viteConfigFacts;
   if (options.runtimeTrace !== undefined)
     resolved.runtimeTrace = path.resolve(root, options.runtimeTrace);
   return resolved;
