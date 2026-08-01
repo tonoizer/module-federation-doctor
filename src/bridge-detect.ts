@@ -158,6 +158,8 @@ export function isBridgeRouterEnabled(facts: ProjectFacts): boolean {
   if (!isReactBridgeProject(facts)) return false;
   const options = bridgeOptions(facts.moduleFederation);
   if (options?.enableBridgeRouter === false) return false;
+  // Deprecated escape hatch: disableAlias turns off Bridge router aliasing.
+  if (options?.disableAlias === true) return false;
   if (options?.enableBridgeRouter === true) return true;
   // Omitted → Rspack may auto-enable when Bridge is present.
   return true;
@@ -207,12 +209,15 @@ export function isNodeOrSsrTarget(
 /** Specifiers that are browser-only Bridge React entries (not `/server`). */
 export function browserBridgeReactEntries(facts: ProjectFacts): string[] {
   const hits: string[] = [];
+  // Use specifiers/deepImports only — `imports.packages` are package roots via
+  // packageName(), so `@module-federation/bridge-react/server` collapses to the
+  // bare package and would false-positive as a browser leak.
   for (const signal of [
     ...(facts.imports.specifiers ?? []),
-    ...(facts.imports.packages ?? []),
     ...(facts.imports.deepImports ?? []),
   ]) {
     if (!signal.startsWith(BRIDGE_REACT_PKG)) continue;
+    if (signal === BRIDGE_REACT_PKG) continue;
     if (signal.includes("/server")) continue;
     if (signal.includes("/plugin")) continue;
     hits.push(signal);

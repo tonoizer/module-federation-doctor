@@ -216,6 +216,77 @@ describe("bridge error batch (#139)", () => {
     expect(result.report.findings.map((f) => f.ruleId)).toContain("bridge/ssr-server-entry-leak");
   });
 
+  it("stays quiet for node builds that import Bridge /server only", async () => {
+    const root = await fixture(
+      {
+        name: "bridge-ssr-server",
+        dependencies: {
+          react: "19.1.1",
+          "@module-federation/bridge-react": "0.2.0",
+        },
+      },
+      'import "@module-federation/bridge-react/server";\n',
+    );
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: goodBridgeConfig({
+        target: "node",
+      }),
+      rules: {
+        ...quietExtras,
+        "bridge/router-shared-conflict": "off",
+        "bridge/react-version-entry-mismatch": "off",
+        "bridge/provider-shape-invalid": "off",
+        "shared/unused": "off",
+      },
+    });
+    expect(result.report.findings.map((f) => f.ruleId)).not.toContain(
+      "bridge/ssr-server-entry-leak",
+    );
+  });
+
+  it("allows shared React Router when bridge.disableAlias is true", async () => {
+    const root = await fixture(
+      {
+        name: "bridge-disable-alias",
+        dependencies: {
+          react: "19.1.1",
+          "@module-federation/bridge-react": "0.2.0",
+          "react-router-dom": "6.0.0",
+        },
+      },
+      'import "@module-federation/bridge-react/v19";\n',
+    );
+    const result = await analyze({
+      root,
+      bundler: "rspack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: goodBridgeConfig({
+        bridge: { enableBridgeRouter: true, disableAlias: true },
+        shared: {
+          react: { singleton: true },
+          "react-dom/": { singleton: true },
+          "react-router-dom": { singleton: true },
+        },
+      }),
+      rules: {
+        ...quietExtras,
+        "bridge/react-version-entry-mismatch": "off",
+        "bridge/provider-shape-invalid": "off",
+        "bridge/ssr-server-entry-leak": "off",
+        "shared/singleton-risk": "off",
+        "shared/unused": "off",
+      },
+    });
+    expect(result.report.findings.map((f) => f.ruleId)).not.toContain(
+      "bridge/router-shared-conflict",
+    );
+  });
+
   it("produces zero bridge error findings on non-bridge apps", async () => {
     const root = await fixture(
       {
