@@ -27,6 +27,13 @@
   },
   {
     "type": "dir",
+    "name": "ssr",
+    "label": "SSR",
+    "collapsible": true,
+    "collapsed": true
+  },
+  {
+    "type": "dir",
     "name": "artifact",
     "label": "Artifact",
     "collapsible": true,

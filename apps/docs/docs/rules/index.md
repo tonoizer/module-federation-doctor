@@ -2,7 +2,7 @@
 
 Rule pages are generated from package metadata. Each page explains the issue, impact, fix, and upstream evidence.
 
-Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, Runtime, Runtime plugins, Federation, Performance, Vite, Security, and Doctor. Printed terminal `docs:` links open the same pages.
+Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliability, Runtime, Runtime plugins, Federation, Performance, Vite, Security, and Doctor. Printed terminal `docs:` links open the same pages.
 
 ## Correctness
 
@@ -46,6 +46,8 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`federation/version-conflict`](./federation/version-conflict.md) | error | No installed provider version satisfies every consumer range. |
 | [`runtime-plugins/invalid-factory`](./runtime-plugins/invalid-factory.md) | warning | A runtime plugin without a factory or usable `name` is ignored at runtime (silent no-op). |
 | [`shared/version-unsatisfied`](./shared/version-unsatisfied.md) | error | The installed provider does not satisfy the configured consumer range. |
+| [`ssr/node-remote-manifest`](./ssr/node-remote-manifest.md) | error | Node/SSR consumers that load the browser `mf-manifest.json` miss the server remote graph and can fail to resolve remotes during SSR. |
+| [`ssr/node-runtime-plugin-missing`](./ssr/node-runtime-plugin-missing.md) | error | Without `@module-federation/node/runtimePlugin`, Node Federation hosts cannot load remotes with the server runtime contract. |
 | [`vite/alias-share-bypass`](./vite/alias-share-bypass.md) | warning | resolve.alias can rewrite imports around the share scope and duplicate singleton packages. |
 | [`vite/host-init-inject-ssr`](./vite/host-init-inject-ssr.md) | error | SSR and HTML-less frameworks need host init injected into the entry, not the HTML document, or federation bootstrap never runs on the server. |
 | [`vite/remotes-prefer-module`](./vite/remotes-prefer-module.md) | warning | Vite string remotes and missing/`var` type default to script-style loading. Vite↔Vite ESM remotes need explicit `type: 'module'`; mixed bundlers should declare an explicit non-default type (for example `global`) or document a `varFilename` producer interop path. |
@@ -84,6 +86,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`runtime/shared-mismatch`](./runtime/shared-mismatch.md) | error | Runtime shared selection conflicts with installed versions, required ranges, or provider config. |
 | [`shared/singleton-mismatch`](./shared/singleton-mismatch.md) | warning | Projects disagree on whether multiple instances are allowed. |
 | [`shared/singleton-risk`](./shared/singleton-risk.md) | warning | Multiple framework runtimes can split global state, contexts, hooks, or renderers. |
+| [`ssr/node-library-dts`](./ssr/node-library-dts.md) | warning | Node/SSR producers that keep ESM-style `library.type` or enabled `dts` diverge from the commonjs dual-env contract used by server remotes. |
 | [`vite/hashed-remote-filename`](./vite/hashed-remote-filename.md) | warning | Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds. |
 | [`vite/manual-chunks-conflict`](./vite/manual-chunks-conflict.md) | warning | Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles. |
 | [`vite/server-origin`](./vite/server-origin.md) | warning | Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development. |
