@@ -501,6 +501,8 @@ describe("built-in rules", () => {
       (facts: ProjectFacts) => {
         facts.moduleFederation!.manifest = { enabled: false, options: {} };
         facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
+        facts.capabilities.manifest = false;
+        delete facts.artifacts.manifest;
       },
     ],
     [
