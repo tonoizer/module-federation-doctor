@@ -2,7 +2,7 @@
 
 Rule pages are generated from package metadata. Each page explains the issue, impact, fix, and upstream evidence.
 
-Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime, Federation, Performance, Vite, Security, and Doctor. Printed terminal `docs:` links open the same pages.
+Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, Runtime, Federation, Performance, Vite, Security, and Doctor. Printed terminal `docs:` links open the same pages.
 
 ## Correctness
 
@@ -15,6 +15,8 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`artifact/public-path-non-string-manifest`](./artifact/public-path-non-string-manifest.md) | warning | Module Federation skips manifest generation when bundler `output.publicPath` is not a string. |
 | [`artifact/public-path-suspicious`](./artifact/public-path-suspicious.md) | warning | A malformed asset base makes remote chunks and styles resolve from the wrong URL. |
 | [`artifact/remote-entry-missing`](./artifact/remote-entry-missing.md) | error | A producer has no executable container at its configured filename. |
+| [`bridge/lazy-plugin-unregistered`](./bridge/lazy-plugin-unregistered.md) | error | Lazy Bridge React loading requires `@module-federation/bridge-react/plugin` in `runtimePlugins` or Bridge remotes fail at runtime. |
+| [`bridge/react-dom-prefix-missing`](./bridge/react-dom-prefix-missing.md) | error | Bridge React v18/v19 needs `react-dom/` (or `react-dom/client`) in `shared` so renderer subpaths negotiate one copy across host and remote. |
 | [`config/duplicate-plugin-registration`](./config/duplicate-plugin-registration.md) | error | Registering Module Federation more than once on the same compiler breaks the core singleton contract. |
 | [`config/eager-tree-shaking-conflict`](./config/eager-tree-shaking-conflict.md) | error | Eager modules live in the initial entry and cannot use the on-demand shared tree-shaking path. |
 | [`config/expose-key-invalid`](./config/expose-key-invalid.md) | error | Consumers cannot address an expose whose public key does not follow the `./Name` form. |
@@ -48,6 +50,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`artifact/manifest-assets-disabled`](./artifact/manifest-assets-disabled.md) | warning | Disabled asset analysis removes shared and expose asset details from producer metadata. |
 | [`artifact/manifest-expose-assets-empty`](./artifact/manifest-expose-assets-empty.md) | warning | Preload and debugging tools cannot map an expose to its assets. |
 | [`artifact/manifest-shared-version-mismatch`](./artifact/manifest-shared-version-mismatch.md) | warning | Stale version metadata can choose the wrong shared provider at runtime. |
+| [`bridge/react-version-entry-prefer`](./bridge/react-version-entry-prefer.md) | warning | The bare `@module-federation/bridge-react` entry can pick the wrong React Bridge API when the React major is known. |
 | [`config/dts-output-dir-mismatch`](./config/dts-output-dir-mismatch.md) | warning | A nested remote-entry `filename` that disagrees with `dts.generateTypes.outputDir` can publish type archives to the wrong path. |
 | [`config/implementation-suspicious`](./config/implementation-suspicious.md) | info | A custom implementation can violate the runtime contract expected by the build plugin. |
 | [`config/nested-producer-dts-extract`](./config/nested-producer-dts-extract.md) | warning | A producer can omit remote types only when an exposed module actually re-exports a configured remote and the remote types are not extracted. |
@@ -98,6 +101,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`artifact/manifest-disabled`](./artifact/manifest-disabled.md) | info | Without manifests, consumers lose metadata-powered preloading, type hints, and richer inspection. |
 | [`artifact/types-metadata-missing`](./artifact/types-metadata-missing.md) | warning | The manifest cannot advertise generated type archives to consumers. |
 | [`artifact/types-missing`](./artifact/types-missing.md) | warning | No emitted declaration artifact was found for a typed producer. |
+| [`bridge/router-implicit-enable`](./bridge/router-implicit-enable.md) | info | Rspack may auto-enable Bridge router when the Bridge package is present; leaving `bridge.enableBridgeRouter` implicit hides the routing contract from reviewers and CI. |
 | [`config/get-public-path-unused`](./config/get-public-path-unused.md) | info | `getPublicPath` has no effect on a consumer that exposes no modules. |
 | [`config/remote-manifest-recommended`](./config/remote-manifest-recommended.md) | info | A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. |
 | [`config/remote-type-urls-missing`](./config/remote-type-urls-missing.md) | warning | Doctor reports this only when it can prove that a direct remote entry's inferred type location cannot match known producer output. Normal `remoteEntry.js` entries infer `@mf-types.zip` by default. |

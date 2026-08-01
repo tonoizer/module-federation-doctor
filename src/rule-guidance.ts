@@ -529,4 +529,32 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Use the RUNTIME code with the matched build facts; do not infer browser behavior from static analysis alone.",
     sources: ["https://module-federation.io/plugin/plugins/observability-plugin"],
   },
+  "bridge/react-version-entry-prefer": {
+    category: "reliability",
+    impact:
+      "The bare `@module-federation/bridge-react` entry can pick the wrong React Bridge API when the React major is known.",
+    fix: 'Import `@module-federation/bridge-react/v18` or `/v19` to match your React major. Override majors with `reactMajors`, or set the rule to `"off"` when the bare entry is intentional.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/react-dom-prefix-missing": {
+    category: "correctness",
+    impact:
+      "Bridge React v18/v19 needs `react-dom/` (or `react-dom/client`) in `shared` so renderer subpaths negotiate one copy across host and remote.",
+    fix: 'Add `\'react-dom/\': { singleton: true, ... }` (or `react-dom/client`) to `shared`. Disable with `requireReactDomPrefix: false` or `rules["bridge/react-dom-prefix-missing"]: "off"` when intentional.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge", shared],
+  },
+  "bridge/lazy-plugin-unregistered": {
+    category: "correctness",
+    impact:
+      "Lazy Bridge React loading requires `@module-federation/bridge-react/plugin` in `runtimePlugins` or Bridge remotes fail at runtime.",
+    fix: 'Add `@module-federation/bridge-react/plugin` to `runtimePlugins`. Soften with `requireRuntimePlugin: false` or turn the rule `"off"` for non-lazy Bridge setups.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge", runtimePlugins],
+  },
+  "bridge/router-implicit-enable": {
+    category: "tooling",
+    impact:
+      "Rspack may auto-enable Bridge router when the Bridge package is present; leaving `bridge.enableBridgeRouter` implicit hides the routing contract from reviewers and CI.",
+    fix: 'Set `bridge: { enableBridgeRouter: true }` (or `false`) explicitly. Allow demos to stay implicit with `allowImplicitBridgeRouter: true` or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
 };

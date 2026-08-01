@@ -184,5 +184,11 @@ export function normalizeModuleFederation(
   if (input.implementation !== undefined) normalized.implementation = input.implementation;
   if (input.virtualRuntimeEntry !== undefined)
     normalized.virtualRuntimeEntry = input.virtualRuntimeEntry;
+  if (input.bridge !== undefined) {
+    const bridge: NonNullable<NormalizedMFConfig["bridge"]> = { ...input.bridge };
+    if (typeof input.bridge.enableBridgeRouter === "boolean")
+      bridge.enableBridgeRouter = input.bridge.enableBridgeRouter;
+    normalized.bridge = bridge;
+  }
   return normalized;
 }

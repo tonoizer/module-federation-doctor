@@ -1,5 +1,13 @@
 import semver from "semver";
 import path from "node:path";
+import {
+  bridgeOptions,
+  detectedReactMajor,
+  hasBridgeReactPlugin,
+  hasReactDomPrefixShare,
+  isReactBridgeProject,
+  reactBridgeEntryMajor,
+} from "./bridge-detect.js";
 import { lookupAssetSize, sumAssetSizes } from "./collect.js";
 import { ruleGuidance } from "./rule-guidance.js";
 import {
@@ -1117,7 +1125,68 @@ export const builtInRules: DoctorRule[] = [
     )
       report(context, "No generated federation type files were found.", {});
   }),
+  createRule("bridge/react-version-entry-prefer", "warning", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const entry = reactBridgeEntryMajor(context.facts);
+    if (entry !== "bare") return;
+    const reactMajor = detectedReactMajor(context.facts);
+    if (reactMajor === undefined) return;
+    const allowed = optionReactMajors(context.options);
+    if (allowed && !allowed.includes(reactMajor)) return;
+    report(
+      context,
+      `Prefer "@module-federation/bridge-react/v${reactMajor}" over the bare Bridge React entry when React ${reactMajor} is detected.`,
+      { reactMajor, entry: "@module-federation/bridge-react" },
+      `Import "@module-federation/bridge-react/v${reactMajor}" (or set rules["bridge/react-version-entry-prefer"] to "off").`,
+    );
+  }),
+  createRule("bridge/react-dom-prefix-missing", "error", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    if (optionBoolean(context.options, "requireReactDomPrefix") === false) return;
+    const entry = reactBridgeEntryMajor(context.facts);
+    if (entry !== 18 && entry !== 19) return;
+    if (hasReactDomPrefixShare(mf(context)?.shared)) return;
+    report(
+      context,
+      `Bridge React v${entry} requires "react-dom/" (or "react-dom/client") in shared.`,
+      {
+        entry: `@module-federation/bridge-react/v${entry}`,
+        sharedKeys: Object.keys(mf(context)?.shared ?? {}),
+      },
+      "Add `'react-dom/': { singleton: true }` (or `react-dom/client`) to `shared`, or set `requireReactDomPrefix: false`.",
+    );
+  }),
+  createRule("bridge/lazy-plugin-unregistered", "error", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    if (optionBoolean(context.options, "requireRuntimePlugin") === false) return;
+    if (hasBridgeReactPlugin(mf(context)?.runtimePlugins)) return;
+    report(
+      context,
+      'Bridge React usage is missing "@module-federation/bridge-react/plugin" in runtimePlugins.',
+      { runtimePlugins: mf(context)?.runtimePlugins ?? [] },
+      'Add "@module-federation/bridge-react/plugin" to `runtimePlugins`, or set `requireRuntimePlugin: false`.',
+    );
+  }),
+  createRule("bridge/router-implicit-enable", "info", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    if (optionBoolean(context.options, "allowImplicitBridgeRouter") === true) return;
+    const options = bridgeOptions(mf(context));
+    if (options && typeof options.enableBridgeRouter === "boolean") return;
+    report(
+      context,
+      "`bridge.enableBridgeRouter` is omitted; Rspack may auto-enable Bridge router.",
+      { bridge: mf(context)?.bridge ?? null },
+      "Set `bridge: { enableBridgeRouter: true }` (or `false`) explicitly, or allow demos with `allowImplicitBridgeRouter: true`.",
+    );
+  }),
 ];
+
+function optionReactMajors(options: Record<string, unknown>): Array<18 | 19> | undefined {
+  const value = options.reactMajors;
+  if (!Array.isArray(value)) return undefined;
+  const majors = value.filter((item): item is 18 | 19 => item === 18 || item === 19);
+  return majors.length > 0 ? majors : undefined;
+}
 
 export const federationRuleMeta = [
   {

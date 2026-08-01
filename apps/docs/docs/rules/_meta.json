@@ -20,6 +20,13 @@
   },
   {
     "type": "dir",
+    "name": "bridge",
+    "label": "Bridge",
+    "collapsible": true,
+    "collapsed": true
+  },
+  {
+    "type": "dir",
     "name": "artifact",
     "label": "Artifact",
     "collapsible": true,

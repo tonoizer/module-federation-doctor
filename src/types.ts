@@ -143,6 +143,11 @@ export interface NormalizedMFConfig {
     disableSnapshot?: boolean;
     ssrExternals: string[];
   };
+  /** Bridge plugin options (`enableBridgeRouter`, etc.). Preserved from raw MF config. */
+  bridge?: {
+    enableBridgeRouter?: boolean;
+    [key: string]: unknown;
+  };
 }
 
 export interface DependencyFacts {
@@ -492,6 +497,11 @@ export interface ModuleFederationConfigLike {
   disableShared?: boolean;
   disableSnapshot?: boolean;
   ssrExternals?: string[];
+  /** Bridge plugin options (`enableBridgeRouter`, deprecated flags, …). */
+  bridge?: {
+    enableBridgeRouter?: boolean;
+    [key: string]: unknown;
+  };
 }
 
 export interface BaselineEntry {

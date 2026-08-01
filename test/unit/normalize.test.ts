@@ -48,6 +48,15 @@ describe("normalization", () => {
         ?.enabled,
     ).toBe(false);
   });
+
+  it("preserves bridge options on NormalizedMFConfig", () => {
+    const normalized = normalizeModuleFederation({
+      name: "host",
+      bridge: { enableBridgeRouter: true, disableAlias: false },
+    });
+    expect(normalized?.bridge).toEqual({ enableBridgeRouter: true, disableAlias: false });
+    expect(normalizeModuleFederation({ name: "host" })?.bridge).toBeUndefined();
+  });
 });
 
 describe("artifact/manifest-disabled evidence", () => {
