@@ -36,16 +36,23 @@ dropped built-in Module Federation in favor of the Vite plugin.
 
 ## Vite-only options
 
-| Option                          | Risk or opportunity                                 | Doctor guidance                         |
-| ------------------------------- | --------------------------------------------------- | --------------------------------------- |
-| `publicPath`                    | Wrong base breaks remote chunks and CSS             | Compare with manifest output            |
-| `bundleAllCSS`                  | Full CSS set can repeat for every expose            | Warn for multi-expose producers         |
-| `hostInitInjectLocation`        | HTML and entry injection serve different app shapes | Record for support evidence             |
-| `moduleParseTimeout`            | Fixed timer can end a busy large parse              | Prefer idle timeout                     |
-| `moduleParseIdleTimeout`        | Resets while modules are active                     | Better for large builds                 |
-| `varFilename`                   | Adds a synchronous global-format entry              | Verify filename and deployment          |
-| `target` / `ssrExternals`       | Changes server remote output                        | Keep SSR and browser contracts separate |
-| `disableRemote/shared/snapshot` | Removes runtime capabilities                        | Reject config that still uses them      |
+| Option                          | Risk or opportunity                                 | Doctor guidance                                                        |
+| ------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------- |
+| `publicPath`                    | Wrong base breaks remote chunks and CSS             | Compare with manifest output                                           |
+| `bundleAllCSS`                  | Full CSS set can repeat for every expose            | Warn for multi-expose producers                                        |
+| `hostInitInjectLocation`        | HTML and entry injection serve different app shapes | Record for support evidence                                            |
+| `moduleParseTimeout`            | Fixed timer can end a busy large parse              | Prefer idle timeout                                                    |
+| `moduleParseIdleTimeout`        | Resets while modules are active                     | Better for large builds                                                |
+| `varFilename`                   | Adds a synchronous global-format entry              | Verify filename and deployment; intentional mixed-bundler escape hatch |
+| `target` / `ssrExternals`       | Changes server remote output                        | Keep SSR and browser contracts separate                                |
+| `disableRemote/shared/snapshot` | Removes runtime capabilities                        | Reject config that still uses them                                     |
+
+### Remotes typing
+
+Vite string remotes and object remotes without `type` default to **`var`**. Doctor warns via
+[`vite/remotes-prefer-module`](./rules/vite/remotes-prefer-module.md) unless you set explicit
+`type: 'module'` (Vite↔Vite ESM) or configure `varFilename` for webpack/rspack interop
+([`vite/var-filename-interop`](./rules/vite/var-filename-interop.md)).
 
 The full current surface is in the official
 [normalizer](https://github.com/module-federation/vite/blob/321d7db8a4b2a1764b3a7cdc16246222d97231ac/src/utils/normalizeModuleFederationOptions.ts).

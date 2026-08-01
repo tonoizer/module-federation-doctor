@@ -710,6 +710,63 @@ export const builtInRules: DoctorRule[] = [
         "For large builds, prefer `moduleParseIdleTimeout` so active parsing does not end early.",
       );
   }),
+  createRule("vite/remotes-prefer-module", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const config = mf(context);
+    const remotes = config?.remotes;
+    if (!remotes || Object.keys(remotes).length === 0) return;
+    if (optionBoolean(context.options, "preferModuleRemotes") === false) return;
+
+    const varFilename = config?.vite?.varFilename;
+    const allowVarWithFilename =
+      optionBoolean(context.options, "allowVarRemotesWithVarFilename") !== false;
+    if (varFilename && allowVarWithFilename) return;
+
+    const moduleTypes = new Set(["module", "import", "module-import"]);
+    const defaultVarRemotes = Object.entries(remotes)
+      .filter(([, remote]) => !remote.type || !moduleTypes.has(remote.type))
+      .map(([name, remote]) => ({
+        name,
+        type: remote.type ?? "var",
+        entry: remote.entry,
+      }));
+    if (defaultVarRemotes.length === 0) return;
+
+    report(
+      context,
+      "Vite remotes use string or default `var` typing without an intentional interop story.",
+      {
+        remotes: defaultVarRemotes,
+        ...(varFilename ? { varFilename } : {}),
+      },
+      "Prefer object remotes with `type: 'module'` for Vite↔Vite ESM, or set `varFilename` when mixing webpack/rspack `var` remotes.",
+    );
+  }),
+  createRule("vite/var-filename-interop", "info", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const config = mf(context);
+    const varFilename = config?.vite?.varFilename;
+    if (!varFilename) return;
+    const remotes = config?.remotes ?? {};
+    if (Object.keys(remotes).length === 0) return;
+
+    const moduleTypes = new Set(["module", "import", "module-import"]);
+    const varRemotes = Object.entries(remotes)
+      .filter(([, remote]) => !remote.type || !moduleTypes.has(remote.type))
+      .map(([name, remote]) => ({
+        name,
+        type: remote.type ?? "var",
+        entry: remote.entry,
+      }));
+    if (varRemotes.length === 0) return;
+
+    report(
+      context,
+      "`varFilename` is configured for mixed bundler remote interop.",
+      { varFilename, remotes: varRemotes },
+      "Keep `varFilename` for webpack/rspack `var` remotes; use `type: 'module'` remotes when both sides are Vite ESM.",
+    );
+  }),
   createRule("artifact/manifest-assets-disabled", "warning", (context) => {
     const config = mf(context);
     if (
