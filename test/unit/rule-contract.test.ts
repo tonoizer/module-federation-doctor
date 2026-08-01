@@ -72,6 +72,7 @@ describe("evidence-aware rule contract", () => {
       "artifacts.emittedAssets": "context.facts.artifacts.emittedAssets",
       "artifacts.assetSizes": "context.facts.artifacts.assetSizes",
       capabilities: "context.facts.capabilities",
+      "capabilities.manifest": "context.facts.capabilities.manifest",
       "capabilities.emittedAssets": "context.facts.capabilities.emittedAssets",
     };
     for (const entry of ruleInventory.filter(
