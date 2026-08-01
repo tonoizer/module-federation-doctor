@@ -1,0 +1,11 @@
+{
+  "name": "@example/mfdoctor-bridge-policy",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Example Bridge-focused Doctor policy pack (#140 / #131).",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  }
+}
