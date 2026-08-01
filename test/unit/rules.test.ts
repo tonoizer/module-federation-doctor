@@ -559,13 +559,15 @@ describe("built-in rules", () => {
     ],
     [
       "artifact/manifest-expose-assets-empty",
-      (facts: ProjectFacts) =>
-        (facts.artifacts.manifest = {
+      (facts: ProjectFacts) => {
+        facts.bundler.name = "webpack";
+        facts.artifacts.manifest = {
           path: "dist/mf-manifest.json",
           valid: true,
           exposes: [{ key: "./Widget", assets: [] }],
           shared: [],
-        }),
+        };
+      },
     ],
     [
       "artifact/manifest-shared-version-mismatch",
@@ -911,5 +913,68 @@ describe("config/implementation-suspicious", () => {
     const facts = base();
     facts.moduleFederation!.implementation = "custom-runtime";
     expect(await runRule(facts)).not.toHaveLength(0);
+  });
+});
+
+describe("Vite/Nuxt artifact false positives", () => {
+  async function runRule(id: string, facts: ProjectFacts) {
+    const findings: Array<{ message: string }> = [];
+    const rule = builtInRules.find((item) => item.meta.id === id)!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  const viteBase = (): ProjectFacts => ({
+    schemaVersion: 1,
+    project: { name: "fixture", root: "." },
+    bundler: { name: "vite", mode: "ci" },
+    capabilities: {
+      config: true,
+      sourceImports: true,
+      manifest: true,
+      stats: false,
+      emittedAssets: true,
+      installedVersions: true,
+    },
+    moduleFederation: {
+      name: "fixture",
+      exposes: { "./Widget": "src/Widget.ts" },
+      remotes: {},
+      shared: {},
+    },
+    dependencies: { declared: {}, installed: {} },
+    imports: {
+      sourceFiles: [],
+      specifiers: [],
+      packages: [],
+      dynamicPackages: [],
+      remotes: [],
+      unresolvedDynamic: [],
+      evidenceSources: [],
+    },
+    artifacts: {
+      emittedAssets: [],
+      assetSizes: { "remoteEntry.js": 1200 },
+      manifest: {
+        path: "dist/mf-manifest.json",
+        valid: true,
+        publicPath: "./",
+        remoteEntry: { name: "remoteEntry.js", path: "" },
+        exposes: [{ key: "./Widget", assets: [] }],
+        shared: [],
+      },
+    },
+  });
+
+  it("accepts empty remoteEntry.path when assetSizes lists the entry", async () => {
+    expect(await runRule("artifact/manifest-remote-entry-missing", viteBase())).toHaveLength(0);
+  });
+
+  it("allows relative ./ publicPath", async () => {
+    expect(await runRule("artifact/public-path-suspicious", viteBase())).toHaveLength(0);
+  });
+
+  it("skips all-empty Vite expose asset lists", async () => {
+    expect(await runRule("artifact/manifest-expose-assets-empty", viteBase())).toHaveLength(0);
   });
 });
