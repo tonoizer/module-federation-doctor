@@ -83,6 +83,18 @@ describe("resolveOptions", () => {
     expect((await resolveOptions({ root })).quiet).toBe(false);
   });
 
+  it("resolves recognizeMfToolkit when set", async () => {
+    stubLocalEnv();
+    const root = path.resolve("fixture");
+    expect((await resolveOptions({ root })).recognizeMfToolkit).toBeUndefined();
+    expect((await resolveOptions({ root, recognizeMfToolkit: false })).recognizeMfToolkit).toBe(
+      false,
+    );
+    expect((await resolveOptions({ root, recognizeMfToolkit: true })).recognizeMfToolkit).toBe(
+      true,
+    );
+  });
+
   it("resolves baseline path options", async () => {
     stubLocalEnv();
     const root = path.resolve("fixture");

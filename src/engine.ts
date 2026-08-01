@@ -47,6 +47,7 @@ async function runRule(
   setting: RuleSetting | undefined,
   root: string,
   sharedPolicy?: ResolvedDoctorOptions["sharedPolicy"],
+  recognizeMfToolkit?: boolean,
 ): Promise<DoctorFinding[]> {
   const resolved = parseSetting(setting, rule.meta.defaultSeverity);
   if (!resolved || !rule.meta.supportedBundlers.includes(facts.bundler.name)) return [];
@@ -84,6 +85,7 @@ async function runRule(
       options: deepFreeze(resolved.options),
       root,
       ...(sharedPolicy ? { sharedPolicy: deepFreeze(sharedPolicy) } : {}),
+      ...(recognizeMfToolkit !== undefined ? { recognizeMfToolkit } : {}),
       report: add,
     });
     if (Array.isArray(returned)) for (const finding of returned) add(finding);
@@ -165,6 +167,7 @@ async function runAnalysis(
               resolved.rules[rule.meta.id],
               resolved.root,
               resolved.sharedPolicy,
+              resolved.recognizeMfToolkit,
             ),
           ),
         )

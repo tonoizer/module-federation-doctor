@@ -16,6 +16,11 @@ import {
   reactBridgeEntryMajor,
   sharedReactRouterKeys,
 } from "./bridge-detect.js";
+import {
+  shouldSkipBridgeEntryDtsGuidance,
+  shouldSkipFragmentRemoteEntryInvalid,
+  shouldSkipMf2SharedUnused,
+} from "./mf-toolkit-shapes.js";
 import { lookupAssetSize, sumAssetSizes } from "./collect.js";
 import { ruleGuidance } from "./rule-guidance.js";
 import {
@@ -247,6 +252,8 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("config/remote-entry-invalid", "error", (context) => {
     for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {})) {
+      // mf-ssr fragment URL/path remotes are intentional toolkit shapes, not broken entries.
+      if (shouldSkipFragmentRemoteEntryInvalid(context, remote.entry)) continue;
       if (
         !remote.version &&
         (!remote.entry || (!remote.entry.includes("@") && !/^https?:\/\//.test(remote.entry)))
@@ -1049,6 +1056,8 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("artifact/dts-disabled", "warning", (context) => {
     const config = mf(context);
+    // mf-bridge `./entry`+register producers are not classic component exposes needing DTS.
+    if (shouldSkipBridgeEntryDtsGuidance(context)) return;
     if (config && config.dts?.enabled === false && Object.keys(config.exposes).length > 0)
       report(
         context,
@@ -1187,6 +1196,7 @@ export const builtInRules: DoctorRule[] = [
     }
   }),
   createRule("artifact/types-metadata-missing", "warning", (context) => {
+    if (shouldSkipBridgeEntryDtsGuidance(context)) return;
     const manifest = context.facts.artifacts.manifest;
     if (
       manifest?.valid &&
@@ -1351,6 +1361,8 @@ export const builtInRules: DoctorRule[] = [
     );
     // Incomplete dynamic evidence → prefer doctor/partial-analysis over false unused certainty.
     if (unresolvedMayHideUsage) return;
+    // MF2 shared-array / shared-inspector manifest-only evidence → prefer partial-analysis.
+    if (shouldSkipMf2SharedUnused(context)) return;
     for (const name of Object.keys(mf(context)?.shared ?? {}))
       if (
         !isShareKeyUsed(name, {
@@ -1441,6 +1453,7 @@ export const builtInRules: DoctorRule[] = [
       );
   }),
   createRule("artifact/types-missing", "warning", (context) => {
+    if (shouldSkipBridgeEntryDtsGuidance(context)) return;
     const manifest = context.facts.artifacts.manifest;
     if (
       manifest?.valid &&

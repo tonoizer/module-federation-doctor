@@ -119,3 +119,24 @@ Reds that **do not** block other cells:
 | `integration.yml` / `e2e.yml` | Adapter tests and Playwright mixed-federation path                |
 | `package.yml`                 | Pack/consume smoke on Node 22 + 24 (includes Webpack)             |
 | `quality.yml`                 | fmt, lint, types, unit tests, `docs:build`                        |
+
+## mf-toolkit shapes
+
+Doctor soft-recognizes intentional **mf-toolkit** config shapes so agents do not
+get false broken-remote / component-DTS guidance:
+
+| Shape                           | Signal                                                                                                | Soft-exception                                                                                                                    |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **mf-bridge**                   | expose `./entry` → `entry.*` module (toolkit `register` / `createMFEntry` / `defineMFEntry` contract) | Skip component-style DTS producer guidance (`artifact/dts-disabled`, `artifact/types-missing`, `artifact/types-metadata-missing`) |
+| **mf-ssr**                      | fragment URL/path remotes (`/api/fragments/...`, not `remoteEntry.js`)                                | Skip `config/remote-entry-invalid` for those entries                                                                              |
+| **shared-inspector** (optional) | MF2 shared-array on manifest-only evidence                                                            | Skip `shared/unused` certainty; prefer `doctor/partial-analysis`                                                                  |
+
+Recognition defaults **on when these signals are present**. Disable with
+`recognizeMfToolkit: false` in `mfdoctor.config` / adapter options, or turn the
+specific rule `"off"` / use a fingerprint baseline. Soft-exceptions **skip**
+findings rather than changing evidence shapes (fingerprint-stable for classic apps).
+
+In-repo fixtures (no toolkit checkout): `fixtures/mf-bridge-entry`,
+`fixtures/mf-ssr-fragment`, `fixtures/shared-inspector-mf2`. Full Bridge pack
+coverage is [#131](https://github.com/tonoizer/module-federation-doctor/issues/131),
+not this compatibility note.

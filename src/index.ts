@@ -59,6 +59,17 @@ export {
   strictPreset,
 } from "./policy.js";
 export { defineRule, builtInRules } from "./rules.js";
+export {
+  hasMf2SharedArrayManifest,
+  hasMfBridgeEntryExpose,
+  hasMfSsrFragmentRemotes,
+  hasMfToolkitShapeSignals,
+  isMf2SharedArrayManifestOnly,
+  isMfBridgeEntryProducer,
+  isMfSsrFragmentProducer,
+  isMfSsrFragmentRemoteEntry,
+  toolkitRecognitionEnabled,
+} from "./mf-toolkit-shapes.js";
 export { ProbeError, probeManifest } from "./probe.js";
 export {
   RuntimeTraceError,
