@@ -150,6 +150,15 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   if (options.bundlerVersion !== undefined) resolved.bundlerVersion = options.bundlerVersion;
   if (options.viteLifecycle !== undefined) resolved.viteLifecycle = options.viteLifecycle;
   if (options.viteConfigFacts !== undefined) resolved.viteConfigFacts = options.viteConfigFacts;
+  if (options.transformImport !== undefined) {
+    resolved.transformImportLibraries = [
+      ...new Set(
+        options.transformImport
+          .map((item) => (typeof item === "string" ? item : item.libraryName))
+          .filter((name) => typeof name === "string" && name.length > 0),
+      ),
+    ].sort();
+  }
   if (options.runtimeTrace !== undefined)
     resolved.runtimeTrace = path.resolve(root, options.runtimeTrace);
   return resolved;

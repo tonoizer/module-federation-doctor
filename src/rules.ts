@@ -995,6 +995,24 @@ export const builtInRules: DoctorRule[] = [
       "Set `server.origin` to the public origin remote consumers should use in development.",
     );
   }),
+  createRule("config/transform-import-share-conflict", "warning", (context) => {
+    const libraries = context.facts.bundler.transformImportLibraries;
+    if (!libraries || libraries.length === 0) return;
+    const sharedKeys = Object.keys(mf(context)?.shared ?? {});
+    if (sharedKeys.length === 0) return;
+    const overlaps = findShareRewriteOverlaps(
+      libraries,
+      sharedKeys,
+      optionStringList(context.options, "allowPackages"),
+    );
+    if (overlaps.length === 0) return;
+    report(
+      context,
+      "transformImport rewrites packages that are also listed in shared.",
+      { overlaps, transformImport: libraries, shared: sharedKeys },
+      "Remove the transformImport entry, exclude the package from shared, or allowlist via `allowPackages`. See also vite/alias-share-bypass for Vite resolve.alias.",
+    );
+  }),
   createRule("artifact/manifest-assets-disabled", "warning", (context) => {
     const config = mf(context);
     if (

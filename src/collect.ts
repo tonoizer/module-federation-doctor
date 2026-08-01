@@ -902,6 +902,9 @@ export async function collectProjectFacts(
       ...(bundlerVersion ? { version: bundlerVersion } : {}),
       ...(lifecycle ? { lifecycle } : {}),
       ...(options.viteConfigFacts ? { viteConfig: options.viteConfigFacts } : {}),
+      ...(options.transformImportLibraries
+        ? { transformImportLibraries: options.transformImportLibraries }
+        : {}),
     },
     capabilities: {
       config: options.moduleFederation !== undefined,

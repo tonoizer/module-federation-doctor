@@ -599,6 +599,15 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/transform-import-share-conflict",
+      (facts: ProjectFacts) => {
+        facts.bundler.transformImportLibraries = ["lodash"];
+        facts.moduleFederation!.shared = {
+          lodash: { package: "lodash", singleton: false, eager: false, shareScope: ["default"] },
+        };
+      },
+    ],
+    [
       "artifact/manifest-assets-disabled",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.manifest = {
@@ -1606,5 +1615,73 @@ describe("vite dialect follow-ons", () => {
       await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
       expect(findings, id).toHaveLength(0);
     }
+  });
+});
+
+describe("config/transform-import-share-conflict", () => {
+  async function run(facts: ProjectFacts) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const selected = builtInRules.find(
+      (item) => item.meta.id === "config/transform-import-share-conflict",
+    )!;
+    await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  function base(): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "modern", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {},
+        shared: {},
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  it("warns on lodash overlap and stays silent without overlap or facts", async () => {
+    const overlap = base();
+    overlap.bundler.transformImportLibraries = ["lodash"];
+    overlap.moduleFederation!.shared = {
+      lodash: { package: "lodash", singleton: false, eager: false, shareScope: ["default"] },
+    };
+    expect(await run(overlap)).not.toHaveLength(0);
+
+    const noOverlap = base();
+    noOverlap.bundler.transformImportLibraries = ["lodash"];
+    noOverlap.moduleFederation!.shared = {
+      react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+    };
+    expect(await run(noOverlap)).toHaveLength(0);
+
+    const missing = base();
+    missing.moduleFederation!.shared = {
+      lodash: { package: "lodash", singleton: false, eager: false, shareScope: ["default"] },
+    };
+    expect(await run(missing)).toHaveLength(0);
   });
 });

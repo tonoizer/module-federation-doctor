@@ -384,6 +384,17 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Set Vite `server.origin` to the URL remotes should publish for consumers.",
     sources: [vite],
   },
+  "config/transform-import-share-conflict": {
+    category: "correctness",
+    impact:
+      "transformImport (or equivalent) can rewrite packages that are also shared, bypassing or duplicating the share scope.",
+    fix: "Remove the rewrite, exclude the package from shared, or allowlist intentional bypasses via `allowPackages`.",
+    sources: [
+      shared,
+      "https://modernjs.dev/guides/basic-features/alias.html",
+      "https://rsbuild.rs/config/source/transform-import",
+    ],
+  },
   "artifact/manifest-assets-disabled": {
     category: "reliability",
     impact:
