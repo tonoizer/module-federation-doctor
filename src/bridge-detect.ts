@@ -149,3 +149,107 @@ export function bridgeOptions(config: NormalizedMFConfig | undefined): BridgeOpt
     raw,
   };
 }
+
+/**
+ * Bridge router is active when explicitly enabled, or when the Bridge package is
+ * present and `enableBridgeRouter` is omitted (Rspack auto-enable).
+ */
+export function isBridgeRouterEnabled(facts: ProjectFacts): boolean {
+  if (!isReactBridgeProject(facts)) return false;
+  const options = bridgeOptions(facts.moduleFederation);
+  if (options?.enableBridgeRouter === false) return false;
+  if (options?.enableBridgeRouter === true) return true;
+  // Omitted → Rspack may auto-enable when Bridge is present.
+  return true;
+}
+
+const REACT_ROUTER_SHARE_KEYS = ["react-router", "react-router-dom"] as const;
+
+/** Shared keys that conflict with Bridge's router aliasing. */
+export function sharedReactRouterKeys(
+  shared: Record<string, NormalizedShared> | undefined,
+): string[] {
+  if (!shared) return [];
+  return Object.keys(shared).filter((key) =>
+    REACT_ROUTER_SHARE_KEYS.some((pkg) => key === pkg || key.startsWith(`${pkg}/`)),
+  );
+}
+
+export function hasSharedReactRouter(
+  shared: Record<string, NormalizedShared> | undefined,
+): boolean {
+  return sharedReactRouterKeys(shared).length > 0;
+}
+
+/**
+ * True when facts indicate a node/SSR build where browser-only Bridge entries must not load.
+ * Honors `ssrMode` option when provided via the rule options path (caller passes resolved mode).
+ */
+export function isNodeOrSsrTarget(
+  facts: ProjectFacts,
+  ssrMode?: "browser-only" | "dual" | "node",
+): boolean {
+  if (ssrMode === "browser-only") return false;
+  if (ssrMode === "node" || ssrMode === "dual") return true;
+  const config = facts.moduleFederation;
+  if (config?.experiments?.target === "node") return true;
+  if (config?.vite?.target === "node") return true;
+  if (
+    facts.builds?.some(
+      (build) =>
+        build.targetKind === "node" || build.targetKind === "ssr" || build.target === "node",
+    )
+  )
+    return true;
+  return false;
+}
+
+/** Specifiers that are browser-only Bridge React entries (not `/server`). */
+export function browserBridgeReactEntries(facts: ProjectFacts): string[] {
+  const hits: string[] = [];
+  for (const signal of [
+    ...(facts.imports.specifiers ?? []),
+    ...(facts.imports.packages ?? []),
+    ...(facts.imports.deepImports ?? []),
+  ]) {
+    if (!signal.startsWith(BRIDGE_REACT_PKG)) continue;
+    if (signal.includes("/server")) continue;
+    if (signal.includes("/plugin")) continue;
+    hits.push(signal);
+  }
+  return [...new Set(hits)];
+}
+
+const BRIDGE_PROVIDER_APIS = [
+  "createBridgeComponent",
+  "createRemoteAppComponent",
+  "createBridge",
+] as const;
+
+/**
+ * Heuristic: Bridge provider/consumer factory calls with an empty or clearly incomplete options object.
+ * Returns undefined when no Bridge API usage is visible or the call shape is too nested to judge (pass-unknown).
+ */
+export function detectInvalidBridgeProviderShape(source: string): string | undefined {
+  for (const api of BRIDGE_PROVIDER_APIS) {
+    if (!source.includes(api)) continue;
+    const emptyCall = new RegExp(`${api}\\s*\\(\\s*\\{\\s*\\}\\s*\\)`);
+    if (emptyCall.test(source)) return `${api}({})`;
+    // Only inspect flat option objects (no nested `{}`) to avoid false positives on loaders.
+    const flat = new RegExp(`${api}\\s*\\(\\s*\\{([^{}]*)\\}\\s*\\)`, "s");
+    const match = source.match(flat);
+    if (!match) continue;
+    const body = match[1] ?? "";
+    const hasLoader = /\b(?:loader|module|remote)\b/.test(body);
+    const hasFallbackOrLoading = /\b(?:fallback|loading|errorElement)\b/.test(body);
+    if (api === "createRemoteAppComponent" || api === "createBridge") {
+      if (!hasLoader) return `${api} missing loader/module`;
+      if (!hasFallbackOrLoading) return `${api} missing fallback/loading`;
+    }
+    if (api === "createBridgeComponent") {
+      if (!/\b(?:rootComponent|root|app|component|App)\b/.test(body) && body.trim().length < 8)
+        return `${api} incomplete options`;
+    }
+  }
+  return undefined;
+}
