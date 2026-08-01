@@ -176,7 +176,7 @@ describe("public evidence reader", () => {
     const first = migrateDoctorReport({ ...reportFixture, findings } as never);
     const second = migrateDoctorReport({
       ...reportFixture,
-      findings: findings.toReversed(),
+      findings: [findings[1]!, findings[0]!],
     } as never);
 
     expect(second).toEqual(first);
