@@ -152,6 +152,7 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
       { dir: path.join(root, "artifacts/node") },
       { "server.js": {}, "custom-manifest.json": {} },
     );
+    await plugin.closeBundle!.call({});
 
     const project = JSON.parse(
       await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
@@ -201,6 +202,7 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
       { dir: path.join(root, "dist") },
       { "remoteEntry.js": { type: "asset" } },
     );
+    await plugin.closeBundle!.call({ meta: { rolldownVersion: "1.0.2" } });
 
     const project = JSON.parse(
       await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
@@ -222,7 +224,7 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
     expect(project.bundler.lifecycle).toMatchObject({
       flavor: "rolldown-vite",
       engine: "rolldown",
-      postEmitHook: "writeBundle",
+      postEmitHook: "closeBundle",
     });
     expect(project.capabilities.emittedAssets).toBe(true);
     expect(project.artifacts.emittedAssets).toEqual(
@@ -261,6 +263,109 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
     expect(project.bundler.lifecycle?.engine).toBe("rolldown");
     expect(project.bundler.lifecycle?.postEmitHook).toBe("closeBundle");
     expect(project.capabilities.emittedAssets).toBe(false);
+  });
+
+  it("collects every output before failing policy at closeBundle", async () => {
+    const root = await makeRoot({ vite: "5.4.0" });
+    await fs.mkdir(path.join(root, "dist/web"), { recursive: true });
+    await fs.mkdir(path.join(root, "dist/node"), { recursive: true });
+    await fs.writeFile(path.join(root, "dist/web/mf-manifest.json"), "bad json");
+    await fs.writeFile(
+      path.join(root, "dist/node/mf-manifest.json"),
+      JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+    );
+    const raw = viteDoctor.raw(
+      {
+        ...doctorOptions(root),
+        artifactNames: { manifest: ["mf-manifest.json"], stats: [] },
+        rules: { ...doctorOptions(root).rules, "artifact/manifest-invalid": "error" },
+      },
+      { framework: "vite", versions: { unplugin: "3.3.0" } } as never,
+    );
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+    plugin.configResolved?.({
+      root,
+      mode: "production",
+      build: { outDir: "dist/web", write: true },
+    });
+    await plugin.writeBundle!.call(
+      {},
+      { dir: path.join(root, "dist/web") },
+      { "mf-manifest.json": {} },
+    );
+    await plugin.writeBundle!.call(
+      {},
+      { dir: path.join(root, "dist/node") },
+      { "mf-manifest.json": {} },
+    );
+
+    await expect(plugin.closeBundle!.call({})).rejects.toThrow(/policy failed/);
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as { builds: Array<{ outputRoot?: string }> };
+    expect(project.builds.map((build) => build.outputRoot)).toEqual(["dist/node", "dist/web"]);
+  });
+
+  it("does not claim stale disk evidence when Vite writing is disabled", async () => {
+    const root = await makeRoot({ vite: "5.4.0" });
+    await fs.mkdir(path.join(root, "dist"), { recursive: true });
+    await fs.writeFile(
+      path.join(root, "dist/mf-manifest.json"),
+      JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+    );
+    const raw = viteDoctor.raw(doctorOptions(root), {
+      framework: "vite",
+      versions: { unplugin: "3.3.0" },
+    } as never);
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+    plugin.configResolved?.({ root, mode: "production", build: { outDir: "dist", write: false } });
+    await plugin.writeBundle!.call({}, { dir: path.join(root, "dist") }, { "remoteEntry.js": {} });
+    await plugin.closeBundle!.call({});
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as {
+      builds: Array<{
+        emittedAssets: string[];
+        artifacts: unknown[];
+        capabilities: { emittedAssets: { state: string }; artifacts: { state: string } };
+      }>;
+      artifacts: { emittedAssets: string[]; records?: unknown[] };
+    };
+    expect(project.builds[0]).toMatchObject({
+      emittedAssets: [],
+      artifacts: [],
+      capabilities: {
+        emittedAssets: { state: "not-applicable" },
+        artifacts: { state: "not-applicable" },
+      },
+    });
+    expect(project.artifacts.emittedAssets).toEqual([]);
+    expect(project.artifacts.records ?? []).toEqual([]);
+  });
+
+  it("rejects an output root symlink that escapes the project", async () => {
+    const root = await makeRoot({ vite: "5.4.0" });
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-vite-outside-"));
+    roots.push(outside);
+    await fs.symlink(outside, path.join(root, "escaped"), "dir");
+    const raw = viteDoctor.raw(doctorOptions(root), {
+      framework: "vite",
+      versions: { unplugin: "3.3.0" },
+    } as never);
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+    plugin.configResolved?.({
+      root,
+      mode: "production",
+      build: { outDir: "escaped", write: true },
+    });
+    await plugin.writeBundle!.call({}, { dir: path.join(root, "escaped") }, { "remote.js": {} });
+    await plugin.closeBundle!.call({});
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as { builds: Array<{ outputRoot?: string }> };
+    expect(project.builds[0]?.outputRoot).toBeUndefined();
   });
 
   it("emits doctor/partial-analysis when Rolldown emit facts stay missing", async () => {

@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { collectProjectFacts } from "../../src/collect.js";
+import { addBuildFacts, collectProjectFacts } from "../../src/collect.js";
 import { resolveOptions } from "../../src/config.js";
 import { writeReports } from "../../src/reporters.js";
 import { validatePayload } from "../helpers/schema-contract.js";
@@ -147,6 +147,46 @@ describe("artifact collection", () => {
     await fs.symlink(outside, path.join(root, "linked"), "dir");
     const facts = await collectProjectFacts(await resolveOptions({ root }));
     expect(facts.artifacts.records).toEqual([]);
+  });
+
+  it("requires exact relative asset matching for output artifact linkage", async () => {
+    const root = await fixture({
+      "dist/nested/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+    await addBuildFacts(facts, ["dist/mf-manifest.json"], root, undefined, [
+      { outputRoot: "dist", emittedAssets: ["mf-manifest.json"], sourceHook: "closeBundle" },
+    ]);
+    expect(facts.builds?.[0]?.artifacts).toEqual([]);
+  });
+
+  it("does not attach discovered artifacts to a write-disabled output", async () => {
+    const root = await fixture({
+      "dist/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+    await addBuildFacts(facts, ["dist/mf-manifest.json"], root, undefined, [
+      {
+        outputRoot: "dist",
+        emittedAssets: ["mf-manifest.json"],
+        buildWrite: false,
+        sourceHook: "closeBundle",
+      },
+    ]);
+    expect(facts.builds?.[0]?.artifacts).toEqual([]);
+    expect(facts.builds?.[0]?.emittedAssets).toEqual([]);
+  });
+
+  it("sizes assets only from the recorded output root", async () => {
+    const root = await fixture({
+      "out/remoteEntry.js": "small",
+      "dist/remoteEntry.js": "this stale file is much larger",
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+    await addBuildFacts(facts, ["out/remoteEntry.js"], root, undefined, [
+      { outputRoot: "out", emittedAssets: ["remoteEntry.js"], sourceHook: "closeBundle" },
+    ]);
+    expect(facts.artifacts.assetSizes?.["remoteEntry.js"]).toBe(5);
   });
 
   it("keeps v1 project output compatible while exposing records to API callers", async () => {

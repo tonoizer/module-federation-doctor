@@ -135,6 +135,7 @@ async function runAnalysis(
   try {
     const boundedRoots = buildOutputs
       ? buildOutputs
+          .filter((output) => output.buildWrite !== false)
           .map((output) => output.outputRoot)
           .filter((value): value is string => Boolean(value))
       : undefined;

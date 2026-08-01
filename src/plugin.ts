@@ -1,4 +1,5 @@
 import { createUnplugin, type UnpluginOptions } from "unplugin";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { analyzeBuild } from "./engine.js";
 import type { BuildDiagnostics } from "./collect.js";
@@ -134,11 +135,21 @@ function targetKind(config: ViteResolvedConfigLike): ViteBuildOutputInput["targe
   return "web";
 }
 
-function safeOutputRoot(root: string, value: string | undefined): string | undefined {
+async function safeOutputRoot(
+  root: string,
+  value: string | undefined,
+): Promise<string | undefined> {
   if (!value) return undefined;
   const absolute = path.resolve(root, value);
   const relative = path.relative(root, absolute).replaceAll(path.sep, "/");
-  return relative === "" ? "." : relative.startsWith("..") ? undefined : relative;
+  if (relative !== "" && relative.startsWith("..")) return undefined;
+  const rootReal = await fs.realpath(root).catch(() => undefined);
+  const outputReal = await fs.realpath(absolute).catch(() => undefined);
+  const outputStat = await fs.lstat(absolute).catch(() => undefined);
+  if (outputStat?.isSymbolicLink() && !outputReal) return undefined;
+  if (rootReal && outputReal && (path.relative(rootReal, outputReal) || ".").startsWith(".."))
+    return undefined;
+  return relative === "" ? "." : relative;
 }
 
 /**
@@ -153,7 +164,7 @@ function safeOutputRoot(root: string, value: string | undefined): string | undef
 function createViteFamilyHooks(configured: DoctorOptions) {
   let resolvedConfig: ViteResolvedConfigLike | undefined;
   let outputs: ViteBuildOutputInput[] = [];
-  let analyzed = false;
+  let pendingCloseFinalization: number | undefined;
 
   const run = async (
     hook: "writeBundle" | "closeBundle",
@@ -166,7 +177,7 @@ function createViteFamilyHooks(configured: DoctorOptions) {
     const lifecycle = withPostEmitHook(detected, hook);
     configured.viteLifecycle = lifecycle;
     const config = resolvedConfig;
-    const outputRoot = safeOutputRoot(
+    const outputRoot = await safeOutputRoot(
       root,
       outputOptions?.dir ??
         (outputOptions?.file ? path.dirname(outputOptions.file) : undefined) ??
@@ -187,24 +198,23 @@ function createViteFamilyHooks(configured: DoctorOptions) {
     };
     if (hook === "writeBundle" || outputs.length === 0) {
       outputs.push(input);
+      if (hook === "writeBundle" && lifecycle.engine === "rolldown" && emittedAssets.length === 0)
+        pendingCloseFinalization = outputs.length - 1;
     } else if (lifecycle.engine === "rolldown") {
-      // closeBundle finalizes only the incomplete public record; never scan disk.
-      outputs = outputs.map((item, index) =>
-        index === outputs.length - 1 ? { ...item, ...input, sourceHook: hook } : item,
-      );
+      if (pendingCloseFinalization !== undefined) {
+        outputs = outputs.map((item, index) =>
+          index === pendingCloseFinalization ? { ...item, sourceHook: hook } : item,
+        );
+        pendingCloseFinalization = undefined;
+      }
     }
-    if (
-      hook === "writeBundle" &&
-      lifecycle.engine === "rolldown" &&
-      emittedAssets.length === 0 &&
-      bundle !== undefined
-    )
-      return;
-    analyzed = true;
+    if (hook === "writeBundle") return;
     const allAssets = outputs.flatMap((item) =>
-      item.outputRoot
-        ? item.emittedAssets.map((asset) => `${item.outputRoot}/${asset}`)
-        : item.emittedAssets,
+      item.buildWrite === false
+        ? []
+        : item.outputRoot
+          ? item.emittedAssets.map((asset) => `${item.outputRoot}/${asset}`)
+          : item.emittedAssets,
     );
     const result = await analyzeBuild(configured, allAssets, undefined, outputs);
     failAfterCollect(result);
@@ -226,7 +236,6 @@ function createViteFamilyHooks(configured: DoctorOptions) {
     },
     async closeBundle(this: unknown) {
       const meta = (this as unknown as { meta?: ViteHookMeta } | undefined)?.meta;
-      if (analyzed && outputs.length > 0) return;
       await run("closeBundle", meta);
     },
   } as Pick<UnpluginOptions, "writeBundle"> & {

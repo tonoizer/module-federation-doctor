@@ -252,6 +252,13 @@ describe("adapter quiet success and failure terminal path", () => {
             let threw: boolean | string = false;
             try {
               await (plugin.writeBundle as (this: unknown) => Promise<void>).call({});
+              await (
+                (
+                  plugin as UnpluginOptions & {
+                    closeBundle?: (this: unknown) => Promise<void>;
+                  }
+                ).closeBundle as (this: unknown) => Promise<void>
+              ).call({});
             } catch (error) {
               threw = error instanceof Error ? error.message : String(error);
             }

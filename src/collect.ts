@@ -571,7 +571,11 @@ function manifestAssetNames(manifest: NonNullable<ArtifactFacts["manifest"]>): s
 }
 
 /** Resolve byte sizes for manifest and emitted assets via on-disk `fs.stat`. */
-export async function attachAssetSizes(facts: ProjectFacts, root: string): Promise<void> {
+export async function attachAssetSizes(
+  facts: ProjectFacts,
+  root: string,
+  outputRoots?: readonly string[],
+): Promise<void> {
   const names = new Set<string>(facts.artifacts.emittedAssets);
   if (facts.artifacts.manifest?.valid)
     for (const name of manifestAssetNames(facts.artifacts.manifest)) names.add(name);
@@ -587,23 +591,27 @@ export async function attachAssetSizes(facts: ProjectFacts, root: string): Promi
 
   for (const name of names) {
     const basename = path.basename(name);
-    const candidates = [
-      path.join(manifestDir, name),
-      path.join(manifestDir, basename),
-      path.join(root, name),
-      path.join(root, "dist", name),
-      path.join(root, "dist", basename),
-      path.join(root, "build", name),
-      path.join(root, "build", basename),
-      ...facts.artifacts.emittedAssets
-        .filter(
-          (emitted) =>
-            emitted === name ||
-            emitted.endsWith(`/${basename}`) ||
-            path.basename(emitted) === basename,
-        )
-        .map((emitted) => path.join(root, emitted)),
-    ];
+    const candidates =
+      outputRoots !== undefined
+        ? outputRoots.flatMap((outputRoot) => [
+            path.join(root, outputRoot, name),
+            path.join(root, outputRoot, basename),
+            ...(normalizePath(name).startsWith(`${normalizePath(outputRoot)}/`)
+              ? [path.join(root, name)]
+              : []),
+          ])
+        : [
+            path.join(manifestDir, name),
+            path.join(manifestDir, basename),
+            path.join(root, name),
+            path.join(root, "dist", name),
+            path.join(root, "dist", basename),
+            path.join(root, "build", name),
+            path.join(root, "build", basename),
+            ...facts.artifacts.emittedAssets
+              .filter((emitted) => emitted === name)
+              .map((emitted) => path.join(root, emitted)),
+          ];
 
     for (const candidate of candidates) {
       try {
@@ -901,7 +909,7 @@ export async function addBuildFacts(
       const outputRoot = output.outputRoot
         ? relativePath(root, path.resolve(root, output.outputRoot))
         : undefined;
-      const emittedAssets = output.emittedAssets
+      const emittedAssets = (output.buildWrite === false ? [] : output.emittedAssets)
         .map((asset) =>
           outputRoot ? normalizePath(path.posix.join(outputRoot, asset)) : normalizePath(asset),
         )
@@ -909,7 +917,7 @@ export async function addBuildFacts(
       const artifactRecords: ArtifactRecord[] = [];
       for (const record of facts.artifacts.records ?? []) {
         const belongsToOutput = (() => {
-          if (!outputRoot) return false;
+          if (!outputRoot || output.buildWrite === false) return false;
           if (
             outputRoot !== "." &&
             record.path !== outputRoot &&
@@ -918,11 +926,7 @@ export async function addBuildFacts(
             return false;
           const relativeArtifact =
             outputRoot === "." ? record.path : record.path.slice(`${outputRoot}/`.length);
-          return output.emittedAssets.some(
-            (asset) =>
-              normalizePath(asset) === relativeArtifact ||
-              path.posix.basename(asset) === path.posix.basename(relativeArtifact),
-          );
+          return output.emittedAssets.some((asset) => normalizePath(asset) === relativeArtifact);
         })();
         if (belongsToOutput)
           artifactRecords.push(
@@ -1028,6 +1032,10 @@ export async function addBuildFacts(
       (build) => build.capabilities.emittedAssets.state === "exact",
     );
   }
-  await attachAssetSizes(facts, root);
+  const recordedOutputRoots = facts.builds
+    ?.filter((build) => build.capabilities.emittedAssets.state !== "not-applicable")
+    .map((build) => build.outputRoot)
+    .filter((value): value is string => Boolean(value));
+  await attachAssetSizes(facts, root, recordedOutputRoots);
   return facts;
 }
