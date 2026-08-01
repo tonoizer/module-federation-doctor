@@ -1,12 +1,19 @@
 import semver from "semver";
 import path from "node:path";
+import fs from "node:fs/promises";
 import {
   bridgeOptions,
+  browserBridgeReactEntries,
   detectedReactMajor,
+  detectInvalidBridgeProviderShape,
   hasBridgeReactPlugin,
   hasReactDomPrefixShare,
+  hasSharedReactRouter,
+  isBridgeRouterEnabled,
+  isNodeOrSsrTarget,
   isReactBridgeProject,
   reactBridgeEntryMajor,
+  sharedReactRouterKeys,
 } from "./bridge-detect.js";
 import { lookupAssetSize, sumAssetSizes } from "./collect.js";
 import { ruleGuidance } from "./rule-guidance.js";
@@ -1179,7 +1186,92 @@ export const builtInRules: DoctorRule[] = [
       "Set `bridge: { enableBridgeRouter: true }` (or `false`) explicitly, or allow demos with `allowImplicitBridgeRouter: true`.",
     );
   }),
+  createRule("bridge/router-shared-conflict", "error", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    if (!isBridgeRouterEnabled(context.facts)) return;
+    const shared = mf(context)?.shared;
+    if (!hasSharedReactRouter(shared)) return;
+    const keys = sharedReactRouterKeys(shared);
+    report(
+      context,
+      "Bridge router is enabled while React Router is also declared in `shared`, which can duplicate router runtimes.",
+      {
+        enableBridgeRouter: bridgeOptions(mf(context))?.enableBridgeRouter ?? "implicit",
+        sharedRouterKeys: keys,
+      },
+      "Remove `react-router` / `react-router-dom` from `shared`, or set `bridge.enableBridgeRouter: false` when sharing the router intentionally.",
+    );
+  }),
+  createRule("bridge/react-version-entry-mismatch", "error", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const entry = reactBridgeEntryMajor(context.facts);
+    if (entry !== 18 && entry !== 19) return;
+    const reactMajor = detectedReactMajor(context.facts);
+    if (reactMajor === undefined) return;
+    const allowed = optionReactMajors(context.options);
+    if (allowed && !allowed.includes(reactMajor)) return;
+    if (entry === reactMajor) return;
+    report(
+      context,
+      `Bridge React entry "/v${entry}" does not match detected React ${reactMajor}.`,
+      {
+        entry: `@module-federation/bridge-react/v${entry}`,
+        reactMajor,
+      },
+      `Import "@module-federation/bridge-react/v${reactMajor}" to match React ${reactMajor}, or set \`reactMajors\` / turn the rule \`"off"\`.`,
+    );
+  }),
+  createRule("bridge/provider-shape-invalid", "error", async (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const root = context.root ?? context.facts.project.root;
+    const files = context.facts.imports.sourceFiles ?? [];
+    if (files.length === 0) return;
+    for (const file of files) {
+      let source: string;
+      try {
+        source = await fs.readFile(path.join(root, file), "utf8");
+      } catch {
+        continue;
+      }
+      if (!source.includes("@module-federation/bridge-react")) continue;
+      const problem = detectInvalidBridgeProviderShape(source);
+      if (!problem) continue;
+      report(
+        context,
+        `Bridge provider/consumer factory looks incomplete (${problem}).`,
+        { file, problem },
+        "Pass a complete options object to createRemoteAppComponent / createBridgeComponent (loader/module plus fallback/loading, or a root component).",
+      );
+      return;
+    }
+  }),
+  createRule("bridge/ssr-server-entry-leak", "error", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const ssrMode = optionSsrMode(context.options);
+    if (!isNodeOrSsrTarget(context.facts, ssrMode)) return;
+    const leaks = browserBridgeReactEntries(context.facts);
+    if (leaks.length === 0) return;
+    report(
+      context,
+      "Browser-only Bridge React entry is referenced from a node/SSR build.",
+      {
+        entries: leaks,
+        ssrMode: ssrMode ?? null,
+        experimentsTarget: mf(context)?.experiments?.target ?? null,
+        viteTarget: mf(context)?.vite?.target ?? null,
+      },
+      'Use the Bridge `/server` entry (or a node-safe Bridge import) in SSR/node builds, or set `ssrMode: "browser-only"` when this build is not SSR.',
+    );
+  }),
 ];
+
+function optionSsrMode(
+  options: Record<string, unknown>,
+): "browser-only" | "dual" | "node" | undefined {
+  const value = options.ssrMode;
+  if (value === "browser-only" || value === "dual" || value === "node") return value;
+  return undefined;
+}
 
 function optionReactMajors(options: Record<string, unknown>): Array<18 | 19> | undefined {
   const value = options.reactMajors;

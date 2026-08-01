@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -784,6 +785,108 @@ describe("built-in rules", () => {
         facts.imports.packages = ["react", "@module-federation/bridge-react"];
         facts.imports.specifiers = ["react", "@module-federation/bridge-react/v19"];
         facts.moduleFederation!.runtimePlugins = ["@module-federation/bridge-react/plugin"];
+        facts.moduleFederation!.shared = {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+          "react-dom/": {
+            package: "react-dom/",
+            singleton: true,
+            eager: false,
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "bridge/router-shared-conflict",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.packages = ["react", "@module-federation/bridge-react"];
+        facts.imports.specifiers = ["react", "@module-federation/bridge-react/v19"];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+        facts.moduleFederation!.runtimePlugins = ["@module-federation/bridge-react/plugin"];
+        facts.moduleFederation!.shared = {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+          "react-dom/": {
+            package: "react-dom/",
+            singleton: true,
+            eager: false,
+            shareScope: "default",
+          },
+          "react-router-dom": {
+            package: "react-router-dom",
+            singleton: true,
+            eager: false,
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "bridge/react-version-entry-mismatch",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.dependencies.declared.react = "^19";
+        facts.dependencies.installed.react = "19.1.1";
+        facts.imports.packages = ["react", "@module-federation/bridge-react"];
+        facts.imports.specifiers = ["react", "@module-federation/bridge-react/v18"];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+        facts.moduleFederation!.runtimePlugins = ["@module-federation/bridge-react/plugin"];
+        facts.moduleFederation!.shared = {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+          "react-dom/": {
+            package: "react-dom/",
+            singleton: true,
+            eager: false,
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "bridge/provider-shape-invalid",
+      (facts: ProjectFacts) => {
+        const root = fsSync.mkdtempSync(path.join(os.tmpdir(), "mfdoctor-bridge-shape-"));
+        fsSync.mkdirSync(path.join(root, "src"));
+        fsSync.writeFileSync(
+          path.join(root, "src/App.tsx"),
+          [
+            'import { createRemoteAppComponent } from "@module-federation/bridge-react/v19";',
+            "export const Remote = createRemoteAppComponent({});",
+            "",
+          ].join("\n"),
+        );
+        facts.project.root = root;
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.sourceFiles = ["src/App.tsx"];
+        facts.imports.packages = ["react", "@module-federation/bridge-react"];
+        facts.imports.specifiers = ["react", "@module-federation/bridge-react/v19"];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+        facts.moduleFederation!.runtimePlugins = ["@module-federation/bridge-react/plugin"];
+        facts.moduleFederation!.shared = {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+          "react-dom/": {
+            package: "react-dom/",
+            singleton: true,
+            eager: false,
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "bridge/ssr-server-entry-leak",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.packages = ["react", "@module-federation/bridge-react"];
+        facts.imports.specifiers = ["react", "@module-federation/bridge-react/v19"];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+        facts.moduleFederation!.runtimePlugins = ["@module-federation/bridge-react/plugin"];
+        facts.moduleFederation!.vite = {
+          bundleAllCSS: false,
+          ignoreOrigin: false,
+          target: "node",
+          ssrExternals: [],
+        };
         facts.moduleFederation!.shared = {
           react: { package: "react", singleton: true, eager: false, shareScope: "default" },
           "react-dom/": {
