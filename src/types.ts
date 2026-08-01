@@ -57,6 +57,11 @@ export interface BundlerFacts {
    * Absent on CLI-only runs — rules that need these facts skip honestly.
    */
   viteConfig?: ViteBundlerConfigFacts;
+  /**
+   * Library names from `transformImport` / equivalent rewrite plugins when known.
+   * Absent means unknown (honest skip for conflict rules).
+   */
+  transformImportLibraries?: string[];
 }
 
 /** Static Vite config slices collected for dialect rules (never invent when missing). */
@@ -653,6 +658,11 @@ export interface DoctorOptions {
    * Not available on CLI-only runs.
    */
   viteConfigFacts?: ViteBundlerConfigFacts;
+  /**
+   * Library names from bundler/framework `transformImport` (Modern/Rsbuild).
+   * Omit when unknown — rules skip rather than inventing rewrite lists.
+   */
+  transformImport?: Array<string | { libraryName: string }>;
   mode?: "development" | "ci";
   root?: string;
   /** Default Observability export path for `mfdoctor runtime` when no trace arg is given.
@@ -716,6 +726,8 @@ export interface ResolvedDoctorOptions {
   };
   viteLifecycle?: ViteLifecycleFacts;
   viteConfigFacts?: ViteBundlerConfigFacts;
+  /** Normalized transformImport library names when provided by adapters/options. */
+  transformImportLibraries?: string[];
   mode: "development" | "ci";
   root: string;
   runtimeTrace?: string;

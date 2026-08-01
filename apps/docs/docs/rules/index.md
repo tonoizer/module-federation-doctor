@@ -34,6 +34,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`config/share-scope-undeclared`](./config/share-scope-undeclared.md) | error | A dependency placed in a scope the container does not initialize cannot be reused there. |
 | [`config/shared-capability-disabled`](./config/shared-capability-disabled.md) | error | Tree-shaken sharing code cannot register or consume configured shared packages. |
 | [`config/shared-externals-conflict`](./config/shared-externals-conflict.md) | error | A dependency cannot be provided by federation after the bundler removes it as an external. |
+| [`config/transform-import-share-conflict`](./config/transform-import-share-conflict.md) | warning | transformImport (or equivalent) can rewrite packages that are also shared, bypassing or duplicating the share scope. |
 | [`config/tree-shaking-server-calc-injection`](./config/tree-shaking-server-calc-injection.md) | warning | Runtime-injected used exports conflict with the deployment-owned `server-calc` contract. |
 | [`federation/external-runtime-provider-missing`](./federation/external-runtime-provider-missing.md) | error | External-runtime remotes cannot start without a federation-wide provider. |
 | [`federation/name-conflict`](./federation/name-conflict.md) | error | Duplicate container names collide in runtime data and global chunk storage. |

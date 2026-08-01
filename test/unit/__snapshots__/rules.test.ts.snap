@@ -48,6 +48,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "vite/remote-hmr-dev",
   "vite/alias-share-bypass",
   "vite/server-origin",
+  "config/transform-import-share-conflict",
   "artifact/manifest-assets-disabled",
   "artifact/manifest-disabled",
   "artifact/dts-disabled",
