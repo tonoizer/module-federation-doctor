@@ -183,6 +183,8 @@ export async function validateFixturePayloads(): Promise<void> {
           project: "host",
           evidence: { package: "react" },
           fingerprint: "fp-demo",
+          detailsSchema: "shared.version-mismatch.v1",
+          details: { package: "react", source: "requiredVersion" },
         },
       ],
     },

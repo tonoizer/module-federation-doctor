@@ -29,6 +29,7 @@ import type {
   RuleSetting,
   Severity,
 } from "./types.js";
+import { FINDING_DETAILS_SCHEMAS } from "./finding-details.js";
 import { deepFreeze, fingerprint, redact, sortFindings } from "./utils.js";
 import { writeFederationReports, writeReports } from "./reporters.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
@@ -57,6 +58,8 @@ async function runRule(
     const location = value.location
       ? { ...value.location, path: redact(value.location.path, root) as string }
       : undefined;
+    // Fingerprint inputs stay ruleId/project/location/evidence only (see utils.fingerprint).
+    // detailsSchema/details are attached after hashing so baselines/SARIF stay stable.
     const base = {
       schemaVersion: 1 as const,
       ruleId: rule.meta.id,
@@ -68,7 +71,12 @@ async function runRule(
       ...(location ? { location } : {}),
       ...(value.suggestion ? { suggestion: redact(value.suggestion, root) as string } : {}),
     };
-    findings.push({ ...base, fingerprint: fingerprint(base) });
+    findings.push({
+      ...base,
+      fingerprint: fingerprint(base),
+      ...(value.detailsSchema ? { detailsSchema: value.detailsSchema } : {}),
+      ...(value.details ? { details: redact(value.details, root) as Record<string, unknown> } : {}),
+    });
   };
   try {
     const returned = await rule.check({
@@ -206,10 +214,12 @@ function pushFederationFinding(
   project: string,
   message: string,
   evidence: Record<string, unknown>,
+  typedDetails?: { detailsSchema: string; details: Record<string, unknown> },
 ): void {
   const meta = federationRuleMeta.find((rule) => rule.id === ruleId);
   const resolved = parseSetting(rules?.[ruleId], meta?.severity ?? "warning");
   if (!resolved || !meta) return;
+  // Fingerprint excludes detailsSchema/details — never put schema version in evidence.
   const base = {
     schemaVersion: 1 as const,
     ruleId,
@@ -220,7 +230,12 @@ function pushFederationFinding(
     documentation: `/rules/${ruleId}`,
     suggestion: meta.fix,
   };
-  findings.push({ ...base, fingerprint: fingerprint(base) });
+  findings.push({
+    ...base,
+    fingerprint: fingerprint(base),
+    ...(typedDetails?.detailsSchema ? { detailsSchema: typedDetails.detailsSchema } : {}),
+    ...(typedDetails?.details ? { details: typedDetails.details } : {}),
+  });
 }
 
 export async function analyzeFederation(
@@ -373,6 +388,10 @@ export async function analyzeFederation(
         entries[0]?.project.project.name ?? "federation",
         `"${name}" has inconsistent singleton settings.`,
         { package: name },
+        {
+          detailsSchema: FINDING_DETAILS_SCHEMAS.SHARED_SINGLETON,
+          details: { package: name, kind: "mismatch" },
+        },
       );
     const versions = entries
       .map((entry) => ({

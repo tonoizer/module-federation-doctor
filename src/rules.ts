@@ -17,6 +17,11 @@ import {
   DEFAULT_SINGLETON_RISK_PACKAGES,
   isShareKeyUsed,
 } from "./shared-policy.js";
+import {
+  FINDING_DETAILS_SCHEMAS,
+  findingDetails,
+  type FindingDetailsAttachment,
+} from "./finding-details.js";
 import type {
   DoctorRule,
   NormalizedMFConfig,
@@ -92,11 +97,15 @@ function report(
   message: string,
   evidence: Record<string, unknown>,
   suggestion?: string,
+  typed?: FindingDetailsAttachment,
 ): void {
   context.report({
     message,
     evidence,
     ...(suggestion ? { suggestion } : {}),
+    ...(typed
+      ? { detailsSchema: typed.detailsSchema, details: typed.details as Record<string, unknown> }
+      : {}),
   });
 }
 
@@ -211,10 +220,19 @@ export const builtInRules: DoctorRule[] = [
         !remote.version &&
         (!remote.entry || (!remote.entry.includes("@") && !/^https?:\/\//.test(remote.entry)))
       )
-        report(context, `Remote "${name}" has an invalid entry.`, {
-          name,
-          entry: remote.entry,
-        });
+        report(
+          context,
+          `Remote "${name}" has an invalid entry.`,
+          {
+            name,
+            entry: remote.entry,
+          },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+            remote: name,
+            entry: remote.entry,
+          }),
+        );
     }
   }),
   createRule("config/filename-invalid", "error", (context) => {
@@ -245,6 +263,10 @@ export const builtInRules: DoctorRule[] = [
           `Remote "${name}" uses plain HTTP outside localhost.`,
           { name, entry: remote.entry },
           "Use HTTPS so remote code cannot be changed in transit.",
+          findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+            remote: name,
+            entry: remote.entry,
+          }),
         );
     }
   }),
@@ -258,6 +280,11 @@ export const builtInRules: DoctorRule[] = [
         `Remote "${name}" points at localhost in a CI/production Doctor run.`,
         { name, entry: remote.entry, mode: context.facts.bundler.mode },
         "Use deployed remote URLs for CI and production builds; keep localhost for local development mode.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+          remote: name,
+          entry: remote.entry,
+          mode: context.facts.bundler.mode,
+        }),
       );
     }
   }),
@@ -288,6 +315,12 @@ export const builtInRules: DoctorRule[] = [
         `Remote alias "${alias}" is a prefix of remote "${collision.name}"${collision.alias ? ` (alias "${collision.alias}")` : ""}.`,
         { alias, remote: remote.name, collision: collision.name, collisionAlias: collision.alias },
         "Rename aliases so none is a prefix of another remote name or alias.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+          remote: remote.name,
+          alias,
+          collision: collision.name,
+          ...(collision.alias !== undefined ? { collisionAlias: collision.alias } : {}),
+        }),
       );
     }
   }),
@@ -334,6 +367,9 @@ export const builtInRules: DoctorRule[] = [
       "Manifest generation is skipped because bundler `output.publicPath` is not a string.",
       { outputPublicPathKind: context.facts.bundler.outputPublicPathKind },
       "Set `output.publicPath` to a string URL, root-relative path, or `auto`.",
+      findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {
+        outputPublicPathKind: context.facts.bundler.outputPublicPathKind,
+      }),
     );
   }),
   createRule("config/remote-manifest-recommended", "info", (context) => {
@@ -344,6 +380,10 @@ export const builtInRules: DoctorRule[] = [
           `Remote "${name}" points straight to a remote entry.`,
           { name, entry: remote.entry },
           "Prefer `mf-manifest.json` when you need dynamic type hints, preloading, and DevTools metadata.",
+          findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+            remote: name,
+            entry: remote.entry,
+          }),
         );
   }),
   createRule("config/library-remote-type-mismatch", "warning", (context) => {
@@ -484,6 +524,9 @@ export const builtInRules: DoctorRule[] = [
         "Remote-consumption runtime code is disabled while remotes are configured.",
         { remotes: Object.keys(config.remotes) },
         "Remove `disableRemote` or remove all consumed remotes.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+          remotes: Object.keys(config.remotes),
+        }),
       );
   }),
   createRule("config/shared-capability-disabled", "error", (context) => {
@@ -787,6 +830,9 @@ export const builtInRules: DoctorRule[] = [
         "Manifest asset analysis is disabled for a producer.",
         { exposes: Object.keys(config.exposes) },
         "Enable asset analysis for production manifests; disabled analysis omits shared and expose asset detail.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {
+          exposes: Object.keys(config.exposes),
+        }),
       );
   }),
   createRule("artifact/manifest-disabled", "info", (context) => {
@@ -803,6 +849,7 @@ export const builtInRules: DoctorRule[] = [
         "Manifest generation is disabled.",
         {},
         "Enable `manifest` for runtime metadata, preload analysis, DevTools, and stronger Doctor checks.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {}),
       );
   }),
   createRule("artifact/dts-disabled", "warning", (context) => {
@@ -813,6 +860,9 @@ export const builtInRules: DoctorRule[] = [
         "Federated type generation is disabled for a producer.",
         { exposes: Object.keys(config.exposes) },
         "Enable `dts.generateTypes`, or document how consumers receive compatible declarations.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {
+          exposes: Object.keys(config.exposes),
+        }),
       );
   }),
   createRule("config/shared-externals-conflict", "error", (context) => {
@@ -831,19 +881,36 @@ export const builtInRules: DoctorRule[] = [
         semver.validRange(cleanRange(shared.requiredVersion)) &&
         !semver.satisfies(installed, cleanRange(shared.requiredVersion))
       )
-        report(context, `"${name}" does not satisfy its shared version range.`, {
-          package: name,
-          installed,
-          requiredVersion: shared.requiredVersion,
-        });
+        report(
+          context,
+          `"${name}" does not satisfy its shared version range.`,
+          {
+            package: name,
+            installed,
+            requiredVersion: shared.requiredVersion,
+          },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.SHARED_VERSION_MISMATCH, {
+            package: name,
+            source: "requiredVersion",
+            installed,
+            requiredVersion: shared.requiredVersion,
+          }),
+        );
     }
   }),
   createRule("artifact/manifest-invalid", "error", (context) => {
     const manifest = context.facts.artifacts.manifest;
     if (manifest && !manifest.valid)
-      report(context, "Module Federation manifest is not valid JSON or has an invalid shape.", {
-        path: manifest.path,
-      });
+      report(
+        context,
+        "Module Federation manifest is not valid JSON or has an invalid shape.",
+        {
+          path: manifest.path,
+        },
+        undefined,
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { path: manifest.path }),
+      );
   }),
   createRule("artifact/manifest-name-mismatch", "error", (context) => {
     const configName = mf(context)?.name;
@@ -854,6 +921,7 @@ export const builtInRules: DoctorRule[] = [
         "The emitted manifest belongs to a different federation container name.",
         { configName, manifestName },
         "Clean the output directory and make the plugin and Doctor use the same options object.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { configName, manifestName }),
       );
   }),
   createRule("artifact/manifest-remote-entry-missing", "error", (context) => {
@@ -875,6 +943,7 @@ export const builtInRules: DoctorRule[] = [
         "The remote entry named by the manifest was not emitted.",
         { remoteEntry },
         "Clean and rebuild; then verify filename, output path, and manifest generation use one config.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { remoteEntry }),
       );
   }),
   createRule("artifact/manifest-expose-assets-empty", "warning", (context) => {
@@ -894,6 +963,7 @@ export const builtInRules: DoctorRule[] = [
           `Manifest expose "${expose.key}" has no asset metadata.`,
           { expose: expose.key },
           "Verify the expose was included in the build and asset analysis completed.",
+          findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { expose: expose.key }),
         );
   }),
   createRule("artifact/manifest-shared-version-mismatch", "warning", (context) => {
@@ -912,6 +982,12 @@ export const builtInRules: DoctorRule[] = [
           `Manifest metadata for "${shared.name}" does not match the installed version.`,
           { package: shared.name, installed: local, manifestVersion: shared.version },
           "Clean the build and lockfile install; stale manifest metadata can break version negotiation.",
+          findingDetails(FINDING_DETAILS_SCHEMAS.SHARED_VERSION_MISMATCH, {
+            package: shared.name,
+            source: "manifest",
+            installed: local,
+            manifestVersion: shared.version,
+          }),
         );
     }
   }),
@@ -928,6 +1004,7 @@ export const builtInRules: DoctorRule[] = [
         "Producer manifest has no federated type metadata.",
         {},
         "Check DTS generation errors and ensure the manifest plugin receives type output metadata.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {}),
       );
   }),
   createRule("artifact/remote-entry-missing", "error", (context) => {
@@ -938,7 +1015,13 @@ export const builtInRules: DoctorRule[] = [
       Object.keys(config.exposes).length > 0 &&
       !context.facts.artifacts.emittedAssets.some((asset) => asset.endsWith(expected))
     )
-      report(context, `Expected remote entry "${expected}" was not emitted.`, { expected });
+      report(
+        context,
+        `Expected remote entry "${expected}" was not emitted.`,
+        { expected },
+        undefined,
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { expected }),
+      );
   }),
   createRule("artifact/expose-missing", "error", (context) => {
     const config = mf(context);
@@ -947,7 +1030,13 @@ export const builtInRules: DoctorRule[] = [
     const found = new Set(manifest.exposes.map((item) => item.key));
     for (const key of Object.keys(config.exposes))
       if (!found.has(key))
-        report(context, `Expose "${key}" is missing from the manifest.`, { key });
+        report(
+          context,
+          `Expose "${key}" is missing from the manifest.`,
+          { key },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { key }),
+        );
   }),
   createRule("doctor/partial-analysis", "warning", (context) => {
     const missing = Object.entries(context.facts.capabilities)
@@ -986,6 +1075,17 @@ export const builtInRules: DoctorRule[] = [
           ? "Pass explicit MF options."
           : (viteArtifactSuggestion ??
             "Run Doctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
+      findingDetails(FINDING_DETAILS_SCHEMAS.DOCTOR_PARTIAL_ANALYSIS, {
+        missing,
+        ...(unresolvedDynamic.length > 0
+          ? {
+              unresolvedDynamic: unresolvedDynamic as unknown as Array<Record<string, unknown>>,
+            }
+          : {}),
+        ...(context.facts.imports.evidenceSources
+          ? { evidenceSources: context.facts.imports.evidenceSources }
+          : {}),
+      }),
     );
   }),
   createRule("config/plugin-package-mismatch", "warning", (context) => {
@@ -1024,12 +1124,30 @@ export const builtInRules: DoctorRule[] = [
     const risks = singletonRiskSet(context);
     for (const [name, shared] of Object.entries(mf(context)?.shared ?? {}))
       if (risks.has(name) && !shared.singleton)
-        report(context, `"${name}" normally needs singleton sharing.`, { package: name });
+        report(
+          context,
+          `"${name}" normally needs singleton sharing.`,
+          { package: name },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.SHARED_SINGLETON, {
+            package: name,
+            kind: "risk",
+          }),
+        );
   }),
   createRule("shared/eager-without-singleton", "warning", (context) => {
     for (const [name, shared] of Object.entries(mf(context)?.shared ?? {}))
       if (shared.eager && !shared.singleton)
-        report(context, `"${name}" is eager but not singleton.`, { package: name });
+        report(
+          context,
+          `"${name}" is eager but not singleton.`,
+          { package: name },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.SHARED_SINGLETON, {
+            package: name,
+            kind: "eager-without-singleton",
+          }),
+        );
   }),
   createRule("shared/unused", "warning", (context) => {
     const alwaysShared = alwaysSharedSet(context);
@@ -1057,6 +1175,13 @@ export const builtInRules: DoctorRule[] = [
             dynamicPackages: context.facts.imports.dynamicPackages ?? [],
             importDepth: context.facts.imports.depth ?? context.sharedPolicy?.importDepth,
           },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.SHARED_UNUSED, {
+            package: name,
+            evidenceSources: context.facts.imports.evidenceSources ?? [],
+            dynamicPackages: context.facts.imports.dynamicPackages ?? [],
+            importDepth: context.facts.imports.depth ?? context.sharedPolicy?.importDepth,
+          }),
         );
   }),
   // Package-name heuristic — advisory `info` (strict keeps it from becoming a hard error).
@@ -1112,7 +1237,13 @@ export const builtInRules: DoctorRule[] = [
     const publicPath = context.facts.artifacts.manifest?.publicPath;
     // Relative `./` (common for Vite/Nuxt) is intentional; flag other opaque relative roots.
     if (publicPath && !/^(auto$|\/|\.\/|https?:\/\/)/.test(publicPath))
-      report(context, `Manifest public path "${publicPath}" may not resolve.`, { publicPath });
+      report(
+        context,
+        `Manifest public path "${publicPath}" may not resolve.`,
+        { publicPath },
+        undefined,
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { path: publicPath }),
+      );
   }),
   createRule("artifact/types-missing", "warning", (context) => {
     const manifest = context.facts.artifacts.manifest;
@@ -1123,7 +1254,13 @@ export const builtInRules: DoctorRule[] = [
         /(?:\.d\.(ts|mts)|@mf-types\.zip)$/.test(asset),
       )
     )
-      report(context, "No generated federation type files were found.", {});
+      report(
+        context,
+        "No generated federation type files were found.",
+        {},
+        undefined,
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {}),
+      );
   }),
   createRule("bridge/react-version-entry-prefer", "warning", (context) => {
     if (!isReactBridgeProject(context.facts)) return;

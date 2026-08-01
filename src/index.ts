@@ -1,3 +1,22 @@
+export {
+  FINDING_DETAILS_SCHEMAS,
+  TYPED_DETAILS_RULE_IDS,
+  findingDetails,
+  isKnownFindingDetailsSchema,
+  readFindingDetails,
+} from "./finding-details.js";
+export type {
+  ArtifactDetailsV1,
+  DoctorPartialAnalysisDetailsV1,
+  FindingDetailsAttachment,
+  FindingDetailsSchemaId,
+  FindingDetailsV1,
+  RemotesConfigDetailsV1,
+  SharedSingletonDetailsV1,
+  SharedUnusedDetailsV1,
+  SharedVersionMismatchDetailsV1,
+  TypedDetailsRuleId,
+} from "./finding-details.js";
 export { analyze, analyzeFederation } from "./engine.js";
 export { readCanonicalModuleFederationConfig } from "./canonical-config.js";
 export {
