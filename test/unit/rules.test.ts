@@ -853,7 +853,7 @@ describe("doctor/partial-analysis suggestions", () => {
   it("keeps Pass explicit MF options when config capability is missing", async () => {
     const facts = baseFacts();
     facts.capabilities.config = false;
-    facts.moduleFederation = undefined;
+    delete facts.moduleFederation;
     const findings = await runPartial(facts);
     expect(findings).toHaveLength(1);
     expect(findings[0]?.suggestion).toBe("Pass explicit MF options.");
