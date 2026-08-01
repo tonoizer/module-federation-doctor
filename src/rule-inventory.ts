@@ -820,6 +820,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "project.scope",
     "moduleFederation",
     "artifacts.manifest",
+    "bundler.name",
   ],
   "artifact/manifest-invalid": ["project.scope", "artifacts.manifest"],
   "artifact/manifest-name-mismatch": ["project.scope", "moduleFederation", "artifacts.manifest"],
@@ -827,6 +828,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "project.scope",
     "artifacts.manifest",
     "artifacts.emittedAssets",
+    "artifacts.assetSizes",
     "capabilities.emittedAssets",
   ],
   "artifact/manifest-shared-version-mismatch": [

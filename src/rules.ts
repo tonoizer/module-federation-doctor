@@ -794,19 +794,17 @@ export const builtInRules: DoctorRule[] = [
   createRule("artifact/manifest-remote-entry-missing", "error", (context) => {
     const manifest = context.facts.artifacts.manifest;
     const remoteEntry = manifest?.remoteEntry;
-    if (
-      manifest?.valid &&
-      remoteEntry &&
-      context.facts.capabilities.emittedAssets &&
-      !context.facts.artifacts.emittedAssets.some((asset) =>
-        emittedAssetMatches(
-          context,
-          manifest.path,
-          `${remoteEntry.path}${remoteEntry.name}`,
-          asset,
-        ),
-      )
-    )
+    if (!manifest?.valid || !remoteEntry || !context.facts.capabilities.emittedAssets) return;
+    const candidate = `${remoteEntry.path}${remoteEntry.name}`;
+    const emitted = context.facts.artifacts.emittedAssets.some((asset) =>
+      emittedAssetMatches(context, manifest.path, candidate, asset),
+    );
+    // Vite often leaves remoteEntry.path empty while assetSizes still records the basename.
+    const sized =
+      remoteEntry.path === ""
+        ? lookupAssetSize(context.facts.artifacts.assetSizes, remoteEntry.name) !== undefined
+        : context.facts.artifacts.assetSizes?.[candidate] !== undefined;
+    if (!emitted && !sized)
       report(
         context,
         "The remote entry named by the manifest was not emitted.",
@@ -817,6 +815,13 @@ export const builtInRules: DoctorRule[] = [
   createRule("artifact/manifest-expose-assets-empty", "warning", (context) => {
     const manifest = context.facts.artifacts.manifest;
     if (!manifest?.valid || mf(context)?.manifest?.options["disableAssetsAnalyze"] === true) return;
+    // Vite/Nuxt generators commonly omit nested expose asset lists even when emit succeeded.
+    if (
+      context.facts.bundler.name === "vite" &&
+      manifest.exposes.length > 0 &&
+      manifest.exposes.every((expose) => expose.assets.length === 0)
+    )
+      return;
     for (const expose of manifest.exposes)
       if (expose.assets.length === 0)
         report(
@@ -1040,7 +1045,8 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("artifact/public-path-suspicious", "warning", (context) => {
     const publicPath = context.facts.artifacts.manifest?.publicPath;
-    if (publicPath && !/^(auto$|\/|https?:\/\/)/.test(publicPath))
+    // Relative `./` (common for Vite/Nuxt) is intentional; flag other opaque relative roots.
+    if (publicPath && !/^(auto$|\/|\.\/|https?:\/\/)/.test(publicPath))
       report(context, `Manifest public path "${publicPath}" may not resolve.`, { publicPath });
   }),
   createRule("artifact/types-missing", "warning", (context) => {
