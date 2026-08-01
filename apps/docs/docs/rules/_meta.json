@@ -55,6 +55,13 @@
   },
   {
     "type": "dir",
+    "name": "vite",
+    "label": "Vite",
+    "collapsible": true,
+    "collapsed": true
+  },
+  {
+    "type": "dir",
     "name": "security",
     "label": "Security",
     "collapsible": true,

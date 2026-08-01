@@ -710,6 +710,63 @@ export const builtInRules: DoctorRule[] = [
         "For large builds, prefer `moduleParseIdleTimeout` so active parsing does not end early.",
       );
   }),
+  createRule("vite/remotes-prefer-module", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const config = mf(context);
+    const remotes = config?.remotes;
+    if (!remotes || Object.keys(remotes).length === 0) return;
+    if (optionBoolean(context.options, "preferModuleRemotes") === false) return;
+
+    const varFilename = config?.vite?.varFilename;
+    const allowVarWithFilename =
+      optionBoolean(context.options, "allowVarRemotesWithVarFilename") !== false;
+    if (varFilename && allowVarWithFilename) return;
+
+    // Vite string remotes / omitted type default to `var`. Explicit types such as
+    // `module` or `global` are intentional and stay quiet.
+    const defaultVarRemotes = Object.entries(remotes)
+      .filter(([, remote]) => !remote.type || remote.type === "var")
+      .map(([name, remote]) => ({
+        name,
+        type: remote.type ?? "var",
+        entry: remote.entry,
+      }));
+    if (defaultVarRemotes.length === 0) return;
+
+    report(
+      context,
+      "Vite remotes use string or default `var` typing without an intentional interop story.",
+      {
+        remotes: defaultVarRemotes,
+        ...(varFilename ? { varFilename } : {}),
+      },
+      "Prefer object remotes with `type: 'module'` for Vite↔Vite ESM. For webpack/rspack remotes, set an explicit type such as `global`. Keep `varFilename` when this producer intentionally emits a var entry for var hosts.",
+    );
+  }),
+  createRule("vite/var-filename-interop", "info", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const config = mf(context);
+    const varFilename = config?.vite?.varFilename;
+    if (!varFilename) return;
+    const remotes = config?.remotes ?? {};
+    if (Object.keys(remotes).length === 0) return;
+
+    const defaultVarRemotes = Object.entries(remotes)
+      .filter(([, remote]) => !remote.type || remote.type === "var")
+      .map(([name, remote]) => ({
+        name,
+        type: remote.type ?? "var",
+        entry: remote.entry,
+      }));
+    if (defaultVarRemotes.length === 0) return;
+
+    report(
+      context,
+      "`varFilename` is configured while remotes still use default `var` typing.",
+      { varFilename, remotes: defaultVarRemotes },
+      "Keep `varFilename` when this producer serves webpack/rspack var hosts. Prefer `type: 'module'` remotes for Vite↔Vite ESM consumers.",
+    );
+  }),
   createRule("artifact/manifest-assets-disabled", "warning", (context) => {
     const config = mf(context);
     if (
