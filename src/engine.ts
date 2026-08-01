@@ -23,6 +23,7 @@ import type {
   FederationAnalysisResult,
   OutputFormat,
   ProjectFacts,
+  BuildOutputInput,
   ResolvedDoctorOptions,
   RuleSetting,
   Severity,
@@ -128,11 +129,19 @@ async function runAnalysis(
   options: DoctorOptions = {},
   emittedAssets?: string[],
   diagnostics?: BuildDiagnostics,
+  buildOutputs?: BuildOutputInput[],
 ): Promise<AnalysisResult> {
   const resolved = await resolveOptions(options);
   try {
-    const facts = await collectProjectFacts(resolved);
-    if (emittedAssets) await addBuildFacts(facts, emittedAssets, resolved.root, diagnostics);
+    const boundedRoots = buildOutputs
+      ? buildOutputs
+          .filter((output) => output.buildWrite !== false)
+          .map((output) => output.outputRoot)
+          .filter((value): value is string => Boolean(value))
+      : undefined;
+    const facts = await collectProjectFacts(resolved, boundedRoots);
+    if (emittedAssets)
+      await addBuildFacts(facts, emittedAssets, resolved.root, diagnostics, buildOutputs);
     const rawFindings = sortFindings(
       (
         await Promise.all(
@@ -180,8 +189,9 @@ export async function analyzeBuild(
   options: DoctorOptions,
   emittedAssets: string[],
   diagnostics?: BuildDiagnostics,
+  buildOutputs?: BuildOutputInput[],
 ): Promise<AnalysisResult> {
-  return runAnalysis(options, emittedAssets, diagnostics);
+  return runAnalysis(options, emittedAssets, diagnostics, buildOutputs);
 }
 
 function pushFederationFinding(

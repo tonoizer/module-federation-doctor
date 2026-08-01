@@ -10,6 +10,8 @@ import type {
   ArtifactRecord,
   ArtifactStats,
   ArtifactFacts,
+  BuildRecord,
+  BuildOutputInput,
   ImportDepth,
   ImportEvidenceSource,
   ImportFacts,
@@ -569,7 +571,11 @@ function manifestAssetNames(manifest: NonNullable<ArtifactFacts["manifest"]>): s
 }
 
 /** Resolve byte sizes for manifest and emitted assets via on-disk `fs.stat`. */
-export async function attachAssetSizes(facts: ProjectFacts, root: string): Promise<void> {
+export async function attachAssetSizes(
+  facts: ProjectFacts,
+  root: string,
+  outputRoots?: readonly string[],
+): Promise<void> {
   const names = new Set<string>(facts.artifacts.emittedAssets);
   if (facts.artifacts.manifest?.valid)
     for (const name of manifestAssetNames(facts.artifacts.manifest)) names.add(name);
@@ -584,24 +590,31 @@ export async function attachAssetSizes(facts: ProjectFacts, root: string): Promi
   const sizes: Record<string, number> = {};
 
   for (const name of names) {
-    const basename = path.basename(name);
-    const candidates = [
-      path.join(manifestDir, name),
-      path.join(manifestDir, basename),
-      path.join(root, name),
-      path.join(root, "dist", name),
-      path.join(root, "dist", basename),
-      path.join(root, "build", name),
-      path.join(root, "build", basename),
-      ...facts.artifacts.emittedAssets
-        .filter(
-          (emitted) =>
-            emitted === name ||
-            emitted.endsWith(`/${basename}`) ||
-            path.basename(emitted) === basename,
-        )
-        .map((emitted) => path.join(root, emitted)),
-    ];
+    const normalizedName = normalizePath(name);
+    const basename = path.basename(normalizedName);
+    const candidates =
+      outputRoots !== undefined
+        ? outputRoots.flatMap((outputRoot) => {
+            const normalizedRoot = normalizePath(outputRoot);
+            if (
+              normalizedName === normalizedRoot ||
+              normalizedName.startsWith(`${normalizedRoot}/`)
+            )
+              return [path.join(root, name)];
+            return [path.join(root, outputRoot, name)];
+          })
+        : [
+            path.join(manifestDir, name),
+            path.join(manifestDir, basename),
+            path.join(root, name),
+            path.join(root, "dist", name),
+            path.join(root, "dist", basename),
+            path.join(root, "build", name),
+            path.join(root, "build", basename),
+            ...facts.artifacts.emittedAssets
+              .filter((emitted) => emitted === name)
+              .map((emitted) => path.join(root, emitted)),
+          ];
 
     for (const candidate of candidates) {
       try {
@@ -609,8 +622,10 @@ export async function attachAssetSizes(facts: ProjectFacts, root: string): Promi
         if (!stat.isFile()) continue;
         const relative = relativePath(root, candidate);
         sizes[relative] = stat.size;
-        sizes[normalizePath(name)] = stat.size;
-        sizes[basename] = stat.size;
+        if (outputRoots === undefined || outputRoots.length === 1) {
+          sizes[normalizedName] = stat.size;
+          sizes[basename] = stat.size;
+        }
         break;
       } catch {
         // Missing candidates are expected before a build or for remote-only names.
@@ -632,9 +647,6 @@ export function lookupAssetSize(
   if (sizes[normalized] !== undefined) return sizes[normalized];
   const basename = path.basename(normalized);
   if (sizes[basename] !== undefined) return sizes[basename];
-  for (const [key, bytes] of Object.entries(sizes))
-    if (key === normalized || key.endsWith(`/${basename}`) || path.basename(key) === basename)
-      return bytes;
   return undefined;
 }
 
@@ -656,6 +668,7 @@ export function sumAssetSizes(
 async function collectArtifacts(
   root: string,
   names: ResolvedDoctorOptions["artifactNames"],
+  boundedRoots?: string[],
 ): Promise<ArtifactFacts> {
   const validateName = (name: string): string => {
     if (!name || path.isAbsolute(name) || path.win32.isAbsolute(name) || /^[A-Za-z]:/.test(name))
@@ -668,14 +681,15 @@ async function collectArtifacts(
   const manifestNames = names.manifest.map(validateName);
   const statsNames = names.stats.map(validateName);
   const rootReal = await fs.realpath(root);
-  const patterns = [
-    ...manifestNames.flatMap((name) =>
-      name.includes("/") ? [fg.escapePath(name)] : [`**/${fg.escapePath(name)}`],
-    ),
-    ...statsNames.flatMap((name) =>
-      name.includes("/") ? [fg.escapePath(name)] : [`**/${fg.escapePath(name)}`],
-    ),
-  ];
+  const allNames = [...manifestNames, ...statsNames];
+  const patterns =
+    boundedRoots !== undefined
+      ? boundedRoots.flatMap((outputRoot) =>
+          allNames.map((name) => fg.escapePath(normalizePath(path.posix.join(outputRoot, name)))),
+        )
+      : allNames.map((name) =>
+          name.includes("/") ? fg.escapePath(name) : `**/${fg.escapePath(name)}`,
+        );
   const candidates = await fg([...new Set(patterns)], {
     cwd: root,
     ignore: ["**/node_modules/**", "**/.mf/**"],
@@ -686,17 +700,13 @@ async function collectArtifacts(
   const kindsFor = (file: string): ArtifactKind[] => {
     const normalized = normalizePath(file);
     const basename = path.posix.basename(normalized);
+    const matches = (name: string): boolean =>
+      normalized === name ||
+      (!name.includes("/") && basename === name) ||
+      Boolean(boundedRoots?.some((rootName) => normalized === path.posix.join(rootName, name)));
     return [
-      ...(manifestNames.some(
-        (name) => normalized === name || (!name.includes("/") && basename === name),
-      )
-        ? (["manifest"] as const)
-        : []),
-      ...(statsNames.some(
-        (name) => normalized === name || (!name.includes("/") && basename === name),
-      )
-        ? (["stats"] as const)
-        : []),
+      ...(manifestNames.some(matches) ? (["manifest"] as const) : []),
+      ...(statsNames.some(matches) ? (["stats"] as const) : []),
     ];
   };
   const records: ArtifactRecord[] = [];
@@ -752,7 +762,10 @@ async function collectArtifacts(
   return artifact;
 }
 
-export async function collectProjectFacts(options: ResolvedDoctorOptions): Promise<ProjectFacts> {
+export async function collectProjectFacts(
+  options: ResolvedDoctorOptions,
+  boundedRoots?: string[],
+): Promise<ProjectFacts> {
   const packageJson = await readPackage(options.root);
   const declared = {
     ...packageJson.peerDependencies,
@@ -760,7 +773,7 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     ...packageJson.dependencies,
   };
   const scan = await scanProjectImports(options);
-  const artifacts = await collectArtifacts(options.root, options.artifactNames);
+  const artifacts = await collectArtifacts(options.root, options.artifactNames, boundedRoots);
   const normalizedMf =
     normalizeModuleFederation(options.moduleFederation) ??
     (await detectFromManifest(options.root, artifacts.manifest));
@@ -875,6 +888,7 @@ export async function addBuildFacts(
   assets: string[],
   root: string,
   diagnostics?: BuildDiagnostics,
+  outputs?: BuildOutputInput[],
 ): Promise<ProjectFacts> {
   facts.artifacts.emittedAssets = assets
     .map((item) => relativePath(root, path.resolve(root, item)))
@@ -884,6 +898,168 @@ export async function addBuildFacts(
     facts.bundler.moduleFederationPluginCount = diagnostics.moduleFederationPluginCount;
   if (diagnostics?.outputPublicPathKind)
     facts.bundler.outputPublicPathKind = diagnostics.outputPublicPathKind;
-  await attachAssetSizes(facts, root);
+  if (outputs) {
+    const orderedOutputs = outputs
+      .slice()
+      .sort((left, right) =>
+        `${left.adapter}:${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.sourceHook}`.localeCompare(
+          `${right.adapter}:${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.sourceHook}`,
+        ),
+      );
+    const builds: BuildRecord[] = orderedOutputs.map((output, index) => {
+      const id = `${output.adapter}-build-${index + 1}`;
+      const outputRoot = output.outputRoot
+        ? relativePath(root, path.resolve(root, output.outputRoot))
+        : undefined;
+      const emittedAssets = (output.buildWrite === false ? [] : output.emittedAssets)
+        .map((asset) =>
+          outputRoot ? normalizePath(path.posix.join(outputRoot, asset)) : normalizePath(asset),
+        )
+        .sort();
+      const artifactRecords: ArtifactRecord[] = [];
+      for (const record of facts.artifacts.records ?? []) {
+        const belongsToOutput = (() => {
+          if (!outputRoot || output.buildWrite === false) return false;
+          if (
+            outputRoot !== "." &&
+            record.path !== outputRoot &&
+            !record.path.startsWith(`${outputRoot}/`)
+          )
+            return false;
+          const relativeArtifact =
+            outputRoot === "." ? record.path : record.path.slice(`${outputRoot}/`.length);
+          return output.emittedAssets.some((asset) => normalizePath(asset) === relativeArtifact);
+        })();
+        if (belongsToOutput)
+          artifactRecords.push(
+            Object.assign({}, record, { source: "emitted" as const, buildId: id }),
+          );
+      }
+      const outputRootCapability = output.outputRoot
+        ? {
+            state: "exact" as const,
+            reason: "Resolved output root was public.",
+            source: output.sourceHook,
+          }
+        : {
+            state: "unavailable" as const,
+            reason: "The adapter did not expose an output root.",
+            source: output.sourceHook,
+          };
+      const emittedCapability =
+        output.buildWrite === false
+          ? {
+              state: "not-applicable" as const,
+              reason: "Build writing was disabled; no files were written.",
+              source: output.sourceHook,
+            }
+          : output.emittedAssetsSource === "output-root-scan" && output.emittedAssets.length > 0
+            ? {
+                state: "partial" as const,
+                reason:
+                  "Asset names came from a bounded output-root scan after an empty public bundle.",
+                source: "closeBundle",
+              }
+            : output.emittedAssets.length > 0
+              ? {
+                  state: "exact" as const,
+                  reason: "Asset names came from the public bundle.",
+                  source: output.sourceHook,
+                }
+              : {
+                  state: "partial" as const,
+                  reason: "The public bundle contained no asset names.",
+                  source: output.sourceHook,
+                };
+      const artifactCapability =
+        output.buildWrite === false
+          ? {
+              state: "not-applicable" as const,
+              reason: "Artifacts cannot be emitted when writing is disabled.",
+              source: output.sourceHook,
+            }
+          : {
+              state: artifactRecords.length > 0 ? ("exact" as const) : ("partial" as const),
+              reason:
+                artifactRecords.length > 0
+                  ? "Artifacts matched inside this output root."
+                  : "No configured artifact was found in this output.",
+              source: output.sourceHook,
+            };
+      const modeCapability = output.effectiveMode
+        ? {
+            state: "exact" as const,
+            reason: "Effective mode came from public resolved config.",
+            source: output.sourceHook,
+          }
+        : {
+            state: "unavailable" as const,
+            reason: "The adapter did not expose an effective build mode.",
+            source: output.sourceHook,
+          };
+      const targetCapability =
+        output.target || output.targetKind
+          ? {
+              state: "exact" as const,
+              reason: "Target came from public config.",
+              source: output.sourceHook,
+            }
+          : {
+              state: "unavailable" as const,
+              reason: "The adapter did not expose a target.",
+              source: output.sourceHook,
+            };
+      const build: BuildRecord = {
+        id,
+        adapter: output.adapter,
+        bundler: output.bundler,
+        emittedAssets,
+        artifacts: artifactRecords,
+        capabilities: {
+          outputRoot: outputRootCapability,
+          emittedAssets: emittedCapability,
+          artifacts: artifactCapability,
+          effectiveMode: modeCapability,
+          target: targetCapability,
+        },
+        sourceHook: output.sourceHook,
+      };
+      if (output.flavor) build.flavor = output.flavor;
+      if (output.engine) build.engine = output.engine;
+      if (outputRoot) build.outputRoot = outputRoot;
+      if (output.effectiveMode) build.effectiveMode = output.effectiveMode;
+      if (output.target) build.target = output.target;
+      if (output.targetKind) build.targetKind = output.targetKind;
+      return build;
+    });
+    facts.builds = builds.sort((a, b) => a.id.localeCompare(b.id));
+    // Compatibility view: deterministic primary-build projection.
+    facts.artifacts.emittedAssets = [
+      ...new Set(builds.flatMap((build) => build.emittedAssets)),
+    ].sort();
+    facts.capabilities.emittedAssets =
+      builds.length > 0 &&
+      builds.every((build) => build.capabilities.emittedAssets.state === "exact");
+    const currentRecords = builds.flatMap((build) => build.artifacts);
+    const firstCurrent = (kind: ArtifactKind) => {
+      const records = currentRecords
+        .filter((record) => record.kind === kind)
+        .sort((left, right) => left.path.localeCompare(right.path));
+      // Prefer malformed current evidence so a valid artifact from another
+      // output cannot hide a broken artifact from this build cycle.
+      return records.find((record) => !record.valid) ?? records[0];
+    };
+    const currentManifest = firstCurrent("manifest")?.manifest;
+    const currentStats = firstCurrent("stats")?.stats;
+    if (currentManifest) facts.artifacts.manifest = currentManifest;
+    else delete facts.artifacts.manifest;
+    if (currentStats) facts.artifacts.stats = currentStats;
+    else delete facts.artifacts.stats;
+  }
+  const recordedOutputRoots = facts.builds
+    ?.filter((build) => build.capabilities.emittedAssets.state !== "not-applicable")
+    .map((build) => build.outputRoot)
+    .filter((value): value is string => Boolean(value));
+  await attachAssetSizes(facts, root, recordedOutputRoots);
   return facts;
 }

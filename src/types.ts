@@ -227,6 +227,13 @@ export interface ManifestShared {
 export type ArtifactKind = "manifest" | "stats";
 export type ArtifactSource = "discovered" | "emitted";
 export type ArtifactState = "valid" | "malformed";
+export type BuildCapabilityState = "exact" | "partial" | "unavailable" | "not-applicable";
+
+export interface BuildCapability {
+  state: BuildCapabilityState;
+  reason: string;
+  source?: string;
+}
 
 interface ArtifactRecordBase {
   kind: ArtifactKind;
@@ -234,6 +241,9 @@ interface ArtifactRecordBase {
   valid: boolean;
   source: ArtifactSource;
   state: ArtifactState;
+  /** Stable run-local build link when the artifact came from a build hook. */
+  buildId?: string;
+  configuredName?: string;
 }
 
 export type ArtifactManifestRecord = ArtifactRecordBase & {
@@ -287,6 +297,57 @@ export interface ArtifactFacts {
   assetSizes?: Record<string, number>;
 }
 
+export interface BuildRecord {
+  id: string;
+  adapter: BundlerName;
+  bundler: BundlerName;
+  flavor?: ViteLifecycleFlavor;
+  engine?: ViteLifecycleEngine;
+  /** Safe project-relative output root. */
+  outputRoot?: string;
+  emittedAssets: string[];
+  artifacts: ArtifactRecord[];
+  effectiveMode?: string;
+  target?: string;
+  targetKind?: "web" | "node" | "ssr" | "worker" | "unknown";
+  capabilities: {
+    outputRoot: BuildCapability;
+    emittedAssets: BuildCapability;
+    artifacts: BuildCapability;
+    effectiveMode: BuildCapability;
+    target: BuildCapability;
+  };
+  /** Public hook that finalized this output record (adapter-specific). */
+  sourceHook: string;
+}
+
+/**
+ * Adapter-agnostic per-output input for collector normalization.
+ * Vite fills this from public hooks; other adapters can reuse the same seam.
+ */
+export interface BuildOutputInput {
+  adapter: BundlerName;
+  bundler: BundlerName;
+  outputRoot?: string;
+  /** Asset names relative to `outputRoot` when that root is known. */
+  emittedAssets: string[];
+  /**
+   * How asset names were learned. `bundle` is exact compiler evidence;
+   * `output-root-scan` is a bounded disk recovery (partial).
+   */
+  emittedAssetsSource?: "bundle" | "output-root-scan";
+  sourceHook: string;
+  effectiveMode?: string;
+  target?: string;
+  targetKind?: BuildRecord["targetKind"];
+  flavor?: ViteLifecycleFlavor;
+  engine?: ViteLifecycleEngine;
+  buildWrite?: boolean;
+}
+
+/** @deprecated Use {@link BuildOutputInput}. Kept as an alias for the Vite slice. */
+export type ViteBuildOutputInput = BuildOutputInput;
+
 export interface ProjectFacts {
   schemaVersion: 1;
   project: ProjectIdentity;
@@ -296,6 +357,8 @@ export interface ProjectFacts {
   dependencies: DependencyFacts;
   imports: ImportFacts;
   artifacts: ArtifactFacts;
+  /** Exact per-output records. Legacy artifact fields remain the compatibility view. */
+  builds?: BuildRecord[];
 }
 
 export interface DoctorFinding {

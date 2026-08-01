@@ -113,6 +113,53 @@
         }
       },
       "additionalProperties": false
+    },
+    "builds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "adapter",
+          "bundler",
+          "emittedAssets",
+          "artifacts",
+          "capabilities",
+          "sourceHook"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "adapter": {
+            "enum": ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"]
+          },
+          "bundler": {
+            "enum": ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"]
+          },
+          "flavor": { "enum": ["vite", "rolldown-vite", "vite-plus"] },
+          "engine": { "enum": ["rollup", "rolldown"] },
+          "outputRoot": { "type": "string" },
+          "emittedAssets": { "$ref": "#/$defs/stringArray" },
+          "artifacts": { "type": "array", "items": { "type": "object" } },
+          "effectiveMode": { "type": "string" },
+          "target": { "type": "string" },
+          "targetKind": { "enum": ["web", "node", "ssr", "worker", "unknown"] },
+          "capabilities": {
+            "type": "object",
+            "required": ["outputRoot", "emittedAssets", "artifacts", "effectiveMode", "target"],
+            "additionalProperties": false,
+            "patternProperties": {},
+            "properties": {
+              "outputRoot": { "$ref": "#/$defs/buildCapability" },
+              "emittedAssets": { "$ref": "#/$defs/buildCapability" },
+              "artifacts": { "$ref": "#/$defs/buildCapability" },
+              "effectiveMode": { "$ref": "#/$defs/buildCapability" },
+              "target": { "$ref": "#/$defs/buildCapability" }
+            }
+          },
+          "sourceHook": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false,
@@ -124,6 +171,16 @@
     "stringMap": {
       "type": "object",
       "additionalProperties": { "type": "string" }
+    },
+    "buildCapability": {
+      "type": "object",
+      "required": ["state", "reason"],
+      "properties": {
+        "state": { "enum": ["exact", "partial", "unavailable", "not-applicable"] },
+        "reason": { "type": "string" },
+        "source": { "type": "string" }
+      },
+      "additionalProperties": false
     },
     "capabilities": {
       "type": "object",
