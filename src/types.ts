@@ -227,6 +227,13 @@ export interface ManifestShared {
 export type ArtifactKind = "manifest" | "stats";
 export type ArtifactSource = "discovered" | "emitted";
 export type ArtifactState = "valid" | "malformed";
+export type BuildCapabilityState = "exact" | "partial" | "unavailable" | "not-applicable";
+
+export interface BuildCapability {
+  state: BuildCapabilityState;
+  reason: string;
+  source?: string;
+}
 
 interface ArtifactRecordBase {
   kind: ArtifactKind;
@@ -234,6 +241,9 @@ interface ArtifactRecordBase {
   valid: boolean;
   source: ArtifactSource;
   state: ArtifactState;
+  /** Stable run-local build link when the artifact came from a build hook. */
+  buildId?: string;
+  configuredName?: string;
 }
 
 export type ArtifactManifestRecord = ArtifactRecordBase & {
@@ -287,6 +297,41 @@ export interface ArtifactFacts {
   assetSizes?: Record<string, number>;
 }
 
+export interface BuildRecord {
+  id: string;
+  adapter: "vite";
+  bundler: "vite";
+  flavor?: ViteLifecycleFlavor;
+  engine?: ViteLifecycleEngine;
+  /** Safe project-relative output root. */
+  outputRoot?: string;
+  emittedAssets: string[];
+  artifacts: ArtifactRecord[];
+  effectiveMode?: string;
+  target?: string;
+  targetKind?: "web" | "node" | "ssr" | "worker" | "unknown";
+  capabilities: {
+    outputRoot: BuildCapability;
+    emittedAssets: BuildCapability;
+    artifacts: BuildCapability;
+    effectiveMode: BuildCapability;
+    target: BuildCapability;
+  };
+  sourceHook: "writeBundle" | "closeBundle";
+}
+
+export interface ViteBuildOutputInput {
+  outputRoot?: string;
+  emittedAssets: string[];
+  sourceHook: "writeBundle" | "closeBundle";
+  effectiveMode?: string;
+  target?: string;
+  targetKind?: BuildRecord["targetKind"];
+  flavor?: ViteLifecycleFlavor;
+  engine?: ViteLifecycleEngine;
+  buildWrite?: boolean;
+}
+
 export interface ProjectFacts {
   schemaVersion: 1;
   project: ProjectIdentity;
@@ -296,6 +341,8 @@ export interface ProjectFacts {
   dependencies: DependencyFacts;
   imports: ImportFacts;
   artifacts: ArtifactFacts;
+  /** Exact per-output records. Legacy artifact fields remain the compatibility view. */
+  builds?: BuildRecord[];
 }
 
 export interface DoctorFinding {

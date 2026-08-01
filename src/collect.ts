@@ -10,6 +10,8 @@ import type {
   ArtifactRecord,
   ArtifactStats,
   ArtifactFacts,
+  BuildRecord,
+  ViteBuildOutputInput,
   ImportDepth,
   ImportEvidenceSource,
   ImportFacts,
@@ -656,6 +658,7 @@ export function sumAssetSizes(
 async function collectArtifacts(
   root: string,
   names: ResolvedDoctorOptions["artifactNames"],
+  boundedRoots?: string[],
 ): Promise<ArtifactFacts> {
   const validateName = (name: string): string => {
     if (!name || path.isAbsolute(name) || path.win32.isAbsolute(name) || /^[A-Za-z]:/.test(name))
@@ -668,14 +671,15 @@ async function collectArtifacts(
   const manifestNames = names.manifest.map(validateName);
   const statsNames = names.stats.map(validateName);
   const rootReal = await fs.realpath(root);
-  const patterns = [
-    ...manifestNames.flatMap((name) =>
-      name.includes("/") ? [fg.escapePath(name)] : [`**/${fg.escapePath(name)}`],
-    ),
-    ...statsNames.flatMap((name) =>
-      name.includes("/") ? [fg.escapePath(name)] : [`**/${fg.escapePath(name)}`],
-    ),
-  ];
+  const allNames = [...manifestNames, ...statsNames];
+  const patterns =
+    boundedRoots !== undefined
+      ? boundedRoots.flatMap((outputRoot) =>
+          allNames.map((name) => fg.escapePath(normalizePath(path.posix.join(outputRoot, name)))),
+        )
+      : allNames.map((name) =>
+          name.includes("/") ? fg.escapePath(name) : `**/${fg.escapePath(name)}`,
+        );
   const candidates = await fg([...new Set(patterns)], {
     cwd: root,
     ignore: ["**/node_modules/**", "**/.mf/**"],
@@ -686,17 +690,13 @@ async function collectArtifacts(
   const kindsFor = (file: string): ArtifactKind[] => {
     const normalized = normalizePath(file);
     const basename = path.posix.basename(normalized);
+    const matches = (name: string): boolean =>
+      normalized === name ||
+      (!name.includes("/") && basename === name) ||
+      Boolean(boundedRoots?.some((rootName) => normalized === path.posix.join(rootName, name)));
     return [
-      ...(manifestNames.some(
-        (name) => normalized === name || (!name.includes("/") && basename === name),
-      )
-        ? (["manifest"] as const)
-        : []),
-      ...(statsNames.some(
-        (name) => normalized === name || (!name.includes("/") && basename === name),
-      )
-        ? (["stats"] as const)
-        : []),
+      ...(manifestNames.some(matches) ? (["manifest"] as const) : []),
+      ...(statsNames.some(matches) ? (["stats"] as const) : []),
     ];
   };
   const records: ArtifactRecord[] = [];
@@ -752,7 +752,10 @@ async function collectArtifacts(
   return artifact;
 }
 
-export async function collectProjectFacts(options: ResolvedDoctorOptions): Promise<ProjectFacts> {
+export async function collectProjectFacts(
+  options: ResolvedDoctorOptions,
+  boundedRoots?: string[],
+): Promise<ProjectFacts> {
   const packageJson = await readPackage(options.root);
   const declared = {
     ...packageJson.peerDependencies,
@@ -760,7 +763,7 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     ...packageJson.dependencies,
   };
   const scan = await scanProjectImports(options);
-  const artifacts = await collectArtifacts(options.root, options.artifactNames);
+  const artifacts = await collectArtifacts(options.root, options.artifactNames, boundedRoots);
   const normalizedMf =
     normalizeModuleFederation(options.moduleFederation) ??
     (await detectFromManifest(options.root, artifacts.manifest));
@@ -875,6 +878,7 @@ export async function addBuildFacts(
   assets: string[],
   root: string,
   diagnostics?: BuildDiagnostics,
+  outputs?: ViteBuildOutputInput[],
 ): Promise<ProjectFacts> {
   facts.artifacts.emittedAssets = assets
     .map((item) => relativePath(root, path.resolve(root, item)))
@@ -884,6 +888,146 @@ export async function addBuildFacts(
     facts.bundler.moduleFederationPluginCount = diagnostics.moduleFederationPluginCount;
   if (diagnostics?.outputPublicPathKind)
     facts.bundler.outputPublicPathKind = diagnostics.outputPublicPathKind;
+  if (outputs) {
+    const orderedOutputs = outputs
+      .slice()
+      .sort((left, right) =>
+        `${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.sourceHook}`.localeCompare(
+          `${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.sourceHook}`,
+        ),
+      );
+    const builds: BuildRecord[] = orderedOutputs.map((output, index) => {
+      const id = `vite-build-${index + 1}`;
+      const outputRoot = output.outputRoot
+        ? relativePath(root, path.resolve(root, output.outputRoot))
+        : undefined;
+      const emittedAssets = output.emittedAssets
+        .map((asset) =>
+          outputRoot ? normalizePath(path.posix.join(outputRoot, asset)) : normalizePath(asset),
+        )
+        .sort();
+      const artifactRecords: ArtifactRecord[] = [];
+      for (const record of facts.artifacts.records ?? []) {
+        const belongsToOutput = (() => {
+          if (!outputRoot) return false;
+          if (
+            outputRoot !== "." &&
+            record.path !== outputRoot &&
+            !record.path.startsWith(`${outputRoot}/`)
+          )
+            return false;
+          const relativeArtifact =
+            outputRoot === "." ? record.path : record.path.slice(`${outputRoot}/`.length);
+          return output.emittedAssets.some(
+            (asset) =>
+              normalizePath(asset) === relativeArtifact ||
+              path.posix.basename(asset) === path.posix.basename(relativeArtifact),
+          );
+        })();
+        if (belongsToOutput)
+          artifactRecords.push(
+            Object.assign({}, record, { source: "emitted" as const, buildId: id }),
+          );
+      }
+      const outputRootCapability = output.outputRoot
+        ? {
+            state: "exact" as const,
+            reason: "Resolved Vite output root was public.",
+            source: "configResolved",
+          }
+        : {
+            state: "unavailable" as const,
+            reason: "Vite did not expose an output root.",
+            source: output.sourceHook,
+          };
+      const emittedCapability =
+        output.buildWrite === false
+          ? {
+              state: "not-applicable" as const,
+              reason: "Vite build.write was false; no files were written.",
+              source: "configResolved",
+            }
+          : output.emittedAssets.length > 0
+            ? {
+                state: "exact" as const,
+                reason: "Asset names came from the public bundle.",
+                source: "writeBundle",
+              }
+            : {
+                state: "partial" as const,
+                reason: "The public bundle contained no asset names.",
+                source: output.sourceHook,
+              };
+      const artifactCapability =
+        output.buildWrite === false
+          ? {
+              state: "not-applicable" as const,
+              reason: "Artifacts cannot be emitted when build.write is false.",
+              source: "configResolved",
+            }
+          : {
+              state: artifactRecords.length > 0 ? ("exact" as const) : ("partial" as const),
+              reason:
+                artifactRecords.length > 0
+                  ? "Artifacts matched inside this output root."
+                  : "No configured artifact was found in this output.",
+              source: output.sourceHook,
+            };
+      const modeCapability = output.effectiveMode
+        ? {
+            state: "exact" as const,
+            reason: "Effective mode came from resolved Vite config.",
+            source: "configResolved",
+          }
+        : {
+            state: "unavailable" as const,
+            reason: "Vite did not expose an effective build mode.",
+            source: "configResolved",
+          };
+      const targetCapability =
+        output.target || output.targetKind
+          ? {
+              state: "exact" as const,
+              reason: "Target came from public Vite config.",
+              source: "configResolved",
+            }
+          : {
+              state: "unavailable" as const,
+              reason: "Vite did not expose a target.",
+              source: "configResolved",
+            };
+      const build: BuildRecord = {
+        id,
+        adapter: "vite",
+        bundler: "vite",
+        emittedAssets,
+        artifacts: artifactRecords,
+        capabilities: {
+          outputRoot: outputRootCapability,
+          emittedAssets: emittedCapability,
+          artifacts: artifactCapability,
+          effectiveMode: modeCapability,
+          target: targetCapability,
+        },
+        sourceHook: output.sourceHook,
+      };
+      if (output.flavor) build.flavor = output.flavor;
+      if (output.engine) build.engine = output.engine;
+      if (outputRoot) build.outputRoot = outputRoot;
+      if (output.effectiveMode) build.effectiveMode = output.effectiveMode;
+      if (output.target) build.target = output.target;
+      if (output.targetKind) build.targetKind = output.targetKind;
+      return build;
+    });
+    facts.builds = builds.sort((a, b) => a.id.localeCompare(b.id));
+    // Compatibility view: deterministic primary-build projection.
+    facts.artifacts.emittedAssets = [
+      ...new Set(builds.flatMap((build) => build.emittedAssets)),
+    ].sort();
+    facts.capabilities.emittedAssets = builds.every(
+      (build) => build.capabilities.emittedAssets.state === "exact",
+    );
+  }
   await attachAssetSizes(facts, root);
   return facts;
 }

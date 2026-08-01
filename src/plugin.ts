@@ -1,8 +1,14 @@
 import { createUnplugin, type UnpluginOptions } from "unplugin";
-import fg from "fast-glob";
-import { analyze, analyzeBuild } from "./engine.js";
+import path from "node:path";
+import { analyzeBuild } from "./engine.js";
 import type { BuildDiagnostics } from "./collect.js";
-import type { AnalysisResult, BundlerName, DoctorOptions, OutputPublicPathKind } from "./types.js";
+import type {
+  AnalysisResult,
+  BundlerName,
+  DoctorOptions,
+  OutputPublicPathKind,
+  ViteBuildOutputInput,
+} from "./types.js";
 import { detectViteLifecycle, withPostEmitHook, type ViteHookMeta } from "./vite-lifecycle.js";
 
 /**
@@ -107,11 +113,32 @@ export function attachDoctorAfterEmit(compiler: CompilerLike, configured: Doctor
   });
 }
 
-async function listViteEmittedAssets(root: string): Promise<string[]> {
-  return fg(["dist/**/*", "build/**/*"], {
-    cwd: root,
-    onlyFiles: true,
-  });
+type ViteResolvedConfigLike = {
+  root?: string;
+  command?: string;
+  mode?: string;
+  build?: { outDir?: string; write?: boolean; ssr?: boolean; target?: string };
+  ssr?: { target?: string };
+};
+
+type ViteOutputOptionsLike = { dir?: string; file?: string };
+
+function targetKind(config: ViteResolvedConfigLike): ViteBuildOutputInput["targetKind"] {
+  const raw =
+    config.build?.ssr || config.ssr?.target ? (config.ssr?.target ?? "ssr") : config.build?.target;
+  if (!raw) return undefined;
+  const value = String(raw).toLowerCase();
+  if (value.includes("node") || value.includes("deno") || value.includes("bun")) return "node";
+  if (value.includes("worker")) return "worker";
+  if (config.build?.ssr) return "ssr";
+  return "web";
+}
+
+function safeOutputRoot(root: string, value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const absolute = path.resolve(root, value);
+  const relative = path.relative(root, absolute).replaceAll(path.sep, "/");
+  return relative === "" ? "." : relative.startsWith("..") ? undefined : relative;
 }
 
 /**
@@ -124,47 +151,86 @@ async function listViteEmittedAssets(root: string): Promise<string[]> {
  * `doctor/partial-analysis` stays honest.
  */
 function createViteFamilyHooks(configured: DoctorOptions) {
+  let resolvedConfig: ViteResolvedConfigLike | undefined;
+  let outputs: ViteBuildOutputInput[] = [];
   let analyzed = false;
 
   const run = async (
     hook: "writeBundle" | "closeBundle",
     meta: ViteHookMeta | undefined,
+    outputOptions?: ViteOutputOptionsLike,
+    bundle?: Record<string, unknown>,
   ): Promise<void> => {
-    if (analyzed) return;
     const root = configured.root ?? process.cwd();
     const detected = configured.viteLifecycle ?? (await detectViteLifecycle(root, meta));
     const lifecycle = withPostEmitHook(detected, hook);
     configured.viteLifecycle = lifecycle;
-
-    const emittedAssets = await listViteEmittedAssets(root);
-    // Rolldown can finish disk writes after writeBundle; wait for closeBundle.
-    if (hook === "writeBundle" && emittedAssets.length === 0 && lifecycle.engine === "rolldown") {
-      return;
+    const config = resolvedConfig;
+    const outputRoot = safeOutputRoot(
+      root,
+      outputOptions?.dir ??
+        (outputOptions?.file ? path.dirname(outputOptions.file) : undefined) ??
+        config?.build?.outDir,
+    );
+    const emittedAssets = bundle ? Object.keys(bundle).sort() : [];
+    const publicConfig = config ?? {};
+    const input: ViteBuildOutputInput = {
+      ...(outputRoot ? { outputRoot } : {}),
+      emittedAssets,
+      sourceHook: hook,
+      ...(config?.mode ? { effectiveMode: config.mode } : {}),
+      ...(config?.build?.target ? { target: config.build.target } : {}),
+      ...(targetKind(publicConfig) ? { targetKind: targetKind(publicConfig) } : {}),
+      ...(config?.build?.write !== undefined ? { buildWrite: config.build.write } : {}),
+      flavor: lifecycle.flavor,
+      engine: lifecycle.engine,
+    };
+    if (hook === "writeBundle" || outputs.length === 0) {
+      outputs.push(input);
+    } else if (lifecycle.engine === "rolldown") {
+      // closeBundle finalizes only the incomplete public record; never scan disk.
+      outputs = outputs.map((item, index) =>
+        index === outputs.length - 1 ? { ...item, ...input, sourceHook: hook } : item,
+      );
     }
-
+    if (
+      hook === "writeBundle" &&
+      lifecycle.engine === "rolldown" &&
+      emittedAssets.length === 0 &&
+      bundle !== undefined
+    )
+      return;
     analyzed = true;
-    if (emittedAssets.length === 0 && lifecycle.engine === "rolldown") {
-      // Honest gap: config/imports only; do not claim emit coverage.
-      const result = await analyze(configured);
-      failAfterCollect(result);
-      return;
-    }
-
-    const result = await analyzeBuild(configured, emittedAssets);
+    const allAssets = outputs.flatMap((item) =>
+      item.outputRoot
+        ? item.emittedAssets.map((asset) => `${item.outputRoot}/${asset}`)
+        : item.emittedAssets,
+    );
+    const result = await analyzeBuild(configured, allAssets, undefined, outputs);
     failAfterCollect(result);
   };
 
   return {
-    async writeBundle(this: void) {
+    configResolved(config: ViteResolvedConfigLike) {
+      resolvedConfig = config;
+      if (!configured.root && config.root) configured.root = config.root;
+    },
+    async writeBundle(
+      this: unknown,
+      outputOptions?: ViteOutputOptionsLike,
+      bundle?: Record<string, unknown>,
+    ) {
       // Runtime plugin context may expose public Rolldown/Vite meta on `this`.
       const meta = (this as unknown as { meta?: ViteHookMeta } | undefined)?.meta;
-      await run("writeBundle", meta);
+      await run("writeBundle", meta, outputOptions, bundle);
     },
-    async closeBundle(this: void) {
+    async closeBundle(this: unknown) {
       const meta = (this as unknown as { meta?: ViteHookMeta } | undefined)?.meta;
+      if (analyzed && outputs.length > 0) return;
       await run("closeBundle", meta);
     },
   } as Pick<UnpluginOptions, "writeBundle"> & {
+    configResolved: (config: ViteResolvedConfigLike) => void;
     closeBundle: NonNullable<UnpluginOptions["writeBundle"]>;
   };
 }
