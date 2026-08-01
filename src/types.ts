@@ -615,6 +615,7 @@ export interface RuntimeTraceReport {
   schemaVersion: 1;
   /** Source adapter marker. This is not the MF runtime version. */
   sourceContract?: "upstream-observability-2.5.3" | "legacy-doctor-v1" | "partial";
+  evidenceClipped?: boolean;
   traceId?: string;
   status?: string;
   requestId?: string;

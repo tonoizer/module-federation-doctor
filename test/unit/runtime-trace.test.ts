@@ -122,6 +122,48 @@ describe("runtime trace import", () => {
     );
   });
 
+  it("rejects wrong top-level and nested field types instead of dropping them", () => {
+    for (const report of [
+      { summary: "failed" },
+      { summary: { outcome: 1 } },
+      { remote: "checkout" },
+      { summary: { phases: "failed" } },
+      { diagnosis: { warnings: "warning" } },
+    ]) {
+      expect(() => parseRuntimeTraces(report)).toThrow(RuntimeTraceError);
+    }
+  });
+
+  it("clips imported events and evidence arrays deterministically", () => {
+    const items = Array.from({ length: 100_000 }, (_, index) => ({
+      phase: "loadRemote",
+      status: "success",
+      errorCode: `RUNTIME-${index}`,
+    }));
+    const names = Array.from({ length: 100_000 }, (_, index) => `remote-${index}`);
+    const [trace] = parseRuntimeTraces({
+      remote: { name: "checkout" },
+      events: items,
+      shared: { package: "react", availableVersions: names },
+      moduleInfo: { availableNames: names, entries: names.map((name) => ({ name })) },
+      diagnosis: {
+        warnings: names,
+        completedPhases: names,
+        pendingPhases: names,
+        actions: names.map((title) => ({ title })),
+      },
+    });
+    expect(trace?.events).toHaveLength(24);
+    expect(trace?.shared?.availableVersions).toHaveLength(24);
+    expect(trace?.moduleInfo?.availableNames).toHaveLength(24);
+    expect(trace?.moduleInfo?.entries).toHaveLength(24);
+    expect(trace?.diagnosis?.warnings).toHaveLength(24);
+    expect(trace?.diagnosis?.completedPhases).toHaveLength(24);
+    expect(trace?.diagnosis?.pendingPhases).toHaveLength(24);
+    expect(trace?.diagnosis?.actions).toHaveLength(24);
+    expect(trace?.evidenceClipped).toBe(true);
+  });
+
   it("marks legacy success without completion evidence as partial", () => {
     const [trace] = parseRuntimeTraces({
       traceId: "legacy-incomplete",
@@ -259,6 +301,76 @@ describe("runtime trace import", () => {
     ]);
     expect(findings.some((finding) => finding.ruleId === "runtime/shared-mismatch")).toBe(false);
     expect(findings.every((finding) => finding.severity !== "error")).toBe(true);
+  });
+
+  it("does not infer a shared mismatch from an unrelated failed remote load", () => {
+    const host = baseProject({
+      name: "host",
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {},
+        shared: {
+          react: {
+            package: "react",
+            singleton: true,
+            eager: false,
+            requiredVersion: "^19.0.0",
+            shareScope: "default",
+          },
+        },
+      },
+    });
+    const findings = correlateRuntime(
+      parseRuntimeTraces({
+        remote: { name: "checkout" },
+        summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+        shared: { package: "react" },
+      }),
+      [host],
+    );
+    expect(findings.some((finding) => finding.ruleId === "runtime/shared-mismatch")).toBe(false);
+  });
+
+  it("requires shared evidence for shared mismatch and keeps ambiguous attribution neutral", () => {
+    const projects = [
+      baseProject({ name: "host" }),
+      baseProject({ name: "provider-a" }),
+      baseProject({ name: "provider-b" }),
+    ];
+    const traces = [
+      parseRuntimeTraces({
+        shared: { package: "react" },
+        summary: { outcome: "failed", phases: { shared: { status: "error" } } },
+      }),
+      parseRuntimeTraces({
+        shared: { package: "react", reason: "version-mismatch" },
+        summary: { outcome: "failed" },
+      }),
+      parseRuntimeTraces({
+        shared: { package: "react", selectedVersion: "18.0.0", requiredVersion: "^19.0.0" },
+        summary: { outcome: "failed" },
+      }),
+      parseRuntimeTraces({
+        hostName: "host",
+        ownerHint: "host",
+        diagnosis: { ownerHint: "remote" },
+        shared: { package: "react", provider: "provider-a" },
+        summary: { outcome: "failed", phases: { shared: { status: "error" } } },
+      }),
+    ];
+    const findings = traces.flatMap((trace) => correlateRuntime(trace, projects));
+    const sharedFindings = findings.filter(
+      (finding) => finding.ruleId === "runtime/shared-mismatch",
+    );
+    expect(sharedFindings).toHaveLength(4);
+    expect(sharedFindings[0]?.evidence).toMatchObject({
+      identity: { matchReason: "shared phase failed" },
+    });
+    expect(sharedFindings[3]?.project).toBe("runtime");
+    expect(sharedFindings[3]?.evidence).toMatchObject({
+      identity: { ownerHints: ["host", "remote"], candidates: expect.any(Array) },
+    });
   });
 
   it("keeps network/shared/unknown ownership neutral and order independent", () => {

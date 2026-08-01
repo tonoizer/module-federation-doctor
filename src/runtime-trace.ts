@@ -36,6 +36,7 @@ const KNOWN_OUTCOMES = new Set([
   "recovered",
   "success",
 ]);
+const MAX_EVIDENCE_ITEMS = 24;
 
 export class RuntimeTraceError extends Error {
   constructor(message: string) {
@@ -54,12 +55,52 @@ function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-function asBoolean(value: unknown): boolean | undefined {
-  return typeof value === "boolean" ? value : undefined;
+function expectNumber(value: unknown, fieldPath: string): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value))
+    throw new RuntimeTraceError(`Invalid runtime trace field ${fieldPath}: expected a number.`);
+  return value;
 }
 
-function asNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+function expectRecord(value: unknown, fieldPath: string): Record<string, unknown> | undefined {
+  if (value === undefined) return undefined;
+  const record = asRecord(value);
+  if (!record)
+    throw new RuntimeTraceError(`Invalid runtime trace field ${fieldPath}: expected an object.`);
+  return record;
+}
+
+function expectString(value: unknown, fieldPath: string): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.length === 0)
+    throw new RuntimeTraceError(
+      `Invalid runtime trace field ${fieldPath}: expected a non-empty string.`,
+    );
+  return value;
+}
+
+function expectBoolean(value: unknown, fieldPath: string): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean")
+    throw new RuntimeTraceError(`Invalid runtime trace field ${fieldPath}: expected a boolean.`);
+  return value;
+}
+
+function expectArray(value: unknown, fieldPath: string): unknown[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value))
+    throw new RuntimeTraceError(`Invalid runtime trace field ${fieldPath}: expected an array.`);
+  return value;
+}
+
+function expectStringArray(value: unknown, fieldPath: string): string[] | undefined {
+  const items = expectArray(value, fieldPath);
+  if (!items) return undefined;
+  if (items.some((item) => typeof item !== "string" || item.length === 0))
+    throw new RuntimeTraceError(
+      `Invalid runtime trace field ${fieldPath}: expected an array of non-empty strings.`,
+    );
+  return items as string[];
 }
 
 function readStatus(value: unknown, fieldPath: string): string | undefined {
@@ -158,16 +199,16 @@ function readEvents(raw: unknown): RuntimeTraceReport["events"] {
   if (!Array.isArray(raw))
     throw new RuntimeTraceError("Invalid runtime trace field /events: expected an array.");
   const events: RuntimeTraceReport["events"] = [];
-  for (const item of raw) {
+  for (const item of raw.slice(0, MAX_EVIDENCE_ITEMS)) {
     const event = asRecord(item);
     if (!event)
       throw new RuntimeTraceError(
         "Invalid runtime trace field /events: every item must be an object.",
       );
     const next: RuntimeTraceReport["events"][number] = {};
-    const phase = asString(event.phase);
+    const phase = expectString(event.phase, "/events/phase");
     const status = readStatus(event.status, "/events/status");
-    const errorCode = asString(event.errorCode);
+    const errorCode = expectString(event.errorCode, "/events/errorCode");
     if (phase)
       next.phase =
         phase === "init" ? "remoteEntryInit" : phase === "factory" ? "moduleFactory" : phase;
@@ -182,22 +223,24 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   const record = asRecord(raw);
   if (!record)
     throw new RuntimeTraceError("Invalid runtime trace report: every report must be an object.");
-  const summary = asRecord(record.summary);
-  const remote = asRecord(record.remote);
-  const shared = asRecord(record.shared) ?? asRecord(summary?.shared);
-  const moduleInfo = asRecord(record.moduleInfo);
-  const diagnosis = asRecord(record.diagnosis);
-  const summaryError = asRecord(summary?.error);
-  const outcome = asString(summary?.outcome);
+  const summary = expectRecord(record.summary, "/summary");
+  const remote = expectRecord(record.remote, "/remote");
+  const summaryShared = expectRecord(summary?.shared, "/summary/shared");
+  const shared = expectRecord(record.shared, "/shared") ?? summaryShared;
+  const moduleInfo = expectRecord(record.moduleInfo, "/moduleInfo");
+  const diagnosis = expectRecord(record.diagnosis, "/diagnosis");
+  const summaryError = expectRecord(summary?.error, "/summary/error");
+  const outcome = expectString(summary?.outcome, "/summary/outcome");
   if (outcome && !KNOWN_OUTCOMES.has(outcome))
     throw new RuntimeTraceError(
       `Unsupported runtime trace outcome at /summary/outcome: ${outcome}`,
     );
+  const topLevelError = expectRecord(record.error, "/error");
   const errorCode =
-    asString(record.errorCode) ??
-    asString(summaryError?.errorCode) ??
-    asString(diagnosis?.errorCode) ??
-    asString(asRecord(record.error)?.code);
+    expectString(record.errorCode, "/errorCode") ??
+    expectString(summaryError?.errorCode, "/summary/error/errorCode") ??
+    expectString(diagnosis?.errorCode, "/diagnosis/errorCode") ??
+    expectString(topLevelError?.code, "/error/code");
   const hasShape =
     asString(record.traceId) !== undefined ||
     summary !== undefined ||
@@ -237,24 +280,33 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
         : "partial",
     events: readEvents(record.events),
   };
-  const traceId = asString(record.traceId);
+  if (Array.isArray(record.events) && record.events.length > MAX_EVIDENCE_ITEMS)
+    report.evidenceClipped = true;
+  const traceId = expectString(record.traceId, "/traceId");
   const status = readStatus(record.status, "/status");
   if (traceId) report.traceId = traceId;
   if (status) report.status = status;
   for (const key of ["requestId", "requestAlias", "hostName", "runtimeVersion"] as const) {
-    const value = asString(record[key]);
+    const value = expectString(record[key], `/${key}`);
     if (value) report[key] = value;
   }
   if (errorCode) report.errorCode = errorCode;
   if (outcome) report.outcome = outcome;
-  const recovered = asBoolean(summary?.recovered) ?? asBoolean(asRecord(summary?.flags)?.recovered);
+  const recovered =
+    expectBoolean(summary?.recovered, "/summary/recovered") ??
+    expectBoolean(asRecord(summary?.flags)?.recovered, "/summary/flags/recovered");
   if (recovered !== undefined) report.recovered = recovered;
-  const loadedBefore = asBoolean(record.loadedBefore) ?? asBoolean(summary?.loadedBefore);
+  const loadedBefore =
+    expectBoolean(record.loadedBefore, "/loadedBefore") ??
+    expectBoolean(summary?.loadedBefore, "/summary/loadedBefore");
   if (loadedBefore !== undefined) report.loadedBefore = loadedBefore;
-  const flags = asRecord(summary?.flags);
+  const flags = expectRecord(summary?.flags, "/summary/flags");
   if (flags)
     report.flags = Object.fromEntries(
-      Object.entries(flags).filter(([, value]) => typeof value === "boolean"),
+      Object.entries(flags).map(([key, value]) => {
+        const flag = expectBoolean(value, `/summary/flags/${key}`);
+        return [key, flag];
+      }),
     ) as Record<string, boolean>;
   for (const key of [
     "loadCompleted",
@@ -263,18 +315,25 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     "preloaded",
     "componentLoaded",
   ] as const) {
-    const value = asBoolean(summary?.[key]);
+    const value = expectBoolean(summary?.[key], `/summary/${key}`);
     if (value !== undefined) report[key] = value;
   }
-  const lastPhase = asString(summary?.lastPhase);
+  const lastPhase = expectString(summary?.lastPhase, "/summary/lastPhase");
   if (lastPhase) report.lastPhase = lastPhase;
   for (const key of ["errorName", "errorMessage"] as const) {
-    const value = asString(record[key]) ?? asString(summaryError?.[key]);
+    const value =
+      expectString(record[key], `/${key}`) ??
+      expectString(summaryError?.[key], `/summary/error/${key}`);
     if (value) report[key] = String(redactDeep(value)).slice(0, 1000);
   }
-  const errorContext = boundedRecord(record.errorContext ?? summaryError?.context);
+  const errorContext = boundedRecord(
+    expectRecord(record.errorContext, "/errorContext") ??
+      expectRecord(summaryError?.context, "/summary/error/context"),
+  );
   if (errorContext) report.errorContext = errorContext;
-  const failedPhase = asString(record.failedPhase) ?? asString(summaryError?.failedPhase);
+  const failedPhase =
+    expectString(record.failedPhase, "/failedPhase") ??
+    expectString(summaryError?.failedPhase, "/summary/error/failedPhase");
   if (failedPhase)
     report.failedPhase =
       failedPhase === "init"
@@ -315,9 +374,9 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   }
   if (remote) {
     const normalizedRemote: NonNullable<RuntimeTraceReport["remote"]> = {};
-    const name = asString(remote.name);
-    const alias = asString(remote.alias);
-    const entry = asString(remote.entry);
+    const name = expectString(remote.name, "/remote/name");
+    const alias = expectString(remote.alias, "/remote/alias");
+    const entry = expectString(remote.entry, "/remote/entry");
     if (name) normalizedRemote.name = name;
     if (alias) normalizedRemote.alias = alias;
     if (entry) normalizedRemote.entry = redactRuntimeUrl(entry);
@@ -325,15 +384,15 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   }
   if (shared) {
     const packageName =
-      asString(shared.package) ??
-      asString(shared.name) ??
-      asString(shared.pkg) ??
-      asString(shared.shareKey);
+      expectString(shared.package, "/shared/package") ??
+      expectString(shared.name, "/shared/name") ??
+      expectString(shared.pkg, "/shared/pkg") ??
+      expectString(shared.shareKey, "/shared/shareKey");
     const normalizedShared: NonNullable<RuntimeTraceReport["shared"]> = {};
-    const provider = asString(shared.provider);
-    const requiredVersion = asString(shared.requiredVersion);
-    const selectedVersion = asString(shared.selectedVersion);
-    const reason = asString(shared.reason);
+    const provider = expectString(shared.provider, "/shared/provider");
+    const requiredVersion = expectString(shared.requiredVersion, "/shared/requiredVersion");
+    const selectedVersion = expectString(shared.selectedVersion, "/shared/selectedVersion");
+    const reason = expectString(shared.reason, "/shared/reason");
     if (packageName) normalizedShared.package = packageName;
     if (provider) normalizedShared.provider = provider;
     if (requiredVersion) normalizedShared.requiredVersion = requiredVersion;
@@ -347,31 +406,38 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
         throw new RuntimeTraceError(
           "Invalid runtime trace field /shared/availableVersions: expected strings.",
         );
-      normalizedShared.availableVersions = shared.availableVersions.filter(
-        (item): item is string => typeof item === "string",
-      );
+      normalizedShared.availableVersions = shared.availableVersions
+        .slice(0, MAX_EVIDENCE_ITEMS)
+        .filter((item): item is string => typeof item === "string");
+      if (shared.availableVersions.length > MAX_EVIDENCE_ITEMS) report.evidenceClipped = true;
     }
     if (reason) normalizedShared.reason = reason;
     report.shared = normalizedShared;
   }
   if (moduleInfo) {
     const normalizedModule: NonNullable<RuntimeTraceReport["moduleInfo"]> = {};
-    const name = asString(moduleInfo.name);
-    const id = asString(moduleInfo.id);
-    const publicPath = asString(moduleInfo.publicPath);
+    const name = expectString(moduleInfo.name, "/moduleInfo/name");
+    const id = expectString(moduleInfo.id, "/moduleInfo/id");
+    const publicPath = expectString(moduleInfo.publicPath, "/moduleInfo/publicPath");
     if (name) normalizedModule.name = name;
     if (id) normalizedModule.id = id;
     if (publicPath) normalizedModule.publicPath = redactRuntimeUrl(publicPath);
-    const reason = asString(moduleInfo.reason);
-    const clipped = asBoolean(moduleInfo.clipped);
-    const totalCount = asNumber(moduleInfo.totalCount);
-    const matchedCount = asNumber(moduleInfo.matchedCount);
+    const reason = expectString(moduleInfo.reason, "/moduleInfo/reason");
+    const clipped = expectBoolean(moduleInfo.clipped, "/moduleInfo/clipped");
+    const totalCount = expectNumber(moduleInfo.totalCount, "/moduleInfo/totalCount");
+    const matchedCount = expectNumber(moduleInfo.matchedCount, "/moduleInfo/matchedCount");
     if (reason) normalizedModule.reason = reason;
     if (clipped !== undefined) normalizedModule.clipped = clipped;
     if (totalCount !== undefined) normalizedModule.totalCount = totalCount;
     if (matchedCount !== undefined) normalizedModule.matchedCount = matchedCount;
-    const availableNames = boundedStrings(moduleInfo.availableNames);
+    const availableNamesInput = expectStringArray(
+      moduleInfo.availableNames,
+      "/moduleInfo/availableNames",
+    );
+    const availableNames = boundedStrings(availableNamesInput);
     if (availableNames) normalizedModule.availableNames = availableNames;
+    if (availableNamesInput && availableNamesInput.length > MAX_EVIDENCE_ITEMS)
+      report.evidenceClipped = true;
     if (moduleInfo.entries !== undefined && !Array.isArray(moduleInfo.entries))
       throw new RuntimeTraceError(
         "Invalid runtime trace field /moduleInfo/entries: expected an array.",
@@ -381,30 +447,33 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
         throw new RuntimeTraceError(
           "Invalid runtime trace field /moduleInfo/entries: every item must be an object.",
         );
-      normalizedModule.entries = moduleInfo.entries.slice(0, 24).flatMap((item) => {
+      normalizedModule.entries = moduleInfo.entries.slice(0, MAX_EVIDENCE_ITEMS).flatMap((item) => {
         const entry = asRecord(item);
         if (!entry) return [];
         const next: NonNullable<NonNullable<RuntimeTraceReport["moduleInfo"]>["entries"]>[number] =
           {};
         for (const key of ["name", "getPublicPath", "globalName"] as const) {
-          const value = asString(entry[key]);
+          const value = expectString(entry[key], `/moduleInfo/entries/${key}`);
           if (value) next[key] = String(redactDeep(value)).slice(0, 500);
         }
         for (const key of ["publicPath", "remoteEntry"] as const) {
-          const value = asString(entry[key]);
+          const value = expectString(entry[key], `/moduleInfo/entries/${key}`);
           if (value) next[key] = redactRuntimeUrl(value);
         }
         return [next];
       });
+      if (moduleInfo.entries.length > MAX_EVIDENCE_ITEMS) report.evidenceClipped = true;
     }
     report.moduleInfo = normalizedModule;
   }
   if (diagnosis) {
     const normalizedDiagnosis: NonNullable<RuntimeTraceReport["diagnosis"]> = {};
-    const owner = asString(diagnosis.owner);
-    const diagnosisSummary = asString(diagnosis.summary) ?? asString(diagnosis.message);
-    const diagnosisOwnerHint = asString(diagnosis.ownerHint);
-    const title = asString(diagnosis.title);
+    const owner = expectString(diagnosis.owner, "/diagnosis/owner");
+    const diagnosisSummary =
+      expectString(diagnosis.summary, "/diagnosis/summary") ??
+      expectString(diagnosis.message, "/diagnosis/message");
+    const diagnosisOwnerHint = expectString(diagnosis.ownerHint, "/diagnosis/ownerHint");
+    const title = expectString(diagnosis.title, "/diagnosis/title");
     if (owner) normalizedDiagnosis.owner = owner;
     if (diagnosisOwnerHint) normalizedDiagnosis.ownerHint = diagnosisOwnerHint;
     if (title) normalizedDiagnosis.title = String(redactDeep(title)).slice(0, 500);
@@ -419,24 +488,41 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
       "errorMessage",
       "docLink",
     ] as const) {
-      const value = asString(diagnosis[key]);
+      const value = expectString(diagnosis[key], `/diagnosis/${key}`);
       if (value) normalizedDiagnosis[key] = String(redactDeep(value)).slice(0, 1000);
     }
-    const facts = boundedRecord(diagnosis.facts);
+    const facts = boundedRecord(expectRecord(diagnosis.facts, "/diagnosis/facts"));
     if (facts) normalizedDiagnosis.facts = facts;
-    const actions = Array.isArray(diagnosis.actions)
-      ? diagnosis.actions.slice(0, 24).flatMap((item) => {
+    const actionsInput = expectArray(diagnosis.actions, "/diagnosis/actions");
+    const actions = actionsInput
+      ? actionsInput.slice(0, MAX_EVIDENCE_ITEMS).flatMap((item, index) => {
           const action = boundedRecord(item);
-          return action ? [action] : [];
+          if (!action)
+            throw new RuntimeTraceError(
+              `Invalid runtime trace field /diagnosis/actions/${index}: expected an object.`,
+            );
+          return [action];
         })
       : undefined;
     if (actions) normalizedDiagnosis.actions = actions;
-    const warnings = boundedStrings(diagnosis.warnings);
-    const completedPhases = boundedStrings(diagnosis.completedPhases);
-    const pendingPhases = boundedStrings(diagnosis.pendingPhases);
+    const warningsInput = expectStringArray(diagnosis.warnings, "/diagnosis/warnings");
+    const completedInput = expectStringArray(
+      diagnosis.completedPhases,
+      "/diagnosis/completedPhases",
+    );
+    const pendingInput = expectStringArray(diagnosis.pendingPhases, "/diagnosis/pendingPhases");
+    const warnings = boundedStrings(warningsInput);
+    const completedPhases = boundedStrings(completedInput);
+    const pendingPhases = boundedStrings(pendingInput);
     if (warnings) normalizedDiagnosis.warnings = warnings;
     if (completedPhases) normalizedDiagnosis.completedPhases = completedPhases;
     if (pendingPhases) normalizedDiagnosis.pendingPhases = pendingPhases;
+    if (
+      [actionsInput, warningsInput, completedInput, pendingInput].some(
+        (items) => items && items.length > MAX_EVIDENCE_ITEMS,
+      )
+    )
+      report.evidenceClipped = true;
     report.diagnosis = normalizedDiagnosis;
   }
   return redactDeep(report) as RuntimeTraceReport;
@@ -795,30 +881,56 @@ export function correlateRuntime(
         (entry) => entry.shared?.import === false,
       );
       const providers = sharedEntries.filter((entry) => entry.shared?.import !== false);
+      const sharedPhaseFailed = phases.includes("shared");
+      const sharedReasonEvidence = Boolean(
+        trace.shared?.reason && /unmatched|mismatch|missing|fail|error/i.test(trace.shared.reason),
+      );
+      const sharedErrorEvidence =
+        trace.failedPhase === "shared" ||
+        (trace.errorMessage !== undefined &&
+          /shared|share scope|version/i.test(trace.errorMessage));
       const sharedFailed =
-        !recovered &&
-        (phases.includes("shared") ||
-          phaseFailed(trace.status) ||
-          trace.outcome === "failed" ||
-          Boolean(trace.shared?.reason && /unmatched|missing|fail/i.test(trace.shared.reason)));
+        !recovered && (sharedPhaseFailed || sharedReasonEvidence || sharedErrorEvidence);
       const versionMismatch = sharedVersionMismatch(
         trace.shared?.selectedVersion,
         typeof required === "string" ? required : undefined,
         installed,
       );
-      if (
-        !recovered &&
-        (sharedFailed ||
-          versionMismatch ||
-          (consumersWithoutFallback.length > 0 && providers.length === 0))
-      ) {
+      const providerFallbackMismatch =
+        consumersWithoutFallback.length > 0 && providers.length === 0;
+      if (!recovered && (sharedFailed || versionMismatch || providerFallbackMismatch)) {
+        const providerCandidates = trace.shared?.provider
+          ? projects.filter(
+              (project) =>
+                project.moduleFederation?.name === trace.shared?.provider ||
+                project.artifacts.manifest?.name === trace.shared?.provider ||
+                project.artifacts.manifest?.id === trace.shared?.provider,
+            )
+          : [];
+        const sharedCandidates = [
+          ...sharedEntries.map((entry) => entry.project),
+          ...providerCandidates.map((project) => project.project.name),
+        ].sort();
+        const sharedIdentity = {
+          ...(trace.shared?.provider ? { provider: trace.shared.provider } : {}),
+          matchReason: providerFallbackMismatch
+            ? "consumer import=false has no configured provider"
+            : versionMismatch
+              ? "selected version does not satisfy required or installed version"
+              : sharedPhaseFailed
+                ? "shared phase failed"
+                : "shared error/reason evidence",
+          candidates: [...new Set(sharedCandidates)],
+        };
+        const sharedProject =
+          providerCandidates.length === 1 && !ownerHintConflict
+            ? providerCandidates[0]!.project.name
+            : "runtime";
         findings.push(
           runtimeFinding(
             "runtime/shared-mismatch",
             "error",
-            trace.shared?.provider && exactProject(projects, trace.shared.provider)?.project.name
-              ? exactProject(projects, trace.shared.provider)!.project.name
-              : "runtime",
+            sharedProject,
             `Runtime shared resolution for "${sharedName}" does not match project evidence.`,
             {
               package: sharedName,
@@ -834,6 +946,7 @@ export function correlateRuntime(
                 .map((entry) => entry.project)
                 .sort(),
               providers: providers.map((entry) => entry.project).sort(),
+              identity: { ...identityEvidence, ...sharedIdentity },
             },
             "Align shared versions, singleton/import settings, and providers across hosts and remotes.",
           ),
