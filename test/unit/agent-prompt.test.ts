@@ -114,6 +114,60 @@ describe("agent prompts", () => {
     expect(findPromptTarget(findings, "missing")).toBeUndefined();
   });
 
+  it("clears stale prompt files and allows ..-prefixed in-root names", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-diag-"));
+    roots.push(root);
+    expect(resolveDiagnosticsDir(root, "..hidden")).toBe(path.resolve(root, "..hidden"));
+
+    const dumpRoot = resolveDiagnosticsDir(root, "diag");
+    const report: DoctorReport = {
+      schemaVersion: 1,
+      capabilities: {
+        config: true,
+        sourceImports: false,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: false,
+      },
+      summary: {
+        projects: 1,
+        info: 0,
+        warnings: 0,
+        errors: 1,
+        score: 99,
+        scoreLabel: "Great",
+      },
+      findings: [
+        finding({
+          ruleId: "config/name-required",
+          severity: "error",
+          fingerprint: "old-fp",
+          message: "old",
+        }),
+      ],
+    };
+    await writeDiagnosticsDump(report, dumpRoot);
+    const first = await fs.readdir(path.join(dumpRoot, "prompts"));
+    expect(first).toHaveLength(1);
+
+    const next: DoctorReport = {
+      ...report,
+      findings: [
+        finding({
+          ruleId: "config/expose-key-invalid",
+          severity: "error",
+          fingerprint: "new-fp",
+          message: "new",
+        }),
+      ],
+    };
+    await writeDiagnosticsDump(next, dumpRoot);
+    const second = await fs.readdir(path.join(dumpRoot, "prompts"));
+    expect(second).toHaveLength(1);
+    expect(second[0]).toContain("expose-key-invalid");
+  });
+
   it("keeps diagnostics-dir root-contained and writes dump layout", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-diag-"));
     roots.push(root);

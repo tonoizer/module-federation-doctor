@@ -62,6 +62,18 @@ describe("CLI arguments", () => {
       prompt: false,
       forcePrompt: false,
     });
+    expect(parseArgs(["check", "--prompt", "--no-prompt"])).toEqual({
+      command: "check",
+      patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
+      ci: false,
+      verbose: false,
+      score: true,
+      prompt: false,
+      forcePrompt: false,
+    });
     expect(parseArgs(["check", "--prompt", "--diagnostics-dir", ".mf/doctor/diagnostics"])).toEqual(
       {
         command: "check",

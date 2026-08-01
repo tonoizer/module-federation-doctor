@@ -173,7 +173,7 @@ export function resolveDiagnosticsDir(root: string, diagnosticsDir: string): str
   const resolvedRoot = path.resolve(root);
   const resolved = path.resolve(resolvedRoot, diagnosticsDir);
   const relative = path.relative(resolvedRoot, resolved);
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error(
       `--diagnostics-dir must stay inside the project root (${resolvedRoot}); got ${diagnosticsDir}`,
     );
@@ -204,6 +204,8 @@ export async function writeDiagnosticsDump(
   options: AgentPromptOptions & { limit?: number } = {},
 ): Promise<DiagnosticsDumpResult> {
   const promptsDir = path.join(diagnosticsDir, "prompts");
+  // Replace prior dump contents so agents never read stale prompt files.
+  await fs.rm(promptsDir, { recursive: true, force: true });
   await fs.mkdir(promptsDir, { recursive: true });
   const reportPath = path.join(diagnosticsDir, "report.json");
   await fs.writeFile(reportPath, stableStringify(report, 2) + "\n");

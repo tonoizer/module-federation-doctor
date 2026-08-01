@@ -13,7 +13,13 @@ import {
   updateBaseline,
   writeBaselineFile,
 } from "./baseline.js";
-import { buildAgentPrompt, findPromptTarget, formatTopAgentPrompts } from "./agent-prompt.js";
+import {
+  buildAgentPrompt,
+  findPromptTarget,
+  formatTopAgentPrompts,
+  resolveDiagnosticsDir,
+  writeDiagnosticsDump,
+} from "./agent-prompt.js";
 import { analyze, analyzeFederation } from "./engine.js";
 import { probeManifest } from "./probe.js";
 import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
@@ -178,8 +184,10 @@ export function parseArgs(argv: string[]): Parsed {
     if (value === "--ci") parsed.ci = true;
     else if (value === "--verbose") parsed.verbose = true;
     else if (value === "--no-score") parsed.score = false;
-    else if (value === "--no-prompt") parsed.prompt = false;
-    else if (value === "--prompt") {
+    else if (value === "--no-prompt") {
+      parsed.prompt = false;
+      parsed.forcePrompt = false;
+    } else if (value === "--prompt") {
       parsed.prompt = true;
       parsed.forcePrompt = true;
     } else if (value === "--finding") {
@@ -411,15 +419,17 @@ async function runFederationAnalysis(
   config: DoctorOptions = {},
   score = true,
   prompt = true,
+  forcePrompt = false,
+  diagnosticsDir?: string,
 ): Promise<number> {
   if (files.length === 0) {
     process.stderr.write("No project reports matched.\n");
     return 2;
   }
   const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
-  // CLI --no-score / --no-prompt win; otherwise honor DoctorOptions from config.
+  // CLI --no-score / --no-prompt win; --prompt force-enables over config.
   const showScore = score !== false && config.score !== false;
-  const showPrompt = prompt !== false && config.prompt !== false;
+  const showPrompt = forcePrompt || (prompt !== false && config.prompt !== false);
   const result = await analyzeFederation(files, {
     ...(formats ? { formats, outputDirectory } : {}),
     ...(baseline ? { baseline } : {}),
@@ -430,6 +440,11 @@ async function runFederationAnalysis(
     ...(config.alwaysShared ? { alwaysShared: config.alwaysShared } : {}),
     root: process.cwd(),
   });
+  const dumpDir = diagnosticsDir ?? config.diagnosticsDir;
+  if (dumpDir) {
+    const absolute = resolveDiagnosticsDir(process.cwd(), dumpDir);
+    await writeDiagnosticsDump(result.report, absolute);
+  }
   if (!formats)
     process.stdout.write(
       stableStringify({ schemaVersion: 1, findings: result.findings }, 2) + "\n",
@@ -509,6 +524,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           config,
           parsed.score,
           parsed.prompt,
+          parsed.forcePrompt,
+          parsed.diagnosticsDir,
         );
       }
       if (parsed.patterns.length === 0) {
@@ -526,6 +543,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         config,
         parsed.score,
         parsed.prompt,
+        parsed.forcePrompt,
+        parsed.diagnosticsDir,
       );
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
@@ -554,8 +573,12 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         ...(formats ? { formats, outputDirectory } : {}),
         ...(parsed.verbose ? { quiet: false, printLog: { success: true } } : {}),
         score: parsed.score !== false && config.score !== false,
-        prompt: parsed.prompt !== false && config.prompt !== false,
+        prompt: parsed.forcePrompt || (parsed.prompt !== false && config.prompt !== false),
       });
+      if (parsed.diagnosticsDir || config.diagnosticsDir) {
+        const dump = resolveDiagnosticsDir(root, parsed.diagnosticsDir ?? config.diagnosticsDir!);
+        await writeDiagnosticsDump(result.report, dump);
+      }
       if (!formats)
         process.stdout.write(
           stableStringify(
