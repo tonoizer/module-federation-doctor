@@ -82,6 +82,7 @@ async function runRule(
     const returned = await rule.check({
       facts: deepFreeze(structuredClone(facts)),
       options: deepFreeze(resolved.options),
+      root,
       ...(sharedPolicy ? { sharedPolicy: deepFreeze(sharedPolicy) } : {}),
       report: add,
     });

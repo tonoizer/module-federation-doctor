@@ -632,4 +632,32 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: 'Set `bridge: { enableBridgeRouter: true }` (or `false`) explicitly. Allow demos to stay implicit with `allowImplicitBridgeRouter: true` or set the rule to `"off"`.',
     sources: ["https://module-federation.io/guide/bridge/react-bridge"],
   },
+  "bridge/router-shared-conflict": {
+    category: "correctness",
+    impact:
+      "Bridge router aliases React Router; sharing `react-router` / `react-router-dom` at the same time can load duplicate router runtimes and break navigation.",
+    fix: 'Remove React Router from `shared`, or disable Bridge router with `bridge.enableBridgeRouter: false`. Soften with `rules["bridge/router-shared-conflict"]: "off"` when intentional.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge", shared],
+  },
+  "bridge/react-version-entry-mismatch": {
+    category: "correctness",
+    impact:
+      "Importing `@module-federation/bridge-react/v18` against React 19 (or the reverse) selects the wrong Bridge API surface and can fail at runtime.",
+    fix: 'Align the Bridge entry with the installed React major (`/v18` or `/v19`). Limit majors with `reactMajors`, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/provider-shape-invalid": {
+    category: "correctness",
+    impact:
+      "Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or fallback/loading contracts and break Bridge remotes.",
+    fix: 'Pass a complete options object (loader/module plus fallback/loading, or a root component for export-app). Turn the rule `"off"` when source facts are too thin or the call shape is dynamic.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/ssr-server-entry-leak": {
+    category: "correctness",
+    impact:
+      "Browser-only Bridge React entries must not load inside node/SSR builds; doing so leaks DOM-oriented Bridge code into the server bundle.",
+    fix: 'Import the Bridge `/server` entry (or a node-safe path) for SSR/node targets. Override with `ssrMode: "browser-only"` when the build is not SSR, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
 };

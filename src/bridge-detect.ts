@@ -149,3 +149,121 @@ export function bridgeOptions(config: NormalizedMFConfig | undefined): BridgeOpt
     raw,
   };
 }
+
+/**
+ * Bridge router is active when explicitly enabled, or when the Bridge package is
+ * present and `enableBridgeRouter` is omitted (Rspack auto-enable).
+ */
+export function isBridgeRouterEnabled(facts: ProjectFacts): boolean {
+  if (!isReactBridgeProject(facts)) return false;
+  const options = bridgeOptions(facts.moduleFederation);
+  if (options?.enableBridgeRouter === false) return false;
+  // Deprecated escape hatch: disableAlias turns off Bridge router aliasing.
+  if (options?.disableAlias === true) return false;
+  if (options?.enableBridgeRouter === true) return true;
+  // Omitted → Rspack may auto-enable when Bridge is present.
+  return true;
+}
+
+const REACT_ROUTER_SHARE_KEYS = ["react-router", "react-router-dom"] as const;
+
+/** Shared keys that conflict with Bridge's router aliasing. */
+export function sharedReactRouterKeys(
+  shared: Record<string, NormalizedShared> | undefined,
+): string[] {
+  if (!shared) return [];
+  return Object.keys(shared).filter((key) =>
+    REACT_ROUTER_SHARE_KEYS.some((pkg) => key === pkg || key.startsWith(`${pkg}/`)),
+  );
+}
+
+export function hasSharedReactRouter(
+  shared: Record<string, NormalizedShared> | undefined,
+): boolean {
+  return sharedReactRouterKeys(shared).length > 0;
+}
+
+/**
+ * True when facts indicate a node/SSR-only build where browser-only Bridge entries must not load.
+ * Dual web+node workspaces stay quiet unless `ssrMode` forces apply (`node` / `dual`).
+ */
+export function isNodeOrSsrTarget(
+  facts: ProjectFacts,
+  ssrMode?: "browser-only" | "dual" | "node",
+): boolean {
+  if (ssrMode === "browser-only") return false;
+  if (ssrMode === "node" || ssrMode === "dual") return true;
+  const config = facts.moduleFederation;
+  if (config?.experiments?.target === "node") return true;
+  if (config?.vite?.target === "node") return true;
+  const builds = facts.builds ?? [];
+  if (builds.length === 0) return false;
+  const nodeLike = builds.filter(
+    (build) => build.targetKind === "node" || build.targetKind === "ssr" || build.target === "node",
+  );
+  if (nodeLike.length === 0) return false;
+  // Mixed web + node/SSR records → dual-env; leave to `ssrMode` / #122 rather than Bridge leak.
+  const hasWeb = builds.some(
+    (build) =>
+      build.targetKind === "web" ||
+      build.targetKind === "unknown" ||
+      (build.target !== undefined && build.target !== "node"),
+  );
+  if (hasWeb && nodeLike.length < builds.length) return false;
+  return nodeLike.length === builds.length;
+}
+
+/** Specifiers that are browser-only Bridge React entries (not `/server`). */
+export function browserBridgeReactEntries(facts: ProjectFacts): string[] {
+  const hits: string[] = [];
+  // Use specifiers/deepImports only — `imports.packages` are package roots via
+  // packageName(), so `@module-federation/bridge-react/server` collapses to the
+  // bare package and would false-positive as a browser leak.
+  for (const signal of [
+    ...(facts.imports.specifiers ?? []),
+    ...(facts.imports.deepImports ?? []),
+  ]) {
+    if (!signal.startsWith(BRIDGE_REACT_PKG)) continue;
+    if (signal === BRIDGE_REACT_PKG) continue;
+    if (signal.includes("/server")) continue;
+    if (signal.includes("/plugin")) continue;
+    hits.push(signal);
+  }
+  return [...new Set(hits)];
+}
+
+export function hasBridgeServerEntry(facts: ProjectFacts): boolean {
+  return [...(facts.imports.specifiers ?? []), ...(facts.imports.deepImports ?? [])].some(
+    (signal) =>
+      signal === `${BRIDGE_REACT_PKG}/server` || signal.startsWith(`${BRIDGE_REACT_PKG}/server/`),
+  );
+}
+
+const BRIDGE_PROVIDER_APIS = ["createBridgeComponent", "createRemoteAppComponent"] as const;
+
+/**
+ * Heuristic: Bridge provider/consumer factory calls with an empty or clearly incomplete options object.
+ * Returns undefined when no Bridge API usage is visible or the call shape is too nested to judge (pass-unknown).
+ */
+export function detectInvalidBridgeProviderShape(source: string): string | undefined {
+  for (const api of BRIDGE_PROVIDER_APIS) {
+    if (!source.includes(api)) continue;
+    const emptyCall = new RegExp(`${api}\\s*\\(\\s*\\{\\s*\\}\\s*\\)`);
+    if (emptyCall.test(source)) return `${api}({})`;
+    // Only inspect flat option objects (no nested `{}`) to avoid false positives on loaders.
+    const flat = new RegExp(`${api}\\s*\\(\\s*\\{([^{}]*)\\}\\s*\\)`, "s");
+    const match = source.match(flat);
+    if (!match) continue;
+    const body = match[1] ?? "";
+    const hasLoader = /\b(?:loader|module|remote)\b/.test(body);
+    // Fallback/loading UX is owned by bridge/missing-fallback-loading (warning), not this error.
+    if (api === "createRemoteAppComponent") {
+      if (!hasLoader) return `${api} missing loader/module`;
+    }
+    if (api === "createBridgeComponent") {
+      if (!/\b(?:rootComponent|root|app|component|App)\b/.test(body) && body.trim().length < 8)
+        return `${api} incomplete options`;
+    }
+  }
+  return undefined;
+}

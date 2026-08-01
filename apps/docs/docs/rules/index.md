@@ -16,7 +16,11 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`artifact/public-path-suspicious`](./artifact/public-path-suspicious.md) | warning | A malformed asset base makes remote chunks and styles resolve from the wrong URL. |
 | [`artifact/remote-entry-missing`](./artifact/remote-entry-missing.md) | error | A producer has no executable container at its configured filename. |
 | [`bridge/lazy-plugin-unregistered`](./bridge/lazy-plugin-unregistered.md) | error | Lazy Bridge React loading requires `@module-federation/bridge-react/plugin` in `runtimePlugins` or Bridge remotes fail at runtime. |
+| [`bridge/provider-shape-invalid`](./bridge/provider-shape-invalid.md) | error | Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or fallback/loading contracts and break Bridge remotes. |
 | [`bridge/react-dom-prefix-missing`](./bridge/react-dom-prefix-missing.md) | error | Bridge React v18/v19 needs `react-dom/` (or `react-dom/client`) in `shared` so renderer subpaths negotiate one copy across host and remote. |
+| [`bridge/react-version-entry-mismatch`](./bridge/react-version-entry-mismatch.md) | error | Importing `@module-federation/bridge-react/v18` against React 19 (or the reverse) selects the wrong Bridge API surface and can fail at runtime. |
+| [`bridge/router-shared-conflict`](./bridge/router-shared-conflict.md) | error | Bridge router aliases React Router; sharing `react-router` / `react-router-dom` at the same time can load duplicate router runtimes and break navigation. |
+| [`bridge/ssr-server-entry-leak`](./bridge/ssr-server-entry-leak.md) | error | Browser-only Bridge React entries must not load inside node/SSR builds; doing so leaks DOM-oriented Bridge code into the server bundle. |
 | [`config/duplicate-plugin-registration`](./config/duplicate-plugin-registration.md) | error | Registering Module Federation more than once on the same compiler breaks the core singleton contract. |
 | [`config/eager-tree-shaking-conflict`](./config/eager-tree-shaking-conflict.md) | error | Eager modules live in the initial entry and cannot use the on-demand shared tree-shaking path. |
 | [`config/expose-key-invalid`](./config/expose-key-invalid.md) | error | Consumers cannot address an expose whose public key does not follow the `./Name` form. |

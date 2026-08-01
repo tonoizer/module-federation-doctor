@@ -447,6 +447,11 @@ export interface RuleContext {
   facts: Readonly<ProjectFacts>;
   options: Readonly<Record<string, unknown>>;
   /**
+   * Absolute project root for disk reads. `facts.project.root` stays a portable
+   * relative marker (`"."`); rules that open source files should prefer this.
+   */
+  root?: string;
+  /**
    * Resolved shared-usage governance (package lists + import depth).
    * Present for project analysis; absent for hand-built federation fixtures
    * that only exercise `analyzeFederation`.
