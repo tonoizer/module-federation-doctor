@@ -17,12 +17,21 @@ import {
   sharedReactRouterKeys,
 } from "./bridge-detect.js";
 import {
+  isMfSsrFragmentRemoteEntry,
   shouldSkipBridgeEntryDtsGuidance,
   shouldSkipFragmentRemoteEntryInvalid,
   shouldSkipMf2SharedUnused,
 } from "./mf-toolkit-shapes.js";
 import { lookupAssetSize, sumAssetSizes } from "./collect.js";
 import { ruleGuidance } from "./rule-guidance.js";
+import {
+  hasNodeRuntimePlugin,
+  isBrowserOnlyManifestRemoteEntry,
+  isSsrNodeEnvApplicable,
+  NODE_RUNTIME_PLUGIN,
+  nodeLibraryDtsProblems,
+  optionSsrMode,
+} from "./ssr-detect.js";
 import {
   DEFAULT_ALWAYS_SHARED,
   DEFAULT_DEEP_IMPORT_ALLOWLIST,
@@ -1712,6 +1721,55 @@ export const builtInRules: DoctorRule[] = [
       'Replace `disableAlias` with `enableBridgeRouter: false` (or true), or set the rule to `"off"`.',
     );
   }),
+  createRule("ssr/node-remote-manifest", "error", (context) => {
+    const ssrMode = optionSsrMode(context.options);
+    if (!isSsrNodeEnvApplicable(context.facts, ssrMode)) return;
+    const remotes = mf(context)?.remotes ?? {};
+    const offenders = Object.entries(remotes).filter(
+      ([, remote]) =>
+        !isMfSsrFragmentRemoteEntry(remote.entry) && isBrowserOnlyManifestRemoteEntry(remote.entry),
+    );
+    if (offenders.length === 0) return;
+    report(
+      context,
+      "Node/SSR remotes point at a browser `mf-manifest.json` instead of an SSR/env-specific manifest path.",
+      {
+        remotes: Object.fromEntries(offenders.map(([name, remote]) => [name, remote.entry])),
+        ssrMode: ssrMode ?? null,
+      },
+      'Point node/SSR remotes at `/ssr/mf-manifest.json` (or another env-specific manifest), set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    );
+  }),
+  createRule("ssr/node-runtime-plugin-missing", "error", (context) => {
+    const ssrMode = optionSsrMode(context.options);
+    if (!isSsrNodeEnvApplicable(context.facts, ssrMode)) return;
+    const runtimePlugins = mf(context)?.runtimePlugins ?? [];
+    if (hasNodeRuntimePlugin(runtimePlugins)) return;
+    report(
+      context,
+      `Node/SSR Module Federation builds should include "${NODE_RUNTIME_PLUGIN}" in runtimePlugins.`,
+      { runtimePlugins, ssrMode: ssrMode ?? null },
+      `Add "${NODE_RUNTIME_PLUGIN}" to \`runtimePlugins\`, set \`ssrMode: "browser-only"\` when not SSR, or turn the rule \`"off"\`.`,
+    );
+  }),
+  createRule("ssr/node-library-dts", "warning", (context) => {
+    const ssrMode = optionSsrMode(context.options);
+    if (!isSsrNodeEnvApplicable(context.facts, ssrMode)) return;
+    const config = mf(context);
+    const problems = nodeLibraryDtsProblems(config);
+    if (problems.length === 0) return;
+    report(
+      context,
+      "Node/SSR producers should use a commonjs-like `library.type` and typically disable `dts`.",
+      {
+        problems,
+        libraryType: config?.library?.type ?? null,
+        dtsEnabled: config?.dts?.enabled ?? null,
+        ssrMode: ssrMode ?? null,
+      },
+      'Set `library: { type: "commonjs-module" }` (or another commonjs-like type) and `dts: false` for node/SSR producers, set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    );
+  }),
   createRule("runtime-plugins/invalid-factory", "warning", (context) => {
     for (const item of context.facts.runtimePluginContracts ?? []) {
       if (item.kind !== "invalid-factory") continue;
@@ -1770,14 +1828,6 @@ export const builtInRules: DoctorRule[] = [
     }
   }),
 ];
-
-function optionSsrMode(
-  options: Record<string, unknown>,
-): "browser-only" | "dual" | "node" | undefined {
-  const value = options.ssrMode;
-  if (value === "browser-only" || value === "dual" || value === "node") return value;
-  return undefined;
-}
 
 function optionReactMajors(options: Record<string, unknown>): Array<18 | 19> | undefined {
   const value = options.reactMajors;

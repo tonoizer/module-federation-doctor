@@ -713,4 +713,31 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: 'Prefer `enableBridgeRouter: false` (or true) over `disableAlias`, or set the rule to `"off"`.',
     sources: ["https://module-federation.io/guide/bridge/react-bridge"],
   },
+  "ssr/node-remote-manifest": {
+    category: "correctness",
+    impact:
+      "Node/SSR consumers that load the browser `mf-manifest.json` miss the server remote graph and can fail to resolve remotes during SSR.",
+    fix: 'Point node/SSR remotes at `/ssr/mf-manifest.json` (or another env-specific path). Set `ssrMode: "browser-only"` when the build is not SSR, or turn the rule `"off"`.',
+    sources: [
+      "https://module-federation.io/guide/basic/manifest-snapshot.html",
+      "https://module-federation.io/integrations/build-tool/rsbuild",
+    ],
+  },
+  "ssr/node-runtime-plugin-missing": {
+    category: "correctness",
+    impact:
+      "Without `@module-federation/node/runtimePlugin`, Node Federation hosts cannot load remotes with the server runtime contract.",
+    fix: 'Add `@module-federation/node/runtimePlugin` to `runtimePlugins`. Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    sources: [
+      "https://module-federation.io/plugin/plugins/",
+      "https://module-federation.io/blog/node",
+    ],
+  },
+  "ssr/node-library-dts": {
+    category: "reliability",
+    impact:
+      "Node/SSR producers that keep ESM-style `library.type` or enabled `dts` diverge from the commonjs dual-env contract used by server remotes.",
+    fix: 'Set `library: { type: "commonjs-module" }` (or another commonjs-like type) and `dts: false` on node/SSR producers. Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    sources: ["https://module-federation.io/blog/node"],
+  },
 };

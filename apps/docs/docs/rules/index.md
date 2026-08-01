@@ -2,7 +2,7 @@
 
 Rule pages are generated from package metadata. Each page explains the issue, impact, fix, and upstream evidence.
 
-Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, Runtime, Runtime plugins, Federation, Performance, Vite, Security, and Doctor. Printed terminal `docs:` links open the same pages.
+Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliability, Runtime, Runtime plugins, Federation, Performance, Vite, Security, and Doctor. Printed terminal `docs:` links open the same pages.
 
 ## Correctness
 
@@ -21,6 +21,8 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`bridge/react-version-entry-mismatch`](./bridge/react-version-entry-mismatch.md) | error | Importing `@module-federation/bridge-react/v18` against React 19 (or the reverse) selects the wrong Bridge API surface and can fail at runtime. |
 | [`bridge/router-shared-conflict`](./bridge/router-shared-conflict.md) | error | Bridge router aliases React Router; sharing `react-router` / `react-router-dom` at the same time can load duplicate router runtimes and break navigation. |
 | [`bridge/ssr-server-entry-leak`](./bridge/ssr-server-entry-leak.md) | error | Browser-only Bridge React entries must not load inside node/SSR builds; doing so leaks DOM-oriented Bridge code into the server bundle. |
+| [`ssr/node-remote-manifest`](./ssr/node-remote-manifest.md) | error | Node/SSR consumers that load the browser `mf-manifest.json` miss the server remote graph and can fail to resolve remotes during SSR. |
+| [`ssr/node-runtime-plugin-missing`](./ssr/node-runtime-plugin-missing.md) | error | Without `@module-federation/node/runtimePlugin`, Node Federation hosts cannot load remotes with the server runtime contract. |
 | [`config/duplicate-plugin-registration`](./config/duplicate-plugin-registration.md) | error | Registering Module Federation more than once on the same compiler breaks the core singleton contract. |
 | [`config/eager-tree-shaking-conflict`](./config/eager-tree-shaking-conflict.md) | error | Eager modules live in the initial entry and cannot use the on-demand shared tree-shaking path. |
 | [`config/expose-key-invalid`](./config/expose-key-invalid.md) | error | Consumers cannot address an expose whose public key does not follow the `./Name` form. |
@@ -84,6 +86,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`runtime/shared-mismatch`](./runtime/shared-mismatch.md) | error | Runtime shared selection conflicts with installed versions, required ranges, or provider config. |
 | [`shared/singleton-mismatch`](./shared/singleton-mismatch.md) | warning | Projects disagree on whether multiple instances are allowed. |
 | [`shared/singleton-risk`](./shared/singleton-risk.md) | warning | Multiple framework runtimes can split global state, contexts, hooks, or renderers. |
+| [`ssr/node-library-dts`](./ssr/node-library-dts.md) | warning | Node/SSR producers that keep ESM-style `library.type` or enabled `dts` diverge from the commonjs dual-env contract used by server remotes. |
 | [`vite/hashed-remote-filename`](./vite/hashed-remote-filename.md) | warning | Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds. |
 | [`vite/manual-chunks-conflict`](./vite/manual-chunks-conflict.md) | warning | Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles. |
 | [`vite/server-origin`](./vite/server-origin.md) | warning | Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development. |

@@ -1084,6 +1084,57 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "ssr/node-remote-manifest",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.experiments = {
+          asyncStartup: false,
+          externalRuntime: false,
+          provideExternalRuntime: false,
+          target: "node",
+        };
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:3001/mf-manifest.json",
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "ssr/node-runtime-plugin-missing",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.experiments = {
+          asyncStartup: false,
+          externalRuntime: false,
+          provideExternalRuntime: false,
+          target: "node",
+        };
+        facts.moduleFederation!.runtimePlugins = [];
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:3001/ssr/mf-manifest.json",
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "ssr/node-library-dts",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.experiments = {
+          asyncStartup: false,
+          externalRuntime: false,
+          provideExternalRuntime: false,
+          target: "node",
+        };
+        facts.moduleFederation!.exposes = { "./Widget": "src/Widget.tsx" };
+        facts.moduleFederation!.library = { type: "var" };
+        facts.moduleFederation!.dts = { enabled: true, options: {} };
+      },
+    ],
+    [
       "runtime-plugins/invalid-factory",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.runtimePlugins = ["./src/bad-plugin.ts"];

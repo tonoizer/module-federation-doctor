@@ -118,6 +118,9 @@ const ids = [
   "shared/singleton-risk",
   "shared/unused",
   "shared/version-unsatisfied",
+  "ssr/node-library-dts",
+  "ssr/node-remote-manifest",
+  "ssr/node-runtime-plugin-missing",
 ] as const;
 
 type RulePlan = {
@@ -1083,6 +1086,33 @@ const plans: Record<string, RulePlan> = {
     "high",
     "Declared bridge.disableAlias is exact for this deprecation advisory.",
   ),
+  "ssr/node-remote-manifest": plan(
+    1,
+    "error",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Node/SSR target facts and remote entry URLs are declared metadata.",
+  ),
+  "ssr/node-runtime-plugin-missing": plan(
+    1,
+    "error",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Declared runtimePlugins and node/SSR target facts are exact for this check.",
+  ),
+  "ssr/node-library-dts": plan(
+    1,
+    "warning",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Declared library/dts options on node/SSR producers are exact for this advisory.",
+  ),
 };
 
 const evidenceReadsByRule: Record<string, readonly string[]> = {
@@ -1214,6 +1244,9 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "dependencies.declared",
     "imports.packages",
   ],
+  "ssr/node-remote-manifest": ["project.scope", "moduleFederation", "builds"],
+  "ssr/node-runtime-plugin-missing": ["project.scope", "moduleFederation", "builds"],
+  "ssr/node-library-dts": ["project.scope", "moduleFederation", "builds"],
   "config/dts-output-dir-mismatch": ["project.scope", "moduleFederation"],
   "config/duplicate-plugin-registration": ["project.scope", "bundler.moduleFederationPluginCount"],
   "config/eager-tree-shaking-conflict": ["project.scope", "moduleFederation"],
