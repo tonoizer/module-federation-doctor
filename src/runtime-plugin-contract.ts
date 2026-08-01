@@ -150,7 +150,8 @@ function hookDefined(source: string, hook: "createScript" | "createLink" | "fetc
 }
 
 function mentionsCors(source: string): boolean {
-  return /crossOrigin|crossorigin|credentials\s*:|['"`]include['"`]|['"`]anonymous['"`]|['"`]use-credentials['"`]/.test(
+  // Require an explicit CORS/credentials signal — not bare "anonymous"/"include" strings.
+  return /\bcrossOrigin\b|\bcrossorigin\b|credentials\s*:\s*['"`](?:include|same-origin|omit)['"`]|setAttribute\(\s*['"`]crossorigin['"`]|['"`]use-credentials['"`]/.test(
     source,
   );
 }
@@ -176,8 +177,12 @@ export function inspectCorsParity(source: string): PluginContractStatus {
   if (!hasScript) return { kind: "ok" };
 
   const hasLink = hookDefined(text, "createLink");
-  const scriptCors = mentionsCors(extractHookBody(text, "createScript") ?? (hasScript ? text : ""));
-  const linkCors = hasLink ? mentionsCors(extractHookBody(text, "createLink") ?? text) : false;
+  // Only treat CORS as "clear" when we can bound the hook body. Full-file
+  // fallback would invent confident fails from unrelated strings.
+  const scriptBody = extractHookBody(text, "createScript");
+  const linkBody = hasLink ? extractHookBody(text, "createLink") : undefined;
+  const scriptCors = scriptBody !== undefined && mentionsCors(scriptBody);
+  const linkCors = linkBody !== undefined && mentionsCors(linkBody);
 
   if (scriptCors && !hasLink)
     return {
@@ -186,7 +191,7 @@ export function inspectCorsParity(source: string): PluginContractStatus {
       confidence: "clear",
     };
 
-  if (scriptCors && hasLink && !linkCors)
+  if (scriptCors && hasLink && linkBody !== undefined && !linkCors)
     return { kind: "cors-parity", reason: "cors-mismatch", confidence: "clear" };
 
   if (!hasLink)

@@ -101,6 +101,24 @@ describe("inspectCorsParity", () => {
     });
   });
 
+  it("does not invent clear CORS fails when hook bodies cannot be bounded", () => {
+    const source = `export default function plugin() {
+  const note = "anonymous";
+  return {
+    name: "opaque",
+    createScript(args) {
+      return customize(args);
+    },
+  };
+}
+`;
+    expect(inspectCorsParity(source)).toEqual({
+      kind: "cors-parity",
+      reason: "create-script-without-create-link",
+      confidence: "heuristic",
+    });
+  });
+
   it("is quiet when createScript and createLink both set CORS", () => {
     const source = `export default function plugin() {
   return {
