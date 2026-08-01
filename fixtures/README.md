@@ -3,6 +3,7 @@
 - `adapters`: clean, warning, and error policy inputs for Vite, Rspack, Rsbuild,
   Webpack, and Modern.js.
 - `diagnostics`: rule, redaction, ordering, and failure cases.
+- `diagnostics/runtime-plugins`: local runtime plugin contract samples (invalid factory/name, createScript CORS asymmetry, valid parity).
 - `dynamic-imports`: supported and unresolved dynamic MF import patterns (MFDOCTOR-105).
 - `manifests`: valid and malformed Module Federation artifacts.
 - `mf-bridge-entry`: in-repo mf-toolkit **mf-bridge** shapes — remote `./entry`

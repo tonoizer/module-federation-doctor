@@ -825,6 +825,50 @@ describe("built-in rules", () => {
         };
       },
     ],
+    [
+      "runtime-plugins/invalid-factory",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.runtimePlugins = ["./src/bad-plugin.ts"];
+        facts.runtimePluginContracts = [
+          {
+            plugin: "./src/bad-plugin.ts",
+            kind: "invalid-factory",
+            reason: "non-factory-export",
+            file: "src/bad-plugin.ts",
+          },
+        ];
+      },
+    ],
+    [
+      "runtime-plugins/create-script-cors-parity",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.runtimePlugins = ["./src/cors-plugin.ts"];
+        facts.runtimePluginContracts = [
+          {
+            plugin: "./src/cors-plugin.ts",
+            kind: "cors-parity",
+            reason: "create-script-without-create-link",
+            confidence: "clear",
+            file: "src/cors-plugin.ts",
+          },
+        ];
+      },
+    ],
+    [
+      "runtime-plugins/create-script-without-link",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.runtimePlugins = ["./src/script-plugin.ts"];
+        facts.runtimePluginContracts = [
+          {
+            plugin: "./src/script-plugin.ts",
+            kind: "cors-parity",
+            reason: "create-script-without-create-link",
+            confidence: "heuristic",
+            file: "src/script-plugin.ts",
+          },
+        ];
+      },
+    ],
   ];
 
   it("has a behavior fixture for every local rule", () => {

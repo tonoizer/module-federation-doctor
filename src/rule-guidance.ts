@@ -141,6 +141,33 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Correct the path/package and include local plugin files in the Doctor scan.",
     sources: [runtimePlugins],
   },
+  "runtime-plugins/invalid-factory": {
+    category: "correctness",
+    impact:
+      "A runtime plugin without a factory or usable `name` is ignored at runtime (silent no-op).",
+    fix: "Export a factory or plugin object that includes a stable `name` plus the hooks you intend to run.",
+    sources: [runtimePlugins, "https://module-federation.io/guide/runtime/runtime-plugins.html"],
+  },
+  "runtime-plugins/create-script-cors-parity": {
+    category: "reliability",
+    impact:
+      "CORS on createScript without matching createLink makes preload and load use different cache keys.",
+    fix: "Mirror crossorigin (and credentials where applicable) on createLink; keep fetch credentials consistent.",
+    sources: [
+      "https://module-federation.io/guide/troubleshooting/runtime.html",
+      "https://module-federation.io/guide/runtime/runtime-hooks.html",
+    ],
+  },
+  "runtime-plugins/create-script-without-link": {
+    category: "reliability",
+    impact:
+      "A createScript hook without createLink can waste preload work when link-based loading is used.",
+    fix: "Add createLink when preloadRemote or CSS/JS link loading is in play, or suppress if preload is unused.",
+    sources: [
+      "https://module-federation.io/guide/troubleshooting/runtime.html",
+      "https://module-federation.io/guide/runtime/runtime-hooks.html",
+    ],
+  },
   "config/get-public-path-invalid": {
     category: "correctness",
     impact: "The runtime cannot evaluate an invalid stringified public-path function.",
