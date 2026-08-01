@@ -1086,6 +1086,38 @@ describe("vite remotes typing dialect", () => {
     expect(await run("vite/var-filename-interop", facts)).toHaveLength(0);
   });
 
+  it("stays quiet for explicit global remotes used with webpack/rspack producers", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "http://localhost:4174/remoteEntry.js",
+        type: "global",
+        shareScope: ["default"],
+      },
+    };
+    expect(await run("vite/remotes-prefer-module", facts)).toHaveLength(0);
+  });
+
+  it("honors preferModuleRemotes false and allowVarRemotesWithVarFilename false", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "http://localhost:4174/remoteEntry.js",
+        shareScope: ["default"],
+      },
+    };
+    expect(
+      await run("vite/remotes-prefer-module", facts, { preferModuleRemotes: false }),
+    ).toHaveLength(0);
+
+    facts.moduleFederation!.vite!.varFilename = "remoteEntry.js";
+    expect(
+      await run("vite/remotes-prefer-module", facts, { allowVarRemotesWithVarFilename: false }),
+    ).not.toHaveLength(0);
+  });
+
   it("allows var remotes when varFilename is set and emits interop info", async () => {
     const facts = baseFacts();
     facts.moduleFederation!.vite!.varFilename = "remoteEntry.js";

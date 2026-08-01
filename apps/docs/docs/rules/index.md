@@ -38,7 +38,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`federation/share-scope-mismatch`](./federation/share-scope-mismatch.md) | error | Projects in different scopes cannot reuse the same shared provider. |
 | [`federation/version-conflict`](./federation/version-conflict.md) | error | No installed provider version satisfies every consumer range. |
 | [`shared/version-unsatisfied`](./shared/version-unsatisfied.md) | error | The installed provider does not satisfy the configured consumer range. |
-| [`vite/remotes-prefer-module`](./vite/remotes-prefer-module.md) | warning | Vite string remotes and missing `type` default to `var`. Vite↔Vite ESM remotes need explicit `type: 'module'` or a `varFilename` interop story. |
+| [`vite/remotes-prefer-module`](./vite/remotes-prefer-module.md) | warning | Vite string remotes and missing/`var` type default to script-style loading. Vite↔Vite ESM remotes need explicit `type: 'module'`; mixed bundlers should declare an explicit non-default type (for example `global`) or document a `varFilename` producer interop path. |
 
 ## Reliability
 
@@ -103,4 +103,4 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Reliability, Runtime,
 | [`config/remote-type-urls-missing`](./config/remote-type-urls-missing.md) | warning | Doctor reports this only when it can prove that a direct remote entry's inferred type location cannot match known producer output. Normal `remoteEntry.js` entries infer `@mf-types.zip` by default. |
 | [`doctor/partial-analysis`](./doctor/partial-analysis.md) | warning | Missing facts or unresolved dynamic imports reduce confidence and can hide relevant findings. |
 | [`runtime/remote-unknown`](./runtime/remote-unknown.md) | warning | The trace names a remote that is absent from loaded Doctor project facts. |
-| [`vite/var-filename-interop`](./vite/var-filename-interop.md) | info | `varFilename` emits a synchronous global-format entry for mixed bundler interop with `var` remotes. |
+| [`vite/var-filename-interop`](./vite/var-filename-interop.md) | info | `varFilename` emits an additional global-format remote entry so var hosts (webpack/rspack) can load this Vite producer. |

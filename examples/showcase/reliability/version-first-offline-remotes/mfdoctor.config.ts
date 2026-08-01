@@ -3,6 +3,7 @@ export default {
   mode: "ci",
   output: { formats: ["terminal"] },
   rules: {
+    "vite/remotes-prefer-module": "off",
     "doctor/partial-analysis": "off",
     "config/plugin-package-mismatch": "off",
     "artifact/remote-entry-missing": "off",

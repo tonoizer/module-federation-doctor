@@ -51,7 +51,8 @@ dropped built-in Module Federation in favor of the Vite plugin.
 
 Vite string remotes and object remotes without `type` default to **`var`**. Doctor warns via
 [`vite/remotes-prefer-module`](./rules/vite/remotes-prefer-module.md) unless you set explicit
-`type: 'module'` (Vite↔Vite ESM) or configure `varFilename` for webpack/rspack interop
+`type: 'module'` (Vite↔Vite ESM), another explicit type such as `global` for webpack/rspack
+remotes, or configure producer `varFilename` for var-host interop
 ([`vite/var-filename-interop`](./rules/vite/var-filename-interop.md)).
 
 The full current surface is in the official
