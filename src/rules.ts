@@ -30,6 +30,7 @@ import {
   findingDetails,
   type FindingDetailsAttachment,
 } from "./finding-details.js";
+import { findShareRewriteOverlaps } from "./share-rewrite.js";
 import type {
   DoctorRule,
   NormalizedMFConfig,
@@ -908,6 +909,90 @@ export const builtInRules: DoctorRule[] = [
         signals: [...ssr.signals, ...(nitro ? ["deps:nitropack|nuxt"] : [])],
       },
       "Align shared React with `ssrExternals` / `ssrEntryLoader`, or remove the share when Nitro owns the server React instance.",
+    );
+  }),
+  createRule("vite/manual-chunks-conflict", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    if (optionBoolean(context.options, "allowManualChunks") === true) return;
+    const viteConfig = context.facts.bundler.viteConfig;
+    if (!viteConfig) return;
+    if (!viteConfig.manualChunks && !viteConfig.codeSplittingGroups) return;
+    report(
+      context,
+      "User manualChunks / codeSplitting.groups can conflict with federation bootstrap chunk ownership.",
+      {
+        manualChunks: Boolean(viteConfig.manualChunks),
+        codeSplittingGroups: Boolean(viteConfig.codeSplittingGroups),
+      },
+      "Move general chunk tuning outside the federation runtime graph, or set `allowManualChunks: true` when the layout is proven safe.",
+    );
+  }),
+  createRule("vite/hashed-remote-filename", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const filename = mf(context)?.filename;
+    if (!filename) return;
+    const mode = context.options["hashedFilenameMode"];
+    if (mode === "allow") return;
+    if (!/\[[^\]]*hash[^\]]*\]|contenthash|fullhash/i.test(filename)) return;
+    report(
+      context,
+      "Hashed remote entry filenames break stable consumer URLs.",
+      { filename },
+      "Use a stable remote entry filename (for example `remoteEntry.js`) and keep hashing on chunks instead.",
+    );
+  }),
+  createRule("vite/remote-hmr-dev", "info", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    if (context.facts.bundler.mode !== "development") return;
+    const config = mf(context);
+    if (!config) return;
+    // remoteHmr unknown → skip (do not invent). Explicit false or missing after normalize skip.
+    if (config.vite?.remoteHmr === undefined) return;
+    if (config.vite.remoteHmr) return;
+    if (optionBoolean(context.options, "requireRemoteHmrInDev") === false) return;
+    if (Object.keys(config.remotes).length === 0 && Object.keys(config.exposes).length === 0)
+      return;
+    report(
+      context,
+      "`remoteHmr` is disabled in development.",
+      { remoteHmr: false },
+      "Enable `remoteHmr` for local Vite remotes when HMR across containers is desired.",
+    );
+  }),
+  createRule("vite/alias-share-bypass", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    if (context.options["aliasShareBypassMode"] === "off") return;
+    const aliases = context.facts.bundler.viteConfig?.resolveAliases;
+    if (!aliases) return;
+    const sharedKeys = Object.keys(mf(context)?.shared ?? {});
+    if (sharedKeys.length === 0) return;
+    const overlaps = findShareRewriteOverlaps(
+      Object.keys(aliases),
+      sharedKeys,
+      optionStringList(context.options, "allowPackages"),
+    );
+    if (overlaps.length === 0) return;
+    report(
+      context,
+      "resolve.alias rewrites packages that are also listed in shared.",
+      { overlaps, aliases: Object.fromEntries(overlaps.map((key) => [key, aliases[key]])) },
+      "Remove the alias, exclude the package from shared, or allowlist intentional bypasses via `allowPackages`.",
+    );
+  }),
+  createRule("vite/server-origin", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    if (optionBoolean(context.options, "requireServerOrigin") === false) return;
+    const remotes = mf(context)?.remotes ?? {};
+    if (Object.keys(remotes).length === 0) return;
+    const viteConfig = context.facts.bundler.viteConfig;
+    // Origin fact absent (CLI partial) → skip.
+    if (!viteConfig || !("serverOrigin" in viteConfig)) return;
+    if (typeof viteConfig.serverOrigin === "string" && viteConfig.serverOrigin.length > 0) return;
+    report(
+      context,
+      "`server.origin` is missing while this app consumes remotes.",
+      { serverOrigin: viteConfig.serverOrigin ?? null },
+      "Set `server.origin` to the public origin remote consumers should use in development.",
     );
   }),
   createRule("artifact/manifest-assets-disabled", "warning", (context) => {

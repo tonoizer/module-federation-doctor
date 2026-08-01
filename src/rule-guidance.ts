@@ -350,6 +350,40 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Align `shared` React with `ssrExternals` / `ssrEntryLoader` for the SSR runtime, or document an intentional dual-instance path.",
     sources: [vite],
   },
+  "vite/manual-chunks-conflict": {
+    category: "reliability",
+    impact:
+      "Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles.",
+    fix: "Keep federation runtime chunks isolated; move general splitting outside that graph or allowlist a proven layout.",
+    sources: [vite],
+  },
+  "vite/hashed-remote-filename": {
+    category: "reliability",
+    impact:
+      "Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds.",
+    fix: "Use a stable `filename` such as `remoteEntry.js` for the container entry.",
+    sources: [vite, "https://module-federation.io/configure/filename.html"],
+  },
+  "vite/remote-hmr-dev": {
+    category: "tooling",
+    impact: "Without `remoteHmr`, local Vite remotes miss cross-container hot updates.",
+    fix: "Enable `remoteHmr` in development profiles when remotes/exposes are active.",
+    sources: [vite],
+  },
+  "vite/alias-share-bypass": {
+    category: "correctness",
+    impact:
+      "resolve.alias can rewrite imports around the share scope and duplicate singleton packages.",
+    fix: "Remove the overlapping alias, drop the package from shared, or allowlist intentional bypasses.",
+    sources: [vite, shared],
+  },
+  "vite/server-origin": {
+    category: "reliability",
+    impact:
+      "Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development.",
+    fix: "Set Vite `server.origin` to the URL remotes should publish for consumers.",
+    sources: [vite],
+  },
   "artifact/manifest-assets-disabled": {
     category: "reliability",
     impact:

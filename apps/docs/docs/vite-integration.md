@@ -55,6 +55,18 @@ Vite string remotes and object remotes without `type` default to **`var`**. Doct
 remotes, or configure producer `varFilename` for var-host interop
 ([`vite/var-filename-interop`](./rules/vite/var-filename-interop.md)).
 
+## Dialect fact matrix (config-only vs plugin-resolved)
+
+| Check                                   | CLI config-only            | Plugin `configResolved`              |
+| --------------------------------------- | -------------------------- | ------------------------------------ |
+| Remotes typing / `varFilename`          | Yes                        | Yes                                  |
+| `hostInitInjectLocation` / SSR          | Yes (MF options + deps)    | Yes (+ builds when `targetKind=ssr`) |
+| `manualChunks` / `codeSplitting.groups` | Skip                       | Yes (`bundler.viteConfig`)           |
+| Hashed `filename`                       | Yes                        | Yes                                  |
+| `remoteHmr`                             | Yes when set on MF options | Yes                                  |
+| `resolve.alias` ∩ shared                | Skip                       | Yes                                  |
+| `server.origin`                         | Skip                       | Yes                                  |
+
 The full current surface is in the official
 [normalizer](https://github.com/module-federation/vite/blob/321d7db8a4b2a1764b3a7cdc16246222d97231ac/src/utils/normalizeModuleFederationOptions.ts).
 

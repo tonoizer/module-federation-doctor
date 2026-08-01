@@ -45,6 +45,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`federation/version-conflict`](./federation/version-conflict.md) | error | No installed provider version satisfies every consumer range. |
 | [`runtime-plugins/invalid-factory`](./runtime-plugins/invalid-factory.md) | warning | A runtime plugin without a factory or usable `name` is ignored at runtime (silent no-op). |
 | [`shared/version-unsatisfied`](./shared/version-unsatisfied.md) | error | The installed provider does not satisfy the configured consumer range. |
+| [`vite/alias-share-bypass`](./vite/alias-share-bypass.md) | warning | resolve.alias can rewrite imports around the share scope and duplicate singleton packages. |
 | [`vite/host-init-inject-ssr`](./vite/host-init-inject-ssr.md) | error | SSR and HTML-less frameworks need host init injected into the entry, not the HTML document, or federation bootstrap never runs on the server. |
 | [`vite/remotes-prefer-module`](./vite/remotes-prefer-module.md) | warning | Vite string remotes and missing/`var` type default to script-style loading. Vite↔Vite ESM remotes need explicit `type: 'module'`; mixed bundlers should declare an explicit non-default type (for example `global`) or document a `varFilename` producer interop path. |
 
@@ -79,6 +80,9 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`runtime/shared-mismatch`](./runtime/shared-mismatch.md) | error | Runtime shared selection conflicts with installed versions, required ranges, or provider config. |
 | [`shared/singleton-mismatch`](./shared/singleton-mismatch.md) | warning | Projects disagree on whether multiple instances are allowed. |
 | [`shared/singleton-risk`](./shared/singleton-risk.md) | warning | Multiple framework runtimes can split global state, contexts, hooks, or renderers. |
+| [`vite/hashed-remote-filename`](./vite/hashed-remote-filename.md) | warning | Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds. |
+| [`vite/manual-chunks-conflict`](./vite/manual-chunks-conflict.md) | warning | Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles. |
+| [`vite/server-origin`](./vite/server-origin.md) | warning | Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development. |
 | [`vite/ssr-nitro-externals`](./vite/ssr-nitro-externals.md) | warning | Shared React (or react-dom) can conflict with Nitro/SSR externals and `ssrEntryLoader` when the server expects a different module instance. |
 
 ## Performance
@@ -116,4 +120,5 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`config/remote-type-urls-missing`](./config/remote-type-urls-missing.md) | warning | Doctor reports this only when it can prove that a direct remote entry's inferred type location cannot match known producer output. Normal `remoteEntry.js` entries infer `@mf-types.zip` by default. |
 | [`doctor/partial-analysis`](./doctor/partial-analysis.md) | warning | Missing facts or unresolved dynamic imports reduce confidence and can hide relevant findings. |
 | [`runtime/remote-unknown`](./runtime/remote-unknown.md) | warning | The trace names a remote that is absent from loaded Doctor project facts. |
+| [`vite/remote-hmr-dev`](./vite/remote-hmr-dev.md) | info | Without `remoteHmr`, local Vite remotes miss cross-container hot updates. |
 | [`vite/var-filename-interop`](./vite/var-filename-interop.md) | info | `varFilename` emits an additional global-format remote entry so var hosts (webpack/rspack) can load this Vite producer. |

@@ -548,6 +548,57 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "vite/manual-chunks-conflict",
+      (facts: ProjectFacts) => {
+        facts.bundler.viteConfig = { manualChunks: true };
+      },
+    ],
+    [
+      "vite/hashed-remote-filename",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.filename = "remoteEntry.[hash].js";
+      },
+    ],
+    [
+      "vite/remote-hmr-dev",
+      (facts: ProjectFacts) => {
+        facts.bundler.mode = "development";
+        facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
+        facts.moduleFederation!.vite = {
+          bundleAllCSS: false,
+          ignoreOrigin: false,
+          ssrExternals: [],
+          remoteHmr: false,
+        };
+      },
+    ],
+    [
+      "vite/alias-share-bypass",
+      (facts: ProjectFacts) => {
+        facts.bundler.viteConfig = { resolveAliases: { react: "./src/shims/react.ts" } };
+        facts.moduleFederation!.shared.react = {
+          package: "react",
+          singleton: true,
+          eager: false,
+          shareScope: "default",
+        };
+      },
+    ],
+    [
+      "vite/server-origin",
+      (facts: ProjectFacts) => {
+        facts.bundler.viteConfig = { serverOrigin: null };
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/remoteEntry.js",
+            type: "module",
+            shareScope: ["default"],
+          },
+        };
+      },
+    ],
+    [
       "artifact/manifest-assets-disabled",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.manifest = {
@@ -1497,5 +1548,63 @@ describe("vite SSR inject dialect", () => {
       react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
     };
     expect(await run("vite/ssr-nitro-externals", missing)).toHaveLength(0);
+  });
+});
+
+describe("vite dialect follow-ons", () => {
+  it("skips follow-on rules when plugin viteConfig facts are absent", async () => {
+    const facts: ProjectFacts = {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/remoteEntry.js",
+            type: "module",
+            shareScope: ["default"],
+          },
+        },
+        shared: {
+          react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+        },
+        vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [] },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    for (const id of [
+      "vite/manual-chunks-conflict",
+      "vite/alias-share-bypass",
+      "vite/server-origin",
+    ] as const) {
+      findings.length = 0;
+      const selected = builtInRules.find((item) => item.meta.id === id)!;
+      await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+      expect(findings, id).toHaveLength(0);
+    }
   });
 });
