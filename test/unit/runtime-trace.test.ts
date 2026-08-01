@@ -76,6 +76,55 @@ describe("runtime trace import", () => {
     expect(JSON.stringify(trace)).not.toMatch(/secret-token|Bearer|session=/);
   });
 
+  it("normalizes the current upstream report without confusing runtimeVersion with source contract", async () => {
+    const [trace] = await loadRuntimeTraceFile(path.join(fixtureRoot, "current-2.5.3.json"));
+    expect(trace).toBeDefined();
+    expect(trace!).toMatchObject({
+      sourceContract: "upstream-observability-2.5.3",
+      runtimeVersion: "2.5.0",
+      requestId: "remote/Button",
+      hostName: "host",
+      outcome: "runtime-loaded",
+      diagnosis: {
+        title: "Remote loaded successfully",
+        ownerHint: "remote",
+        completedPhases: ["loadRemote"],
+      },
+    });
+    expect(trace!.runtimeVersion).not.toBe(trace!.sourceContract);
+  });
+
+  it("accepts all supported report envelopes and keeps partial reports partial", async () => {
+    const [direct] = parseRuntimeTraces({ traceId: "direct", status: "pending" });
+    expect(direct).toBeDefined();
+    expect(direct!.sourceContract).toBe("partial");
+    expect(parseRuntimeTraces([direct]).length).toBe(1);
+    expect(parseRuntimeTraces({ report: direct }).length).toBe(1);
+    expect(parseRuntimeTraces({ reports: [direct] }).length).toBe(1);
+    expect(() => parseRuntimeTraces({ projects: 1, findings: [] })).toThrow(/document kind/);
+  });
+
+  it("uses final recovered outcome over earlier failed phases", () => {
+    const trace = parseRuntimeTraces({
+      traceId: "recovered-shared",
+      hostName: "host",
+      remote: { name: "checkout" },
+      shared: { package: "react", reason: "custom-share-info-unmatched" },
+      summary: {
+        outcome: "recovered",
+        recovered: true,
+        phases: { shared: { status: "error" }, preload: { status: "success" } },
+        error: { errorCode: "RUNTIME-007" },
+      },
+    });
+    const findings = correlateRuntime(trace, [
+      baseProject({ name: "host" }),
+      baseProject({ name: "checkout" }),
+    ]);
+    expect(findings.some((finding) => finding.ruleId === "runtime/shared-mismatch")).toBe(false);
+    expect(findings.every((finding) => finding.severity !== "error")).toBe(true);
+  });
+
   it("correlates remote load failures with project remotes", async () => {
     const host = baseProject({
       name: "host",

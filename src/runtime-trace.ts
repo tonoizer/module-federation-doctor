@@ -15,7 +15,8 @@ import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
 import { fingerprint, looksLikeUrl, redact, redactRuntimeUrl, sortFindings } from "./utils.js";
 
 const FAILED = new Set(["error", "failed", "timeout"]);
-const REMOTE_PHASES = new Set(["manifest", "remoteEntry", "expose", "factory"]);
+const REMOTE_PHASES = new Set(["matchRemote", "manifest", "remoteEntry", "expose", "loadRemote"]);
+const INIT_PHASES = new Set(["remoteEntryInit", "init"]);
 const ERROR_CODE = /^RUNTIME-\d+$/i;
 
 export class RuntimeTraceError extends Error {
@@ -33,6 +34,40 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 
 function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function asBoolean(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function boundedStrings(value: unknown, limit = 24): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .filter((item): item is string => typeof item === "string" && item.length > 0)
+    .slice(0, limit)
+    .map((item) => String(redactDeep(item)).slice(0, 500));
+}
+
+function boundedRecord(value: unknown): Record<string, unknown> | undefined {
+  const record = asRecord(value);
+  if (!record) return undefined;
+  const bound = (item: unknown, depth: number): unknown => {
+    if (typeof item === "string") return String(redactDeep(item)).slice(0, 500);
+    if (depth <= 0) return typeof item === "object" && item !== null ? "[TRUNCATED]" : item;
+    if (Array.isArray(item)) return item.slice(0, 24).map((entry) => bound(entry, depth - 1));
+    const object = asRecord(item);
+    if (!object) return item;
+    return Object.fromEntries(
+      Object.entries(object)
+        .slice(0, 32)
+        .map(([key, entry]) => [key, bound(entry, depth - 1)]),
+    );
+  };
+  return bound(record, 3) as Record<string, unknown>;
 }
 
 function phaseFailed(status: unknown): boolean {
@@ -92,11 +127,14 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   if (!record) return undefined;
   const summary = asRecord(record.summary);
   const remote = asRecord(record.remote);
-  const shared = asRecord(record.shared);
+  const shared = asRecord(record.shared) ?? asRecord(summary?.shared);
   const moduleInfo = asRecord(record.moduleInfo);
   const diagnosis = asRecord(record.diagnosis);
+  const summaryError = asRecord(summary?.error);
+  const outcome = asString(summary?.outcome);
   const errorCode =
     asString(record.errorCode) ??
+    asString(summaryError?.errorCode) ??
     asString(diagnosis?.errorCode) ??
     asString(asRecord(record.error)?.code);
   const hasShape =
@@ -108,19 +146,48 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     errorCode !== undefined;
   if (!hasShape) return undefined;
 
+  const legacy =
+    diagnosis?.owner !== undefined ||
+    diagnosis?.summary !== undefined ||
+    (moduleInfo && (moduleInfo.name !== undefined || moduleInfo.id !== undefined)) ||
+    outcome === "success" ||
+    (summary?.phases && asRecord(summary.phases)?.init !== undefined);
   const report: RuntimeTraceReport = {
     schemaVersion: 1,
+    sourceContract: legacy
+      ? "legacy-doctor-v1"
+      : summary === undefined && (!Array.isArray(record.events) || record.events.length === 0)
+        ? "partial"
+        : "upstream-observability-2.5.3",
     events: readEvents(record.events),
   };
   const traceId = asString(record.traceId);
   const status = asString(record.status);
-  const outcome = asString(summary?.outcome);
   if (traceId) report.traceId = traceId;
   if (status) report.status = status;
+  for (const key of ["requestId", "requestAlias", "hostName", "runtimeVersion"] as const) {
+    const value = asString(record[key]);
+    if (value) report[key] = value;
+  }
   if (errorCode) report.errorCode = errorCode;
   if (outcome) report.outcome = outcome;
+  const recovered = asBoolean(summary?.recovered) ?? asBoolean(asRecord(summary?.flags)?.recovered);
+  if (recovered !== undefined) report.recovered = recovered;
+  const failedPhase = asString(record.failedPhase) ?? asString(summaryError?.failedPhase);
+  if (failedPhase) report.failedPhase = failedPhase;
+  const ownerHint =
+    asString(record.ownerHint) ??
+    asString(summaryError?.ownerHint) ??
+    asString(diagnosis?.ownerHint);
+  if (ownerHint) report.ownerHint = ownerHint;
   const phases = readPhases(summary);
   if (phases) report.phases = phases;
+  if (outcome === "success" && phases) {
+    const completedRemotePhase = ["remoteEntry", "expose", "loadRemote"].some(
+      (phase) => phases[phase]?.status === "complete" || phases[phase]?.status === "success",
+    );
+    if (completedRemotePhase) report.outcome = "runtime-loaded";
+  }
   if (remote) {
     const normalizedRemote: NonNullable<RuntimeTraceReport["remote"]> = {};
     const name = asString(remote.name);
@@ -162,14 +229,60 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     if (name) normalizedModule.name = name;
     if (id) normalizedModule.id = id;
     if (publicPath) normalizedModule.publicPath = redactRuntimeUrl(publicPath);
+    const reason = asString(moduleInfo.reason);
+    const clipped = asBoolean(moduleInfo.clipped);
+    const totalCount = asNumber(moduleInfo.totalCount);
+    const matchedCount = asNumber(moduleInfo.matchedCount);
+    if (reason) normalizedModule.reason = reason;
+    if (clipped !== undefined) normalizedModule.clipped = clipped;
+    if (totalCount !== undefined) normalizedModule.totalCount = totalCount;
+    if (matchedCount !== undefined) normalizedModule.matchedCount = matchedCount;
+    const availableNames = boundedStrings(moduleInfo.availableNames);
+    if (availableNames) normalizedModule.availableNames = availableNames;
+    if (Array.isArray(moduleInfo.entries)) {
+      normalizedModule.entries = moduleInfo.entries.slice(0, 24).flatMap((item) => {
+        const entry = asRecord(item);
+        if (!entry) return [];
+        const next: NonNullable<NonNullable<RuntimeTraceReport["moduleInfo"]>["entries"]>[number] =
+          {};
+        for (const key of ["name", "getPublicPath", "globalName"] as const) {
+          const value = asString(entry[key]);
+          if (value) next[key] = String(redactDeep(value)).slice(0, 500);
+        }
+        for (const key of ["publicPath", "remoteEntry"] as const) {
+          const value = asString(entry[key]);
+          if (value) next[key] = redactRuntimeUrl(value);
+        }
+        return [next];
+      });
+    }
     report.moduleInfo = normalizedModule;
   }
   if (diagnosis) {
     const normalizedDiagnosis: NonNullable<RuntimeTraceReport["diagnosis"]> = {};
     const owner = asString(diagnosis.owner);
     const diagnosisSummary = asString(diagnosis.summary) ?? asString(diagnosis.message);
+    const diagnosisOwnerHint = asString(diagnosis.ownerHint);
+    const title = asString(diagnosis.title);
     if (owner) normalizedDiagnosis.owner = owner;
+    if (diagnosisOwnerHint) normalizedDiagnosis.ownerHint = diagnosisOwnerHint;
+    if (title) normalizedDiagnosis.title = String(redactDeep(title)).slice(0, 500);
     if (diagnosisSummary) normalizedDiagnosis.summary = diagnosisSummary;
+    const facts = boundedRecord(diagnosis.facts);
+    if (facts) normalizedDiagnosis.facts = facts;
+    const actions = Array.isArray(diagnosis.actions)
+      ? diagnosis.actions.slice(0, 24).flatMap((item) => {
+          const action = boundedRecord(item);
+          return action ? [action] : [];
+        })
+      : undefined;
+    if (actions) normalizedDiagnosis.actions = actions;
+    const warnings = boundedStrings(diagnosis.warnings);
+    const completedPhases = boundedStrings(diagnosis.completedPhases);
+    const pendingPhases = boundedStrings(diagnosis.pendingPhases);
+    if (warnings) normalizedDiagnosis.warnings = warnings;
+    if (completedPhases) normalizedDiagnosis.completedPhases = completedPhases;
+    if (pendingPhases) normalizedDiagnosis.pendingPhases = pendingPhases;
     report.diagnosis = normalizedDiagnosis;
   }
   return redactDeep(report) as RuntimeTraceReport;
@@ -185,6 +298,11 @@ function extractRawReports(raw: unknown): unknown[] {
 }
 
 export function parseRuntimeTraces(raw: unknown): RuntimeTraceReport[] {
+  const record = asRecord(raw);
+  if (record && (record.findings !== undefined || record.projects !== undefined))
+    throw new RuntimeTraceError(
+      "Unsupported runtime trace document kind: build/Doctor report; expected an Observability runtime report.",
+    );
   const reports = extractRawReports(raw)
     .map(normalizeReport)
     .filter((item): item is RuntimeTraceReport => item !== undefined);
@@ -245,6 +363,19 @@ function failedPhases(trace: RuntimeTraceReport): string[] {
   return [...new Set([...fromEvents, ...fromSummary])];
 }
 
+function exactProject(
+  projects: ProjectFacts[],
+  name: string | undefined,
+): ProjectFacts | undefined {
+  if (!name) return undefined;
+  return projects.find(
+    (project) =>
+      project.moduleFederation?.name === name ||
+      project.artifacts.manifest?.name === name ||
+      project.artifacts.manifest?.id === name,
+  );
+}
+
 function runtimeFinding(
   ruleId: (typeof runtimeRuleMeta)[number]["id"],
   severity: Severity,
@@ -287,16 +418,46 @@ export function correlateRuntime(
   for (const trace of traces) {
     const remoteName = trace.remote?.name ?? trace.remote?.alias;
     const matches = remoteName ? findProjectsForRemote(projects, remoteName) : [];
-    const projectName = preferredProject(
-      matches.length > 0
-        ? matches
-        : projects.filter(
-            (project) =>
-              project.moduleFederation?.name === trace.moduleInfo?.name ||
-              project.artifacts.manifest?.name === trace.moduleInfo?.name ||
-              project.artifacts.manifest?.id === trace.moduleInfo?.id,
-          ),
-    );
+    const hostProject = exactProject(projects, trace.hostName);
+    const producerProject = exactProject(projects, trace.remote?.name);
+    const owner = trace.diagnosis?.ownerHint ?? trace.ownerHint ?? trace.diagnosis?.owner;
+    const ambiguousIdentity =
+      !owner &&
+      hostProject &&
+      producerProject &&
+      hostProject.project.name !== producerProject.project.name;
+    const ownerProject =
+      owner === "host" ? hostProject : owner === "remote" ? producerProject : undefined;
+    const identityCandidates = ownerProject
+      ? [ownerProject]
+      : producerProject
+        ? [producerProject]
+        : [];
+    const projectName = ambiguousIdentity
+      ? "runtime"
+      : preferredProject(
+          identityCandidates.length > 0
+            ? identityCandidates
+            : matches.length > 0
+              ? matches
+              : projects.filter(
+                  (project) =>
+                    project.moduleFederation?.name === trace.moduleInfo?.name ||
+                    project.artifacts.manifest?.name === trace.moduleInfo?.name ||
+                    project.artifacts.manifest?.id === trace.moduleInfo?.id,
+                ),
+        );
+    const identityEvidence = {
+      ...(trace.hostName ? { hostName: trace.hostName } : {}),
+      ...(trace.remote?.name ? { producer: trace.remote.name } : {}),
+      ...(owner ? { ownerHint: owner } : {}),
+      ...(ambiguousIdentity
+        ? {
+            matchReason: "ambiguous host/producer identity",
+            candidates: [hostProject!.project.name, producerProject!.project.name].sort(),
+          }
+        : {}),
+    };
     const matchedManifest = matches
       .map((project) => project.artifacts.manifest)
       .find((manifest) => manifest && (manifest.valid || manifest.name || manifest.id));
@@ -313,13 +474,15 @@ export function correlateRuntime(
             remote: remoteName,
             ...(trace.traceId ? { traceId: trace.traceId } : {}),
             ...(trace.remote?.entry ? { entry: trace.remote.entry } : {}),
+            identity: identityEvidence,
           },
           "Re-run mfdoctor check/federation for every host and remote, or fix the remote name in the trace source.",
         ),
       );
     }
 
-    if (phases.some((phase) => REMOTE_PHASES.has(phase))) {
+    const recovered = trace.outcome === "recovered" || trace.recovered === true;
+    if (!recovered && phases.some((phase) => REMOTE_PHASES.has(phase))) {
       findings.push(
         runtimeFinding(
           "runtime/remote-load-failed",
@@ -332,6 +495,7 @@ export function correlateRuntime(
             ...(trace.traceId ? { traceId: trace.traceId } : {}),
             ...(trace.errorCode ? { errorCode: trace.errorCode } : {}),
             ...(trace.remote?.entry ? { entry: trace.remote.entry } : {}),
+            identity: identityEvidence,
             projects: matches.map((project) => project.project.name).sort(),
           },
           "Compare the redacted entry URL and manifest metadata with the producer build output.",
@@ -339,7 +503,7 @@ export function correlateRuntime(
       );
     }
 
-    if (phases.includes("init")) {
+    if (!recovered && phases.some((phase) => INIT_PHASES.has(phase))) {
       const hosts = matches.length > 0 ? matches : projects;
       const host = hosts[0];
       findings.push(
@@ -352,6 +516,7 @@ export function correlateRuntime(
             ...(remoteName ? { remote: remoteName } : {}),
             ...(trace.traceId ? { traceId: trace.traceId } : {}),
             ...(trace.errorCode ? { errorCode: trace.errorCode } : {}),
+            identity: identityEvidence,
             asyncStartup: Boolean(host?.moduleFederation?.experiments?.asyncStartup),
             externalRuntime: Boolean(host?.moduleFederation?.experiments?.externalRuntime),
             provideExternalRuntime: Boolean(
@@ -386,19 +551,21 @@ export function correlateRuntime(
       );
       const providers = sharedEntries.filter((entry) => entry.shared?.import !== false);
       const sharedFailed =
-        phases.includes("shared") ||
-        phaseFailed(trace.status) ||
-        trace.outcome === "failed" ||
-        Boolean(trace.shared?.reason && /unmatched|missing|fail/i.test(trace.shared.reason));
+        !recovered &&
+        (phases.includes("shared") ||
+          phaseFailed(trace.status) ||
+          trace.outcome === "failed" ||
+          Boolean(trace.shared?.reason && /unmatched|missing|fail/i.test(trace.shared.reason)));
       const versionMismatch = sharedVersionMismatch(
         trace.shared?.selectedVersion,
         typeof required === "string" ? required : undefined,
         installed,
       );
       if (
-        sharedFailed ||
-        versionMismatch ||
-        (consumersWithoutFallback.length > 0 && providers.length === 0)
+        !recovered &&
+        (sharedFailed ||
+          versionMismatch ||
+          (consumersWithoutFallback.length > 0 && providers.length === 0))
       ) {
         findings.push(
           runtimeFinding(
@@ -436,7 +603,8 @@ export function correlateRuntime(
       findings.push(
         runtimeFinding(
           "runtime/error-correlated",
-          phases.length > 0 || trace.status === "error" || trace.outcome === "failed"
+          !recovered &&
+            (phases.length > 0 || trace.status === "error" || trace.outcome === "failed")
             ? "error"
             : "warning",
           projectName,
@@ -463,8 +631,12 @@ export function correlateRuntime(
                   },
                 }
               : {}),
-            ...(trace.diagnosis?.owner ? { owner: trace.diagnosis.owner } : {}),
-            ...(trace.diagnosis?.summary ? { diagnosis: trace.diagnosis.summary } : {}),
+            ...(owner ? { owner } : {}),
+            ...(trace.diagnosis?.title
+              ? { diagnosis: trace.diagnosis.title }
+              : trace.diagnosis?.summary
+                ? { diagnosis: trace.diagnosis.summary }
+                : {}),
           },
           "Use the stable RUNTIME code with the matched build facts; do not infer browser behavior from static analysis alone.",
         ),

@@ -613,10 +613,19 @@ export interface ResolvedDoctorOptions {
 
 export interface RuntimeTraceReport {
   schemaVersion: 1;
+  /** Source adapter marker. This is not the MF runtime version. */
+  sourceContract?: "upstream-observability-2.5.3" | "legacy-doctor-v1" | "partial";
   traceId?: string;
   status?: string;
+  requestId?: string;
+  requestAlias?: string;
+  hostName?: string;
+  runtimeVersion?: string;
   errorCode?: string;
+  failedPhase?: string;
+  ownerHint?: string;
   outcome?: string;
+  recovered?: boolean;
   remote?: {
     name?: string;
     alias?: string;
@@ -634,6 +643,18 @@ export interface RuntimeTraceReport {
     name?: string;
     id?: string;
     publicPath?: string;
+    reason?: string;
+    clipped?: boolean;
+    totalCount?: number;
+    matchedCount?: number;
+    availableNames?: string[];
+    entries?: Array<{
+      name?: string;
+      publicPath?: string;
+      getPublicPath?: string;
+      remoteEntry?: string;
+      globalName?: string;
+    }>;
   };
   phases?: Record<string, { status?: string }>;
   events: Array<{
@@ -643,7 +664,14 @@ export interface RuntimeTraceReport {
   }>;
   diagnosis?: {
     owner?: string;
+    ownerHint?: string;
+    title?: string;
     summary?: string;
+    facts?: Record<string, unknown>;
+    actions?: Array<Record<string, unknown>>;
+    warnings?: string[];
+    completedPhases?: string[];
+    pendingPhases?: string[];
   };
 }
 
