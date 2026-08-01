@@ -372,6 +372,16 @@ export interface DoctorFinding {
   suggestion?: string;
   documentation?: string;
   fingerprint: string;
+  /**
+   * Optional versioned details schema id (e.g. `shared.unused.v1`).
+   * Top-level only — never put this in `evidence` (fingerprints hash evidence).
+   */
+  detailsSchema?: string;
+  /**
+   * Optional machine-readable payload for `detailsSchema`.
+   * Not an input to `fingerprint()`; baselines/SARIF stay stable when this is added.
+   */
+  details?: Record<string, unknown>;
   /** Present when the finding matches a checked-in fingerprint baseline entry. */
   suppressed?: boolean;
   /** Optional human reason copied from the matching baseline entry. */
