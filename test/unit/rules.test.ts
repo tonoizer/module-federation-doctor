@@ -1311,6 +1311,29 @@ describe("vite SSR inject dialect", () => {
     expect(await run("vite/host-init-inject-ssr", browser)).toHaveLength(0);
     browser.moduleFederation!.vite!.hostInitInjectLocation = "html";
     expect(await run("vite/host-init-inject-ssr", browser)).toHaveLength(0);
+
+    // Vite default ssr.target often records builds.targetKind=node on client builds.
+    browser.builds = [
+      {
+        id: "client",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: "dist",
+        sourceHook: "writeBundle",
+        target: "node",
+        targetKind: "node",
+        emittedAssets: [],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact" },
+          emittedAssets: { state: "exact" },
+          artifacts: { state: "missing" },
+          effectiveMode: { state: "exact" },
+          target: { state: "exact" },
+        },
+      },
+    ];
+    expect(await run("vite/host-init-inject-ssr", browser)).toHaveLength(0);
   });
 
   it("warns when Nitro shared React overlaps ssrExternals and skips without facts", async () => {

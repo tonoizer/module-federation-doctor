@@ -176,12 +176,14 @@ function detectNitroSignal(facts: ProjectFacts): boolean {
 
 function detectViteSsrSignal(facts: ProjectFacts): { detected: boolean; signals: string[] } {
   const signals: string[] = [];
+  // Prefer MF-declared SSR targets and framework deps. Do not treat
+  // `builds.targetKind=node` alone as SSR — Vite's default `ssr.target` is
+  // `node`, so client builds often record that kind without being SSR apps.
   if (facts.moduleFederation?.vite?.target === "node") signals.push("vite.target=node");
   if (facts.moduleFederation?.experiments?.target === "node")
     signals.push("experiments.target=node");
   for (const build of facts.builds ?? []) {
-    if (build.targetKind === "ssr" || build.targetKind === "node")
-      signals.push(`builds.targetKind=${build.targetKind}`);
+    if (build.targetKind === "ssr") signals.push("builds.targetKind=ssr");
   }
   if (detectNitroSignal(facts)) signals.push("deps:nitropack|nuxt");
   return { detected: signals.length > 0, signals: [...new Set(signals)].sort() };

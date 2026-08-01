@@ -506,7 +506,7 @@ const plans: Record<string, RulePlan> = {
     "declared",
     "project",
     "high",
-    "SSR signals from vite.target, builds.targetKind, or framework deps gate this declared inject check.",
+    "SSR signals from vite.target, experiments.target, builds.targetKind=ssr, or framework deps gate this declared inject check. Bare builds.targetKind=node is ignored (Vite default ssr.target).",
     VITE,
   ),
   "vite/ssr-nitro-externals": plan(
@@ -516,7 +516,7 @@ const plans: Record<string, RulePlan> = {
     "declared",
     "project",
     "medium",
-    "Requires SSR/Nitro signals plus shared React and ssrExternals or ssrEntryLoader facts; otherwise skips.",
+    "Requires SSR/Nitro signals plus shared React and ssrExternals or ssrEntryLoader facts; otherwise skips. Bare builds.targetKind=node is ignored.",
     VITE,
   ),
   "artifact/manifest-assets-disabled": plan(
