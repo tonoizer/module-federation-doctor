@@ -59,10 +59,15 @@ function boundEvidence(evidence: Record<string, unknown>): string[] {
       break;
     }
     let rendered: string;
-    try {
-      rendered = typeof value === "string" ? value : JSON.stringify(value);
-    } catch {
-      rendered = String(value);
+    if (value === undefined) rendered = "undefined";
+    else if (value === null) rendered = "null";
+    else if (typeof value === "string") rendered = value;
+    else {
+      try {
+        rendered = JSON.stringify(value) ?? String(value);
+      } catch {
+        rendered = String(value);
+      }
     }
     if (rendered.length > MAX_EVIDENCE_VALUE_CHARS)
       rendered = `${rendered.slice(0, MAX_EVIDENCE_VALUE_CHARS)}…`;

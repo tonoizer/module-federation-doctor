@@ -59,6 +59,18 @@ describe("agent prompts", () => {
     expect(prompt).toMatch(/note: x{120}…/);
   });
 
+  it("stringifies undefined evidence values without throwing", () => {
+    const prompt = buildAgentPrompt(
+      finding({
+        ruleId: "config/remote-alias-prefix-collision",
+        severity: "error",
+        fingerprint: "fp-undef",
+        evidence: { alias: "@scope", collidingWith: undefined as unknown as string },
+      }),
+    );
+    expect(prompt).toContain("- collidingWith: undefined");
+  });
+
   it("orders top-3 by severity then impact and skips suppressed", () => {
     const findings = [
       finding({
