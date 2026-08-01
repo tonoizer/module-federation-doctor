@@ -7,6 +7,7 @@ import {
   DEFAULT_DEEP_IMPORT_ALLOWLIST,
   DEFAULT_SHARE_CANDIDATE_PACKAGES,
   DEFAULT_SINGLETON_RISK_PACKAGES,
+  isShareKeyUsed,
 } from "./shared-policy.js";
 import type {
   DoctorRule,
@@ -944,10 +945,6 @@ export const builtInRules: DoctorRule[] = [
         report(context, `"${name}" is eager but not singleton.`, { package: name });
   }),
   createRule("shared/unused", "warning", (context) => {
-    const imported = new Set([
-      ...(context.facts.imports.packages ?? []),
-      ...(context.facts.imports.dynamicPackages ?? []),
-    ]);
     const alwaysShared = alwaysSharedSet(context);
     const unresolvedMayHideUsage = (context.facts.imports.unresolvedDynamic ?? []).some((item) =>
       ["import", "loadShare", "loadShareSync"].includes(item.api),
@@ -955,7 +952,7 @@ export const builtInRules: DoctorRule[] = [
     // Incomplete dynamic evidence → prefer doctor/partial-analysis over false unused certainty.
     if (unresolvedMayHideUsage) return;
     for (const name of Object.keys(mf(context)?.shared ?? {}))
-      if (!imported.has(name) && !alwaysShared.has(name))
+      if (!isShareKeyUsed(name, context.facts.imports) && !alwaysShared.has(name))
         report(
           context,
           `Shared package "${name}" is not imported in scanned sources or opt-in runtime evidence.`,

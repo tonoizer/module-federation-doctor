@@ -342,4 +342,120 @@ describe("shared/unused with dynamic evidence", () => {
     });
     expect(findings).toHaveLength(0);
   });
+
+  it("treats trailing-slash prefix shares as used when root or subpath is imported", async () => {
+    const findings = await runUnused({
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        exposes: {},
+        remotes: {},
+        shared: {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+          "react/": { package: "react/", singleton: false, eager: false, shareScope: "default" },
+        },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: ["src/app.ts"],
+        specifiers: ["react", "react/jsx-runtime"],
+        packages: ["react"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+        deepImports: ["react/jsx-runtime"],
+      },
+      artifacts: { emittedAssets: [] },
+    });
+    expect(findings).toHaveLength(0);
+  });
+
+  it("treats exact subpath share keys as used via deepImports", async () => {
+    const findings = await runUnused({
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        exposes: {},
+        remotes: {},
+        shared: {
+          "preact/hooks": {
+            package: "preact/hooks",
+            singleton: false,
+            eager: false,
+            shareScope: "default",
+          },
+        },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: ["src/app.ts"],
+        specifiers: ["preact/hooks"],
+        packages: ["preact"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+        deepImports: ["preact/hooks"],
+      },
+      artifacts: { emittedAssets: [] },
+    });
+    expect(findings).toHaveLength(0);
+  });
+
+  it("still flags truly unused non-prefix share keys", async () => {
+    const findings = await runUnused({
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        exposes: {},
+        remotes: {},
+        shared: {
+          lodash: { package: "lodash", singleton: false, eager: false, shareScope: "default" },
+        },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: ["src/app.ts"],
+        specifiers: ["react"],
+        packages: ["react"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    });
+    expect(findings.some((item) => item.message.includes('"lodash"'))).toBe(true);
+  });
 });
