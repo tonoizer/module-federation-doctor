@@ -21,6 +21,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`bridge/react-version-entry-mismatch`](./bridge/react-version-entry-mismatch.md) | error | Importing `@module-federation/bridge-react/v18` against React 19 (or the reverse) selects the wrong Bridge API surface and can fail at runtime. |
 | [`bridge/router-shared-conflict`](./bridge/router-shared-conflict.md) | error | Bridge router aliases React Router; sharing `react-router` / `react-router-dom` at the same time can load duplicate router runtimes and break navigation. |
 | [`bridge/ssr-server-entry-leak`](./bridge/ssr-server-entry-leak.md) | error | Browser-only Bridge React entries must not load inside node/SSR builds; doing so leaks DOM-oriented Bridge code into the server bundle. |
+| [`bridge/vue-share-missing`](./bridge/vue-share-missing.md) | error | Vue Bridge remotes and hosts that omit `vue` (and `vue-router` when used) from `shared` can load duplicate Vue runtimes and break reactivity or routing. |
 | [`config/duplicate-plugin-registration`](./config/duplicate-plugin-registration.md) | error | Registering Module Federation more than once on the same compiler breaks the core singleton contract. |
 | [`config/eager-tree-shaking-conflict`](./config/eager-tree-shaking-conflict.md) | error | Eager modules live in the initial entry and cannot use the on-demand shared tree-shaking path. |
 | [`config/expose-key-invalid`](./config/expose-key-invalid.md) | error | Consumers cannot address an expose whose public key does not follow the `./Name` form. |
@@ -64,6 +65,9 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`bridge/export-app-missing`](./bridge/export-app-missing.md) | warning | Bridge producers without `./export-app` break the conventional Bridge remote contract expected by hosts. |
 | [`bridge/missing-fallback-loading`](./bridge/missing-fallback-loading.md) | warning | Bridge remotes without `fallback`/`loading` leave consumers with a blank screen while the remote loads or fails. |
 | [`bridge/react-version-entry-prefer`](./bridge/react-version-entry-prefer.md) | warning | The bare `@module-federation/bridge-react` entry can pick the wrong React Bridge API when the React major is known. |
+| [`bridge/vue-consumer-manual`](./bridge/vue-consumer-manual.md) | warning | Hand-rolled `loadRemote` mounts skip Vue Bridge lifecycle helpers and documented loading/error contracts. |
+| [`bridge/vue-server-entry`](./bridge/vue-server-entry.md) | warning | Browser-only Vue Bridge entries in node/SSR builds miss the server/hydration contract and can leak client-only Bridge code. |
+| [`bridge/vue-ssr-fresh-context`](./bridge/vue-ssr-fresh-context.md) | warning | Reusing one Vue app/router/store across SSR requests leaks request state between users. |
 | [`config/dts-output-dir-mismatch`](./config/dts-output-dir-mismatch.md) | warning | A nested remote-entry `filename` that disagrees with `dts.generateTypes.outputDir` can publish type archives to the wrong path. |
 | [`config/implementation-suspicious`](./config/implementation-suspicious.md) | info | A custom implementation can violate the runtime contract expected by the build plugin. |
 | [`config/nested-producer-dts-extract`](./config/nested-producer-dts-extract.md) | warning | A producer can omit remote types only when an exposed module actually re-exports a configured remote and the remote types are not extracted. |
