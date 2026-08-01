@@ -29,6 +29,7 @@ import type {
   RuleSetting,
   Severity,
 } from "./types.js";
+import { FINDING_DETAILS_SCHEMAS } from "./finding-details.js";
 import { deepFreeze, fingerprint, redact, sortFindings } from "./utils.js";
 import { writeFederationReports, writeReports } from "./reporters.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
@@ -388,7 +389,7 @@ export async function analyzeFederation(
         `"${name}" has inconsistent singleton settings.`,
         { package: name },
         {
-          detailsSchema: "shared.singleton.v1",
+          detailsSchema: FINDING_DETAILS_SCHEMAS.SHARED_SINGLETON,
           details: { package: name, kind: "mismatch" },
         },
       );
