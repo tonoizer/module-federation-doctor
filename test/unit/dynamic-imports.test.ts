@@ -51,6 +51,39 @@ async function projectWith(
 }
 
 describe("dynamic-import completeness", () => {
+  it("ignores comments, strings, and templates while preserving real imports", async () => {
+    const source = await fs.readFile(
+      path.join(dynamicFixtures, "adversarial-comments-strings.ts"),
+      "utf8",
+    );
+    const { facts } = await projectWith({ "src/app.ts": source });
+    expect(facts.imports.packages).toEqual(["react", "react-dom"]);
+    expect(facts.imports.specifiers).toEqual(["react", "react-dom"]);
+    expect(facts.imports.unresolvedDynamic).toEqual([]);
+  });
+
+  it("parses TSX syntax and records non-literal runtime calls as unresolved", async () => {
+    const source = await fs.readFile(path.join(dynamicFixtures, "syntax-aware.tsx"), "utf8");
+    const { facts } = await projectWith(
+      { "src/app.tsx": source },
+      { moduleFederation: { remotes: { shop: "shop@https://cdn.example.com/shop.js" } } },
+    );
+    expect(facts.imports.packages).toContain("react");
+    expect(facts.imports.dynamicPackages).toContain("lodash");
+    expect(facts.imports.remotes).toContain("shop");
+    expect(facts.imports.unresolvedDynamic).toEqual([{ api: "loadShare", file: "src/app.tsx" }]);
+  });
+
+  it("turns malformed source into partial evidence", async () => {
+    const source = await fs.readFile(path.join(dynamicFixtures, "malformed.txt"), "utf8");
+    const { facts } = await projectWith(
+      { "src/bad.txt": source },
+      { include: ["src/**/*.{ts,tsx,js,jsx,txt}"] },
+    );
+    expect(facts.imports.packages).toEqual([]);
+    expect(facts.imports.unresolvedDynamic).toEqual([{ api: "import", file: "src/bad.txt" }]);
+  });
+
   it("resolves dynamic import() of a shared package", async () => {
     const source = await fs.readFile(
       path.join(dynamicFixtures, "dynamic-import-package.ts"),
