@@ -716,6 +716,8 @@ importers:
 
   fixtures/policy-packs/acme-mfdoctor-policy: {}
 
+  fixtures/policy-packs/bridge: {}
+
 packages:
 
   '@andrewbranch/untar.js@1.0.3':

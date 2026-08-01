@@ -1602,6 +1602,116 @@ export const builtInRules: DoctorRule[] = [
       'Use the Bridge `/server` entry (or a node-safe Bridge import) in SSR/node builds, or set `ssrMode: "browser-only"` when this build is not SSR.',
     );
   }),
+  createRule("bridge/missing-fallback-loading", "warning", async (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const root = context.root ?? context.facts.project.root;
+    for (const file of context.facts.imports.sourceFiles ?? []) {
+      let source: string;
+      try {
+        source = await fs.readFile(path.join(root, file), "utf8");
+      } catch {
+        continue;
+      }
+      if (!/createRemoteAppComponent\s*\(/.test(source)) continue;
+      if (/\bfallback\b/.test(source) && /\bloading\b/.test(source)) continue;
+      report(
+        context,
+        "Bridge createRemoteAppComponent is missing fallback and/or loading UI.",
+        { file },
+        'Pass `fallback` and `loading` to createRemoteAppComponent, or set the rule to `"off"`.',
+      );
+      return;
+    }
+  }),
+  createRule("bridge/consumer-api-manual", "warning", async (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const hasRemotes = Object.keys(mf(context)?.remotes ?? {}).length > 0;
+    if (!hasRemotes && (context.facts.imports.remotes?.length ?? 0) === 0) return;
+    const root = context.root ?? context.facts.project.root;
+    let sawManual = false;
+    let sawHelper = false;
+    for (const file of context.facts.imports.sourceFiles ?? []) {
+      let source: string;
+      try {
+        source = await fs.readFile(path.join(root, file), "utf8");
+      } catch {
+        continue;
+      }
+      if (/\b(?:createRemoteAppComponent|createBridgeComponent|createBridge)\b/.test(source))
+        sawHelper = true;
+      if (/\bloadRemote\b/.test(source)) sawManual = true;
+    }
+    if (!sawManual || sawHelper) return;
+    report(
+      context,
+      "React Bridge remotes appear to use manual `loadRemote` instead of Bridge consumer helpers.",
+      {
+        remotes: Object.keys(mf(context)?.remotes ?? {}),
+        importRemotes: context.facts.imports.remotes ?? [],
+      },
+      'Prefer createRemoteAppComponent / createBridge from `@module-federation/bridge-react`, or set the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/export-app-missing", "warning", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const exposes = mf(context)?.exposes ?? {};
+    const keys = Object.keys(exposes);
+    if (keys.length === 0) return;
+    const hasExportApp = keys.some(
+      (key) => key === "./export-app" || key === "export-app" || key.endsWith("/export-app"),
+    );
+    if (hasExportApp) return;
+    report(
+      context,
+      'Bridge producer exposes modules but is missing the conventional "./export-app" Bridge entry.',
+      { exposeKeys: keys },
+      'Add `"./export-app"` that returns Bridge `render`/`destroy` (createBridgeComponent), or set the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/ssr-instanceid-hydration", "info", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const ssrMode = optionSsrMode(context.options);
+    if (!isNodeOrSsrTarget(context.facts, ssrMode)) return;
+    const bridge = mf(context)?.bridge ?? {};
+    if (typeof bridge.instanceId === "string" && bridge.instanceId.length > 0) return;
+    report(
+      context,
+      "SSR Bridge builds should set a stable `bridge.instanceId` for hydration registry correlation.",
+      { bridge },
+      'Set `bridge: { instanceId: "..." }` for SSR hydration, or set `ssrMode: "browser-only"` / the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/tanstack-router-conflict", "info", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    if (!isBridgeRouterEnabled(context.facts)) return;
+    const signals = [
+      ...Object.keys(context.facts.dependencies.declared),
+      ...Object.keys(context.facts.dependencies.installed),
+      ...(context.facts.imports.packages ?? []),
+      ...Object.keys(mf(context)?.shared ?? {}),
+    ];
+    const tanstack = signals.filter(
+      (name) => name === "@tanstack/react-router" || name.startsWith("@tanstack/react-router/"),
+    );
+    if (tanstack.length === 0) return;
+    report(
+      context,
+      "Bridge router is enabled while `@tanstack/react-router` is also present; routing stacks may conflict.",
+      { tanstack },
+      'Disable Bridge router or isolate TanStack Router ownership, or set the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/disable-alias-deprecated", "info", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const options = bridgeOptions(mf(context));
+    if (options?.disableAlias !== true) return;
+    report(
+      context,
+      "`bridge.disableAlias` is deprecated; prefer an explicit `enableBridgeRouter` setting.",
+      { bridge: mf(context)?.bridge ?? null },
+      'Replace `disableAlias` with `enableBridgeRouter: false` (or true), or set the rule to `"off"`.',
+    );
+  }),
   createRule("runtime-plugins/invalid-factory", "warning", (context) => {
     for (const item of context.facts.runtimePluginContracts ?? []) {
       if (item.kind !== "invalid-factory") continue;

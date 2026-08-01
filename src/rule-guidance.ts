@@ -660,8 +660,8 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "bridge/provider-shape-invalid": {
     category: "correctness",
     impact:
-      "Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or fallback/loading contracts and break Bridge remotes.",
-    fix: 'Pass a complete options object (loader/module plus fallback/loading, or a root component for export-app). Turn the rule `"off"` when source facts are too thin or the call shape is dynamic.',
+      "Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or root component contracts and break Bridge remotes.",
+    fix: 'Pass a complete options object (loader/module for consumers, or a root component for export-app). Fallback/loading UX is covered by `bridge/missing-fallback-loading`. Turn the rule `"off"` when source facts are too thin or the call shape is dynamic.',
     sources: ["https://module-federation.io/guide/bridge/react-bridge"],
   },
   "bridge/ssr-server-entry-leak": {
@@ -669,6 +669,48 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     impact:
       "Browser-only Bridge React entries must not load inside node/SSR builds; doing so leaks DOM-oriented Bridge code into the server bundle.",
     fix: 'Import the Bridge `/server` entry (or a node-safe path) for SSR/node targets. Override with `ssrMode: "browser-only"` when the build is not SSR, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/missing-fallback-loading": {
+    category: "reliability",
+    impact:
+      "Bridge remotes without `fallback`/`loading` leave consumers with a blank screen while the remote loads or fails.",
+    fix: 'Pass `fallback` and `loading` to `createRemoteAppComponent`, or set `rules["bridge/missing-fallback-loading"]` to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/consumer-api-manual": {
+    category: "reliability",
+    impact:
+      "Hand-rolled `loadRemote` / remote mounts skip Bridge lifecycle helpers and lose documented loading/error contracts.",
+    fix: 'Prefer `createRemoteAppComponent` / `createBridge` from `@module-federation/bridge-react`, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/export-app-missing": {
+    category: "reliability",
+    impact:
+      "Bridge producers without `./export-app` break the conventional Bridge remote contract expected by hosts.",
+    fix: 'Expose `"./export-app"` via `createBridgeComponent` (render/destroy), or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/ssr-instanceid-hydration": {
+    category: "tooling",
+    impact:
+      "Without a stable `bridge.instanceId`, SSR Bridge hydration registries can collide across requests.",
+    fix: 'Set `bridge.instanceId` for SSR builds, use `ssrMode: "browser-only"` when not SSR, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/tanstack-router-conflict": {
+    category: "tooling",
+    impact:
+      "Bridge router aliasing plus `@tanstack/react-router` can duplicate navigation ownership in one app.",
+    fix: 'Disable Bridge router or isolate TanStack Router, or set `rules["bridge/tanstack-router-conflict"]` to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/disable-alias-deprecated": {
+    category: "tooling",
+    impact:
+      "`bridge.disableAlias` is a deprecated escape hatch; explicit `enableBridgeRouter` communicates intent clearly.",
+    fix: 'Prefer `enableBridgeRouter: false` (or true) over `disableAlias`, or set the rule to `"off"`.',
     sources: ["https://module-federation.io/guide/bridge/react-bridge"],
   },
 };

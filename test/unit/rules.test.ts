@@ -989,6 +989,101 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "bridge/missing-fallback-loading",
+      (facts: ProjectFacts) => {
+        const root = fsSync.mkdtempSync(path.join(os.tmpdir(), "mfdoctor-bridge-fallback-"));
+        fsSync.mkdirSync(path.join(root, "src"));
+        fsSync.writeFileSync(
+          path.join(root, "src/App.tsx"),
+          [
+            'import { createRemoteAppComponent } from "@module-federation/bridge-react/v19";',
+            "export const Remote = createRemoteAppComponent({ loader: async () => ({ default: () => null }) });",
+            "",
+          ].join("\n"),
+        );
+        facts.project.root = root;
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.sourceFiles = ["src/App.tsx"];
+        facts.imports.packages = ["@module-federation/bridge-react"];
+        facts.imports.specifiers = ["@module-federation/bridge-react/v19"];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+      },
+    ],
+    [
+      "bridge/consumer-api-manual",
+      (facts: ProjectFacts) => {
+        const root = fsSync.mkdtempSync(path.join(os.tmpdir(), "mfdoctor-bridge-manual-"));
+        fsSync.mkdirSync(path.join(root, "src"));
+        fsSync.writeFileSync(
+          path.join(root, "src/App.tsx"),
+          'import { loadRemote } from "@module-federation/runtime";\nloadRemote("shop/App");\n',
+        );
+        facts.project.root = root;
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.sourceFiles = ["src/App.tsx"];
+        facts.imports.packages = ["@module-federation/bridge-react", "@module-federation/runtime"];
+        facts.imports.specifiers = [
+          "@module-federation/bridge-react/v19",
+          "@module-federation/runtime",
+        ];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/mf-manifest.json",
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "bridge/export-app-missing",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.packages = ["@module-federation/bridge-react"];
+        facts.imports.specifiers = ["@module-federation/bridge-react/v19"];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+        facts.moduleFederation!.exposes = { "./Widget": "src/Widget.tsx" };
+      },
+    ],
+    [
+      "bridge/ssr-instanceid-hydration",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.packages = ["@module-federation/bridge-react"];
+        facts.imports.specifiers = ["@module-federation/bridge-react/server"];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+        facts.moduleFederation!.vite = {
+          bundleAllCSS: false,
+          ignoreOrigin: false,
+          target: "node",
+          ssrExternals: [],
+        };
+      },
+    ],
+    [
+      "bridge/tanstack-router-conflict",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.dependencies.declared["@tanstack/react-router"] = "1.0.0";
+        facts.imports.packages = ["@module-federation/bridge-react", "@tanstack/react-router"];
+        facts.imports.specifiers = [
+          "@module-federation/bridge-react/v19",
+          "@tanstack/react-router",
+        ];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+      },
+    ],
+    [
+      "bridge/disable-alias-deprecated",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.packages = ["@module-federation/bridge-react"];
+        facts.imports.specifiers = ["@module-federation/bridge-react/v19"];
+        facts.moduleFederation!.bridge = { disableAlias: true };
+      },
+    ],
+    [
       "runtime-plugins/invalid-factory",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.runtimePlugins = ["./src/bad-plugin.ts"];

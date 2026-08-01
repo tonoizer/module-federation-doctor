@@ -16,7 +16,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`artifact/public-path-suspicious`](./artifact/public-path-suspicious.md) | warning | A malformed asset base makes remote chunks and styles resolve from the wrong URL. |
 | [`artifact/remote-entry-missing`](./artifact/remote-entry-missing.md) | error | A producer has no executable container at its configured filename. |
 | [`bridge/lazy-plugin-unregistered`](./bridge/lazy-plugin-unregistered.md) | error | Lazy Bridge React loading requires `@module-federation/bridge-react/plugin` in `runtimePlugins` or Bridge remotes fail at runtime. |
-| [`bridge/provider-shape-invalid`](./bridge/provider-shape-invalid.md) | error | Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or fallback/loading contracts and break Bridge remotes. |
+| [`bridge/provider-shape-invalid`](./bridge/provider-shape-invalid.md) | error | Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or root component contracts and break Bridge remotes. |
 | [`bridge/react-dom-prefix-missing`](./bridge/react-dom-prefix-missing.md) | error | Bridge React v18/v19 needs `react-dom/` (or `react-dom/client`) in `shared` so renderer subpaths negotiate one copy across host and remote. |
 | [`bridge/react-version-entry-mismatch`](./bridge/react-version-entry-mismatch.md) | error | Importing `@module-federation/bridge-react/v18` against React 19 (or the reverse) selects the wrong Bridge API surface and can fail at runtime. |
 | [`bridge/router-shared-conflict`](./bridge/router-shared-conflict.md) | error | Bridge router aliases React Router; sharing `react-router` / `react-router-dom` at the same time can load duplicate router runtimes and break navigation. |
@@ -58,6 +58,9 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`artifact/manifest-assets-disabled`](./artifact/manifest-assets-disabled.md) | warning | Disabled asset analysis removes shared and expose asset details from producer metadata. |
 | [`artifact/manifest-expose-assets-empty`](./artifact/manifest-expose-assets-empty.md) | warning | Preload and debugging tools cannot map an expose to its assets. |
 | [`artifact/manifest-shared-version-mismatch`](./artifact/manifest-shared-version-mismatch.md) | warning | Stale version metadata can choose the wrong shared provider at runtime. |
+| [`bridge/consumer-api-manual`](./bridge/consumer-api-manual.md) | warning | Hand-rolled `loadRemote` / remote mounts skip Bridge lifecycle helpers and lose documented loading/error contracts. |
+| [`bridge/export-app-missing`](./bridge/export-app-missing.md) | warning | Bridge producers without `./export-app` break the conventional Bridge remote contract expected by hosts. |
+| [`bridge/missing-fallback-loading`](./bridge/missing-fallback-loading.md) | warning | Bridge remotes without `fallback`/`loading` leave consumers with a blank screen while the remote loads or fails. |
 | [`bridge/react-version-entry-prefer`](./bridge/react-version-entry-prefer.md) | warning | The bare `@module-federation/bridge-react` entry can pick the wrong React Bridge API when the React major is known. |
 | [`config/dts-output-dir-mismatch`](./config/dts-output-dir-mismatch.md) | warning | A nested remote-entry `filename` that disagrees with `dts.generateTypes.outputDir` can publish type archives to the wrong path. |
 | [`config/implementation-suspicious`](./config/implementation-suspicious.md) | info | A custom implementation can violate the runtime contract expected by the build plugin. |
@@ -115,7 +118,10 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`artifact/manifest-disabled`](./artifact/manifest-disabled.md) | info | Without manifests, consumers lose metadata-powered preloading, type hints, and richer inspection. |
 | [`artifact/types-metadata-missing`](./artifact/types-metadata-missing.md) | warning | The manifest cannot advertise generated type archives to consumers. |
 | [`artifact/types-missing`](./artifact/types-missing.md) | warning | No emitted declaration artifact was found for a typed producer. |
+| [`bridge/disable-alias-deprecated`](./bridge/disable-alias-deprecated.md) | info | `bridge.disableAlias` is a deprecated escape hatch; explicit `enableBridgeRouter` communicates intent clearly. |
 | [`bridge/router-implicit-enable`](./bridge/router-implicit-enable.md) | info | Rspack may auto-enable Bridge router when the Bridge package is present; leaving `bridge.enableBridgeRouter` implicit hides the routing contract from reviewers and CI. |
+| [`bridge/ssr-instanceid-hydration`](./bridge/ssr-instanceid-hydration.md) | info | Without a stable `bridge.instanceId`, SSR Bridge hydration registries can collide across requests. |
+| [`bridge/tanstack-router-conflict`](./bridge/tanstack-router-conflict.md) | info | Bridge router aliasing plus `@tanstack/react-router` can duplicate navigation ownership in one app. |
 | [`config/get-public-path-unused`](./config/get-public-path-unused.md) | info | `getPublicPath` has no effect on a consumer that exposes no modules. |
 | [`config/remote-manifest-recommended`](./config/remote-manifest-recommended.md) | info | A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. |
 | [`config/remote-type-urls-missing`](./config/remote-type-urls-missing.md) | warning | Doctor reports this only when it can prove that a direct remote entry's inferred type location cannot match known producer output. Normal `remoteEntry.js` entries infer `@mf-types.zip` by default. |
