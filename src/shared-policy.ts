@@ -126,10 +126,10 @@ export function isDeepImportSpecifier(specifier: string, packageName: string): b
 export function isShareKeyUsed(
   shareKey: string,
   imports: {
-    packages?: string[];
-    dynamicPackages?: string[];
-    specifiers?: string[];
-    deepImports?: string[];
+    packages?: string[] | undefined;
+    dynamicPackages?: string[] | undefined;
+    specifiers?: string[] | undefined;
+    deepImports?: string[] | undefined;
   },
 ): boolean {
   const packages = new Set([...(imports.packages ?? []), ...(imports.dynamicPackages ?? [])]);
