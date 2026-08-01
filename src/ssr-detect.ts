@@ -24,9 +24,9 @@ export function optionSsrMode(options: Record<string, unknown>): SsrModeOption |
 /**
  * True when Doctor should apply node/SSR dual-env rules.
  *
- * Dual web+node build records alone are not enough — Vite often records a
- * `targetKind=node` build from default `ssr.target` on browser hosts. Require an
- * explicit MF node target, pure node/SSR builds, or `ssrMode: "node" | "dual"`.
+ * Do not trust `builds[].targetKind` alone — Vite browser builds often record a
+ * single `targetKind=node` output from default `ssr.target`. Require an explicit
+ * MF node target (`experiments.target` / `vite.target`) or `ssrMode`.
  */
 export function isSsrNodeEnvApplicable(facts: ProjectFacts, ssrMode?: SsrModeOption): boolean {
   if (ssrMode === "browser-only") return false;
@@ -35,23 +35,7 @@ export function isSsrNodeEnvApplicable(facts: ProjectFacts, ssrMode?: SsrModeOpt
   const config = facts.moduleFederation;
   if (config?.experiments?.target === "node") return true;
   if (config?.vite?.target === "node") return true;
-
-  const builds = facts.builds ?? [];
-  if (builds.length === 0) return false;
-  const nodeLike = builds.filter(
-    (build) => build.targetKind === "node" || build.targetKind === "ssr" || build.target === "node",
-  );
-  if (nodeLike.length === 0) return false;
-  // Mixed web + node/SSR without an explicit MF node target stays quiet
-  // (partial facts / Vite default SSR target noise). Force with `ssrMode`.
-  const hasWeb = builds.some(
-    (build) =>
-      build.targetKind === "web" ||
-      build.targetKind === "unknown" ||
-      (build.target !== undefined && build.target !== "node"),
-  );
-  if (hasWeb && nodeLike.length < builds.length) return false;
-  return nodeLike.length === builds.length;
+  return false;
 }
 
 /** Remote entries that already look SSR/env-specific (or non-manifest). */

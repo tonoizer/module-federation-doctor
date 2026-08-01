@@ -154,6 +154,18 @@ describe("ssr dual-env rules (#122)", () => {
     );
   });
 
+  it("ignores Vite build-target noise without explicit MF node target", async () => {
+    const facts = baseFacts();
+    delete facts.moduleFederation!.experiments!.target;
+    facts.builds = [buildRecord("vite-build-1", "node", "node")];
+    facts.moduleFederation!.remotes = {
+      shop: { name: "shop", entry: "http://x/mf-manifest.json", shareScope: "default" },
+    };
+    expect(isSsrNodeEnvApplicable(facts)).toBe(false);
+    expect(await run("ssr/node-remote-manifest", facts)).toHaveLength(0);
+    expect(await run("ssr/node-runtime-plugin-missing", facts)).toHaveLength(0);
+  });
+
   it("applies dual-env mixed builds only when ssrMode forces dual", async () => {
     const facts = baseFacts();
     delete facts.moduleFederation!.experiments!.target;
