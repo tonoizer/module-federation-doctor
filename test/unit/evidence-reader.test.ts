@@ -110,6 +110,32 @@ describe("public evidence reader", () => {
     );
   });
 
+  it.each([
+    ["slash", "a/b", "a~1b"],
+    ["tilde", "a~b", "a~0b"],
+  ])("escapes %s keys in malformed JSON pointers", (_name, key, escapedKey) => {
+    expect(() =>
+      readEvidenceDocument({
+        schemaVersion: 1,
+        capabilities: reportFixture.capabilities,
+        summary: reportFixture.summary,
+        findings: [
+          {
+            ...reportFixture.findings[0],
+            evidence: { [key]: new Date() },
+          },
+        ],
+      }),
+    ).toThrowError(
+      expect.objectContaining({
+        detectedDocumentKind: "doctor-report",
+        sourceVersion: 1,
+        failureCode: "malformed-json",
+        pointer: `/findings/0/evidence/${escapedKey}`,
+      }),
+    );
+  });
+
   it("maps false capabilities to non-collected completeness", () => {
     const result = readEvidenceDocument(projectFixture);
     expect(

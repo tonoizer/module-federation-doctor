@@ -115,6 +115,10 @@ function pointer(error: ErrorObject | undefined): string {
   return error?.instancePath || "/";
 }
 
+function escapeJsonPointerSegment(segment: string): string {
+  return segment.replaceAll("~", "~0").replaceAll("/", "~1");
+}
+
 function jsonValue(
   value: unknown,
   path: string,
@@ -162,7 +166,12 @@ function jsonValue(
     const result = Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
-        jsonValue(item, `${path === "/" ? "" : path}/${key}`, options, seen),
+        jsonValue(
+          item,
+          `${path === "/" ? "" : path}/${escapeJsonPointerSegment(key)}`,
+          options,
+          seen,
+        ),
       ]),
     );
     seen.delete(value);
