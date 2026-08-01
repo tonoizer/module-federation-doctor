@@ -113,6 +113,37 @@ describe("runtime trace import", () => {
     expect(() => parseRuntimeTraces({ reports: "events.jsonl" })).toThrow(/reports/);
   });
 
+  it("rejects non-string phase and event statuses with typed validation errors", () => {
+    expect(() =>
+      parseRuntimeTraces({ summary: { phases: { remoteEntry: { status: 42 } } } }),
+    ).toThrow(RuntimeTraceError);
+    expect(() => parseRuntimeTraces({ events: [{ phase: "remoteEntry", status: 42 }] })).toThrow(
+      /status.*string/,
+    );
+  });
+
+  it("marks legacy success without completion evidence as partial", () => {
+    const [trace] = parseRuntimeTraces({
+      traceId: "legacy-incomplete",
+      summary: { outcome: "success" },
+      diagnosis: { owner: "remote", summary: "Load started" },
+    });
+    expect(trace).toMatchObject({
+      sourceContract: "legacy-doctor-v1",
+      outcome: "partial",
+    });
+  });
+
+  it("keeps legacy success with completion evidence as runtime-loaded", () => {
+    const [trace] = parseRuntimeTraces({
+      summary: {
+        outcome: "success",
+        phases: { remoteEntry: { status: "complete" } },
+      },
+    });
+    expect(trace?.outcome).toBe("runtime-loaded");
+  });
+
   it("preserves bounded current error evidence while removing stacks and secrets", () => {
     const [trace] = parseRuntimeTraces({
       traceId: "current-error",
@@ -458,9 +489,16 @@ describe("runtime trace import", () => {
       /Wrong.*build-report/,
     );
     expect(() => parseRuntimeTraces({ report: { findings: [] } })).toThrow(/Wrong.*build-report/);
-    expect(() => parseRuntimeTraces({ schemaVersion: 2, traceId: "future" })).toThrow(/future/);
+    for (const schemaVersion of ["2", 0, -1]) {
+      expect(() => parseRuntimeTraces({ schemaVersion, traceId: "invalid-version" })).toThrow(
+        /schema version/,
+      );
+    }
+    expect(() => parseRuntimeTraces({ schemaVersion: 2, traceId: "future" })).toThrow(
+      /schema version/,
+    );
     expect(() => parseRuntimeTraces({ reports: [{ schemaVersion: 2, summary: {} }] })).toThrow(
-      /future/,
+      /schema version/,
     );
     expect(
       parseRuntimeTraces({

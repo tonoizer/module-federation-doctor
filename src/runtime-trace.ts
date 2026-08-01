@@ -62,6 +62,15 @@ function asNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
+function readStatus(value: unknown, fieldPath: string): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.length === 0)
+    throw new RuntimeTraceError(
+      `Invalid runtime trace field ${fieldPath}: expected a non-empty string status.`,
+    );
+  return value;
+}
+
 function boundedStrings(value: unknown, limit = 24): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   return value
@@ -136,7 +145,7 @@ function readPhases(summary: Record<string, unknown> | undefined): RuntimeTraceR
         throw new RuntimeTraceError(
           `Invalid runtime trace field /summary/phases/${name}: expected an object.`,
         );
-      const status = asString(asRecord(value)?.status);
+      const status = readStatus(asRecord(value)?.status, `/summary/phases/${name}/status`);
       const normalizedName =
         name === "init" ? "remoteEntryInit" : name === "factory" ? "moduleFactory" : name;
       return [normalizedName, status ? { status } : {}];
@@ -157,7 +166,7 @@ function readEvents(raw: unknown): RuntimeTraceReport["events"] {
       );
     const next: RuntimeTraceReport["events"][number] = {};
     const phase = asString(event.phase);
-    const status = asString(event.status);
+    const status = readStatus(event.status, "/events/status");
     const errorCode = asString(event.errorCode);
     if (phase)
       next.phase =
@@ -229,7 +238,7 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     events: readEvents(record.events),
   };
   const traceId = asString(record.traceId);
-  const status = asString(record.status);
+  const status = readStatus(record.status, "/status");
   if (traceId) report.traceId = traceId;
   if (status) report.status = status;
   for (const key of ["requestId", "requestAlias", "hostName", "runtimeVersion"] as const) {
@@ -288,11 +297,21 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   }
   const phases = readPhases(summary);
   if (phases) report.phases = phases;
-  if (outcome === "success" && phases) {
+  if (outcome === "success") {
     const completedRemotePhase = ["remoteEntry", "expose", "loadRemote"].some(
-      (phase) => phases[phase]?.status === "complete" || phases[phase]?.status === "success",
+      (phase) => phases?.[phase]?.status === "complete" || phases?.[phase]?.status === "success",
     );
-    if (completedRemotePhase) report.outcome = "runtime-loaded";
+    const completedByEvidence =
+      completedRemotePhase ||
+      report.loadCompleted === true ||
+      report.runtimeLoaded === true ||
+      report.componentLoaded === true ||
+      report.events.some(
+        (event) =>
+          ["remoteEntry", "expose", "loadRemote"].includes(event.phase ?? "") &&
+          (event.status === "complete" || event.status === "success"),
+      );
+    report.outcome = completedByEvidence ? "runtime-loaded" : "partial";
   }
   if (remote) {
     const normalizedRemote: NonNullable<RuntimeTraceReport["remote"]> = {};
@@ -458,9 +477,9 @@ function isBuildReportDocument(value: unknown): boolean {
 function assertSupportedDocumentVersion(value: unknown): void {
   const record = asRecord(value);
   if (!record) return;
-  if (typeof record.schemaVersion === "number" && record.schemaVersion > 1)
+  if (record.schemaVersion !== undefined && record.schemaVersion !== 1)
     throw new RuntimeTraceError(
-      `Unsupported future runtime trace schema at /schemaVersion: ${record.schemaVersion}.`,
+      `Invalid runtime trace schema version at /schemaVersion: expected 1, received ${String(record.schemaVersion)}.`,
     );
   if (
     typeof record.sourceContract === "string" &&
