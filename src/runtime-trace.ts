@@ -1307,6 +1307,8 @@ export async function analyzeRuntime(options: {
   formats?: OutputFormat[];
   quiet?: boolean;
   printLog?: { success?: boolean };
+  /** When false, omit health score from terminal output. */
+  score?: boolean;
 }): Promise<RuntimeAnalysisResult> {
   const traces = await loadRuntimeTraceFile(options.tracePath);
   const projects = (
@@ -1329,6 +1331,7 @@ export async function analyzeRuntime(options: {
     await writeFederationReports(projects, report, options.outputDirectory, formats, {
       ...(options.quiet !== undefined ? { quiet: options.quiet } : {}),
       ...(options.printLog !== undefined ? { printLog: options.printLog } : {}),
+      ...(options.score !== undefined ? { score: options.score } : {}),
     });
 
   return {

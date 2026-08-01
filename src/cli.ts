@@ -338,11 +338,13 @@ async function runFederationAnalysis(
     return 2;
   }
   const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
+  // CLI --no-score wins; otherwise honor DoctorOptions.score from config.
+  const showScore = score !== false && config.score !== false;
   const result = await analyzeFederation(files, {
     ...(formats ? { formats, outputDirectory } : {}),
     ...(baseline ? { baseline } : {}),
     ...(verbose ? { quiet: false, printLog: { success: true } } : {}),
-    score,
+    score: showScore,
     ...(config.rules ? { rules: config.rules } : {}),
     ...(config.alwaysShared ? { alwaysShared: config.alwaysShared } : {}),
     root: process.cwd(),
@@ -467,6 +469,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         projectFiles: files,
         ...(formats ? { formats, outputDirectory } : {}),
         ...(parsed.verbose ? { quiet: false, printLog: { success: true } } : {}),
+        score: parsed.score !== false && config.score !== false,
       });
       if (!formats)
         process.stdout.write(

@@ -91,6 +91,18 @@ describe("computeHealthScore", () => {
     expect(labelForScore(50)).toBe("OK");
     expect(labelForScore(49)).toBe("Needs work");
     expect(labelForScore(0)).toBe("Needs work");
+
+    // 18 unique errors → 100 - 27 = 73 → OK (exercises banding after round)
+    const okBand = Array.from({ length: 18 }, (_, i) =>
+      finding({ ruleId: `config/ok-${i}`, severity: "error" }),
+    );
+    expect(computeHealthScore(okBand)).toEqual({ score: 73, scoreLabel: "OK" });
+
+    // 34 unique errors → 100 - 51 = 49 → Needs work
+    const needsWork = Array.from({ length: 34 }, (_, i) =>
+      finding({ ruleId: `config/nw-${i}`, severity: "error" }),
+    );
+    expect(computeHealthScore(needsWork)).toEqual({ score: 49, scoreLabel: "Needs work" });
   });
 
   it("marks exclusions for score surface", () => {
