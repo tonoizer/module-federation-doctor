@@ -861,3 +861,55 @@ describe("doctor/partial-analysis suggestions", () => {
     expect(findings[0]?.suggestion).toBe("Pass explicit MF options.");
   });
 });
+
+describe("config/implementation-suspicious", () => {
+  async function runRule(facts: ProjectFacts) {
+    const findings: Array<{ message: string; evidence?: Record<string, unknown> }> = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/implementation-suspicious")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  const base = (): ProjectFacts => ({
+    schemaVersion: 1,
+    project: { name: "fixture", root: "." },
+    bundler: { name: "rspack", mode: "ci" },
+    capabilities: {
+      config: true,
+      sourceImports: true,
+      manifest: false,
+      stats: false,
+      emittedAssets: false,
+      installedVersions: true,
+    },
+    moduleFederation: {
+      name: "fixture",
+      exposes: {},
+      remotes: {},
+      shared: {},
+    },
+    dependencies: { declared: {}, installed: {} },
+    imports: {
+      sourceFiles: [],
+      specifiers: [],
+      packages: [],
+      dynamicPackages: [],
+      remotes: [],
+      unresolvedDynamic: [],
+      evidenceSources: [],
+    },
+    artifacts: { emittedAssets: [] },
+  });
+
+  it("skips Doctor [external]/ path rewrites", async () => {
+    const facts = base();
+    facts.moduleFederation!.implementation = "[external]/bundler.js";
+    expect(await runRule(facts)).toHaveLength(0);
+  });
+
+  it("still flags custom non-local implementations", async () => {
+    const facts = base();
+    facts.moduleFederation!.implementation = "custom-runtime";
+    expect(await runRule(facts)).not.toHaveLength(0);
+  });
+});
