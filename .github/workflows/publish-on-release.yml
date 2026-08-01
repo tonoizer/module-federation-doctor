@@ -23,7 +23,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  resolve-ref:
+    name: Resolve release ref
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.ref }}
+      - id: resolve
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   verify:
+    needs: resolve-ref
     name: Verify (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     container:
@@ -35,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
-          ref: ${{ github.event.release.tag_name || inputs.ref }}
+          ref: ${{ needs.resolve-ref.outputs.sha }}
       - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
@@ -45,13 +58,13 @@ jobs:
       - run: pnpm check
 
   publish:
-    needs: verify
+    needs: [resolve-ref, verify]
     runs-on: ubuntu-latest
     environment: npm
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
-          ref: ${{ github.event.release.tag_name || inputs.ref }}
+          ref: ${{ needs.resolve-ref.outputs.sha }}
       - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
