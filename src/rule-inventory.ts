@@ -925,6 +925,8 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "moduleFederation",
     "imports.packages",
     "imports.dynamicPackages",
+    "imports.specifiers",
+    "imports.deepImports",
     "imports.unresolvedDynamic",
   ],
   "shared/version-unsatisfied": ["project.scope", "moduleFederation", "dependencies.installed"],
