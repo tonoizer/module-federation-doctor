@@ -19,7 +19,6 @@ const CLIENT_INJECTION_HOOKS = [
   "augmentChunkHash",
   "transformInclude",
   "loadInclude",
-  "buildStart",
   "moduleParsed",
 ] as const;
 

@@ -150,6 +150,17 @@ async function safeOutputRoot(
   let existing = absolute;
   let existingReal = outputReal;
   while (!existingReal && existing !== path.dirname(existing)) {
+    const stat = await fs.lstat(existing).catch(() => undefined);
+    if (stat?.isSymbolicLink()) {
+      const linkTarget = await fs.readlink(existing).catch(() => undefined);
+      if (linkTarget) {
+        const resolvedTarget = path.resolve(path.dirname(existing), linkTarget);
+        const targetReal = await fs.realpath(resolvedTarget).catch(() => undefined);
+        const checkedTarget = targetReal ?? resolvedTarget;
+        if (rootReal && (path.relative(rootReal, checkedTarget) || ".").startsWith(".."))
+          return undefined;
+      }
+    }
     existing = path.dirname(existing);
     existingReal = await fs.realpath(existing).catch(() => undefined);
   }
@@ -183,35 +194,43 @@ function createViteFamilyHooks(configured: DoctorOptions) {
     const lifecycle = withPostEmitHook(detected, hook);
     configured.viteLifecycle = lifecycle;
     const config = resolvedConfig;
-    const outputRoot = await safeOutputRoot(
-      root,
+    const requestedOutputRoot =
       outputOptions?.dir ??
-        (outputOptions?.file ? path.dirname(outputOptions.file) : undefined) ??
-        config?.build?.outDir,
-    );
+      (outputOptions?.file ? path.dirname(outputOptions.file) : undefined) ??
+      config?.build?.outDir;
+    const outputRoot = await safeOutputRoot(root, requestedOutputRoot);
     const emittedAssets = bundle ? Object.keys(bundle).sort() : [];
-    const publicConfig = config ?? {};
-    const input: ViteBuildOutputInput = {
-      ...(outputRoot ? { outputRoot } : {}),
-      emittedAssets,
-      sourceHook: hook,
-      ...(config?.mode ? { effectiveMode: config.mode } : {}),
-      ...(config?.build?.target ? { target: config.build.target } : {}),
-      ...(targetKind(publicConfig) ? { targetKind: targetKind(publicConfig) } : {}),
-      ...(config?.build?.write !== undefined ? { buildWrite: config.build.write } : {}),
-      flavor: lifecycle.flavor,
-      engine: lifecycle.engine,
-    };
-    if (hook === "writeBundle" || outputs.length === 0) {
-      outputs.push(input);
-      if (hook === "writeBundle" && lifecycle.engine === "rolldown" && emittedAssets.length === 0)
-        pendingCloseFinalization = outputs.length - 1;
-    } else if (lifecycle.engine === "rolldown") {
-      if (pendingCloseFinalization !== undefined) {
-        outputs = outputs.map((item, index) =>
-          index === pendingCloseFinalization ? { ...item, sourceHook: hook } : item,
-        );
-        pendingCloseFinalization = undefined;
+    // An explicitly supplied unsafe root is not an unavailable root. Drop the
+    // whole output so its assets cannot become exact evidence through fallback,
+    // but let closeBundle still finalize the current cycle.
+    if (!(requestedOutputRoot && !outputRoot)) {
+      const publicConfig = config ?? {};
+      const input: ViteBuildOutputInput = {
+        ...(outputRoot ? { outputRoot } : {}),
+        emittedAssets,
+        sourceHook: hook,
+        ...(config?.mode ? { effectiveMode: config.mode } : {}),
+        ...(config?.ssr?.target
+          ? { target: config.ssr.target }
+          : config?.build?.target
+            ? { target: config.build.target }
+            : {}),
+        ...(targetKind(publicConfig) ? { targetKind: targetKind(publicConfig) } : {}),
+        ...(config?.build?.write !== undefined ? { buildWrite: config.build.write } : {}),
+        flavor: lifecycle.flavor,
+        engine: lifecycle.engine,
+      };
+      if (hook === "writeBundle" || outputs.length === 0) {
+        outputs.push(input);
+        if (hook === "writeBundle" && lifecycle.engine === "rolldown" && emittedAssets.length === 0)
+          pendingCloseFinalization = outputs.length - 1;
+      } else if (lifecycle.engine === "rolldown") {
+        if (pendingCloseFinalization !== undefined) {
+          outputs = outputs.map((item, index) =>
+            index === pendingCloseFinalization ? { ...item, sourceHook: hook } : item,
+          );
+          pendingCloseFinalization = undefined;
+        }
       }
     }
     if (hook === "writeBundle") return;
@@ -236,6 +255,10 @@ function createViteFamilyHooks(configured: DoctorOptions) {
       resolvedConfig = config;
       if (!configured.root && config.root) configured.root = config.root;
     },
+    buildStart() {
+      outputs = [];
+      pendingCloseFinalization = undefined;
+    },
     async writeBundle(
       this: unknown,
       outputOptions?: ViteOutputOptionsLike,
@@ -251,6 +274,7 @@ function createViteFamilyHooks(configured: DoctorOptions) {
     },
   } as Pick<UnpluginOptions, "writeBundle"> & {
     configResolved: (config: ViteResolvedConfigLike) => void;
+    buildStart: NonNullable<UnpluginOptions["buildStart"]>;
     closeBundle: NonNullable<UnpluginOptions["writeBundle"]>;
   };
 }

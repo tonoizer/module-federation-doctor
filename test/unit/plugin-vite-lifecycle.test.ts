@@ -16,6 +16,7 @@ afterEach(async () => {
 
 type VitePluginHooks = UnpluginOptions & {
   configResolved?: (config: unknown) => void;
+  buildStart?: () => void | Promise<void>;
   writeBundle?: (
     this: unknown,
     outputOptions?: { dir?: string; file?: string },
@@ -317,8 +318,11 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
     const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
     plugin.configResolved?.({ root, mode: "production", build: { outDir: "dist", write: true } });
 
+    const buildStart = plugin.buildStart as (() => void | Promise<void>) | undefined;
+    await buildStart?.();
     await plugin.writeBundle!.call({}, { dir: path.join(root, "dist/first") }, { "first.js": {} });
-    await plugin.closeBundle!.call({});
+    // A new public cycle can start before the previous close hook is observed.
+    await buildStart?.();
     await plugin.writeBundle!.call(
       {},
       { dir: path.join(root, "dist/second") },
@@ -391,8 +395,15 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
 
     const project = JSON.parse(
       await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
-    ) as { builds: Array<{ outputRoot?: string }> };
+    ) as {
+      builds: Array<{ outputRoot?: string }>;
+      artifacts: { emittedAssets: string[]; records?: unknown[] };
+      capabilities: { emittedAssets: boolean };
+    };
     expect(project.builds[0]?.outputRoot).toBeUndefined();
+    expect(project.artifacts.emittedAssets).toEqual([]);
+    expect(project.artifacts.records ?? []).toEqual([]);
+    expect(project.capabilities.emittedAssets).toBe(false);
   });
 
   it("rejects a missing output child below an escaping symlink ancestor", async () => {
@@ -419,8 +430,38 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
 
     const project = JSON.parse(
       await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
-    ) as { builds: Array<{ outputRoot?: string }> };
+    ) as {
+      builds: Array<{ outputRoot?: string }>;
+      artifacts: { emittedAssets: string[]; records?: unknown[] };
+      capabilities: { emittedAssets: boolean };
+    };
     expect(project.builds[0]?.outputRoot).toBeUndefined();
+    expect(project.artifacts.emittedAssets).toEqual([]);
+    expect(project.artifacts.records ?? []).toEqual([]);
+    expect(project.capabilities.emittedAssets).toBe(false);
+  });
+
+  it("preserves the public SSR target alongside its target kind", async () => {
+    const root = await makeRoot({ vite: "5.4.0" });
+    await fs.mkdir(path.join(root, "dist"), { recursive: true });
+    const raw = viteDoctor.raw(doctorOptions(root), {
+      framework: "vite",
+      versions: { unplugin: "3.3.0" },
+    } as never);
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+    plugin.configResolved?.({
+      root,
+      mode: "production",
+      build: { outDir: "dist", write: true, ssr: true },
+      ssr: { target: "node22" },
+    });
+    await plugin.writeBundle!.call({}, { dir: path.join(root, "dist") }, { "server.js": {} });
+    await plugin.closeBundle!.call({});
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as { builds: Array<{ target?: string; targetKind?: string }> };
+    expect(project.builds[0]).toMatchObject({ target: "node22", targetKind: "node" });
   });
 
   it("emits doctor/partial-analysis when Rolldown emit facts stay missing", async () => {

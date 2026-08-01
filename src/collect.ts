@@ -601,8 +601,7 @@ export async function attachAssetSizes(
               normalizedName.startsWith(`${normalizedRoot}/`)
             )
               return [path.join(root, name)];
-            if (outputRoots.length === 1) return [path.join(root, outputRoot, name)];
-            return [];
+            return [path.join(root, outputRoot, name)];
           })
         : [
             path.join(manifestDir, name),
@@ -1031,9 +1030,24 @@ export async function addBuildFacts(
     facts.artifacts.emittedAssets = [
       ...new Set(builds.flatMap((build) => build.emittedAssets)),
     ].sort();
-    facts.capabilities.emittedAssets = builds.every(
-      (build) => build.capabilities.emittedAssets.state === "exact",
-    );
+    facts.capabilities.emittedAssets =
+      builds.length > 0 &&
+      builds.every((build) => build.capabilities.emittedAssets.state === "exact");
+    const currentRecords = builds.flatMap((build) => build.artifacts);
+    const firstCurrent = (kind: ArtifactKind) => {
+      const records = currentRecords
+        .filter((record) => record.kind === kind)
+        .sort((left, right) => left.path.localeCompare(right.path));
+      // Prefer malformed current evidence so a valid artifact from another
+      // output cannot hide a broken artifact from this build cycle.
+      return records.find((record) => !record.valid) ?? records[0];
+    };
+    const currentManifest = firstCurrent("manifest")?.manifest;
+    const currentStats = firstCurrent("stats")?.stats;
+    if (currentManifest) facts.artifacts.manifest = currentManifest;
+    else delete facts.artifacts.manifest;
+    if (currentStats) facts.artifacts.stats = currentStats;
+    else delete facts.artifacts.stats;
   }
   const recordedOutputRoots = facts.builds
     ?.filter((build) => build.capabilities.emittedAssets.state !== "not-applicable")

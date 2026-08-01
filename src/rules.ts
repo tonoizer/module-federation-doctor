@@ -1,4 +1,5 @@
 import semver from "semver";
+import path from "node:path";
 import { lookupAssetSize, sumAssetSizes } from "./collect.js";
 import { ruleGuidance } from "./rule-guidance.js";
 import {
@@ -36,6 +37,28 @@ function createRule(
     },
     check,
   });
+}
+
+function manifestAssetPath(manifestPath: string, asset: string): string {
+  const normalizedAsset = asset.replaceAll("\\", "/").replace(/^\.\//, "");
+  const manifestDir = path.posix.dirname(manifestPath);
+  if (
+    manifestDir === "." ||
+    normalizedAsset === manifestDir ||
+    normalizedAsset.startsWith(`${manifestDir}/`)
+  )
+    return normalizedAsset;
+  return path.posix.normalize(path.posix.join(manifestDir, normalizedAsset));
+}
+
+function buildScopedAssetPath(
+  context: { facts: ProjectFacts },
+  manifestPath: string,
+  asset: string,
+): string {
+  return context.facts.builds?.some((build) => build.adapter === "vite")
+    ? manifestAssetPath(manifestPath, asset)
+    : asset;
 }
 
 function mf(context: RuleContext): NormalizedMFConfig | undefined {
@@ -532,7 +555,10 @@ export const builtInRules: DoctorRule[] = [
 
     if (manifest.remoteEntry?.name) {
       const assets = [manifest.remoteEntry.name];
-      const bytes = lookupAssetSize(sizes, manifest.remoteEntry.name);
+      const bytes = lookupAssetSize(
+        sizes,
+        buildScopedAssetPath(context, manifest.path, manifest.remoteEntry.name),
+      );
       if (bytes !== undefined && bytes > remoteEntryMax)
         report(
           context,
@@ -549,7 +575,10 @@ export const builtInRules: DoctorRule[] = [
     }
 
     for (const shared of manifest.shared) {
-      const bytes = sumAssetSizes(sizes, shared.assets);
+      const bytes = sumAssetSizes(
+        sizes,
+        shared.assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
+      );
       if (bytes === undefined || bytes <= sharedMax) continue;
       report(
         context,
@@ -566,7 +595,10 @@ export const builtInRules: DoctorRule[] = [
     }
 
     for (const expose of manifest.exposes) {
-      const bytes = sumAssetSizes(sizes, expose.assets);
+      const bytes = sumAssetSizes(
+        sizes,
+        expose.assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
+      );
       if (bytes === undefined || bytes <= exposeMax) continue;
       report(
         context,
@@ -749,10 +781,11 @@ export const builtInRules: DoctorRule[] = [
       manifest?.valid &&
       remoteEntry &&
       context.facts.capabilities.emittedAssets &&
-      !context.facts.artifacts.emittedAssets.some(
-        (asset) =>
-          asset.endsWith(`${remoteEntry.path}${remoteEntry.name}`) ||
-          asset.endsWith(remoteEntry.name),
+      !context.facts.artifacts.emittedAssets.some((asset) =>
+        context.facts.builds?.some((build) => build.adapter === "vite")
+          ? asset === manifestAssetPath(manifest.path, `${remoteEntry.path}${remoteEntry.name}`)
+          : asset.endsWith(`${remoteEntry.path}${remoteEntry.name}`) ||
+            asset.endsWith(remoteEntry.name),
       )
     )
       report(
