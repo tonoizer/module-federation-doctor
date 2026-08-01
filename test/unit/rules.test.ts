@@ -1325,11 +1325,11 @@ describe("vite SSR inject dialect", () => {
         emittedAssets: [],
         artifacts: [],
         capabilities: {
-          outputRoot: { state: "exact" },
-          emittedAssets: { state: "exact" },
-          artifacts: { state: "missing" },
-          effectiveMode: { state: "exact" },
-          target: { state: "exact" },
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "unavailable", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
         },
       },
     ];
