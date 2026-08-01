@@ -70,17 +70,27 @@ function classifyBridgeReactSignal(signal: string): ReactBridgeEntryMajor {
 }
 
 /**
- * Resolve the Bridge React entry major from declared/installed deps and import specifiers.
- * Returns `18` / `19` for versioned entries, `"bare"` for the unversioned package, else undefined.
+ * Resolve the Bridge React entry major.
+ * Versioned `/v18` `/v19` may come from deps or import paths.
+ * `"bare"` only when an import/specifier exactly uses the unversioned package — not merely
+ * because the package is installed or appears as an `imports.packages` root.
  */
 export function reactBridgeEntryMajor(facts: ProjectFacts): ReactBridgeEntryMajor {
-  let sawBare = false;
-  for (const signal of allSignals(facts)) {
+  const versionSignals = [
+    ...dependencyKeys(facts),
+    ...(facts.imports.specifiers ?? []),
+    ...(facts.imports.deepImports ?? []),
+    ...(facts.imports.dynamicPackages ?? []),
+    ...(facts.moduleFederation?.runtimePlugins ?? []),
+  ];
+  for (const signal of versionSignals) {
     const classified = classifyBridgeReactSignal(signal);
     if (classified === 18 || classified === 19) return classified;
-    if (classified === "bare") sawBare = true;
   }
-  return sawBare ? "bare" : undefined;
+  // Bare entry: exact unversioned import/specifier only (ignore package roots from analyze).
+  const entrySignals = [...(facts.imports.specifiers ?? []), ...(facts.imports.deepImports ?? [])];
+  if (entrySignals.some((signal) => classifyBridgeReactSignal(signal) === "bare")) return "bare";
+  return undefined;
 }
 
 /** Detect React major from installed/declared `react` when available. */
@@ -114,11 +124,8 @@ export function hasReactDomPrefixShare(
   shared: Record<string, NormalizedShared> | undefined,
 ): boolean {
   if (!shared) return false;
-  for (const key of Object.keys(shared)) {
-    if (key === "react-dom/" || key === "react-dom/client") return true;
-    if (key.startsWith("react-dom/")) return true;
-  }
-  return false;
+  // Only the Bridge-documented share keys — not e.g. `react-dom/server`.
+  return Object.keys(shared).some((key) => key === "react-dom/" || key === "react-dom/client");
 }
 
 /** Whether scanned imports would satisfy a trailing-slash `react-dom/` share key. */

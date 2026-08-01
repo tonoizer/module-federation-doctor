@@ -345,6 +345,76 @@ describe("bridge React rules (#121)", () => {
     const ids = builtInRules.map((rule) => rule.meta.id);
     for (const id of BRIDGE_RULES) expect(ids).toContain(id);
   });
+
+  it("does not prefer versioned entry for plugin-only hosts without bare Bridge imports", async () => {
+    const root = await fixture(
+      {
+        name: "bridge-plugin-only",
+        dependencies: {
+          react: "19.1.1",
+          "@module-federation/bridge-react": "0.2.0",
+        },
+      },
+      'import "react";\n',
+    );
+    const result = await analyze({
+      root,
+      bundler: "rspack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: goodBridgeConfig(),
+      rules: {
+        "bridge/react-dom-prefix-missing": "off",
+        "bridge/lazy-plugin-unregistered": "off",
+        "bridge/router-implicit-enable": "off",
+        "artifact/remote-entry-missing": "off",
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+      },
+    });
+    expect(result.report.findings.map((f) => f.ruleId)).not.toContain(
+      "bridge/react-version-entry-prefer",
+    );
+  });
+
+  it("still errors when only react-dom/server is shared", async () => {
+    const root = await fixture(
+      {
+        name: "bridge-dom-server",
+        dependencies: {
+          react: "19.1.1",
+          "@module-federation/bridge-react": "0.2.0",
+        },
+      },
+      'import "@module-federation/bridge-react/v19";\n',
+    );
+    const result = await analyze({
+      root,
+      bundler: "rspack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        bridge: { enableBridgeRouter: true },
+        runtimePlugins: ["@module-federation/bridge-react/plugin"],
+        shared: {
+          react: { singleton: true },
+          "react-dom/server": { singleton: true },
+        },
+      },
+      rules: {
+        "bridge/react-version-entry-prefer": "off",
+        "bridge/lazy-plugin-unregistered": "off",
+        "bridge/router-implicit-enable": "off",
+        "artifact/remote-entry-missing": "off",
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+      },
+    });
+    expect(result.report.findings.map((f) => f.ruleId)).toContain(
+      "bridge/react-dom-prefix-missing",
+    );
+  });
 });
 
 describe("bridge-detect helpers via rule silence", () => {
