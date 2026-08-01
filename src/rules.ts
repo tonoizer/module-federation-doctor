@@ -7,6 +7,7 @@ import {
   detectedReactMajor,
   detectInvalidBridgeProviderShape,
   hasBridgeReactPlugin,
+  hasBridgeServerEntry,
   hasReactDomPrefixShare,
   hasSharedReactRouter,
   isBridgeRouterEnabled,
@@ -1249,6 +1250,8 @@ export const builtInRules: DoctorRule[] = [
     if (!isReactBridgeProject(context.facts)) return;
     const ssrMode = optionSsrMode(context.options);
     if (!isNodeOrSsrTarget(context.facts, ssrMode)) return;
+    // Dual workspaces that already import `/server` are not a pure browser leak.
+    if (ssrMode !== "node" && hasBridgeServerEntry(context.facts)) return;
     const leaks = browserBridgeReactEntries(context.facts);
     if (leaks.length === 0) return;
     report(

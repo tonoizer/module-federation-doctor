@@ -184,8 +184,8 @@ export function hasSharedReactRouter(
 }
 
 /**
- * True when facts indicate a node/SSR build where browser-only Bridge entries must not load.
- * Honors `ssrMode` option when provided via the rule options path (caller passes resolved mode).
+ * True when facts indicate a node/SSR-only build where browser-only Bridge entries must not load.
+ * Dual web+node workspaces stay quiet unless `ssrMode` forces apply (`node` / `dual`).
  */
 export function isNodeOrSsrTarget(
   facts: ProjectFacts,
@@ -196,14 +196,21 @@ export function isNodeOrSsrTarget(
   const config = facts.moduleFederation;
   if (config?.experiments?.target === "node") return true;
   if (config?.vite?.target === "node") return true;
-  if (
-    facts.builds?.some(
-      (build) =>
-        build.targetKind === "node" || build.targetKind === "ssr" || build.target === "node",
-    )
-  )
-    return true;
-  return false;
+  const builds = facts.builds ?? [];
+  if (builds.length === 0) return false;
+  const nodeLike = builds.filter(
+    (build) => build.targetKind === "node" || build.targetKind === "ssr" || build.target === "node",
+  );
+  if (nodeLike.length === 0) return false;
+  // Mixed web + node/SSR records → dual-env; leave to `ssrMode` / #122 rather than Bridge leak.
+  const hasWeb = builds.some(
+    (build) =>
+      build.targetKind === "web" ||
+      build.targetKind === "unknown" ||
+      (build.target !== undefined && build.target !== "node"),
+  );
+  if (hasWeb && nodeLike.length < builds.length) return false;
+  return nodeLike.length === builds.length;
 }
 
 /** Specifiers that are browser-only Bridge React entries (not `/server`). */
@@ -225,11 +232,14 @@ export function browserBridgeReactEntries(facts: ProjectFacts): string[] {
   return [...new Set(hits)];
 }
 
-const BRIDGE_PROVIDER_APIS = [
-  "createBridgeComponent",
-  "createRemoteAppComponent",
-  "createBridge",
-] as const;
+export function hasBridgeServerEntry(facts: ProjectFacts): boolean {
+  return [...(facts.imports.specifiers ?? []), ...(facts.imports.deepImports ?? [])].some(
+    (signal) =>
+      signal === `${BRIDGE_REACT_PKG}/server` || signal.startsWith(`${BRIDGE_REACT_PKG}/server/`),
+  );
+}
+
+const BRIDGE_PROVIDER_APIS = ["createBridgeComponent", "createRemoteAppComponent"] as const;
 
 /**
  * Heuristic: Bridge provider/consumer factory calls with an empty or clearly incomplete options object.
