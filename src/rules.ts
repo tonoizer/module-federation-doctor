@@ -801,8 +801,9 @@ export const builtInRules: DoctorRule[] = [
     );
     // Vite often leaves remoteEntry.path empty while assetSizes still records the basename.
     const sized =
-      lookupAssetSize(context.facts.artifacts.assetSizes, candidate) !== undefined ||
-      lookupAssetSize(context.facts.artifacts.assetSizes, remoteEntry.name) !== undefined;
+      remoteEntry.path === ""
+        ? lookupAssetSize(context.facts.artifacts.assetSizes, remoteEntry.name) !== undefined
+        : context.facts.artifacts.assetSizes?.[candidate] !== undefined;
     if (!emitted && !sized)
       report(
         context,

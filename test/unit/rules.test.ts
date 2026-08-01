@@ -970,6 +970,13 @@ describe("Vite/Nuxt artifact false positives", () => {
     expect(await runRule("artifact/manifest-remote-entry-missing", viteBase())).toHaveLength(0);
   });
 
+  it("still flags non-empty remoteEntry.path missing from emit and exact sizes", async () => {
+    const facts = viteBase();
+    facts.artifacts.manifest!.remoteEntry = { name: "remoteEntry.js", path: "assets/" };
+    facts.artifacts.assetSizes = { "remoteEntry.js": 1200 };
+    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).not.toHaveLength(0);
+  });
+
   it("allows relative ./ publicPath", async () => {
     expect(await runRule("artifact/public-path-suspicious", viteBase())).toHaveLength(0);
   });
