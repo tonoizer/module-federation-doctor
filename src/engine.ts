@@ -23,7 +23,7 @@ import type {
   FederationAnalysisResult,
   OutputFormat,
   ProjectFacts,
-  ViteBuildOutputInput,
+  BuildOutputInput,
   ResolvedDoctorOptions,
   RuleSetting,
   Severity,
@@ -129,7 +129,7 @@ async function runAnalysis(
   options: DoctorOptions = {},
   emittedAssets?: string[],
   diagnostics?: BuildDiagnostics,
-  buildOutputs?: ViteBuildOutputInput[],
+  buildOutputs?: BuildOutputInput[],
 ): Promise<AnalysisResult> {
   const resolved = await resolveOptions(options);
   try {
@@ -189,7 +189,7 @@ export async function analyzeBuild(
   options: DoctorOptions,
   emittedAssets: string[],
   diagnostics?: BuildDiagnostics,
-  buildOutputs?: ViteBuildOutputInput[],
+  buildOutputs?: BuildOutputInput[],
 ): Promise<AnalysisResult> {
   return runAnalysis(options, emittedAssets, diagnostics, buildOutputs);
 }

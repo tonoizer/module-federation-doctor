@@ -129,8 +129,12 @@
         ],
         "properties": {
           "id": { "type": "string" },
-          "adapter": { "const": "vite" },
-          "bundler": { "const": "vite" },
+          "adapter": {
+            "enum": ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"]
+          },
+          "bundler": {
+            "enum": ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"]
+          },
           "flavor": { "enum": ["vite", "rolldown-vite", "vite-plus"] },
           "engine": { "enum": ["rollup", "rolldown"] },
           "outputRoot": { "type": "string" },
@@ -152,7 +156,7 @@
               "target": { "$ref": "#/$defs/buildCapability" }
             }
           },
-          "sourceHook": { "enum": ["writeBundle", "closeBundle"] }
+          "sourceHook": { "type": "string", "minLength": 1 }
         },
         "additionalProperties": false
       }

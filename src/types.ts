@@ -299,8 +299,8 @@ export interface ArtifactFacts {
 
 export interface BuildRecord {
   id: string;
-  adapter: "vite";
-  bundler: "vite";
+  adapter: BundlerName;
+  bundler: BundlerName;
   flavor?: ViteLifecycleFlavor;
   engine?: ViteLifecycleEngine;
   /** Safe project-relative output root. */
@@ -317,13 +317,26 @@ export interface BuildRecord {
     effectiveMode: BuildCapability;
     target: BuildCapability;
   };
-  sourceHook: "writeBundle" | "closeBundle";
+  /** Public hook that finalized this output record (adapter-specific). */
+  sourceHook: string;
 }
 
-export interface ViteBuildOutputInput {
+/**
+ * Adapter-agnostic per-output input for collector normalization.
+ * Vite fills this from public hooks; other adapters can reuse the same seam.
+ */
+export interface BuildOutputInput {
+  adapter: BundlerName;
+  bundler: BundlerName;
   outputRoot?: string;
+  /** Asset names relative to `outputRoot` when that root is known. */
   emittedAssets: string[];
-  sourceHook: "writeBundle" | "closeBundle";
+  /**
+   * How asset names were learned. `bundle` is exact compiler evidence;
+   * `output-root-scan` is a bounded disk recovery (partial).
+   */
+  emittedAssetsSource?: "bundle" | "output-root-scan";
+  sourceHook: string;
   effectiveMode?: string;
   target?: string;
   targetKind?: BuildRecord["targetKind"];
@@ -331,6 +344,9 @@ export interface ViteBuildOutputInput {
   engine?: ViteLifecycleEngine;
   buildWrite?: boolean;
 }
+
+/** @deprecated Use {@link BuildOutputInput}. Kept as an alias for the Vite slice. */
+export type ViteBuildOutputInput = BuildOutputInput;
 
 export interface ProjectFacts {
   schemaVersion: 1;

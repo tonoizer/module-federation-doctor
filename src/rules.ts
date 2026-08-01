@@ -56,9 +56,22 @@ function buildScopedAssetPath(
   manifestPath: string,
   asset: string,
 ): string {
-  return context.facts.builds?.some((build) => build.adapter === "vite")
+  // When per-output build records exist, resolve assets against the manifest
+  // directory so same-named files in other outputs cannot satisfy the rule.
+  return context.facts.builds && context.facts.builds.length > 0
     ? manifestAssetPath(manifestPath, asset)
     : asset;
+}
+
+function emittedAssetMatches(
+  context: { facts: ProjectFacts },
+  manifestPath: string,
+  candidate: string,
+  asset: string,
+): boolean {
+  if (context.facts.builds && context.facts.builds.length > 0)
+    return asset === manifestAssetPath(manifestPath, candidate);
+  return asset.endsWith(candidate) || asset.endsWith(path.posix.basename(candidate));
 }
 
 function mf(context: RuleContext): NormalizedMFConfig | undefined {
@@ -782,10 +795,12 @@ export const builtInRules: DoctorRule[] = [
       remoteEntry &&
       context.facts.capabilities.emittedAssets &&
       !context.facts.artifacts.emittedAssets.some((asset) =>
-        context.facts.builds?.some((build) => build.adapter === "vite")
-          ? asset === manifestAssetPath(manifest.path, `${remoteEntry.path}${remoteEntry.name}`)
-          : asset.endsWith(`${remoteEntry.path}${remoteEntry.name}`) ||
-            asset.endsWith(remoteEntry.name),
+        emittedAssetMatches(
+          context,
+          manifest.path,
+          `${remoteEntry.path}${remoteEntry.name}`,
+          asset,
+        ),
       )
     )
       report(

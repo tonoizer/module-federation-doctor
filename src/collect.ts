@@ -11,7 +11,7 @@ import type {
   ArtifactStats,
   ArtifactFacts,
   BuildRecord,
-  ViteBuildOutputInput,
+  BuildOutputInput,
   ImportDepth,
   ImportEvidenceSource,
   ImportFacts,
@@ -888,7 +888,7 @@ export async function addBuildFacts(
   assets: string[],
   root: string,
   diagnostics?: BuildDiagnostics,
-  outputs?: ViteBuildOutputInput[],
+  outputs?: BuildOutputInput[],
 ): Promise<ProjectFacts> {
   facts.artifacts.emittedAssets = assets
     .map((item) => relativePath(root, path.resolve(root, item)))
@@ -902,12 +902,12 @@ export async function addBuildFacts(
     const orderedOutputs = outputs
       .slice()
       .sort((left, right) =>
-        `${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.sourceHook}`.localeCompare(
-          `${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.sourceHook}`,
+        `${left.adapter}:${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.sourceHook}`.localeCompare(
+          `${right.adapter}:${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.sourceHook}`,
         ),
       );
     const builds: BuildRecord[] = orderedOutputs.map((output, index) => {
-      const id = `vite-build-${index + 1}`;
+      const id = `${output.adapter}-build-${index + 1}`;
       const outputRoot = output.outputRoot
         ? relativePath(root, path.resolve(root, output.outputRoot))
         : undefined;
@@ -938,38 +938,45 @@ export async function addBuildFacts(
       const outputRootCapability = output.outputRoot
         ? {
             state: "exact" as const,
-            reason: "Resolved Vite output root was public.",
-            source: "configResolved",
+            reason: "Resolved output root was public.",
+            source: output.sourceHook,
           }
         : {
             state: "unavailable" as const,
-            reason: "Vite did not expose an output root.",
+            reason: "The adapter did not expose an output root.",
             source: output.sourceHook,
           };
       const emittedCapability =
         output.buildWrite === false
           ? {
               state: "not-applicable" as const,
-              reason: "Vite build.write was false; no files were written.",
-              source: "configResolved",
+              reason: "Build writing was disabled; no files were written.",
+              source: output.sourceHook,
             }
-          : output.emittedAssets.length > 0
+          : output.emittedAssetsSource === "output-root-scan" && output.emittedAssets.length > 0
             ? {
-                state: "exact" as const,
-                reason: "Asset names came from the public bundle.",
-                source: "writeBundle",
-              }
-            : {
                 state: "partial" as const,
-                reason: "The public bundle contained no asset names.",
-                source: output.sourceHook,
-              };
+                reason:
+                  "Asset names came from a bounded output-root scan after an empty public bundle.",
+                source: "closeBundle",
+              }
+            : output.emittedAssets.length > 0
+              ? {
+                  state: "exact" as const,
+                  reason: "Asset names came from the public bundle.",
+                  source: output.sourceHook,
+                }
+              : {
+                  state: "partial" as const,
+                  reason: "The public bundle contained no asset names.",
+                  source: output.sourceHook,
+                };
       const artifactCapability =
         output.buildWrite === false
           ? {
               state: "not-applicable" as const,
-              reason: "Artifacts cannot be emitted when build.write is false.",
-              source: "configResolved",
+              reason: "Artifacts cannot be emitted when writing is disabled.",
+              source: output.sourceHook,
             }
           : {
               state: artifactRecords.length > 0 ? ("exact" as const) : ("partial" as const),
@@ -982,30 +989,30 @@ export async function addBuildFacts(
       const modeCapability = output.effectiveMode
         ? {
             state: "exact" as const,
-            reason: "Effective mode came from resolved Vite config.",
-            source: "configResolved",
+            reason: "Effective mode came from public resolved config.",
+            source: output.sourceHook,
           }
         : {
             state: "unavailable" as const,
-            reason: "Vite did not expose an effective build mode.",
-            source: "configResolved",
+            reason: "The adapter did not expose an effective build mode.",
+            source: output.sourceHook,
           };
       const targetCapability =
         output.target || output.targetKind
           ? {
               state: "exact" as const,
-              reason: "Target came from public Vite config.",
-              source: "configResolved",
+              reason: "Target came from public config.",
+              source: output.sourceHook,
             }
           : {
               state: "unavailable" as const,
-              reason: "Vite did not expose a target.",
-              source: "configResolved",
+              reason: "The adapter did not expose a target.",
+              source: output.sourceHook,
             };
       const build: BuildRecord = {
         id,
-        adapter: "vite",
-        bundler: "vite",
+        adapter: output.adapter,
+        bundler: output.bundler,
         emittedAssets,
         artifacts: artifactRecords,
         capabilities: {

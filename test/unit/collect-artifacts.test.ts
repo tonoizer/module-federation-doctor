@@ -7,7 +7,7 @@ import { resolveOptions } from "../../src/config.js";
 import { analyzeBuild } from "../../src/engine.js";
 import { writeReports } from "../../src/reporters.js";
 import { validatePayload } from "../helpers/schema-contract.js";
-import type { ArtifactRecord, ArtifactStats } from "../../src/types.js";
+import type { ArtifactRecord, ArtifactStats, BuildOutputInput } from "../../src/types.js";
 
 const validManifestRecord = {
   kind: "manifest",
@@ -25,6 +25,10 @@ const invalidManifestRecord = {
 } satisfies ArtifactRecord;
 
 void invalidManifestRecord;
+
+function viteOutput(partial: Omit<BuildOutputInput, "adapter" | "bundler">): BuildOutputInput {
+  return { adapter: "vite", bundler: "vite", ...partial };
+}
 
 const roots: string[] = [];
 
@@ -150,13 +154,38 @@ describe("artifact collection", () => {
     expect(facts.artifacts.records).toEqual([]);
   });
 
+  it("marks bounded output-root scans as partial emit evidence", async () => {
+    const root = await fixture({
+      "dist/remoteEntry.js": "export {};\n",
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+    await addBuildFacts(facts, ["dist/remoteEntry.js"], root, undefined, [
+      viteOutput({
+        outputRoot: "dist",
+        emittedAssets: ["remoteEntry.js"],
+        emittedAssetsSource: "output-root-scan",
+        sourceHook: "closeBundle",
+      }),
+    ]);
+    expect(facts.builds?.[0]?.capabilities.emittedAssets).toMatchObject({
+      state: "partial",
+      source: "closeBundle",
+    });
+    expect(facts.capabilities.emittedAssets).toBe(false);
+    expect(facts.artifacts.emittedAssets).toEqual(["dist/remoteEntry.js"]);
+  });
+
   it("requires exact relative asset matching for output artifact linkage", async () => {
     const root = await fixture({
       "dist/nested/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
     });
     const facts = await collectProjectFacts(await resolveOptions({ root }));
     await addBuildFacts(facts, ["dist/mf-manifest.json"], root, undefined, [
-      { outputRoot: "dist", emittedAssets: ["mf-manifest.json"], sourceHook: "closeBundle" },
+      viteOutput({
+        outputRoot: "dist",
+        emittedAssets: ["mf-manifest.json"],
+        sourceHook: "closeBundle",
+      }),
     ]);
     expect(facts.builds?.[0]?.artifacts).toEqual([]);
   });
@@ -167,12 +196,12 @@ describe("artifact collection", () => {
     });
     const facts = await collectProjectFacts(await resolveOptions({ root }));
     await addBuildFacts(facts, ["dist/mf-manifest.json"], root, undefined, [
-      {
+      viteOutput({
         outputRoot: "dist",
         emittedAssets: ["mf-manifest.json"],
         buildWrite: false,
         sourceHook: "closeBundle",
-      },
+      }),
     ]);
     expect(facts.builds?.[0]?.artifacts).toEqual([]);
     expect(facts.builds?.[0]?.emittedAssets).toEqual([]);
@@ -185,8 +214,16 @@ describe("artifact collection", () => {
     });
     const facts = await collectProjectFacts(await resolveOptions({ root }));
     await addBuildFacts(facts, ["out/a/remoteEntry.js", "out/b/remoteEntry.js"], root, undefined, [
-      { outputRoot: "out/a", emittedAssets: ["remoteEntry.js"], sourceHook: "closeBundle" },
-      { outputRoot: "out/b", emittedAssets: ["remoteEntry.js"], sourceHook: "closeBundle" },
+      viteOutput({
+        outputRoot: "out/a",
+        emittedAssets: ["remoteEntry.js"],
+        sourceHook: "closeBundle",
+      }),
+      viteOutput({
+        outputRoot: "out/b",
+        emittedAssets: ["remoteEntry.js"],
+        sourceHook: "closeBundle",
+      }),
     ]);
     expect(facts.artifacts.assetSizes?.["out/a/remoteEntry.js"]).toBe(5);
     expect(facts.artifacts.assetSizes?.["out/b/remoteEntry.js"]).toBe(14);
@@ -209,16 +246,16 @@ describe("artifact collection", () => {
       root,
       undefined,
       [
-        {
+        viteOutput({
           outputRoot: "dist/current",
           emittedAssets: ["mf-manifest.json"],
           sourceHook: "closeBundle",
-        },
-        {
+        }),
+        viteOutput({
           outputRoot: "dist/other",
           emittedAssets: ["mf-manifest.json"],
           sourceHook: "closeBundle",
-        },
+        }),
       ],
     );
     expect(facts.artifacts.records?.map((record) => record.path)).toEqual([
@@ -266,16 +303,16 @@ describe("artifact collection", () => {
       ],
       undefined,
       [
-        {
+        viteOutput({
           outputRoot: "out/a",
           emittedAssets: ["mf-manifest.json", "remoteEntry.js"],
           sourceHook: "closeBundle",
-        },
-        {
+        }),
+        viteOutput({
           outputRoot: "out/b",
           emittedAssets: ["mf-manifest.json", "remoteEntry.js"],
           sourceHook: "closeBundle",
-        },
+        }),
       ],
     );
     expect(
@@ -317,12 +354,16 @@ describe("artifact collection", () => {
       ["out/a/mf-manifest.json", "out/b/mf-manifest.json", "out/b/remoteEntry.js"],
       undefined,
       [
-        { outputRoot: "out/a", emittedAssets: ["mf-manifest.json"], sourceHook: "closeBundle" },
-        {
+        viteOutput({
+          outputRoot: "out/a",
+          emittedAssets: ["mf-manifest.json"],
+          sourceHook: "closeBundle",
+        }),
+        viteOutput({
           outputRoot: "out/b",
           emittedAssets: ["mf-manifest.json", "remoteEntry.js"],
           sourceHook: "closeBundle",
-        },
+        }),
       ],
     );
     expect(

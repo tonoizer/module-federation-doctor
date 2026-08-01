@@ -1,14 +1,15 @@
 import { createUnplugin, type UnpluginOptions } from "unplugin";
 import fs from "node:fs/promises";
 import path from "node:path";
+import fg from "fast-glob";
 import { analyzeBuild } from "./engine.js";
 import type { BuildDiagnostics } from "./collect.js";
 import type {
   AnalysisResult,
+  BuildOutputInput,
   BundlerName,
   DoctorOptions,
   OutputPublicPathKind,
-  ViteBuildOutputInput,
 } from "./types.js";
 import { detectViteLifecycle, withPostEmitHook, type ViteHookMeta } from "./vite-lifecycle.js";
 
@@ -124,7 +125,7 @@ type ViteResolvedConfigLike = {
 
 type ViteOutputOptionsLike = { dir?: string; file?: string };
 
-function targetKind(config: ViteResolvedConfigLike): ViteBuildOutputInput["targetKind"] {
+function targetKind(config: ViteResolvedConfigLike): BuildOutputInput["targetKind"] {
   const raw =
     config.build?.ssr || config.ssr?.target ? (config.ssr?.target ?? "ssr") : config.build?.target;
   if (!raw) return undefined;
@@ -133,6 +134,17 @@ function targetKind(config: ViteResolvedConfigLike): ViteBuildOutputInput["targe
   if (value.includes("worker")) return "worker";
   if (config.build?.ssr) return "ssr";
   return "web";
+}
+
+/** List files under a known safe project-relative output root only. */
+async function listBoundedOutputAssets(root: string, outputRoot: string): Promise<string[]> {
+  const cwd = path.join(root, outputRoot === "." ? "" : outputRoot);
+  const files = await fg(["**/*"], {
+    cwd,
+    onlyFiles: true,
+    followSymbolicLinks: false,
+  });
+  return files.map((file) => file.replaceAll("\\", "/")).sort();
 }
 
 async function safeOutputRoot(
@@ -172,15 +184,15 @@ async function safeOutputRoot(
 /**
  * Vite / Rolldown / Vite Plus post-emit path.
  *
- * Prefer on-disk assets over the in-memory `bundle` object — Rolldown does not
- * share that object across hooks the way Rollup does. When Rolldown/Vite Plus
- * has not finished writing on `writeBundle`, defer to `closeBundle`. If emit
- * facts are still missing, analyze without claiming `emittedAssets` so
- * `doctor/partial-analysis` stays honest.
+ * Prefer exact `writeBundle` bundle keys when present. When Rolldown/Vite Plus
+ * finishes disk writes after an empty `writeBundle`, recover with a bounded
+ * scan of the known safe output root at `closeBundle` and mark that evidence
+ * partial. Never rescan unrelated project `dist`/`build` trees. Analysis runs
+ * once after the output set is finalized.
  */
 function createViteFamilyHooks(configured: DoctorOptions) {
   let resolvedConfig: ViteResolvedConfigLike | undefined;
-  let outputs: ViteBuildOutputInput[] = [];
+  let outputs: BuildOutputInput[] = [];
   let pendingCloseFinalization: number | undefined;
 
   const run = async (
@@ -205,9 +217,12 @@ function createViteFamilyHooks(configured: DoctorOptions) {
     // but let closeBundle still finalize the current cycle.
     if (!(requestedOutputRoot && !outputRoot)) {
       const publicConfig = config ?? {};
-      const input: ViteBuildOutputInput = {
+      const input: BuildOutputInput = {
+        adapter: "vite",
+        bundler: "vite",
         ...(outputRoot ? { outputRoot } : {}),
         emittedAssets,
+        ...(emittedAssets.length > 0 ? { emittedAssetsSource: "bundle" as const } : {}),
         sourceHook: hook,
         ...(config?.mode ? { effectiveMode: config.mode } : {}),
         ...(config?.ssr?.target
@@ -224,13 +239,22 @@ function createViteFamilyHooks(configured: DoctorOptions) {
         outputs.push(input);
         if (hook === "writeBundle" && lifecycle.engine === "rolldown" && emittedAssets.length === 0)
           pendingCloseFinalization = outputs.length - 1;
-      } else if (lifecycle.engine === "rolldown") {
-        if (pendingCloseFinalization !== undefined) {
-          outputs = outputs.map((item, index) =>
-            index === pendingCloseFinalization ? { ...item, sourceHook: hook } : item,
-          );
-          pendingCloseFinalization = undefined;
-        }
+      } else if (lifecycle.engine === "rolldown" && pendingCloseFinalization !== undefined) {
+        const pending = outputs[pendingCloseFinalization];
+        let recovered: string[] = [];
+        if (pending?.outputRoot && pending.buildWrite !== false)
+          recovered = await listBoundedOutputAssets(root, pending.outputRoot);
+        outputs = outputs.map((item, index) => {
+          if (index !== pendingCloseFinalization) return item;
+          if (recovered.length === 0) return { ...item, sourceHook: hook };
+          return {
+            ...item,
+            sourceHook: hook,
+            emittedAssets: recovered,
+            emittedAssetsSource: "output-root-scan" as const,
+          };
+        });
+        pendingCloseFinalization = undefined;
       }
     }
     if (hook === "writeBundle") return;
@@ -280,11 +304,13 @@ function createViteFamilyHooks(configured: DoctorOptions) {
 }
 
 /**
- * Build/CI-only invariant (#32 / #54): adapters may hook post-emit surfaces only
- * (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild`). Never register
- * `transform` / `load` / `banner` (or similar) hooks that inject Doctor into
- * client assets. Findings print once via the shared terminal reporter at the
- * end of analysis — adapters must not re-emit per-finding bundler logs (#46).
+ * Build/CI-only invariant (#32 / #54): adapters may gather facts from public
+ * build hooks (`configResolved` / `buildStart`) and analyze only on post-emit
+ * surfaces (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild`).
+ * Never register `transform` / `load` / `banner` (or similar) hooks that inject
+ * Doctor into client assets. Findings print once via the shared terminal
+ * reporter at the end of analysis — adapters must not re-emit per-finding
+ * bundler logs (#46).
  */
 function createDoctorPlugin(bundler: BundlerName) {
   return createUnplugin<DoctorOptions | undefined>((options = {}) => {

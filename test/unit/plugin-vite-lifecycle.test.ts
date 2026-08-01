@@ -260,10 +260,52 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
     ) as {
       bundler: { lifecycle?: { postEmitHook?: string; engine: string } };
       capabilities: { emittedAssets: boolean };
+      builds: Array<{
+        emittedAssets: string[];
+        capabilities: { emittedAssets: { state: string; source?: string } };
+      }>;
     };
     expect(project.bundler.lifecycle?.engine).toBe("rolldown");
     expect(project.bundler.lifecycle?.postEmitHook).toBe("closeBundle");
+    // Bounded recovery is partial, never exact compiler evidence.
     expect(project.capabilities.emittedAssets).toBe(false);
+    expect(project.builds[0]?.emittedAssets).toEqual(["dist/remoteEntry.js"]);
+    expect(project.builds[0]?.capabilities.emittedAssets).toMatchObject({
+      state: "partial",
+      source: "closeBundle",
+    });
+  });
+
+  it("records absolute outDir as a safe project-relative output root", async () => {
+    const root = await makeRoot({ vite: "5.4.0" });
+    const absoluteOut = path.join(root, "artifacts", "abs");
+    await fs.mkdir(absoluteOut, { recursive: true });
+    await fs.writeFile(path.join(absoluteOut, "remoteEntry.js"), "export {};\n");
+
+    const raw = viteDoctor.raw(doctorOptions(root), {
+      framework: "vite",
+      versions: { unplugin: "3.3.0" },
+    } as never);
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+    plugin.configResolved?.({
+      root,
+      mode: "production",
+      build: { outDir: absoluteOut, write: true },
+    });
+    await plugin.writeBundle!.call(
+      {},
+      { dir: absoluteOut },
+      { "remoteEntry.js": { type: "chunk" } },
+    );
+    await plugin.closeBundle!.call({});
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as {
+      builds: Array<{ outputRoot?: string; emittedAssets: string[] }>;
+    };
+    expect(project.builds[0]?.outputRoot).toBe("artifacts/abs");
+    expect(project.builds[0]?.emittedAssets).toEqual(["artifacts/abs/remoteEntry.js"]);
   });
 
   it("collects every output before failing policy at closeBundle", async () => {
