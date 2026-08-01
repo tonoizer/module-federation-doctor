@@ -660,8 +660,8 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "bridge/provider-shape-invalid": {
     category: "correctness",
     impact:
-      "Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or fallback/loading contracts and break Bridge remotes.",
-    fix: 'Pass a complete options object (loader/module plus fallback/loading, or a root component for export-app). Turn the rule `"off"` when source facts are too thin or the call shape is dynamic.',
+      "Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or root component contracts and break Bridge remotes.",
+    fix: 'Pass a complete options object (loader/module for consumers, or a root component for export-app). Fallback/loading UX is covered by `bridge/missing-fallback-loading`. Turn the rule `"off"` when source facts are too thin or the call shape is dynamic.',
     sources: ["https://module-federation.io/guide/bridge/react-bridge"],
   },
   "bridge/ssr-server-entry-leak": {
