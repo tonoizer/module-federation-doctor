@@ -150,6 +150,11 @@ export async function validateFixturePayloads(): Promise<void> {
     "examples/showcase/federation/version-conflict/host.project.json",
     "examples/showcase/runtime/green/host.project.json",
     "fixtures/workspaces/clean/host/.mf/doctor/project.json",
+    "fixtures/mf-bridge-entry/host/.mf/doctor/project.json",
+    "fixtures/mf-bridge-entry/remote/.mf/doctor/project.json",
+    "fixtures/mf-ssr-fragment/host/.mf/doctor/project.json",
+    "fixtures/mf-ssr-fragment/remote/.mf/doctor/project.json",
+    "fixtures/shared-inspector-mf2/.mf/doctor/project.json",
   ];
   for (const relativePath of projectFixtures) {
     const payload: unknown = JSON.parse(await fs.readFile(path.join(root, relativePath), "utf8"));
@@ -178,6 +183,8 @@ export async function validateFixturePayloads(): Promise<void> {
           project: "host",
           evidence: { package: "react" },
           fingerprint: "fp-demo",
+          detailsSchema: "shared.version-mismatch.v1",
+          details: { package: "react", source: "requiredVersion" },
         },
       ],
     },

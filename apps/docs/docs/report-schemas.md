@@ -145,6 +145,67 @@ semantics. Terminal printing can be disabled with `--no-score` / `score: false`
 while JSON still includes the fields. Pair with [CLI agent prompts](./cli.md)
 (#124) for top-3 handoff after the score footer.
 
+## Versioned finding details (`detailsSchema` + `details`)
+
+Findings may include optional top-level fields:
+
+| Field           | Type   | Purpose                                       |
+| --------------- | ------ | --------------------------------------------- |
+| `detailsSchema` | string | Versioned schema id (e.g. `shared.unused.v1`) |
+| `details`       | object | Machine-readable payload for that schema      |
+
+These fields are **additive and optional**. Old reports without them still validate.
+Unknown `detailsSchema` values must be ignored by readers (do not fail the pipeline).
+
+### Fingerprint / baseline / SARIF stability
+
+`fingerprint()` hashes only `ruleId`, `project`, `location`, and `evidence`
+(`src/utils.ts`). **`detailsSchema` and `details` are never fingerprint inputs.**
+Never put a schema version into `evidence` — that would churn baselines and SARIF
+`partialFingerprints`. Adding typed details does not change fingerprints for
+existing findings.
+
+### First-batch schema inventory
+
+| `detailsSchema`              | Rule ids                                                                                                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `shared.unused.v1`           | `shared/unused`                                                                                                                                                                                                          |
+| `shared.singleton.v1`        | `shared/singleton-risk`, `shared/eager-without-singleton`, `shared/singleton-mismatch`                                                                                                                                   |
+| `shared.version-mismatch.v1` | `shared/version-unsatisfied`, `artifact/manifest-shared-version-mismatch`                                                                                                                                                |
+| `remotes.config.v1`          | `config/remote-entry-invalid`, `config/remote-http-insecure`, `config/remote-localhost-in-production`, `config/remote-alias-prefix-collision`, `config/remote-manifest-recommended`, `config/remote-capability-disabled` |
+| `artifact.v1`                | other first-batch `artifact/*` rules                                                                                                                                                                                     |
+| `doctor.partial-analysis.v1` | `doctor/partial-analysis`                                                                                                                                                                                                |
+
+TypeScript exports: `FINDING_DETAILS_SCHEMAS`, `TYPED_DETAILS_RULE_IDS`,
+`readFindingDetails`, and per-family `*DetailsV1` types from
+`@module-federation/doctor`.
+
+### Agent / CI example (prefer `details`, not message regex)
+
+```ts
+import {
+  readFindingDetails,
+  FINDING_DETAILS_SCHEMAS,
+  type SharedUnusedDetailsV1,
+} from "@module-federation/doctor";
+
+for (const finding of report.findings) {
+  const typed = readFindingDetails(finding);
+  if (!typed) continue; // old report or unknown schema — skip
+
+  if (typed.detailsSchema === FINDING_DETAILS_SCHEMAS.SHARED_UNUSED) {
+    const details = typed.details as SharedUnusedDetailsV1;
+    // Gate on structured fields instead of scraping finding.message
+    if (details.package === "react") {
+      console.error("unused shared react", details);
+    }
+  }
+}
+```
+
+Custom rules may attach the same top-level fields via `context.report({ ..., detailsSchema, details })`.
+Prefer a namespaced id such as `custom.<team>.<topic>.v1`.
+
 ## Semantic identity schema
 
 `@module-federation/doctor/schemas/identity.schema.json` is the additive

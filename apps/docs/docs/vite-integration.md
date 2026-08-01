@@ -36,16 +36,16 @@ dropped built-in Module Federation in favor of the Vite plugin.
 
 ## Vite-only options
 
-| Option                          | Risk or opportunity                                 | Doctor guidance                                                        |
-| ------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------- |
-| `publicPath`                    | Wrong base breaks remote chunks and CSS             | Compare with manifest output                                           |
-| `bundleAllCSS`                  | Full CSS set can repeat for every expose            | Warn for multi-expose producers                                        |
-| `hostInitInjectLocation`        | HTML and entry injection serve different app shapes | Record for support evidence                                            |
-| `moduleParseTimeout`            | Fixed timer can end a busy large parse              | Prefer idle timeout                                                    |
-| `moduleParseIdleTimeout`        | Resets while modules are active                     | Better for large builds                                                |
-| `varFilename`                   | Adds a synchronous global-format entry              | Verify filename and deployment; intentional mixed-bundler escape hatch |
-| `target` / `ssrExternals`       | Changes server remote output                        | Keep SSR and browser contracts separate                                |
-| `disableRemote/shared/snapshot` | Removes runtime capabilities                        | Reject config that still uses them                                     |
+| Option                                       | Risk or opportunity                                     | Doctor guidance                                                                                |
+| -------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `publicPath`                                 | Wrong base breaks remote chunks and CSS                 | Compare with manifest output                                                                   |
+| `bundleAllCSS`                               | Full CSS set can repeat for every expose                | Warn for multi-expose producers                                                                |
+| `hostInitInjectLocation`                     | HTML and entry injection serve different app shapes     | SSR needs `entry` ([`vite/host-init-inject-ssr`](./rules/vite/host-init-inject-ssr.md))        |
+| `moduleParseTimeout`                         | Fixed timer can end a busy large parse                  | Prefer idle timeout                                                                            |
+| `moduleParseIdleTimeout`                     | Resets while modules are active                         | Better for large builds                                                                        |
+| `varFilename`                                | Adds a synchronous global-format entry                  | Verify filename and deployment; intentional mixed-bundler escape hatch                         |
+| `target` / `ssrExternals` / `ssrEntryLoader` | Changes server remote output / React instance ownership | Keep SSR contracts aligned ([`vite/ssr-nitro-externals`](./rules/vite/ssr-nitro-externals.md)) |
+| `disableRemote/shared/snapshot`              | Removes runtime capabilities                            | Reject config that still uses them                                                             |
 
 ### Remotes typing
 

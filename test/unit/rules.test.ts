@@ -518,6 +518,36 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "vite/host-init-inject-ssr",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.vite = {
+          bundleAllCSS: false,
+          ignoreOrigin: false,
+          ssrExternals: [],
+          hostInitInjectLocation: "html",
+          target: "node",
+        };
+      },
+    ],
+    [
+      "vite/ssr-nitro-externals",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared.nitropack = "^2";
+        facts.moduleFederation!.shared.react = {
+          package: "react",
+          singleton: true,
+          eager: false,
+          shareScope: "default",
+        };
+        facts.moduleFederation!.vite = {
+          bundleAllCSS: false,
+          ignoreOrigin: false,
+          ssrExternals: ["react"],
+          ssrEntryLoader: "virtual:mf-ssr-entry",
+        };
+      },
+    ],
+    [
       "artifact/manifest-assets-disabled",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.manifest = {
@@ -896,6 +926,50 @@ describe("built-in rules", () => {
             shareScope: "default",
           },
         };
+      },
+    ],
+    [
+      "runtime-plugins/invalid-factory",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.runtimePlugins = ["./src/bad-plugin.ts"];
+        facts.runtimePluginContracts = [
+          {
+            plugin: "./src/bad-plugin.ts",
+            kind: "invalid-factory",
+            reason: "non-factory-export",
+            file: "src/bad-plugin.ts",
+          },
+        ];
+      },
+    ],
+    [
+      "runtime-plugins/create-script-cors-parity",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.runtimePlugins = ["./src/cors-plugin.ts"];
+        facts.runtimePluginContracts = [
+          {
+            plugin: "./src/cors-plugin.ts",
+            kind: "cors-parity",
+            reason: "create-script-without-create-link",
+            confidence: "clear",
+            file: "src/cors-plugin.ts",
+          },
+        ];
+      },
+    ],
+    [
+      "runtime-plugins/create-script-without-link",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.runtimePlugins = ["./src/script-plugin.ts"];
+        facts.runtimePluginContracts = [
+          {
+            plugin: "./src/script-plugin.ts",
+            kind: "cors-parity",
+            reason: "create-script-without-create-link",
+            confidence: "heuristic",
+            file: "src/script-plugin.ts",
+          },
+        ];
       },
     ],
   ];
@@ -1317,5 +1391,111 @@ describe("vite remotes typing dialect", () => {
     const empty = baseFacts();
     expect(await run("vite/remotes-prefer-module", empty)).toHaveLength(0);
     expect(await run("vite/var-filename-interop", empty)).toHaveLength(0);
+  });
+});
+
+describe("vite SSR inject dialect", () => {
+  function baseFacts(): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {},
+        shared: {},
+        vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [] },
+      },
+      dependencies: { declared: { "@module-federation/vite": "1.19.1" }, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  async function run(id: string, facts: ProjectFacts, options: Record<string, unknown> = {}) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const selected = builtInRules.find((item) => item.meta.id === id)!;
+    await selected.check({ facts, options, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  it("flags SSR Vite with wrong or missing hostInitInjectLocation", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.vite!.target = "node";
+    facts.moduleFederation!.vite!.hostInitInjectLocation = "html";
+    expect(await run("vite/host-init-inject-ssr", facts)).not.toHaveLength(0);
+
+    delete facts.moduleFederation!.vite!.hostInitInjectLocation;
+    expect(await run("vite/host-init-inject-ssr", facts)).not.toHaveLength(0);
+  });
+
+  it("stays quiet for SSR with entry inject and for browser-only hosts", async () => {
+    const ssr = baseFacts();
+    ssr.moduleFederation!.vite!.target = "node";
+    ssr.moduleFederation!.vite!.hostInitInjectLocation = "entry";
+    expect(await run("vite/host-init-inject-ssr", ssr)).toHaveLength(0);
+
+    const browser = baseFacts();
+    expect(await run("vite/host-init-inject-ssr", browser)).toHaveLength(0);
+    browser.moduleFederation!.vite!.hostInitInjectLocation = "html";
+    expect(await run("vite/host-init-inject-ssr", browser)).toHaveLength(0);
+
+    // Vite default ssr.target often records builds.targetKind=node on client builds.
+    browser.builds = [
+      {
+        id: "client",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: "dist",
+        sourceHook: "writeBundle",
+        target: "node",
+        targetKind: "node",
+        emittedAssets: [],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "unavailable", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+      },
+    ];
+    expect(await run("vite/host-init-inject-ssr", browser)).toHaveLength(0);
+  });
+
+  it("warns when Nitro shared React overlaps ssrExternals and skips without facts", async () => {
+    const facts = baseFacts();
+    facts.dependencies.declared.nitropack = "^2";
+    facts.moduleFederation!.shared = {
+      react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+    };
+    facts.moduleFederation!.vite!.ssrExternals = ["react"];
+    expect(await run("vite/ssr-nitro-externals", facts)).not.toHaveLength(0);
+
+    const missing = baseFacts();
+    missing.moduleFederation!.shared = {
+      react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+    };
+    expect(await run("vite/ssr-nitro-externals", missing)).toHaveLength(0);
   });
 });

@@ -142,6 +142,7 @@ export interface NormalizedMFConfig {
     disableShared?: boolean;
     disableSnapshot?: boolean;
     ssrExternals: string[];
+    ssrEntryLoader?: string;
   };
   /** Bridge plugin options (`enableBridgeRouter`, etc.). Preserved from raw MF config. */
   bridge?: {
@@ -353,6 +354,21 @@ export interface BuildOutputInput {
 /** @deprecated Use {@link BuildOutputInput}. Kept as an alias for the Vite slice. */
 export type ViteBuildOutputInput = BuildOutputInput;
 
+export type RuntimePluginContractFinding =
+  | {
+      plugin: string;
+      kind: "invalid-factory";
+      reason: "no-export" | "non-factory-export" | "missing-name";
+      file?: string;
+    }
+  | {
+      plugin: string;
+      kind: "cors-parity";
+      reason: "create-script-without-create-link" | "cors-mismatch";
+      confidence: "clear" | "heuristic";
+      file?: string;
+    };
+
 export interface ProjectFacts {
   schemaVersion: 1;
   project: ProjectIdentity;
@@ -361,6 +377,8 @@ export interface ProjectFacts {
   moduleFederation?: NormalizedMFConfig;
   dependencies: DependencyFacts;
   imports: ImportFacts;
+  /** Static runtimePlugins contract probes; absent/empty when none apply. */
+  runtimePluginContracts?: RuntimePluginContractFinding[];
   artifacts: ArtifactFacts;
   /** Exact per-output records. Legacy artifact fields remain the compatibility view. */
   builds?: BuildRecord[];
@@ -377,6 +395,16 @@ export interface DoctorFinding {
   suggestion?: string;
   documentation?: string;
   fingerprint: string;
+  /**
+   * Optional versioned details schema id (e.g. `shared.unused.v1`).
+   * Top-level only — never put this in `evidence` (fingerprints hash evidence).
+   */
+  detailsSchema?: string;
+  /**
+   * Optional machine-readable payload for `detailsSchema`.
+   * Not an input to `fingerprint()`; baselines/SARIF stay stable when this is added.
+   */
+  details?: Record<string, unknown>;
   /** Present when the finding matches a checked-in fingerprint baseline entry. */
   suppressed?: boolean;
   /** Optional human reason copied from the matching baseline entry. */
@@ -502,6 +530,7 @@ export interface ModuleFederationConfigLike {
   disableShared?: boolean;
   disableSnapshot?: boolean;
   ssrExternals?: string[];
+  ssrEntryLoader?: string;
   /** Bridge plugin options (`enableBridgeRouter`, deprecated flags, …). */
   bridge?: {
     enableBridgeRouter?: boolean;

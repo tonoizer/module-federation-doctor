@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "checkout-fragment",
+    "root": "."
+  },
+  "bundler": {
+    "name": "vite",
+    "mode": "ci"
+  },
+  "capabilities": {
+    "config": true,
+    "sourceImports": true,
+    "manifest": false,
+    "stats": false,
+    "emittedAssets": false,
+    "installedVersions": true
+  },
+  "moduleFederation": {
+    "name": "checkout",
+    "filename": "fragment.js",
+    "exposes": {
+      "./fragment": "./src/fragment-route.ts"
+    },
+    "remotes": {},
+    "shared": {
+      "react": {
+        "package": "react",
+        "singleton": true,
+        "eager": false,
+        "requiredVersion": "^19.1.0",
+        "shareScope": ["default"]
+      }
+    }
+  },
+  "dependencies": {
+    "declared": {
+      "react": "^19.1.0"
+    },
+    "installed": {
+      "react": "19.2.8"
+    }
+  },
+  "imports": {
+    "sourceFiles": ["src/fragment-route.ts"],
+    "specifiers": [],
+    "packages": [],
+    "dynamicPackages": [],
+    "remotes": [],
+    "unresolvedDynamic": [],
+    "evidenceSources": ["source"]
+  },
+  "artifacts": {
+    "emittedAssets": []
+  }
+}

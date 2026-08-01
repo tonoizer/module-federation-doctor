@@ -141,6 +141,33 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Correct the path/package and include local plugin files in the Doctor scan.",
     sources: [runtimePlugins],
   },
+  "runtime-plugins/invalid-factory": {
+    category: "correctness",
+    impact:
+      "A runtime plugin without a factory or usable `name` is ignored at runtime (silent no-op).",
+    fix: "Export a factory or plugin object that includes a stable `name` plus the hooks you intend to run.",
+    sources: [runtimePlugins, "https://module-federation.io/guide/runtime/runtime-plugins.html"],
+  },
+  "runtime-plugins/create-script-cors-parity": {
+    category: "reliability",
+    impact:
+      "CORS on createScript without matching createLink makes preload and load use different cache keys.",
+    fix: "Mirror crossorigin (and credentials where applicable) on createLink; keep fetch credentials consistent.",
+    sources: [
+      "https://module-federation.io/guide/troubleshooting/runtime.html",
+      "https://module-federation.io/guide/runtime/runtime-hooks.html",
+    ],
+  },
+  "runtime-plugins/create-script-without-link": {
+    category: "reliability",
+    impact:
+      "A createScript hook without createLink can waste preload work when link-based loading is used.",
+    fix: "Add createLink when preloadRemote or CSS/JS link loading is in play, or suppress if preload is unused.",
+    sources: [
+      "https://module-federation.io/guide/troubleshooting/runtime.html",
+      "https://module-federation.io/guide/runtime/runtime-hooks.html",
+    ],
+  },
   "config/get-public-path-invalid": {
     category: "correctness",
     impact: "The runtime cannot evaluate an invalid stringified public-path function.",
@@ -307,6 +334,20 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     impact:
       "`varFilename` emits an additional global-format remote entry so var hosts (webpack/rspack) can load this Vite producer.",
     fix: "Keep `varFilename` when serving webpack/rspack var hosts. Prefer `type: 'module'` remotes when this app is a Vite consumer talking to Vite producers.",
+    sources: [vite],
+  },
+  "vite/host-init-inject-ssr": {
+    category: "correctness",
+    impact:
+      "SSR and HTML-less frameworks need host init injected into the entry, not the HTML document, or federation bootstrap never runs on the server.",
+    fix: "Set `hostInitInjectLocation: 'entry'` for SSR / Nitro / Nuxt-style apps.",
+    sources: [vite],
+  },
+  "vite/ssr-nitro-externals": {
+    category: "reliability",
+    impact:
+      "Shared React (or react-dom) can conflict with Nitro/SSR externals and `ssrEntryLoader` when the server expects a different module instance.",
+    fix: "Align `shared` React with `ssrExternals` / `ssrEntryLoader` for the SSR runtime, or document an intentional dual-instance path.",
     sources: [vite],
   },
   "artifact/manifest-assets-disabled": {

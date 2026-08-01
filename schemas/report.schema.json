@@ -79,6 +79,8 @@
           "suggestion": { "type": "string" },
           "documentation": { "type": "string" },
           "fingerprint": { "type": "string", "minLength": 1 },
+          "detailsSchema": { "type": "string", "minLength": 1 },
+          "details": { "type": "object" },
           "suppressed": { "type": "boolean" },
           "suppressionReason": { "type": "string" }
         },
