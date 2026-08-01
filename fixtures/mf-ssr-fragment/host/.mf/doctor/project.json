@@ -24,15 +24,17 @@
         "name": "checkout",
         "entry": "https://checkout.example.com/api/fragments/checkout",
         "alias": "checkout",
-        "type": "mf-ssr-fragment",
-        "shareScope": ["default"]
+        "shareScope": [
+          "default"
+        ]
       },
       "checkoutRelative": {
         "name": "checkoutRelative",
         "entry": "/api/fragments/checkout",
         "alias": "checkoutRelative",
-        "type": "mf-ssr-fragment",
-        "shareScope": ["default"]
+        "shareScope": [
+          "default"
+        ]
       }
     },
     "shared": {
@@ -41,7 +43,9 @@
         "singleton": true,
         "eager": false,
         "requiredVersion": "^19.1.0",
-        "shareScope": ["default"]
+        "shareScope": [
+          "default"
+        ]
       }
     }
   },
@@ -54,13 +58,20 @@
     }
   },
   "imports": {
-    "sourceFiles": ["src/CheckoutSlot.tsx"],
+    "sourceFiles": [
+      "src/CheckoutSlot.tsx"
+    ],
     "specifiers": [],
     "packages": [],
     "dynamicPackages": [],
-    "remotes": ["checkout"],
+    "remotes": [
+      "checkout",
+      "checkoutRelative"
+    ],
     "unresolvedDynamic": [],
-    "evidenceSources": ["source"]
+    "evidenceSources": [
+      "source"
+    ]
   },
   "artifacts": {
     "emittedAssets": []

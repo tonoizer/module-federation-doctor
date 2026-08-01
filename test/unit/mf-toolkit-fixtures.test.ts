@@ -63,9 +63,16 @@ describe("mf-toolkit fixtures (offline, #145)", () => {
     const remotes = host.moduleFederation?.remotes ?? {};
     expect(remotes.checkout?.entry).toBe("https://checkout.example.com/api/fragments/checkout");
     expect(remotes.checkout?.entry).not.toMatch(/remoteEntry\.js/);
-    expect(remotes.checkout?.type).toBe("mf-ssr-fragment");
+    // Do not invent MF remote `type`; fragment URL/path is the recognition signal.
+    expect(remotes.checkout?.type).toBeUndefined();
     expect(remotes.checkoutRelative?.entry).toBe("/api/fragments/checkout");
-    expect(remotes.checkoutRelative?.type).toBe("mf-ssr-fragment");
+    expect(remotes.checkoutRelative?.type).toBeUndefined();
+    expect(host.imports.remotes?.slice().sort()).toEqual(["checkout", "checkoutRelative"]);
+
+    const remoteFacts = await readJson<ProjectFacts>(
+      "fixtures/mf-ssr-fragment/remote/.mf/doctor/project.json",
+    );
+    expect(remoteFacts.moduleFederation?.exposes?.["./fragment"]).toBe("./src/fragment-route.ts");
 
     const slot = await readText("fixtures/mf-ssr-fragment/host/src/CheckoutSlot.tsx");
     expect(slot).toMatch(/CHECKOUT_FRAGMENT_URL/);
@@ -83,14 +90,21 @@ describe("mf-toolkit fixtures (offline, #145)", () => {
     );
 
     const manifest = project.artifacts.manifest as {
-      shared?: Array<{ name: string; from?: string }>;
+      path?: string;
+      valid?: boolean;
+      shared?: Array<{ name: string; assets?: string[]; from?: string }>;
     };
+    expect(manifest.path).toBe("shell.mf-manifest.json");
+    expect(manifest.valid).toBe(true);
     expect(Array.isArray(manifest.shared)).toBe(true);
     expect(manifest.shared?.map((entry) => entry.name).sort()).toEqual([
       "react",
       "react-dom",
       "zustand",
     ]);
+    // Doctor-normalized ArtifactManifest does not retain MF2 `from`.
+    expect(manifest.shared?.every((entry) => entry.from === undefined)).toBe(true);
+    expect(manifest.shared?.every((entry) => Array.isArray(entry.assets))).toBe(true);
 
     const shell = await readJson<{ shared: unknown[]; name: string }>(
       "fixtures/shared-inspector-mf2/shell.mf-manifest.json",

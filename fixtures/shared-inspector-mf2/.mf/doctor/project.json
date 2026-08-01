@@ -74,43 +74,22 @@
   },
   "artifacts": {
     "manifest": {
-      "id": "shell:1.0.0",
-      "name": "shell",
+      "path": "shell.mf-manifest.json",
+      "valid": true,
+      "remoteEntry": { "name": "remoteEntry.js", "path": "" },
+      "exposes": [],
       "shared": [
-        {
-          "id": "shell:react",
-          "name": "react",
-          "version": "18.2.0",
-          "singleton": true,
-          "requiredVersion": "^18.2.0",
-          "from": "shell"
-        },
-        {
-          "id": "shell:react-dom",
-          "name": "react-dom",
-          "version": "18.2.0",
-          "singleton": true,
-          "requiredVersion": "^18.2.0",
-          "from": "shell"
-        },
-        {
-          "id": "shell:zustand",
-          "name": "zustand",
-          "version": "4.5.0",
-          "singleton": true,
-          "requiredVersion": "^4.5.0",
-          "from": "shell"
-        }
+        { "name": "react", "version": "18.2.0", "requiredVersion": "^18.2.0", "singleton": true, "assets": [] },
+        { "name": "react-dom", "version": "18.2.0", "requiredVersion": "^18.2.0", "singleton": true, "assets": [] },
+        { "name": "zustand", "version": "4.5.0", "requiredVersion": "^4.5.0", "singleton": true, "assets": [] }
       ],
       "remotes": [
         {
-          "federationContainerName": "checkout",
-          "moduleName": "Checkout",
+          "name": "checkout",
           "alias": "checkout",
           "entry": "https://example.com/checkout/mf-manifest.json"
         }
-      ],
-      "exposes": []
+      ]
     },
     "emittedAssets": []
   }
