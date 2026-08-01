@@ -60,7 +60,7 @@ const rsbuild = await import("@module-federation/doctor/rsbuild");
 const webpack = await import("@module-federation/doctor/webpack");
 const modern = await import("@module-federation/doctor/modern");
 const rules = await import("@module-federation/doctor/rules");
-const reportSchema = await import("@module-federation/doctor/schemas/report.schema.json", { with: { type: "json" } });
+const capture = await import("@module-federation/doctor/capture");
 const packageJson = await import("@module-federation/doctor/package.json", { with: { type: "json" } });
 assert.equal(typeof api.analyze, "function");
 assert.equal(typeof api.probeManifest, "function");
@@ -78,13 +78,41 @@ assert.equal(typeof rsbuild.default, "function");
 assert.equal(typeof webpack.default, "function");
 assert.equal(typeof modern.default, "function");
 assert.equal(typeof rules.defineRule, "function");
+assert.equal(typeof capture.validateRuntimeCaptureEnvelope, "function");
 const policy = await import("@module-federation/doctor/policy");
 assert.equal(typeof policy.definePolicyPack, "function");
 assert.equal(typeof policy.presets.recommended, "object");
 assert.equal(typeof policy.presets.strict, "object");
-assert.equal(reportSchema.default.title, "Module Federation Doctor report");
-const uiSchema = await import("@module-federation/doctor/schemas/ui.schema.json", { with: { type: "json" } });
-assert.equal(uiSchema.default.title, "Module Federation Doctor federation graph payload");
+const schemaTitles = {
+  baseline: "Module Federation Doctor fingerprint baseline",
+  config: "Module Federation Doctor canonical config v1",
+  evidence: "Module Federation Doctor evidence protocol v2",
+  identity: "Module Federation Doctor semantic identity",
+  probe: "Module Federation Doctor manifest probe result",
+  project: "Module Federation Doctor project facts",
+  report: "Module Federation Doctor report",
+  "runtime-capture": "Module Federation Doctor external runtime capture v1",
+  "runtime-trace": "Module Federation Doctor runtime trace correlation summary",
+  ui: "Module Federation Doctor federation graph payload",
+};
+const schemaImports = {
+  baseline: await import("@module-federation/doctor/schemas/baseline.schema.json", { with: { type: "json" } }),
+  config: await import("@module-federation/doctor/schemas/config.schema.json", { with: { type: "json" } }),
+  evidence: await import("@module-federation/doctor/schemas/evidence.schema.json", { with: { type: "json" } }),
+  identity: await import("@module-federation/doctor/schemas/identity.schema.json", { with: { type: "json" } }),
+  probe: await import("@module-federation/doctor/schemas/probe.schema.json", { with: { type: "json" } }),
+  project: await import("@module-federation/doctor/schemas/project.schema.json", { with: { type: "json" } }),
+  report: await import("@module-federation/doctor/schemas/report.schema.json", { with: { type: "json" } }),
+  "runtime-capture": await import("@module-federation/doctor/schemas/runtime-capture.schema.json", { with: { type: "json" } }),
+  "runtime-trace": await import("@module-federation/doctor/schemas/runtime-trace.schema.json", { with: { type: "json" } }),
+  ui: await import("@module-federation/doctor/schemas/ui.schema.json", { with: { type: "json" } }),
+};
+for (const [name, title] of Object.entries(schemaTitles)) {
+  const schema = schemaImports[name];
+  assert.equal(schema.default.title, title);
+  assert.equal(schema.default.type, "object");
+  assert.equal(typeof schema.default.$id, "string");
+}
 assert.equal(packageJson.default.bin.mfdoctor, "dist/cli.js");
 `,
   );
@@ -143,6 +171,7 @@ assert.equal(rspackChain[0][0], "module-federation-doctor");
   run("pnpm", ["install", "--ignore-scripts"], consumer);
   run("pnpm", ["check"], consumer);
   run("pnpm", ["cli"], consumer);
+  run("npx", ["--no-install", "mfdoctor", "--help"], consumer);
   run("pnpm", ["vite"], consumer);
   run("pnpm", ["rspack"], consumer);
   run("pnpm", ["rsbuild"], consumer);
