@@ -152,5 +152,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   if (options.viteConfigFacts !== undefined) resolved.viteConfigFacts = options.viteConfigFacts;
   if (options.runtimeTrace !== undefined)
     resolved.runtimeTrace = path.resolve(root, options.runtimeTrace);
+  if (options.recognizeMfToolkit !== undefined)
+    resolved.recognizeMfToolkit = options.recognizeMfToolkit;
   return resolved;
 }

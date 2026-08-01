@@ -452,6 +452,12 @@ export interface RuleContext {
    * that only exercise `analyzeFederation`.
    */
   sharedPolicy?: Readonly<ResolvedDoctorOptions["sharedPolicy"]>;
+  /**
+   * Soft-recognize mf-toolkit bridge / fragment / shared-inspector shapes.
+   * Default when unset: enabled only when toolkit signals are present on facts.
+   * Per-rule `options.recognizeMfToolkit` overrides this value.
+   */
+  recognizeMfToolkit?: boolean;
   report(
     finding: Omit<
       DoctorFinding,
@@ -704,6 +710,12 @@ export interface DoctorOptions {
   alwaysShared?: string[];
   /** Deep-import specifiers to ignore (extends JSX runtime allowlist). */
   deepImportAllowlist?: string[];
+  /**
+   * Soft-recognize mf-toolkit shapes (mf-bridge `./entry`, mf-ssr fragment URLs,
+   * shared-inspector MF2 shared arrays). When unset, recognition applies only if
+   * toolkit signals are present. Set `false` to force classic behavior.
+   */
+  recognizeMfToolkit?: boolean;
 }
 
 export interface ResolvedDoctorOptions {
@@ -752,6 +764,10 @@ export interface ResolvedDoctorOptions {
     shareCandidates: string[];
     deepImportAllowlist: string[];
   };
+  /**
+   * Soft-recognize mf-toolkit shapes. Undefined means “auto when signals present”.
+   */
+  recognizeMfToolkit?: boolean;
 }
 
 export interface RuntimeTraceReport {
