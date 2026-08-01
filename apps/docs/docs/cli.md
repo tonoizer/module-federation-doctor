@@ -2,7 +2,9 @@
 
 The **build plugin** is the primary DX. Use the CLI for offline checks,
 cross-project federation analysis, runtime trace correlation, and deployed
-manifest probes.
+manifest probes. Architecture lock:
+[plugin primary / CLI complementary](./adr/hybrid-plugin-cli.md)
+(not CLI-only, not an in-browser agent).
 
 ```bash
 mfdoctor check
