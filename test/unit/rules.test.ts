@@ -799,3 +799,63 @@ describe("built-in rules", () => {
     expect(findings).toHaveLength(0);
   });
 });
+
+describe("doctor/partial-analysis suggestions", () => {
+  async function runPartial(facts: ProjectFacts) {
+    const findings: Array<{
+      message: string;
+      suggestion?: string;
+      evidence?: Record<string, unknown>;
+    }> = [];
+    const rule = builtInRules.find((item) => item.meta.id === "doctor/partial-analysis")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  const baseFacts = (): ProjectFacts => ({
+    schemaVersion: 1,
+    project: { name: "fixture", root: "." },
+    bundler: { name: "vite", mode: "ci" },
+    capabilities: {
+      config: true,
+      sourceImports: true,
+      manifest: false,
+      stats: false,
+      emittedAssets: false,
+      installedVersions: true,
+    },
+    moduleFederation: {
+      name: "fixture",
+      exposes: {},
+      remotes: {},
+      shared: {},
+    },
+    dependencies: { declared: {}, installed: {} },
+    imports: {
+      sourceFiles: [],
+      specifiers: [],
+      packages: [],
+      dynamicPackages: [],
+      remotes: [],
+      unresolvedDynamic: [],
+      evidenceSources: [],
+    },
+    artifacts: { emittedAssets: [] },
+  });
+
+  it("suggests Vite manifest opt-in when options exist but artifacts are missing", async () => {
+    const findings = await runPartial(baseFacts());
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.suggestion).toMatch(/manifest:\s*true/);
+    expect(findings[0]?.suggestion).not.toBe("Pass explicit MF options.");
+  });
+
+  it("keeps Pass explicit MF options when config capability is missing", async () => {
+    const facts = baseFacts();
+    facts.capabilities.config = false;
+    facts.moduleFederation = undefined;
+    const findings = await runPartial(facts);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.suggestion).toBe("Pass explicit MF options.");
+  });
+});
