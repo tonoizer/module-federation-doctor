@@ -148,6 +148,7 @@ const KNOWN_FIELDS = new Set([
   "disableShared",
   "disableSnapshot",
   "ssrExternals",
+  "ssrEntryLoader",
   "exposes",
   "remotes",
   "shared",
