@@ -380,7 +380,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     category: "tooling",
     impact:
       "Missing facts or unresolved dynamic imports reduce confidence and can hide relevant findings.",
-    fix: "Pass explicit MF options, run Doctor through the bundler adapter after emit, and prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
+    fix: "When MF options are missing, pass them explicitly. On Vite, missing `mf-manifest.json` / `mf-stats.json` usually means enable `manifest: true` — not missing options. Prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
     sources: [configure],
   },
   "config/plugin-package-mismatch": {
