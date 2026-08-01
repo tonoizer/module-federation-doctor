@@ -206,7 +206,6 @@ for (const finding of report.findings) {
 Custom rules may attach the same top-level fields via `context.report({ ..., detailsSchema, details })`.
 Prefer a namespaced id such as `custom.<team>.<topic>.v1`.
 
-
 ## Semantic identity schema
 
 `@module-federation/doctor/schemas/identity.schema.json` is the additive
