@@ -17,9 +17,30 @@
         "properties": {
           "schemaVersion": { "const": 1 },
           "traceId": { "type": "string" },
+          "sourceContract": {
+            "enum": ["upstream-observability-2.5.3", "legacy-doctor-v1", "partial"]
+          },
           "status": { "type": "string" },
+          "requestId": { "type": "string" },
+          "requestAlias": { "type": "string" },
+          "hostName": { "type": "string" },
+          "runtimeVersion": { "type": "string" },
           "errorCode": { "type": "string" },
+          "errorName": { "type": "string" },
+          "errorMessage": { "type": "string" },
+          "errorContext": { "type": "object", "additionalProperties": true },
+          "failedPhase": { "type": "string" },
+          "ownerHint": { "type": "string" },
           "outcome": { "type": "string" },
+          "recovered": { "type": "boolean" },
+          "loadedBefore": { "type": "boolean" },
+          "loadCompleted": { "type": "boolean" },
+          "runtimeLoaded": { "type": "boolean" },
+          "sharedResolved": { "type": "boolean" },
+          "preloaded": { "type": "boolean" },
+          "componentLoaded": { "type": "boolean" },
+          "lastPhase": { "type": "string" },
+          "flags": { "type": "object", "additionalProperties": { "type": "boolean" } },
           "remote": {
             "type": "object",
             "properties": {
@@ -49,7 +70,26 @@
             "properties": {
               "name": { "type": "string" },
               "id": { "type": "string" },
-              "publicPath": { "type": "string" }
+              "publicPath": { "type": "string" },
+              "reason": { "type": "string" },
+              "clipped": { "type": "boolean" },
+              "totalCount": { "type": "number" },
+              "matchedCount": { "type": "number" },
+              "availableNames": { "type": "array", "items": { "type": "string" } },
+              "entries": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "publicPath": { "type": "string" },
+                    "getPublicPath": { "type": "string" },
+                    "remoteEntry": { "type": "string" },
+                    "globalName": { "type": "string" }
+                  },
+                  "additionalProperties": false
+                }
+              }
             },
             "additionalProperties": false
           },
@@ -79,7 +119,24 @@
             "type": "object",
             "properties": {
               "owner": { "type": "string" },
-              "summary": { "type": "string" }
+              "ownerHint": { "type": "string" },
+              "title": { "type": "string" },
+              "summary": { "type": "string" },
+              "outcome": { "type": "string" },
+              "status": { "type": "string" },
+              "errorCode": { "type": "string" },
+              "failedPhase": { "type": "string" },
+              "errorName": { "type": "string" },
+              "errorMessage": { "type": "string" },
+              "docLink": { "type": "string" },
+              "facts": { "type": "object", "additionalProperties": true },
+              "actions": {
+                "type": "array",
+                "items": { "type": "object", "additionalProperties": true }
+              },
+              "warnings": { "type": "array", "items": { "type": "string" } },
+              "completedPhases": { "type": "array", "items": { "type": "string" } },
+              "pendingPhases": { "type": "array", "items": { "type": "string" } }
             },
             "additionalProperties": false
           }

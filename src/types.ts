@@ -622,10 +622,21 @@ export interface RuntimeTraceReport {
   hostName?: string;
   runtimeVersion?: string;
   errorCode?: string;
+  errorName?: string;
+  errorMessage?: string;
+  errorContext?: Record<string, unknown>;
   failedPhase?: string;
   ownerHint?: string;
   outcome?: string;
   recovered?: boolean;
+  loadedBefore?: boolean;
+  flags?: Record<string, boolean>;
+  loadCompleted?: boolean;
+  runtimeLoaded?: boolean;
+  sharedResolved?: boolean;
+  preloaded?: boolean;
+  componentLoaded?: boolean;
+  lastPhase?: string;
   remote?: {
     name?: string;
     alias?: string;
@@ -666,6 +677,13 @@ export interface RuntimeTraceReport {
     owner?: string;
     ownerHint?: string;
     title?: string;
+    outcome?: string;
+    status?: string;
+    errorCode?: string;
+    failedPhase?: string;
+    errorName?: string;
+    errorMessage?: string;
+    docLink?: string;
     summary?: string;
     facts?: Record<string, unknown>;
     actions?: Array<Record<string, unknown>>;

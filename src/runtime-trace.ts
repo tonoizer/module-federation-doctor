@@ -18,6 +18,16 @@ const FAILED = new Set(["error", "failed", "timeout"]);
 const REMOTE_PHASES = new Set(["matchRemote", "manifest", "remoteEntry", "expose", "loadRemote"]);
 const INIT_PHASES = new Set(["remoteEntryInit", "init"]);
 const ERROR_CODE = /^RUNTIME-\d+$/i;
+const KNOWN_OUTCOMES = new Set([
+  "pending",
+  "runtime-loaded",
+  "shared-resolved",
+  "preloaded",
+  "component-loaded",
+  "failed",
+  "recovered",
+  "success",
+]);
 
 export class RuntimeTraceError extends Error {
   constructor(message: string) {
@@ -98,6 +108,10 @@ function readPhases(summary: Record<string, unknown> | undefined): RuntimeTraceR
   if (!phases) return undefined;
   return Object.fromEntries(
     Object.entries(phases).map(([name, value]) => {
+      if (!asRecord(value))
+        throw new RuntimeTraceError(
+          `Invalid runtime trace field /summary/phases/${name}: expected an object.`,
+        );
       const status = asString(asRecord(value)?.status);
       return [name, status ? { status } : {}];
     }),
@@ -105,11 +119,16 @@ function readPhases(summary: Record<string, unknown> | undefined): RuntimeTraceR
 }
 
 function readEvents(raw: unknown): RuntimeTraceReport["events"] {
-  if (!Array.isArray(raw)) return [];
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw))
+    throw new RuntimeTraceError("Invalid runtime trace field /events: expected an array.");
   const events: RuntimeTraceReport["events"] = [];
   for (const item of raw) {
     const event = asRecord(item);
-    if (!event) continue;
+    if (!event)
+      throw new RuntimeTraceError(
+        "Invalid runtime trace field /events: every item must be an object.",
+      );
     const next: RuntimeTraceReport["events"][number] = {};
     const phase = asString(event.phase);
     const status = asString(event.status);
@@ -124,7 +143,8 @@ function readEvents(raw: unknown): RuntimeTraceReport["events"] {
 
 function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   const record = asRecord(raw);
-  if (!record) return undefined;
+  if (!record)
+    throw new RuntimeTraceError("Invalid runtime trace report: every report must be an object.");
   const summary = asRecord(record.summary);
   const remote = asRecord(record.remote);
   const shared = asRecord(record.shared) ?? asRecord(summary?.shared);
@@ -132,6 +152,10 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   const diagnosis = asRecord(record.diagnosis);
   const summaryError = asRecord(summary?.error);
   const outcome = asString(summary?.outcome);
+  if (outcome && !KNOWN_OUTCOMES.has(outcome))
+    throw new RuntimeTraceError(
+      `Unsupported runtime trace outcome at /summary/outcome: ${outcome}`,
+    );
   const errorCode =
     asString(record.errorCode) ??
     asString(summaryError?.errorCode) ??
@@ -144,7 +168,12 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     shared !== undefined ||
     Array.isArray(record.events) ||
     errorCode !== undefined;
-  if (!hasShape) return undefined;
+  if (!hasShape)
+    throw new RuntimeTraceError(
+      "Unsupported runtime trace report shape: expected an Observability report envelope.",
+    );
+  if (summary && !asRecord(summary.phases) && summary.phases !== undefined)
+    throw new RuntimeTraceError("Invalid runtime trace field /summary/phases: expected an object.");
 
   const legacy =
     diagnosis?.owner !== undefined ||
@@ -173,6 +202,31 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   if (outcome) report.outcome = outcome;
   const recovered = asBoolean(summary?.recovered) ?? asBoolean(asRecord(summary?.flags)?.recovered);
   if (recovered !== undefined) report.recovered = recovered;
+  const loadedBefore = asBoolean(record.loadedBefore) ?? asBoolean(summary?.loadedBefore);
+  if (loadedBefore !== undefined) report.loadedBefore = loadedBefore;
+  const flags = asRecord(summary?.flags);
+  if (flags)
+    report.flags = Object.fromEntries(
+      Object.entries(flags).filter(([, value]) => typeof value === "boolean"),
+    ) as Record<string, boolean>;
+  for (const key of [
+    "loadCompleted",
+    "runtimeLoaded",
+    "sharedResolved",
+    "preloaded",
+    "componentLoaded",
+  ] as const) {
+    const value = asBoolean(summary?.[key]);
+    if (value !== undefined) report[key] = value;
+  }
+  const lastPhase = asString(summary?.lastPhase);
+  if (lastPhase) report.lastPhase = lastPhase;
+  for (const key of ["errorName", "errorMessage"] as const) {
+    const value = asString(record[key]) ?? asString(summaryError?.[key]);
+    if (value) report[key] = String(redactDeep(value)).slice(0, 1000);
+  }
+  const errorContext = boundedRecord(record.errorContext ?? summaryError?.context);
+  if (errorContext) report.errorContext = errorContext;
   const failedPhase = asString(record.failedPhase) ?? asString(summaryError?.failedPhase);
   if (failedPhase) report.failedPhase = failedPhase;
   const ownerHint =
@@ -213,7 +267,15 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     if (provider) normalizedShared.provider = provider;
     if (requiredVersion) normalizedShared.requiredVersion = requiredVersion;
     if (selectedVersion) normalizedShared.selectedVersion = selectedVersion;
+    if (shared.availableVersions !== undefined && !Array.isArray(shared.availableVersions))
+      throw new RuntimeTraceError(
+        "Invalid runtime trace field /shared/availableVersions: expected an array.",
+      );
     if (Array.isArray(shared.availableVersions)) {
+      if (shared.availableVersions.some((item) => typeof item !== "string"))
+        throw new RuntimeTraceError(
+          "Invalid runtime trace field /shared/availableVersions: expected strings.",
+        );
       normalizedShared.availableVersions = shared.availableVersions.filter(
         (item): item is string => typeof item === "string",
       );
@@ -239,7 +301,15 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     if (matchedCount !== undefined) normalizedModule.matchedCount = matchedCount;
     const availableNames = boundedStrings(moduleInfo.availableNames);
     if (availableNames) normalizedModule.availableNames = availableNames;
+    if (moduleInfo.entries !== undefined && !Array.isArray(moduleInfo.entries))
+      throw new RuntimeTraceError(
+        "Invalid runtime trace field /moduleInfo/entries: expected an array.",
+      );
     if (Array.isArray(moduleInfo.entries)) {
+      if (moduleInfo.entries.some((item) => !asRecord(item)))
+        throw new RuntimeTraceError(
+          "Invalid runtime trace field /moduleInfo/entries: every item must be an object.",
+        );
       normalizedModule.entries = moduleInfo.entries.slice(0, 24).flatMap((item) => {
         const entry = asRecord(item);
         if (!entry) return [];
@@ -267,7 +337,20 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     if (owner) normalizedDiagnosis.owner = owner;
     if (diagnosisOwnerHint) normalizedDiagnosis.ownerHint = diagnosisOwnerHint;
     if (title) normalizedDiagnosis.title = String(redactDeep(title)).slice(0, 500);
-    if (diagnosisSummary) normalizedDiagnosis.summary = diagnosisSummary;
+    if (diagnosisSummary)
+      normalizedDiagnosis.summary = String(redactDeep(diagnosisSummary)).slice(0, 1000);
+    for (const key of [
+      "outcome",
+      "status",
+      "errorCode",
+      "failedPhase",
+      "errorName",
+      "errorMessage",
+      "docLink",
+    ] as const) {
+      const value = asString(diagnosis[key]);
+      if (value) normalizedDiagnosis[key] = String(redactDeep(value)).slice(0, 1000);
+    }
     const facts = boundedRecord(diagnosis.facts);
     if (facts) normalizedDiagnosis.facts = facts;
     const actions = Array.isArray(diagnosis.actions)
@@ -291,9 +374,20 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
 function extractRawReports(raw: unknown): unknown[] {
   if (Array.isArray(raw)) return raw;
   const record = asRecord(raw);
-  if (!record) return [];
-  if (Array.isArray(record.reports)) return record.reports;
-  if (record.report) return [record.report];
+  if (!record)
+    throw new RuntimeTraceError(
+      "Runtime trace JSON must be an object, report array, or supported envelope.",
+    );
+  if (record.reports !== undefined) {
+    if (!Array.isArray(record.reports))
+      throw new RuntimeTraceError("Invalid runtime trace field /reports: expected an array.");
+    if (record.report !== undefined)
+      throw new RuntimeTraceError(
+        "Invalid runtime trace envelope: use either report or reports, not both.",
+      );
+    return record.reports;
+  }
+  if (record.report !== undefined) return [record.report];
   return [record];
 }
 
@@ -347,10 +441,6 @@ function findProjectsForRemote(projects: ProjectFacts[], remoteName: string): Pr
       return true;
     return remoteKeys(project).includes(remoteName);
   });
-}
-
-function preferredProject(matches: ProjectFacts[], fallback = "runtime"): string {
-  return matches.map((project) => project.project.name).sort()[0] ?? fallback;
 }
 
 function failedPhases(trace: RuntimeTraceReport): string[] {
@@ -426,35 +516,59 @@ export function correlateRuntime(
       hostProject &&
       producerProject &&
       hostProject.project.name !== producerProject.project.name;
+    const supportedOwner =
+      owner === "host" ||
+      owner === "remote" ||
+      owner === "runtime" ||
+      owner === "shared" ||
+      owner === "network" ||
+      owner === "unknown";
     const ownerProject =
       owner === "host" ? hostProject : owner === "remote" ? producerProject : undefined;
-    const identityCandidates = ownerProject
-      ? [ownerProject]
-      : producerProject
-        ? [producerProject]
-        : [];
-    const projectName = ambiguousIdentity
-      ? "runtime"
-      : preferredProject(
-          identityCandidates.length > 0
-            ? identityCandidates
-            : matches.length > 0
-              ? matches
-              : projects.filter(
-                  (project) =>
-                    project.moduleFederation?.name === trace.moduleInfo?.name ||
-                    project.artifacts.manifest?.name === trace.moduleInfo?.name ||
-                    project.artifacts.manifest?.id === trace.moduleInfo?.id,
-                ),
-        );
+    const ownerEvidenceProject =
+      ownerProject ?? (owner === "host" && matches.length === 1 ? matches[0] : undefined);
+    const projectName =
+      !supportedOwner ||
+      owner === "runtime" ||
+      owner === "network" ||
+      owner === "shared" ||
+      owner === "unknown"
+        ? "runtime"
+        : ownerEvidenceProject
+          ? ownerEvidenceProject.project.name
+          : ambiguousIdentity
+            ? "runtime"
+            : hostProject
+              ? hostProject.project.name
+              : producerProject
+                ? producerProject.project.name
+                : "runtime";
     const identityEvidence = {
       ...(trace.hostName ? { hostName: trace.hostName } : {}),
       ...(trace.remote?.name ? { producer: trace.remote.name } : {}),
       ...(owner ? { ownerHint: owner } : {}),
-      ...(ambiguousIdentity
+      ...(ambiguousIdentity ||
+      !supportedOwner ||
+      owner === "shared" ||
+      owner === "network" ||
+      owner === "unknown"
         ? {
-            matchReason: "ambiguous host/producer identity",
-            candidates: [hostProject!.project.name, producerProject!.project.name].sort(),
+            matchReason: !supportedOwner
+              ? "unsupported owner hint; neutral runtime attribution"
+              : owner === "network"
+                ? "network failure; requesting host is context"
+                : owner === "shared"
+                  ? "shared resolver/provider evidence"
+                  : "ambiguous host/producer identity",
+            candidates: [
+              ...new Set(
+                [
+                  hostProject?.project.name,
+                  producerProject?.project.name,
+                  trace.shared?.provider,
+                ].filter((value): value is string => Boolean(value)),
+              ),
+            ].sort(),
           }
         : {}),
     };
@@ -504,13 +618,16 @@ export function correlateRuntime(
     }
 
     if (!recovered && phases.some((phase) => INIT_PHASES.has(phase))) {
-      const hosts = matches.length > 0 ? matches : projects;
-      const host = hosts[0];
+      const host =
+        owner === "host"
+          ? (hostProject ?? (matches.length === 1 ? matches[0] : undefined))
+          : hostProject;
+      const hosts = host ? [host] : [];
       findings.push(
         runtimeFinding(
           "runtime/init-failed",
           "error",
-          preferredProject(hosts),
+          projectName,
           "Runtime container initialization failed.",
           {
             ...(remoteName ? { remote: remoteName } : {}),
@@ -571,12 +688,9 @@ export function correlateRuntime(
           runtimeFinding(
             "runtime/shared-mismatch",
             "error",
-            preferredProject(
-              sharedEntries
-                .map((entry) => projects.find((project) => project.project.name === entry.project))
-                .filter((project): project is ProjectFacts => Boolean(project)),
-              projectName,
-            ),
+            trace.shared?.provider && exactProject(projects, trace.shared.provider)?.project.name
+              ? exactProject(projects, trace.shared.provider)!.project.name
+              : "runtime",
             `Runtime shared resolution for "${sharedName}" does not match project evidence.`,
             {
               package: sharedName,

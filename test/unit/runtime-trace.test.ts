@@ -104,6 +104,56 @@ describe("runtime trace import", () => {
     expect(() => parseRuntimeTraces({ projects: 1, findings: [] })).toThrow(/document kind/);
   });
 
+  it("fails closed for malformed, mixed, future, and JSONL-like documents", () => {
+    expect(() => parseRuntimeTraces([{ traceId: "ok" }, null])).toThrow(RuntimeTraceError);
+    expect(() => parseRuntimeTraces({ reports: [{ traceId: "ok" }, { nope: true }] })).toThrow(
+      /shape/,
+    );
+    expect(() => parseRuntimeTraces({ summary: { outcome: "future-outcome" } })).toThrow(/outcome/);
+    expect(() => parseRuntimeTraces({ reports: "events.jsonl" })).toThrow(/reports/);
+  });
+
+  it("preserves bounded current error evidence while removing stacks and secrets", () => {
+    const [trace] = parseRuntimeTraces({
+      traceId: "current-error",
+      hostName: "host",
+      runtimeVersion: "2.5.0",
+      errorStack: "/private/user/project/index.ts:1",
+      errorContext: {
+        url: "https://user:pass@example.test/a?token=secret",
+        authorization: "Bearer secret",
+        requestId: "remote/Button",
+      },
+      summary: {
+        outcome: "failed",
+        loadedBefore: true,
+        phases: { moduleFactory: { status: "error" }, preload: { status: "pending" } },
+        error: {
+          errorCode: "RUNTIME-007",
+          errorName: "Error",
+          errorMessage: "factory failed",
+          failedPhase: "moduleFactory",
+          context: { requestId: "remote/Button" },
+        },
+      },
+      diagnosis: {
+        title: "Factory failed",
+        ownerHint: "remote",
+        facts: { safe: "kept" },
+        actions: [{ id: "retry", title: "Retry" }],
+      },
+    });
+    expect(trace).toMatchObject({
+      errorCode: "RUNTIME-007",
+      errorName: "Error",
+      errorMessage: "factory failed",
+      failedPhase: "moduleFactory",
+      loadedBefore: true,
+      diagnosis: { ownerHint: "remote", title: "Factory failed", facts: { safe: "kept" } },
+    });
+    expect(JSON.stringify(trace)).not.toMatch(/errorStack|private\/user|Bearer|secret/);
+  });
+
   it("uses final recovered outcome over earlier failed phases", () => {
     const trace = parseRuntimeTraces({
       traceId: "recovered-shared",
@@ -123,6 +173,19 @@ describe("runtime trace import", () => {
     ]);
     expect(findings.some((finding) => finding.ruleId === "runtime/shared-mismatch")).toBe(false);
     expect(findings.every((finding) => finding.severity !== "error")).toBe(true);
+  });
+
+  it("keeps network/shared/unknown ownership neutral and order independent", () => {
+    const trace = parseRuntimeTraces({
+      traceId: "ambiguous",
+      hostName: "host",
+      remote: { name: "remote" },
+      ownerHint: "network",
+      summary: { outcome: "failed", phases: { remoteEntryInit: { status: "error" } } },
+    });
+    const projects = [baseProject({ name: "remote" }), baseProject({ name: "host" })];
+    const findings = correlateRuntime(trace, projects);
+    expect(findings.find((item) => item.ruleId === "runtime/init-failed")?.project).toBe("runtime");
   });
 
   it("correlates remote load failures with project remotes", async () => {
