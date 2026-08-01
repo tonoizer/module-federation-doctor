@@ -458,4 +458,40 @@ describe("shared/unused with dynamic evidence", () => {
     });
     expect(findings.some((item) => item.message.includes('"lodash"'))).toBe(true);
   });
+
+  it("still flags unused trailing-slash keys with no matching imports", async () => {
+    const findings = await runUnused({
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        exposes: {},
+        remotes: {},
+        shared: {
+          "vue/": { package: "vue/", singleton: false, eager: false, shareScope: "default" },
+        },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: ["src/app.ts"],
+        specifiers: ["react"],
+        packages: ["react"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    });
+    expect(findings.some((item) => item.message.includes('"vue/"'))).toBe(true);
+  });
 });
