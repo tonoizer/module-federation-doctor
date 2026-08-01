@@ -884,6 +884,17 @@ export const builtInRules: DoctorRule[] = [
     if (!mf(context)) missing.push("moduleFederation");
     const unresolvedDynamic = context.facts.imports.unresolvedDynamic ?? [];
     if (missing.length === 0 && unresolvedDynamic.length === 0) return;
+    const configMissing = missing.includes("config") || missing.includes("moduleFederation");
+    const artifactOnlyMissing =
+      !configMissing &&
+      missing.length > 0 &&
+      missing.every((name) => ["manifest", "stats", "emittedAssets"].includes(name));
+    const viteArtifactSuggestion =
+      context.facts.bundler.name === "vite" &&
+      artifactOnlyMissing &&
+      (missing.includes("manifest") || missing.includes("stats"))
+        ? "Vite/@module-federation/vite does not emit `mf-manifest.json` / `mf-stats.json` unless `manifest: true` is set. Enable `manifest: true` for those artifacts; webpack-style compilation `stats.json` is not expected on Vite."
+        : undefined;
     report(
       context,
       unresolvedDynamic.length > 0 && missing.length === 0
@@ -898,7 +909,10 @@ export const builtInRules: DoctorRule[] = [
       },
       unresolvedDynamic.length > 0
         ? "Prefer string-literal `import()` / `loadRemote` / `loadShare`, or pass an opt-in Observability export via `runtimeTrace` / `mfdoctor runtime`."
-        : "Pass explicit MF options.",
+        : configMissing
+          ? "Pass explicit MF options."
+          : (viteArtifactSuggestion ??
+            "Run Doctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
     );
   }),
   createRule("config/plugin-package-mismatch", "warning", (context) => {
