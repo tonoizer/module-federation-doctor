@@ -2,6 +2,15 @@
 
 ## What each artifact does
 
+Three different “stats/manifest” ideas show up in Module Federation builds.
+Do not treat them as interchangeable:
+
+| Artifact                           | What it is                                                      | Who emits it                                                   |
+| ---------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------- |
+| `mf-manifest.json`                 | Stable runtime view (remotes, shared, remote entry, type hints) | MF plugins — see matrix below                                  |
+| `mf-stats.json`                    | Build-focused MF stats distilled into the manifest              | Same MF plugins as the manifest                                |
+| Webpack/Rspack compilation `stats` | Bundler graph / asset graph from the compiler                   | Webpack / Rspack / Rsbuild / Modern — **not** Vite or Rolldown |
+
 `mf-stats.json` is build-focused. It carries detailed assets, exposes, remotes,
 shared packages, used exports, plugin/build versions, remote entry metadata,
 and type metadata.
@@ -27,6 +36,106 @@ Doctor records:
 
 It then compares these values with config, installed packages, and emitted
 assets. This catches stale output that a config-only linter cannot see.
+
+## Per-bundler expectations
+
+Doctor’s `capabilities.manifest` / `capabilities.stats` flags mean “on-disk
+`mf-manifest.json` / `mf-stats.json` were collected,” not “webpack compilation
+stats exist.” Emit defaults differ by MF plugin family:
+
+| Bundler                         | `mf-manifest.json` / `mf-stats.json`                                              | Webpack-style compilation stats          | What Doctor expects                                                                                              |
+| ------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Vite** / Rolldown / Vite Plus | Opt-in: set `manifest: true` on `@module-federation/vite`. Omitted ⇒ **no** emit. | **Not applicable** — missing is expected | With `manifest: true`, both MF artifacts; without them, honest `doctor/partial-analysis` (not “pass MF options”) |
+| **Webpack** (Enhanced)          | Default emit when `manifest !== false`                                            | Available via compilation hooks          | Manifest/stats capabilities when emit lands; omit/`undefined` is **enabled**, not disabled                       |
+| **Rspack** (Enhanced)           | Same as Webpack (`manifest !== false`)                                            | Available via compilation hooks          | Same Enhanced defaults                                                                                           |
+| **Rsbuild**                     | Same Enhanced default via `@module-federation/rsbuild-plugin`                     | Via underlying Rspack when available     | Same Enhanced defaults                                                                                           |
+| **Modern.js**                   | Same Enhanced default under the hood                                              | Via Rspack/Webpack `afterEmit`           | Adapter OK; core Modern demos may be blocked upstream (see soak notes)                                           |
+
+**Explicit:** absence of webpack compilation `stats.json` on Vite / Rolldown /
+Vite Plus is **expected**. Do not treat it as a Doctor or adapter failure.
+
+Related fixes (closed):
+
+- [#116](https://github.com/tonoizer/module-federation-doctor/issues/116) —
+  Vite `doctor/partial-analysis` must suggest `manifest: true`, not “pass MF
+  options,” when config is present and only artifacts are missing.
+- [#119](https://github.com/tonoizer/module-federation-doctor/issues/119) —
+  Enhanced omitted `manifest` is default-on; do not fire
+  `artifact/manifest-disabled` when emit (or `capabilities.manifest`) proves
+  otherwise.
+- [#125](https://github.com/tonoizer/module-federation-doctor/issues/125) —
+  Vite/Nuxt-shaped manifests (empty `remoteEntry.path`, `publicPath: "./"`)
+  are normal; artifact rules must not false-positive.
+
+## Soak conclusions (adapters vs upstream)
+
+From the 2026-08-01 bundler soak (reconstructions; `SOAK_REPORT.md` is not
+vendored in-tree):
+
+- **Adapters are healthy** across Vite, Webpack, Rspack, and Rsbuild when MF
+  emits the artifacts Doctor can read. Failures that looked like “missing
+  manifest/stats” were usually Vite opt-in gaps or Enhanced default-emit
+  normalization — addressed in #116 / #119 / #125.
+- **Modern.js core demos** (`modern-ssr-*`, `modern-data-fetch-*`) often fail
+  **before** Doctor runs because `@module-federation/bridge-react/size-limited-cache`
+  is missing on the soaked core branch (upstream packaging / dist drift). That
+  is **not** a Doctor Modern adapter crash. In-repo
+  [`examples/compatibility/modern`](https://github.com/tonoizer/module-federation-doctor/tree/main/examples/compatibility/modern)
+  smoke stays green. Track re-soak in
+  [#130](https://github.com/tonoizer/module-federation-doctor/issues/130).
+
+## Quiet soak / demo config
+
+For local demos and soak hosts, prefer manifest remotes, Vite
+`manifest: true`, and either `loaded-first` or a retry / `errorLoadRemote`
+recovery plugin so offline remotes do not drown the report:
+
+```ts
+import { federation } from "@module-federation/vite";
+import { federationDoctor } from "@module-federation/doctor/vite";
+
+const mfOptions = {
+  name: "host_demo",
+  // Required on Vite — Enhanced family emits by default when manifest !== false.
+  manifest: true,
+  // Prefer delayed failure over version-first hard startup when remotes may be offline.
+  shareStrategy: "loaded-first",
+  remotes: {
+    // Prefer mf-manifest.json URLs when a manifest server is available.
+    app1: "app1@http://127.0.0.1:3001/mf-manifest.json",
+  },
+  // Or: runtimePlugins: [require.resolve("@module-federation/retry-plugin")],
+  shared: {
+    react: { singleton: true },
+    "react-dom": { singleton: true },
+  },
+};
+
+export default {
+  plugins: [federation(mfOptions), federationDoctor({ moduleFederation: mfOptions })],
+};
+```
+
+See also
+[`reliability/version-first-offline-remotes`](./rules/reliability/version-first-offline-remotes.md)
+and the [Vite integration](./vite-integration.md) notes.
+
+## Report capabilities block
+
+After a build or `mfdoctor check`, inspect what Doctor actually collected:
+
+```bash
+jq '.capabilities' .mf/doctor/report.json
+# or per-project:
+jq '.capabilities' .mf/doctor/project.json
+```
+
+Typical keys: `config`, `sourceImports`, `manifest`, `stats`, `emittedAssets`,
+`installedVersions`. A Vite host with MF options but without `manifest: true`
+often shows `config: true` with `manifest: false` / `stats: false` — that is
+artifact opt-in, not missing config. The high-level
+[capability matrix](./capabilities.md) summarizes depth per bundler; this page
+is the detailed emit contract.
 
 ## Deployed probe
 
