@@ -52,6 +52,26 @@ export interface BundlerFacts {
    * Absent when Doctor did not observe compiler output options.
    */
   outputPublicPathKind?: OutputPublicPathKind;
+  /**
+   * Additive Vite resolved-config snapshot from `configResolved` (plugin path).
+   * Absent on CLI-only runs — rules that need these facts skip honestly.
+   */
+  viteConfig?: ViteBundlerConfigFacts;
+}
+
+/** Static Vite config slices collected for dialect rules (never invent when missing). */
+export interface ViteBundlerConfigFacts {
+  /** True when `build.rollupOptions.output.manualChunks` is configured. */
+  manualChunks?: boolean;
+  /** True when Rolldown/Vite Plus `codeSplitting.groups` is configured. */
+  codeSplittingGroups?: boolean;
+  /** Static string `resolve.alias` entries only (object form; function aliases skipped). */
+  resolveAliases?: Record<string, string>;
+  /**
+   * `server.origin` when the adapter observed Vite `server` config.
+   * `null` means observed but unset/empty; omit the field when not observed (CLI).
+   */
+  serverOrigin?: string | null;
 }
 
 export interface AnalysisCapabilities {
@@ -143,6 +163,7 @@ export interface NormalizedMFConfig {
     disableSnapshot?: boolean;
     ssrExternals: string[];
     ssrEntryLoader?: string;
+    remoteHmr?: boolean;
   };
   /** Bridge plugin options (`enableBridgeRouter`, etc.). Preserved from raw MF config. */
   bridge?: {
@@ -525,15 +546,13 @@ export interface ModuleFederationConfigLike {
   disableShared?: boolean;
   disableSnapshot?: boolean;
   ssrExternals?: string[];
-<<<<<<< HEAD
+  ssrEntryLoader?: string;
+  remoteHmr?: boolean;
   /** Bridge plugin options (`enableBridgeRouter`, deprecated flags, …). */
   bridge?: {
     enableBridgeRouter?: boolean;
     [key: string]: unknown;
   };
-=======
-  ssrEntryLoader?: string;
->>>>>>> 5209f08 (feat: add Vite SSR host-init and Nitro externals rules)
 }
 
 export interface BaselineEntry {
@@ -629,6 +648,11 @@ export interface DoctorOptions {
    * package.json / public plugin meta; set only in tests or unusual setups.
    */
   viteLifecycle?: ViteLifecycleFacts;
+  /**
+   * Additive Vite resolved-config facts from the adapter `configResolved` hook.
+   * Not available on CLI-only runs.
+   */
+  viteConfigFacts?: ViteBundlerConfigFacts;
   mode?: "development" | "ci";
   root?: string;
   /** Default Observability export path for `mfdoctor runtime` when no trace arg is given.
@@ -691,6 +715,7 @@ export interface ResolvedDoctorOptions {
     stats: string[];
   };
   viteLifecycle?: ViteLifecycleFacts;
+  viteConfigFacts?: ViteBundlerConfigFacts;
   mode: "development" | "ci";
   root: string;
   runtimeTrace?: string;

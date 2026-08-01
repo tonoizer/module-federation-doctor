@@ -39,10 +39,16 @@ export default defineConfig({
         "config/remote-manifest-recommended": "off",
         // Direct Vite↔Rspack/Rsbuild interoperability fixture, not offline recovery.
         "reliability/version-first-offline-remotes": "off",
+        "vite/manual-chunks-conflict": "off",
       },
     }),
   ],
-  server: { host: "127.0.0.1", port: 5180, strictPort: true },
+  server: {
+    host: "127.0.0.1",
+    port: 5180,
+    strictPort: true,
+    origin: "http://127.0.0.1:5180",
+  },
   preview: { host: "127.0.0.1", port: 5180, strictPort: true },
   build: { target: "esnext" },
 });

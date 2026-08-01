@@ -901,6 +901,7 @@ export async function collectProjectFacts(
       mode: options.mode,
       ...(bundlerVersion ? { version: bundlerVersion } : {}),
       ...(lifecycle ? { lifecycle } : {}),
+      ...(options.viteConfigFacts ? { viteConfig: options.viteConfigFacts } : {}),
     },
     capabilities: {
       config: options.moduleFederation !== undefined,
