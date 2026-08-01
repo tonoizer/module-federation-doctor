@@ -228,8 +228,10 @@ Examples:
 
 Doctor-specific agent UX prefers CLI/plugin finding output (rule id, fix,
 Doctor docs URL, official MF sources, exit codes) plus an offline health score
-footer (`Score: N/100`). Use `--no-score` to hide the terminal footer; JSON
-reports still include `summary.score`. For Module Federation concepts, use
+footer (`Score: N/100`) and top-3 copy-paste agent prompts. Use `--no-score` /
+`--no-prompt` to hide terminal footers; JSON reports still include
+`summary.score`. Offline: `mfdoctor prompt --finding <id>` and
+`--diagnostics-dir` for handoff dumps. For Module Federation concepts, use
 `.agents/skills/mf`. Upstream evidence for rule work lives in
 [docs/sources](apps/docs/docs/sources.md).
 

@@ -179,4 +179,27 @@ describe("reporters", () => {
     expect(text).toContain("Module Federation Doctor: no findings.");
     expect(text).toContain("Score: 100/100 (Great)");
   });
+
+  it("prints top agent prompts after the score and honors prompt: false", () => {
+    const report = emptyReport([
+      {
+        schemaVersion: 1,
+        ruleId: "config/expose-key-invalid",
+        severity: "error",
+        message: "bad key",
+        project: "demo",
+        evidence: {},
+        fingerprint: "fp",
+        documentation: "/rules/config/expose-key-invalid",
+      },
+    ]);
+    const withPrompts = formatTerminalReport(report);
+    expect(withPrompts).toContain("Score: 99/100 (Great)");
+    expect(withPrompts).toContain("Agent prompts (top 1)");
+    expect(withPrompts).toContain("# Fix: config/expose-key-invalid");
+
+    const without = formatTerminalReport(report, { prompt: false });
+    expect(without).toContain("Score: 99/100 (Great)");
+    expect(without).not.toContain("Agent prompts");
+  });
 });

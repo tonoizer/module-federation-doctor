@@ -1309,6 +1309,8 @@ export async function analyzeRuntime(options: {
   printLog?: { success?: boolean };
   /** When false, omit health score from terminal output. */
   score?: boolean;
+  /** When false, omit top agent prompts from terminal output. */
+  prompt?: boolean;
 }): Promise<RuntimeAnalysisResult> {
   const traces = await loadRuntimeTraceFile(options.tracePath);
   const projects = (
@@ -1332,6 +1334,7 @@ export async function analyzeRuntime(options: {
       ...(options.quiet !== undefined ? { quiet: options.quiet } : {}),
       ...(options.printLog !== undefined ? { printLog: options.printLog } : {}),
       ...(options.score !== undefined ? { score: options.score } : {}),
+      ...(options.prompt !== undefined ? { prompt: options.prompt } : {}),
     });
 
   return {

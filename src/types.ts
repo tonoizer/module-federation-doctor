@@ -691,6 +691,17 @@ export interface DoctorOptions {
    */
   score?: boolean;
   /**
+   * When false, omit top-N agent prompts from terminal output.
+   * CLI: `--no-prompt`. Default on for human terminal.
+   */
+  prompt?: boolean;
+  /**
+   * Optional directory for bounded agent diagnostics dump
+   * (`report.json`, `prompts/*.md`, `summary.md`). Must stay inside the project root.
+   * CLI: `--diagnostics-dir`.
+   */
+  diagnosticsDir?: string;
+  /**
    * When true (default), skip terminal output on zero findings.
    * Override with `printLog.success: true`, `quiet: false`, CLI `--verbose`,
    * or `MFDOCTOR_QUIET=0`. Force quiet with `MFDOCTOR_QUIET=1`.
@@ -758,6 +769,13 @@ export interface ResolvedDoctorOptions {
    * Defaults to true.
    */
   score: boolean;
+  /**
+   * When false, omit top-N agent prompts from terminal output.
+   * Defaults to true.
+   */
+  prompt: boolean;
+  /** Absolute path for optional diagnostics dump, when configured. */
+  diagnosticsDir?: string;
   /** Resolved quiet-success gate for the terminal reporter. */
   quiet: boolean;
   printLog: Required<DoctorPrintLog>;

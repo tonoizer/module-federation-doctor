@@ -11,6 +11,7 @@ import {
 } from "./baseline.js";
 import { addBuildFacts, collectProjectFacts, type BuildDiagnostics } from "./collect.js";
 import { resolveOptions } from "./config.js";
+import { writeDiagnosticsDump } from "./agent-prompt.js";
 import { computeHealthScore } from "./health-score.js";
 import { builtInRules, federationRuleMeta } from "./rules.js";
 import { DEFAULT_ALWAYS_SHARED } from "./shared-policy.js";
@@ -182,7 +183,9 @@ async function runAnalysis(
       quiet: resolved.quiet,
       printLog: resolved.printLog,
       score: resolved.score,
+      prompt: resolved.prompt,
     });
+    if (resolved.diagnosticsDir) await writeDiagnosticsDump(report, resolved.diagnosticsDir);
     return {
       facts: safeFacts,
       report,
@@ -254,6 +257,8 @@ export async function analyzeFederation(
     printLog?: { success?: boolean };
     /** When false, omit health score from terminal output. */
     score?: boolean;
+    /** When false, omit top agent prompts from terminal output. */
+    prompt?: boolean;
     /** Severity / off map (supports `rules: { "federation/ghost-shares": "off" }`). */
     rules?: Record<string, RuleSetting>;
     /** Packages excluded from host-gap / ghost-share heuristics. */
@@ -523,6 +528,7 @@ export async function analyzeFederation(
       ...(options.quiet !== undefined ? { quiet: options.quiet } : {}),
       ...(options.printLog !== undefined ? { printLog: options.printLog } : {}),
       ...(options.score !== undefined ? { score: options.score } : {}),
+      ...(options.prompt !== undefined ? { prompt: options.prompt } : {}),
     });
   const failOn = options.failOn ?? "error";
   return {

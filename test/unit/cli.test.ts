@@ -29,6 +29,8 @@ describe("CLI arguments", () => {
       ci: false,
       verbose: true,
       score: true,
+      prompt: true,
+      forcePrompt: false,
     });
   });
 
@@ -42,6 +44,54 @@ describe("CLI arguments", () => {
       ci: false,
       verbose: false,
       score: false,
+      prompt: true,
+      forcePrompt: false,
+    });
+  });
+
+  it("parses --no-prompt and --prompt / --finding / --diagnostics-dir", () => {
+    expect(parseArgs(["check", "--no-prompt"])).toEqual({
+      command: "check",
+      patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
+      ci: false,
+      verbose: false,
+      score: true,
+      prompt: false,
+      forcePrompt: false,
+    });
+    expect(parseArgs(["check", "--prompt", "--diagnostics-dir", ".mf/doctor/diagnostics"])).toEqual(
+      {
+        command: "check",
+        patterns: [],
+        roots: [],
+        globs: [],
+        workspace: false,
+        ci: false,
+        verbose: false,
+        score: true,
+        prompt: true,
+        forcePrompt: true,
+        diagnosticsDir: ".mf/doctor/diagnostics",
+      },
+    );
+    expect(
+      parseArgs(["prompt", "--finding", "config/name-required", ".mf/doctor/report.json"]),
+    ).toEqual({
+      command: "prompt",
+      patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
+      ci: false,
+      verbose: false,
+      score: true,
+      prompt: true,
+      forcePrompt: false,
+      finding: "config/name-required",
+      reportPath: ".mf/doctor/report.json",
     });
   });
 
@@ -56,6 +106,8 @@ describe("CLI arguments", () => {
       ci: true,
       verbose: false,
       score: true,
+      prompt: true,
+      forcePrompt: false,
       formats: ["terminal", "json", "sarif"],
     });
   });
@@ -70,6 +122,8 @@ describe("CLI arguments", () => {
       ci: false,
       verbose: false,
       score: true,
+      prompt: true,
+      forcePrompt: false,
       baseline: "./mfdoctor.baseline.json",
     });
     expect(
@@ -90,6 +144,8 @@ describe("CLI arguments", () => {
       ci: false,
       verbose: false,
       score: true,
+      prompt: true,
+      forcePrompt: false,
       reportPath: ".mf/doctor/report.json",
       outPath: "mfdoctor.baseline.json",
     });
@@ -106,6 +162,8 @@ describe("CLI arguments", () => {
       ci: false,
       verbose: false,
       score: true,
+      prompt: true,
+      forcePrompt: false,
     });
   });
 
@@ -119,6 +177,8 @@ describe("CLI arguments", () => {
       ci: false,
       verbose: false,
       score: true,
+      prompt: true,
+      forcePrompt: false,
     });
     expect(
       parseArgs([
@@ -139,6 +199,8 @@ describe("CLI arguments", () => {
       ci: false,
       verbose: false,
       score: true,
+      prompt: true,
+      forcePrompt: false,
       formats: ["json", "sarif"],
     });
     expect(parseArgs(["federation", "apps", "--workspace"])).toEqual({
@@ -150,6 +212,8 @@ describe("CLI arguments", () => {
       ci: false,
       verbose: false,
       score: true,
+      prompt: true,
+      forcePrompt: false,
     });
   });
 
@@ -172,6 +236,8 @@ describe("CLI arguments", () => {
       ci: false,
       verbose: false,
       score: true,
+      prompt: true,
+      forcePrompt: false,
       formats: ["terminal", "json"],
     });
   });
@@ -204,6 +270,8 @@ describe("CLI arguments", () => {
       ci: false,
       verbose: false,
       score: true,
+      prompt: true,
+      forcePrompt: false,
       timeoutMs: 5000,
       maxBytes: 100000,
       remoteEntry: true,
@@ -220,6 +288,8 @@ describe("CLI arguments", () => {
       ci: false,
       verbose: false,
       score: true,
+      prompt: true,
+      forcePrompt: false,
     });
   });
 
@@ -319,5 +389,31 @@ describe("CLI arguments", () => {
   it("lists rule guidance and rejects an unknown rule", async () => {
     await expect(main(["rules", "config/name-required"])).resolves.toBe(0);
     await expect(main(["rules", "not/a-rule"])).resolves.toBe(2);
+  });
+
+  it("prints offline agent prompts from report.json and dumps diagnostics", async () => {
+    const root = await temporaryProject(`export default {
+      moduleFederation: { remotes: { app: "http://example.com/remoteEntry.js" }, exposes: {}, shared: {} },
+      output: { formats: ["json", "terminal"] },
+      failOn: "never",
+      rules: { "doctor/partial-analysis": "off", "config/name-required": "error" },
+    };`);
+    await expect(
+      main(["check", root, "--diagnostics-dir", ".mf/doctor/diagnostics", "--no-prompt"]),
+    ).resolves.toBe(0);
+    const reportPath = path.join(root, ".mf/doctor/report.json");
+    const dumpDir = path.join(root, ".mf/doctor/diagnostics");
+    await expect(fs.access(path.join(dumpDir, "summary.md"))).resolves.toBeUndefined();
+    await expect(fs.access(path.join(dumpDir, "report.json"))).resolves.toBeUndefined();
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      await expect(main(["prompt", "--finding", "config/name-required", reportPath])).resolves.toBe(
+        0,
+      );
+      await expect(main(["prompt", reportPath])).resolves.toBe(0);
+    } finally {
+      process.chdir(cwd);
+    }
   });
 });

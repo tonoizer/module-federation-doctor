@@ -13,6 +13,7 @@ import {
   updateBaseline,
   writeBaselineFile,
 } from "./baseline.js";
+import { buildAgentPrompt, findPromptTarget, formatTopAgentPrompts } from "./agent-prompt.js";
 import { analyze, analyzeFederation } from "./engine.js";
 import { probeManifest } from "./probe.js";
 import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
@@ -38,6 +39,7 @@ interface Parsed {
     | "runtime"
     | "rules"
     | "baseline"
+    | "prompt"
     | "help";
   baselineAction?: "generate" | "update" | "prune";
   root?: string;
@@ -52,6 +54,12 @@ interface Parsed {
   verbose: boolean;
   /** When false, omit health score from terminal output. */
   score: boolean;
+  /** When false, omit top agent prompts from terminal output. */
+  prompt: boolean;
+  /** Force printing prompts after check (alias of keeping prompt on). */
+  forcePrompt: boolean;
+  finding?: string;
+  diagnosticsDir?: string;
   formats?: OutputFormat[];
   timeoutMs?: number;
   maxBytes?: number;
@@ -77,6 +85,10 @@ Usage:
   mfdoctor check --baseline ./mfdoctor.baseline.json
   mfdoctor check --verbose
   mfdoctor check --no-score
+  mfdoctor check --no-prompt
+  mfdoctor check --prompt
+  mfdoctor check --diagnostics-dir .mf/doctor/diagnostics
+  mfdoctor prompt [--finding <fingerprint|ruleId>] [.mf/doctor/report.json]
   mfdoctor workspace [root...]
   mfdoctor workspace [root...] --glob "**/.mf/doctor/project.json"
   mfdoctor federation --workspace [root...]
@@ -105,7 +117,12 @@ pass --verbose, printLog.success, or MFDOCTOR_QUIET=0 for the old success line.
 
 Score: terminal footer shows Score: N/100 (Great|OK|Needs work) after counts.
 Pass --no-score or score: false to hide it (report JSON still includes score).
-See agent prompts (#124) for top-3 handoff after the score.
+
+Agent prompts: after the score, terminal prints up to three copy-paste fix
+prompts (severity then impact). Pass --no-prompt / prompt: false to hide.
+\`mfdoctor prompt --finding <fingerprint|ruleId>\` reads .mf/doctor/report.json
+offline. \`--diagnostics-dir\` writes report.json, prompts/*.md, and summary.md
+inside the project root only.
 
 Baselines: use fingerprint baselines for incremental adoption. Suppressed
 findings still appear in reports but do not fail policy unless
@@ -121,7 +138,8 @@ export function parseArgs(argv: string[]): Parsed {
     command !== "probe" &&
     command !== "runtime" &&
     command !== "rules" &&
-    command !== "baseline"
+    command !== "baseline" &&
+    command !== "prompt"
   )
     return {
       command: "help",
@@ -132,6 +150,8 @@ export function parseArgs(argv: string[]): Parsed {
       ci: false,
       verbose: false,
       score: true,
+      prompt: true,
+      forcePrompt: false,
     };
   const parsed: Parsed = {
     command,
@@ -142,6 +162,8 @@ export function parseArgs(argv: string[]): Parsed {
     ci: false,
     verbose: false,
     score: true,
+    prompt: true,
+    forcePrompt: false,
   };
   let index = 1;
   if (command === "baseline") {
@@ -156,7 +178,31 @@ export function parseArgs(argv: string[]): Parsed {
     if (value === "--ci") parsed.ci = true;
     else if (value === "--verbose") parsed.verbose = true;
     else if (value === "--no-score") parsed.score = false;
-    else if (value === "--workspace" && (command === "federation" || command === "workspace")) {
+    else if (value === "--no-prompt") parsed.prompt = false;
+    else if (value === "--prompt") {
+      parsed.prompt = true;
+      parsed.forcePrompt = true;
+    } else if (value === "--finding") {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-"))
+        throw new Error("--finding needs a fingerprint or rule id.");
+      parsed.finding = next;
+      index += 1;
+    } else if (value?.startsWith("--finding=")) {
+      const finding = value.slice("--finding=".length);
+      if (!finding) throw new Error("--finding needs a fingerprint or rule id.");
+      parsed.finding = finding;
+    } else if (value === "--diagnostics-dir") {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-"))
+        throw new Error("--diagnostics-dir needs a directory path.");
+      parsed.diagnosticsDir = next;
+      index += 1;
+    } else if (value?.startsWith("--diagnostics-dir=")) {
+      const dir = value.slice("--diagnostics-dir=".length);
+      if (!dir) throw new Error("--diagnostics-dir needs a directory path.");
+      parsed.diagnosticsDir = dir;
+    } else if (value === "--workspace" && (command === "federation" || command === "workspace")) {
       parsed.workspace = true;
     } else if (value === "--glob" && (command === "federation" || command === "workspace")) {
       const next = argv[index + 1];
@@ -212,6 +258,7 @@ export function parseArgs(argv: string[]): Parsed {
     } else if (command === "probe" && !parsed.url && value) parsed.url = value;
     else if (command === "rules" && !parsed.ruleId && value) parsed.ruleId = value;
     else if (command === "baseline" && !parsed.reportPath && value) parsed.reportPath = value;
+    else if (command === "prompt" && !parsed.reportPath && value) parsed.reportPath = value;
     else if (!parsed.root && value) parsed.root = value;
     else throw new Error(`Unexpected argument: ${value}`);
   }
@@ -265,13 +312,44 @@ function baselineFromConfig(config: DoctorOptions): string | BaselineOptions | u
   return config.baseline;
 }
 
-async function loadReportFindings(reportPath: string): Promise<DoctorFinding[]> {
+async function loadReport(reportPath: string): Promise<DoctorReport> {
   const raw = JSON.parse(await fs.readFile(reportPath, "utf8")) as unknown;
   if (!raw || typeof raw !== "object" || Array.isArray(raw))
     throw new Error("Report file must be a JSON object.");
   const report = raw as DoctorReport;
   if (!Array.isArray(report.findings)) throw new Error('Report file requires a "findings" array.');
-  return report.findings;
+  return report;
+}
+
+async function loadReportFindings(reportPath: string): Promise<DoctorFinding[]> {
+  return (await loadReport(reportPath)).findings;
+}
+
+async function runPrompt(parsed: Parsed): Promise<number> {
+  const cwd = process.cwd();
+  const reportPath = path.resolve(cwd, parsed.reportPath ?? DEFAULT_REPORT);
+  try {
+    const report = await loadReport(reportPath);
+    if (parsed.finding) {
+      const target = findPromptTarget(report.findings, parsed.finding);
+      if (!target) {
+        process.stderr.write(`No finding matched --finding ${parsed.finding}\n`);
+        return 2;
+      }
+      process.stdout.write(buildAgentPrompt(target) + "\n");
+      return 0;
+    }
+    const text = formatTopAgentPrompts(report.findings);
+    if (!text) {
+      process.stdout.write("No agent prompts (no non-suppressed findings).\n");
+      return 0;
+    }
+    process.stdout.write(text + "\n");
+    return 0;
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return 2;
+  }
 }
 
 async function runBaseline(parsed: Parsed): Promise<number> {
@@ -332,19 +410,22 @@ async function runFederationAnalysis(
   verbose = false,
   config: DoctorOptions = {},
   score = true,
+  prompt = true,
 ): Promise<number> {
   if (files.length === 0) {
     process.stderr.write("No project reports matched.\n");
     return 2;
   }
   const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
-  // CLI --no-score wins; otherwise honor DoctorOptions.score from config.
+  // CLI --no-score / --no-prompt win; otherwise honor DoctorOptions from config.
   const showScore = score !== false && config.score !== false;
+  const showPrompt = prompt !== false && config.prompt !== false;
   const result = await analyzeFederation(files, {
     ...(formats ? { formats, outputDirectory } : {}),
     ...(baseline ? { baseline } : {}),
     ...(verbose ? { quiet: false, printLog: { success: true } } : {}),
     score: showScore,
+    prompt: showPrompt,
     ...(config.rules ? { rules: config.rules } : {}),
     ...(config.alwaysShared ? { alwaysShared: config.alwaysShared } : {}),
     root: process.cwd(),
@@ -369,6 +450,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     return 0;
   }
   if (parsed.command === "baseline") return runBaseline(parsed);
+  if (parsed.command === "prompt") return runPrompt(parsed);
   if (parsed.command === "probe") {
     if (!parsed.url) {
       process.stderr.write("probe needs a manifest URL.\n");
@@ -426,6 +508,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           parsed.verbose,
           config,
           parsed.score,
+          parsed.prompt,
         );
       }
       if (parsed.patterns.length === 0) {
@@ -442,6 +525,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         parsed.verbose,
         config,
         parsed.score,
+        parsed.prompt,
       );
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
@@ -470,6 +554,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         ...(formats ? { formats, outputDirectory } : {}),
         ...(parsed.verbose ? { quiet: false, printLog: { success: true } } : {}),
         score: parsed.score !== false && config.score !== false,
+        prompt: parsed.prompt !== false && config.prompt !== false,
       });
       if (!formats)
         process.stdout.write(
@@ -499,6 +584,10 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       options.printLog = { ...options.printLog, success: true };
     }
     if (!parsed.score) options.score = false;
+    if (!parsed.prompt) options.prompt = false;
+    if (parsed.forcePrompt) options.prompt = true;
+    if (parsed.diagnosticsDir) options.diagnosticsDir = parsed.diagnosticsDir;
+    else if (config.diagnosticsDir) options.diagnosticsDir = config.diagnosticsDir;
     if (parsed.formats) options.output = { ...config.output, formats: parsed.formats };
     if (parsed.baseline) options.baseline = parsed.baseline;
     const result = await analyze(options);

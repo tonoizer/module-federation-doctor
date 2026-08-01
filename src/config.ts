@@ -1,4 +1,5 @@
 import path from "node:path";
+import { resolveDiagnosticsDir } from "./agent-prompt.js";
 import { resolveBaselineOptions } from "./baseline.js";
 import { resolvePolicy } from "./policy.js";
 import { mergeSharedPolicy, serializeSharedPolicy } from "./shared-policy.js";
@@ -135,6 +136,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
     },
     failOn: options.failOn ?? (ci ? "error" : "never"),
     score: options.score !== false,
+    prompt: options.prompt !== false,
     quiet,
     printLog,
     include: options.include ?? DEFAULT_INCLUDE,
@@ -163,5 +165,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
     resolved.runtimeTrace = path.resolve(root, options.runtimeTrace);
   if (options.recognizeMfToolkit !== undefined)
     resolved.recognizeMfToolkit = options.recognizeMfToolkit;
+  if (options.diagnosticsDir)
+    resolved.diagnosticsDir = resolveDiagnosticsDir(root, options.diagnosticsDir);
   return resolved;
 }
