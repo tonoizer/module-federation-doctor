@@ -4,19 +4,23 @@ Analysis depth per supported bundler. For supported / partial / unsupported
 **product** cells (Node, package managers, report surfaces), see the
 [compatibility matrix](./compatibility.md).
 
-| Capability                             | Vite / Rolldown / Vite Plus                                     | Rspack            | Rsbuild               | Webpack           | Modern.js                      |
-| -------------------------------------- | --------------------------------------------------------------- | ----------------- | --------------------- | ----------------- | ------------------------------ |
-| Explicit MF config                     | Yes                                                             | Yes               | Yes                   | Yes               | Yes                            |
-| Static imports                         | Yes                                                             | Yes               | Yes                   | Yes               | Yes                            |
-| Supported dynamic patterns (see below) | Yes                                                             | Yes               | Yes                   | Yes               | Yes                            |
-| Manifest and stats                     | Yes                                                             | Yes               | Yes                   | Yes               | Yes                            |
-| Emitted assets                         | On-disk `writeBundle` / `closeBundle` (Rolldown-safe)           | Compilation hooks | Rspack when available | Compilation hooks | Via Rspack/Webpack `afterEmit` |
-| Opt-in runtime traces                  | Correlated when `runtimeTrace` / `mfdoctor runtime` is supplied | Same              | Same                  | Same              | Same                           |
-| Cross-project checks                   | Yes                                                             | Yes               | Yes                   | Yes               | Yes                            |
-| Lifecycle recording                    | `bundler.lifecycle` (`vite` / `rolldown-vite` / `vite-plus`)    | —                 | —                     | —                 | —                              |
+| Capability                             | Vite / Rolldown / Vite Plus                                     | Rspack                | Rsbuild               | Webpack               | Modern.js                                                |
+| -------------------------------------- | --------------------------------------------------------------- | --------------------- | --------------------- | --------------------- | -------------------------------------------------------- |
+| Explicit MF config                     | Yes                                                             | Yes                   | Yes                   | Yes                   | Yes                                                      |
+| Static imports                         | Yes                                                             | Yes                   | Yes                   | Yes                   | Yes                                                      |
+| Supported dynamic patterns (see below) | Yes                                                             | Yes                   | Yes                   | Yes                   | Yes                                                      |
+| Manifest and stats                     | Opt-in (`manifest: true`); no webpack stats                     | Default (`!== false`) | Default (`!== false`) | Default (`!== false`) | Default under hood; see [matrix](./runtime-manifests.md) |
+| Emitted assets                         | On-disk `writeBundle` / `closeBundle` (Rolldown-safe)           | Compilation hooks     | Rspack when available | Compilation hooks     | Via Rspack/Webpack `afterEmit`                           |
+| Opt-in runtime traces                  | Correlated when `runtimeTrace` / `mfdoctor runtime` is supplied | Same                  | Same                  | Same                  | Same                                                     |
+| Cross-project checks                   | Yes                                                             | Yes                   | Yes                   | Yes                   | Yes                                                      |
+| Lifecycle recording                    | `bundler.lifecycle` (`vite` / `rolldown-vite` / `vite-plus`)    | —                     | —                     | —                     | —                                                        |
 
 Rules consult recorded capabilities. Missing optional input creates
 `doctor/partial-analysis` instead of pretending full analysis happened.
+The “Manifest and stats” row is **not** a blanket Yes: Vite/Rolldown omit
+`mf-manifest.json` / `mf-stats.json` unless `manifest: true`, and missing
+webpack compilation stats on those bundlers is expected. See the
+[per-bundler matrix](./runtime-manifests.md#per-bundler-expectations).
 Adapters must not scrape private Module Federation plugin fields to invent
 coverage — see
 [permanent guarantees / non-goals](./limitations.md#permanent-guarantees--non-goals).
