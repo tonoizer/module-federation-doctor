@@ -2,7 +2,7 @@
 
 Rule pages are generated from package metadata. Each page explains the issue, impact, fix, and upstream evidence.
 
-Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, Runtime, Federation, Performance, Vite, Security, and Doctor. Printed terminal `docs:` links open the same pages.
+Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, Runtime, Runtime plugins, Federation, Performance, Vite, Security, and Doctor. Printed terminal `docs:` links open the same pages.
 
 ## Correctness
 
@@ -39,6 +39,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`federation/name-conflict`](./federation/name-conflict.md) | error | Duplicate container names collide in runtime data and global chunk storage. |
 | [`federation/share-scope-mismatch`](./federation/share-scope-mismatch.md) | error | Projects in different scopes cannot reuse the same shared provider. |
 | [`federation/version-conflict`](./federation/version-conflict.md) | error | No installed provider version satisfies every consumer range. |
+| [`runtime-plugins/invalid-factory`](./runtime-plugins/invalid-factory.md) | warning | A runtime plugin without a factory or usable `name` is ignored at runtime (silent no-op). |
 | [`shared/version-unsatisfied`](./shared/version-unsatisfied.md) | error | The installed provider does not satisfy the configured consumer range. |
 | [`vite/remotes-prefer-module`](./vite/remotes-prefer-module.md) | warning | Vite string remotes and missing/`var` type default to script-style loading. Vite↔Vite ESM remotes need explicit `type: 'module'`; mixed bundlers should declare an explicit non-default type (for example `global`) or document a `varFilename` producer interop path. |
 
@@ -65,6 +66,8 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`reliability/tree-shaking-server-calc-contract`](./reliability/tree-shaking-server-calc-contract.md) | warning | Server-calculated shared artifacts need a known fallback output and deployment pipeline. |
 | [`reliability/version-first-offline-remotes`](./reliability/version-first-offline-remotes.md) | warning | An unavailable remote can break startup before its exposed module is requested. |
 | [`reliability/vite-fixed-parse-timeout`](./reliability/vite-fixed-parse-timeout.md) | info | A busy large build can exceed a fixed timeout and produce incomplete remote/shared analysis. |
+| [`runtime-plugins/create-script-cors-parity`](./runtime-plugins/create-script-cors-parity.md) | warning | CORS on createScript without matching createLink makes preload and load use different cache keys. |
+| [`runtime-plugins/create-script-without-link`](./runtime-plugins/create-script-without-link.md) | info | A createScript hook without createLink can waste preload work when link-based loading is used. |
 | [`runtime/error-correlated`](./runtime/error-correlated.md) | error | A stable RUNTIME error code from an imported browser trace was matched to offline build evidence. |
 | [`runtime/init-failed`](./runtime/init-failed.md) | error | Container initialization failed before exposes or shared resolution could finish. |
 | [`runtime/remote-load-failed`](./runtime/remote-load-failed.md) | error | A browser Observability trace failed while loading a remote manifest, entry, expose, or factory. |

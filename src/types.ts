@@ -353,6 +353,21 @@ export interface BuildOutputInput {
 /** @deprecated Use {@link BuildOutputInput}. Kept as an alias for the Vite slice. */
 export type ViteBuildOutputInput = BuildOutputInput;
 
+export type RuntimePluginContractFinding =
+  | {
+      plugin: string;
+      kind: "invalid-factory";
+      reason: "no-export" | "non-factory-export" | "missing-name";
+      file?: string;
+    }
+  | {
+      plugin: string;
+      kind: "cors-parity";
+      reason: "create-script-without-create-link" | "cors-mismatch";
+      confidence: "clear" | "heuristic";
+      file?: string;
+    };
+
 export interface ProjectFacts {
   schemaVersion: 1;
   project: ProjectIdentity;
@@ -361,6 +376,8 @@ export interface ProjectFacts {
   moduleFederation?: NormalizedMFConfig;
   dependencies: DependencyFacts;
   imports: ImportFacts;
+  /** Static runtimePlugins contract probes; absent/empty when none apply. */
+  runtimePluginContracts?: RuntimePluginContractFinding[];
   artifacts: ArtifactFacts;
   /** Exact per-output records. Legacy artifact fields remain the compatibility view. */
   builds?: BuildRecord[];

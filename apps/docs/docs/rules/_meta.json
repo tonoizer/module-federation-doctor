@@ -48,6 +48,13 @@
   },
   {
     "type": "dir",
+    "name": "runtime-plugins",
+    "label": "Runtime plugins",
+    "collapsible": true,
+    "collapsed": true
+  },
+  {
+    "type": "dir",
     "name": "federation",
     "label": "Federation",
     "collapsible": true,

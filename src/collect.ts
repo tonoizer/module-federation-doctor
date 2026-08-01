@@ -18,9 +18,11 @@ import type {
   OutputPublicPathKind,
   ProjectFacts,
   ResolvedDoctorOptions,
+  RuntimePluginContractFinding,
   UnresolvedDynamicApi,
   UnresolvedDynamicImport,
 } from "./types.js";
+import { analyzeLocalRuntimePlugin } from "./runtime-plugin-contract.js";
 import { normalizePath, relativePath } from "./utils.js";
 import { detectViteLifecycle } from "./vite-lifecycle.js";
 
@@ -772,6 +774,38 @@ async function collectArtifacts(
   return artifact;
 }
 
+async function collectRuntimePluginContracts(
+  root: string,
+  plugins: string[] | undefined,
+  sourceFiles: readonly string[],
+): Promise<RuntimePluginContractFinding[]> {
+  if (!plugins?.length) return [];
+  const findings: RuntimePluginContractFinding[] = [];
+  for (const plugin of plugins) {
+    const result = await analyzeLocalRuntimePlugin(root, plugin, sourceFiles);
+    const relativeFile = result.file ? relativePath(root, result.file) : undefined;
+    const file = relativeFile && !relativeFile.startsWith("[external]/") ? relativeFile : undefined;
+    if (result.factory.kind === "invalid-factory") {
+      findings.push({
+        plugin,
+        kind: "invalid-factory",
+        reason: result.factory.reason,
+        ...(file ? { file } : {}),
+      });
+    }
+    if (result.cors.kind === "cors-parity") {
+      findings.push({
+        plugin,
+        kind: "cors-parity",
+        reason: result.cors.reason,
+        confidence: result.cors.confidence,
+        ...(file ? { file } : {}),
+      });
+    }
+  }
+  return findings;
+}
+
 export async function collectProjectFacts(
   options: ResolvedDoctorOptions,
   boundedRoots?: string[],
@@ -884,6 +918,12 @@ export async function collectProjectFacts(
     artifacts,
   };
   if (normalizedMf) facts.moduleFederation = normalizedMf;
+  const runtimePluginContracts = await collectRuntimePluginContracts(
+    options.root,
+    normalizedMf?.runtimePlugins,
+    imports.sourceFiles,
+  );
+  if (runtimePluginContracts.length > 0) facts.runtimePluginContracts = runtimePluginContracts;
   await attachAssetSizes(facts, options.root);
   return facts;
 }

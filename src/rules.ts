@@ -1179,6 +1179,63 @@ export const builtInRules: DoctorRule[] = [
       "Set `bridge: { enableBridgeRouter: true }` (or `false`) explicitly, or allow demos with `allowImplicitBridgeRouter: true`.",
     );
   }),
+  createRule("runtime-plugins/invalid-factory", "warning", (context) => {
+    for (const item of context.facts.runtimePluginContracts ?? []) {
+      if (item.kind !== "invalid-factory") continue;
+      const message =
+        item.reason === "missing-name"
+          ? `Runtime plugin "${item.plugin}" does not expose a usable plugin \`name\` (silent no-op risk).`
+          : item.reason === "non-factory-export"
+            ? `Runtime plugin "${item.plugin}" default export is not a plugin factory.`
+            : `Runtime plugin "${item.plugin}" does not export a usable plugin factory.`;
+      report(
+        context,
+        message,
+        {
+          plugin: item.plugin,
+          reason: item.reason,
+          ...(item.file ? { file: item.file } : {}),
+        },
+        "Export a factory (or plugin object) that returns `{ name, ...hooks }`. Suppress via rules when the module is intentionally opaque.",
+      );
+    }
+  }),
+  createRule("runtime-plugins/create-script-cors-parity", "warning", (context) => {
+    for (const item of context.facts.runtimePluginContracts ?? []) {
+      if (item.kind !== "cors-parity" || item.confidence !== "clear") continue;
+      const message =
+        item.reason === "cors-mismatch"
+          ? `Runtime plugin "${item.plugin}" sets CORS on createScript but createLink lacks matching CORS attributes.`
+          : `Runtime plugin "${item.plugin}" customizes createScript with CORS but does not define createLink (preload/cache key mismatch risk).`;
+      report(
+        context,
+        message,
+        {
+          plugin: item.plugin,
+          reason: item.reason,
+          confidence: item.confidence,
+          ...(item.file ? { file: item.file } : {}),
+        },
+        "Mirror crossorigin/credentials on createLink (and keep fetch credentials consistent). See Module Federation runtime troubleshooting for CORS preload parity.",
+      );
+    }
+  }),
+  createRule("runtime-plugins/create-script-without-link", "info", (context) => {
+    for (const item of context.facts.runtimePluginContracts ?? []) {
+      if (item.kind !== "cors-parity" || item.confidence !== "heuristic") continue;
+      report(
+        context,
+        `Runtime plugin "${item.plugin}" defines createScript without createLink; preload and load cache keys may diverge.`,
+        {
+          plugin: item.plugin,
+          reason: item.reason,
+          confidence: item.confidence,
+          ...(item.file ? { file: item.file } : {}),
+        },
+        "Add a matching createLink hook when preloadRemote or link-based loading is used. Suppress via rules when preload is unused.",
+      );
+    }
+  }),
 ];
 
 function optionReactMajors(options: Record<string, unknown>): Array<18 | 19> | undefined {
