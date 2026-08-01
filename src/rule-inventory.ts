@@ -810,7 +810,12 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
   "artifact/dts-disabled": ["project.scope", "moduleFederation"],
   "artifact/expose-missing": ["project.scope", "moduleFederation", "artifacts.manifest"],
   "artifact/manifest-assets-disabled": ["project.scope", "moduleFederation"],
-  "artifact/manifest-disabled": ["project.scope", "moduleFederation"],
+  "artifact/manifest-disabled": [
+    "project.scope",
+    "moduleFederation",
+    "capabilities.manifest",
+    "artifacts.manifest",
+  ],
   "artifact/manifest-expose-assets-empty": [
     "project.scope",
     "moduleFederation",

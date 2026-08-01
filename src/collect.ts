@@ -546,11 +546,14 @@ async function detectFromManifest(
         })
         .filter(([remoteName, entry]) => remoteName && entry),
     );
-    return normalizeModuleFederation({
-      ...(name ? { name } : {}),
-      shared,
-      remotes,
-    });
+    return normalizeModuleFederation(
+      {
+        ...(name ? { name } : {}),
+        shared,
+        remotes,
+      },
+      { bundler: "unknown" },
+    );
   } catch {
     return undefined;
   }
@@ -775,7 +778,7 @@ export async function collectProjectFacts(
   const scan = await scanProjectImports(options);
   const artifacts = await collectArtifacts(options.root, options.artifactNames, boundedRoots);
   const normalizedMf =
-    normalizeModuleFederation(options.moduleFederation) ??
+    normalizeModuleFederation(options.moduleFederation, { bundler: options.bundler }) ??
     (await detectFromManifest(options.root, artifacts.manifest));
   for (const [key, target] of Object.entries(normalizedMf?.exposes ?? {})) {
     const safeTarget = safeConfigSpecifier(options.root, target);

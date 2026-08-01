@@ -725,6 +725,8 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("artifact/manifest-disabled", "info", (context) => {
     const config = mf(context);
+    // Prefer emit evidence over normalized defaults (Enhanced omits → still emits).
+    if (context.facts.capabilities.manifest || context.facts.artifacts.manifest) return;
     if (
       config &&
       !config.manifest?.enabled &&
