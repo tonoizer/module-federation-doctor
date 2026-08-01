@@ -28,6 +28,20 @@ describe("CLI arguments", () => {
       workspace: false,
       ci: false,
       verbose: true,
+      score: true,
+    });
+  });
+
+  it("parses --no-score to hide the terminal health score", () => {
+    expect(parseArgs(["check", "--no-score"])).toEqual({
+      command: "check",
+      patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
+      ci: false,
+      verbose: false,
+      score: false,
     });
   });
 
@@ -41,6 +55,7 @@ describe("CLI arguments", () => {
       workspace: false,
       ci: true,
       verbose: false,
+      score: true,
       formats: ["terminal", "json", "sarif"],
     });
   });
@@ -54,6 +69,7 @@ describe("CLI arguments", () => {
       workspace: false,
       ci: false,
       verbose: false,
+      score: true,
       baseline: "./mfdoctor.baseline.json",
     });
     expect(
@@ -73,6 +89,7 @@ describe("CLI arguments", () => {
       workspace: false,
       ci: false,
       verbose: false,
+      score: true,
       reportPath: ".mf/doctor/report.json",
       outPath: "mfdoctor.baseline.json",
     });
@@ -88,6 +105,7 @@ describe("CLI arguments", () => {
       workspace: false,
       ci: false,
       verbose: false,
+      score: true,
     });
   });
 
@@ -100,6 +118,7 @@ describe("CLI arguments", () => {
       workspace: true,
       ci: false,
       verbose: false,
+      score: true,
     });
     expect(
       parseArgs([
@@ -119,6 +138,7 @@ describe("CLI arguments", () => {
       workspace: true,
       ci: false,
       verbose: false,
+      score: true,
       formats: ["json", "sarif"],
     });
     expect(parseArgs(["federation", "apps", "--workspace"])).toEqual({
@@ -129,6 +149,7 @@ describe("CLI arguments", () => {
       workspace: true,
       ci: false,
       verbose: false,
+      score: true,
     });
   });
 
@@ -150,6 +171,7 @@ describe("CLI arguments", () => {
       workspace: false,
       ci: false,
       verbose: false,
+      score: true,
       formats: ["terminal", "json"],
     });
   });
@@ -181,6 +203,7 @@ describe("CLI arguments", () => {
       workspace: false,
       ci: false,
       verbose: false,
+      score: true,
       timeoutMs: 5000,
       maxBytes: 100000,
       remoteEntry: true,
@@ -196,6 +219,7 @@ describe("CLI arguments", () => {
       workspace: false,
       ci: false,
       verbose: false,
+      score: true,
     });
   });
 

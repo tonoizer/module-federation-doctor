@@ -50,6 +50,8 @@ interface Parsed {
   ci: boolean;
   /** Print the legacy "no findings" success line (`printLog.success`). */
   verbose: boolean;
+  /** When false, omit health score from terminal output. */
+  score: boolean;
   formats?: OutputFormat[];
   timeoutMs?: number;
   maxBytes?: number;
@@ -74,6 +76,7 @@ Usage:
   mfdoctor check --format terminal,json,sarif
   mfdoctor check --baseline ./mfdoctor.baseline.json
   mfdoctor check --verbose
+  mfdoctor check --no-score
   mfdoctor workspace [root...]
   mfdoctor workspace [root...] --glob "**/.mf/doctor/project.json"
   mfdoctor federation --workspace [root...]
@@ -100,6 +103,10 @@ or mode: "ci" to force it; mode: "development" to opt out. Findings are always
 collected in full before the build fails. Clean runs stay quiet by default;
 pass --verbose, printLog.success, or MFDOCTOR_QUIET=0 for the old success line.
 
+Score: terminal footer shows Score: N/100 (Great|OK|Needs work) after counts.
+Pass --no-score or score: false to hide it (report JSON still includes score).
+See agent prompts (#124) for top-3 handoff after the score.
+
 Baselines: use fingerprint baselines for incremental adoption. Suppressed
 findings still appear in reports but do not fail policy unless
 baseline.failOnSuppressed is set. Baselines are tracked debt — shrink them.`;
@@ -124,6 +131,7 @@ export function parseArgs(argv: string[]): Parsed {
       workspace: false,
       ci: false,
       verbose: false,
+      score: true,
     };
   const parsed: Parsed = {
     command,
@@ -133,6 +141,7 @@ export function parseArgs(argv: string[]): Parsed {
     workspace: command === "workspace",
     ci: false,
     verbose: false,
+    score: true,
   };
   let index = 1;
   if (command === "baseline") {
@@ -146,6 +155,7 @@ export function parseArgs(argv: string[]): Parsed {
     const value = argv[index];
     if (value === "--ci") parsed.ci = true;
     else if (value === "--verbose") parsed.verbose = true;
+    else if (value === "--no-score") parsed.score = false;
     else if (value === "--workspace" && (command === "federation" || command === "workspace")) {
       parsed.workspace = true;
     } else if (value === "--glob" && (command === "federation" || command === "workspace")) {
@@ -321,6 +331,7 @@ async function runFederationAnalysis(
   baseline?: string | BaselineOptions,
   verbose = false,
   config: DoctorOptions = {},
+  score = true,
 ): Promise<number> {
   if (files.length === 0) {
     process.stderr.write("No project reports matched.\n");
@@ -331,6 +342,7 @@ async function runFederationAnalysis(
     ...(formats ? { formats, outputDirectory } : {}),
     ...(baseline ? { baseline } : {}),
     ...(verbose ? { quiet: false, printLog: { success: true } } : {}),
+    score,
     ...(config.rules ? { rules: config.rules } : {}),
     ...(config.alwaysShared ? { alwaysShared: config.alwaysShared } : {}),
     root: process.cwd(),
@@ -405,7 +417,14 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           roots: parsed.roots,
           ...(parsed.globs.length > 0 ? { globs: parsed.globs } : {}),
         });
-        return await runFederationAnalysis(files, parsed.formats, baseline, parsed.verbose, config);
+        return await runFederationAnalysis(
+          files,
+          parsed.formats,
+          baseline,
+          parsed.verbose,
+          config,
+          parsed.score,
+        );
       }
       if (parsed.patterns.length === 0) {
         process.stderr.write(
@@ -414,7 +433,14 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         return 2;
       }
       const files = await fg(parsed.patterns, { absolute: true, onlyFiles: true });
-      return await runFederationAnalysis(files, parsed.formats, baseline, parsed.verbose, config);
+      return await runFederationAnalysis(
+        files,
+        parsed.formats,
+        baseline,
+        parsed.verbose,
+        config,
+        parsed.score,
+      );
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
       return 2;
@@ -469,6 +495,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       options.quiet = false;
       options.printLog = { ...options.printLog, success: true };
     }
+    if (!parsed.score) options.score = false;
     if (parsed.formats) options.output = { ...config.output, formats: parsed.formats };
     if (parsed.baseline) options.baseline = parsed.baseline;
     const result = await analyze(options);

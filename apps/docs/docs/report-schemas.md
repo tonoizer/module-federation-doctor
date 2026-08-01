@@ -124,6 +124,27 @@ Findings may include `suppressed` / `suppressionReason` when a
 [fingerprint baseline](./baselines.md) matches. Report `summary.suppressed`
 counts those findings when present.
 
+## Health score (`summary.score`)
+
+Report summaries include an offline federation health score:
+
+- `summary.score`: integer `0–100`, or `null` when analysis is too partial
+  (non-suppressed `doctor/partial-analysis`)
+- `summary.scoreLabel`: `"Great"` | `"OK"` | `"Needs work"` | `null`
+
+Formula (unique rule ids, not raw finding count):
+
+```text
+score = clamp(0, round(100 − 1.5×|unique error rules| − 0.75×|unique warning rules|))
+```
+
+Excluded from the score surface by default: `info` findings, tooling-category
+rules, `doctor/*` advisories, and baseline-suppressed findings. Bands: **≥75
+Great**, **≥50 OK**, else **Needs work**. The score does not change `failOn`
+semantics. Terminal printing can be disabled with `--no-score` / `score: false`
+while JSON still includes the fields. Pair with [CLI agent prompts](./cli.md)
+(#124) for top-3 handoff after the score footer.
+
 ## Semantic identity schema
 
 `@module-federation/doctor/schemas/identity.schema.json` is the additive

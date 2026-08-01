@@ -10,6 +10,7 @@ mfdoctor check packages/host --ci
 mfdoctor check --format terminal,json,sarif
 mfdoctor check --baseline ./mfdoctor.baseline.json
 mfdoctor check --verbose
+mfdoctor check --no-score
 mfdoctor workspace
 mfdoctor workspace apps packages --format terminal,json,sarif
 mfdoctor federation --workspace
@@ -46,8 +47,12 @@ quiet success). Restore the green success line with any of:
 
 When findings exist, the terminal block includes severity, rule id, message, a
 short fix, the Doctor rule docs URL, and official `module-federation.io` sources
-when available. Adapters share this single print path — they do not also push
-per-finding bundler warnings.
+when available. After the counts line, Doctor prints a colorized health score
+footer (`Score: N/100 (Great|OK|Needs work)`). Hide it with `--no-score` or
+`score: false` in config/plugin options — report JSON still includes
+`summary.score` / `summary.scoreLabel`. See [Report schemas](./report-schemas.md)
+for the formula and null cases. Adapters share this single print path — they do
+not also push per-finding bundler warnings.
 
 ## Workspace federation gate
 

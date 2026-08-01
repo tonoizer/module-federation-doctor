@@ -571,6 +571,8 @@ export interface DoctorPrintLog {
   success?: boolean;
 }
 
+export type HealthScoreLabel = "Great" | "OK" | "Needs work";
+
 export interface DoctorOptions {
   moduleFederation?: ModuleFederationConfigLike;
   bundler?: BundlerName;
@@ -595,6 +597,12 @@ export interface DoctorOptions {
     formats?: OutputFormat[];
   };
   failOn?: "never" | "warning" | "error";
+  /**
+   * When false, omit the health score footer from terminal output.
+   * Report JSON still includes `summary.score` / `summary.scoreLabel`.
+   * CLI: `--no-score`.
+   */
+  score?: boolean;
   /**
    * When true (default), skip terminal output on zero findings.
    * Override with `printLog.success: true`, `quiet: false`, CLI `--verbose`,
@@ -649,6 +657,11 @@ export interface ResolvedDoctorOptions {
     formats: OutputFormat[];
   };
   failOn: "never" | "warning" | "error";
+  /**
+   * When false, omit the health score footer from terminal output.
+   * Defaults to true.
+   */
+  score: boolean;
   /** Resolved quiet-success gate for the terminal reporter. */
   quiet: boolean;
   printLog: Required<DoctorPrintLog>;
@@ -802,6 +815,13 @@ export interface DoctorReport {
     errors: number;
     /** Count of findings marked suppressed by a fingerprint baseline. */
     suppressed?: number;
+    /**
+     * Offline unique-rule health score in `[0, 100]`, or `null` when analysis
+     * is too partial (`doctor/partial-analysis`).
+     */
+    score?: number | null;
+    /** Band label for `score`, or `null` when `score` is `null`. */
+    scoreLabel?: HealthScoreLabel | null;
   };
   findings: DoctorFinding[];
 }

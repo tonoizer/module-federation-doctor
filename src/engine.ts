@@ -11,6 +11,7 @@ import {
 } from "./baseline.js";
 import { addBuildFacts, collectProjectFacts, type BuildDiagnostics } from "./collect.js";
 import { resolveOptions } from "./config.js";
+import { computeHealthScore } from "./health-score.js";
 import { builtInRules, federationRuleMeta } from "./rules.js";
 import { DEFAULT_ALWAYS_SHARED } from "./shared-policy.js";
 import { buildFederationModel, findFederationCycleGroups } from "./federation-model.js";
@@ -98,6 +99,7 @@ async function runRule(
 
 function reportFor(facts: ProjectFacts, findings: DoctorFinding[]): DoctorReport {
   const summary = summarizeFindings(findings);
+  const health = computeHealthScore(findings);
   return {
     schemaVersion: 1,
     capabilities: facts.capabilities,
@@ -107,6 +109,8 @@ function reportFor(facts: ProjectFacts, findings: DoctorFinding[]): DoctorReport
       warnings: summary.warnings,
       errors: summary.errors,
       ...(summary.suppressed > 0 ? { suppressed: summary.suppressed } : {}),
+      score: health.score,
+      scoreLabel: health.scoreLabel,
     },
     findings,
   };
@@ -165,6 +169,7 @@ async function runAnalysis(
     await writeReports(safeFacts, report, resolved.output.directory, resolved.output.formats, {
       quiet: resolved.quiet,
       printLog: resolved.printLog,
+      score: resolved.score,
     });
     return {
       facts: safeFacts,
@@ -228,6 +233,8 @@ export async function analyzeFederation(
     root?: string;
     quiet?: boolean;
     printLog?: { success?: boolean };
+    /** When false, omit health score from terminal output. */
+    score?: boolean;
     /** Severity / off map (supports `rules: { "federation/ghost-shares": "off" }`). */
     rules?: Record<string, RuleSetting>;
     /** Packages excluded from host-gap / ghost-share heuristics. */
@@ -492,6 +499,7 @@ export async function analyzeFederation(
     await writeFederationReports(projects, report, options.outputDirectory, formats, {
       ...(options.quiet !== undefined ? { quiet: options.quiet } : {}),
       ...(options.printLog !== undefined ? { printLog: options.printLog } : {}),
+      ...(options.score !== undefined ? { score: options.score } : {}),
     });
   const failOn = options.failOn ?? "error";
   return {
