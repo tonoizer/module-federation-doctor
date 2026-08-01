@@ -740,4 +740,32 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: 'Set `library: { type: "commonjs-module" }` (or another commonjs-like type) and `dts: false` on node/SSR producers. Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
     sources: ["https://module-federation.io/blog/node"],
   },
+  "bridge/vue-share-missing": {
+    category: "correctness",
+    impact:
+      "Vue Bridge remotes and hosts that omit `vue` (and `vue-router` when used) from `shared` can load duplicate Vue runtimes and break reactivity or routing.",
+    fix: 'Share `vue` (and `vue-router` when imported) as singletons, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/integrations/practice/vue"],
+  },
+  "bridge/vue-ssr-fresh-context": {
+    category: "reliability",
+    impact:
+      "Reusing one Vue app/router/store across SSR requests leaks request state between users.",
+    fix: 'Create per-request app/router/store factories (or use Bridge SSR hydration helpers). Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    sources: ["https://module-federation.io/integrations/practice/vue"],
+  },
+  "bridge/vue-server-entry": {
+    category: "reliability",
+    impact:
+      "Browser-only Vue Bridge entries in node/SSR builds miss the server/hydration contract and can leak client-only Bridge code.",
+    fix: 'Import `@module-federation/bridge-vue3/server` (or the documented SSR entry). Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    sources: ["https://module-federation.io/integrations/practice/vue"],
+  },
+  "bridge/vue-consumer-manual": {
+    category: "reliability",
+    impact:
+      "Hand-rolled `loadRemote` mounts skip Vue Bridge lifecycle helpers and documented loading/error contracts.",
+    fix: 'Prefer `createRemoteAppComponent` from `@module-federation/bridge-vue3`, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/integrations/practice/vue"],
+  },
 };

@@ -58,6 +58,36 @@ export function isVueBridgeProject(facts: ProjectFacts): boolean {
   return mentionsPackage(allSignals(facts), BRIDGE_VUE3_PKG);
 }
 
+export function hasSharedPackage(
+  shared: Record<string, NormalizedShared> | undefined,
+  pkg: string,
+): boolean {
+  if (!shared) return false;
+  return Object.keys(shared).some((key) => key === pkg || key.startsWith(`${pkg}/`));
+}
+
+/** True when `vue-router` appears in deps/imports (share check only when used). */
+export function usesVueRouter(facts: ProjectFacts): boolean {
+  return mentionsPackage(allSignals(facts), "vue-router");
+}
+
+export function hasBridgeVueServerEntry(facts: ProjectFacts): boolean {
+  return [...(facts.imports.specifiers ?? []), ...(facts.imports.deepImports ?? [])].some(
+    (signal) =>
+      signal === `${BRIDGE_VUE3_PKG}/server` || signal.startsWith(`${BRIDGE_VUE3_PKG}/server/`),
+  );
+}
+
+/** Soft SSR freshness signals for Vue Bridge (createSSRApp / hydration registry / per-request app). */
+export function hasVueBridgeSsrFreshContextHints(source: string): boolean {
+  return (
+    /\bcreateSSRApp\b/.test(source) ||
+    /\bprovideBridgeHydrationRegistry\b/.test(source) ||
+    /\bfresh(?:App|Context|Router|Store)\b/i.test(source) ||
+    /\bper[- ]?request\b/i.test(source)
+  );
+}
+
 function classifyBridgeReactSignal(signal: string): ReactBridgeEntryMajor {
   if (signal === `${BRIDGE_REACT_PKG}/v19` || signal.startsWith(`${BRIDGE_REACT_PKG}/v19/`))
     return 19;

@@ -1084,6 +1084,87 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "bridge/vue-share-missing",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-vue3"] = "0.2.0";
+        facts.dependencies.declared.vue = "3.5.0";
+        facts.imports.packages = ["@module-federation/bridge-vue3", "vue"];
+        facts.moduleFederation!.shared = {};
+      },
+    ],
+    [
+      "bridge/vue-ssr-fresh-context",
+      (facts: ProjectFacts) => {
+        const root = fsSync.mkdtempSync(path.join(os.tmpdir(), "mfdoctor-vue-ssr-fresh-"));
+        fsSync.mkdirSync(path.join(root, "src"));
+        fsSync.writeFileSync(
+          path.join(root, "src/App.vue"),
+          [
+            'import { createBridgeComponent } from "@module-federation/bridge-vue3";',
+            "export default createBridgeComponent({ rootComponent: {} });",
+            "",
+          ].join("\n"),
+        );
+        facts.project.root = root;
+        facts.dependencies.declared["@module-federation/bridge-vue3"] = "0.2.0";
+        facts.imports.sourceFiles = ["src/App.vue"];
+        facts.imports.packages = ["@module-federation/bridge-vue3"];
+        facts.imports.specifiers = ["@module-federation/bridge-vue3"];
+        facts.moduleFederation!.experiments = {
+          asyncStartup: false,
+          externalRuntime: false,
+          provideExternalRuntime: false,
+          target: "node",
+        };
+        facts.moduleFederation!.shared = {
+          vue: { package: "vue", singleton: true, eager: false, shareScope: "default" },
+        };
+      },
+    ],
+    [
+      "bridge/vue-server-entry",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-vue3"] = "0.2.0";
+        facts.imports.packages = ["@module-federation/bridge-vue3"];
+        facts.imports.specifiers = ["@module-federation/bridge-vue3"];
+        facts.moduleFederation!.experiments = {
+          asyncStartup: false,
+          externalRuntime: false,
+          provideExternalRuntime: false,
+          target: "node",
+        };
+        facts.moduleFederation!.shared = {
+          vue: { package: "vue", singleton: true, eager: false, shareScope: "default" },
+        };
+      },
+    ],
+    [
+      "bridge/vue-consumer-manual",
+      (facts: ProjectFacts) => {
+        const root = fsSync.mkdtempSync(path.join(os.tmpdir(), "mfdoctor-vue-manual-"));
+        fsSync.mkdirSync(path.join(root, "src"));
+        fsSync.writeFileSync(
+          path.join(root, "src/App.ts"),
+          'import { loadRemote } from "@module-federation/runtime";\nloadRemote("shop/App");\n',
+        );
+        facts.project.root = root;
+        facts.dependencies.declared["@module-federation/bridge-vue3"] = "0.2.0";
+        facts.imports.sourceFiles = ["src/App.ts"];
+        facts.imports.packages = ["@module-federation/bridge-vue3", "@module-federation/runtime"];
+        facts.imports.specifiers = ["@module-federation/bridge-vue3", "@module-federation/runtime"];
+        facts.moduleFederation!.shared = {
+          vue: { package: "vue", singleton: true, eager: false, shareScope: "default" },
+        };
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/mf-manifest.json",
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
       "ssr/node-remote-manifest",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.experiments = {

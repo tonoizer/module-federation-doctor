@@ -8,13 +8,18 @@ import {
   detectInvalidBridgeProviderShape,
   hasBridgeReactPlugin,
   hasBridgeServerEntry,
+  hasBridgeVueServerEntry,
   hasReactDomPrefixShare,
+  hasSharedPackage,
   hasSharedReactRouter,
+  hasVueBridgeSsrFreshContextHints,
   isBridgeRouterEnabled,
   isNodeOrSsrTarget,
   isReactBridgeProject,
+  isVueBridgeProject,
   reactBridgeEntryMajor,
   sharedReactRouterKeys,
+  usesVueRouter,
 } from "./bridge-detect.js";
 import {
   isMfSsrFragmentRemoteEntry,
@@ -1719,6 +1724,107 @@ export const builtInRules: DoctorRule[] = [
       "`bridge.disableAlias` is deprecated; prefer an explicit `enableBridgeRouter` setting.",
       { bridge: mf(context)?.bridge ?? null },
       'Replace `disableAlias` with `enableBridgeRouter: false` (or true), or set the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/vue-share-missing", "error", (context) => {
+    if (!isVueBridgeProject(context.facts)) return;
+    const shared = mf(context)?.shared ?? {};
+    const missing: string[] = [];
+    if (!hasSharedPackage(shared, "vue")) missing.push("vue");
+    if (usesVueRouter(context.facts) && !hasSharedPackage(shared, "vue-router"))
+      missing.push("vue-router");
+    if (missing.length === 0) return;
+    report(
+      context,
+      `Vue Bridge projects should share ${missing.map((name) => `\`${name}\``).join(" and ")}.`,
+      { missing, sharedKeys: Object.keys(shared) },
+      'Add the missing packages to `shared` (singleton recommended), or set the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/vue-ssr-fresh-context", "warning", async (context) => {
+    if (!isVueBridgeProject(context.facts)) return;
+    const ssrMode = optionSsrMode(context.options);
+    if (
+      !isSsrNodeEnvApplicable(context.facts, ssrMode) &&
+      !isNodeOrSsrTarget(context.facts, ssrMode)
+    )
+      return;
+    const root = context.root ?? context.facts.project.root;
+    const files = context.facts.imports.sourceFiles ?? [];
+    if (files.length === 0) return;
+    let sawBridge = false;
+    let sawFresh = false;
+    for (const file of files) {
+      let source: string;
+      try {
+        source = await fs.readFile(path.join(root, file), "utf8");
+      } catch {
+        continue;
+      }
+      if (
+        !source.includes("@module-federation/bridge-vue3") &&
+        !/\bcreateBridgeComponent\b/.test(source)
+      )
+        continue;
+      sawBridge = true;
+      if (hasVueBridgeSsrFreshContextHints(source)) sawFresh = true;
+    }
+    if (!sawBridge || sawFresh) return;
+    report(
+      context,
+      "Vue Bridge SSR builds should create a fresh app/router/store context per request (or use documented hydration helpers).",
+      { ssrMode: ssrMode ?? null },
+      'Use per-request `createSSRApp` / router / store factories (or `provideBridgeHydrationRegistry` when available), set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    );
+  }),
+  createRule("bridge/vue-server-entry", "warning", (context) => {
+    if (!isVueBridgeProject(context.facts)) return;
+    const ssrMode = optionSsrMode(context.options);
+    if (
+      !isSsrNodeEnvApplicable(context.facts, ssrMode) &&
+      !isNodeOrSsrTarget(context.facts, ssrMode)
+    )
+      return;
+    if (hasBridgeVueServerEntry(context.facts)) return;
+    report(
+      context,
+      "Vue Bridge SSR builds should import the Bridge `/server` entry (or documented SSR helpers).",
+      {
+        ssrMode: ssrMode ?? null,
+        entries: [
+          ...(context.facts.imports.specifiers ?? []),
+          ...(context.facts.imports.deepImports ?? []),
+        ].filter((signal) => signal.startsWith("@module-federation/bridge-vue3")),
+      },
+      'Import `@module-federation/bridge-vue3/server` (or the documented SSR entry) for node builds, set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    );
+  }),
+  createRule("bridge/vue-consumer-manual", "warning", async (context) => {
+    if (!isVueBridgeProject(context.facts)) return;
+    const hasRemotes = Object.keys(mf(context)?.remotes ?? {}).length > 0;
+    if (!hasRemotes && (context.facts.imports.remotes?.length ?? 0) === 0) return;
+    const root = context.root ?? context.facts.project.root;
+    let sawManual = false;
+    let sawHelper = false;
+    for (const file of context.facts.imports.sourceFiles ?? []) {
+      let source: string;
+      try {
+        source = await fs.readFile(path.join(root, file), "utf8");
+      } catch {
+        continue;
+      }
+      if (/\b(?:createRemoteAppComponent|createBridgeComponent)\b/.test(source)) sawHelper = true;
+      if (/\bloadRemote\b/.test(source)) sawManual = true;
+    }
+    if (!sawManual || sawHelper) return;
+    report(
+      context,
+      "Vue Bridge remotes appear to use manual `loadRemote` instead of Bridge consumer helpers.",
+      {
+        remotes: Object.keys(mf(context)?.remotes ?? {}),
+        importRemotes: context.facts.imports.remotes ?? [],
+      },
+      'Prefer createRemoteAppComponent from `@module-federation/bridge-vue3`, or set the rule to `"off"`.',
     );
   }),
   createRule("ssr/node-remote-manifest", "error", (context) => {
