@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": 1,
+  "collector": { "name": "adversarial-fixture", "version": "1" },
+  "transport": "file",
+  "captureId": "capture-security-fixture",
+  "capabilities": {
+    "observations": [
+      {
+        "capabilityKind": "reports",
+        "state": "partial",
+        "reason": "fixture keeps only safe topology evidence",
+        "source": "observability",
+        "scope": "top-page",
+        "priority": 1,
+        "sourceSchemaVersion": "2.5"
+      }
+    ]
+  },
+  "limits": {
+    "maxBytes": 5242880,
+    "maxReports": 100,
+    "maxEvents": 5000,
+    "maxSnapshots": 500,
+    "maxInstances": 100,
+    "maxNetworkRecords": 2000,
+    "maxErrors": 200,
+    "maxStringLength": 4096,
+    "maxDiagnosisStringLength": 16384,
+    "maxDepth": 12,
+    "maxObjectKeys": 100
+  },
+  "truncation": [
+    {
+      "collection": "network",
+      "dropped": 2,
+      "firstSequence": 8,
+      "lastSequence": 9,
+      "reason": "network quota"
+    }
+  ],
+  "reports": [
+    {
+      "id": "observability:5bab0f7c9f2a885877f35508",
+      "identity": {
+        "captureId": "capture-security-fixture",
+        "navigationId": "navigation-1",
+        "realmId": "realm-top",
+        "sequence": 0,
+        "hostName": "checkout-host",
+        "remoteName": "catalog"
+      },
+      "source": "observability",
+      "capturedAt": 1,
+      "contentDigest": "6d9ab0078cccae2592af967536e6f30c237ad78a0d0fb9e45e8c56ec12b887c1",
+      "provenance": {
+        "collector": { "name": "adversarial-fixture", "version": "1" },
+        "inputKind": "observability-report",
+        "source": "official-observability",
+        "sourceSchemaVersion": "2.5"
+      },
+      "completeness": {
+        "status": "partial",
+        "reason": "diagnostic payloads intentionally omitted"
+      },
+      "value": {
+        "traceId": "trace-safe",
+        "hostName": "checkout-host",
+        "outcome": "remote-loaded",
+        "moduleInfoNames": ["catalog/ProductCard"]
+      }
+    }
+  ],
+  "events": [],
+  "devtools": [],
+  "snapshots": [],
+  "instances": [],
+  "network": [],
+  "errors": [],
+  "relations": []
+}
