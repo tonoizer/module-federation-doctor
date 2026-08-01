@@ -38,10 +38,47 @@ const KNOWN_OUTCOMES = new Set([
 ]);
 const MAX_EVIDENCE_ITEMS = 24;
 
+type RuntimeTraceFailureCode =
+  | "malformed-json"
+  | "wrong-document-kind"
+  | "unsupported-version"
+  | "invalid-field"
+  | "unsupported-shape";
+
+interface RuntimeTraceErrorDetails {
+  fileLabel?: string;
+  failureCode: RuntimeTraceFailureCode;
+  pointer: string;
+}
+
 export class RuntimeTraceError extends Error {
-  constructor(message: string) {
+  readonly details: RuntimeTraceErrorDetails;
+  readonly fileLabel: string | undefined;
+  readonly failureCode: RuntimeTraceFailureCode;
+  readonly pointer: string;
+
+  constructor(message: string, details?: Partial<RuntimeTraceErrorDetails>) {
     super(message);
     this.name = "RuntimeTraceError";
+    const pointer =
+      details?.pointer ?? message.match(/\/(?:[A-Za-z0-9_~-]+(?:\/[A-Za-z0-9_~-]+)*)?/)?.[0] ?? "/";
+    const failureCode =
+      details?.failureCode ??
+      (message.includes("Wrong runtime trace document kind")
+        ? "wrong-document-kind"
+        : message.includes("schema version") || message.includes("source contract")
+          ? "unsupported-version"
+          : message.includes("shape") || message.includes("must be an object")
+            ? "unsupported-shape"
+            : "invalid-field");
+    this.details = {
+      ...(details?.fileLabel ? { fileLabel: details.fileLabel } : {}),
+      failureCode,
+      pointer,
+    };
+    this.fileLabel = details?.fileLabel;
+    this.failureCode = failureCode;
+    this.pointer = pointer;
   }
 }
 
@@ -91,6 +128,51 @@ function expectArray(value: unknown, fieldPath: string): unknown[] | undefined {
   if (!Array.isArray(value))
     throw new RuntimeTraceError(`Invalid runtime trace field ${fieldPath}: expected an array.`);
   return value;
+}
+
+function boundedLoadedBefore(
+  value: unknown,
+  fieldPath: string,
+): RuntimeTraceReport["loadedBefore"] | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "boolean") return value;
+  const record = asRecord(value);
+  if (!record)
+    throw new RuntimeTraceError(
+      `Invalid runtime trace field ${fieldPath}: expected a boolean or object.`,
+    );
+  const producer = expectBoolean(record.producer, `${fieldPath}/producer`);
+  const expose = expectBoolean(record.expose, `${fieldPath}/expose`);
+  const consumers = expectArray(record.consumers, `${fieldPath}/consumers`);
+  if (consumers && consumers.some((item) => !asRecord(item)))
+    throw new RuntimeTraceError(
+      `Invalid runtime trace field ${fieldPath}/consumers: every item must be an object.`,
+    );
+  const normalizedConsumers = consumers?.slice(0, MAX_EVIDENCE_ITEMS).map((item, index) => {
+    const consumer = asRecord(item)!;
+    type LoadedBeforeInfo = Exclude<NonNullable<RuntimeTraceReport["loadedBefore"]>, boolean>;
+    const next: NonNullable<LoadedBeforeInfo["consumers"]>[number] = {};
+    const name = expectString(consumer.name, `${fieldPath}/consumers/${index}/name`);
+    const remoteEntryExports = expectBoolean(
+      consumer.remoteEntryExports,
+      `${fieldPath}/consumers/${index}/remoteEntryExports`,
+    );
+    const containerInitialized = expectBoolean(
+      consumer.containerInitialized,
+      `${fieldPath}/consumers/${index}/containerInitialized`,
+    );
+    const exposes = expectStringArray(consumer.exposes, `${fieldPath}/consumers/${index}/exposes`);
+    if (name) next.name = String(redactDeep(name)).slice(0, 500);
+    if (remoteEntryExports !== undefined) next.remoteEntryExports = remoteEntryExports;
+    if (containerInitialized !== undefined) next.containerInitialized = containerInitialized;
+    if (exposes) next.exposes = boundedStrings(exposes) ?? [];
+    return next;
+  });
+  return {
+    ...(producer !== undefined ? { producer } : {}),
+    ...(expose !== undefined ? { expose } : {}),
+    ...(normalizedConsumers ? { consumers: normalizedConsumers } : {}),
+  } as RuntimeTraceReport["loadedBefore"];
 }
 
 function expectStringArray(value: unknown, fieldPath: string): string[] | undefined {
@@ -209,11 +291,13 @@ function readEvents(raw: unknown): RuntimeTraceReport["events"] {
     const phase = expectString(event.phase, "/events/phase");
     const status = readStatus(event.status, "/events/status");
     const errorCode = expectString(event.errorCode, "/events/errorCode");
+    const retryable = expectBoolean(event.retryable, "/events/retryable");
     if (phase)
       next.phase =
         phase === "init" ? "remoteEntryInit" : phase === "factory" ? "moduleFactory" : phase;
     if (status) next.status = status;
     if (errorCode) next.errorCode = errorCode;
+    if (retryable !== undefined) next.retryable = retryable;
     events.push(next);
   }
   return events;
@@ -246,6 +330,8 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     summary !== undefined ||
     remote !== undefined ||
     shared !== undefined ||
+    record.loadedBefore !== undefined ||
+    record.retryable !== undefined ||
     Array.isArray(record.events) ||
     errorCode !== undefined;
   if (!hasShape)
@@ -297,9 +383,21 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     expectBoolean(asRecord(summary?.flags)?.recovered, "/summary/flags/recovered");
   if (recovered !== undefined) report.recovered = recovered;
   const loadedBefore =
-    expectBoolean(record.loadedBefore, "/loadedBefore") ??
-    expectBoolean(summary?.loadedBefore, "/summary/loadedBefore");
+    boundedLoadedBefore(record.loadedBefore, "/loadedBefore") ??
+    boundedLoadedBefore(summary?.loadedBefore, "/summary/loadedBefore");
   if (loadedBefore !== undefined) report.loadedBefore = loadedBefore;
+  if (
+    [record.loadedBefore, summary?.loadedBefore].some((value) => {
+      const loadedBeforeRecord = asRecord(value);
+      const consumers = loadedBeforeRecord?.consumers;
+      return Array.isArray(consumers) && consumers.length > MAX_EVIDENCE_ITEMS;
+    })
+  )
+    report.evidenceClipped = true;
+  const retryable =
+    expectBoolean(record.retryable, "/retryable") ??
+    expectBoolean(summaryError?.retryable, "/summary/error/retryable");
+  if (retryable !== undefined) report.retryable = retryable;
   const flags = expectRecord(summary?.flags, "/summary/flags");
   if (flags)
     report.flags = Object.fromEntries(
@@ -390,12 +488,15 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
       expectString(shared.shareKey, "/shared/shareKey");
     const normalizedShared: NonNullable<RuntimeTraceReport["shared"]> = {};
     const provider = expectString(shared.provider, "/shared/provider");
-    const requiredVersion = expectString(shared.requiredVersion, "/shared/requiredVersion");
+    const requiredVersion =
+      shared.requiredVersion === false
+        ? false
+        : expectString(shared.requiredVersion, "/shared/requiredVersion");
     const selectedVersion = expectString(shared.selectedVersion, "/shared/selectedVersion");
     const reason = expectString(shared.reason, "/shared/reason");
     if (packageName) normalizedShared.package = packageName;
     if (provider) normalizedShared.provider = provider;
-    if (requiredVersion) normalizedShared.requiredVersion = requiredVersion;
+    if (requiredVersion !== undefined) normalizedShared.requiredVersion = requiredVersion;
     if (selectedVersion) normalizedShared.selectedVersion = selectedVersion;
     if (shared.availableVersions !== undefined && !Array.isArray(shared.availableVersions))
       throw new RuntimeTraceError(
@@ -528,8 +629,9 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   return redactDeep(report) as RuntimeTraceReport;
 }
 
-function extractRawReports(raw: unknown): unknown[] {
-  if (Array.isArray(raw)) return raw;
+function extractRawReports(raw: unknown): { reports: unknown[]; clipped: boolean } {
+  if (Array.isArray(raw))
+    return { reports: raw.slice(0, MAX_EVIDENCE_ITEMS), clipped: raw.length > MAX_EVIDENCE_ITEMS };
   const record = asRecord(raw);
   if (!record)
     throw new RuntimeTraceError(
@@ -542,10 +644,13 @@ function extractRawReports(raw: unknown): unknown[] {
       throw new RuntimeTraceError(
         "Invalid runtime trace envelope: use either report or reports, not both.",
       );
-    return record.reports;
+    return {
+      reports: record.reports.slice(0, MAX_EVIDENCE_ITEMS),
+      clipped: record.reports.length > MAX_EVIDENCE_ITEMS,
+    };
   }
-  if (record.report !== undefined) return [record.report];
-  return [record];
+  if (record.report !== undefined) return { reports: [record.report], clipped: false };
+  return { reports: [record], clipped: false };
 }
 
 function isBuildReportDocument(value: unknown): boolean {
@@ -583,7 +688,8 @@ export function parseRuntimeTraces(raw: unknown): RuntimeTraceReport[] {
     throw new RuntimeTraceError(
       "Wrong runtime trace document kind: build-report/Doctor report is not a runtime Observability report.",
     );
-  const rawReports = extractRawReports(raw);
+  const extracted = extractRawReports(raw);
+  const rawReports = extracted.reports;
   rawReports.forEach(assertSupportedDocumentVersion);
   if (rawReports.some(isBuildReportDocument))
     throw new RuntimeTraceError(
@@ -596,6 +702,7 @@ export function parseRuntimeTraces(raw: unknown): RuntimeTraceReport[] {
     throw new RuntimeTraceError(
       "Runtime trace JSON must contain at least one Observability-style report.",
     );
+  if (extracted.clipped && reports[0]) reports[0].evidenceClipped = true;
   return reports;
 }
 
@@ -605,15 +712,34 @@ export async function loadRuntimeTraceFile(filePath: string): Promise<RuntimeTra
   try {
     text = await fs.readFile(resolved, "utf8");
   } catch {
-    throw new RuntimeTraceError(`Unable to read runtime trace: ${resolved}`);
+    throw new RuntimeTraceError(`Unable to read runtime trace: ${resolved}`, {
+      fileLabel: resolved,
+      failureCode: "malformed-json",
+      pointer: "/",
+    });
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(text) as unknown;
   } catch {
-    throw new RuntimeTraceError(`Runtime trace is not valid JSON: ${resolved}`);
+    throw new RuntimeTraceError(`Runtime trace is not valid JSON: ${resolved}`, {
+      fileLabel: resolved,
+      failureCode: "malformed-json",
+      pointer: "/",
+    });
   }
-  return parseRuntimeTraces(parsed);
+  try {
+    return parseRuntimeTraces(parsed);
+  } catch (error) {
+    if (error instanceof RuntimeTraceError) {
+      throw new RuntimeTraceError(`${resolved}: ${error.message}`, {
+        fileLabel: resolved,
+        failureCode: error.failureCode,
+        pointer: error.pointer,
+      });
+    }
+    throw error;
+  }
 }
 
 function remoteKeys(project: ProjectFacts): string[] {
@@ -710,8 +836,11 @@ export function correlateRuntime(
       : (trace.diagnosis?.ownerHint ?? trace.ownerHint ?? trace.diagnosis?.owner);
     const exactProducer = Boolean(trace.remote?.name && producerProject);
     const exactHost = Boolean(trace.hostName && hostProject);
+    const ownerHintUnresolved =
+      (owner === "host" && !hostProject) || (owner === "remote" && !producerProject);
     const ambiguousIdentity =
       ownerHintConflict ||
+      ownerHintUnresolved ||
       (!owner &&
         exactHost &&
         exactProducer &&
@@ -756,13 +885,15 @@ export function correlateRuntime(
         ? {
             matchReason: ownerHintConflict
               ? "conflicting owner hints; neutral runtime attribution"
-              : !supportedOwner
-                ? "unsupported owner hint; neutral runtime attribution"
-                : owner === "network"
-                  ? "network failure; requesting host is context"
-                  : owner === "shared"
-                    ? "shared resolver/provider evidence"
-                    : "ambiguous host/producer identity",
+              : ownerHintUnresolved
+                ? "owner hint did not match an exact candidate; neutral runtime attribution"
+                : !supportedOwner
+                  ? "unsupported owner hint; neutral runtime attribution"
+                  : owner === "network"
+                    ? "network failure; requesting host is context"
+                    : owner === "shared"
+                      ? "shared resolver/provider evidence"
+                      : "ambiguous host/producer identity",
             ...(ownerHintConflict && trace.ownerHints ? { ownerHints: trace.ownerHints } : {}),
             candidates: [
               ...new Set(
@@ -896,17 +1027,19 @@ export function correlateRuntime(
         typeof required === "string" ? required : undefined,
         installed,
       );
+      const providerCandidates = trace.shared?.provider
+        ? projects.filter(
+            (project) =>
+              project.moduleFederation?.name === trace.shared?.provider ||
+              project.artifacts.manifest?.name === trace.shared?.provider ||
+              project.artifacts.manifest?.id === trace.shared?.provider,
+          )
+        : [];
       const providerFallbackMismatch =
-        consumersWithoutFallback.length > 0 && providers.length === 0;
+        Boolean(trace.shared?.provider) &&
+        consumersWithoutFallback.length > 0 &&
+        providers.length === 0;
       if (!recovered && (sharedFailed || versionMismatch || providerFallbackMismatch)) {
-        const providerCandidates = trace.shared?.provider
-          ? projects.filter(
-              (project) =>
-                project.moduleFederation?.name === trace.shared?.provider ||
-                project.artifacts.manifest?.name === trace.shared?.provider ||
-                project.artifacts.manifest?.id === trace.shared?.provider,
-            )
-          : [];
         const sharedCandidates = [
           ...sharedEntries.map((entry) => entry.project),
           ...providerCandidates.map((project) => project.project.name),
@@ -937,7 +1070,7 @@ export function correlateRuntime(
               ...(trace.shared?.selectedVersion
                 ? { selectedVersion: trace.shared.selectedVersion }
                 : {}),
-              ...(typeof required === "string" ? { requiredVersion: required } : {}),
+              ...(required !== undefined ? { requiredVersion: required } : {}),
               ...(installed ? { installedVersion: installed } : {}),
               ...(trace.shared?.provider ? { provider: trace.shared.provider } : {}),
               ...(trace.shared?.reason ? { reason: trace.shared.reason } : {}),

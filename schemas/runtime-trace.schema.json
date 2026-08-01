@@ -28,6 +28,7 @@
           "errorCode": { "type": "string" },
           "errorName": { "type": "string" },
           "errorMessage": { "type": "string" },
+          "retryable": { "type": "boolean" },
           "errorContext": { "type": "object", "additionalProperties": true },
           "failedPhase": { "type": "string" },
           "ownerHint": { "type": "string" },
@@ -35,7 +36,32 @@
           "ownerHintConflict": { "type": "boolean" },
           "outcome": { "type": "string" },
           "recovered": { "type": "boolean" },
-          "loadedBefore": { "type": "boolean" },
+          "loadedBefore": {
+            "anyOf": [
+              { "type": "boolean" },
+              {
+                "type": "object",
+                "properties": {
+                  "producer": { "type": "boolean" },
+                  "expose": { "type": "boolean" },
+                  "consumers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string" },
+                        "remoteEntryExports": { "type": "boolean" },
+                        "containerInitialized": { "type": "boolean" },
+                        "exposes": { "type": "array", "items": { "type": "string" } }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
           "loadCompleted": { "type": "boolean" },
           "runtimeLoaded": { "type": "boolean" },
           "sharedResolved": { "type": "boolean" },
@@ -57,7 +83,9 @@
             "properties": {
               "package": { "type": "string" },
               "provider": { "type": "string" },
-              "requiredVersion": { "type": "string" },
+              "requiredVersion": {
+                "anyOf": [{ "type": "string" }, { "const": false }]
+              },
               "selectedVersion": { "type": "string" },
               "availableVersions": {
                 "type": "array",
@@ -112,7 +140,8 @@
               "properties": {
                 "phase": { "type": "string" },
                 "status": { "type": "string" },
-                "errorCode": { "type": "string" }
+                "errorCode": { "type": "string" },
+                "retryable": { "type": "boolean" }
               },
               "additionalProperties": false
             }

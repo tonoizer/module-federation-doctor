@@ -237,6 +237,38 @@ describe("runtime trace import", () => {
     );
   });
 
+  it("normalizes structured loadedBefore and retryable evidence with bounds", () => {
+    const consumers = Array.from({ length: 100 }, (_, index) => ({
+      name: `consumer-${index}`,
+      remoteEntryExports: true,
+      containerInitialized: false,
+      exposes: [`./Expose-${index}`],
+    }));
+    const [trace] = parseRuntimeTraces({
+      loadedBefore: { producer: true, expose: false, consumers },
+      retryable: true,
+      events: [{ phase: "remoteEntry", status: "error", retryable: true }],
+    });
+    expect(trace?.loadedBefore).toMatchObject({ producer: true, expose: false });
+    expect(typeof trace?.loadedBefore === "object" && trace.loadedBefore?.consumers).toHaveLength(
+      24,
+    );
+    expect(trace?.retryable).toBe(true);
+    expect(trace?.events[0]?.retryable).toBe(true);
+    expect(trace?.evidenceClipped).toBe(true);
+    expect(() => parseRuntimeTraces({ loadedBefore: { producer: "yes" } })).toThrow(
+      /loadedBefore\/producer.*boolean/,
+    );
+  });
+
+  it("preserves requiredVersion false and rejects other wrong types", () => {
+    const [trace] = parseRuntimeTraces({ shared: { package: "react", requiredVersion: false } });
+    expect(trace?.shared?.requiredVersion).toBe(false);
+    expect(() => parseRuntimeTraces({ shared: { package: "react", requiredVersion: 19 } })).toThrow(
+      /requiredVersion.*string/,
+    );
+  });
+
   it("keeps phase-specific factory and preload failures", () => {
     const trace = parseRuntimeTraces({
       traceId: "phase-specific",
@@ -332,6 +364,35 @@ describe("runtime trace import", () => {
     expect(findings.some((finding) => finding.ruleId === "runtime/shared-mismatch")).toBe(false);
   });
 
+  it("does not infer a shared mismatch from import false without runtime shared proof", () => {
+    const host = baseProject({
+      name: "host",
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {},
+        shared: {
+          react: {
+            package: "react",
+            singleton: true,
+            eager: false,
+            requiredVersion: false,
+            import: false,
+            shareScope: "default",
+          },
+        },
+      },
+    });
+    const findings = correlateRuntime(
+      parseRuntimeTraces({
+        shared: { package: "react" },
+        summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+      }),
+      [host],
+    );
+    expect(findings.some((finding) => finding.ruleId === "runtime/shared-mismatch")).toBe(false);
+  });
+
   it("requires shared evidence for shared mismatch and keeps ambiguous attribution neutral", () => {
     const projects = [
       baseProject({ name: "host" }),
@@ -402,6 +463,26 @@ describe("runtime trace import", () => {
     expect(finding?.project).toBe("runtime");
     expect(finding?.evidence).toMatchObject({
       identity: { ownerHints: ["host", "remote"] },
+    });
+  });
+
+  it("keeps an unresolved host owner hint neutral even when the producer is exact", () => {
+    const [trace] = parseRuntimeTraces({
+      hostName: "missing-host",
+      remote: { name: "checkout" },
+      ownerHint: "host",
+      summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+    });
+    const finding = correlateRuntime([trace!], [baseProject({ name: "checkout" })]).find(
+      (item) => item.ruleId === "runtime/remote-load-failed",
+    );
+    expect(finding?.project).toBe("runtime");
+    expect(finding?.evidence).toMatchObject({
+      identity: {
+        ownerHint: "host",
+        matchReason: "owner hint did not match an exact candidate; neutral runtime attribution",
+        candidates: ["checkout"],
+      },
     });
   });
 
@@ -618,5 +699,29 @@ describe("runtime trace import", () => {
         events: [{ phase: "remoteEntry", status: "success" }],
       })[0]!,
     ).toMatchObject({ sourceContract: "partial" });
+  });
+
+  it("clips report envelopes before normalizing every report", () => {
+    const reports = Array.from({ length: 100_000 }, (_, index) => ({
+      traceId: `trace-${index}`,
+      summary: { outcome: "pending" },
+    }));
+    const parsed = parseRuntimeTraces({ reports });
+    expect(parsed).toHaveLength(24);
+    expect(parsed[0]?.evidenceClipped).toBe(true);
+  });
+
+  it("keeps parser errors typed and labeled when reading a file", async () => {
+    const file = path.join(
+      await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-runtime-error-")),
+      "bad.json",
+    );
+    roots.push(path.dirname(file));
+    await fs.writeFile(file, JSON.stringify({ shared: { requiredVersion: 42 } }));
+    await expect(loadRuntimeTraceFile(file)).rejects.toMatchObject({
+      fileLabel: file,
+      failureCode: "invalid-field",
+      pointer: "/shared/requiredVersion",
+    });
   });
 });

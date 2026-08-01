@@ -625,6 +625,7 @@ export interface RuntimeTraceReport {
   errorCode?: string;
   errorName?: string;
   errorMessage?: string;
+  retryable?: boolean;
   errorContext?: Record<string, unknown>;
   failedPhase?: string;
   ownerHint?: string;
@@ -632,7 +633,18 @@ export interface RuntimeTraceReport {
   ownerHintConflict?: boolean;
   outcome?: string;
   recovered?: boolean;
-  loadedBefore?: boolean;
+  loadedBefore?:
+    | boolean
+    | {
+        producer?: boolean;
+        expose?: boolean;
+        consumers?: Array<{
+          name?: string;
+          remoteEntryExports?: boolean;
+          containerInitialized?: boolean;
+          exposes?: string[];
+        }>;
+      };
   flags?: Record<string, boolean>;
   loadCompleted?: boolean;
   runtimeLoaded?: boolean;
@@ -648,7 +660,7 @@ export interface RuntimeTraceReport {
   shared?: {
     package?: string;
     provider?: string;
-    requiredVersion?: string;
+    requiredVersion?: string | false;
     selectedVersion?: string;
     availableVersions?: string[];
     reason?: string;
@@ -675,6 +687,7 @@ export interface RuntimeTraceReport {
     phase?: string;
     status?: string;
     errorCode?: string;
+    retryable?: boolean;
   }>;
   diagnosis?: {
     owner?: string;
