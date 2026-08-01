@@ -31,6 +31,8 @@
           "errorContext": { "type": "object", "additionalProperties": true },
           "failedPhase": { "type": "string" },
           "ownerHint": { "type": "string" },
+          "ownerHints": { "type": "array", "items": { "type": "string" } },
+          "ownerHintConflict": { "type": "boolean" },
           "outcome": { "type": "string" },
           "recovered": { "type": "boolean" },
           "loadedBefore": { "type": "boolean" },

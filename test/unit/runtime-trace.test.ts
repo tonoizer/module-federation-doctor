@@ -139,8 +139,16 @@ describe("runtime trace import", () => {
       diagnosis: {
         title: "Factory failed",
         ownerHint: "remote",
-        facts: { safe: "kept" },
-        actions: [{ id: "retry", title: "Retry" }],
+        facts: {
+          safe: "kept",
+          stack: "/Users/alice/private/app/index.ts:2",
+          trace: "at load (/Users/alice/private/app/index.ts:2)",
+          locator: {
+            filePath: "/home/alice/app/src/file.ts",
+            url: "https://u:p@example.test/a?token=x",
+          },
+        },
+        actions: [{ id: "retry", title: "Retry", errorStack: "/private/app/index.ts:3" }],
       },
     });
     expect(trace).toMatchObject({
@@ -151,7 +159,54 @@ describe("runtime trace import", () => {
       loadedBefore: true,
       diagnosis: { ownerHint: "remote", title: "Factory failed", facts: { safe: "kept" } },
     });
-    expect(JSON.stringify(trace)).not.toMatch(/errorStack|private\/user|Bearer|secret/);
+    expect(JSON.stringify(trace)).not.toMatch(
+      /errorStack|private\/user|Users\/alice|home\/alice|Bearer|secret/,
+    );
+  });
+
+  it("keeps phase-specific factory and preload failures", () => {
+    const trace = parseRuntimeTraces({
+      traceId: "phase-specific",
+      remote: { name: "checkout" },
+      summary: {
+        outcome: "failed",
+        phases: {
+          moduleFactory: { status: "error" },
+          preload: { status: "error" },
+        },
+      },
+    });
+    const findings = correlateRuntime(trace, [baseProject({ name: "checkout" })]);
+    expect(
+      findings.find(
+        (item) =>
+          item.ruleId === "runtime/remote-load-failed" &&
+          item.evidence.phaseKind === "moduleFactory",
+      )?.message,
+    ).toMatch(/module factory/);
+    expect(
+      findings.find(
+        (item) =>
+          item.ruleId === "runtime/remote-load-failed" &&
+          item.evidence.phaseKind === "moduleFactory",
+      )?.evidence,
+    ).toMatchObject({
+      phaseKind: "moduleFactory",
+    });
+  });
+
+  it("migrates legacy init and factory phases without generic-only correlation", () => {
+    const [trace] = parseRuntimeTraces({
+      remote: { name: "checkout" },
+      summary: { outcome: "failed", phases: { factory: { status: "error" } } },
+      diagnosis: { owner: "remote" },
+    });
+    expect(trace!.phases).toEqual({ moduleFactory: { status: "error" } });
+    expect(
+      correlateRuntime([trace!], [baseProject({ name: "checkout" })]).some(
+        (item) => item.ruleId === "runtime/remote-load-failed",
+      ),
+    ).toBe(true);
   });
 
   it("uses final recovered outcome over earlier failed phases", () => {
@@ -186,6 +241,52 @@ describe("runtime trace import", () => {
     const projects = [baseProject({ name: "remote" }), baseProject({ name: "host" })];
     const findings = correlateRuntime(trace, projects);
     expect(findings.find((item) => item.ruleId === "runtime/init-failed")?.project).toBe("runtime");
+  });
+
+  it("keeps conflicting owner hints neutral and preserves the conflict", () => {
+    const [trace] = parseRuntimeTraces({
+      hostName: "host",
+      remote: { name: "checkout" },
+      ownerHint: "host",
+      diagnosis: { ownerHint: "remote" },
+      summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+    });
+    expect(trace).toMatchObject({ ownerHintConflict: true, ownerHints: ["host", "remote"] });
+    const finding = correlateRuntime(
+      [trace!],
+      [baseProject({ name: "host" }), baseProject({ name: "checkout" })],
+    ).find((item) => item.ruleId === "runtime/remote-load-failed");
+    expect(finding?.project).toBe("runtime");
+    expect(finding?.evidence).toMatchObject({
+      identity: { ownerHints: ["host", "remote"] },
+    });
+  });
+
+  it("does not blame a host from alias-only configuration evidence", () => {
+    const host = baseProject({
+      name: "host",
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        shared: {},
+        remotes: {
+          checkout: {
+            name: "checkout",
+            entry: "https://cdn.example/checkout.js",
+            shareScope: "default",
+          },
+        },
+      },
+    });
+    const [trace] = parseRuntimeTraces({
+      remote: { alias: "checkout" },
+      summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+    });
+    expect(
+      correlateRuntime([trace!], [host]).find(
+        (item) => item.ruleId === "runtime/remote-load-failed",
+      )?.project,
+    ).toBe("runtime");
   });
 
   it("correlates remote load failures with project remotes", async () => {
@@ -353,5 +454,19 @@ describe("runtime trace import", () => {
   it("rejects empty or invalid traces", () => {
     expect(() => parseRuntimeTraces({})).toThrow(RuntimeTraceError);
     expect(() => parseRuntimeTraces([])).toThrow(RuntimeTraceError);
+    expect(() => parseRuntimeTraces({ kind: "build-report", projects: [] })).toThrow(
+      /Wrong.*build-report/,
+    );
+    expect(() => parseRuntimeTraces({ report: { findings: [] } })).toThrow(/Wrong.*build-report/);
+    expect(() => parseRuntimeTraces({ schemaVersion: 2, traceId: "future" })).toThrow(/future/);
+    expect(() => parseRuntimeTraces({ reports: [{ schemaVersion: 2, summary: {} }] })).toThrow(
+      /future/,
+    );
+    expect(
+      parseRuntimeTraces({
+        summary: {},
+        events: [{ phase: "remoteEntry", status: "success" }],
+      })[0]!,
+    ).toMatchObject({ sourceContract: "partial" });
   });
 });

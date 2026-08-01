@@ -15,7 +15,15 @@ import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
 import { fingerprint, looksLikeUrl, redact, redactRuntimeUrl, sortFindings } from "./utils.js";
 
 const FAILED = new Set(["error", "failed", "timeout"]);
-const REMOTE_PHASES = new Set(["matchRemote", "manifest", "remoteEntry", "expose", "loadRemote"]);
+const REMOTE_PHASES = new Set([
+  "matchRemote",
+  "manifest",
+  "remoteEntry",
+  "expose",
+  "moduleFactory",
+  "loadRemote",
+  "preload",
+]);
 const INIT_PHASES = new Set(["remoteEntryInit", "init"]);
 const ERROR_CODE = /^RUNTIME-\d+$/i;
 const KNOWN_OUTCOMES = new Set([
@@ -73,6 +81,7 @@ function boundedRecord(value: unknown): Record<string, unknown> | undefined {
     if (!object) return item;
     return Object.fromEntries(
       Object.entries(object)
+        .filter(([key]) => !/(?:stack|debug|trace)/i.test(key))
         .slice(0, 32)
         .map(([key, entry]) => [key, bound(entry, depth - 1)]),
     );
@@ -87,17 +96,32 @@ function phaseFailed(status: unknown): boolean {
 function redactDeep(value: unknown): unknown {
   if (typeof value === "string") {
     const redacted = redact(value) as string;
-    return looksLikeUrl(redacted) ? redactRuntimeUrl(redacted) : redacted;
+    if (looksLikeUrl(redacted)) return redactRuntimeUrl(redacted);
+    return redacted
+      .replace(
+        /(?:file:\/\/)?(?:\/Users\/|\/home\/|\/private\/|\/var\/|\/tmp\/|[A-Za-z]:\\)[^\s"']*/g,
+        "[REDACTED_PATH]",
+      )
+      .replace(/(?:^|\s)(?:\/[^\s:]+)+(?::\d+(?::\d+)?)?/g, (match) =>
+        match.trimStart().startsWith("/")
+          ? match.replace(match.trimStart(), "[REDACTED_PATH]")
+          : match,
+      );
   }
   if (Array.isArray(value)) return value.map(redactDeep);
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
-        key,
-        /token|cookie|authorization|password|secret|api[-_]?key/i.test(key)
-          ? "[REDACTED]"
-          : redactDeep(item),
-      ]),
+      Object.entries(value as Record<string, unknown>).flatMap(([key, item]) => {
+        if (/^(?:errorStack|stack|stackTrace|causeStack)$/i.test(key)) return [];
+        return [
+          [
+            key,
+            /token|cookie|authorization|password|secret|api[-_]?key/i.test(key)
+              ? "[REDACTED]"
+              : redactDeep(item),
+          ],
+        ];
+      }),
     );
   }
   return value;
@@ -113,7 +137,9 @@ function readPhases(summary: Record<string, unknown> | undefined): RuntimeTraceR
           `Invalid runtime trace field /summary/phases/${name}: expected an object.`,
         );
       const status = asString(asRecord(value)?.status);
-      return [name, status ? { status } : {}];
+      const normalizedName =
+        name === "init" ? "remoteEntryInit" : name === "factory" ? "moduleFactory" : name;
+      return [normalizedName, status ? { status } : {}];
     }),
   );
 }
@@ -133,7 +159,9 @@ function readEvents(raw: unknown): RuntimeTraceReport["events"] {
     const phase = asString(event.phase);
     const status = asString(event.status);
     const errorCode = asString(event.errorCode);
-    if (phase) next.phase = phase;
+    if (phase)
+      next.phase =
+        phase === "init" ? "remoteEntryInit" : phase === "factory" ? "moduleFactory" : phase;
     if (status) next.status = status;
     if (errorCode) next.errorCode = errorCode;
     events.push(next);
@@ -181,13 +209,23 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     (moduleInfo && (moduleInfo.name !== undefined || moduleInfo.id !== undefined)) ||
     outcome === "success" ||
     (summary?.phases && asRecord(summary.phases)?.init !== undefined);
+  const hasCurrentEvidence = Boolean(
+    summary &&
+    (summary.outcome !== undefined ||
+      summary.phases !== undefined ||
+      summary.error !== undefined ||
+      summary.flags !== undefined ||
+      ["loadCompleted", "runtimeLoaded", "sharedResolved", "preloaded", "componentLoaded"].some(
+        (key) => summary[key] !== undefined,
+      )),
+  );
   const report: RuntimeTraceReport = {
     schemaVersion: 1,
     sourceContract: legacy
       ? "legacy-doctor-v1"
-      : summary === undefined && (!Array.isArray(record.events) || record.events.length === 0)
-        ? "partial"
-        : "upstream-observability-2.5.3",
+      : hasCurrentEvidence
+        ? "upstream-observability-2.5.3"
+        : "partial",
     events: readEvents(record.events),
   };
   const traceId = asString(record.traceId);
@@ -228,12 +266,26 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   const errorContext = boundedRecord(record.errorContext ?? summaryError?.context);
   if (errorContext) report.errorContext = errorContext;
   const failedPhase = asString(record.failedPhase) ?? asString(summaryError?.failedPhase);
-  if (failedPhase) report.failedPhase = failedPhase;
-  const ownerHint =
-    asString(record.ownerHint) ??
-    asString(summaryError?.ownerHint) ??
-    asString(diagnosis?.ownerHint);
-  if (ownerHint) report.ownerHint = ownerHint;
+  if (failedPhase)
+    report.failedPhase =
+      failedPhase === "init"
+        ? "remoteEntryInit"
+        : failedPhase === "factory"
+          ? "moduleFactory"
+          : failedPhase;
+  const ownerHints = [
+    asString(diagnosis?.ownerHint),
+    asString(record.ownerHint),
+    asString(summaryError?.ownerHint),
+    asString(diagnosis?.owner),
+  ].filter((value): value is string => Boolean(value));
+  const distinctOwnerHints = [...new Set(ownerHints)];
+  const onlyOwnerHint = distinctOwnerHints[0];
+  if (distinctOwnerHints.length === 1 && onlyOwnerHint) report.ownerHint = onlyOwnerHint;
+  if (distinctOwnerHints.length > 1) {
+    report.ownerHints = distinctOwnerHints.sort();
+    report.ownerHintConflict = true;
+  }
   const phases = readPhases(summary);
   if (phases) report.phases = phases;
   if (outcome === "success" && phases) {
@@ -391,13 +443,48 @@ function extractRawReports(raw: unknown): unknown[] {
   return [record];
 }
 
+function isBuildReportDocument(value: unknown): boolean {
+  const record = asRecord(value);
+  return Boolean(
+    record &&
+    (record.findings !== undefined ||
+      record.projects !== undefined ||
+      record.kind === "build-report" ||
+      record.documentKind === "build-report" ||
+      record.type === "build-report"),
+  );
+}
+
+function assertSupportedDocumentVersion(value: unknown): void {
+  const record = asRecord(value);
+  if (!record) return;
+  if (typeof record.schemaVersion === "number" && record.schemaVersion > 1)
+    throw new RuntimeTraceError(
+      `Unsupported future runtime trace schema at /schemaVersion: ${record.schemaVersion}.`,
+    );
+  if (
+    typeof record.sourceContract === "string" &&
+    !["upstream-observability-2.5.3", "legacy-doctor-v1", "partial"].includes(record.sourceContract)
+  )
+    throw new RuntimeTraceError(
+      `Unsupported future runtime trace source contract at /sourceContract: ${record.sourceContract}.`,
+    );
+}
+
 export function parseRuntimeTraces(raw: unknown): RuntimeTraceReport[] {
   const record = asRecord(raw);
-  if (record && (record.findings !== undefined || record.projects !== undefined))
+  assertSupportedDocumentVersion(record);
+  if (isBuildReportDocument(record))
     throw new RuntimeTraceError(
-      "Unsupported runtime trace document kind: build/Doctor report; expected an Observability runtime report.",
+      "Wrong runtime trace document kind: build-report/Doctor report is not a runtime Observability report.",
     );
-  const reports = extractRawReports(raw)
+  const rawReports = extractRawReports(raw);
+  rawReports.forEach(assertSupportedDocumentVersion);
+  if (rawReports.some(isBuildReportDocument))
+    throw new RuntimeTraceError(
+      "Wrong runtime trace document kind: build-report/Doctor report is not a runtime Observability report.",
+    );
+  const reports = rawReports
     .map(normalizeReport)
     .filter((item): item is RuntimeTraceReport => item !== undefined);
   if (reports.length === 0)
@@ -450,7 +537,9 @@ function failedPhases(trace: RuntimeTraceReport): string[] {
   const fromSummary = Object.entries(trace.phases ?? {})
     .filter(([, value]) => phaseFailed(value.status))
     .map(([phase]) => phase);
-  return [...new Set([...fromEvents, ...fromSummary])];
+  return [
+    ...new Set([...fromEvents, ...fromSummary, ...(trace.failedPhase ? [trace.failedPhase] : [])]),
+  ];
 }
 
 function exactProject(
@@ -510,12 +599,18 @@ export function correlateRuntime(
     const matches = remoteName ? findProjectsForRemote(projects, remoteName) : [];
     const hostProject = exactProject(projects, trace.hostName);
     const producerProject = exactProject(projects, trace.remote?.name);
-    const owner = trace.diagnosis?.ownerHint ?? trace.ownerHint ?? trace.diagnosis?.owner;
+    const ownerHintConflict = trace.ownerHintConflict === true;
+    const owner = ownerHintConflict
+      ? undefined
+      : (trace.diagnosis?.ownerHint ?? trace.ownerHint ?? trace.diagnosis?.owner);
+    const exactProducer = Boolean(trace.remote?.name && producerProject);
+    const exactHost = Boolean(trace.hostName && hostProject);
     const ambiguousIdentity =
-      !owner &&
-      hostProject &&
-      producerProject &&
-      hostProject.project.name !== producerProject.project.name;
+      ownerHintConflict ||
+      (!owner &&
+        exactHost &&
+        exactProducer &&
+        hostProject!.project.name !== producerProject!.project.name);
     const supportedOwner =
       owner === "host" ||
       owner === "remote" ||
@@ -525,10 +620,10 @@ export function correlateRuntime(
       owner === "unknown";
     const ownerProject =
       owner === "host" ? hostProject : owner === "remote" ? producerProject : undefined;
-    const ownerEvidenceProject =
-      ownerProject ?? (owner === "host" && matches.length === 1 ? matches[0] : undefined);
+    const ownerEvidenceProject = ownerProject;
     const projectName =
       !supportedOwner ||
+      ownerHintConflict ||
       owner === "runtime" ||
       owner === "network" ||
       owner === "shared" ||
@@ -538,10 +633,10 @@ export function correlateRuntime(
           ? ownerEvidenceProject.project.name
           : ambiguousIdentity
             ? "runtime"
-            : hostProject
-              ? hostProject.project.name
-              : producerProject
-                ? producerProject.project.name
+            : producerProject
+              ? producerProject.project.name
+              : !remoteName && hostProject
+                ? hostProject.project.name
                 : "runtime";
     const identityEvidence = {
       ...(trace.hostName ? { hostName: trace.hostName } : {}),
@@ -549,22 +644,27 @@ export function correlateRuntime(
       ...(owner ? { ownerHint: owner } : {}),
       ...(ambiguousIdentity ||
       !supportedOwner ||
+      ownerHintConflict ||
       owner === "shared" ||
       owner === "network" ||
       owner === "unknown"
         ? {
-            matchReason: !supportedOwner
-              ? "unsupported owner hint; neutral runtime attribution"
-              : owner === "network"
-                ? "network failure; requesting host is context"
-                : owner === "shared"
-                  ? "shared resolver/provider evidence"
-                  : "ambiguous host/producer identity",
+            matchReason: ownerHintConflict
+              ? "conflicting owner hints; neutral runtime attribution"
+              : !supportedOwner
+                ? "unsupported owner hint; neutral runtime attribution"
+                : owner === "network"
+                  ? "network failure; requesting host is context"
+                  : owner === "shared"
+                    ? "shared resolver/provider evidence"
+                    : "ambiguous host/producer identity",
+            ...(ownerHintConflict && trace.ownerHints ? { ownerHints: trace.ownerHints } : {}),
             candidates: [
               ...new Set(
                 [
                   hostProject?.project.name,
                   producerProject?.project.name,
+                  ...matches.map((project) => project.project.name),
                   trace.shared?.provider,
                 ].filter((value): value is string => Boolean(value)),
               ),
@@ -596,26 +696,35 @@ export function correlateRuntime(
     }
 
     const recovered = trace.outcome === "recovered" || trace.recovered === true;
-    if (!recovered && phases.some((phase) => REMOTE_PHASES.has(phase))) {
-      findings.push(
-        runtimeFinding(
-          "runtime/remote-load-failed",
-          "error",
-          projectName,
-          `Runtime remote load failed during ${phases.filter((phase) => REMOTE_PHASES.has(phase)).join(", ")}.`,
-          {
-            ...(remoteName ? { remote: remoteName } : {}),
-            phases: phases.filter((phase) => REMOTE_PHASES.has(phase)).sort(),
-            ...(trace.traceId ? { traceId: trace.traceId } : {}),
-            ...(trace.errorCode ? { errorCode: trace.errorCode } : {}),
-            ...(trace.remote?.entry ? { entry: trace.remote.entry } : {}),
-            identity: identityEvidence,
-            projects: matches.map((project) => project.project.name).sort(),
-          },
-          "Compare the redacted entry URL and manifest metadata with the producer build output.",
-        ),
-      );
-    }
+    const remoteFailurePhases = phases.filter((phase) => REMOTE_PHASES.has(phase));
+    if (!recovered && remoteFailurePhases.length > 0)
+      for (const phase of remoteFailurePhases) {
+        const phaseMessage =
+          phase === "moduleFactory"
+            ? "Runtime remote module factory failed during moduleFactory."
+            : phase === "preload"
+              ? "Runtime remote preload failed during preload."
+              : `Runtime remote load failed during ${phase}.`;
+        findings.push(
+          runtimeFinding(
+            "runtime/remote-load-failed",
+            "error",
+            projectName,
+            phaseMessage,
+            {
+              ...(remoteName ? { remote: remoteName } : {}),
+              phases: [phase],
+              phaseKind: phase === "moduleFactory" || phase === "preload" ? phase : "remote-load",
+              ...(trace.traceId ? { traceId: trace.traceId } : {}),
+              ...(trace.errorCode ? { errorCode: trace.errorCode } : {}),
+              ...(trace.remote?.entry ? { entry: trace.remote.entry } : {}),
+              identity: identityEvidence,
+              projects: matches.map((project) => project.project.name).sort(),
+            },
+            "Compare the redacted entry URL and manifest metadata with the producer build output.",
+          ),
+        );
+      }
 
     if (!recovered && phases.some((phase) => INIT_PHASES.has(phase))) {
       const host =

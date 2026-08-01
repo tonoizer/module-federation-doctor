@@ -627,6 +627,8 @@ export interface RuntimeTraceReport {
   errorContext?: Record<string, unknown>;
   failedPhase?: string;
   ownerHint?: string;
+  ownerHints?: string[];
+  ownerHintConflict?: boolean;
   outcome?: string;
   recovered?: boolean;
   loadedBefore?: boolean;
