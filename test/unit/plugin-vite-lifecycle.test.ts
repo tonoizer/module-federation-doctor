@@ -306,6 +306,33 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
     expect(project.builds.map((build) => build.outputRoot)).toEqual(["dist/node", "dist/web"]);
   });
 
+  it("resets output evidence between build cycles", async () => {
+    const root = await makeRoot({ vite: "5.4.0" });
+    await fs.mkdir(path.join(root, "dist/first"), { recursive: true });
+    await fs.mkdir(path.join(root, "dist/second"), { recursive: true });
+    const raw = viteDoctor.raw(doctorOptions(root), {
+      framework: "vite",
+      versions: { unplugin: "3.3.0" },
+    } as never);
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+    plugin.configResolved?.({ root, mode: "production", build: { outDir: "dist", write: true } });
+
+    await plugin.writeBundle!.call({}, { dir: path.join(root, "dist/first") }, { "first.js": {} });
+    await plugin.closeBundle!.call({});
+    await plugin.writeBundle!.call(
+      {},
+      { dir: path.join(root, "dist/second") },
+      { "second.js": {} },
+    );
+    await plugin.closeBundle!.call({});
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as { builds: Array<{ emittedAssets: string[] }> };
+    expect(project.builds).toHaveLength(1);
+    expect(project.builds[0]?.emittedAssets).toEqual(["dist/second/second.js"]);
+  });
+
   it("does not claim stale disk evidence when Vite writing is disabled", async () => {
     const root = await makeRoot({ vite: "5.4.0" });
     await fs.mkdir(path.join(root, "dist"), { recursive: true });
@@ -360,6 +387,34 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
       build: { outDir: "escaped", write: true },
     });
     await plugin.writeBundle!.call({}, { dir: path.join(root, "escaped") }, { "remote.js": {} });
+    await plugin.closeBundle!.call({});
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as { builds: Array<{ outputRoot?: string }> };
+    expect(project.builds[0]?.outputRoot).toBeUndefined();
+  });
+
+  it("rejects a missing output child below an escaping symlink ancestor", async () => {
+    const root = await makeRoot({ vite: "5.4.0" });
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-vite-outside-"));
+    roots.push(outside);
+    await fs.symlink(outside, path.join(root, "escaped"), "dir");
+    const raw = viteDoctor.raw(doctorOptions(root), {
+      framework: "vite",
+      versions: { unplugin: "3.3.0" },
+    } as never);
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+    plugin.configResolved?.({
+      root,
+      mode: "production",
+      build: { outDir: "escaped/missing", write: true },
+    });
+    await plugin.writeBundle!.call(
+      {},
+      { dir: path.join(root, "escaped/missing") },
+      { "remote.js": {} },
+    );
     await plugin.closeBundle!.call({});
 
     const project = JSON.parse(

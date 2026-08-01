@@ -177,16 +177,19 @@ describe("artifact collection", () => {
     expect(facts.builds?.[0]?.emittedAssets).toEqual([]);
   });
 
-  it("sizes assets only from the recorded output root", async () => {
+  it("sizes same-named assets from their exact recorded output roots", async () => {
     const root = await fixture({
-      "out/remoteEntry.js": "small",
-      "dist/remoteEntry.js": "this stale file is much larger",
+      "out/a/remoteEntry.js": "small",
+      "out/b/remoteEntry.js": "this is larger",
     });
     const facts = await collectProjectFacts(await resolveOptions({ root }));
-    await addBuildFacts(facts, ["out/remoteEntry.js"], root, undefined, [
-      { outputRoot: "out", emittedAssets: ["remoteEntry.js"], sourceHook: "closeBundle" },
+    await addBuildFacts(facts, ["out/a/remoteEntry.js", "out/b/remoteEntry.js"], root, undefined, [
+      { outputRoot: "out/a", emittedAssets: ["remoteEntry.js"], sourceHook: "closeBundle" },
+      { outputRoot: "out/b", emittedAssets: ["remoteEntry.js"], sourceHook: "closeBundle" },
     ]);
-    expect(facts.artifacts.assetSizes?.["remoteEntry.js"]).toBe(5);
+    expect(facts.artifacts.assetSizes?.["out/a/remoteEntry.js"]).toBe(5);
+    expect(facts.artifacts.assetSizes?.["out/b/remoteEntry.js"]).toBe(14);
+    expect(facts.artifacts.assetSizes?.["remoteEntry.js"]).toBeUndefined();
   });
 
   it("keeps v1 project output compatible while exposing records to API callers", async () => {

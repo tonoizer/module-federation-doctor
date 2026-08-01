@@ -147,7 +147,13 @@ async function safeOutputRoot(
   const outputReal = await fs.realpath(absolute).catch(() => undefined);
   const outputStat = await fs.lstat(absolute).catch(() => undefined);
   if (outputStat?.isSymbolicLink() && !outputReal) return undefined;
-  if (rootReal && outputReal && (path.relative(rootReal, outputReal) || ".").startsWith(".."))
+  let existing = absolute;
+  let existingReal = outputReal;
+  while (!existingReal && existing !== path.dirname(existing)) {
+    existing = path.dirname(existing);
+    existingReal = await fs.realpath(existing).catch(() => undefined);
+  }
+  if (rootReal && existingReal && (path.relative(rootReal, existingReal) || ".").startsWith(".."))
     return undefined;
   return relative === "" ? "." : relative;
 }
@@ -209,15 +215,20 @@ function createViteFamilyHooks(configured: DoctorOptions) {
       }
     }
     if (hook === "writeBundle") return;
-    const allAssets = outputs.flatMap((item) =>
-      item.buildWrite === false
-        ? []
-        : item.outputRoot
-          ? item.emittedAssets.map((asset) => `${item.outputRoot}/${asset}`)
-          : item.emittedAssets,
-    );
-    const result = await analyzeBuild(configured, allAssets, undefined, outputs);
-    failAfterCollect(result);
+    try {
+      const allAssets = outputs.flatMap((item) =>
+        item.buildWrite === false
+          ? []
+          : item.outputRoot
+            ? item.emittedAssets.map((asset) => `${item.outputRoot}/${asset}`)
+            : item.emittedAssets,
+      );
+      const result = await analyzeBuild(configured, allAssets, undefined, outputs);
+      failAfterCollect(result);
+    } finally {
+      outputs = [];
+      pendingCloseFinalization = undefined;
+    }
   };
 
   return {

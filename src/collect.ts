@@ -590,16 +590,20 @@ export async function attachAssetSizes(
   const sizes: Record<string, number> = {};
 
   for (const name of names) {
-    const basename = path.basename(name);
+    const normalizedName = normalizePath(name);
+    const basename = path.basename(normalizedName);
     const candidates =
       outputRoots !== undefined
-        ? outputRoots.flatMap((outputRoot) => [
-            path.join(root, outputRoot, name),
-            path.join(root, outputRoot, basename),
-            ...(normalizePath(name).startsWith(`${normalizePath(outputRoot)}/`)
-              ? [path.join(root, name)]
-              : []),
-          ])
+        ? outputRoots.flatMap((outputRoot) => {
+            const normalizedRoot = normalizePath(outputRoot);
+            if (
+              normalizedName === normalizedRoot ||
+              normalizedName.startsWith(`${normalizedRoot}/`)
+            )
+              return [path.join(root, name)];
+            if (outputRoots.length === 1) return [path.join(root, outputRoot, name)];
+            return [];
+          })
         : [
             path.join(manifestDir, name),
             path.join(manifestDir, basename),
@@ -619,8 +623,10 @@ export async function attachAssetSizes(
         if (!stat.isFile()) continue;
         const relative = relativePath(root, candidate);
         sizes[relative] = stat.size;
-        sizes[normalizePath(name)] = stat.size;
-        sizes[basename] = stat.size;
+        if (outputRoots === undefined || outputRoots.length === 1) {
+          sizes[normalizedName] = stat.size;
+          sizes[basename] = stat.size;
+        }
         break;
       } catch {
         // Missing candidates are expected before a build or for remote-only names.
@@ -642,9 +648,6 @@ export function lookupAssetSize(
   if (sizes[normalized] !== undefined) return sizes[normalized];
   const basename = path.basename(normalized);
   if (sizes[basename] !== undefined) return sizes[basename];
-  for (const [key, bytes] of Object.entries(sizes))
-    if (key === normalized || key.endsWith(`/${basename}`) || path.basename(key) === basename)
-      return bytes;
   return undefined;
 }
 
