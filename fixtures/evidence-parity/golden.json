@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "stable-v1-output",
+      "legacy": { "findings": [], "schemaVersion": 1 },
+      "projected": { "schemaVersion": 1, "findings": [] },
+      "expected": { "equal": true }
+    },
+    {
+      "id": "approved-v2-only-addition",
+      "legacy": { "findings": [], "schemaVersion": 1 },
+      "projected": { "findings": [], "schemaVersion": 1, "evidence": { "protocolVersion": 2 } },
+      "expected": {
+        "equal": false,
+        "class": "v2-only-addition",
+        "ledgerId": "approved-v2-only-addition"
+      }
+    }
+  ]
+}

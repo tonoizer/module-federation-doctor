@@ -209,6 +209,19 @@ export {
 } from "./evidence.js";
 export { EvidenceIntegrityError, EvidenceResourceError } from "./evidence.js";
 export {
+  assertDriftLedgerEntry,
+  compareV1Outputs,
+  ParityResourceError,
+} from "./evidence-parity.js";
+export type {
+  DriftClass,
+  DriftLedgerEntry,
+  ParityComparison,
+  ParityDiff,
+  ParityLimits,
+  ParityValue,
+} from "./evidence-parity.js";
+export {
   EvidenceReaderError,
   migrateDoctorReport,
   migrateProjectFacts,
