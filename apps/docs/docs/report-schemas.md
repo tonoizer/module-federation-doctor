@@ -23,6 +23,13 @@ changes require a new `schemaVersion` (or an intentional, documented exception).
 
 ## Evidence protocol v2
 
+The public `readEvidenceDocument` reader accepts an unknown in-memory JSON
+value, validates its exact shipped schema, and returns a normalized v2 graph.
+Valid v1 project facts and reports are migrated in memory; the input object is
+not changed. Reader errors include the file label (when supplied), document
+kind, source version, failure code, and JSON pointer. Current CLI command paths
+still read and write v1 documents until a later dual-read compatibility slice.
+
 `@module-federation/doctor/schemas/evidence.schema.json` defines the canonical
 v2 evidence graph. It keeps declared, effective, artifact, deployment, and
 runtime claims separate. Every assertion names its subject, scope, provenance,

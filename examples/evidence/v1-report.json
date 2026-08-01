@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "capabilities": {
+    "config": true,
+    "sourceImports": true,
+    "manifest": false,
+    "stats": false,
+    "emittedAssets": false,
+    "installedVersions": true
+  },
+  "summary": { "projects": 1, "info": 0, "warnings": 1, "errors": 0 },
+  "findings": [
+    {
+      "schemaVersion": 1,
+      "ruleId": "shared/version-conflict",
+      "severity": "warning",
+      "message": "Versions conflict.",
+      "project": "host",
+      "evidence": { "package": "react", "versions": ["18.3.1", "19.0.0"] },
+      "fingerprint": "finding-1"
+    }
+  ]
+}

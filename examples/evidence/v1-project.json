@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "project": { "name": "host", "root": "/workspace/host" },
+  "bundler": { "name": "vite", "version": "7.0.0", "mode": "development" },
+  "capabilities": {
+    "config": true,
+    "sourceImports": true,
+    "manifest": false,
+    "stats": false,
+    "emittedAssets": false,
+    "installedVersions": true
+  },
+  "dependencies": { "declared": { "react": "^19.0.0" }, "installed": { "react": "19.0.0" } },
+  "imports": { "sourceFiles": ["src/App.tsx"], "specifiers": ["react"], "packages": ["react"] },
+  "artifacts": { "emittedAssets": [] }
+}
