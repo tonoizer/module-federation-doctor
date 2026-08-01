@@ -130,6 +130,7 @@
     "release:dry-run": "pnpm pack:check && npm publish --dry-run --provenance --access public"
   },
   "dependencies": {
+    "ajv": "8.20.0",
     "fast-glob": "3.3.3",
     "picocolors": "1.1.1",
     "semver": "7.8.5",
@@ -142,7 +143,6 @@
     "@playwright/test": "1.61.1",
     "@types/node": "26.1.1",
     "@types/semver": "7.7.1",
-    "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
     "husky": "9.1.7",
     "oxfmt": "0.60.0",

@@ -208,6 +208,19 @@ export {
   stableEvidenceId,
 } from "./evidence.js";
 export { EvidenceIntegrityError, EvidenceResourceError } from "./evidence.js";
+export {
+  EvidenceReaderError,
+  migrateDoctorReport,
+  migrateProjectFacts,
+  readEvidenceDocument,
+} from "./evidence-reader.js";
+export type {
+  EvidenceDocumentKind,
+  EvidenceDocumentReadResult,
+  EvidenceReaderErrorDetails,
+  EvidenceReaderFailureCode,
+  EvidenceReaderOptions,
+} from "./evidence-reader.js";
 export { capConfidence, stableEvaluationId, weakestConfidence } from "./rule-contract.js";
 export type {
   EvidenceAwareRuleMeta,
