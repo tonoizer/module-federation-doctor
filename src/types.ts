@@ -613,10 +613,50 @@ export interface ResolvedDoctorOptions {
 
 export interface RuntimeTraceReport {
   schemaVersion: 1;
+  /** Source adapter marker. This is not the MF runtime version. */
+  sourceContract?: "upstream-observability-2.5.3" | "legacy-doctor-v1" | "partial";
+  /**
+   * Shared-section completeness. Absence on old/missing/preview Chrome DevTools
+   * runtimes is `unknown`, never an implied healthy shared graph.
+   */
+  sharedCompleteness?: "complete" | "partial" | "unknown";
+  evidenceClipped?: boolean;
   traceId?: string;
   status?: string;
+  requestId?: string;
+  requestAlias?: string;
+  hostName?: string;
+  runtimeVersion?: string;
   errorCode?: string;
+  errorName?: string;
+  errorMessage?: string;
+  retryable?: boolean;
+  errorContext?: Record<string, unknown>;
+  failedPhase?: string;
+  ownerHint?: string;
+  ownerHints?: string[];
+  ownerHintConflict?: boolean;
   outcome?: string;
+  recovered?: boolean;
+  loadedBefore?:
+    | boolean
+    | {
+        producer?: boolean;
+        expose?: boolean;
+        consumers?: Array<{
+          name?: string;
+          remoteEntryExports?: boolean;
+          containerInitialized?: boolean;
+          exposes?: string[];
+        }>;
+      };
+  flags?: Record<string, boolean>;
+  loadCompleted?: boolean;
+  runtimeLoaded?: boolean;
+  sharedResolved?: boolean;
+  preloaded?: boolean;
+  componentLoaded?: boolean;
+  lastPhase?: string;
   remote?: {
     name?: string;
     alias?: string;
@@ -625,7 +665,7 @@ export interface RuntimeTraceReport {
   shared?: {
     package?: string;
     provider?: string;
-    requiredVersion?: string;
+    requiredVersion?: string | false;
     selectedVersion?: string;
     availableVersions?: string[];
     reason?: string;
@@ -634,16 +674,43 @@ export interface RuntimeTraceReport {
     name?: string;
     id?: string;
     publicPath?: string;
+    reason?: string;
+    clipped?: boolean;
+    totalCount?: number;
+    matchedCount?: number;
+    availableNames?: string[];
+    entries?: Array<{
+      name?: string;
+      publicPath?: string;
+      getPublicPath?: string;
+      remoteEntry?: string;
+      globalName?: string;
+    }>;
   };
   phases?: Record<string, { status?: string }>;
   events: Array<{
     phase?: string;
     status?: string;
     errorCode?: string;
+    retryable?: boolean;
   }>;
   diagnosis?: {
     owner?: string;
+    ownerHint?: string;
+    title?: string;
+    outcome?: string;
+    status?: string;
+    errorCode?: string;
+    failedPhase?: string;
+    errorName?: string;
+    errorMessage?: string;
+    docLink?: string;
     summary?: string;
+    facts?: Record<string, unknown>;
+    actions?: Array<Record<string, unknown>>;
+    warnings?: string[];
+    completedPhases?: string[];
+    pendingPhases?: string[];
   };
 }
 

@@ -370,36 +370,15 @@ async function runtimeTraceHints(
 ): Promise<{ packages: string[]; remotes: string[]; used: boolean }> {
   if (!runtimeTrace) return { packages: [], remotes: [], used: false };
   try {
-    const parsed = JSON.parse(await fs.readFile(runtimeTrace, "utf8")) as unknown;
-    const reports = Array.isArray(parsed)
-      ? parsed
-      : parsed && typeof parsed === "object"
-        ? Array.isArray((parsed as { reports?: unknown }).reports)
-          ? (parsed as { reports: unknown[] }).reports
-          : (parsed as { report?: unknown }).report
-            ? [(parsed as { report: unknown }).report]
-            : [parsed]
-        : [];
+    const { loadRuntimeTraceFile } = await import("./runtime-trace.js");
+    const reports = await loadRuntimeTraceFile(runtimeTrace);
     const packages = new Set<string>();
     const remotes = new Set<string>();
     let sawTrace = false;
     for (const item of reports) {
-      if (!item || typeof item !== "object") continue;
-      const report = item as Record<string, unknown>;
-      const shared =
-        report.shared && typeof report.shared === "object"
-          ? (report.shared as Record<string, unknown>)
-          : undefined;
-      const remote =
-        report.remote && typeof report.remote === "object"
-          ? (report.remote as Record<string, unknown>)
-          : undefined;
-      const sharedName =
-        (typeof shared?.package === "string" && shared.package) ||
-        (typeof shared?.name === "string" && shared.name) ||
-        (typeof shared?.pkg === "string" && shared.pkg) ||
-        (typeof shared?.shareKey === "string" && shared.shareKey) ||
-        undefined;
+      const shared = item.shared;
+      const remote = item.remote;
+      const sharedName = shared?.package;
       if (sharedName) {
         packages.add(sharedName);
         sawTrace = true;
@@ -412,12 +391,7 @@ async function runtimeTraceHints(
         remotes.add(remote.alias);
         sawTrace = true;
       }
-      if (
-        typeof report.traceId === "string" ||
-        report.summary !== undefined ||
-        Array.isArray(report.events)
-      )
-        sawTrace = true;
+      sawTrace = true;
     }
     return {
       packages: [...packages].sort(),
@@ -425,7 +399,8 @@ async function runtimeTraceHints(
       used: sawTrace,
     };
   } catch {
-    // Invalid/missing opt-in traces must not break offline check; partial-analysis covers gaps.
+    // Opt-in runtimeTrace must use the same adapter as `mfdoctor runtime`, but
+    // invalid/missing traces must not break offline check; partial-analysis covers gaps.
     return { packages: [], remotes: [], used: false };
   }
 }

@@ -17,9 +17,61 @@
         "properties": {
           "schemaVersion": { "const": 1 },
           "traceId": { "type": "string" },
+          "sourceContract": {
+            "enum": ["upstream-observability-2.5.3", "legacy-doctor-v1", "partial"]
+          },
+          "sharedCompleteness": {
+            "enum": ["complete", "partial", "unknown"]
+          },
           "status": { "type": "string" },
+          "requestId": { "type": "string" },
+          "requestAlias": { "type": "string" },
+          "hostName": { "type": "string" },
+          "runtimeVersion": { "type": "string" },
           "errorCode": { "type": "string" },
+          "errorName": { "type": "string" },
+          "errorMessage": { "type": "string" },
+          "retryable": { "type": "boolean" },
+          "errorContext": { "type": "object", "additionalProperties": true },
+          "failedPhase": { "type": "string" },
+          "ownerHint": { "type": "string" },
+          "ownerHints": { "type": "array", "items": { "type": "string" } },
+          "ownerHintConflict": { "type": "boolean" },
           "outcome": { "type": "string" },
+          "recovered": { "type": "boolean" },
+          "loadedBefore": {
+            "anyOf": [
+              { "type": "boolean" },
+              {
+                "type": "object",
+                "properties": {
+                  "producer": { "type": "boolean" },
+                  "expose": { "type": "boolean" },
+                  "consumers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string" },
+                        "remoteEntryExports": { "type": "boolean" },
+                        "containerInitialized": { "type": "boolean" },
+                        "exposes": { "type": "array", "items": { "type": "string" } }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "loadCompleted": { "type": "boolean" },
+          "runtimeLoaded": { "type": "boolean" },
+          "sharedResolved": { "type": "boolean" },
+          "preloaded": { "type": "boolean" },
+          "componentLoaded": { "type": "boolean" },
+          "lastPhase": { "type": "string" },
+          "flags": { "type": "object", "additionalProperties": { "type": "boolean" } },
           "remote": {
             "type": "object",
             "properties": {
@@ -34,7 +86,9 @@
             "properties": {
               "package": { "type": "string" },
               "provider": { "type": "string" },
-              "requiredVersion": { "type": "string" },
+              "requiredVersion": {
+                "anyOf": [{ "type": "string" }, { "const": false }]
+              },
               "selectedVersion": { "type": "string" },
               "availableVersions": {
                 "type": "array",
@@ -49,7 +103,26 @@
             "properties": {
               "name": { "type": "string" },
               "id": { "type": "string" },
-              "publicPath": { "type": "string" }
+              "publicPath": { "type": "string" },
+              "reason": { "type": "string" },
+              "clipped": { "type": "boolean" },
+              "totalCount": { "type": "number" },
+              "matchedCount": { "type": "number" },
+              "availableNames": { "type": "array", "items": { "type": "string" } },
+              "entries": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "publicPath": { "type": "string" },
+                    "getPublicPath": { "type": "string" },
+                    "remoteEntry": { "type": "string" },
+                    "globalName": { "type": "string" }
+                  },
+                  "additionalProperties": false
+                }
+              }
             },
             "additionalProperties": false
           },
@@ -70,7 +143,8 @@
               "properties": {
                 "phase": { "type": "string" },
                 "status": { "type": "string" },
-                "errorCode": { "type": "string" }
+                "errorCode": { "type": "string" },
+                "retryable": { "type": "boolean" }
               },
               "additionalProperties": false
             }
@@ -79,7 +153,24 @@
             "type": "object",
             "properties": {
               "owner": { "type": "string" },
-              "summary": { "type": "string" }
+              "ownerHint": { "type": "string" },
+              "title": { "type": "string" },
+              "summary": { "type": "string" },
+              "outcome": { "type": "string" },
+              "status": { "type": "string" },
+              "errorCode": { "type": "string" },
+              "failedPhase": { "type": "string" },
+              "errorName": { "type": "string" },
+              "errorMessage": { "type": "string" },
+              "docLink": { "type": "string" },
+              "facts": { "type": "object", "additionalProperties": true },
+              "actions": {
+                "type": "array",
+                "items": { "type": "object", "additionalProperties": true }
+              },
+              "warnings": { "type": "array", "items": { "type": "string" } },
+              "completedPhases": { "type": "array", "items": { "type": "string" } },
+              "pendingPhases": { "type": "array", "items": { "type": "string" } }
             },
             "additionalProperties": false
           }

@@ -212,6 +212,22 @@ describe("dynamic-import completeness", () => {
     expect(facts.imports.evidenceSources).not.toContain("runtime-trace");
   });
 
+  it("does not fail offline check when opt-in runtimeTrace is invalid", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-bad-runtime-"));
+    roots.push(root);
+    const badTrace = path.join(root, "bad-trace.json");
+    await fs.writeFile(badTrace, '{"findings":[],"projects":1}');
+    const { facts } = await projectWith(
+      { "src/app.ts": "export {}\n" },
+      {
+        runtimeTrace: badTrace,
+        moduleFederation: { shared: { react: { singleton: true } } },
+      },
+    );
+    expect(facts.imports.evidenceSources).not.toContain("runtime-trace");
+    expect(facts.imports.packages).not.toContain("react");
+  });
+
   it("uses manifest remotes as import hints", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-manifest-remote-"));
     roots.push(root);

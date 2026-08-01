@@ -150,6 +150,23 @@ Fingerprint baselines keep known debt visible in reports without failing policy
 by default — see [baselines](./apps/docs/docs/baselines.md) and
 [governance](./apps/docs/docs/suppressions.md).
 
+`runtime` accepts one JSON Observability report, an array of reports, or a
+`{"report": ...}` / `{"reports": [...]}` envelope. Current upstream
+Observability 2.5.3 reports are supported, along with the legacy Doctor v1
+shape (`success`, `init`, `factory`, and old diagnosis/module fields). Partial
+reports are imported as partial evidence; missing fields never count as a
+pass. Missing shared lifecycle data on partial/old/preview runtimes is marked
+`sharedCompleteness: unknown`, not healthy. Unknown future shapes and build
+reports fail with a typed error. The general evidence reader
+(`readEvidenceDocument`) rejects Observability reports and points callers at
+`parseRuntimeTraces` / `loadRuntimeTraceFile`.
+
+Runtime imports are opt-in and local only. Doctor does not fetch, upload, open
+a browser, or execute report contents. Stored/output evidence is bounded and
+redacts credentials, secret query values, private paths, and stack traces.
+Invalid opt-in `runtimeTrace` paths do not break offline `check`; they simply
+omit runtime import hints.
+
 ## Policy packs and presets
 
 Share org governance with built-in presets (`recommended`, `strict`) and
