@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "shell",
+    "root": "."
+  },
+  "bundler": {
+    "name": "rspack",
+    "mode": "ci"
+  },
+  "capabilities": {
+    "config": true,
+    "sourceImports": false,
+    "manifest": true,
+    "stats": false,
+    "emittedAssets": false,
+    "installedVersions": true
+  },
+  "moduleFederation": {
+    "name": "shell",
+    "exposes": {},
+    "remotes": {
+      "checkout": {
+        "name": "checkout",
+        "entry": "https://example.com/checkout/mf-manifest.json",
+        "alias": "checkout",
+        "shareScope": ["default"]
+      }
+    },
+    "shared": {
+      "react": {
+        "package": "react",
+        "singleton": true,
+        "eager": false,
+        "requiredVersion": "^18.2.0",
+        "shareScope": ["default"]
+      },
+      "react-dom": {
+        "package": "react-dom",
+        "singleton": true,
+        "eager": false,
+        "requiredVersion": "^18.2.0",
+        "shareScope": ["default"]
+      },
+      "zustand": {
+        "package": "zustand",
+        "singleton": true,
+        "eager": false,
+        "requiredVersion": "^4.5.0",
+        "shareScope": ["default"]
+      }
+    }
+  },
+  "dependencies": {
+    "declared": {
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0",
+      "zustand": "^4.5.0"
+    },
+    "installed": {
+      "react": "18.2.0",
+      "react-dom": "18.2.0",
+      "zustand": "4.5.0"
+    }
+  },
+  "imports": {
+    "sourceFiles": [],
+    "specifiers": [],
+    "packages": [],
+    "dynamicPackages": [],
+    "remotes": ["checkout"],
+    "unresolvedDynamic": [],
+    "evidenceSources": ["manifest"]
+  },
+  "artifacts": {
+    "manifest": {
+      "id": "shell:1.0.0",
+      "name": "shell",
+      "shared": [
+        {
+          "id": "shell:react",
+          "name": "react",
+          "version": "18.2.0",
+          "singleton": true,
+          "requiredVersion": "^18.2.0",
+          "from": "shell"
+        },
+        {
+          "id": "shell:react-dom",
+          "name": "react-dom",
+          "version": "18.2.0",
+          "singleton": true,
+          "requiredVersion": "^18.2.0",
+          "from": "shell"
+        },
+        {
+          "id": "shell:zustand",
+          "name": "zustand",
+          "version": "4.5.0",
+          "singleton": true,
+          "requiredVersion": "^4.5.0",
+          "from": "shell"
+        }
+      ],
+      "remotes": [
+        {
+          "federationContainerName": "checkout",
+          "moduleName": "Checkout",
+          "alias": "checkout",
+          "entry": "https://example.com/checkout/mf-manifest.json"
+        }
+      ],
+      "exposes": []
+    },
+    "emittedAssets": []
+  }
+}
