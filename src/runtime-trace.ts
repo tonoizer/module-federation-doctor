@@ -20,11 +20,28 @@ const REMOTE_PHASES = new Set([
   "manifest",
   "remoteEntry",
   "expose",
+  "factory",
   "moduleFactory",
   "loadRemote",
   "preload",
 ]);
 const INIT_PHASES = new Set(["remoteEntryInit", "init"]);
+const CURRENT_PHASES = new Set([
+  "matchRemote",
+  "remoteEntryInit",
+  "moduleFactory",
+  "loadRemote",
+  "preload",
+]);
+const CURRENT_OUTCOMES = new Set([
+  "pending",
+  "runtime-loaded",
+  "shared-resolved",
+  "preloaded",
+  "component-loaded",
+  "failed",
+  "recovered",
+]);
 const ERROR_CODE = /^RUNTIME-\d+$/i;
 const KNOWN_OUTCOMES = new Set([
   "pending",
@@ -225,6 +242,100 @@ function phaseFailed(status: unknown): boolean {
   return typeof status === "string" && FAILED.has(status.toLowerCase());
 }
 
+function detectSourceContract(input: {
+  outcome: string | undefined;
+  summary: Record<string, unknown> | undefined;
+  moduleInfo: Record<string, unknown> | undefined;
+  diagnosis: Record<string, unknown> | undefined;
+}): NonNullable<RuntimeTraceReport["sourceContract"]> {
+  const phases = input.summary ? asRecord(input.summary.phases) : undefined;
+  const hasCurrentOutcome = Boolean(input.outcome && CURRENT_OUTCOMES.has(input.outcome));
+  const hasCurrentPhase = Boolean(
+    phases && [...CURRENT_PHASES].some((phase) => phases[phase] !== undefined),
+  );
+  const hasCurrentDiagnosis = Boolean(
+    input.diagnosis &&
+    (input.diagnosis.ownerHint !== undefined ||
+      input.diagnosis.title !== undefined ||
+      input.diagnosis.facts !== undefined ||
+      input.diagnosis.actions !== undefined ||
+      input.diagnosis.completedPhases !== undefined ||
+      input.diagnosis.pendingPhases !== undefined),
+  );
+  const hasClippedModuleInfo = Boolean(
+    input.moduleInfo &&
+    (input.moduleInfo.reason !== undefined ||
+      input.moduleInfo.clipped !== undefined ||
+      input.moduleInfo.entries !== undefined ||
+      input.moduleInfo.availableNames !== undefined ||
+      input.moduleInfo.totalCount !== undefined ||
+      input.moduleInfo.matchedCount !== undefined),
+  );
+  const hasCurrentSummaryFlags = Boolean(
+    input.summary &&
+    (input.summary.flags !== undefined ||
+      ["loadCompleted", "runtimeLoaded", "sharedResolved", "preloaded", "componentLoaded"].some(
+        (key) => input.summary?.[key] !== undefined,
+      )),
+  );
+  const hasCurrent =
+    hasCurrentOutcome ||
+    hasCurrentPhase ||
+    hasCurrentDiagnosis ||
+    hasClippedModuleInfo ||
+    hasCurrentSummaryFlags;
+
+  const hasLegacyOutcome = input.outcome === "success";
+  const hasLegacyPhase = Boolean(phases && phases.init !== undefined);
+  const hasLegacyDiagnosis = Boolean(
+    input.diagnosis &&
+    (input.diagnosis.owner !== undefined || input.diagnosis.summary !== undefined) &&
+    input.diagnosis.ownerHint === undefined &&
+    input.diagnosis.title === undefined,
+  );
+  const hasLegacyModuleInfo = Boolean(
+    input.moduleInfo &&
+    (input.moduleInfo.name !== undefined || input.moduleInfo.id !== undefined) &&
+    !hasClippedModuleInfo,
+  );
+  const hasLegacy = hasLegacyOutcome || hasLegacyPhase || hasLegacyDiagnosis || hasLegacyModuleInfo;
+
+  if (hasCurrent && !hasLegacy) return "upstream-observability-2.5.3";
+  if (hasLegacy && !hasCurrent) return "legacy-doctor-v1";
+  if (hasCurrent && hasLegacy) {
+    // Prefer explicit current structure over shared outcome vocabulary like "failed".
+    if (hasCurrentPhase || hasCurrentDiagnosis || hasClippedModuleInfo || hasCurrentSummaryFlags)
+      return "upstream-observability-2.5.3";
+    if (hasLegacyPhase || hasLegacyModuleInfo || hasLegacyDiagnosis || hasLegacyOutcome)
+      return "legacy-doctor-v1";
+    return "upstream-observability-2.5.3";
+  }
+  return "partial";
+}
+
+function sharedCompletenessFor(report: RuntimeTraceReport): "complete" | "partial" | "unknown" {
+  const hasSharedSection = Boolean(
+    report.shared ||
+    report.phases?.shared ||
+    report.events.some((event) => event.phase === "shared") ||
+    report.sharedResolved === true ||
+    report.outcome === "shared-resolved",
+  );
+  if (hasSharedSection) {
+    return report.shared?.package || report.phases?.shared || report.sharedResolved !== undefined
+      ? "complete"
+      : "partial";
+  }
+  const runtimeVersion = report.runtimeVersion;
+  const previewOrMissing =
+    !runtimeVersion ||
+    /preview|canary|nightly/i.test(runtimeVersion) ||
+    (semver.valid(runtimeVersion) !== null && semver.lt(runtimeVersion, "2.5.0"));
+  // Chrome DevTools compatibility reports and older runtimes omit shared lifecycle evidence.
+  if (report.sourceContract === "partial" || previewOrMissing) return "unknown";
+  return "unknown";
+}
+
 function redactDeep(value: unknown): unknown {
   if (typeof value === "string") {
     const redacted = redact(value) as string;
@@ -269,9 +380,8 @@ function readPhases(summary: Record<string, unknown> | undefined): RuntimeTraceR
           `Invalid runtime trace field /summary/phases/${name}: expected an object.`,
         );
       const status = readStatus(asRecord(value)?.status, `/summary/phases/${name}/status`);
-      const normalizedName =
-        name === "init" ? "remoteEntryInit" : name === "factory" ? "moduleFactory" : name;
-      return [normalizedName, status ? { status } : {}];
+      // Keep raw phase names; correlation maps legacy/current aliases to rule semantics.
+      return [name, status ? { status } : {}];
     }),
   );
 }
@@ -341,29 +451,9 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   if (summary && !asRecord(summary.phases) && summary.phases !== undefined)
     throw new RuntimeTraceError("Invalid runtime trace field /summary/phases: expected an object.");
 
-  const legacy =
-    diagnosis?.owner !== undefined ||
-    diagnosis?.summary !== undefined ||
-    (moduleInfo && (moduleInfo.name !== undefined || moduleInfo.id !== undefined)) ||
-    outcome === "success" ||
-    (summary?.phases && asRecord(summary.phases)?.init !== undefined);
-  const hasCurrentEvidence = Boolean(
-    summary &&
-    (summary.outcome !== undefined ||
-      summary.phases !== undefined ||
-      summary.error !== undefined ||
-      summary.flags !== undefined ||
-      ["loadCompleted", "runtimeLoaded", "sharedResolved", "preloaded", "componentLoaded"].some(
-        (key) => summary[key] !== undefined,
-      )),
-  );
   const report: RuntimeTraceReport = {
     schemaVersion: 1,
-    sourceContract: legacy
-      ? "legacy-doctor-v1"
-      : hasCurrentEvidence
-        ? "upstream-observability-2.5.3"
-        : "partial",
+    sourceContract: detectSourceContract({ outcome, summary, moduleInfo, diagnosis }),
     events: readEvents(record.events),
   };
   if (Array.isArray(record.events) && record.events.length > MAX_EVIDENCE_ITEMS)
@@ -432,13 +522,8 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
   const failedPhase =
     expectString(record.failedPhase, "/failedPhase") ??
     expectString(summaryError?.failedPhase, "/summary/error/failedPhase");
-  if (failedPhase)
-    report.failedPhase =
-      failedPhase === "init"
-        ? "remoteEntryInit"
-        : failedPhase === "factory"
-          ? "moduleFactory"
-          : failedPhase;
+  // Preserve raw upstream/legacy phase names; correlation maps semantics without rewriting.
+  if (failedPhase) report.failedPhase = failedPhase;
   const ownerHints = [
     asString(diagnosis?.ownerHint),
     asString(record.ownerHint),
@@ -626,6 +711,7 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
       report.evidenceClipped = true;
     report.diagnosis = normalizedDiagnosis;
   }
+  report.sharedCompleteness = sharedCompletenessFor(report);
   return redactDeep(report) as RuntimeTraceReport;
 }
 
@@ -786,6 +872,31 @@ function exactProject(
   );
 }
 
+function aliasRemoteProjects(projects: ProjectFacts[], alias: string | undefined): ProjectFacts[] {
+  if (!alias) return [];
+  return projects.filter((project) => remoteKeys(project).includes(alias));
+}
+
+function moduleInfoNameCandidates(projects: ProjectFacts[], trace: RuntimeTraceReport): string[] {
+  const entryNames = (trace.moduleInfo?.entries ?? [])
+    .map((entry) => entry.name)
+    .filter((value): value is string => Boolean(value));
+  const names = [
+    ...(trace.moduleInfo?.availableNames ?? []),
+    ...entryNames,
+    ...(trace.moduleInfo?.name ? [trace.moduleInfo.name] : []),
+    ...(trace.moduleInfo?.id ? [trace.moduleInfo.id] : []),
+  ];
+  return [
+    ...new Set(
+      names.flatMap((name) => {
+        const exact = exactProject(projects, name);
+        return exact ? [exact.project.name] : [];
+      }),
+    ),
+  ].sort();
+}
+
 function runtimeFinding(
   ruleId: (typeof runtimeRuleMeta)[number]["id"],
   severity: Severity,
@@ -830,17 +941,27 @@ export function correlateRuntime(
     const matches = remoteName ? findProjectsForRemote(projects, remoteName) : [];
     const hostProject = exactProject(projects, trace.hostName);
     const producerProject = exactProject(projects, trace.remote?.name);
+    const aliasHostMatches = aliasRemoteProjects(projects, trace.requestAlias);
+    const aliasRemoteMatches = aliasRemoteProjects(projects, trace.remote?.alias);
+    const moduleInfoCandidates = moduleInfoNameCandidates(projects, trace);
     const ownerHintConflict = trace.ownerHintConflict === true;
     const owner = ownerHintConflict
       ? undefined
       : (trace.diagnosis?.ownerHint ?? trace.ownerHint ?? trace.diagnosis?.owner);
     const exactProducer = Boolean(trace.remote?.name && producerProject);
     const exactHost = Boolean(trace.hostName && hostProject);
+    const weakAliasOnly =
+      !exactProducer &&
+      !exactHost &&
+      (aliasHostMatches.length > 0 ||
+        aliasRemoteMatches.length > 0 ||
+        Boolean(trace.remote?.alias));
     const ownerHintUnresolved =
       (owner === "host" && !hostProject) || (owner === "remote" && !producerProject);
     const ambiguousIdentity =
       ownerHintConflict ||
       ownerHintUnresolved ||
+      weakAliasOnly ||
       (!owner &&
         exactHost &&
         exactProducer &&
@@ -858,6 +979,7 @@ export function correlateRuntime(
     const projectName =
       !supportedOwner ||
       ownerHintConflict ||
+      weakAliasOnly ||
       owner === "runtime" ||
       owner === "network" ||
       owner === "shared" ||
@@ -872,13 +994,34 @@ export function correlateRuntime(
               : !remoteName && hostProject
                 ? hostProject.project.name
                 : "runtime";
+    const roleCandidates = {
+      host: hostProject ? [hostProject.project.name] : [],
+      producer: producerProject ? [producerProject.project.name] : [],
+      consumer: aliasHostMatches.map((project) => project.project.name).sort(),
+      provider: trace.shared?.provider
+        ? projects
+            .filter(
+              (project) =>
+                project.moduleFederation?.name === trace.shared?.provider ||
+                project.artifacts.manifest?.name === trace.shared?.provider ||
+                project.artifacts.manifest?.id === trace.shared?.provider,
+            )
+            .map((project) => project.project.name)
+            .sort()
+        : [],
+      moduleInfo: moduleInfoCandidates,
+    };
     const identityEvidence = {
       ...(trace.hostName ? { hostName: trace.hostName } : {}),
       ...(trace.remote?.name ? { producer: trace.remote.name } : {}),
+      ...(trace.remote?.alias ? { remoteAlias: trace.remote.alias } : {}),
+      ...(trace.requestAlias ? { requestAlias: trace.requestAlias } : {}),
       ...(owner ? { ownerHint: owner } : {}),
+      roles: roleCandidates,
       ...(ambiguousIdentity ||
       !supportedOwner ||
       ownerHintConflict ||
+      weakAliasOnly ||
       owner === "shared" ||
       owner === "network" ||
       owner === "unknown"
@@ -887,26 +1030,36 @@ export function correlateRuntime(
               ? "conflicting owner hints; neutral runtime attribution"
               : ownerHintUnresolved
                 ? "owner hint did not match an exact candidate; neutral runtime attribution"
-                : !supportedOwner
-                  ? "unsupported owner hint; neutral runtime attribution"
-                  : owner === "network"
-                    ? "network failure; requesting host is context"
-                    : owner === "shared"
-                      ? "shared resolver/provider evidence"
-                      : "ambiguous host/producer identity",
+                : weakAliasOnly
+                  ? "alias-only or requestAlias evidence is weak; neutral runtime attribution"
+                  : !supportedOwner
+                    ? "unsupported owner hint; neutral runtime attribution"
+                    : owner === "network"
+                      ? "network failure; requesting host is context"
+                      : owner === "shared"
+                        ? "shared resolver/provider evidence"
+                        : "ambiguous host/producer identity",
             ...(ownerHintConflict && trace.ownerHints ? { ownerHints: trace.ownerHints } : {}),
             candidates: [
               ...new Set(
                 [
-                  hostProject?.project.name,
-                  producerProject?.project.name,
+                  ...roleCandidates.host,
+                  ...roleCandidates.producer,
+                  ...roleCandidates.consumer,
+                  ...roleCandidates.provider,
+                  ...roleCandidates.moduleInfo,
                   ...matches.map((project) => project.project.name),
-                  trace.shared?.provider,
                 ].filter((value): value is string => Boolean(value)),
               ),
             ].sort(),
           }
-        : {}),
+        : {
+            matchReason: exactProducer
+              ? "exact producer identity"
+              : exactHost
+                ? "exact host identity"
+                : "runtime attribution",
+          }),
     };
     const matchedManifest = matches
       .map((project) => project.artifacts.manifest)
@@ -935,10 +1088,16 @@ export function correlateRuntime(
     const remoteFailurePhases = phases.filter((phase) => REMOTE_PHASES.has(phase));
     if (!recovered && remoteFailurePhases.length > 0)
       for (const phase of remoteFailurePhases) {
-        const phaseMessage =
-          phase === "moduleFactory"
-            ? "Runtime remote module factory failed during moduleFactory."
+        const phaseKind =
+          phase === "moduleFactory" || phase === "factory"
+            ? "moduleFactory"
             : phase === "preload"
+              ? "preload"
+              : "remote-load";
+        const phaseMessage =
+          phaseKind === "moduleFactory"
+            ? `Runtime remote module factory failed during ${phase}.`
+            : phaseKind === "preload"
               ? "Runtime remote preload failed during preload."
               : `Runtime remote load failed during ${phase}.`;
         findings.push(
@@ -950,7 +1109,7 @@ export function correlateRuntime(
             {
               ...(remoteName ? { remote: remoteName } : {}),
               phases: [phase],
-              phaseKind: phase === "moduleFactory" || phase === "preload" ? phase : "remote-load",
+              phaseKind,
               ...(trace.traceId ? { traceId: trace.traceId } : {}),
               ...(trace.errorCode ? { errorCode: trace.errorCode } : {}),
               ...(trace.remote?.entry ? { entry: trace.remote.entry } : {}),
@@ -1020,13 +1179,18 @@ export function correlateRuntime(
         trace.failedPhase === "shared" ||
         (trace.errorMessage !== undefined &&
           /shared|share scope|version/i.test(trace.errorMessage));
+      const sharedObserved = trace.sharedCompleteness !== "unknown";
       const sharedFailed =
-        !recovered && (sharedPhaseFailed || sharedReasonEvidence || sharedErrorEvidence);
-      const versionMismatch = sharedVersionMismatch(
-        trace.shared?.selectedVersion,
-        typeof required === "string" ? required : undefined,
-        installed,
-      );
+        sharedObserved &&
+        !recovered &&
+        (sharedPhaseFailed || sharedReasonEvidence || sharedErrorEvidence);
+      const versionMismatch =
+        sharedObserved &&
+        sharedVersionMismatch(
+          trace.shared?.selectedVersion,
+          typeof required === "string" ? required : undefined,
+          installed,
+        );
       const providerCandidates = trace.shared?.provider
         ? projects.filter(
             (project) =>
@@ -1036,6 +1200,7 @@ export function correlateRuntime(
           )
         : [];
       const providerFallbackMismatch =
+        sharedObserved &&
         Boolean(trace.shared?.provider) &&
         consumersWithoutFallback.length > 0 &&
         providers.length === 0;

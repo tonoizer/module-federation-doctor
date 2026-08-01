@@ -300,18 +300,88 @@ describe("runtime trace import", () => {
     });
   });
 
-  it("migrates legacy init and factory phases without generic-only correlation", () => {
+  it("keeps legacy init and factory phase names while correlating them", () => {
     const [trace] = parseRuntimeTraces({
       remote: { name: "checkout" },
       summary: { outcome: "failed", phases: { factory: { status: "error" } } },
       diagnosis: { owner: "remote" },
     });
-    expect(trace!.phases).toEqual({ moduleFactory: { status: "error" } });
+    expect(trace!.phases).toEqual({ factory: { status: "error" } });
+    expect(trace!.sourceContract).toBe("legacy-doctor-v1");
+    const finding = correlateRuntime([trace!], [baseProject({ name: "checkout" })]).find(
+      (item) => item.ruleId === "runtime/remote-load-failed",
+    );
+    expect(finding?.evidence).toMatchObject({
+      phases: ["factory"],
+      phaseKind: "moduleFactory",
+    });
+  });
+
+  it("detects current contract even when a legacy-looking moduleInfo name is present", () => {
+    const [trace] = parseRuntimeTraces({
+      hostName: "host",
+      runtimeVersion: "2.5.0",
+      summary: {
+        outcome: "runtime-loaded",
+        runtimeLoaded: true,
+        phases: { loadRemote: { status: "success" } },
+      },
+      diagnosis: { ownerHint: "remote", title: "Remote loaded successfully" },
+      moduleInfo: { name: "host", reason: "clipped", clipped: true, entries: [{ name: "host" }] },
+    });
+    expect(trace?.sourceContract).toBe("upstream-observability-2.5.3");
+  });
+
+  it("marks missing shared evidence on partial/old runtimes as unknown, not healthy or failed", async () => {
+    const [partial] = await loadRuntimeTraceFile(path.join(fixtureRoot, "partial-devtools.json"));
+    expect(partial?.sharedCompleteness).toBe("unknown");
+    expect(partial?.sourceContract).toBe("partial");
     expect(
-      correlateRuntime([trace!], [baseProject({ name: "checkout" })]).some(
-        (item) => item.ruleId === "runtime/remote-load-failed",
+      correlateRuntime([partial!], [baseProject({ name: "host" })]).some(
+        (item) => item.ruleId === "runtime/shared-mismatch",
       ),
-    ).toBe(true);
+    ).toBe(false);
+
+    const [oldRuntime] = parseRuntimeTraces({
+      traceId: "old-chrome",
+      runtimeVersion: "2.4.9",
+      status: "pending",
+      events: [],
+    });
+    expect(oldRuntime?.sharedCompleteness).toBe("unknown");
+  });
+
+  it("keeps requestAlias as weak evidence and never sole ownership", () => {
+    const host = baseProject({
+      name: "host",
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        shared: {},
+        remotes: {
+          checkout: {
+            name: "checkout",
+            alias: "checkout",
+            entry: "https://cdn.example/checkout.js",
+            shareScope: "default",
+          },
+        },
+      },
+    });
+    const [trace] = parseRuntimeTraces({
+      requestAlias: "checkout",
+      summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+    });
+    const finding = correlateRuntime([trace!], [host]).find(
+      (item) => item.ruleId === "runtime/remote-load-failed",
+    );
+    expect(finding?.project).toBe("runtime");
+    expect(finding?.evidence).toMatchObject({
+      identity: {
+        requestAlias: "checkout",
+        matchReason: "alias-only or requestAlias evidence is weak; neutral runtime attribution",
+      },
+    });
   });
 
   it("uses final recovered outcome over earlier failed phases", () => {

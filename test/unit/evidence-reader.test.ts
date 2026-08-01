@@ -251,4 +251,20 @@ describe("public evidence reader", () => {
       readEvidenceDocument({ protocol, subjects: [], assertions: [], edges: [], evaluations: [] }),
     ).toThrowError(expect.objectContaining({ failureCode: "unsupported-version", pointer: path }));
   });
+
+  it("rejects Observability runtime reports instead of treating summary as a doctor report", () => {
+    expect(() =>
+      readEvidenceDocument({
+        traceId: "mf-obs",
+        hostName: "host",
+        summary: { outcome: "runtime-loaded", phases: { loadRemote: { status: "success" } } },
+        events: [],
+      }),
+    ).toThrowError(
+      expect.objectContaining({
+        failureCode: "wrong-document-kind",
+        message: expect.stringMatching(/parseRuntimeTraces|loadRuntimeTraceFile/),
+      }),
+    );
+  });
 });

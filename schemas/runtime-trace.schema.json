@@ -20,6 +20,9 @@
           "sourceContract": {
             "enum": ["upstream-observability-2.5.3", "legacy-doctor-v1", "partial"]
           },
+          "sharedCompleteness": {
+            "enum": ["complete", "partial", "unknown"]
+          },
           "status": { "type": "string" },
           "requestId": { "type": "string" },
           "requestAlias": { "type": "string" },

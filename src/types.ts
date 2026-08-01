@@ -615,6 +615,11 @@ export interface RuntimeTraceReport {
   schemaVersion: 1;
   /** Source adapter marker. This is not the MF runtime version. */
   sourceContract?: "upstream-observability-2.5.3" | "legacy-doctor-v1" | "partial";
+  /**
+   * Shared-section completeness. Absence on old/missing/preview Chrome DevTools
+   * runtimes is `unknown`, never an implied healthy shared graph.
+   */
+  sharedCompleteness?: "complete" | "partial" | "unknown";
   evidenceClipped?: boolean;
   traceId?: string;
   status?: string;

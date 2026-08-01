@@ -276,34 +276,40 @@ async function runtimeTraceHints(
   runtimeTrace: string | undefined,
 ): Promise<{ packages: string[]; remotes: string[]; used: boolean }> {
   if (!runtimeTrace) return { packages: [], remotes: [], used: false };
-  const { loadRuntimeTraceFile } = await import("./runtime-trace.js");
-  const reports = await loadRuntimeTraceFile(runtimeTrace);
-  const packages = new Set<string>();
-  const remotes = new Set<string>();
-  let sawTrace = false;
-  for (const item of reports) {
-    const shared = item.shared;
-    const remote = item.remote;
-    const sharedName = shared?.package;
-    if (sharedName) {
-      packages.add(sharedName);
+  try {
+    const { loadRuntimeTraceFile } = await import("./runtime-trace.js");
+    const reports = await loadRuntimeTraceFile(runtimeTrace);
+    const packages = new Set<string>();
+    const remotes = new Set<string>();
+    let sawTrace = false;
+    for (const item of reports) {
+      const shared = item.shared;
+      const remote = item.remote;
+      const sharedName = shared?.package;
+      if (sharedName) {
+        packages.add(sharedName);
+        sawTrace = true;
+      }
+      if (typeof remote?.name === "string" && remote.name) {
+        remotes.add(remote.name);
+        sawTrace = true;
+      }
+      if (typeof remote?.alias === "string" && remote.alias) {
+        remotes.add(remote.alias);
+        sawTrace = true;
+      }
       sawTrace = true;
     }
-    if (typeof remote?.name === "string" && remote.name) {
-      remotes.add(remote.name);
-      sawTrace = true;
-    }
-    if (typeof remote?.alias === "string" && remote.alias) {
-      remotes.add(remote.alias);
-      sawTrace = true;
-    }
-    sawTrace = true;
+    return {
+      packages: [...packages].sort(),
+      remotes: [...remotes].sort(),
+      used: sawTrace,
+    };
+  } catch {
+    // Opt-in runtimeTrace must use the same adapter as `mfdoctor runtime`, but
+    // invalid/missing traces must not break offline check; partial-analysis covers gaps.
+    return { packages: [], remotes: [], used: false };
   }
-  return {
-    packages: [...packages].sort(),
-    remotes: [...remotes].sort(),
-    used: sawTrace,
-  };
 }
 
 function manifestFrom(value: unknown, file: string): ArtifactManifest {
