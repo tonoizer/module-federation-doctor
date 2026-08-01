@@ -309,6 +309,20 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Keep `varFilename` when serving webpack/rspack var hosts. Prefer `type: 'module'` remotes when this app is a Vite consumer talking to Vite producers.",
     sources: [vite],
   },
+  "vite/host-init-inject-ssr": {
+    category: "correctness",
+    impact:
+      "SSR and HTML-less frameworks need host init injected into the entry, not the HTML document, or federation bootstrap never runs on the server.",
+    fix: "Set `hostInitInjectLocation: 'entry'` for SSR / Nitro / Nuxt-style apps.",
+    sources: [vite],
+  },
+  "vite/ssr-nitro-externals": {
+    category: "reliability",
+    impact:
+      "Shared React (or react-dom) can conflict with Nitro/SSR externals and `ssrEntryLoader` when the server expects a different module instance.",
+    fix: "Align `shared` React with `ssrExternals` / `ssrEntryLoader` for the SSR runtime, or document an intentional dual-instance path.",
+    sources: [vite],
+  },
   "artifact/manifest-assets-disabled": {
     category: "reliability",
     impact:

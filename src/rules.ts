@@ -176,6 +176,28 @@ function hasRemoteRecoveryPlugin(plugins: string[] | undefined): boolean {
   );
 }
 
+const SSR_FRAMEWORK_DEPS = ["nuxt", "nitropack", "@nuxt/kit", "@nuxt/schema"] as const;
+
+function detectNitroSignal(facts: ProjectFacts): boolean {
+  const declared = facts.dependencies.declared;
+  return SSR_FRAMEWORK_DEPS.some((name) => name in declared);
+}
+
+function detectViteSsrSignal(facts: ProjectFacts): { detected: boolean; signals: string[] } {
+  const signals: string[] = [];
+  // Prefer MF-declared SSR targets and framework deps. Do not treat
+  // `builds.targetKind=node` alone as SSR — Vite's default `ssr.target` is
+  // `node`, so client builds often record that kind without being SSR apps.
+  if (facts.moduleFederation?.vite?.target === "node") signals.push("vite.target=node");
+  if (facts.moduleFederation?.experiments?.target === "node")
+    signals.push("experiments.target=node");
+  for (const build of facts.builds ?? []) {
+    if (build.targetKind === "ssr") signals.push("builds.targetKind=ssr");
+  }
+  if (detectNitroSignal(facts)) signals.push("deps:nitropack|nuxt");
+  return { detected: signals.length > 0, signals: [...new Set(signals)].sort() };
+}
+
 function dtsOptions(config: NormalizedMFConfig | undefined): Record<string, unknown> {
   return config?.dts?.options ?? {};
 }
@@ -816,6 +838,68 @@ export const builtInRules: DoctorRule[] = [
       "`varFilename` is configured while remotes still use default `var` typing.",
       { varFilename, remotes: defaultVarRemotes },
       "Keep `varFilename` when this producer serves webpack/rspack var hosts. Prefer `type: 'module'` remotes for Vite↔Vite ESM consumers.",
+    );
+  }),
+  createRule("vite/host-init-inject-ssr", "error", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const config = mf(context);
+    if (!config) return;
+    if (optionBoolean(context.options, "requireHostInitEntryForSsr") === false) return;
+
+    const inject = config.vite?.hostInitInjectLocation;
+    const ssr = detectViteSsrSignal(context.facts);
+    if (!ssr.detected) {
+      // Browser-only / unknown: unset stays silent; explicit `html` is valid for SPA hosts.
+      return;
+    }
+    if (inject === "entry") return;
+
+    report(
+      context,
+      "SSR Vite apps need `hostInitInjectLocation: 'entry'`.",
+      {
+        hostInitInjectLocation: inject ?? null,
+        signals: ssr.signals,
+      },
+      "Set `hostInitInjectLocation` to `entry` so federation host init runs without an HTML document.",
+    );
+  }),
+  createRule("vite/ssr-nitro-externals", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const config = mf(context);
+    if (!config) return;
+
+    const ssr = detectViteSsrSignal(context.facts);
+    const nitro = detectNitroSignal(context.facts);
+    if (!ssr.detected && !nitro) return;
+
+    const sharedReact = Object.keys(config.shared).filter(
+      (name) => name === "react" || name === "react-dom" || name.startsWith("react/"),
+    );
+    if (sharedReact.length === 0) return;
+
+    const externals = new Set(config.vite?.ssrExternals ?? []);
+    const overlapping = sharedReact.filter((name) => {
+      if (externals.has(name)) return true;
+      if (name === "react" || name.startsWith("react/")) return externals.has("react");
+      if (name === "react-dom") return externals.has("react-dom");
+      return false;
+    });
+    const loader = config.vite?.ssrEntryLoader;
+    // Honest skip when there is no externals/loader fact to correlate — only
+    // Nitro/SSR with shared React and either overlap or an explicit loader.
+    if (overlapping.length === 0 && !loader) return;
+
+    report(
+      context,
+      "Shared React may conflict with Vite SSR / Nitro externals.",
+      {
+        sharedReact,
+        ...(overlapping.length > 0 ? { ssrExternalsOverlap: overlapping } : {}),
+        ...(loader ? { ssrEntryLoader: loader } : {}),
+        signals: [...ssr.signals, ...(nitro ? ["deps:nitropack|nuxt"] : [])],
+      },
+      "Align shared React with `ssrExternals` / `ssrEntryLoader`, or remove the share when Nitro owns the server React instance.",
     );
   }),
   createRule("artifact/manifest-assets-disabled", "warning", (context) => {

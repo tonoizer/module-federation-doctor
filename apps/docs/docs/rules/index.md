@@ -40,6 +40,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`federation/share-scope-mismatch`](./federation/share-scope-mismatch.md) | error | Projects in different scopes cannot reuse the same shared provider. |
 | [`federation/version-conflict`](./federation/version-conflict.md) | error | No installed provider version satisfies every consumer range. |
 | [`shared/version-unsatisfied`](./shared/version-unsatisfied.md) | error | The installed provider does not satisfy the configured consumer range. |
+| [`vite/host-init-inject-ssr`](./vite/host-init-inject-ssr.md) | error | SSR and HTML-less frameworks need host init injected into the entry, not the HTML document, or federation bootstrap never runs on the server. |
 | [`vite/remotes-prefer-module`](./vite/remotes-prefer-module.md) | warning | Vite string remotes and missing/`var` type default to script-style loading. Vite↔Vite ESM remotes need explicit `type: 'module'`; mixed bundlers should declare an explicit non-default type (for example `global`) or document a `varFilename` producer interop path. |
 
 ## Reliability
@@ -71,6 +72,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, Reliability, 
 | [`runtime/shared-mismatch`](./runtime/shared-mismatch.md) | error | Runtime shared selection conflicts with installed versions, required ranges, or provider config. |
 | [`shared/singleton-mismatch`](./shared/singleton-mismatch.md) | warning | Projects disagree on whether multiple instances are allowed. |
 | [`shared/singleton-risk`](./shared/singleton-risk.md) | warning | Multiple framework runtimes can split global state, contexts, hooks, or renderers. |
+| [`vite/ssr-nitro-externals`](./vite/ssr-nitro-externals.md) | warning | Shared React (or react-dom) can conflict with Nitro/SSR externals and `ssrEntryLoader` when the server expects a different module instance. |
 
 ## Performance
 

@@ -41,6 +41,8 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "reliability/vite-fixed-parse-timeout",
   "vite/remotes-prefer-module",
   "vite/var-filename-interop",
+  "vite/host-init-inject-ssr",
+  "vite/ssr-nitro-externals",
   "artifact/manifest-assets-disabled",
   "artifact/manifest-disabled",
   "artifact/dts-disabled",
