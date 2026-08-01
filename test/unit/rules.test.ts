@@ -697,6 +697,74 @@ describe("built-in rules", () => {
         };
       },
     ],
+    [
+      "bridge/react-version-entry-prefer",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.packages = ["react", "@module-federation/bridge-react"];
+        facts.imports.specifiers = ["react", "@module-federation/bridge-react"];
+        facts.moduleFederation!.runtimePlugins = ["@module-federation/bridge-react/plugin"];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+        facts.moduleFederation!.shared = {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+          "react-dom/": {
+            package: "react-dom/",
+            singleton: true,
+            eager: false,
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "bridge/react-dom-prefix-missing",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.packages = ["react", "@module-federation/bridge-react"];
+        facts.imports.specifiers = ["react", "@module-federation/bridge-react/v19"];
+        facts.moduleFederation!.runtimePlugins = ["@module-federation/bridge-react/plugin"];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+        facts.moduleFederation!.shared = {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+        };
+      },
+    ],
+    [
+      "bridge/lazy-plugin-unregistered",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.packages = ["react", "@module-federation/bridge-react"];
+        facts.imports.specifiers = ["react", "@module-federation/bridge-react/v19"];
+        facts.moduleFederation!.bridge = { enableBridgeRouter: true };
+        facts.moduleFederation!.shared = {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+          "react-dom/": {
+            package: "react-dom/",
+            singleton: true,
+            eager: false,
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
+      "bridge/router-implicit-enable",
+      (facts: ProjectFacts) => {
+        facts.dependencies.declared["@module-federation/bridge-react"] = "0.2.0";
+        facts.imports.packages = ["react", "@module-federation/bridge-react"];
+        facts.imports.specifiers = ["react", "@module-federation/bridge-react/v19"];
+        facts.moduleFederation!.runtimePlugins = ["@module-federation/bridge-react/plugin"];
+        facts.moduleFederation!.shared = {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+          "react-dom/": {
+            package: "react-dom/",
+            singleton: true,
+            eager: false,
+            shareScope: "default",
+          },
+        };
+      },
+    ],
   ];
 
   it("has a behavior fixture for every local rule", () => {
