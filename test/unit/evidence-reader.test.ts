@@ -96,6 +96,17 @@ describe("public evidence reader", () => {
     );
   });
 
+  it("keeps document context when a v1 value is not JSON-safe", () => {
+    expect(() => readEvidenceDocument({ schemaVersion: 1, project: new Date() })).toThrowError(
+      expect.objectContaining({
+        detectedDocumentKind: "project-facts",
+        sourceVersion: 1,
+        failureCode: "malformed-json",
+        pointer: "/project",
+      }),
+    );
+  });
+
   it("maps false capabilities to non-collected completeness", () => {
     const result = readEvidenceDocument(projectFixture);
     expect(
@@ -155,6 +166,23 @@ describe("public evidence reader", () => {
     expect(new Set(first.assertions.map((item) => item.id)).size).toBe(first.assertions.length);
     expect(new Set(first.evaluations.map((item) => item.id)).size).toBe(first.evaluations.length);
     expect(first).toEqual(second);
+  });
+
+  it("keeps report metadata and v2 IDs stable when findings are reordered", () => {
+    const findings = [
+      { ...reportFixture.findings[0], project: "zeta", fingerprint: "z" },
+      { ...reportFixture.findings[0], project: "alpha", fingerprint: "a" },
+    ];
+    const first = migrateDoctorReport({ ...reportFixture, findings } as never);
+    const second = migrateDoctorReport({
+      ...reportFixture,
+      findings: findings.toReversed(),
+    } as never);
+
+    expect(second).toEqual(first);
+    expect(first.assertions.find((item) => item.predicate === "doctor.capabilities")?.subject).toBe(
+      first.subjects.slice().sort((left, right) => left.id.localeCompare(right.id))[0]?.id,
+    );
   });
 
   it.each([

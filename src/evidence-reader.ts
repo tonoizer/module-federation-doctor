@@ -423,9 +423,29 @@ export function migrateDoctorReport(
     }
     return subject;
   };
-  for (const [findingIndex, finding] of input.findings.entries()) {
-    const subject = subjectFor(finding.project);
+  const findingEntries = input.findings.map((finding, findingIndex) => {
     const findingValue = jsonValue(finding, `/findings/${findingIndex}`, options);
+    return {
+      finding,
+      findingIndex,
+      value: findingValue,
+      key: stableEvidenceId("finding", findingValue),
+      occurrence: 0,
+    };
+  });
+  const occurrenceByKey = new Map<string, number>();
+  const canonicalFindings = findingEntries
+    .slice()
+    .sort(
+      (left, right) => left.key.localeCompare(right.key) || left.findingIndex - right.findingIndex,
+    );
+  for (const entry of canonicalFindings) {
+    const occurrence = occurrenceByKey.get(entry.key) ?? 0;
+    occurrenceByKey.set(entry.key, occurrence + 1);
+    entry.occurrence = occurrence;
+  }
+  for (const { finding, value: findingValue, occurrence } of findingEntries) {
+    const subject = subjectFor(finding.project);
     const evidence = assertion(
       subject,
       "doctor.finding",
@@ -433,7 +453,7 @@ export function migrateDoctorReport(
       scope,
       "v1-doctor-report",
       completeness("complete", "Finding is present in the v1 report."),
-      findingIndex,
+      occurrence,
     );
     graph.assertions.push(evidence);
     graph.evaluations.push({
@@ -441,7 +461,7 @@ export function migrateDoctorReport(
         project: finding.project,
         ruleId: finding.ruleId,
         fingerprint: finding.fingerprint,
-        occurrence: findingIndex,
+        occurrence,
       }),
       rule: { id: finding.ruleId, version: "1" },
       subject: subject.id,
@@ -455,7 +475,9 @@ export function migrateDoctorReport(
     });
   }
   if (input.findings.length === 0) subjectFor("");
-  const metadataSubject = graph.subjects[0];
+  const metadataSubject = graph.subjects
+    .slice()
+    .sort((left, right) => left.id.localeCompare(right.id))[0];
   if (metadataSubject) {
     graph.assertions.push(
       assertion(
@@ -485,11 +507,27 @@ export function readEvidenceDocument(
   input: unknown,
   options: EvidenceReaderOptions = {},
 ): EvidenceDocumentReadResult {
+  const detectedKind = isRecord(input) ? documentKindOf(input) : "unknown";
+  const detectedVersion = isRecord(input) ? sourceVersionOf(input) : undefined;
   let value: EvidenceValue;
   try {
     value = jsonValue(input, "/", options);
   } catch (error) {
-    if (error instanceof EvidenceReaderError) throw error;
+    if (error instanceof EvidenceReaderError) {
+      if (
+        error.failureCode === "malformed-json" &&
+        (detectedKind !== "unknown" || detectedVersion !== undefined)
+      )
+        throw new EvidenceReaderError(
+          {
+            ...error.details,
+            detectedDocumentKind: detectedKind,
+            ...(detectedVersion !== undefined ? { sourceVersion: detectedVersion } : {}),
+          },
+          error.message,
+        );
+      throw error;
+    }
     throwReader(options, "unknown", undefined, "malformed-json", "/", "Document is not JSON-safe.");
   }
   if (!isRecord(value))
