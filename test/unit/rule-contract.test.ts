@@ -61,6 +61,7 @@ describe("evidence-aware rule contract", () => {
       "imports.sourceFiles": "context.facts.imports.sourceFiles",
       "imports.packages": "context.facts.imports.packages",
       "imports.dynamicPackages": "context.facts.imports.dynamicPackages",
+      "imports.specifiers": "context.facts.imports.specifiers",
       "imports.unresolvedDynamic": "context.facts.imports.unresolvedDynamic",
       "imports.deepImports": "context.facts.imports.deepImports",
       "imports.deepImportFiles": "context.facts.imports.deepImportFiles",

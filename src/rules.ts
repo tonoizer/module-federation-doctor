@@ -952,7 +952,15 @@ export const builtInRules: DoctorRule[] = [
     // Incomplete dynamic evidence → prefer doctor/partial-analysis over false unused certainty.
     if (unresolvedMayHideUsage) return;
     for (const name of Object.keys(mf(context)?.shared ?? {}))
-      if (!isShareKeyUsed(name, context.facts.imports) && !alwaysShared.has(name))
+      if (
+        !isShareKeyUsed(name, {
+          packages: context.facts.imports.packages,
+          dynamicPackages: context.facts.imports.dynamicPackages,
+          specifiers: context.facts.imports.specifiers,
+          deepImports: context.facts.imports.deepImports,
+        }) &&
+        !alwaysShared.has(name)
+      )
         report(
           context,
           `Shared package "${name}" is not imported in scanned sources or opt-in runtime evidence.`,
