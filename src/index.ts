@@ -22,6 +22,8 @@ export {
   updateBaseline,
   writeBaselineFile,
 } from "./baseline.js";
+export { computeHealthScore, isExcludedFromScore, labelForScore } from "./health-score.js";
+export type { HealthScoreResult } from "./health-score.js";
 export {
   DEFAULT_WORKSPACE_PROJECT_GLOBS,
   WORKSPACE_IGNORE,
@@ -109,6 +111,7 @@ export type {
   DoctorSharedPolicy,
   DoctorUiPayload,
   FederationAnalysisResult,
+  HealthScoreLabel,
   ImportDepth,
   ImportEvidenceSource,
   ImportFacts,

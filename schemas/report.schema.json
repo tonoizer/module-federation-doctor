@@ -34,7 +34,15 @@
         "info": { "type": "integer", "minimum": 0 },
         "warnings": { "type": "integer", "minimum": 0 },
         "errors": { "type": "integer", "minimum": 0 },
-        "suppressed": { "type": "integer", "minimum": 0 }
+        "suppressed": { "type": "integer", "minimum": 0 },
+        "score": {
+          "description": "Offline unique-rule health score, or null when analysis is too partial.",
+          "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+        },
+        "scoreLabel": {
+          "description": "Band label for score, or null when score is null.",
+          "oneOf": [{ "type": "string", "enum": ["Great", "OK", "Needs work"] }, { "type": "null" }]
+        }
       },
       "additionalProperties": false
     },
