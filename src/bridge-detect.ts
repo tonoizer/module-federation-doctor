@@ -256,10 +256,9 @@ export function detectInvalidBridgeProviderShape(source: string): string | undef
     if (!match) continue;
     const body = match[1] ?? "";
     const hasLoader = /\b(?:loader|module|remote)\b/.test(body);
-    const hasFallbackOrLoading = /\b(?:fallback|loading|errorElement)\b/.test(body);
-    if (api === "createRemoteAppComponent" || api === "createBridge") {
+    // Fallback/loading UX is owned by bridge/missing-fallback-loading (warning), not this error.
+    if (api === "createRemoteAppComponent") {
       if (!hasLoader) return `${api} missing loader/module`;
-      if (!hasFallbackOrLoading) return `${api} missing fallback/loading`;
     }
     if (api === "createBridgeComponent") {
       if (!/\b(?:rootComponent|root|app|component|App)\b/.test(body) && body.trim().length < 8)
