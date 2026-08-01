@@ -435,7 +435,8 @@ export const builtInRules: DoctorRule[] = [
       implementation &&
       !implementation.includes("@module-federation/runtime-tools") &&
       !implementation.startsWith(".") &&
-      !implementation.startsWith("/")
+      !implementation.startsWith("/") &&
+      !implementation.startsWith("[external]/")
     )
       report(
         context,
