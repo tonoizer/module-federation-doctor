@@ -73,11 +73,34 @@ function isRecord(value: unknown): value is JsonRecord {
 }
 
 function sourceVersionOf(value: JsonRecord): number | string | undefined {
-  if (isRecord(value.protocol) && value.protocol.protocolVersion !== undefined)
-    return value.protocol.protocolVersion as number | string;
+  if (isRecord(value.protocol)) {
+    if (value.protocol.schemaVersion !== undefined)
+      return value.protocol.schemaVersion as number | string;
+    if (value.protocol.protocolVersion !== undefined)
+      return value.protocol.protocolVersion as number | string;
+  }
   return typeof value.schemaVersion === "number" || typeof value.schemaVersion === "string"
     ? value.schemaVersion
     : undefined;
+}
+
+function futureVersionOf(
+  value: JsonRecord,
+  kind: EvidenceDocumentKind,
+): { value: number | string; pointer: string } | undefined {
+  const expected = kind === "evidence-graph" ? 2 : 1;
+  const candidates =
+    kind === "evidence-graph" && isRecord(value.protocol)
+      ? [
+          { value: value.protocol.schemaVersion, pointer: "/protocol/schemaVersion" },
+          { value: value.protocol.protocolVersion, pointer: "/protocol/protocolVersion" },
+        ]
+      : [{ value: value.schemaVersion, pointer: "/schemaVersion" }];
+  return candidates.find(
+    (candidate): candidate is { value: number | string; pointer: string } =>
+      (typeof candidate.value === "number" && candidate.value > expected) ||
+      (typeof candidate.value === "string" && Number(candidate.value) > expected),
+  );
 }
 
 function documentKindOf(value: JsonRecord): EvidenceDocumentKind | "unknown" {
@@ -102,6 +125,18 @@ function jsonValue(
   if (typeof value === "number" && !Number.isFinite(value))
     throwReader(options, "unknown", undefined, "malformed-json", path, "Number must be finite.");
   if (Array.isArray(value) || isRecord(value)) {
+    if (
+      isRecord(value) &&
+      !([Object.prototype, null] as (object | null)[]).includes(Object.getPrototypeOf(value))
+    )
+      throwReader(
+        options,
+        "unknown",
+        undefined,
+        "malformed-json",
+        path,
+        "Value must be a plain JSON object.",
+      );
     if (seen.has(value))
       throwReader(
         options,
@@ -113,17 +148,23 @@ function jsonValue(
       );
     seen.add(value);
   }
-  if (Array.isArray(value))
-    return value.map((item, index) =>
+  if (Array.isArray(value)) {
+    const result = value.map((item, index) =>
       jsonValue(item, `${path === "/" ? "" : path}/${index}`, options, seen),
     );
-  if (isRecord(value))
-    return Object.fromEntries(
+    seen.delete(value);
+    return result;
+  }
+  if (isRecord(value)) {
+    const result = Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
         jsonValue(item, `${path === "/" ? "" : path}/${key}`, options, seen),
       ]),
     );
+    seen.delete(value);
+    return result;
+  }
   return value as EvidenceValue;
 }
 
@@ -154,16 +195,14 @@ function validateOrThrow(
   options: EvidenceReaderOptions,
 ): void {
   const version = sourceVersionOf(value);
-  if (
-    (typeof version === "number" && version > (kind === "evidence-graph" ? 2 : 1)) ||
-    (isRecord(value.protocol) && value.protocol.protocolVersion !== 2 && kind === "evidence-graph")
-  )
+  const futureVersion = futureVersionOf(value, kind);
+  if (futureVersion)
     throwReader(
       options,
       kind,
-      version,
+      futureVersion.value,
       "unsupported-version",
-      "/schemaVersion",
+      futureVersion.pointer,
       "Unsupported future document version",
     );
 
@@ -214,6 +253,61 @@ function completeness(
   return { status, reason, ...(missing ? { missing: missing.slice() } : {}) };
 }
 
+function projectFieldCapability(field: string): string | undefined {
+  return {
+    bundler: "config",
+    moduleFederation: "config",
+    imports: "sourceImports",
+    dependencies: "installedVersions",
+    "artifacts.manifest": "manifest",
+    "artifacts.stats": "stats",
+    "artifacts.emittedAssets": "emittedAssets",
+  }[field];
+}
+
+function fieldCompleteness(
+  input: JsonRecord,
+  field: string,
+  present: boolean,
+): EvidenceCompletenessInfo {
+  const capabilities = isRecord(input.capabilities) ? input.capabilities : undefined;
+  const capability = projectFieldCapability(field);
+  if (!present)
+    return completeness(
+      "unknown",
+      "Field was omitted from the v1 document and was not collected.",
+      [field],
+    );
+  if (capability && capabilities && capabilities[capability] === false)
+    return completeness(
+      "not-collected",
+      `The v1 capability ${capability} was false; this field is not claimed as collected.`,
+      [field],
+    );
+  if (field === "artifacts" && capabilities) {
+    const unavailable = ["manifest", "stats", "emittedAssets"].filter(
+      (name) => capabilities[name] === false,
+    );
+    if (unavailable.length > 0)
+      return completeness(
+        "partial",
+        "Some artifact capabilities were false; unavailable artifact data is not claimed as collected.",
+        unavailable,
+      );
+  }
+  return completeness("complete", "Field is present and its v1 capability was not false.");
+}
+
+function nonEmpty(value: string, fallback: string): string {
+  return value || fallback;
+}
+
+function finalizeGraph(graph: EvidenceGraphV2, options: EvidenceReaderOptions): EvidenceGraphV2 {
+  const normalized = normalizeEvidenceGraph(graph);
+  validateOrThrow(normalized as unknown as JsonRecord, "evidence-graph", options);
+  return normalized;
+}
+
 function assertion(
   subject: EvidenceSubject,
   predicate: string,
@@ -221,8 +315,14 @@ function assertion(
   scope: EvidenceGraphV2["scope"],
   source: string,
   complete: EvidenceCompletenessInfo,
+  idSuffix?: string | number,
 ): EvidenceAssertion {
-  const id = stableEvidenceId("assertion", { subject: subject.id, predicate, value });
+  const id = stableEvidenceId("assertion", {
+    subject: subject.id,
+    predicate,
+    value,
+    ...(idSuffix !== undefined ? { idSuffix: String(idSuffix) } : {}),
+  });
   return {
     id,
     subject: subject.id,
@@ -282,7 +382,7 @@ export function migrateProjectFacts(
         jsonValue(input[field], `/` + field, options),
         scope,
         "v1-project-facts",
-        completeness("complete", "Field is present in the v1 document."),
+        fieldCompleteness(value, field, present),
       ),
     );
   }
@@ -298,7 +398,7 @@ export function migrateProjectFacts(
         completeness("partial", "Optional v1 fields were omitted.", missing),
       ),
     );
-  return normalizeEvidenceGraph(graph);
+  return finalizeGraph(graph, options);
 }
 
 export function migrateDoctorReport(
@@ -310,17 +410,21 @@ export function migrateDoctorReport(
   const scope = { adapter: "legacy-v1", bundler: { name: "unknown" }, target: "unknown" as const };
   const graph = baseGraph(scope, {}, "v1-doctor-report");
   const subjects = new Map<string, EvidenceSubject>();
-  for (const [findingIndex, finding] of input.findings.entries()) {
-    let subject = subjects.get(finding.project);
+  const subjectFor = (project: string): EvidenceSubject => {
+    let subject = subjects.get(project);
     if (!subject) {
       subject = {
-        id: stableEvidenceId("subject.project", { name: finding.project }),
+        id: stableEvidenceId("subject.project", { name: project }),
         kind: "project",
-        name: finding.project,
+        name: nonEmpty(project, "[legacy-v1-report]"),
       };
-      subjects.set(finding.project, subject);
+      subjects.set(project, subject);
       graph.subjects.push(subject);
     }
+    return subject;
+  };
+  for (const [findingIndex, finding] of input.findings.entries()) {
+    const subject = subjectFor(finding.project);
     const findingValue = jsonValue(finding, `/findings/${findingIndex}`, options);
     const evidence = assertion(
       subject,
@@ -329,6 +433,7 @@ export function migrateDoctorReport(
       scope,
       "v1-doctor-report",
       completeness("complete", "Finding is present in the v1 report."),
+      findingIndex,
     );
     graph.assertions.push(evidence);
     graph.evaluations.push({
@@ -336,19 +441,44 @@ export function migrateDoctorReport(
         project: finding.project,
         ruleId: finding.ruleId,
         fingerprint: finding.fingerprint,
+        occurrence: findingIndex,
       }),
       rule: { id: finding.ruleId, version: "1" },
       subject: subject.id,
       outcome: "fail",
       evidenceIds: [evidence.id],
-      reason: finding.message,
+      reason: nonEmpty(finding.message, "Legacy v1 finding message was empty."),
       completeness: completeness(
         "complete",
         "Evaluation is copied from a schema-valid v1 finding.",
       ),
     });
   }
-  return normalizeEvidenceGraph(graph);
+  if (input.findings.length === 0) subjectFor("");
+  const metadataSubject = graph.subjects[0];
+  if (metadataSubject) {
+    graph.assertions.push(
+      assertion(
+        metadataSubject,
+        "doctor.capabilities",
+        jsonValue(input.capabilities, "/capabilities", options),
+        scope,
+        "v1-doctor-report",
+        completeness("complete", "Report capabilities are copied from the schema-valid v1 report."),
+        "capabilities",
+      ),
+      assertion(
+        metadataSubject,
+        "doctor.summary",
+        jsonValue(input.summary, "/summary", options),
+        scope,
+        "v1-doctor-report",
+        completeness("complete", "Report summary is copied from the schema-valid v1 report."),
+        "summary",
+      ),
+    );
+  }
+  return finalizeGraph(graph, options);
 }
 
 export function readEvidenceDocument(

@@ -30,7 +30,17 @@ describe("public evidence reader", () => {
     expect(result.kind).toBe("doctor-report");
     expect(result.graph.evaluations).toHaveLength(1);
     expect(result.graph.evaluations[0]?.outcome).toBe("fail");
-    expect(result.graph.assertions[0]?.value).toMatchObject({ ruleId: "shared/version-conflict" });
+    expect(
+      result.graph.assertions.find((item) => item.predicate === "doctor.finding")?.value,
+    ).toMatchObject({
+      ruleId: "shared/version-conflict",
+    });
+    expect(
+      result.graph.assertions.find((item) => item.predicate === "doctor.capabilities")?.value,
+    ).toEqual(reportFixture.capabilities);
+    expect(
+      result.graph.assertions.find((item) => item.predicate === "doctor.summary")?.value,
+    ).toEqual(reportFixture.summary);
     expect(migrateDoctorReport(reportFixture as never)).toEqual(result.graph);
   });
 
@@ -78,5 +88,81 @@ describe("public evidence reader", () => {
         pointer: "/project",
       }),
     );
+    expect(() => readEvidenceDocument({ schemaVersion: 1, project: new Date() })).toThrowError(
+      expect.objectContaining({ failureCode: "malformed-json", pointer: "/project" }),
+    );
+    expect(() => readEvidenceDocument({ schemaVersion: 1, project: new Map() })).toThrowError(
+      expect.objectContaining({ failureCode: "malformed-json", pointer: "/project" }),
+    );
+  });
+
+  it("maps false capabilities to non-collected completeness", () => {
+    const result = readEvidenceDocument(projectFixture);
+    expect(
+      result.graph.assertions.find((item) => item.predicate === "project.artifacts")?.completeness,
+    ).toMatchObject({ status: "partial" });
+    expect(
+      result.graph.assertions.find((item) => item.predicate === "project.imports")?.completeness,
+    ).toMatchObject({ status: "complete" });
+  });
+
+  it("preserves an empty report and makes boundary values schema-valid", () => {
+    const empty = readEvidenceDocument({
+      schemaVersion: 1,
+      capabilities: reportFixture.capabilities,
+      summary: { projects: 0, info: 0, warnings: 0, errors: 0 },
+      findings: [],
+    });
+    expect(empty.graph.assertions.map((item) => item.predicate)).toEqual(
+      expect.arrayContaining(["doctor.capabilities", "doctor.summary"]),
+    );
+
+    const result = readEvidenceDocument({
+      schemaVersion: 1,
+      capabilities: {
+        config: false,
+        sourceImports: false,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: false,
+      },
+      summary: { projects: 0, info: 0, warnings: 0, errors: 0 },
+      findings: [
+        {
+          schemaVersion: 1,
+          ruleId: "rule",
+          severity: "info",
+          message: "",
+          project: "",
+          evidence: {},
+          fingerprint: "same",
+        },
+      ],
+    });
+    expect(result.graph.subjects.every((subject) => subject.name.length > 0)).toBe(true);
+    expect(result.graph.evaluations[0]?.reason.length).toBeGreaterThan(0);
+    expect(result.graph.assertions.some((item) => item.predicate === "doctor.summary")).toBe(true);
+  });
+
+  it("gives duplicate findings deterministic unique IDs", () => {
+    const input = {
+      ...reportFixture,
+      findings: [reportFixture.findings[0], reportFixture.findings[0]],
+    };
+    const first = migrateDoctorReport(input as never);
+    const second = migrateDoctorReport(input as never);
+    expect(new Set(first.assertions.map((item) => item.id)).size).toBe(first.assertions.length);
+    expect(new Set(first.evaluations.map((item) => item.id)).size).toBe(first.evaluations.length);
+    expect(first).toEqual(second);
+  });
+
+  it.each([
+    ["/protocol/schemaVersion", { protocolVersion: 2, schemaVersion: 3 }],
+    ["/protocol/protocolVersion", { protocolVersion: 3, schemaVersion: 2 }],
+  ])("reports future v2 versions at %s", (path, protocol) => {
+    expect(() =>
+      readEvidenceDocument({ protocol, subjects: [], assertions: [], edges: [], evaluations: [] }),
+    ).toThrowError(expect.objectContaining({ failureCode: "unsupported-version", pointer: path }));
   });
 });
