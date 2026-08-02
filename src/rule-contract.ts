@@ -174,3 +174,53 @@ export function capConfidence(
 ): EvidenceConfidence {
   return weakestConfidence(confidence, ceiling);
 }
+
+export type EvidenceRuleDecision =
+  | { outcome: "pass" | "fail"; reason: string }
+  | Pick<RulePassResult | RuleFailResult, "outcome" | "reason">;
+
+export interface EvidenceRuleScope {
+  adapter?: string;
+  bundler?: { name: string; version?: string };
+  target?: string;
+  buildMode?: string;
+  projectRole?: string;
+}
+
+export interface EvidenceRuleContext {
+  readonly subject: import("./evidence.js").EvidenceSubject;
+  readonly scope: Readonly<EvidenceRuleScope>;
+  readonly evidenceIds: readonly string[];
+  readonly evidence: EvidenceQuery;
+}
+
+export interface EvidenceAwareRule {
+  meta: EvidenceAwareRuleMeta;
+  evaluate(context: EvidenceRuleContext): EvidenceRuleDecision | Promise<EvidenceRuleDecision>;
+}
+
+export interface EvidenceQuery {
+  readonly assertions: readonly import("./evidence.js").EvidenceAssertion[];
+  find(selector: EvidenceSelector): readonly import("./evidence.js").EvidenceAssertion[];
+  forSubject(subjectId: string): EvidenceQuery;
+}
+
+export interface EvidenceRuleRunnerInput {
+  graph: import("./evidence.js").EvidenceGraphV2;
+  rules: readonly EvidenceAwareRule[];
+  subjects?: readonly string[];
+  scope?: EvidenceRuleScope;
+}
+
+export interface EvidenceRuleRunnerOutput {
+  evaluations: RuleEvaluationResult[];
+  execution: RuleExecutionState[];
+}
+
+/** Run evidence-aware rules against an immutable v2 evidence view. */
+export async function runEvidenceAwareRules(
+  input: EvidenceRuleRunnerInput,
+): Promise<EvidenceRuleRunnerOutput> {
+  const { runEvidenceAwareRules: run } = await import("./evidence-runner.js");
+  return run(input);
+}
