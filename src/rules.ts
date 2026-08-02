@@ -246,6 +246,16 @@ function isDemoLocalRemote(context: RuleContext, entry: string): boolean {
   return classifyDemoRemote(entry) === "known-local";
 }
 
+function isDemoLocalRemote(context: RuleContext, entry: string): boolean {
+  if (!context.options.localDemoOnly || context.facts.bundler.mode !== "development") return false;
+  const url = remoteEntryUrl(entry).trim();
+  // Relative / bare entries are the normal local demo shape. Keep deployed
+  // HTTPS and non-loopback hosts loud even when the demo pack is applied.
+  return !/^[a-z][a-z\d+.-]*:\/\//i.test(url) && !url.startsWith("//")
+    ? true
+    : isLoopbackRemoteUrl(url);
+}
+
 /** Detect retry / errorLoadRemote recovery plugins from configured paths. */
 function hasRemoteRecoveryPlugin(plugins: string[] | undefined): boolean {
   if (!plugins?.length) return false;
