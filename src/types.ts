@@ -339,6 +339,12 @@ export interface BuildRecord {
   id: string;
   adapter: BundlerName;
   bundler: BundlerName;
+  /** Public compiler identity when the adapter exposes one. */
+  compilerName?: string;
+  /** Public compilation identity when the adapter exposes one. */
+  compilationName?: string;
+  /** Public compilation hash when the adapter exposes one. */
+  hash?: string;
   flavor?: ViteLifecycleFlavor;
   engine?: ViteLifecycleEngine;
   /** Safe project-relative output root. */
@@ -366,6 +372,9 @@ export interface BuildRecord {
 export interface BuildOutputInput {
   adapter: BundlerName;
   bundler: BundlerName;
+  compilerName?: string;
+  compilationName?: string;
+  hash?: string;
   outputRoot?: string;
   /** Asset names relative to `outputRoot` when that root is known. */
   emittedAssets: string[];

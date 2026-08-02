@@ -971,8 +971,8 @@ export async function addBuildFacts(
     const orderedOutputs = outputs
       .slice()
       .sort((left, right) =>
-        `${left.adapter}:${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.sourceHook}`.localeCompare(
-          `${right.adapter}:${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.sourceHook}`,
+        `${left.adapter}:${left.compilerName ?? ""}:${left.compilationName ?? ""}:${left.hash ?? ""}:${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.sourceHook}`.localeCompare(
+          `${right.adapter}:${right.compilerName ?? ""}:${right.compilationName ?? ""}:${right.hash ?? ""}:${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.sourceHook}`,
         ),
       );
     const builds: BuildRecord[] = orderedOutputs.map((output, index) => {
@@ -1093,6 +1093,9 @@ export async function addBuildFacts(
         },
         sourceHook: output.sourceHook,
       };
+      if (output.compilerName) build.compilerName = output.compilerName;
+      if (output.compilationName) build.compilationName = output.compilationName;
+      if (output.hash) build.hash = output.hash;
       if (output.flavor) build.flavor = output.flavor;
       if (output.engine) build.engine = output.engine;
       if (outputRoot) build.outputRoot = outputRoot;

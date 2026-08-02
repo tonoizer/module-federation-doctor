@@ -194,6 +194,15 @@
           "bundler": {
             "enum": ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"]
           },
+          "compilerName": {
+            "type": "string"
+          },
+          "compilationName": {
+            "type": "string"
+          },
+          "hash": {
+            "type": "string"
+          },
           "flavor": {
             "enum": ["vite", "rolldown-vite", "vite-plus"]
           },
