@@ -332,6 +332,7 @@ describe("build-time-only adapter contract", () => {
     await afterBuild!({
       stats: {
         toJson: () => ({
+          outputPath: path.join(root, "..", "outside"),
           hash: "aggregate-hash",
           children: [
             {
@@ -511,6 +512,51 @@ describe("build-time-only adapter contract", () => {
     ]);
     expect(project.builds[0]).not.toHaveProperty("outputRoot");
     await fs.rm(root, { recursive: true, force: true });
+  });
+
+  it("treats an in-project symlink to an external outputPath as unsafe", async () => {
+    const root = await fixtureRoot("rsbuild", "clean");
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-rsbuild-outside-"));
+    await fs.symlink(outside, path.join(root, "linked-output"), "dir");
+    await fs.writeFile(path.join(root, "mf-manifest.json"), JSON.stringify({ metaData: {} }));
+    const plugin = asSinglePlugin(
+      rsbuildDoctor.raw(
+        {
+          ...doctorOptions(root, "clean"),
+          output: { formats: ["json"] },
+        },
+        { framework: "rsbuild", versions: { unplugin: "0.0.0" } } as UnpluginContextMeta,
+      ),
+    );
+    let afterBuild:
+      | ((args: { stats: { toJson: (options: { assets: boolean }) => unknown } }) => Promise<void>)
+      | undefined;
+    plugin.rsbuild?.setup?.({
+      context: { rootPath: root },
+      onAfterBuild(fn: typeof afterBuild) {
+        afterBuild = fn;
+      },
+    } as never);
+
+    await afterBuild!({
+      stats: {
+        toJson: () => ({
+          name: "client",
+          outputPath: path.join(root, "linked-output"),
+          assets: [{ name: "mf-manifest.json" }],
+        }),
+      },
+    });
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as {
+      builds: Array<{ outputRoot?: string; artifacts: Array<{ path: string }> }>;
+    };
+    expect(project.builds).toEqual([expect.objectContaining({ artifacts: [] })]);
+    expect(project.builds[0]).not.toHaveProperty("outputRoot");
+    await fs.rm(root, { recursive: true, force: true });
+    await fs.rm(outside, { recursive: true, force: true });
   });
 });
 
