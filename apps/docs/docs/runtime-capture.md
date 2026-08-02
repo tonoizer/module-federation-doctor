@@ -19,6 +19,16 @@ The default limits are 5 MiB, 100 reports, 5,000 events, 500 snapshots, 100
 instances, 2,000 network records, 200 errors, 4 KiB strings, depth 12, and 100
 object keys. The hard total ceiling is 25 MiB; truncation must be recorded.
 
-This PR defines the contract only. File adapters, browser transport, safe
-snapshot projections, network/error fallback, and offline import are separate
-stacked slices for issue #84.
+The contract and bounded file-only import are the first safe slice. Browser
+transport, safe snapshot projections, network/error fallback, and automatic
+capture remain separate stacked slices for issue #84. The bounded file-only import is now
+available through the existing offline runtime command:
+
+```bash
+mfdoctor runtime ./capture.json
+```
+
+The command accepts only contract version 1, rejects oversized or unsafe files
+before analysis, and keeps the existing runtime output shape. Browser and
+DevTools transport, snapshot probing, network/error fallback, and runtime
+mutation remain deferred.

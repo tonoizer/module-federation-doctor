@@ -37,9 +37,16 @@ export default defineConfig({
     // Intentionally leave remote-manifest-recommended and
     // reliability/version-first-offline-remotes enabled so the host report is red.
     // failOn never so the red suite still builds and emits project facts.
-    federationDoctor({ moduleFederation: mfOptions, failOn: "never" }),
+    federationDoctor({
+      moduleFederation: mfOptions,
+      failOn: "never",
+      rules: {
+        "vite/manual-chunks-conflict": "off",
+        "vite/server-origin": "off",
+      },
+    }),
   ],
-  server: { port: 5183, strictPort: true },
+  server: { port: 5183, strictPort: true, origin: "http://127.0.0.1:5183" },
   preview: { port: 5183, strictPort: true },
   build: { target: "esnext" },
 });

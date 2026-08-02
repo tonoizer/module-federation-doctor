@@ -45,12 +45,19 @@ export default defineConfig({
         // Local preview remotes are intentional for this example.
         "config/remote-localhost-in-production": "off",
         "config/remote-type-urls-missing": "off",
+        // MF vite may inject chunk groups; this demo is not testing that dialect.
+        "vite/manual-chunks-conflict": "off",
       },
     }),
   ],
   // Bind IPv4 loopback explicitly — `localhost` can resolve to ::1 in CI while
   // the rspack static server (and Playwright probes) use 127.0.0.1.
-  server: { host: "127.0.0.1", port: 5173, strictPort: true },
+  server: {
+    host: "127.0.0.1",
+    port: 5173,
+    strictPort: true,
+    origin: "http://127.0.0.1:5173",
+  },
   preview: { host: "127.0.0.1", port: 5173, strictPort: true },
   build: { target: "esnext" },
 });

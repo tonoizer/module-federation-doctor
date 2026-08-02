@@ -5,8 +5,129 @@ import { ruleGuidance } from "../../src/rule-guidance.js";
 import { capConfidence, stableEvaluationId, weakestConfidence } from "../../src/rule-contract.js";
 import type { RuleEvaluationResult } from "../../src/rule-contract.js";
 import { ruleInventory, ruleInventoryIds } from "../../src/rule-inventory.js";
+import { runEvidenceAwareRules } from "../../src/rule-contract.js";
+import type { EvidenceGraphV2 } from "../../src/evidence.js";
 
 describe("evidence-aware rule contract", () => {
+  function graph(overrides: Partial<EvidenceGraphV2> = {}): EvidenceGraphV2 {
+    return {
+      protocol: {
+        protocolVersion: 2,
+        schemaVersion: 2,
+        producer: { name: "test", version: "1" },
+        source: { kind: "test", schemaVersion: "1" },
+      },
+      scope: { adapter: "vite", bundler: { name: "vite", version: "6" }, target: "web" },
+      identity: { project: "shop", buildId: "build-1" },
+      subjects: [{ id: "project:shop", kind: "project", name: "shop" }],
+      assertions: [],
+      edges: [],
+      evaluations: [],
+      ...overrides,
+    };
+  }
+
+  const meta = {
+    id: "test/rule",
+    version: "1",
+    owner: { name: "test" },
+    remediation: { summary: "test", documentation: "/test" },
+    prerequisites: { allOf: [{ predicate: "config.declared", subjectKind: "project" as const }] },
+    applicability: { adapters: [{ name: "vite" }], bundlers: [{ name: "vite" }] },
+    confidenceCeiling: "high" as const,
+    defaultSeverity: "warning" as const,
+  };
+
+  it("runs one immutable evidence-aware evaluation with applicability before prerequisites", async () => {
+    const input = graph({
+      scope: { adapter: "webpack", bundler: { name: "webpack" }, target: "web" },
+    });
+    const result = await runEvidenceAwareRules({
+      graph: input,
+      rules: [{ meta, evaluate: () => ({ outcome: "fail", reason: "must not run" }) }],
+    });
+    expect(result.evaluations[0]).toMatchObject({
+      outcome: "not-applicable",
+      reasonCode: "not-applicable",
+    });
+    expect(result.execution).toHaveLength(0);
+    expect(Object.isFrozen(result.evaluations)).toBe(false);
+  });
+
+  it("makes missing, partial, and weak prerequisites unknown", async () => {
+    const rule = { meta, evaluate: () => ({ outcome: "pass" as const, reason: "ok" }) };
+    const partial = {
+      id: "assertion:partial",
+      subject: "project:shop",
+      predicate: "config.declared",
+      value: true,
+      layer: "declared" as const,
+      scope: { adapter: "vite", bundler: { name: "vite" }, target: "web" as const },
+      provenance: {
+        collector: { name: "test", version: "1" },
+        inputKind: "test",
+        source: "test",
+        sourceSchemaVersion: "1",
+        parentEvidenceIds: [],
+      },
+      confidence: { level: "low" as const, reason: "weak" },
+      completeness: { status: "partial" as const, reason: "clipped" },
+    };
+    const result = await runEvidenceAwareRules({
+      graph: graph({ assertions: [partial] }),
+      rules: [rule],
+    });
+    expect(result.evaluations[0]).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "prerequisite-incomplete",
+    });
+    expect(result.evaluations[0]?.confidence).toBe("low");
+  });
+
+  it("caps confidence, preserves stable IDs, and turns rule exceptions into engine errors", async () => {
+    const assertion = {
+      id: "assertion:exact",
+      subject: "project:shop",
+      predicate: "config.declared",
+      value: true,
+      layer: "declared" as const,
+      scope: { adapter: "vite", bundler: { name: "vite" }, target: "web" as const },
+      provenance: {
+        collector: { name: "test", version: "1" },
+        inputKind: "test",
+        source: "test",
+        sourceSchemaVersion: "1",
+        parentEvidenceIds: [],
+      },
+      confidence: { level: "exact" as const, reason: "exact" },
+      completeness: { status: "complete" as const, reason: "complete" },
+    };
+    const good = { meta, evaluate: () => ({ outcome: "pass" as const, reason: "ok" }) };
+    const bad = {
+      meta: { ...meta, id: "test/bad" },
+      evaluate: () => {
+        throw new Error("boom");
+      },
+    };
+    const result = await runEvidenceAwareRules({
+      graph: graph({ assertions: [assertion] }),
+      rules: [good, bad],
+    });
+    expect(result.evaluations[0]).toMatchObject({
+      outcome: "pass",
+      confidence: "high",
+      completeness: "complete",
+    });
+    expect(result.evaluations[0]?.id).toBe(
+      stableEvaluationId({
+        ruleId: "test/rule",
+        ruleVersion: "1",
+        subjectId: "project:shop",
+        scope: { project: "shop", buildId: "build-1" },
+      }),
+    );
+    expect(result.execution[0]).toMatchObject({ state: "engine-error", error: "boom" });
+  });
   it("keeps the inventory in sync with every current built-in rule", () => {
     const runtimeIds = [
       ...builtInRules.map((rule) => rule.meta.id),
@@ -61,16 +182,17 @@ describe("evidence-aware rule contract", () => {
       "imports.sourceFiles": "context.facts.imports.sourceFiles",
       "imports.packages": "context.facts.imports.packages",
       "imports.dynamicPackages": "context.facts.imports.dynamicPackages",
+      "imports.specifiers": "context.facts.imports.specifiers",
       "imports.unresolvedDynamic": "context.facts.imports.unresolvedDynamic",
       "imports.deepImports": "context.facts.imports.deepImports",
       "imports.deepImportFiles": "context.facts.imports.deepImportFiles",
       "dependencies.declared": "context.facts.dependencies.declared",
-      "dependencies.declared.doctor:externals": 'dependencies.declared["doctor:externals"]',
       "dependencies.installed": "context.facts.dependencies.installed",
       "artifacts.manifest": "context.facts.artifacts.manifest",
       "artifacts.emittedAssets": "context.facts.artifacts.emittedAssets",
       "artifacts.assetSizes": "context.facts.artifacts.assetSizes",
       capabilities: "context.facts.capabilities",
+      "capabilities.manifest": "context.facts.capabilities.manifest",
       "capabilities.emittedAssets": "context.facts.capabilities.emittedAssets",
     };
     for (const entry of ruleInventory.filter(

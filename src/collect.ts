@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import fg from "fast-glob";
+import { parseSync, visitorKeys } from "oxc-parser";
 import { packageName, normalizeModuleFederation } from "./normalize.js";
 import { isDeepImportSpecifier } from "./shared-policy.js";
 import type {
@@ -9,15 +10,19 @@ import type {
   ArtifactRecord,
   ArtifactStats,
   ArtifactFacts,
+  BuildRecord,
+  BuildOutputInput,
   ImportDepth,
   ImportEvidenceSource,
   ImportFacts,
   OutputPublicPathKind,
   ProjectFacts,
   ResolvedDoctorOptions,
+  RuntimePluginContractFinding,
   UnresolvedDynamicApi,
   UnresolvedDynamicImport,
 } from "./types.js";
+import { analyzeLocalRuntimePlugin } from "./runtime-plugin-contract.js";
 import { normalizePath, relativePath } from "./utils.js";
 import { detectViteLifecycle } from "./vite-lifecycle.js";
 import { AnalysisBudgetTracker } from "./analysis-budgets.js";
@@ -86,19 +91,70 @@ interface RawImportScan {
   budget?: import("./analysis-budgets.js").AnalysisBudgetReport;
 }
 
-const STATIC_IMPORT_FROM = /\bimport\s+(?:type\s+)?(?:[\s\S]*?\sfrom\s*)?["']([^"'`]+)["']/g;
-const STATIC_EXPORT_FROM = /\bexport\s+(?:type\s+)?(?:[\s\S]*?\sfrom\s*)["']([^"'`]+)["']/g;
-const DYNAMIC_IMPORT_LITERAL = /import\s*\(\s*["']([^"'`]+)["']\s*\)/g;
-const REQUIRE_LITERAL = /require\s*\(\s*["']([^"'`]+)["']\s*\)/g;
-const LOAD_REMOTE_LITERAL = /\bloadRemote\s*\(\s*["']([^"'`]+)["']\s*\)/g;
-const LOAD_SHARE_LITERAL = /\bloadShare(?:Sync)?\s*\(\s*["']([^"'`]+)["']\s*\)/g;
-const REGISTER_REMOTES_NAME =
-  /\bregisterRemotes\s*\(\s*\[([\s\S]*?)\]\s*(?:,\s*\{[\s\S]*?\})?\s*\)/g;
-const REMOTE_NAME_IN_OBJECT = /\b(?:name|alias)\s*:\s*["']([^"'`]+)["']/g;
+const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
+const MAX_AST_NODES = 100_000;
 
-/** Dynamic call with a non-literal first argument (variable, template, expression). */
-const UNRESOLVED_DYNAMIC_CALL =
-  /\b(import|loadRemote|loadShare(?:Sync)?|registerRemotes)\s*\(\s*(?!["'])/g;
+type AstNode = {
+  type?: string;
+  [key: string]: unknown;
+};
+
+const DYNAMIC_APIS = new Set<UnresolvedDynamicApi>([
+  "import",
+  "loadRemote",
+  "loadShare",
+  "loadShareSync",
+  "registerRemotes",
+]);
+
+function parserLanguage(file: string): "js" | "jsx" | "ts" | "tsx" | "dts" {
+  const normalized = file.toLowerCase();
+  if (normalized.endsWith(".d.ts")) return "dts";
+  if (normalized.endsWith(".tsx")) return "tsx";
+  if (normalized.endsWith(".jsx")) return "jsx";
+  if (normalized.endsWith(".ts")) return "ts";
+  return "js";
+}
+
+function literalString(node: unknown): string | undefined {
+  if (!node || typeof node !== "object") return undefined;
+  const value = (node as { type?: string; value?: unknown }).value;
+  return (node as { type?: string }).type === "Literal" && typeof value === "string"
+    ? value
+    : undefined;
+}
+
+function identifierName(node: unknown): string | undefined {
+  if (!node || typeof node !== "object") return undefined;
+  const value = node as { type?: string; name?: unknown };
+  return value.type === "Identifier" && typeof value.name === "string" ? value.name : undefined;
+}
+
+function propertyName(node: unknown): string | undefined {
+  if (!node || typeof node !== "object") return undefined;
+  const value = node as { computed?: unknown; key?: unknown };
+  if (value.computed) return literalString(value.key);
+  return identifierName(value.key) ?? literalString(value.key);
+}
+
+/** Keep source parsing and AST traversal bounded for untrusted project files. */
+function walkAst(program: AstNode, visit: (node: AstNode) => void): void {
+  let count = 0;
+  const visitNode = (node: unknown): void => {
+    if (!node || typeof node !== "object") return;
+    const value = node as AstNode;
+    if (typeof value.type !== "string") return;
+    count += 1;
+    if (count > MAX_AST_NODES) throw new Error("AST node limit exceeded");
+    visit(value);
+    for (const key of visitorKeys[value.type] ?? []) {
+      const child = value[key];
+      if (Array.isArray(child)) for (const item of child) visitNode(item);
+      else visitNode(child);
+    }
+  };
+  visitNode(program);
+}
 
 function recordSpecifier(
   scan: RawImportScan,
@@ -120,50 +176,91 @@ function recordSpecifier(
 }
 
 function scanSourceImports(source: string, file: string, scan: RawImportScan): void {
-  for (const match of source.matchAll(STATIC_IMPORT_FROM))
-    if (match[1]) recordSpecifier(scan, match[1], false, file, "import");
-  for (const match of source.matchAll(STATIC_EXPORT_FROM))
-    if (match[1]) recordSpecifier(scan, match[1], false, file, "reexport");
-  for (const match of source.matchAll(DYNAMIC_IMPORT_LITERAL))
-    if (match[1]) recordSpecifier(scan, match[1], true, file, "import");
-  for (const match of source.matchAll(REQUIRE_LITERAL))
-    if (match[1]) recordSpecifier(scan, match[1], true, file, "import");
-  for (const match of source.matchAll(LOAD_REMOTE_LITERAL))
-    if (match[1]) {
-      recordSpecifier(scan, match[1], true, file, "import");
-      scan.remoteSpecifiers.add(match[1]);
-    }
-  for (const match of source.matchAll(LOAD_SHARE_LITERAL))
-    if (match[1]) recordSpecifier(scan, match[1], true, file, "import");
+  const unresolved = (api: UnresolvedDynamicApi): void => {
+    scan.unresolvedDynamic.push({ api, file });
+  };
 
-  for (const match of source.matchAll(REGISTER_REMOTES_NAME)) {
-    const body = match[1] ?? "";
-    let foundName = false;
-    for (const nameMatch of body.matchAll(REMOTE_NAME_IN_OBJECT)) {
-      if (!nameMatch[1]) continue;
-      foundName = true;
-      recordSpecifier(scan, nameMatch[1], true, file, "import");
-      scan.remoteSpecifiers.add(nameMatch[1]);
-    }
-    if (!foundName) scan.unresolvedDynamic.push({ api: "registerRemotes", file });
+  if (Buffer.byteLength(source, "utf8") > MAX_SOURCE_BYTES) {
+    unresolved("import");
+    return;
   }
 
-  for (const match of source.matchAll(UNRESOLVED_DYNAMIC_CALL)) {
-    const apiRaw = match[1] ?? "import";
-    const api: UnresolvedDynamicApi =
-      apiRaw === "loadShareSync"
-        ? "loadShareSync"
-        : apiRaw === "loadShare"
-          ? "loadShare"
-          : apiRaw === "loadRemote"
-            ? "loadRemote"
-            : apiRaw === "registerRemotes"
-              ? "registerRemotes"
-              : "import";
-    const after = source.slice((match.index ?? 0) + match[0].length);
-    // Array-literal registerRemotes is handled by REGISTER_REMOTES_NAME above.
-    if (api === "registerRemotes" && /^\s*\[/.test(after)) continue;
-    scan.unresolvedDynamic.push({ api, file });
+  try {
+    const parsed = parseSync(file, source, {
+      lang: parserLanguage(file),
+      sourceType: "unambiguous",
+    });
+    if (parsed.errors.length > 0) {
+      unresolved("import");
+      return;
+    }
+
+    walkAst(parsed.program as unknown as AstNode, (node) => {
+      if (node.type === "ImportDeclaration" || node.type === "ExportNamedDeclaration") {
+        const specifier = literalString(node.source);
+        if (specifier)
+          recordSpecifier(
+            scan,
+            specifier,
+            false,
+            file,
+            node.type === "ImportDeclaration" ? "import" : "reexport",
+          );
+        return;
+      }
+      if (node.type === "ExportAllDeclaration") {
+        const specifier = literalString(node.source);
+        if (specifier) recordSpecifier(scan, specifier, false, file, "reexport");
+        return;
+      }
+      if (node.type === "ImportExpression") {
+        const specifier = literalString(node.source);
+        if (specifier) recordSpecifier(scan, specifier, true, file, "import");
+        else unresolved("import");
+        return;
+      }
+      if (node.type !== "CallExpression") return;
+
+      const apiName = identifierName(node.callee);
+      if (!apiName || !DYNAMIC_APIS.has(apiName as UnresolvedDynamicApi)) return;
+      const api = apiName as UnresolvedDynamicApi;
+      const args = Array.isArray(node.arguments) ? node.arguments : [];
+      const specifier = literalString(args[0]);
+      if (api === "registerRemotes") {
+        let foundName = false;
+        const first = args[0] as AstNode | undefined;
+        const entries =
+          first?.type === "ArrayExpression" && Array.isArray(first.elements) ? first.elements : [];
+        for (const entry of entries) {
+          if (!entry || typeof entry !== "object" || (entry as AstNode).type !== "ObjectExpression")
+            continue;
+          const rawProperties = (entry as AstNode).properties;
+          const properties: unknown[] = Array.isArray(rawProperties) ? rawProperties : [];
+          for (const property of properties) {
+            if (!property || typeof property !== "object") continue;
+            const item = property as AstNode;
+            const name = propertyName(item);
+            if ((name === "name" || name === "alias") && literalString(item.value)) {
+              const remote = literalString(item.value)!;
+              foundName = true;
+              recordSpecifier(scan, remote, true, file, "import");
+              scan.remoteSpecifiers.add(remote);
+            }
+          }
+        }
+        if (!foundName) unresolved(api);
+        return;
+      }
+      if (!specifier) {
+        unresolved(api);
+        return;
+      }
+      recordSpecifier(scan, specifier, true, file, "import");
+      if (api === "loadRemote") scan.remoteSpecifiers.add(specifier);
+    });
+  } catch {
+    // A bounded parser failure is incomplete evidence, never a confident import result.
+    unresolved("import");
   }
 }
 
@@ -290,36 +387,15 @@ async function runtimeTraceHints(
 ): Promise<{ packages: string[]; remotes: string[]; used: boolean }> {
   if (!runtimeTrace) return { packages: [], remotes: [], used: false };
   try {
-    const parsed = JSON.parse(await fs.readFile(runtimeTrace, "utf8")) as unknown;
-    const reports = Array.isArray(parsed)
-      ? parsed
-      : parsed && typeof parsed === "object"
-        ? Array.isArray((parsed as { reports?: unknown }).reports)
-          ? (parsed as { reports: unknown[] }).reports
-          : (parsed as { report?: unknown }).report
-            ? [(parsed as { report: unknown }).report]
-            : [parsed]
-        : [];
+    const { loadRuntimeTraceFile } = await import("./runtime-trace.js");
+    const reports = await loadRuntimeTraceFile(runtimeTrace);
     const packages = new Set<string>();
     const remotes = new Set<string>();
     let sawTrace = false;
     for (const item of reports) {
-      if (!item || typeof item !== "object") continue;
-      const report = item as Record<string, unknown>;
-      const shared =
-        report.shared && typeof report.shared === "object"
-          ? (report.shared as Record<string, unknown>)
-          : undefined;
-      const remote =
-        report.remote && typeof report.remote === "object"
-          ? (report.remote as Record<string, unknown>)
-          : undefined;
-      const sharedName =
-        (typeof shared?.package === "string" && shared.package) ||
-        (typeof shared?.name === "string" && shared.name) ||
-        (typeof shared?.pkg === "string" && shared.pkg) ||
-        (typeof shared?.shareKey === "string" && shared.shareKey) ||
-        undefined;
+      const shared = item.shared;
+      const remote = item.remote;
+      const sharedName = shared?.package;
       if (sharedName) {
         packages.add(sharedName);
         sawTrace = true;
@@ -332,12 +408,7 @@ async function runtimeTraceHints(
         remotes.add(remote.alias);
         sawTrace = true;
       }
-      if (
-        typeof report.traceId === "string" ||
-        report.summary !== undefined ||
-        Array.isArray(report.events)
-      )
-        sawTrace = true;
+      sawTrace = true;
     }
     return {
       packages: [...packages].sort(),
@@ -345,7 +416,8 @@ async function runtimeTraceHints(
       used: sawTrace,
     };
   } catch {
-    // Invalid/missing opt-in traces must not break offline check; partial-analysis covers gaps.
+    // Opt-in runtimeTrace must use the same adapter as `mfdoctor runtime`, but
+    // invalid/missing traces must not break offline check; partial-analysis covers gaps.
     return { packages: [], remotes: [], used: false };
   }
 }
@@ -399,26 +471,33 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
       })
       .filter((item) => item.name)
       .sort((a, b) => a.name.localeCompare(b.name)),
-    remotes: rawRemotes
-      .map((item) => {
-        const remote = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
-        const name = String(remote.federationContainerName ?? remote.name ?? "");
-        const normalized: NonNullable<NonNullable<ArtifactFacts["manifest"]>["remotes"]>[number] = {
-          name,
-          shareScope:
-            typeof remote.shareScope === "string"
-              ? [remote.shareScope]
-              : Array.isArray(remote.shareScope)
-                ? remote.shareScope.map(String).sort()
-                : ["default"],
-        };
-        if (typeof remote.alias === "string") normalized.alias = remote.alias;
-        if (typeof remote.entry === "string") normalized.entry = remote.entry;
-        if (typeof remote.version === "string") normalized.version = remote.version;
-        return normalized;
-      })
-      .filter((item) => item.name)
-      .sort((a, b) => a.name.localeCompare(b.name)),
+    remotes: [
+      ...new Map(
+        rawRemotes
+          .map((item) => {
+            const remote =
+              item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+            const name = String(remote.federationContainerName ?? remote.name ?? "");
+            const normalized: NonNullable<
+              NonNullable<ArtifactFacts["manifest"]>["remotes"]
+            >[number] = {
+              name,
+              shareScope:
+                typeof remote.shareScope === "string"
+                  ? [remote.shareScope]
+                  : Array.isArray(remote.shareScope)
+                    ? remote.shareScope.map(String).sort()
+                    : ["default"],
+            };
+            if (typeof remote.alias === "string") normalized.alias = remote.alias;
+            if (typeof remote.entry === "string") normalized.entry = remote.entry;
+            if (typeof remote.version === "string") normalized.version = remote.version;
+            return normalized;
+          })
+          .filter((item) => item.name)
+          .map((item) => [`${item.name}\0${item.alias ?? ""}\0${item.entry ?? ""}`, item] as const),
+      ).values(),
+    ].sort((a, b) => a.name.localeCompare(b.name)),
   };
   const metadata =
     data.metaData && typeof data.metaData === "object"
@@ -489,11 +568,14 @@ async function detectFromManifest(
         })
         .filter(([remoteName, entry]) => remoteName && entry),
     );
-    return normalizeModuleFederation({
-      ...(name ? { name } : {}),
-      shared,
-      remotes,
-    });
+    return normalizeModuleFederation(
+      {
+        ...(name ? { name } : {}),
+        shared,
+        remotes,
+      },
+      { bundler: "unknown" },
+    );
   } catch {
     return undefined;
   }
@@ -514,7 +596,11 @@ function manifestAssetNames(manifest: NonNullable<ArtifactFacts["manifest"]>): s
 }
 
 /** Resolve byte sizes for manifest and emitted assets via on-disk `fs.stat`. */
-export async function attachAssetSizes(facts: ProjectFacts, root: string): Promise<void> {
+export async function attachAssetSizes(
+  facts: ProjectFacts,
+  root: string,
+  outputRoots?: readonly string[],
+): Promise<void> {
   const names = new Set<string>(facts.artifacts.emittedAssets);
   if (facts.artifacts.manifest?.valid)
     for (const name of manifestAssetNames(facts.artifacts.manifest)) names.add(name);
@@ -529,24 +615,31 @@ export async function attachAssetSizes(facts: ProjectFacts, root: string): Promi
   const sizes: Record<string, number> = {};
 
   for (const name of names) {
-    const basename = path.basename(name);
-    const candidates = [
-      path.join(manifestDir, name),
-      path.join(manifestDir, basename),
-      path.join(root, name),
-      path.join(root, "dist", name),
-      path.join(root, "dist", basename),
-      path.join(root, "build", name),
-      path.join(root, "build", basename),
-      ...facts.artifacts.emittedAssets
-        .filter(
-          (emitted) =>
-            emitted === name ||
-            emitted.endsWith(`/${basename}`) ||
-            path.basename(emitted) === basename,
-        )
-        .map((emitted) => path.join(root, emitted)),
-    ];
+    const normalizedName = normalizePath(name);
+    const basename = path.basename(normalizedName);
+    const candidates =
+      outputRoots !== undefined
+        ? outputRoots.flatMap((outputRoot) => {
+            const normalizedRoot = normalizePath(outputRoot);
+            if (
+              normalizedName === normalizedRoot ||
+              normalizedName.startsWith(`${normalizedRoot}/`)
+            )
+              return [path.join(root, name)];
+            return [path.join(root, outputRoot, name)];
+          })
+        : [
+            path.join(manifestDir, name),
+            path.join(manifestDir, basename),
+            path.join(root, name),
+            path.join(root, "dist", name),
+            path.join(root, "dist", basename),
+            path.join(root, "build", name),
+            path.join(root, "build", basename),
+            ...facts.artifacts.emittedAssets
+              .filter((emitted) => emitted === name)
+              .map((emitted) => path.join(root, emitted)),
+          ];
 
     for (const candidate of candidates) {
       try {
@@ -554,8 +647,10 @@ export async function attachAssetSizes(facts: ProjectFacts, root: string): Promi
         if (!stat.isFile()) continue;
         const relative = relativePath(root, candidate);
         sizes[relative] = stat.size;
-        sizes[normalizePath(name)] = stat.size;
-        sizes[basename] = stat.size;
+        if (outputRoots === undefined || outputRoots.length === 1) {
+          sizes[normalizedName] = stat.size;
+          sizes[basename] = stat.size;
+        }
         break;
       } catch {
         // Missing candidates are expected before a build or for remote-only names.
@@ -577,9 +672,6 @@ export function lookupAssetSize(
   if (sizes[normalized] !== undefined) return sizes[normalized];
   const basename = path.basename(normalized);
   if (sizes[basename] !== undefined) return sizes[basename];
-  for (const [key, bytes] of Object.entries(sizes))
-    if (key === normalized || key.endsWith(`/${basename}`) || path.basename(key) === basename)
-      return bytes;
   return undefined;
 }
 
@@ -601,6 +693,7 @@ export function sumAssetSizes(
 async function collectArtifacts(
   root: string,
   names: ResolvedDoctorOptions["artifactNames"],
+  boundedRoots?: string[],
 ): Promise<ArtifactFacts> {
   const validateName = (name: string): string => {
     if (!name || path.isAbsolute(name) || path.win32.isAbsolute(name) || /^[A-Za-z]:/.test(name))
@@ -613,14 +706,15 @@ async function collectArtifacts(
   const manifestNames = names.manifest.map(validateName);
   const statsNames = names.stats.map(validateName);
   const rootReal = await fs.realpath(root);
-  const patterns = [
-    ...manifestNames.flatMap((name) =>
-      name.includes("/") ? [fg.escapePath(name)] : [`**/${fg.escapePath(name)}`],
-    ),
-    ...statsNames.flatMap((name) =>
-      name.includes("/") ? [fg.escapePath(name)] : [`**/${fg.escapePath(name)}`],
-    ),
-  ];
+  const allNames = [...manifestNames, ...statsNames];
+  const patterns =
+    boundedRoots !== undefined
+      ? boundedRoots.flatMap((outputRoot) =>
+          allNames.map((name) => fg.escapePath(normalizePath(path.posix.join(outputRoot, name)))),
+        )
+      : allNames.map((name) =>
+          name.includes("/") ? fg.escapePath(name) : `**/${fg.escapePath(name)}`,
+        );
   const candidates = await fg([...new Set(patterns)], {
     cwd: root,
     ignore: ["**/node_modules/**", "**/.mf/**"],
@@ -631,17 +725,13 @@ async function collectArtifacts(
   const kindsFor = (file: string): ArtifactKind[] => {
     const normalized = normalizePath(file);
     const basename = path.posix.basename(normalized);
+    const matches = (name: string): boolean =>
+      normalized === name ||
+      (!name.includes("/") && basename === name) ||
+      Boolean(boundedRoots?.some((rootName) => normalized === path.posix.join(rootName, name)));
     return [
-      ...(manifestNames.some(
-        (name) => normalized === name || (!name.includes("/") && basename === name),
-      )
-        ? (["manifest"] as const)
-        : []),
-      ...(statsNames.some(
-        (name) => normalized === name || (!name.includes("/") && basename === name),
-      )
-        ? (["stats"] as const)
-        : []),
+      ...(manifestNames.some(matches) ? (["manifest"] as const) : []),
+      ...(statsNames.some(matches) ? (["stats"] as const) : []),
     ];
   };
   const records: ArtifactRecord[] = [];
@@ -697,7 +787,42 @@ async function collectArtifacts(
   return artifact;
 }
 
-export async function collectProjectFacts(options: ResolvedDoctorOptions): Promise<ProjectFacts> {
+async function collectRuntimePluginContracts(
+  root: string,
+  plugins: string[] | undefined,
+  sourceFiles: readonly string[],
+): Promise<RuntimePluginContractFinding[]> {
+  if (!plugins?.length) return [];
+  const findings: RuntimePluginContractFinding[] = [];
+  for (const plugin of plugins) {
+    const result = await analyzeLocalRuntimePlugin(root, plugin, sourceFiles);
+    const relativeFile = result.file ? relativePath(root, result.file) : undefined;
+    const file = relativeFile && !relativeFile.startsWith("[external]/") ? relativeFile : undefined;
+    if (result.factory.kind === "invalid-factory") {
+      findings.push({
+        plugin,
+        kind: "invalid-factory",
+        reason: result.factory.reason,
+        ...(file ? { file } : {}),
+      });
+    }
+    if (result.cors.kind === "cors-parity") {
+      findings.push({
+        plugin,
+        kind: "cors-parity",
+        reason: result.cors.reason,
+        confidence: result.cors.confidence,
+        ...(file ? { file } : {}),
+      });
+    }
+  }
+  return findings;
+}
+
+export async function collectProjectFacts(
+  options: ResolvedDoctorOptions,
+  boundedRoots?: string[],
+): Promise<ProjectFacts> {
   const packageJson = await readPackage(options.root);
   const declared = {
     ...packageJson.peerDependencies,
@@ -705,9 +830,9 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     ...packageJson.dependencies,
   };
   const scan = await scanProjectImports(options);
-  const artifacts = await collectArtifacts(options.root, options.artifactNames);
+  const artifacts = await collectArtifacts(options.root, options.artifactNames, boundedRoots);
   const normalizedMf =
-    normalizeModuleFederation(options.moduleFederation) ??
+    normalizeModuleFederation(options.moduleFederation, { bundler: options.bundler }) ??
     (await detectFromManifest(options.root, artifacts.manifest));
   for (const [key, target] of Object.entries(normalizedMf?.exposes ?? {})) {
     const safeTarget = safeConfigSpecifier(options.root, target);
@@ -790,6 +915,10 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
       mode: options.mode,
       ...(bundlerVersion ? { version: bundlerVersion } : {}),
       ...(lifecycle ? { lifecycle } : {}),
+      ...(options.viteConfigFacts ? { viteConfig: options.viteConfigFacts } : {}),
+      ...(options.transformImportLibraries
+        ? { transformImportLibraries: options.transformImportLibraries }
+        : {}),
     },
     capabilities: {
       config: options.moduleFederation !== undefined,
@@ -808,6 +937,12 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     ...(scan.budget ? { analysis: scan.budget } : {}),
   };
   if (normalizedMf) facts.moduleFederation = normalizedMf;
+  const runtimePluginContracts = await collectRuntimePluginContracts(
+    options.root,
+    normalizedMf?.runtimePlugins,
+    imports.sourceFiles,
+  );
+  if (runtimePluginContracts.length > 0) facts.runtimePluginContracts = runtimePluginContracts;
   await attachAssetSizes(facts, options.root);
   return facts;
 }
@@ -822,6 +957,7 @@ export async function addBuildFacts(
   assets: string[],
   root: string,
   diagnostics?: BuildDiagnostics,
+  outputs?: BuildOutputInput[],
 ): Promise<ProjectFacts> {
   facts.artifacts.emittedAssets = assets
     .map((item) => relativePath(root, path.resolve(root, item)))
@@ -831,6 +967,168 @@ export async function addBuildFacts(
     facts.bundler.moduleFederationPluginCount = diagnostics.moduleFederationPluginCount;
   if (diagnostics?.outputPublicPathKind)
     facts.bundler.outputPublicPathKind = diagnostics.outputPublicPathKind;
-  await attachAssetSizes(facts, root);
+  if (outputs) {
+    const orderedOutputs = outputs
+      .slice()
+      .sort((left, right) =>
+        `${left.adapter}:${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.sourceHook}`.localeCompare(
+          `${right.adapter}:${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.sourceHook}`,
+        ),
+      );
+    const builds: BuildRecord[] = orderedOutputs.map((output, index) => {
+      const id = `${output.adapter}-build-${index + 1}`;
+      const outputRoot = output.outputRoot
+        ? relativePath(root, path.resolve(root, output.outputRoot))
+        : undefined;
+      const emittedAssets = (output.buildWrite === false ? [] : output.emittedAssets)
+        .map((asset) =>
+          outputRoot ? normalizePath(path.posix.join(outputRoot, asset)) : normalizePath(asset),
+        )
+        .sort();
+      const artifactRecords: ArtifactRecord[] = [];
+      for (const record of facts.artifacts.records ?? []) {
+        const belongsToOutput = (() => {
+          if (!outputRoot || output.buildWrite === false) return false;
+          if (
+            outputRoot !== "." &&
+            record.path !== outputRoot &&
+            !record.path.startsWith(`${outputRoot}/`)
+          )
+            return false;
+          const relativeArtifact =
+            outputRoot === "." ? record.path : record.path.slice(`${outputRoot}/`.length);
+          return output.emittedAssets.some((asset) => normalizePath(asset) === relativeArtifact);
+        })();
+        if (belongsToOutput)
+          artifactRecords.push(
+            Object.assign({}, record, { source: "emitted" as const, buildId: id }),
+          );
+      }
+      const outputRootCapability = output.outputRoot
+        ? {
+            state: "exact" as const,
+            reason: "Resolved output root was public.",
+            source: output.sourceHook,
+          }
+        : {
+            state: "unavailable" as const,
+            reason: "The adapter did not expose an output root.",
+            source: output.sourceHook,
+          };
+      const emittedCapability =
+        output.buildWrite === false
+          ? {
+              state: "not-applicable" as const,
+              reason: "Build writing was disabled; no files were written.",
+              source: output.sourceHook,
+            }
+          : output.emittedAssetsSource === "output-root-scan" && output.emittedAssets.length > 0
+            ? {
+                state: "partial" as const,
+                reason:
+                  "Asset names came from a bounded output-root scan after an empty public bundle.",
+                source: "closeBundle",
+              }
+            : output.emittedAssets.length > 0
+              ? {
+                  state: "exact" as const,
+                  reason: "Asset names came from the public bundle.",
+                  source: output.sourceHook,
+                }
+              : {
+                  state: "partial" as const,
+                  reason: "The public bundle contained no asset names.",
+                  source: output.sourceHook,
+                };
+      const artifactCapability =
+        output.buildWrite === false
+          ? {
+              state: "not-applicable" as const,
+              reason: "Artifacts cannot be emitted when writing is disabled.",
+              source: output.sourceHook,
+            }
+          : {
+              state: artifactRecords.length > 0 ? ("exact" as const) : ("partial" as const),
+              reason:
+                artifactRecords.length > 0
+                  ? "Artifacts matched inside this output root."
+                  : "No configured artifact was found in this output.",
+              source: output.sourceHook,
+            };
+      const modeCapability = output.effectiveMode
+        ? {
+            state: "exact" as const,
+            reason: "Effective mode came from public resolved config.",
+            source: output.sourceHook,
+          }
+        : {
+            state: "unavailable" as const,
+            reason: "The adapter did not expose an effective build mode.",
+            source: output.sourceHook,
+          };
+      const targetCapability =
+        output.target || output.targetKind
+          ? {
+              state: "exact" as const,
+              reason: "Target came from public config.",
+              source: output.sourceHook,
+            }
+          : {
+              state: "unavailable" as const,
+              reason: "The adapter did not expose a target.",
+              source: output.sourceHook,
+            };
+      const build: BuildRecord = {
+        id,
+        adapter: output.adapter,
+        bundler: output.bundler,
+        emittedAssets,
+        artifacts: artifactRecords,
+        capabilities: {
+          outputRoot: outputRootCapability,
+          emittedAssets: emittedCapability,
+          artifacts: artifactCapability,
+          effectiveMode: modeCapability,
+          target: targetCapability,
+        },
+        sourceHook: output.sourceHook,
+      };
+      if (output.flavor) build.flavor = output.flavor;
+      if (output.engine) build.engine = output.engine;
+      if (outputRoot) build.outputRoot = outputRoot;
+      if (output.effectiveMode) build.effectiveMode = output.effectiveMode;
+      if (output.target) build.target = output.target;
+      if (output.targetKind) build.targetKind = output.targetKind;
+      return build;
+    });
+    facts.builds = builds.sort((a, b) => a.id.localeCompare(b.id));
+    // Compatibility view: deterministic primary-build projection.
+    facts.artifacts.emittedAssets = [
+      ...new Set(builds.flatMap((build) => build.emittedAssets)),
+    ].sort();
+    facts.capabilities.emittedAssets =
+      builds.length > 0 &&
+      builds.every((build) => build.capabilities.emittedAssets.state === "exact");
+    const currentRecords = builds.flatMap((build) => build.artifacts);
+    const firstCurrent = (kind: ArtifactKind) => {
+      const records = currentRecords
+        .filter((record) => record.kind === kind)
+        .sort((left, right) => left.path.localeCompare(right.path));
+      // Prefer malformed current evidence so a valid artifact from another
+      // output cannot hide a broken artifact from this build cycle.
+      return records.find((record) => !record.valid) ?? records[0];
+    };
+    const currentManifest = firstCurrent("manifest")?.manifest;
+    const currentStats = firstCurrent("stats")?.stats;
+    if (currentManifest) facts.artifacts.manifest = currentManifest;
+    else delete facts.artifacts.manifest;
+    if (currentStats) facts.artifacts.stats = currentStats;
+    else delete facts.artifacts.stats;
+  }
+  const recordedOutputRoots = facts.builds
+    ?.filter((build) => build.capabilities.emittedAssets.state !== "not-applicable")
+    .map((build) => build.outputRoot)
+    .filter((value): value is string => Boolean(value));
+  await attachAssetSizes(facts, root, recordedOutputRoots);
   return facts;
 }

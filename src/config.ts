@@ -1,4 +1,5 @@
 import path from "node:path";
+import { resolveDiagnosticsDir } from "./agent-prompt.js";
 import { resolveBaselineOptions } from "./baseline.js";
 import { resolveAnalysisBudgets } from "./analysis-budgets.js";
 import { resolvePolicy } from "./policy.js";
@@ -136,6 +137,8 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
         options.output?.formats ?? (ci ? ["terminal", "json", "sarif"] : ["terminal", "json"]),
     },
     failOn: options.failOn ?? (ci ? "error" : "never"),
+    score: options.score !== false,
+    prompt: options.prompt !== false,
     quiet,
     printLog,
     include: options.include ?? DEFAULT_INCLUDE,
@@ -150,7 +153,21 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   if (options.moduleFederation !== undefined) resolved.moduleFederation = options.moduleFederation;
   if (options.bundlerVersion !== undefined) resolved.bundlerVersion = options.bundlerVersion;
   if (options.viteLifecycle !== undefined) resolved.viteLifecycle = options.viteLifecycle;
+  if (options.viteConfigFacts !== undefined) resolved.viteConfigFacts = options.viteConfigFacts;
+  if (options.transformImport !== undefined) {
+    resolved.transformImportLibraries = [
+      ...new Set(
+        options.transformImport
+          .map((item) => (typeof item === "string" ? item : item.libraryName))
+          .filter((name) => typeof name === "string" && name.length > 0),
+      ),
+    ].sort();
+  }
   if (options.runtimeTrace !== undefined)
     resolved.runtimeTrace = path.resolve(root, options.runtimeTrace);
+  if (options.recognizeMfToolkit !== undefined)
+    resolved.recognizeMfToolkit = options.recognizeMfToolkit;
+  if (options.diagnosticsDir)
+    resolved.diagnosticsDir = resolveDiagnosticsDir(root, options.diagnosticsDir);
   return resolved;
 }

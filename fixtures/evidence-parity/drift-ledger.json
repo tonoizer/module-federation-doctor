@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "approved-v2-only-addition",
+      "class": "v2-only-addition",
+      "owner": "tonoizer",
+      "linkedIssue": "#87",
+      "fixture": "approved-v2-only-addition",
+      "summary": "Additive v2 evidence stays outside the parity-locked v1 surface.",
+      "affectedContracts": ["v1 report"],
+      "releaseNoteStatus": "not-required"
+    }
+  ]
+}

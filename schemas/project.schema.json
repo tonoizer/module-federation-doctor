@@ -13,13 +13,19 @@
     "artifacts"
   ],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": {
+      "const": 1
+    },
     "project": {
       "type": "object",
       "required": ["name", "root"],
       "properties": {
-        "name": { "type": "string" },
-        "root": { "type": "string" }
+        "name": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
@@ -30,37 +36,60 @@
         "name": {
           "enum": ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"]
         },
-        "version": { "type": "string" },
-        "mode": { "type": "string" },
+        "version": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
         "lifecycle": {
           "type": "object",
           "required": ["flavor", "engine", "evidence"],
           "properties": {
-            "flavor": { "enum": ["vite", "rolldown-vite", "vite-plus"] },
-            "engine": { "enum": ["rollup", "rolldown"] },
-            "postEmitHook": { "enum": ["writeBundle", "closeBundle"] },
+            "flavor": {
+              "enum": ["vite", "rolldown-vite", "vite-plus"]
+            },
+            "engine": {
+              "enum": ["rollup", "rolldown"]
+            },
+            "postEmitHook": {
+              "enum": ["writeBundle", "closeBundle"]
+            },
             "evidence": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false
         },
-        "moduleFederationPluginCount": { "type": "integer", "minimum": 0 },
+        "moduleFederationPluginCount": {
+          "type": "integer",
+          "minimum": 0
+        },
         "outputPublicPathKind": {
           "enum": ["string", "non-string", "auto", "unknown"]
         }
       },
       "additionalProperties": false
     },
-    "capabilities": { "$ref": "#/$defs/capabilities" },
-    "moduleFederation": { "type": "object" },
+    "capabilities": {
+      "$ref": "#/$defs/capabilities"
+    },
+    "moduleFederation": {
+      "type": "object"
+    },
     "dependencies": {
       "type": "object",
       "required": ["declared", "installed"],
       "properties": {
-        "declared": { "$ref": "#/$defs/stringMap" },
-        "installed": { "$ref": "#/$defs/stringMap" }
+        "declared": {
+          "$ref": "#/$defs/stringMap"
+        },
+        "installed": {
+          "$ref": "#/$defs/stringMap"
+        }
       },
       "additionalProperties": false
     },
@@ -68,11 +97,21 @@
       "type": "object",
       "required": ["sourceFiles", "specifiers", "packages"],
       "properties": {
-        "sourceFiles": { "$ref": "#/$defs/stringArray" },
-        "specifiers": { "$ref": "#/$defs/stringArray" },
-        "packages": { "$ref": "#/$defs/stringArray" },
-        "dynamicPackages": { "$ref": "#/$defs/stringArray" },
-        "remotes": { "$ref": "#/$defs/stringArray" },
+        "sourceFiles": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "specifiers": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "packages": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "dynamicPackages": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "remotes": {
+          "$ref": "#/$defs/stringArray"
+        },
         "unresolvedDynamic": {
           "type": "array",
           "items": {
@@ -82,20 +121,30 @@
               "api": {
                 "enum": ["import", "loadRemote", "loadShare", "loadShareSync", "registerRemotes"]
               },
-              "file": { "type": "string" }
+              "file": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           }
         },
         "evidenceSources": {
           "type": "array",
-          "items": { "enum": ["source", "manifest", "runtime-trace"] }
+          "items": {
+            "enum": ["source", "manifest", "runtime-trace"]
+          }
         },
-        "depth": { "enum": ["direct", "local-graph"] },
-        "deepImports": { "$ref": "#/$defs/stringArray" },
+        "depth": {
+          "enum": ["direct", "local-graph"]
+        },
+        "deepImports": {
+          "$ref": "#/$defs/stringArray"
+        },
         "deepImportFiles": {
           "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/stringArray" }
+          "additionalProperties": {
+            "$ref": "#/$defs/stringArray"
+          }
         }
       },
       "additionalProperties": false
@@ -104,26 +153,160 @@
       "type": "object",
       "required": ["emittedAssets"],
       "properties": {
-        "manifest": { "type": "object" },
-        "stats": { "type": "object" },
-        "emittedAssets": { "$ref": "#/$defs/stringArray" },
+        "manifest": {
+          "type": "object"
+        },
+        "stats": {
+          "type": "object"
+        },
+        "emittedAssets": {
+          "$ref": "#/$defs/stringArray"
+        },
         "assetSizes": {
           "type": "object",
-          "additionalProperties": { "type": "number" }
+          "additionalProperties": {
+            "type": "number"
+          }
         }
       },
       "additionalProperties": false
+    },
+    "builds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "adapter",
+          "bundler",
+          "emittedAssets",
+          "artifacts",
+          "capabilities",
+          "sourceHook"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "adapter": {
+            "enum": ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"]
+          },
+          "bundler": {
+            "enum": ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"]
+          },
+          "flavor": {
+            "enum": ["vite", "rolldown-vite", "vite-plus"]
+          },
+          "engine": {
+            "enum": ["rollup", "rolldown"]
+          },
+          "outputRoot": {
+            "type": "string"
+          },
+          "emittedAssets": {
+            "$ref": "#/$defs/stringArray"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "effectiveMode": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "targetKind": {
+            "enum": ["web", "node", "ssr", "worker", "unknown"]
+          },
+          "capabilities": {
+            "type": "object",
+            "required": ["outputRoot", "emittedAssets", "artifacts", "effectiveMode", "target"],
+            "additionalProperties": false,
+            "patternProperties": {},
+            "properties": {
+              "outputRoot": {
+                "$ref": "#/$defs/buildCapability"
+              },
+              "emittedAssets": {
+                "$ref": "#/$defs/buildCapability"
+              },
+              "artifacts": {
+                "$ref": "#/$defs/buildCapability"
+              },
+              "effectiveMode": {
+                "$ref": "#/$defs/buildCapability"
+              },
+              "target": {
+                "$ref": "#/$defs/buildCapability"
+              }
+            }
+          },
+          "sourceHook": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "runtimePluginContracts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["plugin", "kind"],
+        "properties": {
+          "plugin": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["invalid-factory", "cors-parity"]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "confidence": {
+            "enum": ["clear", "heuristic"]
+          },
+          "file": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false,
   "$defs": {
     "stringArray": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "stringMap": {
       "type": "object",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "buildCapability": {
+      "type": "object",
+      "required": ["state", "reason"],
+      "properties": {
+        "state": {
+          "enum": ["exact", "partial", "unavailable", "not-applicable"]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "capabilities": {
       "type": "object",
@@ -136,12 +319,24 @@
         "installedVersions"
       ],
       "properties": {
-        "config": { "type": "boolean" },
-        "sourceImports": { "type": "boolean" },
-        "manifest": { "type": "boolean" },
-        "stats": { "type": "boolean" },
-        "emittedAssets": { "type": "boolean" },
-        "installedVersions": { "type": "boolean" }
+        "config": {
+          "type": "boolean"
+        },
+        "sourceImports": {
+          "type": "boolean"
+        },
+        "manifest": {
+          "type": "boolean"
+        },
+        "stats": {
+          "type": "boolean"
+        },
+        "emittedAssets": {
+          "type": "boolean"
+        },
+        "installedVersions": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": false
     }

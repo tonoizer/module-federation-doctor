@@ -51,6 +51,39 @@ async function projectWith(
 }
 
 describe("dynamic-import completeness", () => {
+  it("ignores comments, strings, and templates while preserving real imports", async () => {
+    const source = await fs.readFile(
+      path.join(dynamicFixtures, "adversarial-comments-strings.ts"),
+      "utf8",
+    );
+    const { facts } = await projectWith({ "src/app.ts": source });
+    expect(facts.imports.packages).toEqual(["react", "react-dom"]);
+    expect(facts.imports.specifiers).toEqual(["react", "react-dom"]);
+    expect(facts.imports.unresolvedDynamic).toEqual([]);
+  });
+
+  it("parses TSX syntax and records non-literal runtime calls as unresolved", async () => {
+    const source = await fs.readFile(path.join(dynamicFixtures, "syntax-aware.tsx"), "utf8");
+    const { facts } = await projectWith(
+      { "src/app.tsx": source },
+      { moduleFederation: { remotes: { shop: "shop@https://cdn.example.com/shop.js" } } },
+    );
+    expect(facts.imports.packages).toContain("react");
+    expect(facts.imports.dynamicPackages).toContain("lodash");
+    expect(facts.imports.remotes).toContain("shop");
+    expect(facts.imports.unresolvedDynamic).toEqual([{ api: "loadShare", file: "src/app.tsx" }]);
+  });
+
+  it("turns malformed source into partial evidence", async () => {
+    const source = await fs.readFile(path.join(dynamicFixtures, "malformed.txt"), "utf8");
+    const { facts } = await projectWith(
+      { "src/bad.txt": source },
+      { include: ["src/**/*.{ts,tsx,js,jsx,txt}"] },
+    );
+    expect(facts.imports.packages).toEqual([]);
+    expect(facts.imports.unresolvedDynamic).toEqual([{ api: "import", file: "src/bad.txt" }]);
+  });
+
   it("resolves dynamic import() of a shared package", async () => {
     const source = await fs.readFile(
       path.join(dynamicFixtures, "dynamic-import-package.ts"),
@@ -179,6 +212,22 @@ describe("dynamic-import completeness", () => {
     expect(facts.imports.evidenceSources).not.toContain("runtime-trace");
   });
 
+  it("does not fail offline check when opt-in runtimeTrace is invalid", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-bad-runtime-"));
+    roots.push(root);
+    const badTrace = path.join(root, "bad-trace.json");
+    await fs.writeFile(badTrace, '{"findings":[],"projects":1}');
+    const { facts } = await projectWith(
+      { "src/app.ts": "export {}\n" },
+      {
+        runtimeTrace: badTrace,
+        moduleFederation: { shared: { react: { singleton: true } } },
+      },
+    );
+    expect(facts.imports.evidenceSources).not.toContain("runtime-trace");
+    expect(facts.imports.packages).not.toContain("react");
+  });
+
   it("uses manifest remotes as import hints", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-manifest-remote-"));
     roots.push(root);
@@ -292,5 +341,157 @@ describe("shared/unused with dynamic evidence", () => {
       artifacts: { emittedAssets: [] },
     });
     expect(findings).toHaveLength(0);
+  });
+
+  it("treats trailing-slash prefix shares as used when root or subpath is imported", async () => {
+    const findings = await runUnused({
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        exposes: {},
+        remotes: {},
+        shared: {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+          "react/": { package: "react/", singleton: false, eager: false, shareScope: "default" },
+        },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: ["src/app.ts"],
+        specifiers: ["react", "react/jsx-runtime"],
+        packages: ["react"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+        deepImports: ["react/jsx-runtime"],
+      },
+      artifacts: { emittedAssets: [] },
+    });
+    expect(findings).toHaveLength(0);
+  });
+
+  it("treats exact subpath share keys as used via deepImports", async () => {
+    const findings = await runUnused({
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        exposes: {},
+        remotes: {},
+        shared: {
+          "preact/hooks": {
+            package: "preact/hooks",
+            singleton: false,
+            eager: false,
+            shareScope: "default",
+          },
+        },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: ["src/app.ts"],
+        specifiers: ["preact/hooks"],
+        packages: ["preact"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+        deepImports: ["preact/hooks"],
+      },
+      artifacts: { emittedAssets: [] },
+    });
+    expect(findings).toHaveLength(0);
+  });
+
+  it("still flags truly unused non-prefix share keys", async () => {
+    const findings = await runUnused({
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        exposes: {},
+        remotes: {},
+        shared: {
+          lodash: { package: "lodash", singleton: false, eager: false, shareScope: "default" },
+        },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: ["src/app.ts"],
+        specifiers: ["react"],
+        packages: ["react"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    });
+    expect(findings.some((item) => item.message.includes('"lodash"'))).toBe(true);
+  });
+
+  it("still flags unused trailing-slash keys with no matching imports", async () => {
+    const findings = await runUnused({
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        exposes: {},
+        remotes: {},
+        shared: {
+          "vue/": { package: "vue/", singleton: false, eager: false, shareScope: "default" },
+        },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: ["src/app.ts"],
+        specifiers: ["react"],
+        packages: ["react"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    });
+    expect(findings.some((item) => item.message.includes('"vue/"'))).toBe(true);
   });
 });

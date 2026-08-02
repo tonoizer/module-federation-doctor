@@ -18,7 +18,13 @@ export const requireManifest = defineRule({
   },
   check(context) {
     if (!context.facts.artifacts.manifest) {
-      context.report({ message: "Manifest missing.", evidence: {} });
+      context.report({
+        message: "Manifest missing.",
+        evidence: {},
+        // Optional (#136): detailsSchema + details — never put schema version in evidence
+        // detailsSchema: "custom.team.topic.v1",
+        // details: { path: "mf-manifest.json" },
+      });
     }
   },
 });

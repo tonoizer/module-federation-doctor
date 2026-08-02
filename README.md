@@ -6,7 +6,9 @@ Webpack, and Modern.js.
 
 Install as a **devDependency**. Doctor is **build/CI-only**: adapters run after
 emit in Node and are not part of the browser bundle. They add CI time, not
-runtime size or performance cost.
+runtime size or performance cost. Architecture:
+[plugin primary / CLI complementary](./apps/docs/docs/adr/hybrid-plugin-cli.md)
+(not CLI-only, not an in-browser agent).
 
 **Agents:** read the terminal findings block, open the linked rule docs, apply
 the fix (or an intentional [governance](./apps/docs/docs/suppressions.md)
@@ -150,6 +152,23 @@ Fingerprint baselines keep known debt visible in reports without failing policy
 by default — see [baselines](./apps/docs/docs/baselines.md) and
 [governance](./apps/docs/docs/suppressions.md).
 
+`runtime` accepts one JSON Observability report, an array of reports, or a
+`{"report": ...}` / `{"reports": [...]}` envelope. Current upstream
+Observability 2.5.3 reports are supported, along with the legacy Doctor v1
+shape (`success`, `init`, `factory`, and old diagnosis/module fields). Partial
+reports are imported as partial evidence; missing fields never count as a
+pass. Missing shared lifecycle data on partial/old/preview runtimes is marked
+`sharedCompleteness: unknown`, not healthy. Unknown future shapes and build
+reports fail with a typed error. The general evidence reader
+(`readEvidenceDocument`) rejects Observability reports and points callers at
+`parseRuntimeTraces` / `loadRuntimeTraceFile`.
+
+Runtime imports are opt-in and local only. Doctor does not fetch, upload, open
+a browser, or execute report contents. Stored/output evidence is bounded and
+redacts credentials, secret query values, private paths, and stack traces.
+Invalid opt-in `runtimeTrace` paths do not break offline `check`; they simply
+omit runtime import hints.
+
 ## Policy packs and presets
 
 Share org governance with built-in presets (`recommended`, `strict`) and
@@ -208,8 +227,12 @@ Examples:
 - See [Examples](./apps/docs/docs/examples.md) for the full catalog
 
 Doctor-specific agent UX prefers CLI/plugin finding output (rule id, fix,
-Doctor docs URL, official MF sources, exit codes). For Module Federation
-concepts, use `.agents/skills/mf`. Upstream evidence for rule work lives in
+Doctor docs URL, official MF sources, exit codes) plus an offline health score
+footer (`Score: N/100`) and top-3 copy-paste agent prompts. Use `--no-score` /
+`--no-prompt` to hide terminal footers; JSON reports still include
+`summary.score`. Offline: `mfdoctor prompt --finding <id>` and
+`--diagnostics-dir` for handoff dumps. For Module Federation concepts, use
+`.agents/skills/mf`. Upstream evidence for rule work lives in
 [docs/sources](apps/docs/docs/sources.md).
 
 MIT © 2026 tonoizer and contributors.

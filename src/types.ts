@@ -58,6 +58,31 @@ export interface BundlerFacts {
    * Absent when Doctor did not observe compiler output options.
    */
   outputPublicPathKind?: OutputPublicPathKind;
+  /**
+   * Additive Vite resolved-config snapshot from `configResolved` (plugin path).
+   * Absent on CLI-only runs — rules that need these facts skip honestly.
+   */
+  viteConfig?: ViteBundlerConfigFacts;
+  /**
+   * Library names from `transformImport` / equivalent rewrite plugins when known.
+   * Absent means unknown (honest skip for conflict rules).
+   */
+  transformImportLibraries?: string[];
+}
+
+/** Static Vite config slices collected for dialect rules (never invent when missing). */
+export interface ViteBundlerConfigFacts {
+  /** True when `build.rollupOptions.output.manualChunks` is configured. */
+  manualChunks?: boolean;
+  /** True when Rolldown/Vite Plus `codeSplitting.groups` is configured. */
+  codeSplittingGroups?: boolean;
+  /** Static string `resolve.alias` entries only (object form; function aliases skipped). */
+  resolveAliases?: Record<string, string>;
+  /**
+   * `server.origin` when the adapter observed Vite `server` config.
+   * `null` means observed but unset/empty; omit the field when not observed (CLI).
+   */
+  serverOrigin?: string | null;
 }
 
 export interface AnalysisCapabilities {
@@ -148,6 +173,13 @@ export interface NormalizedMFConfig {
     disableShared?: boolean;
     disableSnapshot?: boolean;
     ssrExternals: string[];
+    ssrEntryLoader?: string;
+    remoteHmr?: boolean;
+  };
+  /** Bridge plugin options (`enableBridgeRouter`, etc.). Preserved from raw MF config. */
+  bridge?: {
+    enableBridgeRouter?: boolean;
+    [key: string]: unknown;
   };
 }
 
@@ -233,6 +265,13 @@ export interface ManifestShared {
 export type ArtifactKind = "manifest" | "stats";
 export type ArtifactSource = "discovered" | "emitted";
 export type ArtifactState = "valid" | "malformed";
+export type BuildCapabilityState = "exact" | "partial" | "unavailable" | "not-applicable";
+
+export interface BuildCapability {
+  state: BuildCapabilityState;
+  reason: string;
+  source?: string;
+}
 
 interface ArtifactRecordBase {
   kind: ArtifactKind;
@@ -240,6 +279,9 @@ interface ArtifactRecordBase {
   valid: boolean;
   source: ArtifactSource;
   state: ArtifactState;
+  /** Stable run-local build link when the artifact came from a build hook. */
+  buildId?: string;
+  configuredName?: string;
 }
 
 export type ArtifactManifestRecord = ArtifactRecordBase & {
@@ -293,6 +335,72 @@ export interface ArtifactFacts {
   assetSizes?: Record<string, number>;
 }
 
+export interface BuildRecord {
+  id: string;
+  adapter: BundlerName;
+  bundler: BundlerName;
+  flavor?: ViteLifecycleFlavor;
+  engine?: ViteLifecycleEngine;
+  /** Safe project-relative output root. */
+  outputRoot?: string;
+  emittedAssets: string[];
+  artifacts: ArtifactRecord[];
+  effectiveMode?: string;
+  target?: string;
+  targetKind?: "web" | "node" | "ssr" | "worker" | "unknown";
+  capabilities: {
+    outputRoot: BuildCapability;
+    emittedAssets: BuildCapability;
+    artifacts: BuildCapability;
+    effectiveMode: BuildCapability;
+    target: BuildCapability;
+  };
+  /** Public hook that finalized this output record (adapter-specific). */
+  sourceHook: string;
+}
+
+/**
+ * Adapter-agnostic per-output input for collector normalization.
+ * Vite fills this from public hooks; other adapters can reuse the same seam.
+ */
+export interface BuildOutputInput {
+  adapter: BundlerName;
+  bundler: BundlerName;
+  outputRoot?: string;
+  /** Asset names relative to `outputRoot` when that root is known. */
+  emittedAssets: string[];
+  /**
+   * How asset names were learned. `bundle` is exact compiler evidence;
+   * `output-root-scan` is a bounded disk recovery (partial).
+   */
+  emittedAssetsSource?: "bundle" | "output-root-scan";
+  sourceHook: string;
+  effectiveMode?: string;
+  target?: string;
+  targetKind?: BuildRecord["targetKind"];
+  flavor?: ViteLifecycleFlavor;
+  engine?: ViteLifecycleEngine;
+  buildWrite?: boolean;
+}
+
+/** @deprecated Use {@link BuildOutputInput}. Kept as an alias for the Vite slice. */
+export type ViteBuildOutputInput = BuildOutputInput;
+
+export type RuntimePluginContractFinding =
+  | {
+      plugin: string;
+      kind: "invalid-factory";
+      reason: "no-export" | "non-factory-export" | "missing-name";
+      file?: string;
+    }
+  | {
+      plugin: string;
+      kind: "cors-parity";
+      reason: "create-script-without-create-link" | "cors-mismatch";
+      confidence: "clear" | "heuristic";
+      file?: string;
+    };
+
 export interface ProjectFacts {
   schemaVersion: 1;
   project: ProjectIdentity;
@@ -301,9 +409,13 @@ export interface ProjectFacts {
   moduleFederation?: NormalizedMFConfig;
   dependencies: DependencyFacts;
   imports: ImportFacts;
+  /** Static runtimePlugins contract probes; absent/empty when none apply. */
+  runtimePluginContracts?: RuntimePluginContractFinding[];
   artifacts: ArtifactFacts;
   /** In-memory completeness metadata; omitted from legacy persisted project.json. */
   analysis?: AnalysisBudgetReport;
+  /** Exact per-output records. Legacy artifact fields remain the compatibility view. */
+  builds?: BuildRecord[];
 }
 
 export interface DoctorFinding {
@@ -317,6 +429,16 @@ export interface DoctorFinding {
   suggestion?: string;
   documentation?: string;
   fingerprint: string;
+  /**
+   * Optional versioned details schema id (e.g. `shared.unused.v1`).
+   * Top-level only — never put this in `evidence` (fingerprints hash evidence).
+   */
+  detailsSchema?: string;
+  /**
+   * Optional machine-readable payload for `detailsSchema`.
+   * Not an input to `fingerprint()`; baselines/SARIF stay stable when this is added.
+   */
+  details?: Record<string, unknown>;
   /** Present when the finding matches a checked-in fingerprint baseline entry. */
   suppressed?: boolean;
   /** Optional human reason copied from the matching baseline entry. */
@@ -338,11 +460,22 @@ export interface RuleContext {
   facts: Readonly<ProjectFacts>;
   options: Readonly<Record<string, unknown>>;
   /**
+   * Absolute project root for disk reads. `facts.project.root` stays a portable
+   * relative marker (`"."`); rules that open source files should prefer this.
+   */
+  root?: string;
+  /**
    * Resolved shared-usage governance (package lists + import depth).
    * Present for project analysis; absent for hand-built federation fixtures
    * that only exercise `analyzeFederation`.
    */
   sharedPolicy?: Readonly<ResolvedDoctorOptions["sharedPolicy"]>;
+  /**
+   * Soft-recognize mf-toolkit bridge / fragment / shared-inspector shapes.
+   * Default when unset: enabled only when toolkit signals are present on facts.
+   * Per-rule `options.recognizeMfToolkit` overrides this value.
+   */
+  recognizeMfToolkit?: boolean;
   report(
     finding: Omit<
       DoctorFinding,
@@ -437,6 +570,13 @@ export interface ModuleFederationConfigLike {
   disableShared?: boolean;
   disableSnapshot?: boolean;
   ssrExternals?: string[];
+  ssrEntryLoader?: string;
+  remoteHmr?: boolean;
+  /** Bridge plugin options (`enableBridgeRouter`, deprecated flags, …). */
+  bridge?: {
+    enableBridgeRouter?: boolean;
+    [key: string]: unknown;
+  };
 }
 
 export interface BaselineEntry {
@@ -516,6 +656,8 @@ export interface DoctorPrintLog {
   success?: boolean;
 }
 
+export type HealthScoreLabel = "Great" | "OK" | "Needs work";
+
 export interface DoctorOptions {
   analysisBudgets?: AnalysisBudgetOptions;
   moduleFederation?: ModuleFederationConfigLike;
@@ -531,6 +673,16 @@ export interface DoctorOptions {
    * package.json / public plugin meta; set only in tests or unusual setups.
    */
   viteLifecycle?: ViteLifecycleFacts;
+  /**
+   * Additive Vite resolved-config facts from the adapter `configResolved` hook.
+   * Not available on CLI-only runs.
+   */
+  viteConfigFacts?: ViteBundlerConfigFacts;
+  /**
+   * Library names from bundler/framework `transformImport` (Modern/Rsbuild).
+   * Omit when unknown — rules skip rather than inventing rewrite lists.
+   */
+  transformImport?: Array<string | { libraryName: string }>;
   mode?: "development" | "ci";
   root?: string;
   /** Default Observability export path for `mfdoctor runtime` when no trace arg is given.
@@ -541,6 +693,23 @@ export interface DoctorOptions {
     formats?: OutputFormat[];
   };
   failOn?: "never" | "warning" | "error";
+  /**
+   * When false, omit the health score footer from terminal output.
+   * Report JSON still includes `summary.score` / `summary.scoreLabel`.
+   * CLI: `--no-score`.
+   */
+  score?: boolean;
+  /**
+   * When false, omit top-N agent prompts from terminal output.
+   * CLI: `--no-prompt`. Default on for human terminal.
+   */
+  prompt?: boolean;
+  /**
+   * Optional directory for bounded agent diagnostics dump
+   * (`report.json`, `prompts/*.md`, `summary.md`). Must stay inside the project root.
+   * CLI: `--diagnostics-dir`.
+   */
+  diagnosticsDir?: string;
   /**
    * When true (default), skip terminal output on zero findings.
    * Override with `printLog.success: true`, `quiet: false`, CLI `--verbose`,
@@ -576,6 +745,12 @@ export interface DoctorOptions {
   alwaysShared?: string[];
   /** Deep-import specifiers to ignore (extends JSX runtime allowlist). */
   deepImportAllowlist?: string[];
+  /**
+   * Soft-recognize mf-toolkit shapes (mf-bridge `./entry`, mf-ssr fragment URLs,
+   * shared-inspector MF2 shared arrays). When unset, recognition applies only if
+   * toolkit signals are present. Set `false` to force classic behavior.
+   */
+  recognizeMfToolkit?: boolean;
 }
 
 export interface ResolvedDoctorOptions {
@@ -588,6 +763,9 @@ export interface ResolvedDoctorOptions {
     stats: string[];
   };
   viteLifecycle?: ViteLifecycleFacts;
+  viteConfigFacts?: ViteBundlerConfigFacts;
+  /** Normalized transformImport library names when provided by adapters/options. */
+  transformImportLibraries?: string[];
   mode: "development" | "ci";
   root: string;
   runtimeTrace?: string;
@@ -596,6 +774,18 @@ export interface ResolvedDoctorOptions {
     formats: OutputFormat[];
   };
   failOn: "never" | "warning" | "error";
+  /**
+   * When false, omit the health score footer from terminal output.
+   * Defaults to true.
+   */
+  score: boolean;
+  /**
+   * When false, omit top-N agent prompts from terminal output.
+   * Defaults to true.
+   */
+  prompt: boolean;
+  /** Absolute path for optional diagnostics dump, when configured. */
+  diagnosticsDir?: string;
   /** Resolved quiet-success gate for the terminal reporter. */
   quiet: boolean;
   printLog: Required<DoctorPrintLog>;
@@ -619,14 +809,58 @@ export interface ResolvedDoctorOptions {
     shareCandidates: string[];
     deepImportAllowlist: string[];
   };
+  /**
+   * Soft-recognize mf-toolkit shapes. Undefined means “auto when signals present”.
+   */
+  recognizeMfToolkit?: boolean;
 }
 
 export interface RuntimeTraceReport {
   schemaVersion: 1;
+  /** Source adapter marker. This is not the MF runtime version. */
+  sourceContract?: "upstream-observability-2.5.3" | "legacy-doctor-v1" | "partial";
+  /**
+   * Shared-section completeness. Absence on old/missing/preview Chrome DevTools
+   * runtimes is `unknown`, never an implied healthy shared graph.
+   */
+  sharedCompleteness?: "complete" | "partial" | "unknown";
+  evidenceClipped?: boolean;
   traceId?: string;
   status?: string;
+  requestId?: string;
+  requestAlias?: string;
+  hostName?: string;
+  runtimeVersion?: string;
   errorCode?: string;
+  errorName?: string;
+  errorMessage?: string;
+  retryable?: boolean;
+  errorContext?: Record<string, unknown>;
+  failedPhase?: string;
+  ownerHint?: string;
+  ownerHints?: string[];
+  ownerHintConflict?: boolean;
   outcome?: string;
+  recovered?: boolean;
+  loadedBefore?:
+    | boolean
+    | {
+        producer?: boolean;
+        expose?: boolean;
+        consumers?: Array<{
+          name?: string;
+          remoteEntryExports?: boolean;
+          containerInitialized?: boolean;
+          exposes?: string[];
+        }>;
+      };
+  flags?: Record<string, boolean>;
+  loadCompleted?: boolean;
+  runtimeLoaded?: boolean;
+  sharedResolved?: boolean;
+  preloaded?: boolean;
+  componentLoaded?: boolean;
+  lastPhase?: string;
   remote?: {
     name?: string;
     alias?: string;
@@ -635,7 +869,7 @@ export interface RuntimeTraceReport {
   shared?: {
     package?: string;
     provider?: string;
-    requiredVersion?: string;
+    requiredVersion?: string | false;
     selectedVersion?: string;
     availableVersions?: string[];
     reason?: string;
@@ -644,16 +878,43 @@ export interface RuntimeTraceReport {
     name?: string;
     id?: string;
     publicPath?: string;
+    reason?: string;
+    clipped?: boolean;
+    totalCount?: number;
+    matchedCount?: number;
+    availableNames?: string[];
+    entries?: Array<{
+      name?: string;
+      publicPath?: string;
+      getPublicPath?: string;
+      remoteEntry?: string;
+      globalName?: string;
+    }>;
   };
   phases?: Record<string, { status?: string }>;
   events: Array<{
     phase?: string;
     status?: string;
     errorCode?: string;
+    retryable?: boolean;
   }>;
   diagnosis?: {
     owner?: string;
+    ownerHint?: string;
+    title?: string;
+    outcome?: string;
+    status?: string;
+    errorCode?: string;
+    failedPhase?: string;
+    errorName?: string;
+    errorMessage?: string;
+    docLink?: string;
     summary?: string;
+    facts?: Record<string, unknown>;
+    actions?: Array<Record<string, unknown>>;
+    warnings?: string[];
+    completedPhases?: string[];
+    pendingPhases?: string[];
   };
 }
 
@@ -682,6 +943,13 @@ export interface DoctorReport {
     errors: number;
     /** Count of findings marked suppressed by a fingerprint baseline. */
     suppressed?: number;
+    /**
+     * Offline unique-rule health score in `[0, 100]`, or `null` when analysis
+     * is too partial (`doctor/partial-analysis`).
+     */
+    score?: number | null;
+    /** Band label for `score`, or `null` when `score` is `null`. */
+    scoreLabel?: HealthScoreLabel | null;
   };
   findings: DoctorFinding[];
 }

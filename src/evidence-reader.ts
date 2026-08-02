@@ -104,9 +104,37 @@ function futureVersionOf(
   );
 }
 
+function looksLikeRuntimeObservabilityReport(value: JsonRecord): boolean {
+  if (typeof value.traceId === "string") return true;
+  if (value.hostName !== undefined || value.runtimeVersion !== undefined) return true;
+  if (value.remote !== undefined || Array.isArray(value.events)) return true;
+  const summary = isRecord(value.summary) ? value.summary : undefined;
+  return Boolean(
+    summary &&
+    (summary.outcome !== undefined ||
+      summary.phases !== undefined ||
+      summary.flags !== undefined ||
+      summary.runtimeLoaded !== undefined ||
+      summary.loadCompleted !== undefined),
+  );
+}
+
+function looksLikeRuntimeObservabilityDocument(value: JsonRecord): boolean {
+  if ("findings" in value && "capabilities" in value) return false;
+  if (value.report !== undefined && isRecord(value.report))
+    return looksLikeRuntimeObservabilityReport(value.report);
+  if (Array.isArray(value.reports))
+    return value.reports.some(
+      (item) => isRecord(item) && looksLikeRuntimeObservabilityReport(item),
+    );
+  return looksLikeRuntimeObservabilityReport(value);
+}
+
 function documentKindOf(value: JsonRecord): EvidenceDocumentKind | "unknown" {
   if ("protocol" in value || "subjects" in value || "assertions" in value) return "evidence-graph";
-  if ("findings" in value || "summary" in value) return "doctor-report";
+  // Doctor reports always include findings; bare `summary` also appears on Observability exports.
+  if ("findings" in value) return "doctor-report";
+  if (looksLikeRuntimeObservabilityDocument(value)) return "unknown";
   if ("project" in value || "bundler" in value || "dependencies" in value) return "project-facts";
   return "unknown";
 }
@@ -559,8 +587,18 @@ export function readEvidenceDocument(
     );
   const kind = documentKindOf(value);
   const version = sourceVersionOf(value);
-  if (kind === "unknown")
+  if (kind === "unknown") {
+    if (looksLikeRuntimeObservabilityDocument(value))
+      throwReader(
+        options,
+        "unknown",
+        version,
+        "wrong-document-kind",
+        "/",
+        "Runtime Observability reports must be read with parseRuntimeTraces/loadRuntimeTraceFile, not readEvidenceDocument.",
+      );
     throwReader(options, kind, version, "wrong-document-kind", "/", "Unknown document kind");
+  }
   validateOrThrow(value, kind, options);
   try {
     if (kind === "evidence-graph")

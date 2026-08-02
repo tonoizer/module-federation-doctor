@@ -2,7 +2,9 @@
 
 The **build plugin** is the primary DX. Use the CLI for offline checks,
 cross-project federation analysis, runtime trace correlation, and deployed
-manifest probes.
+manifest probes. Architecture lock:
+[plugin primary / CLI complementary](./adr/hybrid-plugin-cli.md)
+(not CLI-only, not an in-browser agent).
 
 ```bash
 mfdoctor check
@@ -10,6 +12,11 @@ mfdoctor check packages/host --ci
 mfdoctor check --format terminal,json,sarif
 mfdoctor check --baseline ./mfdoctor.baseline.json
 mfdoctor check --verbose
+mfdoctor check --no-score
+mfdoctor check --no-prompt
+mfdoctor check --prompt
+mfdoctor check --diagnostics-dir .mf/doctor/diagnostics
+mfdoctor prompt --finding config/name-required
 mfdoctor workspace
 mfdoctor workspace apps packages --format terminal,json,sarif
 mfdoctor federation --workspace
@@ -46,8 +53,27 @@ quiet success). Restore the green success line with any of:
 
 When findings exist, the terminal block includes severity, rule id, message, a
 short fix, the Doctor rule docs URL, and official `module-federation.io` sources
-when available. Adapters share this single print path — they do not also push
-per-finding bundler warnings.
+when available. After the counts line, Doctor prints a colorized health score
+footer (`Score: N/100 (Great|OK|Needs work)`), then up to three copy-paste agent
+fix prompts (highest severity/impact first; suppressed findings skipped). Hide
+the score with `--no-score` / `score: false`, or the prompts with `--no-prompt` /
+`prompt: false`. Report JSON still includes `summary.score` /
+`summary.scoreLabel`. Pure JSON/SARIF output (no `terminal` format) skips both
+footers. See [Report schemas](./report-schemas.md) for the score formula.
+
+### Offline prompts and diagnostics dump
+
+```bash
+mfdoctor prompt --finding <fingerprint|ruleId> [.mf/doctor/report.json]
+mfdoctor prompt [.mf/doctor/report.json]
+mfdoctor check --diagnostics-dir .mf/doctor/diagnostics
+```
+
+`mfdoctor prompt` reads a saved report offline and prints one finding prompt
+(`--finding`) or the top three. `--diagnostics-dir` writes a root-contained
+folder with `report.json`, `prompts/*.md`, and `summary.md` (score + top
+findings). Paths outside the project root are rejected. Adapters share this
+single print path — they do not also push per-finding bundler warnings.
 
 ## Workspace federation gate
 

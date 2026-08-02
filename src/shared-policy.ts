@@ -118,6 +118,37 @@ export function isDeepImportSpecifier(specifier: string, packageName: string): b
   return specifier !== packageName && specifier.startsWith(`${packageName}/`);
 }
 
+/**
+ * Whether a shared config key is evidenced by scanned imports.
+ * Trailing-slash keys (`react/`) are MF prefix shares; exact subpaths
+ * (`preact/hooks`) match full specifiers / deepImports.
+ */
+export function isShareKeyUsed(
+  shareKey: string,
+  imports: {
+    packages?: string[] | undefined;
+    dynamicPackages?: string[] | undefined;
+    specifiers?: string[] | undefined;
+    deepImports?: string[] | undefined;
+  },
+): boolean {
+  const packages = new Set([...(imports.packages ?? []), ...(imports.dynamicPackages ?? [])]);
+  if (packages.has(shareKey)) return true;
+
+  const specifiers = [...(imports.specifiers ?? []), ...(imports.deepImports ?? [])];
+  if (specifiers.includes(shareKey)) return true;
+
+  if (shareKey.endsWith("/")) {
+    const prefix = shareKey.slice(0, -1);
+    if (!prefix) return false;
+    if (packages.has(prefix)) return true;
+    if (specifiers.some((specifier) => specifier === prefix || specifier.startsWith(shareKey)))
+      return true;
+  }
+
+  return false;
+}
+
 export function serializeSharedPolicy(policy: ResolvedSharedPolicy): {
   importDepth: ImportDepth;
   alwaysShared: string[];

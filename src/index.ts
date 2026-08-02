@@ -1,3 +1,22 @@
+export {
+  FINDING_DETAILS_SCHEMAS,
+  TYPED_DETAILS_RULE_IDS,
+  findingDetails,
+  isKnownFindingDetailsSchema,
+  readFindingDetails,
+} from "./finding-details.js";
+export type {
+  ArtifactDetailsV1,
+  DoctorPartialAnalysisDetailsV1,
+  FindingDetailsAttachment,
+  FindingDetailsSchemaId,
+  FindingDetailsV1,
+  RemotesConfigDetailsV1,
+  SharedSingletonDetailsV1,
+  SharedUnusedDetailsV1,
+  SharedVersionMismatchDetailsV1,
+  TypedDetailsRuleId,
+} from "./finding-details.js";
 export { analyze, analyzeFederation } from "./engine.js";
 export { readCanonicalModuleFederationConfig } from "./canonical-config.js";
 export {
@@ -22,6 +41,17 @@ export {
   updateBaseline,
   writeBaselineFile,
 } from "./baseline.js";
+export { computeHealthScore, isExcludedFromScore, labelForScore } from "./health-score.js";
+export type { HealthScoreResult } from "./health-score.js";
+export {
+  buildAgentPrompt,
+  findPromptTarget,
+  formatTopAgentPrompts,
+  resolveDiagnosticsDir,
+  selectTopFindings,
+  writeDiagnosticsDump,
+} from "./agent-prompt.js";
+export type { AgentPromptOptions, DiagnosticsDumpResult } from "./agent-prompt.js";
 export {
   DEFAULT_WORKSPACE_PROJECT_GLOBS,
   WORKSPACE_IGNORE,
@@ -52,6 +82,17 @@ export {
   strictPreset,
 } from "./policy.js";
 export { defineRule, builtInRules } from "./rules.js";
+export {
+  hasMf2SharedArrayManifest,
+  hasMfBridgeEntryExpose,
+  hasMfSsrFragmentRemotes,
+  hasMfToolkitShapeSignals,
+  isMf2SharedArrayManifestOnly,
+  isMfBridgeEntryProducer,
+  isMfSsrFragmentProducer,
+  isMfSsrFragmentRemoteEntry,
+  toolkitRecognitionEnabled,
+} from "./mf-toolkit-shapes.js";
 export { ProbeError, probeManifest } from "./probe.js";
 export {
   RuntimeTraceError,
@@ -99,6 +140,10 @@ export type {
   ArtifactStatsRecord,
   ArtifactStats,
   ArtifactFacts,
+  BuildCapability,
+  BuildCapabilityState,
+  BuildOutputInput,
+  BuildRecord,
   BaselineEntry,
   BaselineFile,
   BaselineOptions,
@@ -119,6 +164,7 @@ export type {
   DoctorSharedPolicy,
   DoctorUiPayload,
   FederationAnalysisResult,
+  HealthScoreLabel,
   ImportDepth,
   ImportEvidenceSource,
   ImportFacts,
@@ -223,6 +269,19 @@ export {
 } from "./evidence.js";
 export { EvidenceIntegrityError, EvidenceResourceError } from "./evidence.js";
 export {
+  assertDriftLedgerEntry,
+  compareV1Outputs,
+  ParityResourceError,
+} from "./evidence-parity.js";
+export type {
+  DriftClass,
+  DriftLedgerEntry,
+  ParityComparison,
+  ParityDiff,
+  ParityLimits,
+  ParityValue,
+} from "./evidence-parity.js";
+export {
   EvidenceReaderError,
   migrateDoctorReport,
   migrateProjectFacts,
@@ -252,6 +311,16 @@ export type {
   RuleReasonCode,
   RuleRemediation,
   RuleUnknownResult,
+} from "./rule-contract.js";
+export { runEvidenceAwareRules } from "./rule-contract.js";
+export type {
+  EvidenceAwareRule,
+  EvidenceRuleContext,
+  EvidenceRuleDecision,
+  EvidenceRuleRunnerInput,
+  EvidenceRuleRunnerOutput,
+  EvidenceRuleScope,
+  EvidenceQuery,
 } from "./rule-contract.js";
 export { ruleInventory, ruleInventoryIds } from "./rule-inventory.js";
 export type {

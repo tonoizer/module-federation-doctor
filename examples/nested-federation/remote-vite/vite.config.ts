@@ -34,6 +34,7 @@ export default defineConfig({
       rules: {
         "config/remote-manifest-recommended": "off",
         "reliability/version-first-offline-remotes": "off",
+        "vite/manual-chunks-conflict": "off",
       },
     }),
   ],

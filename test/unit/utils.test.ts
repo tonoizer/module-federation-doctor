@@ -4,12 +4,17 @@ import {
   normalizePath,
   redact,
   redactRuntimeUrl,
+  relativePath,
   stableStringify,
 } from "../../src/utils.js";
 
 describe("deterministic privacy helpers", () => {
   it("normalizes Windows paths", () => {
     expect(normalizePath(".\\src\\index.ts")).toBe("src/index.ts");
+  });
+
+  it("rewrites out-of-project absolutes as [external]/basename", () => {
+    expect(relativePath("/Users/me/project", "/opt/mf/bundler.js")).toBe("[external]/bundler.js");
   });
 
   it("redacts credentials, sensitive values, and roots", () => {

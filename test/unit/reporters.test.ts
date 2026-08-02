@@ -2,10 +2,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { computeHealthScore } from "../../src/health-score.js";
 import { formatTerminalReport, writeReports } from "../../src/reporters.js";
 import type { DoctorReport, ProjectFacts } from "../../src/types.js";
 
 function emptyReport(findings: DoctorReport["findings"] = []): DoctorReport {
+  const health = computeHealthScore(findings);
   return {
     schemaVersion: 1,
     capabilities: {
@@ -22,6 +24,8 @@ function emptyReport(findings: DoctorReport["findings"] = []): DoctorReport {
       warnings: findings.filter((f) => f.severity === "warning").length,
       errors: findings.filter((f) => f.severity === "error").length,
       suppressed: findings.filter((f) => f.suppressed).length,
+      score: health.score,
+      scoreLabel: health.scoreLabel,
     },
     findings,
   };
@@ -131,5 +135,71 @@ describe("reporters", () => {
     );
     expect(text).toContain("source: https://module-federation.io/configure/exposes.html");
     expect(text).toContain("1 error(s)");
+    expect(text).toContain("Score: 99/100 (Great)");
+  });
+
+  it("omits the score footer when score: false", () => {
+    const text = formatTerminalReport(
+      emptyReport([
+        {
+          schemaVersion: 1,
+          ruleId: "config/expose-key-invalid",
+          severity: "error",
+          message: "bad key",
+          project: "demo",
+          evidence: {},
+          fingerprint: "fp",
+        },
+      ]),
+      { score: false },
+    );
+    expect(text).toContain("1 error(s)");
+    expect(text).not.toContain("Score:");
+  });
+
+  it("prints n/a when score is null (partial analysis)", () => {
+    const report = emptyReport([
+      {
+        schemaVersion: 1,
+        ruleId: "doctor/partial-analysis",
+        severity: "warning",
+        message: "partial",
+        project: "demo",
+        evidence: {},
+        fingerprint: "fp",
+      },
+    ]);
+    expect(report.summary.score).toBeNull();
+    const text = formatTerminalReport(report);
+    expect(text).toContain("Score: n/a (partial analysis)");
+  });
+
+  it("includes score on verbose success", () => {
+    const text = formatTerminalReport(emptyReport(), { printLog: { success: true } });
+    expect(text).toContain("Module Federation Doctor: no findings.");
+    expect(text).toContain("Score: 100/100 (Great)");
+  });
+
+  it("prints top agent prompts after the score and honors prompt: false", () => {
+    const report = emptyReport([
+      {
+        schemaVersion: 1,
+        ruleId: "config/expose-key-invalid",
+        severity: "error",
+        message: "bad key",
+        project: "demo",
+        evidence: {},
+        fingerprint: "fp",
+        documentation: "/rules/config/expose-key-invalid",
+      },
+    ]);
+    const withPrompts = formatTerminalReport(report);
+    expect(withPrompts).toContain("Score: 99/100 (Great)");
+    expect(withPrompts).toContain("Agent prompts (top 1)");
+    expect(withPrompts).toContain("# Fix: config/expose-key-invalid");
+
+    const without = formatTerminalReport(report, { prompt: false });
+    expect(without).toContain("Score: 99/100 (Great)");
+    expect(without).not.toContain("Agent prompts");
   });
 });

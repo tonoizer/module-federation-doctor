@@ -1,12 +1,55 @@
 import semver from "semver";
+import path from "node:path";
+import fs from "node:fs/promises";
+import {
+  bridgeOptions,
+  browserBridgeReactEntries,
+  detectedReactMajor,
+  detectInvalidBridgeProviderShape,
+  hasBridgeReactPlugin,
+  hasBridgeServerEntry,
+  hasBridgeVueServerEntry,
+  hasReactDomPrefixShare,
+  hasSharedPackage,
+  hasSharedReactRouter,
+  hasVueBridgeSsrFreshContextHints,
+  isBridgeRouterEnabled,
+  isNodeOrSsrTarget,
+  isReactBridgeProject,
+  isVueBridgeProject,
+  reactBridgeEntryMajor,
+  sharedReactRouterKeys,
+  usesVueRouter,
+} from "./bridge-detect.js";
+import {
+  isMfSsrFragmentRemoteEntry,
+  shouldSkipBridgeEntryDtsGuidance,
+  shouldSkipFragmentRemoteEntryInvalid,
+  shouldSkipMf2SharedUnused,
+} from "./mf-toolkit-shapes.js";
 import { lookupAssetSize, sumAssetSizes } from "./collect.js";
 import { ruleGuidance } from "./rule-guidance.js";
+import {
+  hasNodeRuntimePlugin,
+  isBrowserOnlyManifestRemoteEntry,
+  isSsrNodeEnvApplicable,
+  NODE_RUNTIME_PLUGIN,
+  nodeLibraryDtsProblems,
+  optionSsrMode,
+} from "./ssr-detect.js";
 import {
   DEFAULT_ALWAYS_SHARED,
   DEFAULT_DEEP_IMPORT_ALLOWLIST,
   DEFAULT_SHARE_CANDIDATE_PACKAGES,
   DEFAULT_SINGLETON_RISK_PACKAGES,
+  isShareKeyUsed,
 } from "./shared-policy.js";
+import {
+  FINDING_DETAILS_SCHEMAS,
+  findingDetails,
+  type FindingDetailsAttachment,
+} from "./finding-details.js";
+import { findShareRewriteOverlaps } from "./share-rewrite.js";
 import type {
   DoctorRule,
   NormalizedMFConfig,
@@ -38,6 +81,41 @@ function createRule(
   });
 }
 
+function manifestAssetPath(manifestPath: string, asset: string): string {
+  const normalizedAsset = asset.replaceAll("\\", "/").replace(/^\.\//, "");
+  const manifestDir = path.posix.dirname(manifestPath);
+  if (
+    manifestDir === "." ||
+    normalizedAsset === manifestDir ||
+    normalizedAsset.startsWith(`${manifestDir}/`)
+  )
+    return normalizedAsset;
+  return path.posix.normalize(path.posix.join(manifestDir, normalizedAsset));
+}
+
+function buildScopedAssetPath(
+  context: { facts: ProjectFacts },
+  manifestPath: string,
+  asset: string,
+): string {
+  // When per-output build records exist, resolve assets against the manifest
+  // directory so same-named files in other outputs cannot satisfy the rule.
+  return context.facts.builds && context.facts.builds.length > 0
+    ? manifestAssetPath(manifestPath, asset)
+    : asset;
+}
+
+function emittedAssetMatches(
+  context: { facts: ProjectFacts },
+  manifestPath: string,
+  candidate: string,
+  asset: string,
+): boolean {
+  if (context.facts.builds && context.facts.builds.length > 0)
+    return asset === manifestAssetPath(manifestPath, candidate);
+  return asset.endsWith(candidate) || asset.endsWith(path.posix.basename(candidate));
+}
+
 function mf(context: RuleContext): NormalizedMFConfig | undefined {
   return context.facts.moduleFederation;
 }
@@ -47,11 +125,15 @@ function report(
   message: string,
   evidence: Record<string, unknown>,
   suggestion?: string,
+  typed?: FindingDetailsAttachment,
 ): void {
   context.report({
     message,
     evidence,
     ...(suggestion ? { suggestion } : {}),
+    ...(typed
+      ? { detailsSchema: typed.detailsSchema, details: typed.details as Record<string, unknown> }
+      : {}),
   });
 }
 
@@ -122,6 +204,28 @@ function hasRemoteRecoveryPlugin(plugins: string[] | undefined): boolean {
   );
 }
 
+const SSR_FRAMEWORK_DEPS = ["nuxt", "nitropack", "@nuxt/kit", "@nuxt/schema"] as const;
+
+function detectNitroSignal(facts: ProjectFacts): boolean {
+  const declared = facts.dependencies.declared;
+  return SSR_FRAMEWORK_DEPS.some((name) => name in declared);
+}
+
+function detectViteSsrSignal(facts: ProjectFacts): { detected: boolean; signals: string[] } {
+  const signals: string[] = [];
+  // Prefer MF-declared SSR targets and framework deps. Do not treat
+  // `builds.targetKind=node` alone as SSR — Vite's default `ssr.target` is
+  // `node`, so client builds often record that kind without being SSR apps.
+  if (facts.moduleFederation?.vite?.target === "node") signals.push("vite.target=node");
+  if (facts.moduleFederation?.experiments?.target === "node")
+    signals.push("experiments.target=node");
+  for (const build of facts.builds ?? []) {
+    if (build.targetKind === "ssr") signals.push("builds.targetKind=ssr");
+  }
+  if (detectNitroSignal(facts)) signals.push("deps:nitropack|nuxt");
+  return { detected: signals.length > 0, signals: [...new Set(signals)].sort() };
+}
+
 function dtsOptions(config: NormalizedMFConfig | undefined): Record<string, unknown> {
   return config?.dts?.options ?? {};
 }
@@ -162,14 +266,25 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("config/remote-entry-invalid", "error", (context) => {
     for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {})) {
+      // mf-ssr fragment URL/path remotes are intentional toolkit shapes, not broken entries.
+      if (shouldSkipFragmentRemoteEntryInvalid(context, remote.entry)) continue;
       if (
         !remote.version &&
         (!remote.entry || (!remote.entry.includes("@") && !/^https?:\/\//.test(remote.entry)))
       )
-        report(context, `Remote "${name}" has an invalid entry.`, {
-          name,
-          entry: remote.entry,
-        });
+        report(
+          context,
+          `Remote "${name}" has an invalid entry.`,
+          {
+            name,
+            entry: remote.entry,
+          },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+            remote: name,
+            entry: remote.entry,
+          }),
+        );
     }
   }),
   createRule("config/filename-invalid", "error", (context) => {
@@ -200,6 +315,10 @@ export const builtInRules: DoctorRule[] = [
           `Remote "${name}" uses plain HTTP outside localhost.`,
           { name, entry: remote.entry },
           "Use HTTPS so remote code cannot be changed in transit.",
+          findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+            remote: name,
+            entry: remote.entry,
+          }),
         );
     }
   }),
@@ -213,6 +332,11 @@ export const builtInRules: DoctorRule[] = [
         `Remote "${name}" points at localhost in a CI/production Doctor run.`,
         { name, entry: remote.entry, mode: context.facts.bundler.mode },
         "Use deployed remote URLs for CI and production builds; keep localhost for local development mode.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+          remote: name,
+          entry: remote.entry,
+          mode: context.facts.bundler.mode,
+        }),
       );
     }
   }),
@@ -243,6 +367,12 @@ export const builtInRules: DoctorRule[] = [
         `Remote alias "${alias}" is a prefix of remote "${collision.name}"${collision.alias ? ` (alias "${collision.alias}")` : ""}.`,
         { alias, remote: remote.name, collision: collision.name, collisionAlias: collision.alias },
         "Rename aliases so none is a prefix of another remote name or alias.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+          remote: remote.name,
+          alias,
+          collision: collision.name,
+          ...(collision.alias !== undefined ? { collisionAlias: collision.alias } : {}),
+        }),
       );
     }
   }),
@@ -289,6 +419,9 @@ export const builtInRules: DoctorRule[] = [
       "Manifest generation is skipped because bundler `output.publicPath` is not a string.",
       { outputPublicPathKind: context.facts.bundler.outputPublicPathKind },
       "Set `output.publicPath` to a string URL, root-relative path, or `auto`.",
+      findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {
+        outputPublicPathKind: context.facts.bundler.outputPublicPathKind,
+      }),
     );
   }),
   createRule("config/remote-manifest-recommended", "info", (context) => {
@@ -299,6 +432,10 @@ export const builtInRules: DoctorRule[] = [
           `Remote "${name}" points straight to a remote entry.`,
           { name, entry: remote.entry },
           "Prefer `mf-manifest.json` when you need dynamic type hints, preloading, and DevTools metadata.",
+          findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+            remote: name,
+            entry: remote.entry,
+          }),
         );
   }),
   createRule("config/library-remote-type-mismatch", "warning", (context) => {
@@ -398,7 +535,8 @@ export const builtInRules: DoctorRule[] = [
       implementation &&
       !implementation.includes("@module-federation/runtime-tools") &&
       !implementation.startsWith(".") &&
-      !implementation.startsWith("/")
+      !implementation.startsWith("/") &&
+      !implementation.startsWith("[external]/")
     )
       report(
         context,
@@ -438,6 +576,9 @@ export const builtInRules: DoctorRule[] = [
         "Remote-consumption runtime code is disabled while remotes are configured.",
         { remotes: Object.keys(config.remotes) },
         "Remove `disableRemote` or remove all consumed remotes.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+          remotes: Object.keys(config.remotes),
+        }),
       );
   }),
   createRule("config/shared-capability-disabled", "error", (context) => {
@@ -532,7 +673,10 @@ export const builtInRules: DoctorRule[] = [
 
     if (manifest.remoteEntry?.name) {
       const assets = [manifest.remoteEntry.name];
-      const bytes = lookupAssetSize(sizes, manifest.remoteEntry.name);
+      const bytes = lookupAssetSize(
+        sizes,
+        buildScopedAssetPath(context, manifest.path, manifest.remoteEntry.name),
+      );
       if (bytes !== undefined && bytes > remoteEntryMax)
         report(
           context,
@@ -549,7 +693,10 @@ export const builtInRules: DoctorRule[] = [
     }
 
     for (const shared of manifest.shared) {
-      const bytes = sumAssetSizes(sizes, shared.assets);
+      const bytes = sumAssetSizes(
+        sizes,
+        shared.assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
+      );
       if (bytes === undefined || bytes <= sharedMax) continue;
       report(
         context,
@@ -566,7 +713,10 @@ export const builtInRules: DoctorRule[] = [
     }
 
     for (const expose of manifest.exposes) {
-      const bytes = sumAssetSizes(sizes, expose.assets);
+      const bytes = sumAssetSizes(
+        sizes,
+        expose.assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
+      );
       if (bytes === undefined || bytes <= exposeMax) continue;
       report(
         context,
@@ -663,6 +813,227 @@ export const builtInRules: DoctorRule[] = [
         "For large builds, prefer `moduleParseIdleTimeout` so active parsing does not end early.",
       );
   }),
+  createRule("vite/remotes-prefer-module", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const config = mf(context);
+    const remotes = config?.remotes;
+    if (!remotes || Object.keys(remotes).length === 0) return;
+    if (optionBoolean(context.options, "preferModuleRemotes") === false) return;
+
+    const varFilename = config?.vite?.varFilename;
+    const allowVarWithFilename =
+      optionBoolean(context.options, "allowVarRemotesWithVarFilename") !== false;
+    if (varFilename && allowVarWithFilename) return;
+
+    // Vite string remotes / omitted type default to `var`. Explicit types such as
+    // `module` or `global` are intentional and stay quiet.
+    const defaultVarRemotes = Object.entries(remotes)
+      .filter(([, remote]) => !remote.type || remote.type === "var")
+      .map(([name, remote]) => ({
+        name,
+        type: remote.type ?? "var",
+        entry: remote.entry,
+      }));
+    if (defaultVarRemotes.length === 0) return;
+
+    report(
+      context,
+      "Vite remotes use string or default `var` typing without an intentional interop story.",
+      {
+        remotes: defaultVarRemotes,
+        ...(varFilename ? { varFilename } : {}),
+      },
+      "Prefer object remotes with `type: 'module'` for Vite↔Vite ESM. For webpack/rspack remotes, set an explicit type such as `global`. Keep `varFilename` when this producer intentionally emits a var entry for var hosts.",
+    );
+  }),
+  createRule("vite/var-filename-interop", "info", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const config = mf(context);
+    const varFilename = config?.vite?.varFilename;
+    if (!varFilename) return;
+    const remotes = config?.remotes ?? {};
+    if (Object.keys(remotes).length === 0) return;
+
+    const defaultVarRemotes = Object.entries(remotes)
+      .filter(([, remote]) => !remote.type || remote.type === "var")
+      .map(([name, remote]) => ({
+        name,
+        type: remote.type ?? "var",
+        entry: remote.entry,
+      }));
+    if (defaultVarRemotes.length === 0) return;
+
+    report(
+      context,
+      "`varFilename` is configured while remotes still use default `var` typing.",
+      { varFilename, remotes: defaultVarRemotes },
+      "Keep `varFilename` when this producer serves webpack/rspack var hosts. Prefer `type: 'module'` remotes for Vite↔Vite ESM consumers.",
+    );
+  }),
+  createRule("vite/host-init-inject-ssr", "error", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const config = mf(context);
+    if (!config) return;
+    if (optionBoolean(context.options, "requireHostInitEntryForSsr") === false) return;
+
+    const inject = config.vite?.hostInitInjectLocation;
+    const ssr = detectViteSsrSignal(context.facts);
+    if (!ssr.detected) {
+      // Browser-only / unknown: unset stays silent; explicit `html` is valid for SPA hosts.
+      return;
+    }
+    if (inject === "entry") return;
+
+    report(
+      context,
+      "SSR Vite apps need `hostInitInjectLocation: 'entry'`.",
+      {
+        hostInitInjectLocation: inject ?? null,
+        signals: ssr.signals,
+      },
+      "Set `hostInitInjectLocation` to `entry` so federation host init runs without an HTML document.",
+    );
+  }),
+  createRule("vite/ssr-nitro-externals", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const config = mf(context);
+    if (!config) return;
+
+    const ssr = detectViteSsrSignal(context.facts);
+    const nitro = detectNitroSignal(context.facts);
+    if (!ssr.detected && !nitro) return;
+
+    const sharedReact = Object.keys(config.shared).filter(
+      (name) => name === "react" || name === "react-dom" || name.startsWith("react/"),
+    );
+    if (sharedReact.length === 0) return;
+
+    const externals = new Set(config.vite?.ssrExternals ?? []);
+    const overlapping = sharedReact.filter((name) => {
+      if (externals.has(name)) return true;
+      if (name === "react" || name.startsWith("react/")) return externals.has("react");
+      if (name === "react-dom") return externals.has("react-dom");
+      return false;
+    });
+    const loader = config.vite?.ssrEntryLoader;
+    // Honest skip when there is no externals/loader fact to correlate — only
+    // Nitro/SSR with shared React and either overlap or an explicit loader.
+    if (overlapping.length === 0 && !loader) return;
+
+    report(
+      context,
+      "Shared React may conflict with Vite SSR / Nitro externals.",
+      {
+        sharedReact,
+        ...(overlapping.length > 0 ? { ssrExternalsOverlap: overlapping } : {}),
+        ...(loader ? { ssrEntryLoader: loader } : {}),
+        signals: [...ssr.signals, ...(nitro ? ["deps:nitropack|nuxt"] : [])],
+      },
+      "Align shared React with `ssrExternals` / `ssrEntryLoader`, or remove the share when Nitro owns the server React instance.",
+    );
+  }),
+  createRule("vite/manual-chunks-conflict", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    if (optionBoolean(context.options, "allowManualChunks") === true) return;
+    const viteConfig = context.facts.bundler.viteConfig;
+    if (!viteConfig) return;
+    if (!viteConfig.manualChunks && !viteConfig.codeSplittingGroups) return;
+    report(
+      context,
+      "User manualChunks / codeSplitting.groups can conflict with federation bootstrap chunk ownership.",
+      {
+        manualChunks: Boolean(viteConfig.manualChunks),
+        codeSplittingGroups: Boolean(viteConfig.codeSplittingGroups),
+      },
+      "Move general chunk tuning outside the federation runtime graph, or set `allowManualChunks: true` when the layout is proven safe.",
+    );
+  }),
+  createRule("vite/hashed-remote-filename", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const filename = mf(context)?.filename;
+    if (!filename) return;
+    const mode = context.options["hashedFilenameMode"];
+    if (mode === "allow") return;
+    if (!/\[[^\]]*hash[^\]]*\]|contenthash|fullhash/i.test(filename)) return;
+    report(
+      context,
+      "Hashed remote entry filenames break stable consumer URLs.",
+      { filename },
+      "Use a stable remote entry filename (for example `remoteEntry.js`) and keep hashing on chunks instead.",
+    );
+  }),
+  createRule("vite/remote-hmr-dev", "info", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    if (context.facts.bundler.mode !== "development") return;
+    const config = mf(context);
+    if (!config) return;
+    // remoteHmr unknown → skip (do not invent). Explicit false or missing after normalize skip.
+    if (config.vite?.remoteHmr === undefined) return;
+    if (config.vite.remoteHmr) return;
+    if (optionBoolean(context.options, "requireRemoteHmrInDev") === false) return;
+    if (Object.keys(config.remotes).length === 0 && Object.keys(config.exposes).length === 0)
+      return;
+    report(
+      context,
+      "`remoteHmr` is disabled in development.",
+      { remoteHmr: false },
+      "Enable `remoteHmr` for local Vite remotes when HMR across containers is desired.",
+    );
+  }),
+  createRule("vite/alias-share-bypass", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    if (context.options["aliasShareBypassMode"] === "off") return;
+    const aliases = context.facts.bundler.viteConfig?.resolveAliases;
+    if (!aliases) return;
+    const sharedKeys = Object.keys(mf(context)?.shared ?? {});
+    if (sharedKeys.length === 0) return;
+    const overlaps = findShareRewriteOverlaps(
+      Object.keys(aliases),
+      sharedKeys,
+      optionStringList(context.options, "allowPackages"),
+    );
+    if (overlaps.length === 0) return;
+    report(
+      context,
+      "resolve.alias rewrites packages that are also listed in shared.",
+      { overlaps, aliases: Object.fromEntries(overlaps.map((key) => [key, aliases[key]])) },
+      "Remove the alias, exclude the package from shared, or allowlist intentional bypasses via `allowPackages`.",
+    );
+  }),
+  createRule("vite/server-origin", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    if (optionBoolean(context.options, "requireServerOrigin") === false) return;
+    const remotes = mf(context)?.remotes ?? {};
+    if (Object.keys(remotes).length === 0) return;
+    const viteConfig = context.facts.bundler.viteConfig;
+    // Origin fact absent (CLI partial) → skip.
+    if (!viteConfig || !("serverOrigin" in viteConfig)) return;
+    if (typeof viteConfig.serverOrigin === "string" && viteConfig.serverOrigin.length > 0) return;
+    report(
+      context,
+      "`server.origin` is missing while this app consumes remotes.",
+      { serverOrigin: viteConfig.serverOrigin ?? null },
+      "Set `server.origin` to the public origin remote consumers should use in development.",
+    );
+  }),
+  createRule("config/transform-import-share-conflict", "warning", (context) => {
+    const libraries = context.facts.bundler.transformImportLibraries;
+    if (!libraries || libraries.length === 0) return;
+    const sharedKeys = Object.keys(mf(context)?.shared ?? {});
+    if (sharedKeys.length === 0) return;
+    const overlaps = findShareRewriteOverlaps(
+      libraries,
+      sharedKeys,
+      optionStringList(context.options, "allowPackages"),
+    );
+    if (overlaps.length === 0) return;
+    report(
+      context,
+      "transformImport rewrites packages that are also listed in shared.",
+      { overlaps, transformImport: libraries, shared: sharedKeys },
+      "Remove the transformImport entry, exclude the package from shared, or allowlist via `allowPackages`. See also vite/alias-share-bypass for Vite resolve.alias.",
+    );
+  }),
   createRule("artifact/manifest-assets-disabled", "warning", (context) => {
     const config = mf(context);
     if (
@@ -675,10 +1046,15 @@ export const builtInRules: DoctorRule[] = [
         "Manifest asset analysis is disabled for a producer.",
         { exposes: Object.keys(config.exposes) },
         "Enable asset analysis for production manifests; disabled analysis omits shared and expose asset detail.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {
+          exposes: Object.keys(config.exposes),
+        }),
       );
   }),
   createRule("artifact/manifest-disabled", "info", (context) => {
     const config = mf(context);
+    // Prefer emit evidence over normalized defaults (Enhanced omits → still emits).
+    if (context.facts.capabilities.manifest || context.facts.artifacts.manifest) return;
     if (
       config &&
       !config.manifest?.enabled &&
@@ -689,23 +1065,23 @@ export const builtInRules: DoctorRule[] = [
         "Manifest generation is disabled.",
         {},
         "Enable `manifest` for runtime metadata, preload analysis, DevTools, and stronger Doctor checks.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {}),
       );
   }),
   createRule("artifact/dts-disabled", "warning", (context) => {
     const config = mf(context);
+    // mf-bridge `./entry`+register producers are not classic component exposes needing DTS.
+    if (shouldSkipBridgeEntryDtsGuidance(context)) return;
     if (config && config.dts?.enabled === false && Object.keys(config.exposes).length > 0)
       report(
         context,
         "Federated type generation is disabled for a producer.",
         { exposes: Object.keys(config.exposes) },
         "Enable `dts.generateTypes`, or document how consumers receive compatible declarations.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {
+          exposes: Object.keys(config.exposes),
+        }),
       );
-  }),
-  createRule("config/shared-externals-conflict", "error", (context) => {
-    const externals = context.facts.dependencies.declared["doctor:externals"]?.split(",") ?? [];
-    for (const name of Object.keys(mf(context)?.shared ?? {}))
-      if (externals.includes(name))
-        report(context, `"${name}" is both shared and external.`, { package: name });
   }),
   createRule("shared/version-unsatisfied", "error", (context) => {
     for (const [name, shared] of Object.entries(mf(context)?.shared ?? {})) {
@@ -717,19 +1093,36 @@ export const builtInRules: DoctorRule[] = [
         semver.validRange(cleanRange(shared.requiredVersion)) &&
         !semver.satisfies(installed, cleanRange(shared.requiredVersion))
       )
-        report(context, `"${name}" does not satisfy its shared version range.`, {
-          package: name,
-          installed,
-          requiredVersion: shared.requiredVersion,
-        });
+        report(
+          context,
+          `"${name}" does not satisfy its shared version range.`,
+          {
+            package: name,
+            installed,
+            requiredVersion: shared.requiredVersion,
+          },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.SHARED_VERSION_MISMATCH, {
+            package: name,
+            source: "requiredVersion",
+            installed,
+            requiredVersion: shared.requiredVersion,
+          }),
+        );
     }
   }),
   createRule("artifact/manifest-invalid", "error", (context) => {
     const manifest = context.facts.artifacts.manifest;
     if (manifest && !manifest.valid)
-      report(context, "Module Federation manifest is not valid JSON or has an invalid shape.", {
-        path: manifest.path,
-      });
+      report(
+        context,
+        "Module Federation manifest is not valid JSON or has an invalid shape.",
+        {
+          path: manifest.path,
+        },
+        undefined,
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { path: manifest.path }),
+      );
   }),
   createRule("artifact/manifest-name-mismatch", "error", (context) => {
     const configName = mf(context)?.name;
@@ -740,31 +1133,41 @@ export const builtInRules: DoctorRule[] = [
         "The emitted manifest belongs to a different federation container name.",
         { configName, manifestName },
         "Clean the output directory and make the plugin and Doctor use the same options object.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { configName, manifestName }),
       );
   }),
   createRule("artifact/manifest-remote-entry-missing", "error", (context) => {
     const manifest = context.facts.artifacts.manifest;
     const remoteEntry = manifest?.remoteEntry;
-    if (
-      manifest?.valid &&
-      remoteEntry &&
-      context.facts.capabilities.emittedAssets &&
-      !context.facts.artifacts.emittedAssets.some(
-        (asset) =>
-          asset.endsWith(`${remoteEntry.path}${remoteEntry.name}`) ||
-          asset.endsWith(remoteEntry.name),
-      )
-    )
+    if (!manifest?.valid || !remoteEntry || !context.facts.capabilities.emittedAssets) return;
+    const candidate = `${remoteEntry.path}${remoteEntry.name}`;
+    const emitted = context.facts.artifacts.emittedAssets.some((asset) =>
+      emittedAssetMatches(context, manifest.path, candidate, asset),
+    );
+    // Vite often leaves remoteEntry.path empty while assetSizes still records the basename.
+    const sized =
+      remoteEntry.path === ""
+        ? lookupAssetSize(context.facts.artifacts.assetSizes, remoteEntry.name) !== undefined
+        : context.facts.artifacts.assetSizes?.[candidate] !== undefined;
+    if (!emitted && !sized)
       report(
         context,
         "The remote entry named by the manifest was not emitted.",
         { remoteEntry },
         "Clean and rebuild; then verify filename, output path, and manifest generation use one config.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { remoteEntry }),
       );
   }),
   createRule("artifact/manifest-expose-assets-empty", "warning", (context) => {
     const manifest = context.facts.artifacts.manifest;
     if (!manifest?.valid || mf(context)?.manifest?.options["disableAssetsAnalyze"] === true) return;
+    // Vite/Nuxt generators commonly omit nested expose asset lists even when emit succeeded.
+    if (
+      context.facts.bundler.name === "vite" &&
+      manifest.exposes.length > 0 &&
+      manifest.exposes.every((expose) => expose.assets.length === 0)
+    )
+      return;
     for (const expose of manifest.exposes)
       if (expose.assets.length === 0)
         report(
@@ -772,6 +1175,7 @@ export const builtInRules: DoctorRule[] = [
           `Manifest expose "${expose.key}" has no asset metadata.`,
           { expose: expose.key },
           "Verify the expose was included in the build and asset analysis completed.",
+          findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { expose: expose.key }),
         );
   }),
   createRule("artifact/manifest-shared-version-mismatch", "warning", (context) => {
@@ -790,10 +1194,17 @@ export const builtInRules: DoctorRule[] = [
           `Manifest metadata for "${shared.name}" does not match the installed version.`,
           { package: shared.name, installed: local, manifestVersion: shared.version },
           "Clean the build and lockfile install; stale manifest metadata can break version negotiation.",
+          findingDetails(FINDING_DETAILS_SCHEMAS.SHARED_VERSION_MISMATCH, {
+            package: shared.name,
+            source: "manifest",
+            installed: local,
+            manifestVersion: shared.version,
+          }),
         );
     }
   }),
   createRule("artifact/types-metadata-missing", "warning", (context) => {
+    if (shouldSkipBridgeEntryDtsGuidance(context)) return;
     const manifest = context.facts.artifacts.manifest;
     if (
       manifest?.valid &&
@@ -806,6 +1217,7 @@ export const builtInRules: DoctorRule[] = [
         "Producer manifest has no federated type metadata.",
         {},
         "Check DTS generation errors and ensure the manifest plugin receives type output metadata.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {}),
       );
   }),
   createRule("artifact/remote-entry-missing", "error", (context) => {
@@ -816,7 +1228,13 @@ export const builtInRules: DoctorRule[] = [
       Object.keys(config.exposes).length > 0 &&
       !context.facts.artifacts.emittedAssets.some((asset) => asset.endsWith(expected))
     )
-      report(context, `Expected remote entry "${expected}" was not emitted.`, { expected });
+      report(
+        context,
+        `Expected remote entry "${expected}" was not emitted.`,
+        { expected },
+        undefined,
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { expected }),
+      );
   }),
   createRule("artifact/expose-missing", "error", (context) => {
     const config = mf(context);
@@ -825,7 +1243,13 @@ export const builtInRules: DoctorRule[] = [
     const found = new Set(manifest.exposes.map((item) => item.key));
     for (const key of Object.keys(config.exposes))
       if (!found.has(key))
-        report(context, `Expose "${key}" is missing from the manifest.`, { key });
+        report(
+          context,
+          `Expose "${key}" is missing from the manifest.`,
+          { key },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { key }),
+        );
   }),
   createRule("doctor/partial-analysis", "warning", (context) => {
     const missing = Object.entries(context.facts.capabilities)
@@ -836,6 +1260,17 @@ export const builtInRules: DoctorRule[] = [
     const unresolvedDynamic = context.facts.imports.unresolvedDynamic ?? [];
     const budget = context.facts.analysis;
     if (missing.length === 0 && unresolvedDynamic.length === 0 && !budget?.exceeded.length) return;
+    const configMissing = missing.includes("config") || missing.includes("moduleFederation");
+    const artifactOnlyMissing =
+      !configMissing &&
+      missing.length > 0 &&
+      missing.every((name) => ["manifest", "stats", "emittedAssets"].includes(name));
+    const viteArtifactSuggestion =
+      context.facts.bundler.name === "vite" &&
+      artifactOnlyMissing &&
+      (missing.includes("manifest") || missing.includes("stats"))
+        ? "Vite/@module-federation/vite does not emit `mf-manifest.json` / `mf-stats.json` unless `manifest: true` is set. Enable `manifest: true` for those artifacts; webpack-style compilation `stats.json` is not expected on Vite."
+        : undefined;
     report(
       context,
       budget?.status === "unknown"
@@ -853,7 +1288,21 @@ export const builtInRules: DoctorRule[] = [
       },
       unresolvedDynamic.length > 0
         ? "Prefer string-literal `import()` / `loadRemote` / `loadShare`, or pass an opt-in Observability export via `runtimeTrace` / `mfdoctor runtime`."
-        : "Pass explicit MF options.",
+        : configMissing
+          ? "Pass explicit MF options."
+          : (viteArtifactSuggestion ??
+            "Run Doctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
+      findingDetails(FINDING_DETAILS_SCHEMAS.DOCTOR_PARTIAL_ANALYSIS, {
+        missing,
+        ...(unresolvedDynamic.length > 0
+          ? {
+              unresolvedDynamic: unresolvedDynamic as unknown as Array<Record<string, unknown>>,
+            }
+          : {}),
+        ...(context.facts.imports.evidenceSources
+          ? { evidenceSources: context.facts.imports.evidenceSources }
+          : {}),
+      }),
     );
   }),
   createRule("config/plugin-package-mismatch", "warning", (context) => {
@@ -892,26 +1341,50 @@ export const builtInRules: DoctorRule[] = [
     const risks = singletonRiskSet(context);
     for (const [name, shared] of Object.entries(mf(context)?.shared ?? {}))
       if (risks.has(name) && !shared.singleton)
-        report(context, `"${name}" normally needs singleton sharing.`, { package: name });
+        report(
+          context,
+          `"${name}" normally needs singleton sharing.`,
+          { package: name },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.SHARED_SINGLETON, {
+            package: name,
+            kind: "risk",
+          }),
+        );
   }),
   createRule("shared/eager-without-singleton", "warning", (context) => {
     for (const [name, shared] of Object.entries(mf(context)?.shared ?? {}))
       if (shared.eager && !shared.singleton)
-        report(context, `"${name}" is eager but not singleton.`, { package: name });
+        report(
+          context,
+          `"${name}" is eager but not singleton.`,
+          { package: name },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.SHARED_SINGLETON, {
+            package: name,
+            kind: "eager-without-singleton",
+          }),
+        );
   }),
   createRule("shared/unused", "warning", (context) => {
-    const imported = new Set([
-      ...(context.facts.imports.packages ?? []),
-      ...(context.facts.imports.dynamicPackages ?? []),
-    ]);
     const alwaysShared = alwaysSharedSet(context);
     const unresolvedMayHideUsage = (context.facts.imports.unresolvedDynamic ?? []).some((item) =>
       ["import", "loadShare", "loadShareSync"].includes(item.api),
     );
     // Incomplete dynamic evidence → prefer doctor/partial-analysis over false unused certainty.
     if (unresolvedMayHideUsage) return;
+    // MF2 shared-array / shared-inspector manifest-only evidence → prefer partial-analysis.
+    if (shouldSkipMf2SharedUnused(context)) return;
     for (const name of Object.keys(mf(context)?.shared ?? {}))
-      if (!imported.has(name) && !alwaysShared.has(name))
+      if (
+        !isShareKeyUsed(name, {
+          packages: context.facts.imports.packages,
+          dynamicPackages: context.facts.imports.dynamicPackages,
+          specifiers: context.facts.imports.specifiers,
+          deepImports: context.facts.imports.deepImports,
+        }) &&
+        !alwaysShared.has(name)
+      )
         report(
           context,
           `Shared package "${name}" is not imported in scanned sources or opt-in runtime evidence.`,
@@ -921,6 +1394,13 @@ export const builtInRules: DoctorRule[] = [
             dynamicPackages: context.facts.imports.dynamicPackages ?? [],
             importDepth: context.facts.imports.depth ?? context.sharedPolicy?.importDepth,
           },
+          undefined,
+          findingDetails(FINDING_DETAILS_SCHEMAS.SHARED_UNUSED, {
+            package: name,
+            evidenceSources: context.facts.imports.evidenceSources ?? [],
+            dynamicPackages: context.facts.imports.dynamicPackages ?? [],
+            importDepth: context.facts.imports.depth ?? context.sharedPolicy?.importDepth,
+          }),
         );
   }),
   // Package-name heuristic — advisory `info` (strict keeps it from becoming a hard error).
@@ -974,10 +1454,18 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("artifact/public-path-suspicious", "warning", (context) => {
     const publicPath = context.facts.artifacts.manifest?.publicPath;
-    if (publicPath && !/^(auto$|\/|https?:\/\/)/.test(publicPath))
-      report(context, `Manifest public path "${publicPath}" may not resolve.`, { publicPath });
+    // Relative `./` (common for Vite/Nuxt) is intentional; flag other opaque relative roots.
+    if (publicPath && !/^(auto$|\/|\.\/|https?:\/\/)/.test(publicPath))
+      report(
+        context,
+        `Manifest public path "${publicPath}" may not resolve.`,
+        { publicPath },
+        undefined,
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { path: publicPath }),
+      );
   }),
   createRule("artifact/types-missing", "warning", (context) => {
+    if (shouldSkipBridgeEntryDtsGuidance(context)) return;
     const manifest = context.facts.artifacts.manifest;
     if (
       manifest?.valid &&
@@ -986,9 +1474,471 @@ export const builtInRules: DoctorRule[] = [
         /(?:\.d\.(ts|mts)|@mf-types\.zip)$/.test(asset),
       )
     )
-      report(context, "No generated federation type files were found.", {});
+      report(
+        context,
+        "No generated federation type files were found.",
+        {},
+        undefined,
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {}),
+      );
+  }),
+  createRule("bridge/react-version-entry-prefer", "warning", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const entry = reactBridgeEntryMajor(context.facts);
+    if (entry !== "bare") return;
+    const reactMajor = detectedReactMajor(context.facts);
+    if (reactMajor === undefined) return;
+    const allowed = optionReactMajors(context.options);
+    if (allowed && !allowed.includes(reactMajor)) return;
+    report(
+      context,
+      `Prefer "@module-federation/bridge-react/v${reactMajor}" over the bare Bridge React entry when React ${reactMajor} is detected.`,
+      { reactMajor, entry: "@module-federation/bridge-react" },
+      `Import "@module-federation/bridge-react/v${reactMajor}" (or set rules["bridge/react-version-entry-prefer"] to "off").`,
+    );
+  }),
+  createRule("bridge/react-dom-prefix-missing", "error", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    if (optionBoolean(context.options, "requireReactDomPrefix") === false) return;
+    const entry = reactBridgeEntryMajor(context.facts);
+    if (entry !== 18 && entry !== 19) return;
+    if (hasReactDomPrefixShare(mf(context)?.shared)) return;
+    report(
+      context,
+      `Bridge React v${entry} requires "react-dom/" (or "react-dom/client") in shared.`,
+      {
+        entry: `@module-federation/bridge-react/v${entry}`,
+        sharedKeys: Object.keys(mf(context)?.shared ?? {}),
+      },
+      "Add `'react-dom/': { singleton: true }` (or `react-dom/client`) to `shared`, or set `requireReactDomPrefix: false`.",
+    );
+  }),
+  createRule("bridge/lazy-plugin-unregistered", "error", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    if (optionBoolean(context.options, "requireRuntimePlugin") === false) return;
+    if (hasBridgeReactPlugin(mf(context)?.runtimePlugins)) return;
+    report(
+      context,
+      'Bridge React usage is missing "@module-federation/bridge-react/plugin" in runtimePlugins.',
+      { runtimePlugins: mf(context)?.runtimePlugins ?? [] },
+      'Add "@module-federation/bridge-react/plugin" to `runtimePlugins`, or set `requireRuntimePlugin: false`.',
+    );
+  }),
+  createRule("bridge/router-implicit-enable", "info", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    if (optionBoolean(context.options, "allowImplicitBridgeRouter") === true) return;
+    const options = bridgeOptions(mf(context));
+    if (options && typeof options.enableBridgeRouter === "boolean") return;
+    report(
+      context,
+      "`bridge.enableBridgeRouter` is omitted; Rspack may auto-enable Bridge router.",
+      { bridge: mf(context)?.bridge ?? null },
+      "Set `bridge: { enableBridgeRouter: true }` (or `false`) explicitly, or allow demos with `allowImplicitBridgeRouter: true`.",
+    );
+  }),
+  createRule("bridge/router-shared-conflict", "error", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    if (!isBridgeRouterEnabled(context.facts)) return;
+    const shared = mf(context)?.shared;
+    if (!hasSharedReactRouter(shared)) return;
+    const keys = sharedReactRouterKeys(shared);
+    report(
+      context,
+      "Bridge router is enabled while React Router is also declared in `shared`, which can duplicate router runtimes.",
+      {
+        enableBridgeRouter: bridgeOptions(mf(context))?.enableBridgeRouter ?? "implicit",
+        sharedRouterKeys: keys,
+      },
+      "Remove `react-router` / `react-router-dom` from `shared`, or set `bridge.enableBridgeRouter: false` when sharing the router intentionally.",
+    );
+  }),
+  createRule("bridge/react-version-entry-mismatch", "error", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const entry = reactBridgeEntryMajor(context.facts);
+    if (entry !== 18 && entry !== 19) return;
+    const reactMajor = detectedReactMajor(context.facts);
+    if (reactMajor === undefined) return;
+    const allowed = optionReactMajors(context.options);
+    if (allowed && !allowed.includes(reactMajor)) return;
+    if (entry === reactMajor) return;
+    report(
+      context,
+      `Bridge React entry "/v${entry}" does not match detected React ${reactMajor}.`,
+      {
+        entry: `@module-federation/bridge-react/v${entry}`,
+        reactMajor,
+      },
+      `Import "@module-federation/bridge-react/v${reactMajor}" to match React ${reactMajor}, or set \`reactMajors\` / turn the rule \`"off"\`.`,
+    );
+  }),
+  createRule("bridge/provider-shape-invalid", "error", async (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const root = context.root ?? context.facts.project.root;
+    const files = context.facts.imports.sourceFiles ?? [];
+    if (files.length === 0) return;
+    for (const file of files) {
+      let source: string;
+      try {
+        source = await fs.readFile(path.join(root, file), "utf8");
+      } catch {
+        continue;
+      }
+      if (!source.includes("@module-federation/bridge-react")) continue;
+      const problem = detectInvalidBridgeProviderShape(source);
+      if (!problem) continue;
+      report(
+        context,
+        `Bridge provider/consumer factory looks incomplete (${problem}).`,
+        { file, problem },
+        "Pass a complete options object to createRemoteAppComponent / createBridgeComponent (loader/module plus root component as needed).",
+      );
+      return;
+    }
+  }),
+  createRule("bridge/ssr-server-entry-leak", "error", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const ssrMode = optionSsrMode(context.options);
+    if (!isNodeOrSsrTarget(context.facts, ssrMode)) return;
+    if (ssrMode !== "node" && hasBridgeServerEntry(context.facts)) return;
+    const leaks = browserBridgeReactEntries(context.facts);
+    if (leaks.length === 0) return;
+    report(
+      context,
+      "Browser-only Bridge React entry is referenced from a node/SSR build.",
+      {
+        entries: leaks,
+        ssrMode: ssrMode ?? null,
+        experimentsTarget: mf(context)?.experiments?.target ?? null,
+        viteTarget: mf(context)?.vite?.target ?? null,
+      },
+      'Use the Bridge `/server` entry (or a node-safe Bridge import) in SSR/node builds, or set `ssrMode: "browser-only"` when this build is not SSR.',
+    );
+  }),
+  createRule("bridge/missing-fallback-loading", "warning", async (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const root = context.root ?? context.facts.project.root;
+    for (const file of context.facts.imports.sourceFiles ?? []) {
+      let source: string;
+      try {
+        source = await fs.readFile(path.join(root, file), "utf8");
+      } catch {
+        continue;
+      }
+      if (!/createRemoteAppComponent\s*\(/.test(source)) continue;
+      if (/\bfallback\b/.test(source) && /\bloading\b/.test(source)) continue;
+      report(
+        context,
+        "Bridge createRemoteAppComponent is missing fallback and/or loading UI.",
+        { file },
+        'Pass `fallback` and `loading` to createRemoteAppComponent, or set the rule to `"off"`.',
+      );
+      return;
+    }
+  }),
+  createRule("bridge/consumer-api-manual", "warning", async (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const hasRemotes = Object.keys(mf(context)?.remotes ?? {}).length > 0;
+    if (!hasRemotes && (context.facts.imports.remotes?.length ?? 0) === 0) return;
+    const root = context.root ?? context.facts.project.root;
+    let sawManual = false;
+    let sawHelper = false;
+    for (const file of context.facts.imports.sourceFiles ?? []) {
+      let source: string;
+      try {
+        source = await fs.readFile(path.join(root, file), "utf8");
+      } catch {
+        continue;
+      }
+      if (/\b(?:createRemoteAppComponent|createBridgeComponent|createBridge)\b/.test(source))
+        sawHelper = true;
+      if (/\bloadRemote\b/.test(source)) sawManual = true;
+    }
+    if (!sawManual || sawHelper) return;
+    report(
+      context,
+      "React Bridge remotes appear to use manual `loadRemote` instead of Bridge consumer helpers.",
+      {
+        remotes: Object.keys(mf(context)?.remotes ?? {}),
+        importRemotes: context.facts.imports.remotes ?? [],
+      },
+      'Prefer createRemoteAppComponent / createBridge from `@module-federation/bridge-react`, or set the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/export-app-missing", "warning", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const exposes = mf(context)?.exposes ?? {};
+    const keys = Object.keys(exposes);
+    if (keys.length === 0) return;
+    const hasExportApp = keys.some(
+      (key) => key === "./export-app" || key === "export-app" || key.endsWith("/export-app"),
+    );
+    if (hasExportApp) return;
+    report(
+      context,
+      'Bridge producer exposes modules but is missing the conventional "./export-app" Bridge entry.',
+      { exposeKeys: keys },
+      'Add `"./export-app"` that returns Bridge `render`/`destroy` (createBridgeComponent), or set the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/ssr-instanceid-hydration", "info", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const ssrMode = optionSsrMode(context.options);
+    if (!isNodeOrSsrTarget(context.facts, ssrMode)) return;
+    const bridge = mf(context)?.bridge ?? {};
+    if (typeof bridge.instanceId === "string" && bridge.instanceId.length > 0) return;
+    report(
+      context,
+      "SSR Bridge builds should set a stable `bridge.instanceId` for hydration registry correlation.",
+      { bridge },
+      'Set `bridge: { instanceId: "..." }` for SSR hydration, or set `ssrMode: "browser-only"` / the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/tanstack-router-conflict", "info", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    if (!isBridgeRouterEnabled(context.facts)) return;
+    const signals = [
+      ...Object.keys(context.facts.dependencies.declared),
+      ...Object.keys(context.facts.dependencies.installed),
+      ...(context.facts.imports.packages ?? []),
+      ...Object.keys(mf(context)?.shared ?? {}),
+    ];
+    const tanstack = signals.filter(
+      (name) => name === "@tanstack/react-router" || name.startsWith("@tanstack/react-router/"),
+    );
+    if (tanstack.length === 0) return;
+    report(
+      context,
+      "Bridge router is enabled while `@tanstack/react-router` is also present; routing stacks may conflict.",
+      { tanstack },
+      'Disable Bridge router or isolate TanStack Router ownership, or set the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/disable-alias-deprecated", "info", (context) => {
+    if (!isReactBridgeProject(context.facts)) return;
+    const options = bridgeOptions(mf(context));
+    if (options?.disableAlias !== true) return;
+    report(
+      context,
+      "`bridge.disableAlias` is deprecated; prefer an explicit `enableBridgeRouter` setting.",
+      { bridge: mf(context)?.bridge ?? null },
+      'Replace `disableAlias` with `enableBridgeRouter: false` (or true), or set the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/vue-share-missing", "error", (context) => {
+    if (!isVueBridgeProject(context.facts)) return;
+    const shared = mf(context)?.shared ?? {};
+    const missing: string[] = [];
+    if (!hasSharedPackage(shared, "vue")) missing.push("vue");
+    if (usesVueRouter(context.facts) && !hasSharedPackage(shared, "vue-router"))
+      missing.push("vue-router");
+    if (missing.length === 0) return;
+    report(
+      context,
+      `Vue Bridge projects should share ${missing.map((name) => `\`${name}\``).join(" and ")}.`,
+      { missing, sharedKeys: Object.keys(shared) },
+      'Add the missing packages to `shared` (singleton recommended), or set the rule to `"off"`.',
+    );
+  }),
+  createRule("bridge/vue-ssr-fresh-context", "warning", async (context) => {
+    if (!isVueBridgeProject(context.facts)) return;
+    const ssrMode = optionSsrMode(context.options);
+    if (
+      !isSsrNodeEnvApplicable(context.facts, ssrMode) &&
+      !isNodeOrSsrTarget(context.facts, ssrMode)
+    )
+      return;
+    const root = context.root ?? context.facts.project.root;
+    const files = context.facts.imports.sourceFiles ?? [];
+    if (files.length === 0) return;
+    let sawBridge = false;
+    let sawFresh = false;
+    for (const file of files) {
+      let source: string;
+      try {
+        source = await fs.readFile(path.join(root, file), "utf8");
+      } catch {
+        continue;
+      }
+      if (
+        !source.includes("@module-federation/bridge-vue3") &&
+        !/\bcreateBridgeComponent\b/.test(source)
+      )
+        continue;
+      sawBridge = true;
+      if (hasVueBridgeSsrFreshContextHints(source)) sawFresh = true;
+    }
+    if (!sawBridge || sawFresh) return;
+    report(
+      context,
+      "Vue Bridge SSR builds should create a fresh app/router/store context per request (or use documented hydration helpers).",
+      { ssrMode: ssrMode ?? null },
+      'Use per-request `createSSRApp` / router / store factories (or `provideBridgeHydrationRegistry` when available), set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    );
+  }),
+  createRule("bridge/vue-server-entry", "warning", (context) => {
+    if (!isVueBridgeProject(context.facts)) return;
+    const ssrMode = optionSsrMode(context.options);
+    if (
+      !isSsrNodeEnvApplicable(context.facts, ssrMode) &&
+      !isNodeOrSsrTarget(context.facts, ssrMode)
+    )
+      return;
+    if (hasBridgeVueServerEntry(context.facts)) return;
+    report(
+      context,
+      "Vue Bridge SSR builds should import the Bridge `/server` entry (or documented SSR helpers).",
+      {
+        ssrMode: ssrMode ?? null,
+        entries: [
+          ...(context.facts.imports.specifiers ?? []),
+          ...(context.facts.imports.deepImports ?? []),
+        ].filter((signal) => signal.startsWith("@module-federation/bridge-vue3")),
+      },
+      'Import `@module-federation/bridge-vue3/server` (or the documented SSR entry) for node builds, set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    );
+  }),
+  createRule("bridge/vue-consumer-manual", "warning", async (context) => {
+    if (!isVueBridgeProject(context.facts)) return;
+    const hasRemotes = Object.keys(mf(context)?.remotes ?? {}).length > 0;
+    if (!hasRemotes && (context.facts.imports.remotes?.length ?? 0) === 0) return;
+    const root = context.root ?? context.facts.project.root;
+    let sawManual = false;
+    let sawHelper = false;
+    for (const file of context.facts.imports.sourceFiles ?? []) {
+      let source: string;
+      try {
+        source = await fs.readFile(path.join(root, file), "utf8");
+      } catch {
+        continue;
+      }
+      if (/\b(?:createRemoteAppComponent|createBridgeComponent)\b/.test(source)) sawHelper = true;
+      if (/\bloadRemote\b/.test(source)) sawManual = true;
+    }
+    if (!sawManual || sawHelper) return;
+    report(
+      context,
+      "Vue Bridge remotes appear to use manual `loadRemote` instead of Bridge consumer helpers.",
+      {
+        remotes: Object.keys(mf(context)?.remotes ?? {}),
+        importRemotes: context.facts.imports.remotes ?? [],
+      },
+      'Prefer createRemoteAppComponent from `@module-federation/bridge-vue3`, or set the rule to `"off"`.',
+    );
+  }),
+  createRule("ssr/node-remote-manifest", "error", (context) => {
+    const ssrMode = optionSsrMode(context.options);
+    if (!isSsrNodeEnvApplicable(context.facts, ssrMode)) return;
+    const remotes = mf(context)?.remotes ?? {};
+    const offenders = Object.entries(remotes).filter(
+      ([, remote]) =>
+        !isMfSsrFragmentRemoteEntry(remote.entry) && isBrowserOnlyManifestRemoteEntry(remote.entry),
+    );
+    if (offenders.length === 0) return;
+    report(
+      context,
+      "Node/SSR remotes point at a browser `mf-manifest.json` instead of an SSR/env-specific manifest path.",
+      {
+        remotes: Object.fromEntries(offenders.map(([name, remote]) => [name, remote.entry])),
+        ssrMode: ssrMode ?? null,
+      },
+      'Point node/SSR remotes at `/ssr/mf-manifest.json` (or another env-specific manifest), set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    );
+  }),
+  createRule("ssr/node-runtime-plugin-missing", "error", (context) => {
+    const ssrMode = optionSsrMode(context.options);
+    if (!isSsrNodeEnvApplicable(context.facts, ssrMode)) return;
+    const runtimePlugins = mf(context)?.runtimePlugins ?? [];
+    if (hasNodeRuntimePlugin(runtimePlugins)) return;
+    report(
+      context,
+      `Node/SSR Module Federation builds should include "${NODE_RUNTIME_PLUGIN}" in runtimePlugins.`,
+      { runtimePlugins, ssrMode: ssrMode ?? null },
+      `Add "${NODE_RUNTIME_PLUGIN}" to \`runtimePlugins\`, set \`ssrMode: "browser-only"\` when not SSR, or turn the rule \`"off"\`.`,
+    );
+  }),
+  createRule("ssr/node-library-dts", "warning", (context) => {
+    const ssrMode = optionSsrMode(context.options);
+    if (!isSsrNodeEnvApplicable(context.facts, ssrMode)) return;
+    const config = mf(context);
+    const problems = nodeLibraryDtsProblems(config);
+    if (problems.length === 0) return;
+    report(
+      context,
+      "Node/SSR producers should use a commonjs-like `library.type` and typically disable `dts`.",
+      {
+        problems,
+        libraryType: config?.library?.type ?? null,
+        dtsEnabled: config?.dts?.enabled ?? null,
+        ssrMode: ssrMode ?? null,
+      },
+      'Set `library: { type: "commonjs-module" }` (or another commonjs-like type) and `dts: false` for node/SSR producers, set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    );
+  }),
+  createRule("runtime-plugins/invalid-factory", "warning", (context) => {
+    for (const item of context.facts.runtimePluginContracts ?? []) {
+      if (item.kind !== "invalid-factory") continue;
+      const message =
+        item.reason === "missing-name"
+          ? `Runtime plugin "${item.plugin}" does not expose a usable plugin \`name\` (silent no-op risk).`
+          : item.reason === "non-factory-export"
+            ? `Runtime plugin "${item.plugin}" default export is not a plugin factory.`
+            : `Runtime plugin "${item.plugin}" does not export a usable plugin factory.`;
+      report(
+        context,
+        message,
+        {
+          plugin: item.plugin,
+          reason: item.reason,
+          ...(item.file ? { file: item.file } : {}),
+        },
+        "Export a factory (or plugin object) that returns `{ name, ...hooks }`. Suppress via rules when the module is intentionally opaque.",
+      );
+    }
+  }),
+  createRule("runtime-plugins/create-script-cors-parity", "warning", (context) => {
+    for (const item of context.facts.runtimePluginContracts ?? []) {
+      if (item.kind !== "cors-parity" || item.confidence !== "clear") continue;
+      const message =
+        item.reason === "cors-mismatch"
+          ? `Runtime plugin "${item.plugin}" sets CORS on createScript but createLink lacks matching CORS attributes.`
+          : `Runtime plugin "${item.plugin}" customizes createScript with CORS but does not define createLink (preload/cache key mismatch risk).`;
+      report(
+        context,
+        message,
+        {
+          plugin: item.plugin,
+          reason: item.reason,
+          confidence: item.confidence,
+          ...(item.file ? { file: item.file } : {}),
+        },
+        "Mirror crossorigin/credentials on createLink (and keep fetch credentials consistent). See Module Federation runtime troubleshooting for CORS preload parity.",
+      );
+    }
+  }),
+  createRule("runtime-plugins/create-script-without-link", "info", (context) => {
+    for (const item of context.facts.runtimePluginContracts ?? []) {
+      if (item.kind !== "cors-parity" || item.confidence !== "heuristic") continue;
+      report(
+        context,
+        `Runtime plugin "${item.plugin}" defines createScript without createLink; preload and load cache keys may diverge.`,
+        {
+          plugin: item.plugin,
+          reason: item.reason,
+          confidence: item.confidence,
+          ...(item.file ? { file: item.file } : {}),
+        },
+        "Add a matching createLink hook when preloadRemote or link-based loading is used. Suppress via rules when preload is unused.",
+      );
+    }
   }),
 ];
+
+function optionReactMajors(options: Record<string, unknown>): Array<18 | 19> | undefined {
+  const value = options.reactMajors;
+  if (!Array.isArray(value)) return undefined;
+  const majors = value.filter((item): item is 18 | 19 => item === 18 || item === 19);
+  return majors.length > 0 ? majors : undefined;
+}
 
 export const federationRuleMeta = [
   {

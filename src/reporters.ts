@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import pc from "picocolors";
 import { resolvePrintLog, resolveQuiet } from "./config.js";
+import { formatTopAgentPrompts } from "./agent-prompt.js";
 import { ruleGuidance } from "./rule-guidance.js";
 import type {
   DoctorFinding,
@@ -24,6 +25,16 @@ export interface TerminalReportOptions {
   /** When true (default), omit output on zero findings. */
   quiet?: boolean;
   printLog?: DoctorPrintLog;
+  /**
+   * When false, omit the health score footer.
+   * Defaults to true when omitted.
+   */
+  score?: boolean;
+  /**
+   * When false, omit top-N agent prompts after the score footer.
+   * Defaults to true when omitted. Skipped automatically for quiet empty success.
+   */
+  prompt?: boolean;
 }
 
 function doctorRuleDocUrl(finding: DoctorFinding): string {
@@ -51,6 +62,15 @@ function suggestionFor(finding: DoctorFinding): string | undefined {
   return ruleGuidance[finding.ruleId]?.fix;
 }
 
+function formatScoreFooter(report: DoctorReport): string | undefined {
+  const { score, scoreLabel } = report.summary;
+  if (score === undefined || score === null || !scoreLabel) return undefined;
+  const text = `Score: ${score}/100 (${scoreLabel})`;
+  if (score >= 75) return pc.green(text);
+  if (score >= 50) return pc.yellow(text);
+  return pc.red(text);
+}
+
 /**
  * Format the single end-of-build Doctor findings block for humans and agents.
  * Returns an empty string when quiet success applies (zero findings).
@@ -61,9 +81,15 @@ export function formatTerminalReport(
 ): string {
   const quiet = resolveQuiet(options);
   const printLog = resolvePrintLog(options);
+  const showScore = options.score !== false;
   if (report.findings.length === 0) {
     if (quiet || !printLog.success) return "";
-    return pc.green("Module Federation Doctor: no findings.");
+    const lines = [pc.green("Module Federation Doctor: no findings.")];
+    if (showScore) {
+      const footer = formatScoreFooter(report);
+      if (footer) lines.push(footer);
+    }
+    return lines.join("\n");
   }
 
   const lines: string[] = [pc.bold("Module Federation Doctor")];
@@ -97,6 +123,15 @@ export function formatTerminalReport(
   lines.push(
     `\n${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info${suppressed}`,
   );
+  if (showScore) {
+    const footer = formatScoreFooter(report);
+    if (footer) lines.push(footer);
+    else if (report.summary.score === null) lines.push(pc.dim("Score: n/a (partial analysis)"));
+  }
+  if (options.prompt !== false) {
+    const prompts = formatTopAgentPrompts(report.findings);
+    if (prompts) lines.push("", prompts);
+  }
   return lines.join("\n");
 }
 

@@ -102,7 +102,9 @@ emit in Node and must not appear in the client bundle
 ([#32](https://github.com/tonoizer/module-federation-doctor/issues/32),
 `MFDOCTOR-115`). An in-browser Doctor runtime agent is **not planned**
 ([#33](https://github.com/tonoizer/module-federation-doctor/issues/33),
-`MFDOCTOR-116`).
+`MFDOCTOR-116`). Delivery model (plugin primary / CLI complementary / not
+CLI-only / not in-browser agent):
+[ADR: Hybrid plugin + CLI](./adr/hybrid-plugin-cli.md).
 
 **Runtime-only** Module Federation apps — `@module-federation/runtime` /
 `createInstance` / runtime plugins **without** a Vite, Rspack, Rsbuild,

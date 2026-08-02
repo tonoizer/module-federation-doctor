@@ -1,8 +1,16 @@
 import { createUnplugin, type UnpluginOptions } from "unplugin";
+import fs from "node:fs/promises";
+import path from "node:path";
 import fg from "fast-glob";
-import { analyze, analyzeBuild } from "./engine.js";
+import { analyzeBuild } from "./engine.js";
 import type { BuildDiagnostics } from "./collect.js";
-import type { AnalysisResult, BundlerName, DoctorOptions, OutputPublicPathKind } from "./types.js";
+import type {
+  AnalysisResult,
+  BuildOutputInput,
+  BundlerName,
+  DoctorOptions,
+  OutputPublicPathKind,
+} from "./types.js";
 import { detectViteLifecycle, withPostEmitHook, type ViteHookMeta } from "./vite-lifecycle.js";
 
 /**
@@ -107,74 +115,250 @@ export function attachDoctorAfterEmit(compiler: CompilerLike, configured: Doctor
   });
 }
 
-async function listViteEmittedAssets(root: string): Promise<string[]> {
-  return fg(["dist/**/*", "build/**/*"], {
-    cwd: root,
+type ViteResolvedConfigLike = {
+  root?: string;
+  command?: string;
+  mode?: string;
+  build?: {
+    outDir?: string;
+    write?: boolean;
+    ssr?: boolean;
+    target?: string;
+    rollupOptions?: {
+      output?: { manualChunks?: unknown } | Array<{ manualChunks?: unknown }>;
+    };
+    // Rolldown / Vite Plus
+    codeSplitting?: { groups?: unknown };
+  };
+  ssr?: { target?: string };
+  resolve?: { alias?: unknown };
+  server?: { origin?: string };
+};
+
+function extractViteConfigFacts(
+  config: ViteResolvedConfigLike,
+): import("./types.js").ViteBundlerConfigFacts {
+  const facts: import("./types.js").ViteBundlerConfigFacts = {};
+  const output = config.build?.rollupOptions?.output;
+  const outputs = Array.isArray(output) ? output : output ? [output] : [];
+  if (outputs.some((item) => item.manualChunks !== undefined)) facts.manualChunks = true;
+  if (config.build?.codeSplitting?.groups !== undefined) facts.codeSplittingGroups = true;
+
+  const aliases: Record<string, string> = {};
+  const alias = config.resolve?.alias;
+  if (alias && typeof alias === "object" && !Array.isArray(alias)) {
+    for (const [key, value] of Object.entries(alias as Record<string, unknown>)) {
+      if (typeof value === "string") aliases[key] = value;
+    }
+  } else if (Array.isArray(alias)) {
+    for (const entry of alias) {
+      if (!entry || typeof entry !== "object") continue;
+      const find = (entry as { find?: unknown }).find;
+      const replacement = (entry as { replacement?: unknown }).replacement;
+      if (typeof find === "string" && typeof replacement === "string") aliases[find] = replacement;
+    }
+  }
+  if (Object.keys(aliases).length > 0) facts.resolveAliases = aliases;
+
+  // Record origin observation whenever `server` is present on the resolved config.
+  if (config.server) {
+    const origin = config.server.origin;
+    facts.serverOrigin = typeof origin === "string" && origin.length > 0 ? origin : null;
+  }
+
+  return facts;
+}
+
+type ViteOutputOptionsLike = { dir?: string; file?: string };
+
+function targetKind(config: ViteResolvedConfigLike): BuildOutputInput["targetKind"] {
+  const raw =
+    config.build?.ssr || config.ssr?.target ? (config.ssr?.target ?? "ssr") : config.build?.target;
+  if (!raw) return undefined;
+  const value = String(raw).toLowerCase();
+  if (value.includes("node") || value.includes("deno") || value.includes("bun")) return "node";
+  if (value.includes("worker")) return "worker";
+  if (config.build?.ssr) return "ssr";
+  return "web";
+}
+
+/** List files under a known safe project-relative output root only. */
+async function listBoundedOutputAssets(root: string, outputRoot: string): Promise<string[]> {
+  const cwd = path.join(root, outputRoot === "." ? "" : outputRoot);
+  const files = await fg(["**/*"], {
+    cwd,
     onlyFiles: true,
+    followSymbolicLinks: false,
   });
+  return files.map((file) => file.replaceAll("\\", "/")).sort();
+}
+
+async function safeOutputRoot(
+  root: string,
+  value: string | undefined,
+): Promise<string | undefined> {
+  if (!value) return undefined;
+  const absolute = path.resolve(root, value);
+  const relative = path.relative(root, absolute).replaceAll(path.sep, "/");
+  if (relative !== "" && relative.startsWith("..")) return undefined;
+  const rootReal = await fs.realpath(root).catch(() => undefined);
+  const outputReal = await fs.realpath(absolute).catch(() => undefined);
+  const outputStat = await fs.lstat(absolute).catch(() => undefined);
+  if (outputStat?.isSymbolicLink() && !outputReal) return undefined;
+  let existing = absolute;
+  let existingReal = outputReal;
+  while (!existingReal && existing !== path.dirname(existing)) {
+    const stat = await fs.lstat(existing).catch(() => undefined);
+    if (stat?.isSymbolicLink()) {
+      const linkTarget = await fs.readlink(existing).catch(() => undefined);
+      if (linkTarget) {
+        const resolvedTarget = path.resolve(path.dirname(existing), linkTarget);
+        const targetReal = await fs.realpath(resolvedTarget).catch(() => undefined);
+        const checkedTarget = targetReal ?? resolvedTarget;
+        if (rootReal && (path.relative(rootReal, checkedTarget) || ".").startsWith(".."))
+          return undefined;
+      }
+    }
+    existing = path.dirname(existing);
+    existingReal = await fs.realpath(existing).catch(() => undefined);
+  }
+  if (rootReal && existingReal && (path.relative(rootReal, existingReal) || ".").startsWith(".."))
+    return undefined;
+  return relative === "" ? "." : relative;
 }
 
 /**
  * Vite / Rolldown / Vite Plus post-emit path.
  *
- * Prefer on-disk assets over the in-memory `bundle` object — Rolldown does not
- * share that object across hooks the way Rollup does. When Rolldown/Vite Plus
- * has not finished writing on `writeBundle`, defer to `closeBundle`. If emit
- * facts are still missing, analyze without claiming `emittedAssets` so
- * `doctor/partial-analysis` stays honest.
+ * Prefer exact `writeBundle` bundle keys when present. When Rolldown/Vite Plus
+ * finishes disk writes after an empty `writeBundle`, recover with a bounded
+ * scan of the known safe output root at `closeBundle` and mark that evidence
+ * partial. Never rescan unrelated project `dist`/`build` trees. Analysis runs
+ * once after the output set is finalized.
  */
 function createViteFamilyHooks(configured: DoctorOptions) {
-  let analyzed = false;
+  let resolvedConfig: ViteResolvedConfigLike | undefined;
+  let outputs: BuildOutputInput[] = [];
+  let pendingCloseFinalization: number | undefined;
 
   const run = async (
     hook: "writeBundle" | "closeBundle",
     meta: ViteHookMeta | undefined,
+    outputOptions?: ViteOutputOptionsLike,
+    bundle?: Record<string, unknown>,
   ): Promise<void> => {
-    if (analyzed) return;
     const root = configured.root ?? process.cwd();
     const detected = configured.viteLifecycle ?? (await detectViteLifecycle(root, meta));
     const lifecycle = withPostEmitHook(detected, hook);
     configured.viteLifecycle = lifecycle;
-
-    const emittedAssets = await listViteEmittedAssets(root);
-    // Rolldown can finish disk writes after writeBundle; wait for closeBundle.
-    if (hook === "writeBundle" && emittedAssets.length === 0 && lifecycle.engine === "rolldown") {
-      return;
+    const config = resolvedConfig;
+    const requestedOutputRoot =
+      outputOptions?.dir ??
+      (outputOptions?.file ? path.dirname(outputOptions.file) : undefined) ??
+      config?.build?.outDir;
+    const outputRoot = await safeOutputRoot(root, requestedOutputRoot);
+    const emittedAssets = bundle ? Object.keys(bundle).sort() : [];
+    // An explicitly supplied unsafe root is not an unavailable root. Drop the
+    // whole output so its assets cannot become exact evidence through fallback,
+    // but let closeBundle still finalize the current cycle.
+    if (!(requestedOutputRoot && !outputRoot)) {
+      const publicConfig = config ?? {};
+      const input: BuildOutputInput = {
+        adapter: "vite",
+        bundler: "vite",
+        ...(outputRoot ? { outputRoot } : {}),
+        emittedAssets,
+        ...(emittedAssets.length > 0 ? { emittedAssetsSource: "bundle" as const } : {}),
+        sourceHook: hook,
+        ...(config?.mode ? { effectiveMode: config.mode } : {}),
+        ...(config?.ssr?.target
+          ? { target: config.ssr.target }
+          : config?.build?.target
+            ? { target: config.build.target }
+            : {}),
+        ...(targetKind(publicConfig) ? { targetKind: targetKind(publicConfig) } : {}),
+        ...(config?.build?.write !== undefined ? { buildWrite: config.build.write } : {}),
+        flavor: lifecycle.flavor,
+        engine: lifecycle.engine,
+      };
+      if (hook === "writeBundle" || outputs.length === 0) {
+        outputs.push(input);
+        if (hook === "writeBundle" && lifecycle.engine === "rolldown" && emittedAssets.length === 0)
+          pendingCloseFinalization = outputs.length - 1;
+      } else if (lifecycle.engine === "rolldown" && pendingCloseFinalization !== undefined) {
+        const pending = outputs[pendingCloseFinalization];
+        let recovered: string[] = [];
+        if (pending?.outputRoot && pending.buildWrite !== false)
+          recovered = await listBoundedOutputAssets(root, pending.outputRoot);
+        outputs = outputs.map((item, index) => {
+          if (index !== pendingCloseFinalization) return item;
+          if (recovered.length === 0) return { ...item, sourceHook: hook };
+          return {
+            ...item,
+            sourceHook: hook,
+            emittedAssets: recovered,
+            emittedAssetsSource: "output-root-scan" as const,
+          };
+        });
+        pendingCloseFinalization = undefined;
+      }
     }
-
-    analyzed = true;
-    if (emittedAssets.length === 0 && lifecycle.engine === "rolldown") {
-      // Honest gap: config/imports only; do not claim emit coverage.
-      const result = await analyze(configured);
+    if (hook === "writeBundle") return;
+    try {
+      const allAssets = outputs.flatMap((item) =>
+        item.buildWrite === false
+          ? []
+          : item.outputRoot
+            ? item.emittedAssets.map((asset) => `${item.outputRoot}/${asset}`)
+            : item.emittedAssets,
+      );
+      const result = await analyzeBuild(configured, allAssets, undefined, outputs);
       failAfterCollect(result);
-      return;
+    } finally {
+      outputs = [];
+      pendingCloseFinalization = undefined;
     }
-
-    const result = await analyzeBuild(configured, emittedAssets);
-    failAfterCollect(result);
   };
 
   return {
-    async writeBundle(this: void) {
+    configResolved(config: ViteResolvedConfigLike) {
+      resolvedConfig = config;
+      if (!configured.root && config.root) configured.root = config.root;
+      const facts = extractViteConfigFacts(config);
+      if (Object.keys(facts).length > 0) configured.viteConfigFacts = facts;
+    },
+    buildStart() {
+      outputs = [];
+      pendingCloseFinalization = undefined;
+    },
+    async writeBundle(
+      this: unknown,
+      outputOptions?: ViteOutputOptionsLike,
+      bundle?: Record<string, unknown>,
+    ) {
       // Runtime plugin context may expose public Rolldown/Vite meta on `this`.
       const meta = (this as unknown as { meta?: ViteHookMeta } | undefined)?.meta;
-      await run("writeBundle", meta);
+      await run("writeBundle", meta, outputOptions, bundle);
     },
-    async closeBundle(this: void) {
+    async closeBundle(this: unknown) {
       const meta = (this as unknown as { meta?: ViteHookMeta } | undefined)?.meta;
       await run("closeBundle", meta);
     },
   } as Pick<UnpluginOptions, "writeBundle"> & {
+    configResolved: (config: ViteResolvedConfigLike) => void;
+    buildStart: NonNullable<UnpluginOptions["buildStart"]>;
     closeBundle: NonNullable<UnpluginOptions["writeBundle"]>;
   };
 }
 
 /**
- * Build/CI-only invariant (#32 / #54): adapters may hook post-emit surfaces only
- * (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild`). Never register
- * `transform` / `load` / `banner` (or similar) hooks that inject Doctor into
- * client assets. Findings print once via the shared terminal reporter at the
- * end of analysis — adapters must not re-emit per-finding bundler logs (#46).
+ * Build/CI-only invariant (#32 / #54): adapters may gather facts from public
+ * build hooks (`configResolved` / `buildStart`) and analyze only on post-emit
+ * surfaces (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild`).
+ * Never register `transform` / `load` / `banner` (or similar) hooks that inject
+ * Doctor into client assets. Findings print once via the shared terminal
+ * reporter at the end of analysis — adapters must not re-emit per-finding
+ * bundler logs (#46).
  */
 function createDoctorPlugin(bundler: BundlerName) {
   return createUnplugin<DoctorOptions | undefined>((options = {}) => {

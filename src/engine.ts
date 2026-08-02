@@ -11,6 +11,8 @@ import {
 } from "./baseline.js";
 import { addBuildFacts, collectProjectFacts, type BuildDiagnostics } from "./collect.js";
 import { resolveOptions } from "./config.js";
+import { writeDiagnosticsDump } from "./agent-prompt.js";
+import { computeHealthScore } from "./health-score.js";
 import { builtInRules, federationRuleMeta } from "./rules.js";
 import { DEFAULT_ALWAYS_SHARED } from "./shared-policy.js";
 import { buildFederationModel, findFederationCycleGroups } from "./federation-model.js";
@@ -23,10 +25,12 @@ import type {
   FederationAnalysisResult,
   OutputFormat,
   ProjectFacts,
+  BuildOutputInput,
   ResolvedDoctorOptions,
   RuleSetting,
   Severity,
 } from "./types.js";
+import { FINDING_DETAILS_SCHEMAS } from "./finding-details.js";
 import { deepFreeze, fingerprint, redact, sortFindings } from "./utils.js";
 import { writeFederationReports, writeReports } from "./reporters.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
@@ -45,6 +49,7 @@ async function runRule(
   setting: RuleSetting | undefined,
   root: string,
   sharedPolicy?: ResolvedDoctorOptions["sharedPolicy"],
+  recognizeMfToolkit?: boolean,
 ): Promise<DoctorFinding[]> {
   const resolved = parseSetting(setting, rule.meta.defaultSeverity);
   if (!resolved || !rule.meta.supportedBundlers.includes(facts.bundler.name)) return [];
@@ -56,6 +61,8 @@ async function runRule(
     const location = value.location
       ? { ...value.location, path: redact(value.location.path, root) as string }
       : undefined;
+    // Fingerprint inputs stay ruleId/project/location/evidence only (see utils.fingerprint).
+    // detailsSchema/details are attached after hashing so baselines/SARIF stay stable.
     const base = {
       schemaVersion: 1 as const,
       ruleId: rule.meta.id,
@@ -67,13 +74,20 @@ async function runRule(
       ...(location ? { location } : {}),
       ...(value.suggestion ? { suggestion: redact(value.suggestion, root) as string } : {}),
     };
-    findings.push({ ...base, fingerprint: fingerprint(base) });
+    findings.push({
+      ...base,
+      fingerprint: fingerprint(base),
+      ...(value.detailsSchema ? { detailsSchema: value.detailsSchema } : {}),
+      ...(value.details ? { details: redact(value.details, root) as Record<string, unknown> } : {}),
+    });
   };
   try {
     const returned = await rule.check({
       facts: deepFreeze(structuredClone(facts)),
       options: deepFreeze(resolved.options),
+      root,
       ...(sharedPolicy ? { sharedPolicy: deepFreeze(sharedPolicy) } : {}),
+      ...(recognizeMfToolkit !== undefined ? { recognizeMfToolkit } : {}),
       report: add,
     });
     if (Array.isArray(returned)) for (const finding of returned) add(finding);
@@ -98,6 +112,7 @@ async function runRule(
 
 function reportFor(facts: ProjectFacts, findings: DoctorFinding[]): DoctorReport {
   const summary = summarizeFindings(findings);
+  const health = computeHealthScore(findings);
   return {
     schemaVersion: 1,
     capabilities: facts.capabilities,
@@ -107,6 +122,8 @@ function reportFor(facts: ProjectFacts, findings: DoctorFinding[]): DoctorReport
       warnings: summary.warnings,
       errors: summary.errors,
       ...(summary.suppressed > 0 ? { suppressed: summary.suppressed } : {}),
+      score: health.score,
+      scoreLabel: health.scoreLabel,
     },
     findings,
   };
@@ -129,11 +146,19 @@ async function runAnalysis(
   options: DoctorOptions = {},
   emittedAssets?: string[],
   diagnostics?: BuildDiagnostics,
+  buildOutputs?: BuildOutputInput[],
 ): Promise<AnalysisResult> {
   const resolved = await resolveOptions(options);
   try {
-    const facts = await collectProjectFacts(resolved);
-    if (emittedAssets) await addBuildFacts(facts, emittedAssets, resolved.root, diagnostics);
+    const boundedRoots = buildOutputs
+      ? buildOutputs
+          .filter((output) => output.buildWrite !== false)
+          .map((output) => output.outputRoot)
+          .filter((value): value is string => Boolean(value))
+      : undefined;
+    const facts = await collectProjectFacts(resolved, boundedRoots);
+    if (emittedAssets)
+      await addBuildFacts(facts, emittedAssets, resolved.root, diagnostics, buildOutputs);
     const rawFindings = sortFindings(
       (
         await Promise.all(
@@ -144,6 +169,7 @@ async function runAnalysis(
               resolved.rules[rule.meta.id],
               resolved.root,
               resolved.sharedPolicy,
+              resolved.recognizeMfToolkit,
             ),
           ),
         )
@@ -157,7 +183,10 @@ async function runAnalysis(
     await writeReports(safeFacts, report, resolved.output.directory, resolved.output.formats, {
       quiet: resolved.quiet,
       printLog: resolved.printLog,
+      score: resolved.score,
+      prompt: resolved.prompt,
     });
+    if (resolved.diagnosticsDir) await writeDiagnosticsDump(report, resolved.diagnosticsDir);
     return {
       facts: safeFacts,
       report,
@@ -185,8 +214,9 @@ export async function analyzeBuild(
   options: DoctorOptions,
   emittedAssets: string[],
   diagnostics?: BuildDiagnostics,
+  buildOutputs?: BuildOutputInput[],
 ): Promise<AnalysisResult> {
-  return runAnalysis(options, emittedAssets, diagnostics);
+  return runAnalysis(options, emittedAssets, diagnostics, buildOutputs);
 }
 
 function pushFederationFinding(
@@ -196,10 +226,12 @@ function pushFederationFinding(
   project: string,
   message: string,
   evidence: Record<string, unknown>,
+  typedDetails?: { detailsSchema: string; details: Record<string, unknown> },
 ): void {
   const meta = federationRuleMeta.find((rule) => rule.id === ruleId);
   const resolved = parseSetting(rules?.[ruleId], meta?.severity ?? "warning");
   if (!resolved || !meta) return;
+  // Fingerprint excludes detailsSchema/details — never put schema version in evidence.
   const base = {
     schemaVersion: 1 as const,
     ruleId,
@@ -210,7 +242,12 @@ function pushFederationFinding(
     documentation: `/rules/${ruleId}`,
     suggestion: meta.fix,
   };
-  findings.push({ ...base, fingerprint: fingerprint(base) });
+  findings.push({
+    ...base,
+    fingerprint: fingerprint(base),
+    ...(typedDetails?.detailsSchema ? { detailsSchema: typedDetails.detailsSchema } : {}),
+    ...(typedDetails?.details ? { details: typedDetails.details } : {}),
+  });
 }
 
 export async function analyzeFederation(
@@ -223,6 +260,10 @@ export async function analyzeFederation(
     root?: string;
     quiet?: boolean;
     printLog?: { success?: boolean };
+    /** When false, omit health score from terminal output. */
+    score?: boolean;
+    /** When false, omit top agent prompts from terminal output. */
+    prompt?: boolean;
     /** Severity / off map (supports `rules: { "federation/ghost-shares": "off" }`). */
     rules?: Record<string, RuleSetting>;
     /** Packages excluded from host-gap / ghost-share heuristics. */
@@ -377,6 +418,10 @@ export async function analyzeFederation(
         entries[0]?.project.project.name ?? "federation",
         `"${name}" has inconsistent singleton settings.`,
         { package: name },
+        {
+          detailsSchema: FINDING_DETAILS_SCHEMAS.SHARED_SINGLETON,
+          details: { package: name, kind: "mismatch" },
+        },
       );
     const versions = entries
       .map((entry) => ({
@@ -503,6 +548,8 @@ export async function analyzeFederation(
     await writeFederationReports(projects, report, options.outputDirectory, formats, {
       ...(options.quiet !== undefined ? { quiet: options.quiet } : {}),
       ...(options.printLog !== undefined ? { printLog: options.printLog } : {}),
+      ...(options.score !== undefined ? { score: options.score } : {}),
+      ...(options.prompt !== undefined ? { prompt: options.prompt } : {}),
     });
   const failOn = options.failOn ?? "error";
   return {

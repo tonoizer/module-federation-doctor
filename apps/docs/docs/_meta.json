@@ -178,6 +178,13 @@
     "label": "Project"
   },
   {
+    "type": "dir",
+    "name": "adr",
+    "label": "Architecture decisions",
+    "collapsible": true,
+    "collapsed": true
+  },
+  {
     "type": "file",
     "name": "contributing",
     "label": "Contributing"

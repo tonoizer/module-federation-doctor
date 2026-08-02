@@ -1,4 +1,5 @@
 import type {
+  BundlerName,
   ModuleFederationConfigLike,
   NormalizedMFConfig,
   NormalizedRemote,
@@ -21,8 +22,24 @@ function toggle(value: boolean | Record<string, unknown> | undefined, defaultEna
   return { enabled: value === undefined ? defaultEnabled : true, options: value ?? {} };
 }
 
+/** Enhanced family emits mf-manifest unless `manifest === false`; Vite omits unless opted in. */
+export function defaultManifestEnabled(bundler: BundlerName | undefined): boolean {
+  switch (bundler) {
+    case "webpack":
+    case "rspack":
+    case "rsbuild":
+    case "modern":
+      return true;
+    case "vite":
+    case "unknown":
+    case undefined:
+      return false;
+  }
+}
+
 export function normalizeModuleFederation(
   input: ModuleFederationConfigLike | undefined,
+  options?: { bundler?: BundlerName | undefined },
 ): NormalizedMFConfig | undefined {
   if (!input) return undefined;
   const exposes = Object.fromEntries(
@@ -108,7 +125,7 @@ export function normalizeModuleFederation(
     runtimePlugins: (input.runtimePlugins ?? []).map((item) =>
       typeof item === "string" ? item : item[0],
     ),
-    manifest: toggle(input.manifest, false),
+    manifest: toggle(input.manifest, defaultManifestEnabled(options?.bundler)),
     dev: toggle(input.dev, true),
     dts: toggle(input.dts, true),
     shareStrategy: input.shareStrategy ?? "version-first",
@@ -157,6 +174,8 @@ export function normalizeModuleFederation(
       ...(input.disableShared !== undefined ? { disableShared: input.disableShared } : {}),
       ...(input.disableSnapshot !== undefined ? { disableSnapshot: input.disableSnapshot } : {}),
       ssrExternals: [...(input.ssrExternals ?? [])].sort(),
+      ...(input.ssrEntryLoader ? { ssrEntryLoader: input.ssrEntryLoader } : {}),
+      ...(input.remoteHmr !== undefined ? { remoteHmr: input.remoteHmr } : {}),
     },
   };
   if (input.name !== undefined) normalized.name = input.name;
@@ -167,5 +186,11 @@ export function normalizeModuleFederation(
   if (input.implementation !== undefined) normalized.implementation = input.implementation;
   if (input.virtualRuntimeEntry !== undefined)
     normalized.virtualRuntimeEntry = input.virtualRuntimeEntry;
+  if (input.bridge !== undefined) {
+    const bridge: NonNullable<NormalizedMFConfig["bridge"]> = { ...input.bridge };
+    if (typeof input.bridge.enableBridgeRouter === "boolean")
+      bridge.enableBridgeRouter = input.bridge.enableBridgeRouter;
+    normalized.bridge = bridge;
+  }
   return normalized;
 }

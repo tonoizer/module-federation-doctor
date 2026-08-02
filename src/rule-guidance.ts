@@ -141,6 +141,33 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Correct the path/package and include local plugin files in the Doctor scan.",
     sources: [runtimePlugins],
   },
+  "runtime-plugins/invalid-factory": {
+    category: "correctness",
+    impact:
+      "A runtime plugin without a factory or usable `name` is ignored at runtime (silent no-op).",
+    fix: "Export a factory or plugin object that includes a stable `name` plus the hooks you intend to run.",
+    sources: [runtimePlugins, "https://module-federation.io/guide/runtime/runtime-plugins.html"],
+  },
+  "runtime-plugins/create-script-cors-parity": {
+    category: "reliability",
+    impact:
+      "CORS on createScript without matching createLink makes preload and load use different cache keys.",
+    fix: "Mirror crossorigin (and credentials where applicable) on createLink; keep fetch credentials consistent.",
+    sources: [
+      "https://module-federation.io/guide/troubleshooting/runtime.html",
+      "https://module-federation.io/guide/runtime/runtime-hooks.html",
+    ],
+  },
+  "runtime-plugins/create-script-without-link": {
+    category: "reliability",
+    impact:
+      "A createScript hook without createLink can waste preload work when link-based loading is used.",
+    fix: "Add createLink when preloadRemote or CSS/JS link loading is in play, or suppress if preload is unused.",
+    sources: [
+      "https://module-federation.io/guide/troubleshooting/runtime.html",
+      "https://module-federation.io/guide/runtime/runtime-hooks.html",
+    ],
+  },
   "config/get-public-path-invalid": {
     category: "correctness",
     impact: "The runtime cannot evaluate an invalid stringified public-path function.",
@@ -295,6 +322,79 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Prefer `moduleParseIdleTimeout` so only inactivity ends parsing.",
     sources: [vite],
   },
+  "vite/remotes-prefer-module": {
+    category: "correctness",
+    impact:
+      "Vite string remotes and missing/`var` type default to script-style loading. Vite↔Vite ESM remotes need explicit `type: 'module'`; mixed bundlers should declare an explicit non-default type (for example `global`) or document a `varFilename` producer interop path.",
+    fix: "Prefer object remotes with `type: 'module'` for Vite↔Vite ESM. For webpack/rspack remotes, set an explicit type such as `global`, or keep `varFilename` when this app intentionally emits a var entry for var hosts.",
+    sources: [vite, "https://module-federation.io/configure/remotes.html"],
+  },
+  "vite/var-filename-interop": {
+    category: "tooling",
+    impact:
+      "`varFilename` emits an additional global-format remote entry so var hosts (webpack/rspack) can load this Vite producer.",
+    fix: "Keep `varFilename` when serving webpack/rspack var hosts. Prefer `type: 'module'` remotes when this app is a Vite consumer talking to Vite producers.",
+    sources: [vite],
+  },
+  "vite/host-init-inject-ssr": {
+    category: "correctness",
+    impact:
+      "SSR and HTML-less frameworks need host init injected into the entry, not the HTML document, or federation bootstrap never runs on the server.",
+    fix: "Set `hostInitInjectLocation: 'entry'` for SSR / Nitro / Nuxt-style apps.",
+    sources: [vite],
+  },
+  "vite/ssr-nitro-externals": {
+    category: "reliability",
+    impact:
+      "Shared React (or react-dom) can conflict with Nitro/SSR externals and `ssrEntryLoader` when the server expects a different module instance.",
+    fix: "Align `shared` React with `ssrExternals` / `ssrEntryLoader` for the SSR runtime, or document an intentional dual-instance path.",
+    sources: [vite],
+  },
+  "vite/manual-chunks-conflict": {
+    category: "reliability",
+    impact:
+      "Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles.",
+    fix: "Keep federation runtime chunks isolated; move general splitting outside that graph or allowlist a proven layout.",
+    sources: [vite],
+  },
+  "vite/hashed-remote-filename": {
+    category: "reliability",
+    impact:
+      "Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds.",
+    fix: "Use a stable `filename` such as `remoteEntry.js` for the container entry.",
+    sources: [vite, "https://module-federation.io/configure/filename.html"],
+  },
+  "vite/remote-hmr-dev": {
+    category: "tooling",
+    impact: "Without `remoteHmr`, local Vite remotes miss cross-container hot updates.",
+    fix: "Enable `remoteHmr` in development profiles when remotes/exposes are active.",
+    sources: [vite],
+  },
+  "vite/alias-share-bypass": {
+    category: "correctness",
+    impact:
+      "resolve.alias can rewrite imports around the share scope and duplicate singleton packages.",
+    fix: "Remove the overlapping alias, drop the package from shared, or allowlist intentional bypasses.",
+    sources: [vite, shared],
+  },
+  "vite/server-origin": {
+    category: "reliability",
+    impact:
+      "Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development.",
+    fix: "Set Vite `server.origin` to the URL remotes should publish for consumers.",
+    sources: [vite],
+  },
+  "config/transform-import-share-conflict": {
+    category: "correctness",
+    impact:
+      "transformImport (or equivalent) can rewrite packages that are also shared, bypassing or duplicating the share scope.",
+    fix: "Remove the rewrite, exclude the package from shared, or allowlist intentional bypasses via `allowPackages`.",
+    sources: [
+      shared,
+      "https://modernjs.dev/guides/basic-features/alias.html",
+      "https://rsbuild.rs/config/source/transform-import",
+    ],
+  },
   "artifact/manifest-assets-disabled": {
     category: "reliability",
     impact:
@@ -314,13 +414,6 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     impact: "Consumers receive no automatic contract for exposed TypeScript modules.",
     fix: "Enable DTS generation or document and test another declaration delivery path.",
     sources: ["https://module-federation.io/configure/dts.html"],
-  },
-  "config/shared-externals-conflict": {
-    category: "correctness",
-    impact:
-      "A dependency cannot be provided by federation after the bundler removes it as an external.",
-    fix: "Remove the package from either `shared` or `externals`.",
-    sources: [shared],
   },
   "shared/version-unsatisfied": {
     category: "correctness",
@@ -380,7 +473,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     category: "tooling",
     impact:
       "Missing facts or unresolved dynamic imports reduce confidence and can hide relevant findings.",
-    fix: "Pass explicit MF options, run Doctor through the bundler adapter after emit, and prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
+    fix: "When MF options are missing, pass them explicitly. On Vite, missing `mf-manifest.json` / `mf-stats.json` usually means enable `manifest: true` — not missing options. Prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
     sources: [configure],
   },
   "config/plugin-package-mismatch": {
@@ -514,5 +607,158 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
       "A stable RUNTIME error code from an imported browser trace was matched to offline build evidence.",
     fix: "Use the RUNTIME code with the matched build facts; do not infer browser behavior from static analysis alone.",
     sources: ["https://module-federation.io/plugin/plugins/observability-plugin"],
+  },
+  "bridge/react-version-entry-prefer": {
+    category: "reliability",
+    impact:
+      "The bare `@module-federation/bridge-react` entry can pick the wrong React Bridge API when the React major is known.",
+    fix: 'Import `@module-federation/bridge-react/v18` or `/v19` to match your React major. Override majors with `reactMajors`, or set the rule to `"off"` when the bare entry is intentional.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/react-dom-prefix-missing": {
+    category: "correctness",
+    impact:
+      "Bridge React v18/v19 needs `react-dom/` (or `react-dom/client`) in `shared` so renderer subpaths negotiate one copy across host and remote.",
+    fix: 'Add `\'react-dom/\': { singleton: true, ... }` (or `react-dom/client`) to `shared`. Disable with `requireReactDomPrefix: false` or `rules["bridge/react-dom-prefix-missing"]: "off"` when intentional.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge", shared],
+  },
+  "bridge/lazy-plugin-unregistered": {
+    category: "correctness",
+    impact:
+      "Lazy Bridge React loading requires `@module-federation/bridge-react/plugin` in `runtimePlugins` or Bridge remotes fail at runtime.",
+    fix: 'Add `@module-federation/bridge-react/plugin` to `runtimePlugins`. Soften with `requireRuntimePlugin: false` or turn the rule `"off"` for non-lazy Bridge setups.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge", runtimePlugins],
+  },
+  "bridge/router-implicit-enable": {
+    category: "tooling",
+    impact:
+      "Rspack may auto-enable Bridge router when the Bridge package is present; leaving `bridge.enableBridgeRouter` implicit hides the routing contract from reviewers and CI.",
+    fix: 'Set `bridge: { enableBridgeRouter: true }` (or `false`) explicitly. Allow demos to stay implicit with `allowImplicitBridgeRouter: true` or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/router-shared-conflict": {
+    category: "correctness",
+    impact:
+      "Bridge router aliases React Router; sharing `react-router` / `react-router-dom` at the same time can load duplicate router runtimes and break navigation.",
+    fix: 'Remove React Router from `shared`, or disable Bridge router with `bridge.enableBridgeRouter: false`. Soften with `rules["bridge/router-shared-conflict"]: "off"` when intentional.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge", shared],
+  },
+  "bridge/react-version-entry-mismatch": {
+    category: "correctness",
+    impact:
+      "Importing `@module-federation/bridge-react/v18` against React 19 (or the reverse) selects the wrong Bridge API surface and can fail at runtime.",
+    fix: 'Align the Bridge entry with the installed React major (`/v18` or `/v19`). Limit majors with `reactMajors`, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/provider-shape-invalid": {
+    category: "correctness",
+    impact:
+      "Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or root component contracts and break Bridge remotes.",
+    fix: 'Pass a complete options object (loader/module for consumers, or a root component for export-app). Fallback/loading UX is covered by `bridge/missing-fallback-loading`. Turn the rule `"off"` when source facts are too thin or the call shape is dynamic.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/ssr-server-entry-leak": {
+    category: "correctness",
+    impact:
+      "Browser-only Bridge React entries must not load inside node/SSR builds; doing so leaks DOM-oriented Bridge code into the server bundle.",
+    fix: 'Import the Bridge `/server` entry (or a node-safe path) for SSR/node targets. Override with `ssrMode: "browser-only"` when the build is not SSR, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/missing-fallback-loading": {
+    category: "reliability",
+    impact:
+      "Bridge remotes without `fallback`/`loading` leave consumers with a blank screen while the remote loads or fails.",
+    fix: 'Pass `fallback` and `loading` to `createRemoteAppComponent`, or set `rules["bridge/missing-fallback-loading"]` to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/consumer-api-manual": {
+    category: "reliability",
+    impact:
+      "Hand-rolled `loadRemote` / remote mounts skip Bridge lifecycle helpers and lose documented loading/error contracts.",
+    fix: 'Prefer `createRemoteAppComponent` / `createBridge` from `@module-federation/bridge-react`, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/export-app-missing": {
+    category: "reliability",
+    impact:
+      "Bridge producers without `./export-app` break the conventional Bridge remote contract expected by hosts.",
+    fix: 'Expose `"./export-app"` via `createBridgeComponent` (render/destroy), or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/ssr-instanceid-hydration": {
+    category: "tooling",
+    impact:
+      "Without a stable `bridge.instanceId`, SSR Bridge hydration registries can collide across requests.",
+    fix: 'Set `bridge.instanceId` for SSR builds, use `ssrMode: "browser-only"` when not SSR, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/tanstack-router-conflict": {
+    category: "tooling",
+    impact:
+      "Bridge router aliasing plus `@tanstack/react-router` can duplicate navigation ownership in one app.",
+    fix: 'Disable Bridge router or isolate TanStack Router, or set `rules["bridge/tanstack-router-conflict"]` to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "bridge/disable-alias-deprecated": {
+    category: "tooling",
+    impact:
+      "`bridge.disableAlias` is a deprecated escape hatch; explicit `enableBridgeRouter` communicates intent clearly.",
+    fix: 'Prefer `enableBridgeRouter: false` (or true) over `disableAlias`, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/guide/bridge/react-bridge"],
+  },
+  "ssr/node-remote-manifest": {
+    category: "correctness",
+    impact:
+      "Node/SSR consumers that load the browser `mf-manifest.json` miss the server remote graph and can fail to resolve remotes during SSR.",
+    fix: 'Point node/SSR remotes at `/ssr/mf-manifest.json` (or another env-specific path). Set `ssrMode: "browser-only"` when the build is not SSR, or turn the rule `"off"`.',
+    sources: [
+      "https://module-federation.io/guide/basic/manifest-snapshot.html",
+      "https://module-federation.io/integrations/build-tool/rsbuild",
+    ],
+  },
+  "ssr/node-runtime-plugin-missing": {
+    category: "correctness",
+    impact:
+      "Without `@module-federation/node/runtimePlugin`, Node Federation hosts cannot load remotes with the server runtime contract.",
+    fix: 'Add `@module-federation/node/runtimePlugin` to `runtimePlugins`. Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    sources: [
+      "https://module-federation.io/plugin/plugins/",
+      "https://module-federation.io/blog/node",
+    ],
+  },
+  "ssr/node-library-dts": {
+    category: "reliability",
+    impact:
+      "Node/SSR producers that keep ESM-style `library.type` or enabled `dts` diverge from the commonjs dual-env contract used by server remotes.",
+    fix: 'Set `library: { type: "commonjs-module" }` (or another commonjs-like type) and `dts: false` on node/SSR producers. Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    sources: ["https://module-federation.io/blog/node"],
+  },
+  "bridge/vue-share-missing": {
+    category: "correctness",
+    impact:
+      "Vue Bridge remotes and hosts that omit `vue` (and `vue-router` when used) from `shared` can load duplicate Vue runtimes and break reactivity or routing.",
+    fix: 'Share `vue` (and `vue-router` when imported) as singletons, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/integrations/practice/vue"],
+  },
+  "bridge/vue-ssr-fresh-context": {
+    category: "reliability",
+    impact:
+      "Reusing one Vue app/router/store across SSR requests leaks request state between users.",
+    fix: 'Create per-request app/router/store factories (or use Bridge SSR hydration helpers). Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    sources: ["https://module-federation.io/integrations/practice/vue"],
+  },
+  "bridge/vue-server-entry": {
+    category: "reliability",
+    impact:
+      "Browser-only Vue Bridge entries in node/SSR builds miss the server/hydration contract and can leak client-only Bridge code.",
+    fix: 'Import `@module-federation/bridge-vue3/server` (or the documented SSR entry). Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    sources: ["https://module-federation.io/integrations/practice/vue"],
+  },
+  "bridge/vue-consumer-manual": {
+    category: "reliability",
+    impact:
+      "Hand-rolled `loadRemote` mounts skip Vue Bridge lifecycle helpers and documented loading/error contracts.",
+    fix: 'Prefer `createRemoteAppComponent` from `@module-federation/bridge-vue3`, or set the rule to `"off"`.',
+    sources: ["https://module-federation.io/integrations/practice/vue"],
   },
 };

@@ -19,9 +19,11 @@ const CLIENT_INJECTION_HOOKS = [
   "augmentChunkHash",
   "transformInclude",
   "loadInclude",
-  "buildStart",
   "moduleParsed",
 ] as const;
+
+/** Public fact-gathering hooks allowed before post-emit analysis. */
+const VITE_FACT_GATHERING_HOOKS = ["configResolved", "buildStart"] as const;
 
 function asSinglePlugin(value: UnpluginOptions | UnpluginOptions[]): UnpluginOptions {
   expect(Array.isArray(value)).toBe(false);
@@ -80,12 +82,17 @@ function doctorOptions(root: string, kind: "clean" | "error"): DoctorOptions {
 }
 
 describe("build-time-only adapter contract", () => {
-  it("vite adapter only registers writeBundle/closeBundle (no client injection hooks)", () => {
+  it("vite adapter gathers facts then analyzes only on post-emit hooks", () => {
     const plugin = rawPlugin(viteDoctor.raw, "vite") as UnpluginOptions & {
+      configResolved?: unknown;
+      buildStart?: unknown;
       closeBundle?: unknown;
     };
     expect(plugin.name).toBe("module-federation-doctor");
     expect(plugin.enforce).toBe("post");
+    for (const hook of VITE_FACT_GATHERING_HOOKS) {
+      expect(typeof plugin[hook as keyof typeof plugin]).toBe("function");
+    }
     expect(typeof plugin.writeBundle).toBe("function");
     expect(typeof plugin.closeBundle).toBe("function");
     for (const hook of CLIENT_INJECTION_HOOKS) {
@@ -252,6 +259,13 @@ describe("adapter quiet success and failure terminal path", () => {
             let threw: boolean | string = false;
             try {
               await (plugin.writeBundle as (this: unknown) => Promise<void>).call({});
+              await (
+                (
+                  plugin as UnpluginOptions & {
+                    closeBundle?: (this: unknown) => Promise<void>;
+                  }
+                ).closeBundle as (this: unknown) => Promise<void>
+              ).call({});
             } catch (error) {
               threw = error instanceof Error ? error.message : String(error);
             }
