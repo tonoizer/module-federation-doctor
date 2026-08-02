@@ -27,7 +27,21 @@ export {
   WORKSPACE_IGNORE,
   discoverWorkspaceProjects,
 } from "./workspace.js";
-export type { DiscoverWorkspaceProjectsOptions } from "./workspace.js";
+export { discoverWorkspaceProjectsWithBudget } from "./workspace.js";
+export type { DiscoverWorkspaceProjectsOptions, WorkspaceProjectDiscovery } from "./workspace.js";
+export {
+  AnalysisBudgetTracker,
+  DEFAULT_ANALYSIS_BUDGETS,
+  resolveAnalysisBudgets,
+} from "./analysis-budgets.js";
+export type {
+  AnalysisBudgetExceeded,
+  AnalysisBudgetKind,
+  AnalysisBudgetOptions,
+  AnalysisBudgetReport,
+  AnalysisBudgetUsage,
+  AnalysisBudgets,
+} from "./analysis-budgets.js";
 export {
   DOCTOR_PRESET_NAMES,
   definePolicyPack,

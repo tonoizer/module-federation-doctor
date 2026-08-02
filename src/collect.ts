@@ -20,6 +20,7 @@ import type {
 } from "./types.js";
 import { normalizePath, relativePath } from "./utils.js";
 import { detectViteLifecycle } from "./vite-lifecycle.js";
+import { AnalysisBudgetTracker } from "./analysis-budgets.js";
 
 interface PackageJson {
   name?: string;
@@ -82,6 +83,7 @@ interface RawImportScan {
   /** Specifiers that come from loadRemote / registerRemotes (always remotes, not packages). */
   remoteSpecifiers: Set<string>;
   unresolvedDynamic: UnresolvedDynamicImport[];
+  budget?: import("./analysis-budgets.js").AnalysisBudgetReport;
 }
 
 const STATIC_IMPORT_FROM = /\bimport\s+(?:type\s+)?(?:[\s\S]*?\sfrom\s*)?["']([^"'`]+)["']/g;
@@ -166,6 +168,7 @@ function scanSourceImports(source: string, file: string, scan: RawImportScan): v
 }
 
 async function scanProjectImports(options: ResolvedDoctorOptions): Promise<RawImportScan> {
+  const tracker = new AnalysisBudgetTracker(options.analysisBudgets);
   const files = (
     await fg(options.include, {
       cwd: options.root,
@@ -182,10 +185,20 @@ async function scanProjectImports(options: ResolvedDoctorOptions): Promise<RawIm
     remoteSpecifiers: new Set(),
     unresolvedDynamic: [],
   };
+  const selected: string[] = [];
   for (const file of scan.sourceFiles) {
+    const size = await fs
+      .stat(path.join(options.root, file))
+      .then((item) => item.size)
+      .catch(() => 0);
+    if (!tracker.reserve({ files: 1, sourceBytes: size })) continue;
+    selected.push(file);
     const source = await fs.readFile(path.join(options.root, file), "utf8");
     scanSourceImports(source, file, scan);
   }
+  scan.sourceFiles = selected;
+  const budget = tracker.report();
+  scan.budget = budget.exceeded.length > 0 ? { ...budget, status: "partial" } : budget;
   scan.unresolvedDynamic.sort((a, b) => a.file.localeCompare(b.file) || a.api.localeCompare(b.api));
   return scan;
 }
@@ -701,7 +714,8 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     try {
       await fs.access(path.resolve(options.root, target));
       const safeNormalized = normalizePath(safeTarget);
-      if (!scan.sourceFiles.includes(safeNormalized)) scan.sourceFiles.push(safeNormalized);
+      if (!scan.budget?.exceeded.length && !scan.sourceFiles.includes(safeNormalized))
+        scan.sourceFiles.push(safeNormalized);
     } catch {
       // Missing expose paths are reported from this collected absence.
     }
@@ -791,6 +805,7 @@ export async function collectProjectFacts(options: ResolvedDoctorOptions): Promi
     },
     imports,
     artifacts,
+    ...(scan.budget ? { analysis: scan.budget } : {}),
   };
   if (normalizedMf) facts.moduleFederation = normalizedMf;
   await attachAssetSizes(facts, options.root);

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { resolveBaselineOptions } from "./baseline.js";
+import { resolveAnalysisBudgets } from "./analysis-budgets.js";
 import { resolvePolicy } from "./policy.js";
 import { mergeSharedPolicy, serializeSharedPolicy } from "./shared-policy.js";
 import type { DoctorOptions, DoctorPrintLog, ResolvedDoctorOptions } from "./types.js";
@@ -121,6 +122,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   const printLog = resolvePrintLog(options);
   const quiet = resolveQuiet(options);
   const resolved: ResolvedDoctorOptions = {
+    analysisBudgets: resolveAnalysisBudgets(options.analysisBudgets),
     bundler: options.bundler ?? "unknown",
     artifactNames: {
       manifest: options.artifactNames?.manifest ?? ["mf-manifest.json"],

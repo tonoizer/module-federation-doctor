@@ -27,7 +27,7 @@ import type {
   RuleMeta,
 } from "./types.js";
 import { stableStringify } from "./utils.js";
-import { discoverWorkspaceProjects } from "./workspace.js";
+import { discoverWorkspaceProjectsWithBudget } from "./workspace.js";
 
 interface Parsed {
   command:
@@ -321,6 +321,7 @@ async function runFederationAnalysis(
   baseline?: string | BaselineOptions,
   verbose = false,
   config: DoctorOptions = {},
+  analysis?: import("./analysis-budgets.js").AnalysisBudgetReport,
 ): Promise<number> {
   if (files.length === 0) {
     process.stderr.write("No project reports matched.\n");
@@ -333,6 +334,7 @@ async function runFederationAnalysis(
     ...(verbose ? { quiet: false, printLog: { success: true } } : {}),
     ...(config.rules ? { rules: config.rules } : {}),
     ...(config.alwaysShared ? { alwaysShared: config.alwaysShared } : {}),
+    ...(analysis ? { analysis } : {}),
     root: process.cwd(),
   });
   if (!formats)
@@ -401,11 +403,19 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           );
           return 2;
         }
-        const files = await discoverWorkspaceProjects({
+        const discovery = await discoverWorkspaceProjectsWithBudget({
           roots: parsed.roots,
           ...(parsed.globs.length > 0 ? { globs: parsed.globs } : {}),
+          ...(config.analysisBudgets ? { analysisBudgets: config.analysisBudgets } : {}),
         });
-        return await runFederationAnalysis(files, parsed.formats, baseline, parsed.verbose, config);
+        return await runFederationAnalysis(
+          discovery.files,
+          parsed.formats,
+          baseline,
+          parsed.verbose,
+          config,
+          discovery.budget,
+        );
       }
       if (parsed.patterns.length === 0) {
         process.stderr.write(

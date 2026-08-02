@@ -834,15 +834,19 @@ export const builtInRules: DoctorRule[] = [
       .sort();
     if (!mf(context)) missing.push("moduleFederation");
     const unresolvedDynamic = context.facts.imports.unresolvedDynamic ?? [];
-    if (missing.length === 0 && unresolvedDynamic.length === 0) return;
+    const budget = context.facts.analysis;
+    if (missing.length === 0 && unresolvedDynamic.length === 0 && !budget?.exceeded.length) return;
     report(
       context,
-      unresolvedDynamic.length > 0 && missing.length === 0
-        ? "Doctor completed with unresolved dynamic import patterns."
-        : "Doctor completed with partial input.",
+      budget?.status === "unknown"
+        ? "Doctor completed with unknown input due to an analysis budget."
+        : unresolvedDynamic.length > 0 && missing.length === 0
+          ? "Doctor completed with unresolved dynamic import patterns."
+          : "Doctor completed with partial input.",
       {
         ...(missing.length > 0 ? { missing } : {}),
         ...(unresolvedDynamic.length > 0 ? { unresolvedDynamic } : {}),
+        ...(budget?.exceeded.length ? { analysisBudget: budget } : {}),
         ...(context.facts.imports.evidenceSources
           ? { evidenceSources: context.facts.imports.evidenceSources }
           : {}),

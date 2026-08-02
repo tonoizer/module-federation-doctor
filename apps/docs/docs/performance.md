@@ -4,6 +4,29 @@ Performance advice must preserve runtime correctness. Module Federation owns
 part of the chunk and initialization graph, so generic bundler advice can be
 harmful.
 
+## Analysis budgets
+
+Doctor bounds source and workspace collection before parsing. Configure the
+typed `analysisBudgets` option when a repository needs tighter limits:
+
+```ts
+export default {
+  analysisBudgets: {
+    maxFiles: 10_000,
+    maxSourceBytes: 50 * 1024 * 1024,
+    maxEvidenceNodes: 100_000,
+    maxSerializedBytes: 50 * 1024 * 1024,
+    maxWallTimeMs: 30_000,
+  },
+};
+```
+
+Files and bytes are selected in sorted path order. A limit stops further
+collection without silently claiming completeness: project analysis emits the
+existing `doctor/partial-analysis` finding and workspace analysis returns exit
+code `2` with unknown input. Legacy project/report schemas and normal runs
+stay unchanged. Artifact and runtime collection have separate budgets later.
+
 ## Startup strategy
 
 Issue: `version-first` loads every configured remote entry during
