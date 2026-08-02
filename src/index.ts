@@ -25,11 +25,14 @@ export {
 } from "./monorepo-identity.js";
 export { readCanonicalModuleFederationConfig } from "./canonical-config.js";
 export {
+  BUILT_IN_CAPABILITY_PACKS,
+  ENHANCED_WEBPACK_V5_BROWSER_PACK,
   assertCapabilityPacks,
   queryCapability,
   resolveCapabilityPack,
 } from "./capability-packs.js";
 export type {
+  CapabilityPackProvenance,
   CapabilityField,
   CapabilityPack,
   CapabilityQuery,

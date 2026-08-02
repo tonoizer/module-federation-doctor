@@ -9,8 +9,17 @@ export interface CapabilityField {
   acceptedForms: readonly string[];
 }
 
+export interface CapabilityPackProvenance {
+  source: string;
+  commit: string;
+  package: string;
+  version: string;
+  reviewedFiles: readonly string[];
+}
+
 export interface CapabilityPack {
   id: string;
+  provenance?: CapabilityPackProvenance;
   core: {
     name: string;
     version: CapabilityVersionSelector;
@@ -27,6 +36,58 @@ export interface CapabilityPack {
   mode?: string;
   fields: Readonly<Record<string, CapabilityField>>;
 }
+
+const supported = (acceptedForms: readonly string[]): CapabilityField => ({
+  status: "supported",
+  acceptedForms,
+});
+
+/**
+ * The first reviewed Enhanced Webpack contract slice. This is deliberately
+ * descriptive: it does not add defaults, mutate config, or imply collection.
+ */
+export const ENHANCED_WEBPACK_V5_BROWSER_PACK: CapabilityPack = {
+  id: "enhanced-webpack-v5-browser",
+  provenance: {
+    source: "module-federation/core@d927242",
+    commit: "d927242",
+    package: "@module-federation/sdk",
+    version: "2.7.0",
+    reviewedFiles: ["packages/sdk/src/types/plugins/ModuleFederationPlugin.ts"],
+  },
+  core: { name: "@module-federation/sdk", version: ">=2.7.0 <2.8.0" },
+  adapter: { name: "@module-federation/enhanced", version: ">=2.7.0 <2.8.0" },
+  bundler: { name: "webpack", version: ">=5 <6" },
+  target: "browser",
+  fields: {
+    exposes: supported(["string", "object", "array", "outer-array"]),
+    remotes: supported(["string", "object", "array", "outer-array"]),
+    "remotes.external": supported(["string", "array"]),
+    "remotes.shareScope": supported(["string", "array"]),
+    shared: supported(["string", "object", "array", "outer-array"]),
+    "shared.import": supported(["false", "string"]),
+    "shared.requiredVersion": supported(["false", "string"]),
+    "shared.version": supported(["false", "string"]),
+    "shared.shareScope": supported(["string", "array"]),
+    "shared.treeShaking": supported(["boolean", "object"]),
+    runtimePlugins: supported(["string", "tuple"]),
+    manifest: supported(["boolean", "object"]),
+    dev: supported(["boolean", "object"]),
+    dts: supported(["boolean", "object"]),
+    experiments: supported(["object"]),
+    bridge: supported(["object"]),
+    async: supported(["boolean", "object"]),
+    treeShaking: supported(["boolean", "object"]),
+    treeShakingDir: supported(["string"]),
+    injectTreeShakingUsedExports: supported(["boolean"]),
+    treeShakingSharedExcludePlugins: supported(["array"]),
+    treeShakingSharedPlugins: supported(["array"]),
+  },
+};
+
+export const BUILT_IN_CAPABILITY_PACKS: readonly CapabilityPack[] = [
+  ENHANCED_WEBPACK_V5_BROWSER_PACK,
+];
 
 export interface CapabilityQuery {
   core: {
@@ -127,9 +188,9 @@ export function resolveCapabilityPack(
     status: "unknown",
     reason:
       dimensional.length > 0 &&
-      (query.core.version === undefined ||
-        query.adapter.version === undefined ||
-        query.bundler.version === undefined)
+      [query.core.version, query.adapter.version, query.bundler.version].some(
+        (version) => version === undefined || version === "unknown",
+      )
         ? "missing-version"
         : "no-match",
     candidates: dimensional.map((pack) => pack.id).sort(),
