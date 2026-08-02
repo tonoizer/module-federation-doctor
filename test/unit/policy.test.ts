@@ -53,8 +53,8 @@ describe("built-in presets", () => {
 
   it("keeps demo recommendations quiet without hiding correctness rules", () => {
     expect(demoPreset.rules).toEqual({
-      "config/remote-manifest-recommended": "off",
-      "reliability/version-first-offline-remotes": "off",
+      "config/remote-manifest-recommended": ["info", { localDemoOnly: true }],
+      "reliability/version-first-offline-remotes": ["warning", { localDemoOnly: true }],
       "artifact/manifest-disabled": "off",
       "artifact/dts-disabled": "info",
       "bridge/router-implicit-enable": "off",
@@ -83,7 +83,10 @@ describe("resolvePolicy / resolveOptions precedence", () => {
   it("composes recommendation profiles with recommended and local overrides", async () => {
     const demo = await resolvePolicy(["recommended", "demo"], repoRoot);
     expect(demo.applied).toEqual(["recommended", "demo"]);
-    expect(demo.rules["config/remote-manifest-recommended"]).toBe("off");
+    expect(demo.rules["config/remote-manifest-recommended"]).toEqual([
+      "info",
+      { localDemoOnly: true },
+    ]);
     expect(demo.rules["config/remote-http-insecure"]).toBe("warning");
 
     const production = await resolveOptions({

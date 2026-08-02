@@ -211,6 +211,16 @@ function isLoopbackRemoteUrl(url: string): boolean {
   return /^(?:https?:\/\/)?(?:localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(url);
 }
 
+function isDemoLocalRemote(context: RuleContext, entry: string): boolean {
+  if (!context.options.localDemoOnly || context.facts.bundler.mode !== "development") return false;
+  const url = remoteEntryUrl(entry).trim();
+  // Relative / bare entries are the normal local demo shape. Keep deployed
+  // HTTPS and non-loopback hosts loud even when the demo pack is applied.
+  return !/^[a-z][a-z\d+.-]*:\/\//i.test(url) && !url.startsWith("//")
+    ? true
+    : isLoopbackRemoteUrl(url);
+}
+
 /** Detect retry / errorLoadRemote recovery plugins from configured paths. */
 function hasRemoteRecoveryPlugin(plugins: string[] | undefined): boolean {
   if (!plugins?.length) return false;
@@ -443,7 +453,10 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("config/remote-manifest-recommended", "info", (context) => {
     for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {}))
-      if (/remoteEntry(?:\.[cm]?js)?(?:[?#]|$)/i.test(remote.entry))
+      if (
+        /remoteEntry(?:\.[cm]?js)?(?:[?#]|$)/i.test(remote.entry) &&
+        !isDemoLocalRemote(context, remote.entry)
+      )
         report(
           context,
           `Remote "${name}" points straight to a remote entry.`,
@@ -754,7 +767,12 @@ export const builtInRules: DoctorRule[] = [
     if (
       config?.shareStrategy === "version-first" &&
       Object.keys(config.remotes).length > 0 &&
-      !hasRemoteRecoveryPlugin(config.runtimePlugins)
+      !hasRemoteRecoveryPlugin(config.runtimePlugins) &&
+      !(
+        context.options.localDemoOnly &&
+        context.facts.bundler.mode === "development" &&
+        Object.values(config.remotes).every((remote) => isDemoLocalRemote(context, remote.entry))
+      )
     )
       report(
         context,

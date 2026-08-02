@@ -161,6 +161,69 @@ describe("built-in rules", () => {
     );
   });
 
+  it("softens only local demo remote noise through the demo policy pack", async () => {
+    const root = await fixture();
+    const local = await analyze({
+      root,
+      bundler: "vite",
+      mode: "development",
+      output: { formats: [] },
+      extends: ["recommended", "demo"],
+      moduleFederation: {
+        name: "demo-host",
+        shareStrategy: "version-first",
+        remotes: { shop: { name: "shop", entry: "shop@remoteEntry.js" } },
+      },
+      rules: { "config/plugin-package-mismatch": "off", "doctor/partial-analysis": "off" },
+    });
+    expect(local.report.findings.map((finding) => finding.ruleId)).not.toContain(
+      "config/remote-manifest-recommended",
+    );
+    expect(local.report.findings.map((finding) => finding.ruleId)).not.toContain(
+      "reliability/version-first-offline-remotes",
+    );
+
+    const external = await analyze({
+      root,
+      bundler: "vite",
+      mode: "development",
+      output: { formats: [] },
+      extends: ["recommended", "demo"],
+      moduleFederation: {
+        name: "demo-host",
+        shareStrategy: "version-first",
+        remotes: { shop: { name: "shop", entry: "shop@https://cdn.example.test/remoteEntry.js" } },
+      },
+      rules: { "config/plugin-package-mismatch": "off", "doctor/partial-analysis": "off" },
+    });
+    expect(external.report.findings.map((finding) => finding.ruleId)).toContain(
+      "config/remote-manifest-recommended",
+    );
+    expect(external.report.findings.map((finding) => finding.ruleId)).toContain(
+      "reliability/version-first-offline-remotes",
+    );
+
+    const ci = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      extends: ["recommended", "demo"],
+      moduleFederation: {
+        name: "demo-host",
+        shareStrategy: "version-first",
+        remotes: { shop: { name: "shop", entry: "shop@http://localhost:3001/remoteEntry.js" } },
+      },
+      rules: { "config/plugin-package-mismatch": "off", "doctor/partial-analysis": "off" },
+    });
+    expect(ci.report.findings.map((finding) => finding.ruleId)).toContain(
+      "config/remote-manifest-recommended",
+    );
+    expect(ci.report.findings.map((finding) => finding.ruleId)).toContain(
+      "reliability/version-first-offline-remotes",
+    );
+  });
+
   it("reports oversized federation assets and honors budget overrides", async () => {
     const root = await fixture();
     await fs.mkdir(path.join(root, "dist"), { recursive: true });
