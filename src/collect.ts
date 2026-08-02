@@ -603,6 +603,14 @@ export async function attachAssetSizes(
 
   for (const name of names) {
     const normalizedName = normalizePath(name);
+    if (
+      !normalizedName ||
+      path.posix.isAbsolute(normalizedName) ||
+      path.win32.isAbsolute(name) ||
+      /^[A-Za-z]:\//.test(normalizedName) ||
+      normalizedName.split("/").some((part) => part === "..")
+    )
+      continue;
     const basename = path.basename(normalizedName);
     const candidates =
       outputRoots !== undefined
@@ -1109,6 +1117,8 @@ export async function addBuildFacts(
     else delete facts.artifacts.manifest;
     if (currentStats) facts.artifacts.stats = currentStats;
     else delete facts.artifacts.stats;
+    facts.capabilities.manifest = currentRecords.some((record) => record.kind === "manifest");
+    facts.capabilities.stats = currentRecords.some((record) => record.kind === "stats");
   }
   const recordedOutputRoots = facts.builds
     ?.filter((build) => build.capabilities.emittedAssets.state !== "not-applicable")

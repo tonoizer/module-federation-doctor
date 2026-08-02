@@ -46,6 +46,7 @@ import {
 } from "./finding-details.js";
 import { findShareRewriteOverlaps } from "./share-rewrite.js";
 import type {
+  BuildRecord,
   DoctorRule,
   NormalizedMFConfig,
   ProjectFacts,
@@ -76,28 +77,83 @@ function createRule(
   });
 }
 
-function manifestAssetPath(manifestPath: string, asset: string): string {
+function manifestAssetPath(manifestPath: string, asset: string): string | undefined {
   const normalizedAsset = asset.replaceAll("\\", "/").replace(/^\.\//, "");
-  const manifestDir = path.posix.dirname(manifestPath);
   if (
+    !normalizedAsset ||
+    path.posix.isAbsolute(normalizedAsset) ||
+    path.win32.isAbsolute(asset) ||
+    /^[A-Za-z]:\//.test(normalizedAsset) ||
+    normalizedAsset.split("/").some((part) => part === "..")
+  )
+    return undefined;
+  const manifestDir = path.posix.dirname(manifestPath);
+  const resolved =
     manifestDir === "." ||
     normalizedAsset === manifestDir ||
     normalizedAsset.startsWith(`${manifestDir}/`)
+      ? normalizedAsset
+      : path.posix.normalize(path.posix.join(manifestDir, normalizedAsset));
+  if (
+    resolved === ".." ||
+    resolved.startsWith("../") ||
+    (manifestDir !== "." && resolved !== manifestDir && !resolved.startsWith(`${manifestDir}/`))
   )
-    return normalizedAsset;
-  return path.posix.normalize(path.posix.join(manifestDir, normalizedAsset));
+    return undefined;
+  return resolved;
 }
 
-function buildScopedAssetPath(
+function manifestScopes(context: { facts: ProjectFacts }): Array<{
+  manifest: NonNullable<ProjectFacts["artifacts"]["manifest"]>;
+  build?: BuildRecord;
+}> {
+  const scopes = (context.facts.builds ?? []).flatMap((build) =>
+    build.artifacts
+      .filter((record) => record.kind === "manifest")
+      .map((record) => ({ manifest: record.manifest, build })),
+  );
+  return scopes.length > 0
+    ? scopes
+    : context.facts.artifacts.manifest
+      ? [{ manifest: context.facts.artifacts.manifest }]
+      : [];
+}
+
+function exactAssetSize(
+  sizes: Record<string, number> | undefined,
+  asset: string | undefined,
+): number | undefined {
+  return asset === undefined ? undefined : sizes?.[asset];
+}
+
+function scopedAssetSize(
   context: { facts: ProjectFacts },
-  manifestPath: string,
-  asset: string,
-): string {
-  // When per-output build records exist, resolve assets against the manifest
-  // directory so same-named files in other outputs cannot satisfy the rule.
+  sizes: Record<string, number> | undefined,
+  asset: string | undefined,
+): number | undefined {
   return context.facts.builds && context.facts.builds.length > 0
-    ? manifestAssetPath(manifestPath, asset)
-    : asset;
+    ? exactAssetSize(sizes, asset)
+    : asset === undefined
+      ? undefined
+      : lookupAssetSize(sizes, asset);
+}
+
+function sumScopedAssetSizes(
+  context: { facts: ProjectFacts },
+  sizes: Record<string, number> | undefined,
+  assets: readonly (string | undefined)[],
+): number | undefined {
+  const scoped = assets.filter((asset): asset is string => asset !== undefined);
+  if (scoped.length !== assets.length) return undefined;
+  if (!context.facts.builds || context.facts.builds.length === 0)
+    return sumAssetSizes(sizes, scoped);
+  let total = 0;
+  for (const asset of scoped) {
+    const bytes = exactAssetSize(sizes, asset);
+    if (bytes === undefined) return undefined;
+    total += bytes;
+  }
+  return total;
 }
 
 function emittedAssetMatches(
@@ -106,9 +162,24 @@ function emittedAssetMatches(
   candidate: string,
   asset: string,
 ): boolean {
+  const scoped = manifestAssetPath(manifestPath, candidate);
   if (context.facts.builds && context.facts.builds.length > 0)
-    return asset === manifestAssetPath(manifestPath, candidate);
+    return scoped !== undefined && asset === scoped;
   return asset.endsWith(candidate) || asset.endsWith(path.posix.basename(candidate));
+}
+
+/*
+ * Keep legacy basename matching when no per-output records exist. Once build
+ * records exist, every lookup must stay inside the manifest's output.
+ */
+function buildScopedAssetPath(
+  context: { facts: ProjectFacts },
+  manifestPath: string,
+  asset: string,
+): string | undefined {
+  return context.facts.builds && context.facts.builds.length > 0
+    ? manifestAssetPath(manifestPath, asset)
+    : asset;
 }
 
 function mf(context: RuleContext): NormalizedMFConfig | undefined {
@@ -652,9 +723,9 @@ export const builtInRules: DoctorRule[] = [
       );
   }),
   createRule("performance/asset-budget", "warning", (context) => {
-    const manifest = context.facts.artifacts.manifest;
+    // manifestScopes keeps context.facts.artifacts.manifest as the legacy projection.
     const sizes = context.facts.artifacts.assetSizes;
-    if (!manifest?.valid || !sizes || Object.keys(sizes).length === 0) return;
+    if (!sizes || Object.keys(sizes).length === 0) return;
 
     const remoteEntryMax = optionBytes(
       context.options,
@@ -666,65 +737,72 @@ export const builtInRules: DoctorRule[] = [
     const suggestion =
       "Reduce the oversized assets or raise the matching `remoteEntryMaxBytes`, `sharedMaxBytes`, or `exposeMaxBytes` rule option.";
 
-    if (manifest.remoteEntry?.name) {
-      const assets = [manifest.remoteEntry.name];
-      const bytes = lookupAssetSize(
-        sizes,
-        buildScopedAssetPath(context, manifest.path, manifest.remoteEntry.name),
-      );
-      if (bytes !== undefined && bytes > remoteEntryMax)
+    for (const { manifest, build } of manifestScopes(context)) {
+      if (!manifest.valid) continue;
+      const outputEvidence = build ? { buildId: build.id, manifest: manifest.path } : {};
+      if (manifest.remoteEntry?.name) {
+        const assets = [manifest.remoteEntry.name];
+        const scopedAsset = buildScopedAssetPath(context, manifest.path, manifest.remoteEntry.name);
+        const bytes = scopedAssetSize(context, sizes, scopedAsset);
+        if (bytes !== undefined && bytes > remoteEntryMax)
+          report(
+            context,
+            `Remote entry exceeds the ${remoteEntryMax} byte budget (${bytes} bytes).`,
+            {
+              class: "remoteEntry",
+              target: manifest.remoteEntry.name,
+              bytes,
+              maxBytes: remoteEntryMax,
+              assets,
+              ...outputEvidence,
+            },
+            suggestion,
+          );
+      }
+
+      for (const shared of manifest.shared) {
+        const bytes = sumScopedAssetSizes(
+          context,
+          sizes,
+          shared.assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
+        );
+        if (bytes === undefined || bytes <= sharedMax) continue;
         report(
           context,
-          `Remote entry exceeds the ${remoteEntryMax} byte budget (${bytes} bytes).`,
+          `Shared package "${shared.name}" exceeds the ${sharedMax} byte budget (${bytes} bytes).`,
           {
-            class: "remoteEntry",
-            target: manifest.remoteEntry.name,
+            class: "shared",
+            target: shared.name,
             bytes,
-            maxBytes: remoteEntryMax,
-            assets,
+            maxBytes: sharedMax,
+            assets: shared.assets,
+            ...outputEvidence,
           },
           suggestion,
         );
-    }
+      }
 
-    for (const shared of manifest.shared) {
-      const bytes = sumAssetSizes(
-        sizes,
-        shared.assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
-      );
-      if (bytes === undefined || bytes <= sharedMax) continue;
-      report(
-        context,
-        `Shared package "${shared.name}" exceeds the ${sharedMax} byte budget (${bytes} bytes).`,
-        {
-          class: "shared",
-          target: shared.name,
-          bytes,
-          maxBytes: sharedMax,
-          assets: shared.assets,
-        },
-        suggestion,
-      );
-    }
-
-    for (const expose of manifest.exposes) {
-      const bytes = sumAssetSizes(
-        sizes,
-        expose.assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
-      );
-      if (bytes === undefined || bytes <= exposeMax) continue;
-      report(
-        context,
-        `Expose "${expose.key}" exceeds the ${exposeMax} byte budget (${bytes} bytes).`,
-        {
-          class: "expose",
-          target: expose.key,
-          bytes,
-          maxBytes: exposeMax,
-          assets: expose.assets,
-        },
-        suggestion,
-      );
+      for (const expose of manifest.exposes) {
+        const bytes = sumScopedAssetSizes(
+          context,
+          sizes,
+          expose.assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
+        );
+        if (bytes === undefined || bytes <= exposeMax) continue;
+        report(
+          context,
+          `Expose "${expose.key}" exceeds the ${exposeMax} byte budget (${bytes} bytes).`,
+          {
+            class: "expose",
+            target: expose.key,
+            bytes,
+            maxBytes: exposeMax,
+            assets: expose.assets,
+            ...outputEvidence,
+          },
+          suggestion,
+        );
+      }
     }
   }),
   createRule("reliability/version-first-offline-remotes", "warning", (context) => {
@@ -1138,26 +1216,31 @@ export const builtInRules: DoctorRule[] = [
       );
   }),
   createRule("artifact/manifest-remote-entry-missing", "error", (context) => {
-    const manifest = context.facts.artifacts.manifest;
-    const remoteEntry = manifest?.remoteEntry;
-    if (!manifest?.valid || !remoteEntry || !context.facts.capabilities.emittedAssets) return;
-    const candidate = `${remoteEntry.path}${remoteEntry.name}`;
-    const emitted = context.facts.artifacts.emittedAssets.some((asset) =>
-      emittedAssetMatches(context, manifest.path, candidate, asset),
-    );
-    // Vite often leaves remoteEntry.path empty while assetSizes still records the basename.
-    const sized =
-      remoteEntry.path === ""
-        ? lookupAssetSize(context.facts.artifacts.assetSizes, remoteEntry.name) !== undefined
-        : context.facts.artifacts.assetSizes?.[candidate] !== undefined;
-    if (!emitted && !sized)
-      report(
-        context,
-        "The remote entry named by the manifest was not emitted.",
-        { remoteEntry },
-        "Clean and rebuild; then verify filename, output path, and manifest generation use one config.",
-        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { remoteEntry }),
+    // manifestScopes keeps context.facts.artifacts.manifest as the legacy projection.
+    if (!context.facts.capabilities.emittedAssets) return;
+    for (const { manifest, build } of manifestScopes(context)) {
+      const remoteEntry = manifest.remoteEntry;
+      if (!manifest.valid || !remoteEntry) continue;
+      const candidate = `${remoteEntry.path}${remoteEntry.name}`;
+      const emittedAssets = build?.emittedAssets ?? context.facts.artifacts.emittedAssets;
+      const emitted = emittedAssets.some((asset) =>
+        emittedAssetMatches(context, manifest.path, candidate, asset),
       );
+      const scopedCandidate = buildScopedAssetPath(context, manifest.path, candidate);
+      const sized = build
+        ? exactAssetSize(context.facts.artifacts.assetSizes, scopedCandidate)
+        : remoteEntry.path === ""
+          ? lookupAssetSize(context.facts.artifacts.assetSizes, remoteEntry.name)
+          : exactAssetSize(context.facts.artifacts.assetSizes, candidate);
+      if (!emitted && sized === undefined)
+        report(
+          context,
+          "The remote entry named by the manifest was not emitted.",
+          { remoteEntry, ...(build ? { buildId: build.id, manifest: manifest.path } : {}) },
+          "Clean and rebuild; then verify filename, output path, and manifest generation use one config.",
+          findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { remoteEntry }),
+        );
+    }
   }),
   createRule("artifact/manifest-expose-assets-empty", "warning", (context) => {
     const manifest = context.facts.artifacts.manifest;

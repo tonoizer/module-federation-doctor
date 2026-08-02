@@ -263,6 +263,48 @@ describe("artifact collection", () => {
       "dist/other/mf-manifest.json",
     ]);
     expect(facts.artifacts.manifest?.valid).toBe(false);
+    expect(facts.capabilities.manifest).toBe(true);
+  });
+
+  it("clears stale manifest capability when no current output emitted one", async () => {
+    const root = await fixture({
+      "dist/stale/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }), ["dist/current"]);
+    await addBuildFacts(facts, [], root, undefined, [
+      viteOutput({
+        outputRoot: "dist/current",
+        emittedAssets: [],
+        sourceHook: "closeBundle",
+      }),
+    ]);
+    expect(facts.artifacts.manifest).toBeUndefined();
+    expect(facts.capabilities.manifest).toBe(false);
+  });
+
+  it.each([
+    "../shared/remoteEntry.js",
+    "/shared/remoteEntry.js",
+    "..\\shared\\remoteEntry.js",
+    "C:\\shared\\remoteEntry.js",
+  ])("does not size manifest asset path escaping its output: %s", async (asset) => {
+    const root = await fixture({
+      "out/a/mf-manifest.json": JSON.stringify({
+        metaData: { remoteEntry: { name: asset, path: "" } },
+        exposes: [],
+        shared: [],
+      }),
+      "out/shared/remoteEntry.js": "this must not be borrowed",
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+    await addBuildFacts(facts, ["out/a/mf-manifest.json"], root, undefined, [
+      viteOutput({
+        outputRoot: "out/a",
+        emittedAssets: ["mf-manifest.json"],
+        sourceHook: "closeBundle",
+      }),
+    ]);
+    expect(facts.artifacts.assetSizes?.["out/shared/remoteEntry.js"]).toBeUndefined();
   });
 
   it("uses the current output root for bare manifest budget assets", async () => {
@@ -272,13 +314,13 @@ describe("artifact collection", () => {
         exposes: [],
         shared: [],
       }),
-      "out/a/remoteEntry.js": "1234567890",
+      "out/a/remoteEntry.js": "small",
       "out/b/mf-manifest.json": JSON.stringify({
         metaData: { remoteEntry: { name: "remoteEntry.js", path: "" } },
         exposes: [],
         shared: [],
       }),
-      "out/b/remoteEntry.js": "small",
+      "out/b/remoteEntry.js": "1234567890",
     });
     const result = await analyzeBuild(
       {
@@ -318,8 +360,8 @@ describe("artifact collection", () => {
     expect(
       result.report.findings.some((finding) => finding.ruleId === "performance/asset-budget"),
     ).toBe(true);
-    expect(result.facts.artifacts.assetSizes?.["out/a/remoteEntry.js"]).toBe(10);
-    expect(result.facts.artifacts.assetSizes?.["out/b/remoteEntry.js"]).toBe(5);
+    expect(result.facts.artifacts.assetSizes?.["out/a/remoteEntry.js"]).toBe(5);
+    expect(result.facts.artifacts.assetSizes?.["out/b/remoteEntry.js"]).toBe(10);
     expect(result.facts.artifacts.assetSizes?.["remoteEntry.js"]).toBeUndefined();
   });
 
