@@ -150,6 +150,13 @@ function rsbuildOutputRoot(root: string, value: unknown): string | undefined {
   return relative.startsWith("[external]/") ? undefined : normalizePath(relative);
 }
 
+function rsbuildAssetName(value: string, outputRoot: string | undefined): string {
+  const normalized = normalizePath(value);
+  if (outputRoot && outputRoot !== "." && normalized.startsWith(`${outputRoot}/`))
+    return normalized.slice(outputRoot.length + 1);
+  return normalized;
+}
+
 /**
  * Convert public Rsbuild/Rspack stats JSON into one build input per stats node.
  * Children stay separate so parent and child compiler assets cannot be joined.
@@ -160,10 +167,12 @@ function collectRsbuildBuildOutputs(stats: RsbuildStatsLike, root: string): Buil
     if (!value || typeof value !== "object") return;
     const data = value as RsbuildStatsJsonLike;
     const target = rsbuildTarget(data.target);
-    const emittedAssets = (data.assets ?? [])
-      .flatMap((asset) => (typeof asset.name === "string" ? [normalizePath(asset.name)] : []))
-      .sort();
     const outputRoot = rsbuildOutputRoot(root, data.outputPath);
+    const emittedAssets = (data.assets ?? [])
+      .flatMap((asset) =>
+        typeof asset.name === "string" ? [rsbuildAssetName(asset.name, outputRoot)] : [],
+      )
+      .sort();
     // MultiStats is only a wrapper around child compilations. Do not turn it
     // into an empty build; emit records for its actual stats nodes below.
     const isBuild =
