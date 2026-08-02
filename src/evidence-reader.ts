@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import nodePath from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import type { ErrorObject } from "ajv";
 import evidenceSchema from "../schemas/evidence.schema.json";
@@ -72,6 +74,51 @@ export interface EvidenceDocumentReadResult {
   kind: EvidenceDocumentKind;
   sourceVersion: 1 | 2;
   graph: EvidenceGraphV2;
+}
+
+/** Read one local v1/v2 evidence file through the same reader used by commands. */
+export async function readEvidenceFile(
+  filePath: string,
+  options: EvidenceReaderOptions = {},
+): Promise<EvidenceDocumentReadResult> {
+  const resolved = nodePath.resolve(filePath);
+  const fileLabel = options.fileLabel ?? resolved;
+  let raw: unknown;
+  try {
+    const text = await fs.readFile(resolved, "utf8");
+    try {
+      raw = JSON.parse(text) as unknown;
+    } catch {
+      throw new EvidenceReaderError(
+        {
+          fileLabel,
+          detectedDocumentKind: "unknown",
+          failureCode: "malformed-json",
+          pointer: "/",
+        },
+        `${fileLabel}: Document is not valid JSON at /`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof EvidenceReaderError) throw error;
+    const code = (error as NodeJS.ErrnoException).code;
+    const failureCode: EvidenceReaderFailureCode =
+      code === "ENOENT"
+        ? "not-found"
+        : code === "EACCES" || code === "EPERM"
+          ? "permission-denied"
+          : "read-failed";
+    throw new EvidenceReaderError(
+      {
+        fileLabel,
+        detectedDocumentKind: "unknown",
+        failureCode,
+        pointer: "/",
+      },
+      `${fileLabel}: Unable to read document${code ? ` (${code})` : ""}`,
+    );
+  }
+  return readEvidenceDocument(raw, { ...options, fileLabel });
 }
 
 type JsonRecord = Record<string, unknown>;

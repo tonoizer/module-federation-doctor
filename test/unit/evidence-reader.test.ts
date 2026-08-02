@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import nodePath from "node:path";
 import { describe, expect, it } from "vitest";
 import projectFixture from "../../examples/evidence/v1-project.json";
 import reportFixture from "../../examples/evidence/v1-report.json";
@@ -7,6 +10,7 @@ import {
   migrateDoctorReport,
   migrateProjectFacts,
   projectFactsFromEvidence,
+  readEvidenceFile,
   readEvidenceDocument,
   reportFromEvaluations,
 } from "../../src/evidence-reader.js";
@@ -341,5 +345,23 @@ describe("public evidence reader", () => {
         message: expect.stringMatching(/parseRuntimeTraces|loadRuntimeTraceFile/),
       }),
     );
+  });
+
+  it("keeps file loading on the evidence reader seam", async () => {
+    const root = await fs.mkdtemp(nodePath.join(os.tmpdir(), "mfdoctor-evidence-reader-"));
+    const file = nodePath.join(root, "project.json");
+    await fs.writeFile(file, JSON.stringify(projectFixture));
+    try {
+      const result = await readEvidenceFile(file);
+      expect(result.kind).toBe("project-facts");
+      await fs.writeFile(file, "{");
+      await expect(readEvidenceFile(file)).rejects.toMatchObject({
+        name: "EvidenceReaderError",
+        failureCode: "malformed-json",
+        pointer: "/",
+      });
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 });
