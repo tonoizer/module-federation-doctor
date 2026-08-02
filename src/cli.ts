@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import fg from "fast-glob";
@@ -21,6 +20,12 @@ import {
   writeDiagnosticsDump,
 } from "./agent-prompt.js";
 import { analyze, analyzeFederation } from "./engine.js";
+import {
+  EvidenceReaderError,
+  readEvidenceFile,
+  reportFromEvaluations,
+  reportFromV2Evaluations,
+} from "./evidence-reader.js";
 import { probeManifest } from "./probe.js";
 import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
 import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "./rules.js";
@@ -321,12 +326,41 @@ function baselineFromConfig(config: DoctorOptions): string | BaselineOptions | u
 }
 
 async function loadReport(reportPath: string): Promise<DoctorReport> {
-  const raw = JSON.parse(await fs.readFile(reportPath, "utf8")) as unknown;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw))
-    throw new Error("Report file must be a JSON object.");
-  const report = raw as DoctorReport;
-  if (!Array.isArray(report.findings)) throw new Error('Report file requires a "findings" array.');
-  return report;
+  const document = await readEvidenceFile(reportPath, { fileLabel: reportPath });
+  const isReportGraph = document.graph.assertions.some(
+    (assertion) => assertion.predicate === "doctor.capabilities",
+  );
+  if (
+    document.kind === "project-facts" ||
+    (!isReportGraph &&
+      (document.kind !== "evidence-graph" || document.graph.evaluations.length === 0))
+  )
+    throw new EvidenceReaderError(
+      {
+        fileLabel: reportPath,
+        detectedDocumentKind: document.kind === "project-facts" ? document.kind : "evidence-graph",
+        sourceVersion: document.sourceVersion,
+        failureCode: "wrong-document-kind",
+        pointer: "/",
+      },
+      `${reportPath}: Expected a Doctor report document at /; received ${document.kind}.`,
+    );
+  try {
+    return isReportGraph
+      ? reportFromEvaluations(document.graph)
+      : reportFromV2Evaluations(document.graph);
+  } catch (error) {
+    throw new EvidenceReaderError(
+      {
+        fileLabel: reportPath,
+        detectedDocumentKind: document.kind,
+        sourceVersion: document.sourceVersion,
+        failureCode: "integrity-invalid",
+        pointer: "/",
+      },
+      `${reportPath}: ${error instanceof Error ? error.message : String(error)} at /`,
+    );
+  }
 }
 
 async function loadReportFindings(reportPath: string): Promise<DoctorFinding[]> {

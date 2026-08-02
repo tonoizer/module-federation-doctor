@@ -316,6 +316,7 @@ export {
   readEvidenceFile,
   readEvidenceDocument,
   reportFromEvaluations,
+  reportFromV2Evaluations,
 } from "./evidence-reader.js";
 export type {
   EvidenceDocumentKind,

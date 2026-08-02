@@ -18,6 +18,7 @@ import {
   type EvidenceValue,
 } from "./evidence.js";
 import type { DoctorFinding, DoctorReport, ProjectFacts } from "./types.js";
+import { fingerprint } from "./utils.js";
 
 export type EvidenceDocumentKind = "project-facts" | "doctor-report" | "evidence-graph";
 export type EvidenceReaderFailureCode =
@@ -552,6 +553,75 @@ export function reportFromEvaluations(graph: EvidenceGraphV2): DoctorReport {
     schemaVersion: 1,
     capabilities: projectionValue(capabilities, limits),
     summary: projectionValue(summary, limits),
+    findings,
+  };
+  validateOrThrow(output, "doctor-report", {});
+  return output as unknown as DoctorReport;
+}
+
+/**
+ * Build the v1 report view from a generic v2 graph that carries evaluations.
+ * Graphs produced before Doctor finding assertions existed still have enough
+ * stable rule/evidence data for a useful offline report and baseline entry.
+ */
+export function reportFromV2Evaluations(graph: EvidenceGraphV2): DoctorReport {
+  const normalized = normalizeEvidenceGraph(
+    graph,
+    largeLegacyLimits(graph as unknown as EvidenceValue),
+  );
+  const subjects = new Map(normalized.subjects.map((subject) => [subject.id, subject] as const));
+  const project =
+    normalized.identity.project ??
+    normalized.subjects.find((subject) => subject.kind === "project")?.name ??
+    "[evidence-v2]";
+  const findings: DoctorFinding[] = normalized.evaluations
+    .filter((evaluation) => evaluation.outcome === "fail")
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map((evaluation) => {
+      const subject = subjects.get(evaluation.subject);
+      const evidence = {
+        evidenceIds: evaluation.evidenceIds.slice().sort(),
+        assertions: evaluation.evidenceIds
+          .map((id) => normalized.assertions.find((candidate) => candidate.id === id))
+          .filter((candidate): candidate is EvidenceAssertion => candidate !== undefined)
+          .map((candidate) => ({
+            predicate: candidate.predicate,
+            value: candidate.value,
+            layer: candidate.layer,
+          })),
+      };
+      const base = {
+        schemaVersion: 1 as const,
+        ruleId: evaluation.rule.id,
+        severity: "warning" as const,
+        message: evaluation.reason,
+        project,
+        evidence,
+      };
+      return Object.assign(
+        {},
+        base,
+        { fingerprint: fingerprint(base) },
+        subject && subject.kind !== "project" ? { details: { subject: subject.name } } : {},
+      ) as DoctorFinding;
+    });
+  const summary = {
+    projects: normalized.subjects.filter((subject) => subject.kind === "project").length || 1,
+    info: 0,
+    warnings: findings.length,
+    errors: 0,
+  };
+  const output: JsonRecord = {
+    schemaVersion: 1,
+    capabilities: {
+      config: false,
+      sourceImports: false,
+      manifest: false,
+      stats: false,
+      emittedAssets: false,
+      installedVersions: false,
+    },
+    summary,
     findings,
   };
   validateOrThrow(output, "doctor-report", {});
