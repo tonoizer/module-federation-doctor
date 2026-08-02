@@ -1,0 +1,63 @@
+name: Generate release files
+
+on:
+  release:
+    types: [released, prereleased]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing plain-semver GitHub release tag
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-files-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  release-files:
+    name: Build release files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          case "$RELEASE_TAG" in v*) echo "Tag must not start with v"; exit 1;; esac
+          test "$RELEASE_TAG" = "$VERSION" || {
+            echo "Tag $RELEASE_TAG does not match package $VERSION"
+            exit 1
+          }
+
+      - run: pnpm build
+
+      - name: Pack release files
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          rm -rf release-files
+          mkdir release-files
+          pnpm pack --pack-destination release-files
+          node scripts/generate-release-files.mjs release-files
+
+      - name: Upload release files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$RELEASE_TAG" release-files/* --clobber
