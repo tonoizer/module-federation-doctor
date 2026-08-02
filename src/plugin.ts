@@ -11,6 +11,7 @@ import type {
   DoctorOptions,
   OutputPublicPathKind,
 } from "./types.js";
+import { normalizePath, relativePath } from "./utils.js";
 import { detectViteLifecycle, withPostEmitHook, type ViteHookMeta } from "./vite-lifecycle.js";
 
 /**
@@ -34,10 +35,14 @@ export function failAfterCollect(result: AnalysisResult): void {
 type CompilationLike = {
   assets: Record<string, unknown>;
   errors: Error[];
+  name?: string;
+  hash?: string | null;
+  fullHash?: string | null;
 };
 
 export type CompilerLike = {
   context: string;
+  name?: string;
   hooks: {
     afterEmit: {
       tapPromise: (name: string, fn: (compilation: CompilationLike) => Promise<void>) => void;
@@ -45,8 +50,11 @@ export type CompilerLike = {
   };
   webpack?: { WebpackError?: new (message: string) => Error };
   options?: {
+    name?: string;
+    mode?: string;
+    target?: string | string[] | false;
     plugins?: unknown[];
-    output?: { publicPath?: unknown };
+    output?: { path?: string; publicPath?: unknown };
   };
 };
 
@@ -92,6 +100,69 @@ function collectCompilerDiagnostics(compiler: CompilerLike): BuildDiagnostics {
   return diagnostics;
 }
 
+function compilerTargetKind(
+  target: string | string[] | false | undefined,
+): BuildOutputInput["targetKind"] {
+  if (!target) return undefined;
+  const value = (Array.isArray(target) ? target.join(",") : target).toLowerCase();
+  if (value.includes("worker")) return "worker";
+  if (value.includes("node") || value.includes("async-node") || value.includes("electron"))
+    return "node";
+  if (value.includes("web")) return "web";
+  return "unknown";
+}
+
+function compilerOutputRoot(compiler: CompilerLike): string | undefined {
+  const outputPath = compiler.options?.output?.path;
+  if (!outputPath) return undefined;
+  const root = path.resolve(compiler.context);
+  const absolute = path.resolve(root, outputPath);
+  const relative = relativePath(root, absolute);
+  return relative.startsWith("[external]/") ? undefined : normalizePath(relative);
+}
+
+function compilerBuildOutput(
+  compiler: CompilerLike,
+  compilation: CompilationLike,
+  adapter: BundlerName,
+): BuildOutputInput {
+  const compilerName =
+    typeof compiler.name === "string" && compiler.name.length > 0
+      ? compiler.name
+      : typeof compiler.options?.name === "string" && compiler.options.name.length > 0
+        ? compiler.options.name
+        : undefined;
+  const outputRoot = compilerOutputRoot(compiler);
+  const hash =
+    typeof compilation.fullHash === "string"
+      ? compilation.fullHash
+      : typeof compilation.hash === "string"
+        ? compilation.hash
+        : undefined;
+  return {
+    adapter,
+    bundler: adapter,
+    ...(compilerName ? { compilerName } : {}),
+    ...(typeof compilation.name === "string" && compilation.name.length > 0
+      ? { compilationName: compilation.name }
+      : {}),
+    ...(hash ? { hash } : {}),
+    ...(outputRoot ? { outputRoot } : {}),
+    emittedAssets: Object.keys(compilation.assets).sort(),
+    emittedAssetsSource: "bundle",
+    sourceHook: "afterEmit",
+    ...(compiler.options?.mode ? { effectiveMode: compiler.options.mode } : {}),
+    ...(typeof compiler.options?.target === "string"
+      ? { target: compiler.options.target }
+      : Array.isArray(compiler.options?.target)
+        ? { target: compiler.options.target.join(",") }
+        : {}),
+    ...(compilerTargetKind(compiler.options?.target)
+      ? { targetKind: compilerTargetKind(compiler.options?.target) }
+      : {}),
+  };
+}
+
 /**
  * Post-emit only: analyze emitted assets, print via the shared terminal reporter
  * inside analyzeBuild, then fail the compilation once if policy requires it.
@@ -102,7 +173,11 @@ export function attachDoctorAfterEmit(compiler: CompilerLike, configured: Doctor
   if (!configured.root) configured.root = compiler.context;
   compiler.hooks.afterEmit.tapPromise("ModuleFederationDoctor", async (compilation) => {
     const diagnostics = collectCompilerDiagnostics(compiler);
-    const result = await analyzeBuild(configured, Object.keys(compilation.assets), diagnostics);
+    const output = compilerBuildOutput(compiler, compilation, configured.bundler ?? "webpack");
+    const emittedAssets = output.outputRoot
+      ? output.emittedAssets.map((asset) => `${output.outputRoot}/${asset}`)
+      : output.emittedAssets;
+    const result = await analyzeBuild(configured, emittedAssets, diagnostics, [output]);
     if (result.exitCode === 0) return;
     const ErrorCtor = compiler.webpack?.WebpackError ?? Error;
     // Single policy failure diagnostic — findings already printed by writeReports.
