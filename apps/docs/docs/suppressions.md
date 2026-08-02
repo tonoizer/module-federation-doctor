@@ -113,7 +113,9 @@ export default {
 ```
 
 See [Policy packs and named presets](./policy-packs.md) for `recommended` /
-`strict`, shareable packs, and precedence.
+`strict`, `demo` / `production`, shareable packs, and precedence. The `demo`
+pack is safe for local showcases: it only hides the two known local noise
+shapes in development. It does not hide non-localhost findings or CI findings.
 
 ## Fingerprint baselines
 

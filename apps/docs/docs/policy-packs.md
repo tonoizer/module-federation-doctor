@@ -45,14 +45,17 @@ export default {
 };
 ```
 
-The `demo` overlay turns off the manifest, version-first offline-remote, and
-implicit Bridge-router nudges and softens disabled DTS to `info`. This fits
-localhost demos where remotes may be intentionally offline. The `production`
-overlay makes manifest, disabled DTS, and implicit Bridge-router nudges
-`warning`; it leaves the version-first offline-remote warning on. These
-overlays only change existing recommendation severities; they do not change
-default runs or correctness rules. Use `rules: { "<rule-id>": "off" }` or a
-baseline when a production team intentionally accepts a recommendation.
+The `demo` overlay softens local-only demo noise: explicitly known-local bare,
+relative, or loopback `remoteEntry` values and version-first offline-remotes
+are hidden only in development runs. Unknown, deployed, authenticated
+non-loopback, and CI remotes stay visible. It also turns off the manifest and
+implicit Bridge-router nudges and softens disabled DTS to `info`. The
+`production` overlay makes manifest, version-first offline-remotes, disabled
+DTS, and implicit Bridge-router nudges `warning`, clearing demo-only behavior
+when composed after `demo`. These overlays only change existing recommendation
+severities; they do not change default runs or correctness rules. Use
+`rules: { "<rule-id>": "off" }` or a baseline when a production team
+intentionally accepts a recommendation.
 
 ## Shareable packs
 

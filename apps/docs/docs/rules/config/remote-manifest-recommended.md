@@ -5,7 +5,7 @@
 
 ## Issue
 
-A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data.
+A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. The `demo` policy only softens this recommendation for explicitly known-local bare/relative entries or loopback URLs during development; external, authenticated non-loopback, unknown, and CI remotes remain visible.
 
 ## How to fix it
 

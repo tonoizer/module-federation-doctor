@@ -114,7 +114,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "config/remote-manifest-recommended": {
     category: "tooling",
     impact:
-      "A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data.",
+      "A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. The `demo` policy only softens this recommendation for explicitly known-local bare/relative entries or loopback URLs during development; external, authenticated non-loopback, unknown, and CI remotes remain visible.",
     fix: "Point consumers at `mf-manifest.json` when those capabilities are wanted.",
     sources: ["https://module-federation.io/configure/remotes.html", manifest],
   },
@@ -259,7 +259,8 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   },
   "reliability/version-first-offline-remotes": {
     category: "reliability",
-    impact: "An unavailable remote can break startup before its exposed module is requested.",
+    impact:
+      "An unavailable remote can break startup before its exposed module is requested. The `demo` policy only softens this recommendation when every remote is an explicitly known-local bare/relative entry or loopback URL during development; external, authenticated non-loopback, unknown, and CI remotes remain visible.",
     fix: "Use `loaded-first` when delayed remote failure is acceptable, or keep `version-first` and add `@module-federation/retry-plugin` / an `errorLoadRemote` recovery plugin. A runtime plugin that deliberately sets `shareStrategy` to `loaded-first` (including Modern's shared-strategy plugin) is treated as the loaded-first choice.",
     sources: [
       "https://module-federation.io/configure/shareStrategy.html",
