@@ -13,7 +13,7 @@ import {
   type EvidenceSubject,
   type EvidenceValue,
 } from "./evidence.js";
-import type { DoctorReport, ProjectFacts } from "./types.js";
+import type { DoctorFinding, DoctorReport, ProjectFacts } from "./types.js";
 
 export type EvidenceDocumentKind = "project-facts" | "doctor-report" | "evidence-graph";
 export type EvidenceReaderFailureCode =
@@ -52,6 +52,14 @@ export class EvidenceReaderError extends Error {
     this.sourceVersion = details.sourceVersion;
     this.failureCode = details.failureCode;
     this.pointer = details.pointer;
+  }
+}
+
+/** A v2 graph did not contain enough legacy data to build a v1 product. */
+export class EvidenceProjectionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EvidenceProjectionError";
   }
 }
 
@@ -346,6 +354,112 @@ function finalizeGraph(graph: EvidenceGraphV2, options: EvidenceReaderOptions): 
   const normalized = normalizeEvidenceGraph(graph);
   validateOrThrow(normalized as unknown as JsonRecord, "evidence-graph", options);
   return normalized;
+}
+
+function projectionRecord(value: EvidenceValue, label: string): JsonRecord {
+  if (!isRecord(value)) throw new EvidenceProjectionError(`${label} must be an object`);
+  return value;
+}
+
+function projectionValue(value: EvidenceValue): EvidenceValue {
+  return canonicalizeEvidenceValue(value);
+}
+
+function assertionValue(
+  graph: EvidenceGraphV2,
+  predicate: string,
+  subject?: string,
+): EvidenceValue | undefined {
+  return graph.assertions
+    .filter(
+      (item) => item.predicate === predicate && (subject === undefined || item.subject === subject),
+    )
+    .sort((left, right) => left.id.localeCompare(right.id))[0]?.value;
+}
+
+function projectionSubject(graph: EvidenceGraphV2): string | undefined {
+  return graph.subjects
+    .filter((subject) => subject.kind === "project")
+    .sort((left, right) => left.id.localeCompare(right.id))[0]?.id;
+}
+
+/**
+ * Build the legacy ProjectFacts view from a graph that carries project
+ * compatibility assertions. The graph stays the source of truth; this is a
+ * pure, additive compatibility view and does not enable v2 collection.
+ */
+export function projectFactsFromEvidence(graph: EvidenceGraphV2): ProjectFacts {
+  const normalized = normalizeEvidenceGraph(graph);
+  const subject = projectionSubject(normalized);
+  if (subject === undefined)
+    throw new EvidenceProjectionError("Evidence graph has no project subject");
+
+  const fields = [
+    "project",
+    "bundler",
+    "capabilities",
+    "moduleFederation",
+    "dependencies",
+    "imports",
+    "runtimePluginContracts",
+    "artifacts",
+    "builds",
+  ] as const;
+  const output: JsonRecord = { schemaVersion: 1 };
+  for (const field of fields) {
+    const value = assertionValue(normalized, `project.${field}`, subject);
+    if (value !== undefined) output[field] = projectionValue(value);
+  }
+  for (const field of [
+    "project",
+    "bundler",
+    "capabilities",
+    "dependencies",
+    "imports",
+    "artifacts",
+  ])
+    if (output[field] === undefined)
+      throw new EvidenceProjectionError(`Evidence graph is missing project.${field}`);
+
+  validateOrThrow(output, "project-facts", {});
+  return output as unknown as ProjectFacts;
+}
+
+/**
+ * Build the legacy DoctorReport view from v1-compatible finding assertions
+ * linked by fail evaluations. Non-fail outcomes stay out of strict v1.
+ */
+export function reportFromEvaluations(graph: EvidenceGraphV2): DoctorReport {
+  const normalized = normalizeEvidenceGraph(graph);
+  const capabilities = assertionValue(normalized, "doctor.capabilities");
+  const summary = assertionValue(normalized, "doctor.summary");
+  if (capabilities === undefined || summary === undefined)
+    throw new EvidenceProjectionError("Evidence graph is missing doctor report metadata");
+
+  const findings: DoctorFinding[] = [];
+  for (const evaluation of normalized.evaluations
+    .filter((item) => item.outcome === "fail")
+    .sort((left, right) => left.id.localeCompare(right.id))) {
+    const finding = evaluation.evidenceIds
+      .map((id) => normalized.assertions.find((candidate) => candidate.id === id))
+      .find((candidate) => candidate?.predicate === "doctor.finding")?.value;
+    if (finding === undefined)
+      throw new EvidenceProjectionError(
+        `Fail evaluation ${evaluation.id} has no v1 doctor.finding assertion`,
+      );
+    findings.push(
+      projectionRecord(projectionValue(finding), "doctor.finding") as unknown as DoctorFinding,
+    );
+  }
+
+  const output: JsonRecord = {
+    schemaVersion: 1,
+    capabilities: projectionValue(capabilities),
+    summary: projectionValue(summary),
+    findings,
+  };
+  validateOrThrow(output, "doctor-report", {});
+  return output as unknown as DoctorReport;
 }
 
 function assertion(

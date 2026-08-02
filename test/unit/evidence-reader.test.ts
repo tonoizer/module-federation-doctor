@@ -5,8 +5,11 @@ import {
   EvidenceReaderError,
   migrateDoctorReport,
   migrateProjectFacts,
+  projectFactsFromEvidence,
   readEvidenceDocument,
+  reportFromEvaluations,
 } from "../../src/evidence-reader.js";
+import { compareV1Outputs } from "../../src/evidence-parity.js";
 
 describe("public evidence reader", () => {
   it("migrates a v1 project without mutation and records omitted completeness", () => {
@@ -42,6 +45,22 @@ describe("public evidence reader", () => {
       result.graph.assertions.find((item) => item.predicate === "doctor.summary")?.value,
     ).toEqual(reportFixture.summary);
     expect(migrateDoctorReport(reportFixture as never)).toEqual(result.graph);
+  });
+
+  it("projects migrated v1 documents back to the legacy products", () => {
+    const projectGraph = migrateProjectFacts(projectFixture as never);
+    const reportGraph = migrateDoctorReport(reportFixture as never);
+    const projectedProject = projectFactsFromEvidence(projectGraph);
+    const projectedReport = reportFromEvaluations(reportGraph);
+
+    expect(compareV1Outputs(projectFixture, projectedProject).equal).toBe(true);
+    expect(compareV1Outputs(reportFixture, projectedReport).equal).toBe(true);
+  });
+
+  it("does not invent a legacy report finding from a v2-only evaluation", () => {
+    const graph = readEvidenceDocument(reportFixture).graph;
+    graph.evaluations[0]!.evidenceIds = [];
+    expect(() => reportFromEvaluations(graph)).toThrow(/has no v1 doctor\.finding assertion/);
   });
 
   it("reads, normalizes, and repeats v2 deterministically", () => {
