@@ -97,6 +97,7 @@ export const demoPreset: DoctorPolicyPack = definePolicyPack({
   name: "demo",
   rules: {
     "config/remote-manifest-recommended": "off",
+    "reliability/version-first-offline-remotes": "off",
     "artifact/manifest-disabled": "off",
     "artifact/dts-disabled": "info",
     "bridge/router-implicit-enable": "off",

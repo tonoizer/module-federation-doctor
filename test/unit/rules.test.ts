@@ -29,6 +29,69 @@ afterEach(async () => {
 });
 
 describe("built-in rules", () => {
+  it("applies demo and production overlays to real findings", async () => {
+    const root = await fixture();
+    const moduleFederation = {
+      name: "host",
+      exposes: { "./Widget": "./src/index.ts" },
+      remotes: {
+        shop: {
+          name: "shop",
+          entry: "shop@http://localhost:3001/remoteEntry.js",
+          shareScope: "default" as const,
+        },
+      },
+      manifest: false,
+      dts: false,
+      shareStrategy: "version-first" as const,
+    };
+
+    const demo = await analyze({
+      root,
+      bundler: "vite",
+      mode: "development",
+      extends: ["recommended", "demo"],
+      moduleFederation,
+      output: { formats: [] },
+    });
+    expect(
+      demo.report.findings.find((item) => item.ruleId === "config/remote-manifest-recommended"),
+    ).toBe(undefined);
+    expect(
+      demo.report.findings.find(
+        (item) => item.ruleId === "reliability/version-first-offline-remotes",
+      ),
+    ).toBe(undefined);
+    expect(demo.report.findings.find((item) => item.ruleId === "artifact/manifest-disabled")).toBe(
+      undefined,
+    );
+    expect(
+      demo.report.findings.find((item) => item.ruleId === "artifact/dts-disabled"),
+    ).toMatchObject({ severity: "info" });
+
+    const production = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      extends: ["recommended", "production"],
+      moduleFederation,
+      output: { formats: [] },
+    });
+    for (const ruleId of [
+      "config/remote-manifest-recommended",
+      "reliability/version-first-offline-remotes",
+      "artifact/manifest-disabled",
+      "artifact/dts-disabled",
+    ]) {
+      expect(
+        production.report.findings.find((item) => item.ruleId === ruleId),
+        ruleId,
+      ).toMatchObject({
+        severity: "warning",
+      });
+    }
+  });
+
   it("registers every production rule exactly once", () => {
     const ids = [
       ...builtInRules.map((item) => item.meta.id),

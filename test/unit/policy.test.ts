@@ -54,6 +54,7 @@ describe("built-in presets", () => {
   it("keeps demo recommendations quiet without hiding correctness rules", () => {
     expect(demoPreset.rules).toEqual({
       "config/remote-manifest-recommended": "off",
+      "reliability/version-first-offline-remotes": "off",
       "artifact/manifest-disabled": "off",
       "artifact/dts-disabled": "info",
       "bridge/router-implicit-enable": "off",
