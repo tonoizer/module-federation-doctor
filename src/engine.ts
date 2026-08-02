@@ -16,6 +16,12 @@ import { computeHealthScore } from "./health-score.js";
 import { builtInRules, federationRuleMeta } from "./rules.js";
 import { DEFAULT_ALWAYS_SHARED } from "./shared-policy.js";
 import { buildFederationModel, findFederationCycleGroups } from "./federation-model.js";
+import {
+  createWorkspaceApplicationIdentity,
+  workspaceProjectRoot,
+  workspaceRootForProjects,
+} from "./monorepo-identity.js";
+import type { WorkspaceProjectDiagnostic } from "./workspace.js";
 import type {
   AnalysisResult,
   DoctorFinding,
@@ -269,15 +275,26 @@ export async function analyzeFederation(
     /** Packages excluded from host-gap / ghost-share heuristics. */
     alwaysShared?: string[];
     analysis?: AnalysisBudgetReport;
+    workspaceDiagnostics?: WorkspaceProjectDiagnostic[];
   } = {},
 ): Promise<FederationAnalysisResult> {
+  const projectRoots = files.map(workspaceProjectRoot);
+  const workspaceRoot = workspaceRootForProjects(projectRoots);
   const projects = (
     await Promise.all(
-      files
-        .sort()
-        .map(
-          async (file) => JSON.parse(await fs.readFile(path.resolve(file), "utf8")) as ProjectFacts,
-        ),
+      files.sort().map(async (file) => {
+        const project = JSON.parse(await fs.readFile(path.resolve(file), "utf8")) as ProjectFacts;
+        Object.defineProperty(project.project, "identityKey", {
+          value: createWorkspaceApplicationIdentity(
+            project.project.name,
+            workspaceProjectRoot(file),
+            workspaceRoot,
+          ).key,
+          enumerable: false,
+          configurable: true,
+        });
+        return project;
+      }),
     )
   ).sort((a, b) => a.project.name.localeCompare(b.project.name));
   const findings: DoctorFinding[] = [];
@@ -292,6 +309,24 @@ export async function analyzeFederation(
           ? "Doctor completed with unknown workspace input due to an analysis budget."
           : "Doctor completed with partial workspace input.",
       evidence: { analysisBudget: options.analysis },
+      documentation: "/rules/doctor/partial-analysis",
+    };
+    findings.push({ ...finding, fingerprint: fingerprint(finding) });
+  }
+  if (options.workspaceDiagnostics?.length) {
+    const finding = {
+      schemaVersion: 1 as const,
+      ruleId: "doctor/partial-analysis",
+      severity: "warning" as const,
+      project: "workspace",
+      message: "Doctor found stale, duplicate, or conflicting workspace project facts.",
+      evidence: {
+        workspaceDiagnostics: options.workspaceDiagnostics.map((diagnostic) => ({
+          kind: diagnostic.kind,
+          files: diagnostic.files,
+          message: diagnostic.message,
+        })),
+      },
       documentation: "/rules/doctor/partial-analysis",
     };
     findings.push({ ...finding, fingerprint: fingerprint(finding) });
@@ -557,10 +592,11 @@ export async function analyzeFederation(
     findings: baselined,
     report,
     ui,
-    exitCode: options.analysis?.exceeded.length
-      ? 2
-      : policyFails(baselined, failOn, failOnSuppressed)
-        ? 1
-        : 0,
+    exitCode:
+      options.analysis?.exceeded.length || options.workspaceDiagnostics?.length
+        ? 2
+        : policyFails(baselined, failOn, failOnSuppressed)
+          ? 1
+          : 0,
   };
 }

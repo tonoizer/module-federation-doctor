@@ -25,6 +25,10 @@
         },
         "root": {
           "type": "string"
+        },
+        "identityKey": {
+          "type": "string",
+          "pattern": "^mfid:v1:application:[a-f0-9]{24}$"
         }
       },
       "additionalProperties": false

@@ -18,6 +18,11 @@ export type {
   TypedDetailsRuleId,
 } from "./finding-details.js";
 export { analyze, analyzeFederation } from "./engine.js";
+export {
+  createWorkspaceApplicationIdentity,
+  workspaceProjectRoot,
+  workspaceRootForProjects,
+} from "./monorepo-identity.js";
 export { readCanonicalModuleFederationConfig } from "./canonical-config.js";
 export {
   resolveOptions,
@@ -59,6 +64,7 @@ export {
 } from "./workspace.js";
 export { discoverWorkspaceProjectsWithBudget } from "./workspace.js";
 export type { DiscoverWorkspaceProjectsOptions, WorkspaceProjectDiscovery } from "./workspace.js";
+export type { WorkspaceProjectDiagnostic, WorkspaceProjectDiagnosticKind } from "./workspace.js";
 export {
   AnalysisBudgetTracker,
   DEFAULT_ANALYSIS_BUDGETS,
