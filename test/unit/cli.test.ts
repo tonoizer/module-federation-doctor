@@ -3,6 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { main, parseArgs } from "../../src/cli.js";
+import reportFixture from "../../examples/evidence/v1-report.json";
+import { migrateDoctorReport } from "../../src/evidence-reader.js";
 
 const roots: string[] = [];
 
@@ -392,6 +394,56 @@ describe("CLI arguments", () => {
       process.chdir(cwd);
     }
   });
+
+  it("imports v1 and v2 report documents with identical baseline output", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-report-import-"));
+    roots.push(root);
+    const v1Path = path.join(root, "v1-report.json");
+    const v2Path = path.join(root, "v2-report.json");
+    const v1Baseline = path.join(root, "v1-baseline.json");
+    const v2Baseline = path.join(root, "v2-baseline.json");
+    await fs.writeFile(v1Path, JSON.stringify(reportFixture));
+    await fs.writeFile(v2Path, JSON.stringify(migrateDoctorReport(reportFixture as never)));
+
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      await expect(main(["baseline", "generate", v1Path, "--out", v1Baseline])).resolves.toBe(0);
+      await expect(main(["baseline", "generate", v2Path, "--out", v2Baseline])).resolves.toBe(0);
+      expect(JSON.parse(await fs.readFile(v2Baseline, "utf8"))).toEqual(
+        JSON.parse(await fs.readFile(v1Baseline, "utf8")),
+      );
+    } finally {
+      process.chdir(cwd);
+    }
+  });
+
+  it.each([
+    ["malformed", "{ not valid json", "/"],
+    ["future version", JSON.stringify({ schemaVersion: 2, findings: [] }), "/schemaVersion"],
+    ["wrong kind", JSON.stringify({ schemaVersion: 1, project: {} }), "/"],
+  ])(
+    "rejects %s report imports with file and pointer details",
+    async (_name, contents, pointer) => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-report-reject-"));
+      roots.push(root);
+      const reportPath = path.join(root, "input.json");
+      await fs.writeFile(reportPath, contents);
+      const errors: string[] = [];
+      const write = process.stderr.write;
+      process.stderr.write = ((chunk: string | Uint8Array) => {
+        errors.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write;
+      try {
+        await expect(main(["baseline", "generate", reportPath])).resolves.toBe(2);
+      } finally {
+        process.stderr.write = write;
+      }
+      expect(errors.join("")).toContain(reportPath);
+      expect(errors.join("")).toContain(pointer);
+    },
+  );
 
   it("returns exit 2 for invalid config", async () => {
     const root = await temporaryProject("export default { this is not valid");
