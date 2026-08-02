@@ -45,17 +45,23 @@ export default {
 };
 ```
 
-The `demo` overlay softens local-only demo noise: explicitly known-local bare,
-relative, or loopback `remoteEntry` values and version-first offline-remotes
-are hidden only in development runs. Unknown, deployed, authenticated
-non-loopback, and CI remotes stay visible. It also turns off the manifest and
-implicit Bridge-router nudges and softens disabled DTS to `info`. The
-`production` overlay makes manifest, version-first offline-remotes, disabled
-DTS, and implicit Bridge-router nudges `warning`, clearing demo-only behavior
-when composed after `demo`. These overlays only change existing recommendation
+The `demo` overlay softens local-only demo noise: bare / loopback `remoteEntry`
+recommendations and version-first offline-remotes are hidden only in
+development runs. A deployed or non-localhost remote stays visible, and CI
+stays loud even when `demo` is present. It also hides the manifest and
+implicit Bridge-router nudges only during local development, while keeping
+them visible in CI, and softens disabled DTS to `info`. The `production`
+overlay makes manifest, disabled DTS, implicit Bridge-router, and version-first
+offline-remote nudges `warning`. These overlays only change existing recommendation
 severities; they do not change default runs or correctness rules. Use
 `rules: { "<rule-id>": "off" }` or a baseline when a production team
 intentionally accepts a recommendation.
+
+The manifest and DTS checks only recommend an enablement when MF config shows a
+federated surface and the option is explicitly disabled. They are advisory in
+the default profile: `demo` hides manifest guidance and keeps DTS at `info`,
+while `production` raises both to `warning`. A local `rules` entry wins over
+either profile, including `"off"`.
 
 ## Shareable packs
 

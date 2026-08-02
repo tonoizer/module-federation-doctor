@@ -300,6 +300,100 @@ describe("built-in rules", () => {
     }
   });
 
+  it("recommends disabled manifest and DTS only for configured federation surfaces", async () => {
+    const root = await fixture();
+    await fs.writeFile(path.join(root, "src/index.ts"), "export const Widget = {};\n");
+    const config = {
+      name: "producer",
+      manifest: false,
+      dts: false,
+      exposes: { "./Widget": "./src/index.ts" },
+    };
+    const quietRules = {
+      "config/plugin-package-mismatch": "off" as const,
+      "doctor/partial-analysis": "off" as const,
+      "config/expose-path-missing": "off" as const,
+      "artifact/remote-entry-missing": "off" as const,
+      "artifact/types-missing": "off" as const,
+      "artifact/types-metadata-missing": "off" as const,
+    };
+
+    const production = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      extends: ["recommended", "production"],
+      output: { formats: [] },
+      moduleFederation: config,
+      rules: quietRules,
+      failOn: "error",
+    });
+    expect(
+      production.report.findings
+        .filter((finding) =>
+          ["artifact/manifest-disabled", "artifact/dts-disabled"].includes(finding.ruleId),
+        )
+        .map((finding) => [finding.ruleId, finding.severity])
+        .sort(),
+    ).toEqual([
+      ["artifact/dts-disabled", "warning"],
+      ["artifact/manifest-disabled", "warning"],
+    ]);
+    expect(production.exitCode).toBe(0);
+
+    const demo = await analyze({
+      root,
+      bundler: "vite",
+      mode: "development",
+      extends: ["recommended", "demo"],
+      output: { formats: [] },
+      moduleFederation: config,
+      rules: quietRules,
+    });
+    expect(
+      demo.report.findings.some((finding) => finding.ruleId === "artifact/manifest-disabled"),
+    ).toBe(false);
+    expect(
+      demo.report.findings.find((finding) => finding.ruleId === "artifact/dts-disabled")?.severity,
+    ).toBe("info");
+
+    const demoCi = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      extends: ["recommended", "demo"],
+      output: { formats: [] },
+      moduleFederation: config,
+      rules: quietRules,
+    });
+    expect(
+      demoCi.report.findings.find((finding) => finding.ruleId === "artifact/manifest-disabled"),
+    ).toMatchObject({ severity: "info" });
+    expect(
+      demoCi.report.findings.find((finding) => finding.ruleId === "artifact/dts-disabled"),
+    ).toMatchObject({ severity: "info" });
+
+    const off = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      extends: ["recommended", "production"],
+      output: { formats: [] },
+      moduleFederation: config,
+      rules: {
+        ...quietRules,
+        "artifact/manifest-disabled": "off",
+        "artifact/dts-disabled": "off",
+      },
+    });
+    expect(off.report.findings.map((finding) => finding.ruleId)).not.toContain(
+      "artifact/manifest-disabled",
+    );
+    expect(off.report.findings.map((finding) => finding.ruleId)).not.toContain(
+      "artifact/dts-disabled",
+    );
+  });
+
   it("reports oversized federation assets and honors budget overrides", async () => {
     const root = await fixture();
     await fs.mkdir(path.join(root, "dist"), { recursive: true });

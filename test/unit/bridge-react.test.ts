@@ -257,6 +257,50 @@ describe("bridge React rules (#121)", () => {
     expect(bridgeFindings(result.report.findings)).toEqual([]);
   });
 
+  it("only hides demo router guidance during local development", async () => {
+    const root = await fixture(
+      {
+        name: "bridge-demo-policy",
+        dependencies: {
+          react: "19.1.1",
+          "@module-federation/bridge-react": "0.2.0",
+        },
+      },
+      'import "@module-federation/bridge-react/v19";\n',
+    );
+    const options = {
+      root,
+      bundler: "rspack" as const,
+      extends: ["recommended", "demo"],
+      output: { formats: [] as never[] },
+      moduleFederation: {
+        name: "host",
+        runtimePlugins: ["@module-federation/bridge-react/plugin"],
+        shared: {
+          react: { singleton: true },
+          "react-dom/": { singleton: true },
+        },
+      },
+      rules: {
+        "bridge/react-version-entry-prefer": "off" as const,
+        "bridge/react-dom-prefix-missing": "off" as const,
+        "bridge/lazy-plugin-unregistered": "off" as const,
+        "artifact/remote-entry-missing": "off" as const,
+        "doctor/partial-analysis": "off" as const,
+        "config/plugin-package-mismatch": "off" as const,
+      },
+    };
+    const local = await analyze({ ...options, mode: "development" });
+    expect(bridgeFindings(local.report.findings).map((finding) => finding.ruleId)).not.toContain(
+      "bridge/router-implicit-enable",
+    );
+
+    const ci = await analyze({ ...options, mode: "ci" });
+    expect(ci.report.findings).toContainEqual(
+      expect.objectContaining({ ruleId: "bridge/router-implicit-enable", severity: "info" }),
+    );
+  });
+
   it("produces zero bridge findings on non-bridge apps", async () => {
     const root = await fixture({
       name: "plain",
