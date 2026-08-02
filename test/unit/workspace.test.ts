@@ -1,7 +1,12 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_WORKSPACE_PROJECT_GLOBS, discoverWorkspaceProjects } from "../../src/workspace.js";
+import { analyzeFederation } from "../../src/engine.js";
+import {
+  DEFAULT_WORKSPACE_PROJECT_GLOBS,
+  discoverWorkspaceProjects,
+  discoverWorkspaceProjectsWithBudget,
+} from "../../src/workspace.js";
 
 const repository = path.resolve(fileURLToPath(import.meta.url), "../../..");
 
@@ -47,5 +52,21 @@ describe("workspace discovery", () => {
       roots: ["fixtures/manifests"],
     });
     expect(files).toEqual([]);
+  });
+
+  it("marks omitted projects as unknown when a workspace budget is hit", async () => {
+    const discovery = await discoverWorkspaceProjectsWithBudget({
+      cwd: repository,
+      roots: ["fixtures/workspaces/clean"],
+      analysisBudgets: { maxFiles: 1 },
+    });
+    expect(discovery.files).toHaveLength(1);
+    expect(discovery.budget.status).toBe("unknown");
+    expect(discovery.budget.exceeded).toEqual([{ kind: "files", limit: 1 }]);
+    const result = await analyzeFederation(discovery.files, { analysis: discovery.budget });
+    expect(result.exitCode).toBe(2);
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ ruleId: "doctor/partial-analysis" }),
+    );
   });
 });

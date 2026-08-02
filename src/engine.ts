@@ -34,6 +34,7 @@ import { FINDING_DETAILS_SCHEMAS } from "./finding-details.js";
 import { deepFreeze, fingerprint, redact, sortFindings } from "./utils.js";
 import { writeFederationReports, writeReports } from "./reporters.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
+import type { AnalysisBudgetReport } from "./analysis-budgets.js";
 
 function parseSetting(setting: RuleSetting | undefined, fallback: Severity) {
   if (!setting) return { severity: fallback, options: {} };
@@ -189,7 +190,11 @@ async function runAnalysis(
     return {
       facts: safeFacts,
       report,
-      exitCode: policyFails(findings, resolved.failOn, failOnSuppressed) ? 1 : 0,
+      exitCode: facts.analysis?.exceeded.length
+        ? 2
+        : policyFails(findings, resolved.failOn, failOnSuppressed)
+          ? 1
+          : 0,
     };
   } catch (error) {
     if (resolved.output.formats.includes("terminal"))
@@ -263,6 +268,7 @@ export async function analyzeFederation(
     rules?: Record<string, RuleSetting>;
     /** Packages excluded from host-gap / ghost-share heuristics. */
     alwaysShared?: string[];
+    analysis?: AnalysisBudgetReport;
   } = {},
 ): Promise<FederationAnalysisResult> {
   const projects = (
@@ -275,6 +281,21 @@ export async function analyzeFederation(
     )
   ).sort((a, b) => a.project.name.localeCompare(b.project.name));
   const findings: DoctorFinding[] = [];
+  if (options.analysis?.exceeded.length) {
+    const finding = {
+      schemaVersion: 1 as const,
+      ruleId: "doctor/partial-analysis",
+      severity: "warning" as const,
+      project: "workspace",
+      message:
+        options.analysis.status === "unknown"
+          ? "Doctor completed with unknown workspace input due to an analysis budget."
+          : "Doctor completed with partial workspace input.",
+      evidence: { analysisBudget: options.analysis },
+      documentation: "/rules/doctor/partial-analysis",
+    };
+    findings.push({ ...finding, fingerprint: fingerprint(finding) });
+  }
   const rules = options.rules;
   const alwaysShared = new Set<string>([...DEFAULT_ALWAYS_SHARED, ...(options.alwaysShared ?? [])]);
   const federation = buildFederationModel(projects);
@@ -536,6 +557,10 @@ export async function analyzeFederation(
     findings: baselined,
     report,
     ui,
-    exitCode: policyFails(baselined, failOn, failOnSuppressed) ? 1 : 0,
+    exitCode: options.analysis?.exceeded.length
+      ? 2
+      : policyFails(baselined, failOn, failOnSuppressed)
+        ? 1
+        : 0,
   };
 }

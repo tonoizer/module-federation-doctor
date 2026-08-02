@@ -205,7 +205,10 @@ export async function writeReports(
   await fs.mkdir(directory, { recursive: true });
   const persistedFacts =
     facts.schemaVersion === 1
-      ? { ...facts, artifacts: { ...facts.artifacts, records: undefined } }
+      ? (() => {
+          const { analysis: _analysis, ...legacyFacts } = facts;
+          return { ...legacyFacts, artifacts: { ...facts.artifacts, records: undefined } };
+        })()
       : facts;
   await fs.writeFile(
     path.join(directory, "project.json"),

@@ -1,3 +1,9 @@
+import type {
+  AnalysisBudgetOptions,
+  AnalysisBudgetReport,
+  AnalysisBudgets,
+} from "./analysis-budgets.js";
+
 export type BundlerName = "vite" | "rspack" | "rsbuild" | "webpack" | "modern" | "unknown";
 export type Severity = "info" | "warning" | "error";
 export type OutputFormat = "terminal" | "json" | "sarif";
@@ -406,6 +412,8 @@ export interface ProjectFacts {
   /** Static runtimePlugins contract probes; absent/empty when none apply. */
   runtimePluginContracts?: RuntimePluginContractFinding[];
   artifacts: ArtifactFacts;
+  /** In-memory completeness metadata; omitted from legacy persisted project.json. */
+  analysis?: AnalysisBudgetReport;
   /** Exact per-output records. Legacy artifact fields remain the compatibility view. */
   builds?: BuildRecord[];
 }
@@ -651,6 +659,7 @@ export interface DoctorPrintLog {
 export type HealthScoreLabel = "Great" | "OK" | "Needs work";
 
 export interface DoctorOptions {
+  analysisBudgets?: AnalysisBudgetOptions;
   moduleFederation?: ModuleFederationConfigLike;
   bundler?: BundlerName;
   bundlerVersion?: string;
@@ -745,6 +754,7 @@ export interface DoctorOptions {
 }
 
 export interface ResolvedDoctorOptions {
+  analysisBudgets: AnalysisBudgets;
   moduleFederation?: ModuleFederationConfigLike;
   bundler: BundlerName;
   bundlerVersion?: string;
@@ -990,5 +1000,5 @@ export interface FederationAnalysisResult {
   findings: DoctorFinding[];
   report: DoctorReport;
   ui: DoctorUiPayload;
-  exitCode: 0 | 1;
+  exitCode: 0 | 1 | 2;
 }

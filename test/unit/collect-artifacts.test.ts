@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { addBuildFacts, collectProjectFacts } from "../../src/collect.js";
 import { resolveOptions } from "../../src/config.js";
-import { analyzeBuild } from "../../src/engine.js";
+import { analyze, analyzeBuild } from "../../src/engine.js";
 import { writeReports } from "../../src/reporters.js";
 import { validatePayload } from "../helpers/schema-contract.js";
 import type { ArtifactRecord, ArtifactStats, BuildOutputInput } from "../../src/types.js";
@@ -49,6 +49,48 @@ async function fixture(files: Record<string, string>): Promise<string> {
 }
 
 describe("artifact collection", () => {
+  it("uses the deterministic fixture order when the file budget cuts a large tree", async () => {
+    const root = path.resolve("fixtures/analysis-budgets/large");
+    const facts = await collectProjectFacts(
+      await resolveOptions({ root, analysisBudgets: { maxFiles: 3 } }),
+    );
+
+    expect(facts.imports.sourceFiles).toEqual(["src/a.ts", "src/b.ts", "src/c.ts"]);
+    expect(facts.analysis?.status).toBe("partial");
+  });
+
+  it("bounds source reads before parsing and keeps the v1 shape", async () => {
+    const root = await fixture({
+      "src/a.ts": 'import "first";\n',
+      "src/b.ts": 'import "second";\n',
+    });
+
+    const facts = await collectProjectFacts(
+      await resolveOptions({ root, analysisBudgets: { maxFiles: 1 } }),
+    );
+
+    expect(facts.imports.sourceFiles).toEqual(["src/a.ts"]);
+    expect(facts.analysis?.status).toBe("partial");
+    expect(facts.analysis?.exceeded).toEqual([{ kind: "files", limit: 1 }]);
+    expect(facts).not.toHaveProperty("budget");
+  });
+
+  it("returns exit code 2 when source collection is incomplete", async () => {
+    const root = await fixture({
+      "src/a.ts": "export const a = 1;\n",
+      "src/b.ts": "export const b = 2;\n",
+    });
+    const result = await analyze({
+      root,
+      analysisBudgets: { maxFiles: 1 },
+      output: { formats: [] },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.report.findings).toContainEqual(
+      expect.objectContaining({ ruleId: "doctor/partial-analysis" }),
+    );
+  });
+
   it("keeps duplicate and malformed artifacts as sorted records", async () => {
     const root = await fixture({
       "dist/z/mf-manifest.json": JSON.stringify({
