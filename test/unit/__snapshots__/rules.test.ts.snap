@@ -66,6 +66,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "shared/singleton-risk",
   "shared/eager-without-singleton",
   "shared/unused",
+  "shared/react-host-missing",
   "shared/candidate",
   "shared/deep-import-bypass",
   "artifact/public-path-suspicious",

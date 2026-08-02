@@ -506,6 +506,13 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Evaluate sharing it as a singleton across all participating projects.",
     sources: [shared],
   },
+  "shared/react-host-missing": {
+    category: "correctness",
+    impact:
+      "A React host that loads remotes without sharing its imported React runtime can create separate React or renderer instances across the federation graph.",
+    fix: "Declare imported `react` and `react-dom` packages as singleton shared dependencies, for example `{ singleton: true }`, or suppress the rule when the separate runtime is intentional.",
+    sources: [shared],
+  },
   "shared/deep-import-bypass": {
     category: "performance",
     impact:

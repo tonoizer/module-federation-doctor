@@ -115,6 +115,7 @@ const ids = [
   "runtime-plugins/invalid-factory",
   "security/get-public-path-dynamic-code",
   "shared/candidate",
+  "shared/react-host-missing",
   "shared/deep-import-bypass",
   "shared/eager-without-singleton",
   "shared/singleton-mismatch",
@@ -792,6 +793,15 @@ const plans: Record<string, RulePlan> = {
     "low",
     "Shared package scans are heuristic and cannot claim exact confidence.",
   ),
+  "shared/react-host-missing": plan(
+    3,
+    "warning",
+    "config.declared + source.scan",
+    "declared",
+    "project",
+    "medium",
+    "Configured remotes and static React imports are exact for the host shape; package sharing remains a declared configuration recommendation.",
+  ),
   "shared/deep-import-bypass": plan(
     3,
     "warning",
@@ -1417,6 +1427,12 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "moduleFederation",
     "imports.packages",
     "dependencies.declared",
+  ],
+  "shared/react-host-missing": [
+    "project.scope",
+    "moduleFederation",
+    "imports.packages",
+    "imports.dynamicPackages",
   ],
   "shared/deep-import-bypass": [
     "project.scope",
