@@ -298,6 +298,16 @@ export type {
   RuleRemediation,
   RuleUnknownResult,
 } from "./rule-contract.js";
+export { runEvidenceAwareRules } from "./rule-contract.js";
+export type {
+  EvidenceAwareRule,
+  EvidenceRuleContext,
+  EvidenceRuleDecision,
+  EvidenceRuleRunnerInput,
+  EvidenceRuleRunnerOutput,
+  EvidenceRuleScope,
+  EvidenceQuery,
+} from "./rule-contract.js";
 export { ruleInventory, ruleInventoryIds } from "./rule-inventory.js";
 export type {
   RuleInventoryEntry,
