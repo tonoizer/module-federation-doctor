@@ -21,7 +21,7 @@ body:
     attributes:
       label: Version
       description: Which Doctor, Node, and bundler versions are you running?
-      placeholder: Doctor 0.1.0, Node 24, Vite 8
+      placeholder: "Doctor 0.1.0, Node 24, bundler: version"
     validations:
       required: true
   - type: input
