@@ -35,6 +35,9 @@ describe("release file generation", () => {
       expect(await readFile(path.join(outputDir, "SHA256SUMS"), "utf8")).toBe(
         `${sha256}  example-1.2.3.tgz\n`,
       );
+      expect(
+        JSON.parse(await readFile(path.join(outputDir, "release-manifest.json"), "utf8")),
+      ).toEqual(manifest);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -63,8 +66,17 @@ describe("release file generation", () => {
   it("keeps release automation attached to GitHub releases without publishing npm", async () => {
     const workflow = await readFile(path.resolve(".github/workflows/release-files.yml"), "utf8");
 
-    expect(workflow).toContain("types: [released, prereleased]");
+    expect(workflow).toContain("types: [published]");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("description: Existing plain-semver GitHub release tag");
+    expect(workflow).toContain("contents: read");
     expect(workflow).toContain("contents: write");
+    expect(workflow.indexOf("Verify release tag")).toBeLessThan(
+      workflow.indexOf("pnpm install --frozen-lockfile"),
+    );
+    expect(workflow).toContain("git rev-parse HEAD");
+    expect(workflow).toContain("GH_REPO: ${{ github.repository }}");
+    expect(workflow).not.toContain("GITHUB_SHA");
     expect(workflow).toContain("gh release upload");
     expect(workflow).not.toContain("npm publish");
   });

@@ -40,7 +40,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     outputDir,
     packagePath,
     tag: process.env.RELEASE_TAG,
-    commit: process.env.GITHUB_SHA,
+    commit: process.env.RELEASE_COMMIT,
   });
   console.log(`Generated release files for ${manifest.name}@${manifest.version}`);
 }
