@@ -14,6 +14,7 @@ export default {
   analysisBudgets: {
     maxFiles: 10_000,
     maxSourceBytes: 50 * 1024 * 1024,
+    maxArtifacts: 10_000,
     maxEvidenceNodes: 100_000,
     maxSerializedBytes: 50 * 1024 * 1024,
     maxWallTimeMs: 30_000,
@@ -24,8 +25,10 @@ export default {
 Files and bytes are selected in sorted path order. A limit stops further
 collection without silently claiming completeness: project analysis emits the
 existing `doctor/partial-analysis` finding and workspace analysis returns exit
-code `2` with unknown input. Legacy project/report schemas and normal runs
-stay unchanged. Artifact and runtime collection have separate budgets later.
+code `2` with unknown input. Artifact records are also selected in sorted path
+order and capped before JSON parsing; hitting `maxArtifacts` produces the same
+partial analysis signal. Legacy project/report schemas and normal runs stay
+unchanged. Runtime collection has a separate budget later.
 
 ## Startup strategy
 

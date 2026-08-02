@@ -286,8 +286,10 @@ function scanSourceImports(source: string, file: string, scan: RawImportScan): v
   }
 }
 
-async function scanProjectImports(options: ResolvedDoctorOptions): Promise<RawImportScan> {
-  const tracker = new AnalysisBudgetTracker(options.analysisBudgets);
+async function scanProjectImports(
+  options: ResolvedDoctorOptions,
+  tracker: AnalysisBudgetTracker,
+): Promise<RawImportScan> {
   const files = (
     await fg(options.include, {
       cwd: options.root,
@@ -716,6 +718,7 @@ async function collectArtifacts(
   root: string,
   names: ResolvedDoctorOptions["artifactNames"],
   boundedRoots?: string[],
+  tracker?: AnalysisBudgetTracker,
 ): Promise<ArtifactFacts> {
   const validateName = (name: string): string => {
     if (!name || path.isAbsolute(name) || path.win32.isAbsolute(name) || /^[A-Za-z]:/.test(name))
@@ -764,6 +767,7 @@ async function collectArtifacts(
     if (kinds.length === 0) continue;
     const real = await fs.realpath(path.join(root, file)).catch(() => undefined);
     if (!real || (path.relative(rootReal, real) || ".").startsWith("..")) continue;
+    if (tracker && !tracker.reserve({ artifacts: kinds.length })) continue;
     let data: unknown;
     try {
       data = await readJson(path.join(root, file));
@@ -851,8 +855,14 @@ export async function collectProjectFacts(
     ...packageJson.devDependencies,
     ...packageJson.dependencies,
   };
-  const scan = await scanProjectImports(options);
-  const artifacts = await collectArtifacts(options.root, options.artifactNames, boundedRoots);
+  const tracker = new AnalysisBudgetTracker(options.analysisBudgets);
+  const scan = await scanProjectImports(options, tracker);
+  const artifacts = await collectArtifacts(
+    options.root,
+    options.artifactNames,
+    boundedRoots,
+    tracker,
+  );
   const normalizedMf =
     normalizeModuleFederation(options.moduleFederation, { bundler: options.bundler }) ??
     (await detectFromManifest(options.root, artifacts.manifest));
@@ -970,7 +980,7 @@ export async function collectProjectFacts(
     imports,
     artifacts,
     ...(canonicalConfig ? { canonicalConfig } : {}),
-    ...(scan.budget ? { analysis: scan.budget } : {}),
+    analysis: tracker.report(),
   };
   if (normalizedMf) facts.moduleFederation = normalizedMf;
   const runtimePluginContracts = await collectRuntimePluginContracts(

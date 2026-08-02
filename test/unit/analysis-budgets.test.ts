@@ -10,6 +10,7 @@ describe("analysis budgets", () => {
     expect(DEFAULT_ANALYSIS_BUDGETS).toEqual({
       maxFiles: 10_000,
       maxSourceBytes: 52_428_800,
+      maxArtifacts: 10_000,
       maxEvidenceNodes: 100_000,
       maxSerializedBytes: 52_428_800,
       maxWallTimeMs: 30_000,
@@ -18,6 +19,7 @@ describe("analysis budgets", () => {
       maxFiles: 3,
       maxWallTimeMs: 7,
       maxSourceBytes: 52_428_800,
+      maxArtifacts: 10_000,
     });
     expect(() => resolveAnalysisBudgets({ maxFiles: -1 })).toThrow(/non-negative/);
     expect(() => resolveAnalysisBudgets({ maxFiles: 1.5 })).toThrow(/safe integer/);
@@ -33,7 +35,7 @@ describe("analysis budgets", () => {
     expect(tracker.report()).toEqual({
       status: "partial",
       limits: resolveAnalysisBudgets({ maxFiles: 1, maxSourceBytes: 4 }),
-      usage: { files: 1, sourceBytes: 4, evidenceNodes: 0, serializedBytes: 0 },
+      usage: { files: 1, sourceBytes: 4, artifacts: 0, evidenceNodes: 0, serializedBytes: 0 },
       exceeded: [{ kind: "sourceBytes", limit: 4 }],
     });
   });
@@ -45,5 +47,15 @@ describe("analysis budgets", () => {
     });
     expect(tracker.reserve({ files: 1 })).toBe(false);
     expect(tracker.report("unknown").exceeded).toEqual([{ kind: "wallTimeMs", limit: 2 }]);
+  });
+
+  it("reserves artifact records as one bounded unit", () => {
+    const tracker = new AnalysisBudgetTracker(resolveAnalysisBudgets({ maxArtifacts: 1 }), {
+      now: () => 1,
+      startedAt: 1,
+    });
+    expect(tracker.reserve({ artifacts: 2 })).toBe(false);
+    expect(tracker.reserve({ artifacts: 1 })).toBe(true);
+    expect(tracker.report().exceeded).toEqual([{ kind: "artifacts", limit: 1 }]);
   });
 });

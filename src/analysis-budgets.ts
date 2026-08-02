@@ -3,6 +3,7 @@ import { performance } from "node:perf_hooks";
 export type AnalysisBudgetKind =
   | "files"
   | "sourceBytes"
+  | "artifacts"
   | "evidenceNodes"
   | "serializedBytes"
   | "wallTimeMs";
@@ -10,6 +11,7 @@ export type AnalysisBudgetKind =
 export interface AnalysisBudgetOptions {
   maxFiles?: number;
   maxSourceBytes?: number;
+  maxArtifacts?: number;
   maxEvidenceNodes?: number;
   maxSerializedBytes?: number;
   maxWallTimeMs?: number;
@@ -18,6 +20,7 @@ export interface AnalysisBudgetOptions {
 export interface AnalysisBudgets {
   maxFiles: number;
   maxSourceBytes: number;
+  maxArtifacts: number;
   maxEvidenceNodes: number;
   maxSerializedBytes: number;
   maxWallTimeMs: number;
@@ -26,6 +29,7 @@ export interface AnalysisBudgets {
 export interface AnalysisBudgetUsage {
   files: number;
   sourceBytes: number;
+  artifacts: number;
   evidenceNodes: number;
   serializedBytes: number;
 }
@@ -45,6 +49,7 @@ export interface AnalysisBudgetReport {
 export const DEFAULT_ANALYSIS_BUDGETS: AnalysisBudgets = Object.freeze({
   maxFiles: 10_000,
   maxSourceBytes: 50 * 1024 * 1024,
+  maxArtifacts: 10_000,
   maxEvidenceNodes: 100_000,
   maxSerializedBytes: 50 * 1024 * 1024,
   maxWallTimeMs: 30_000,
@@ -53,6 +58,7 @@ export const DEFAULT_ANALYSIS_BUDGETS: AnalysisBudgets = Object.freeze({
 const BUDGET_KINDS: readonly AnalysisBudgetKind[] = [
   "files",
   "sourceBytes",
+  "artifacts",
   "evidenceNodes",
   "serializedBytes",
   "wallTimeMs",
@@ -84,6 +90,7 @@ export class AnalysisBudgetTracker {
   private readonly usage: AnalysisBudgetUsage = {
     files: 0,
     sourceBytes: 0,
+    artifacts: 0,
     evidenceNodes: 0,
     serializedBytes: 0,
   };
@@ -104,7 +111,13 @@ export class AnalysisBudgetTracker {
       this.exceeded.set("wallTimeMs", this.limits.maxWallTimeMs);
       return false;
     }
-    for (const kind of ["files", "sourceBytes", "evidenceNodes", "serializedBytes"] as const) {
+    for (const kind of [
+      "files",
+      "sourceBytes",
+      "artifacts",
+      "evidenceNodes",
+      "serializedBytes",
+    ] as const) {
       const amount = values[kind] ?? 0;
       if (!Number.isSafeInteger(amount) || amount < 0)
         throw new TypeError(`${kind} usage must be a non-negative safe integer.`);
@@ -119,7 +132,13 @@ export class AnalysisBudgetTracker {
         return false;
       }
     }
-    for (const kind of ["files", "sourceBytes", "evidenceNodes", "serializedBytes"] as const)
+    for (const kind of [
+      "files",
+      "sourceBytes",
+      "artifacts",
+      "evidenceNodes",
+      "serializedBytes",
+    ] as const)
       this.usage[kind] += values[kind] ?? 0;
     return true;
   }
