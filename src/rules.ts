@@ -200,7 +200,9 @@ function isLoopbackRemoteUrl(url: string): boolean {
 function hasRemoteRecoveryPlugin(plugins: string[] | undefined): boolean {
   if (!plugins?.length) return false;
   return plugins.some((plugin) =>
-    /(?:^|[/\\@])(?:retry-plugin|error-?load-?remote)|errorLoadRemote/i.test(plugin),
+    /(?:^|[/\\@])(?:retry-plugin|error-?load-?remote|shared?-strategy(?:-plugin)?)(?:[/\\@]|$)|errorLoadRemote/i.test(
+      plugin,
+    ),
   );
 }
 
