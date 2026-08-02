@@ -3,6 +3,7 @@ import path from "node:path";
 import fg from "fast-glob";
 import { parseSync, visitorKeys } from "oxc-parser";
 import { packageName, normalizeModuleFederation } from "./normalize.js";
+import { readCanonicalModuleFederationConfig } from "./canonical-config.js";
 import { isDeepImportSpecifier } from "./shared-policy.js";
 import type {
   ArtifactKind,
@@ -900,6 +901,19 @@ export async function collectProjectFacts(
   const bundlerVersion = bundlerPackage
     ? (options.bundlerVersion ?? installed[bundlerPackage])
     : options.bundlerVersion;
+  const canonicalConfig = options.moduleFederation
+    ? readCanonicalModuleFederationConfig(options.moduleFederation, {
+        adapter: {
+          name: options.bundler,
+          version: bundlerVersion ?? "unknown",
+          packId: "unknown",
+        },
+        bundler: {
+          name: options.bundler,
+          version: bundlerVersion ?? "unknown",
+        },
+      })
+    : undefined;
   const lifecycle =
     options.bundler === "vite"
       ? (options.viteLifecycle ?? (await detectViteLifecycle(options.root)))
@@ -934,6 +948,7 @@ export async function collectProjectFacts(
     },
     imports,
     artifacts,
+    ...(canonicalConfig ? { canonicalConfig } : {}),
     ...(scan.budget ? { analysis: scan.budget } : {}),
   };
   if (normalizedMf) facts.moduleFederation = normalizedMf;

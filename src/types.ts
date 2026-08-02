@@ -3,6 +3,7 @@ import type {
   AnalysisBudgetReport,
   AnalysisBudgets,
 } from "./analysis-budgets.js";
+import type { CanonicalMFConfigV1 } from "./canonical-config.js";
 
 export type BundlerName = "vite" | "rspack" | "rsbuild" | "webpack" | "modern" | "unknown";
 export type Severity = "info" | "warning" | "error";
@@ -407,6 +408,8 @@ export interface ProjectFacts {
   bundler: BundlerFacts;
   capabilities: AnalysisCapabilities;
   moduleFederation?: NormalizedMFConfig;
+  /** In-memory declared config bridge; omitted from legacy persisted v1 facts. */
+  canonicalConfig?: CanonicalMFConfigV1;
   dependencies: DependencyFacts;
   imports: ImportFacts;
   /** Static runtimePlugins contract probes; absent/empty when none apply. */
