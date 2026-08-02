@@ -9,6 +9,11 @@ import {
   type RuntimeCaptureObservabilityRecord,
 } from "./capture.js";
 import { runtimeRuleMeta } from "./rules.js";
+import {
+  EvidenceReaderError,
+  projectFactsFromEvidence,
+  readEvidenceDocument,
+} from "./evidence-reader.js";
 import { writeFederationReports } from "./reporters.js";
 import type {
   DoctorFinding,
@@ -64,6 +69,9 @@ const MAX_EVIDENCE_ITEMS = 24;
 
 type RuntimeTraceFailureCode =
   | "malformed-json"
+  | "not-found"
+  | "permission-denied"
+  | "read-failed"
   | "oversized-input"
   | "wrong-document-kind"
   | "unsupported-version"
@@ -1475,11 +1483,51 @@ export async function analyzeRuntime(options: {
   const traces = await loadRuntimeTraceFile(options.tracePath);
   const projects = (
     await Promise.all(
-      [...options.projectFiles]
-        .sort()
-        .map(
-          async (file) => JSON.parse(await fs.readFile(path.resolve(file), "utf8")) as ProjectFacts,
-        ),
+      [...options.projectFiles].sort().map(async (file) => {
+        const resolved = path.resolve(file);
+        let raw: unknown;
+        let text: string;
+        try {
+          text = await fs.readFile(resolved, "utf8");
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          const failureCode =
+            code === "ENOENT"
+              ? "not-found"
+              : code === "EACCES" || code === "EPERM"
+                ? "permission-denied"
+                : "read-failed";
+          throw new EvidenceReaderError(
+            {
+              fileLabel: resolved,
+              detectedDocumentKind: "unknown",
+              failureCode,
+              pointer: "/",
+            },
+            `${resolved}: Unable to read document${code ? ` (${code})` : ""}`,
+          );
+        }
+        try {
+          raw = JSON.parse(text) as unknown;
+        } catch {
+          throw new EvidenceReaderError(
+            {
+              fileLabel: resolved,
+              detectedDocumentKind: "unknown",
+              failureCode: "malformed-json",
+              pointer: "/",
+            },
+            `${resolved}: Document is not valid JSON at /`,
+          );
+        }
+        const document = readEvidenceDocument(raw, { fileLabel: resolved });
+        if (document.kind !== "project-facts")
+          throw new RuntimeTraceError(
+            `Runtime project import requires project facts: ${resolved}`,
+            { fileLabel: resolved, failureCode: "wrong-document-kind", pointer: "/" },
+          );
+        return projectFactsFromEvidence(document.graph);
+      }),
     )
   ).sort((a, b) => a.project.name.localeCompare(b.project.name));
   if (projects.length === 0)

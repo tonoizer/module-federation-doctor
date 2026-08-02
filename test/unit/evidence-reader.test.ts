@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import projectFixture from "../../examples/evidence/v1-project.json";
 import reportFixture from "../../examples/evidence/v1-report.json";
+import { EvidenceIntegrityError } from "../../src/evidence.js";
 import {
   EvidenceReaderError,
   migrateDoctorReport,
@@ -55,6 +56,61 @@ describe("public evidence reader", () => {
 
     expect(compareV1Outputs(projectFixture, projectedProject).equal).toBe(true);
     expect(compareV1Outputs(reportFixture, projectedReport).equal).toBe(true);
+  });
+
+  it("preserves optional builds and runtime plugin contracts through v1 projection", () => {
+    const input = structuredClone(projectFixture) as Record<string, unknown>;
+    input.builds = [
+      {
+        id: "build-1",
+        adapter: "vite",
+        bundler: "vite",
+        emittedAssets: [],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "not-applicable", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "test",
+      },
+    ];
+    input.runtimePluginContracts = [{ plugin: "test", kind: "cors-parity" }];
+    const graph = migrateProjectFacts(input as never);
+    expect(projectFactsFromEvidence(graph)).toMatchObject({
+      builds: input.builds,
+      runtimePluginContracts: input.runtimePluginContracts,
+    });
+  });
+
+  it("accepts large schema-valid v1 values during migration", () => {
+    const input = structuredClone(projectFixture) as Record<string, any>;
+    input.project.root = `/workspace/${"x".repeat(1_100_000)}`;
+    const graph = migrateProjectFacts(input as never);
+    expect(projectFactsFromEvidence(graph).project.root).toBe("[PATH]");
+  });
+
+  it("rejects cyclic graphs with an integrity error while calculating legacy limits", () => {
+    const graph = migrateProjectFacts(projectFixture as never);
+    const cyclic = {} as Record<string, any>;
+    cyclic.self = cyclic;
+    graph.assertions.find((item) => item.predicate === "project.imports")!.value = cyclic;
+
+    expect(() => projectFactsFromEvidence(graph)).toThrow(EvidenceIntegrityError);
+    expect(() => projectFactsFromEvidence(graph)).toThrow("Evidence value contains a cycle.");
+  });
+
+  it("accepts large schema-valid v1 reports during migration", () => {
+    const findings = Array.from({ length: 1_200 }, (_, index) => ({
+      ...reportFixture.findings[0],
+      fingerprint: `finding-${index}`,
+      evidence: { detail: "x".repeat(1_000) },
+    }));
+    const input = { ...reportFixture, findings };
+    const graph = migrateDoctorReport(input as never);
+    expect(reportFromEvaluations(graph).findings).toHaveLength(findings.length);
   });
 
   it("does not invent a legacy report finding from a v2-only evaluation", () => {

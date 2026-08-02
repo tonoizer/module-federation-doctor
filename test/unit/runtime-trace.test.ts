@@ -162,6 +162,50 @@ describe("runtime trace import", () => {
     expect(JSON.stringify(trace)).not.toContain("capture-test");
   });
 
+  it("validates imported project facts through the evidence reader", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-project-import-errors-"));
+    roots.push(root);
+    const tracePath = path.join(root, "trace.json");
+    await fs.writeFile(tracePath, JSON.stringify({ traceId: "runtime", outcome: "pending" }));
+
+    const projectPath = path.join(root, "project.json");
+    const expectedProject = baseProject({ name: "host" });
+    await fs.writeFile(projectPath, JSON.stringify(expectedProject));
+    const imported = await analyzeRuntime({ tracePath, projectFiles: [projectPath] });
+    expect(imported.projects).toEqual([expectedProject]);
+
+    await fs.writeFile(projectPath, "{");
+    await expect(analyzeRuntime({ tracePath, projectFiles: [projectPath] })).rejects.toMatchObject({
+      name: "EvidenceReaderError",
+      fileLabel: projectPath,
+      failureCode: "malformed-json",
+      pointer: "/",
+    });
+
+    await fs.writeFile(projectPath, JSON.stringify({ schemaVersion: 3, project: {} }));
+    await expect(analyzeRuntime({ tracePath, projectFiles: [projectPath] })).rejects.toMatchObject({
+      name: "EvidenceReaderError",
+      fileLabel: projectPath,
+      failureCode: "unsupported-version",
+      pointer: "/schemaVersion",
+    });
+
+    await fs.writeFile(
+      projectPath,
+      JSON.stringify({ ...baseProject({ name: "host" }), project: { name: 42, root: "." } }),
+    );
+    await expect(analyzeRuntime({ tracePath, projectFiles: [projectPath] })).rejects.toMatchObject({
+      name: "EvidenceReaderError",
+      fileLabel: projectPath,
+      failureCode: "schema-invalid",
+      pointer: "/project/name",
+    });
+
+    await expect(
+      analyzeRuntime({ tracePath, projectFiles: [path.join(root, "missing-project.json")] }),
+    ).rejects.toMatchObject({ failureCode: "not-found" });
+  });
+
   it("rejects malformed, future, oversized, and unredacted capture files before analysis", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-capture-errors-"));
     roots.push(root);
