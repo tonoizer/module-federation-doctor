@@ -167,22 +167,36 @@ function collectRsbuildBuildOutputs(stats: RsbuildStatsLike, root: string): Buil
     if (!value || typeof value !== "object") return;
     const data = value as RsbuildStatsJsonLike;
     const target = rsbuildTarget(data.target);
-    const outputRoot = rsbuildOutputRoot(root, data.outputPath);
+    const children = Array.isArray(data.children) ? data.children : [];
+    const reportedOutputRoot = rsbuildOutputRoot(root, data.outputPath);
     const emittedAssets = (data.assets ?? [])
       .flatMap((asset) =>
-        typeof asset.name === "string" ? [rsbuildAssetName(asset.name, outputRoot)] : [],
+        typeof asset.name === "string" ? [rsbuildAssetName(asset.name, reportedOutputRoot)] : [],
       )
       .sort();
-    // MultiStats is only a wrapper around child compilations. Do not turn it
-    // into an empty build; emit records for its actual stats nodes below.
+    // A real MultiStats wrapper can carry an aggregate hash while leaving all
+    // useful build data on its children. Do not turn that wrapper into a
+    // phantom empty build or let it downgrade emitted-asset capability.
+    const isMultiStatsWrapper =
+      children.length > 0 &&
+      emittedAssets.length === 0 &&
+      typeof data.name !== "string" &&
+      reportedOutputRoot === undefined &&
+      typeof data.mode !== "string" &&
+      target === undefined;
+    // Missing/unsafe outputPath is still safe to represent at the project
+    // root. Stats asset names are then project-relative, and discovered
+    // artifacts keep their normal paths for matching.
+    const outputRoot = isMultiStatsWrapper ? undefined : (reportedOutputRoot ?? ".");
     const isBuild =
-      emittedAssets.length > 0 ||
-      (typeof data.name === "string" && data.name.length > 0) ||
-      outputRoot !== undefined ||
-      (typeof data.fullHash === "string" && data.fullHash.length > 0) ||
-      (typeof data.hash === "string" && data.hash.length > 0) ||
-      (typeof data.mode === "string" && data.mode.length > 0) ||
-      target !== undefined;
+      !isMultiStatsWrapper &&
+      (emittedAssets.length > 0 ||
+        (typeof data.name === "string" && data.name.length > 0) ||
+        outputRoot !== undefined ||
+        (typeof data.fullHash === "string" && data.fullHash.length > 0) ||
+        (typeof data.hash === "string" && data.hash.length > 0) ||
+        (typeof data.mode === "string" && data.mode.length > 0) ||
+        target !== undefined);
     if (isBuild) {
       outputs.push({
         adapter: "rsbuild",
