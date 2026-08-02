@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import projectFixture from "../../examples/evidence/v1-project.json";
 import reportFixture from "../../examples/evidence/v1-report.json";
+import { EvidenceIntegrityError } from "../../src/evidence.js";
 import {
   EvidenceReaderError,
   migrateDoctorReport,
@@ -86,9 +87,19 @@ describe("public evidence reader", () => {
 
   it("accepts large schema-valid v1 values during migration", () => {
     const input = structuredClone(projectFixture) as Record<string, any>;
-    input.imports.sourceFiles = Array.from({ length: 12_000 }, (_, index) => `src/${index}.ts`);
+    input.project.root = `/workspace/${"x".repeat(1_100_000)}`;
     const graph = migrateProjectFacts(input as never);
-    expect(projectFactsFromEvidence(graph).imports.sourceFiles).toHaveLength(12_000);
+    expect(projectFactsFromEvidence(graph).project.root).toBe("[PATH]");
+  });
+
+  it("rejects cyclic graphs with an integrity error while calculating legacy limits", () => {
+    const graph = migrateProjectFacts(projectFixture as never);
+    const cyclic = {} as Record<string, any>;
+    cyclic.self = cyclic;
+    graph.assertions.find((item) => item.predicate === "project.imports")!.value = cyclic;
+
+    expect(() => projectFactsFromEvidence(graph)).toThrow(EvidenceIntegrityError);
+    expect(() => projectFactsFromEvidence(graph)).toThrow("Evidence value contains a cycle.");
   });
 
   it("accepts large schema-valid v1 reports during migration", () => {

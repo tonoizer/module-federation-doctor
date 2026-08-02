@@ -5,6 +5,7 @@ import projectSchema from "../schemas/project.schema.json";
 import reportSchema from "../schemas/report.schema.json";
 import {
   canonicalizeEvidenceValue,
+  EvidenceIntegrityError,
   normalizeEvidenceGraph,
   stableEvidenceId,
   type EvidenceAssertion,
@@ -358,6 +359,7 @@ function largeLegacyLimits(value: EvidenceValue): EvidenceLimits & { allowLarge:
   let nodes = 0;
   let maxDepth = 0;
   let maxWidth = 1;
+  const seen = new WeakSet<object>();
   const pending: Array<{ value: EvidenceValue; depth: number }> = [{ value, depth: 0 }];
   while (pending.length > 0) {
     const item = pending.pop();
@@ -365,9 +367,15 @@ function largeLegacyLimits(value: EvidenceValue): EvidenceLimits & { allowLarge:
     nodes += 1;
     maxDepth = Math.max(maxDepth, item.depth);
     if (Array.isArray(item.value)) {
+      if (seen.has(item.value))
+        throw new EvidenceIntegrityError("Evidence value contains a cycle.");
+      seen.add(item.value);
       maxWidth = Math.max(maxWidth, item.value.length);
       item.value.forEach((child) => pending.push({ value: child, depth: item.depth + 1 }));
     } else if (isRecord(item.value)) {
+      if (seen.has(item.value))
+        throw new EvidenceIntegrityError("Evidence value contains a cycle.");
+      seen.add(item.value);
       const entries = Object.values(item.value);
       maxWidth = Math.max(maxWidth, entries.length);
       entries.forEach((child) => pending.push({ value: child, depth: item.depth + 1 }));
@@ -558,7 +566,7 @@ export function migrateProjectFacts(
     target: "unknown" as const,
   };
   const subject: EvidenceSubject = {
-    id: stableEvidenceId("subject.project", { name: project, root: input.project.root }),
+    id: stableEvidenceId("subject.project", { name: project, root: input.project.root }, limits),
     kind: "project",
     name: project,
   };
