@@ -9,6 +9,14 @@ import {
   parseRuntimeTraces,
   RuntimeTraceError,
 } from "../../src/runtime-trace.js";
+import {
+  DEFAULT_RUNTIME_CAPTURE_LIMITS,
+  HARD_RUNTIME_CAPTURE_LIMITS,
+  runtimeCaptureContentDigest,
+  runtimeCaptureRecordId,
+  type RuntimeCaptureEnvelope,
+  type RuntimeCaptureIdentity,
+} from "../../src/capture.js";
 import type { ProjectFacts } from "../../src/types.js";
 
 const roots: string[] = [];
@@ -63,11 +71,145 @@ function baseProject(overrides: Partial<ProjectFacts> & { name: string }): Proje
   };
 }
 
+function captureEnvelope(
+  value: Record<string, unknown> = {
+    traceId: "capture-trace",
+    hostName: "host",
+    outcome: "runtime-loaded",
+  },
+  identityOverrides: Partial<RuntimeCaptureIdentity> = {},
+): RuntimeCaptureEnvelope {
+  const identity: RuntimeCaptureIdentity = {
+    captureId: "capture-test",
+    navigationId: "navigation-1",
+    realmId: "realm-top",
+    sequence: 0,
+    ...identityOverrides,
+  };
+  const report = {
+    id: runtimeCaptureRecordId("observability", identity, value as never),
+    identity,
+    source: "observability" as const,
+    capturedAt: 1,
+    contentDigest: runtimeCaptureContentDigest(value as never),
+    provenance: {
+      collector: { name: "test-capture", version: "1" },
+      inputKind: "observability-report",
+      source: "official-observability",
+      sourceSchemaVersion: "2.5",
+    },
+    completeness: { status: "complete" as const, reason: "test fixture" },
+    value: value as never,
+  };
+  return {
+    schemaVersion: 1,
+    contractVersion: 1,
+    collector: { name: "test-capture", version: "1" },
+    transport: "file",
+    captureId: identity.captureId,
+    capabilities: {
+      observations: [
+        {
+          capabilityKind: "reports",
+          state: "exact",
+          reason: "test fixture",
+          source: "observability",
+          scope: "top-page",
+          priority: 1,
+          sourceSchemaVersion: "2.5",
+        },
+      ],
+    },
+    limits: DEFAULT_RUNTIME_CAPTURE_LIMITS,
+    truncation: [],
+    reports: [report],
+    events: [],
+    devtools: [],
+    snapshots: [],
+    instances: [],
+    network: [],
+    errors: [],
+    relations: [],
+  };
+}
+
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
 });
 
 describe("runtime trace import", () => {
+  it("imports a bounded runtime capture through the existing runtime parser", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-capture-"));
+    roots.push(root);
+    const file = path.join(root, "capture.json");
+    await fs.writeFile(file, JSON.stringify(captureEnvelope()));
+
+    const [trace] = await loadRuntimeTraceFile(file);
+
+    expect(trace).toMatchObject({
+      sourceContract: "upstream-observability-2.5.3",
+      traceId: "capture-trace",
+      hostName: "host",
+      outcome: "runtime-loaded",
+    });
+    expect(Object.getOwnPropertyDescriptor(trace, "capture")?.value).toMatchObject({
+      captureId: "capture-test",
+      navigationId: "navigation-1",
+      realmId: "realm-top",
+      sequence: 0,
+      provenance: { source: "official-observability" },
+    });
+    expect(JSON.stringify(trace)).not.toContain("capture-test");
+  });
+
+  it("rejects malformed, future, oversized, and unredacted capture files before analysis", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-capture-errors-"));
+    roots.push(root);
+    const malformed = path.join(root, "malformed.json");
+    await fs.writeFile(malformed, "{");
+    await expect(loadRuntimeTraceFile(malformed)).rejects.toMatchObject({
+      failureCode: "malformed-json",
+    });
+
+    const future = path.join(root, "future.json");
+    await fs.writeFile(future, JSON.stringify({ ...captureEnvelope(), contractVersion: 2 }));
+    await expect(loadRuntimeTraceFile(future)).rejects.toThrow(
+      /unsupported capture contract version/,
+    );
+
+    const oversized = path.join(root, "oversized.json");
+    await fs.writeFile(oversized, "{}");
+    await fs.truncate(oversized, HARD_RUNTIME_CAPTURE_LIMITS.maxBytes + 1);
+    await expect(loadRuntimeTraceFile(oversized)).rejects.toMatchObject({
+      failureCode: "oversized-input",
+    });
+
+    const privateValue = { ...captureEnvelope({ diagnosisTitle: "Bearer secret" }) };
+    const privateFile = path.join(root, "private.json");
+    await fs.writeFile(privateFile, JSON.stringify(privateValue));
+    await expect(loadRuntimeTraceFile(privateFile)).rejects.toThrow(/canonically redacted/);
+  });
+
+  it("keeps capture identity and ambiguity safe for runtime correlation", () => {
+    const envelope = captureEnvelope(
+      {
+        traceId: "ambiguous",
+        outcome: "failed",
+        errorCode: "RUNTIME-001",
+        phase: "remoteEntryInit",
+      },
+      { hostName: "host", remoteName: "remote", navigationId: "nav-2", realmId: "frame-1" },
+    );
+    const [trace] = parseRuntimeTraces(envelope);
+    const findings = correlateRuntime(
+      [trace!],
+      [baseProject({ name: "host" }), baseProject({ name: "remote" })],
+    );
+
+    expect(trace).toMatchObject({ traceId: "ambiguous", hostName: "host" });
+    expect(findings.some((finding) => finding.project === "runtime")).toBe(true);
+  });
+
   it("redacts secrets and collapses private URLs while parsing", async () => {
     const traces = await loadRuntimeTraceFile(path.join(fixtureRoot, "remote-load-failed.json"));
     const trace = traces[0]!;
