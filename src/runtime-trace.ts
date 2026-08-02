@@ -9,6 +9,11 @@ import {
   type RuntimeCaptureObservabilityRecord,
 } from "./capture.js";
 import { runtimeRuleMeta } from "./rules.js";
+import {
+  EvidenceReaderError,
+  projectFactsFromEvidence,
+  readEvidenceDocument,
+} from "./evidence-reader.js";
 import { writeFederationReports } from "./reporters.js";
 import type {
   DoctorFinding,
@@ -1475,11 +1480,30 @@ export async function analyzeRuntime(options: {
   const traces = await loadRuntimeTraceFile(options.tracePath);
   const projects = (
     await Promise.all(
-      [...options.projectFiles]
-        .sort()
-        .map(
-          async (file) => JSON.parse(await fs.readFile(path.resolve(file), "utf8")) as ProjectFacts,
-        ),
+      [...options.projectFiles].sort().map(async (file) => {
+        const resolved = path.resolve(file);
+        let raw: unknown;
+        try {
+          raw = JSON.parse(await fs.readFile(resolved, "utf8")) as unknown;
+        } catch {
+          throw new EvidenceReaderError(
+            {
+              fileLabel: resolved,
+              detectedDocumentKind: "unknown",
+              failureCode: "malformed-json",
+              pointer: "/",
+            },
+            `${resolved}: Document is not valid JSON at /`,
+          );
+        }
+        const document = readEvidenceDocument(raw, { fileLabel: resolved });
+        if (document.kind !== "project-facts")
+          throw new RuntimeTraceError(
+            `Runtime project import requires project facts: ${resolved}`,
+            { fileLabel: resolved, failureCode: "wrong-document-kind", pointer: "/" },
+          );
+        return projectFactsFromEvidence(document.graph);
+      }),
     )
   ).sort((a, b) => a.project.name.localeCompare(b.project.name));
   if (projects.length === 0)
