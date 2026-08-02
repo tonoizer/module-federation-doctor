@@ -55,9 +55,9 @@ describe("built-in presets", () => {
     expect(demoPreset.rules).toEqual({
       "config/remote-manifest-recommended": ["info", { localDemoOnly: true }],
       "reliability/version-first-offline-remotes": ["warning", { localDemoOnly: true }],
-      "artifact/manifest-disabled": "off",
+      "artifact/manifest-disabled": ["info", { localDemoOnly: true }],
       "artifact/dts-disabled": "info",
-      "bridge/router-implicit-enable": "off",
+      "bridge/router-implicit-enable": ["info", { localDemoOnly: true }],
     });
     expect(demoPreset.rules?.["config/remote-http-insecure"]).toBeUndefined();
   });
@@ -65,6 +65,7 @@ describe("built-in presets", () => {
   it("elevates selected recommendations in the production overlay", () => {
     expect(productionPreset.rules).toEqual({
       "config/remote-manifest-recommended": "warning",
+      "reliability/version-first-offline-remotes": "warning",
       "artifact/manifest-disabled": "warning",
       "artifact/dts-disabled": "warning",
       "bridge/router-implicit-enable": "warning",

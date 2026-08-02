@@ -357,6 +357,22 @@ describe("built-in rules", () => {
       demo.report.findings.find((finding) => finding.ruleId === "artifact/dts-disabled")?.severity,
     ).toBe("info");
 
+    const demoCi = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      extends: ["recommended", "demo"],
+      output: { formats: [] },
+      moduleFederation: config,
+      rules: quietRules,
+    });
+    expect(
+      demoCi.report.findings.find((finding) => finding.ruleId === "artifact/manifest-disabled"),
+    ).toMatchObject({ severity: "info" });
+    expect(
+      demoCi.report.findings.find((finding) => finding.ruleId === "artifact/dts-disabled"),
+    ).toMatchObject({ severity: "info" });
+
     const off = await analyze({
       root,
       bundler: "vite",

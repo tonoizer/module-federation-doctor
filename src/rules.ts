@@ -250,14 +250,8 @@ function isDemoLocalRemote(context: RuleContext, entry: string): boolean {
   return classifyDemoRemote(entry) === "known-local";
 }
 
-function isDemoLocalRemote(context: RuleContext, entry: string): boolean {
-  if (!context.options.localDemoOnly || context.facts.bundler.mode !== "development") return false;
-  const url = remoteEntryUrl(entry).trim();
-  // Relative / bare entries are the normal local demo shape. Keep deployed
-  // HTTPS and non-loopback hosts loud even when the demo pack is applied.
-  return !/^[a-z][a-z\d+.-]*:\/\//i.test(url) && !url.startsWith("//")
-    ? true
-    : isLoopbackRemoteUrl(url);
+function isLocalDemo(context: RuleContext): boolean {
+  return context.options.localDemoOnly === true && context.facts.bundler.mode === "development";
 }
 
 /** Detect retry / errorLoadRemote recovery plugins from configured paths. */
@@ -1124,6 +1118,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("artifact/manifest-disabled", "info", (context) => {
     const config = mf(context);
+    if (isLocalDemo(context)) return;
     // Prefer emit evidence over normalized defaults (Enhanced omits → still emits).
     if (context.facts.capabilities.manifest || context.facts.artifacts.manifest) return;
     if (config && !config.manifest?.enabled && hasFederatedSurface(config))
@@ -1625,6 +1620,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/router-implicit-enable", "info", (context) => {
     if (!isReactBridgeProject(context.facts)) return;
+    if (isLocalDemo(context)) return;
     if (optionBoolean(context.options, "allowImplicitBridgeRouter") === true) return;
     const options = bridgeOptions(mf(context));
     if (options && typeof options.enableBridgeRouter === "boolean") return;
