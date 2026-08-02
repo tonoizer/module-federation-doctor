@@ -171,10 +171,13 @@ omit runtime import hints.
 
 ## Policy packs and presets
 
-Share org governance with built-in presets (`recommended`, `strict`) and
-package-level policy packs via `extends`. Packs can ship severity maps plus
-custom `defineRule` plugins. See
-[policy packs](./apps/docs/docs/policy-packs.md).
+Share org governance with built-in profiles (`recommended`, `strict`, `demo`,
+`production`) and package-level policy packs via `extends`. `recommended`
+matches the catalog defaults, `strict` raises most advisory severities for CI,
+`demo` quiets selected local-demo nudges, and `production` raises selected
+enable-this recommendations. Profiles only adjust existing rule severities;
+correctness findings stay on. Packs can ship severity maps plus custom
+`defineRule` plugins. See [policy packs](./apps/docs/docs/policy-packs.md).
 
 ## What it checks
 

@@ -104,7 +104,7 @@ Reuse severity maps with `extends`:
 
 ```ts
 export default {
-  extends: ["recommended"], // or "strict", or a shareable pack
+  extends: ["recommended"], // or "strict", "demo", "production", or a pack
   rules: {
     // Per-app overrides on top of the pack
     "config/remote-manifest-recommended": "off",

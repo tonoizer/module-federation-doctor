@@ -15,6 +15,8 @@ import type {
 export const DOCTOR_PRESET_NAMES = [
   "recommended",
   "strict",
+  "demo",
+  "production",
 ] as const satisfies readonly DoctorPresetName[];
 
 export function definePolicyPack(pack: DoctorPolicyPack): DoctorPolicyPack {
@@ -87,9 +89,40 @@ export const strictPreset: DoctorPolicyPack = definePolicyPack({
   ),
 });
 
+/**
+ * Demo overlay: keep correctness findings visible while hiding opt-in tooling
+ * nudges that are noisy in local examples and localhost remotes.
+ */
+export const demoPreset: DoctorPolicyPack = definePolicyPack({
+  name: "demo",
+  rules: {
+    "config/remote-manifest-recommended": "off",
+    "reliability/version-first-offline-remotes": "off",
+    "artifact/manifest-disabled": "off",
+    "artifact/dts-disabled": "info",
+    "bridge/router-implicit-enable": "off",
+  },
+});
+
+/**
+ * Production overlay: make selected enable-this recommendations visible as
+ * warnings without changing correctness rules or the default policy.
+ */
+export const productionPreset: DoctorPolicyPack = definePolicyPack({
+  name: "production",
+  rules: {
+    "config/remote-manifest-recommended": "warning",
+    "artifact/manifest-disabled": "warning",
+    "artifact/dts-disabled": "warning",
+    "bridge/router-implicit-enable": "warning",
+  },
+});
+
 export const presets: Record<DoctorPresetName, DoctorPolicyPack> = {
   recommended: recommendedPreset,
   strict: strictPreset,
+  demo: demoPreset,
+  production: productionPreset,
 };
 
 export function isDoctorPresetName(value: string): value is DoctorPresetName {

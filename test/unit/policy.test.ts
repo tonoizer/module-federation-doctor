@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import { resolveOptions } from "../../src/config.js";
 import {
   definePolicyPack,
+  demoPreset,
   presets,
+  productionPreset,
   recommendedPreset,
   resolvePolicy,
   strictPreset,
@@ -16,10 +18,12 @@ const repoRoot = path.resolve(here, "../..");
 const acmePackPath = path.join(repoRoot, "fixtures/policy-packs/acme-mfdoctor-policy/index.js");
 
 describe("built-in presets", () => {
-  it("exposes recommended and strict", () => {
-    expect(Object.keys(presets).sort()).toEqual(["recommended", "strict"]);
+  it("exposes built-in presets and recommendation overlays", () => {
+    expect(Object.keys(presets).sort()).toEqual(["demo", "production", "recommended", "strict"]);
     expect(recommendedPreset.name).toBe("recommended");
     expect(strictPreset.name).toBe("strict");
+    expect(demoPreset.name).toBe("demo");
+    expect(productionPreset.name).toBe("production");
   });
 
   it("recommended mirrors catalog defaults for built-in sample rules", () => {
@@ -46,6 +50,26 @@ describe("built-in presets", () => {
     expect(recommendedPreset.rules?.["shared/singleton-risk"]).toBe("warning");
     expect(recommendedPreset.rules?.["shared/unused"]).toBe("warning");
   });
+
+  it("keeps demo recommendations quiet without hiding correctness rules", () => {
+    expect(demoPreset.rules).toEqual({
+      "config/remote-manifest-recommended": "off",
+      "reliability/version-first-offline-remotes": "off",
+      "artifact/manifest-disabled": "off",
+      "artifact/dts-disabled": "info",
+      "bridge/router-implicit-enable": "off",
+    });
+    expect(demoPreset.rules?.["config/remote-http-insecure"]).toBeUndefined();
+  });
+
+  it("elevates selected recommendations in the production overlay", () => {
+    expect(productionPreset.rules).toEqual({
+      "config/remote-manifest-recommended": "warning",
+      "artifact/manifest-disabled": "warning",
+      "artifact/dts-disabled": "warning",
+      "bridge/router-implicit-enable": "warning",
+    });
+  });
 });
 
 describe("resolvePolicy / resolveOptions precedence", () => {
@@ -54,6 +78,24 @@ describe("resolvePolicy / resolveOptions precedence", () => {
     expect(policy.applied).toEqual(["recommended", "strict"]);
     expect(policy.rules["config/remote-http-insecure"]).toBe("error");
     expect(policy.rules["doctor/partial-analysis"]).toBe("warning");
+  });
+
+  it("composes recommendation profiles with recommended and local overrides", async () => {
+    const demo = await resolvePolicy(["recommended", "demo"], repoRoot);
+    expect(demo.applied).toEqual(["recommended", "demo"]);
+    expect(demo.rules["config/remote-manifest-recommended"]).toBe("off");
+    expect(demo.rules["config/remote-http-insecure"]).toBe("warning");
+
+    const production = await resolveOptions({
+      root: repoRoot,
+      mode: "development",
+      extends: ["recommended", "production"],
+      rules: { "config/remote-manifest-recommended": "off" },
+    });
+    expect(production.appliedPolicies).toEqual(["recommended", "production"]);
+    expect(production.rules["artifact/manifest-disabled"]).toBe("warning");
+    expect(production.rules["config/remote-manifest-recommended"]).toBe("off");
+    expect(production.rules["config/remote-http-insecure"]).toBe("warning");
   });
 
   it("lets later packs override earlier preset maps", async () => {
