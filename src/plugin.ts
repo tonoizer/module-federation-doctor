@@ -143,11 +143,18 @@ function rsbuildTarget(value: unknown): string | undefined {
   return undefined;
 }
 
-function rsbuildOutputRoot(root: string, value: unknown): string | undefined {
-  if (typeof value !== "string" || value.length === 0) return undefined;
+type RsbuildOutputRoot =
+  | { state: "missing" }
+  | { state: "unsafe" }
+  | { state: "safe"; path: string };
+
+function rsbuildOutputRoot(root: string, value: unknown): RsbuildOutputRoot {
+  if (typeof value !== "string" || value.length === 0) return { state: "missing" };
   const absolute = path.resolve(root, value);
   const relative = relativePath(path.resolve(root), absolute);
-  return relative.startsWith("[external]/") ? undefined : normalizePath(relative);
+  return relative.startsWith("[external]/")
+    ? { state: "unsafe" }
+    : { state: "safe", path: normalizePath(relative) };
 }
 
 function rsbuildAssetName(value: string, outputRoot: string | undefined): string {
@@ -169,9 +176,11 @@ function collectRsbuildBuildOutputs(stats: RsbuildStatsLike, root: string): Buil
     const target = rsbuildTarget(data.target);
     const children = Array.isArray(data.children) ? data.children : [];
     const reportedOutputRoot = rsbuildOutputRoot(root, data.outputPath);
+    const resolvedOutputRoot =
+      reportedOutputRoot.state === "safe" ? reportedOutputRoot.path : undefined;
     const emittedAssets = (data.assets ?? [])
       .flatMap((asset) =>
-        typeof asset.name === "string" ? [rsbuildAssetName(asset.name, reportedOutputRoot)] : [],
+        typeof asset.name === "string" ? [rsbuildAssetName(asset.name, resolvedOutputRoot)] : [],
       )
       .sort();
     // A real MultiStats wrapper can carry an aggregate hash while leaving all
@@ -181,13 +190,18 @@ function collectRsbuildBuildOutputs(stats: RsbuildStatsLike, root: string): Buil
       children.length > 0 &&
       emittedAssets.length === 0 &&
       typeof data.name !== "string" &&
-      reportedOutputRoot === undefined &&
+      reportedOutputRoot.state === "missing" &&
       typeof data.mode !== "string" &&
       target === undefined;
-    // Missing/unsafe outputPath is still safe to represent at the project
-    // root. Stats asset names are then project-relative, and discovered
-    // artifacts keep their normal paths for matching.
-    const outputRoot = isMultiStatsWrapper ? undefined : (reportedOutputRoot ?? ".");
+    // Missing outputPath is safe to represent at the project root. An unsafe
+    // outputPath stays unknown so artifact matching cannot fall back to root.
+    const outputRoot = isMultiStatsWrapper
+      ? undefined
+      : reportedOutputRoot.state === "safe"
+        ? reportedOutputRoot.path
+        : reportedOutputRoot.state === "missing"
+          ? "."
+          : undefined;
     const isBuild =
       !isMultiStatsWrapper &&
       (emittedAssets.length > 0 ||

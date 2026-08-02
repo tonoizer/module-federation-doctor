@@ -452,6 +452,66 @@ describe("build-time-only adapter contract", () => {
     ]);
     await fs.rm(root, { recursive: true, force: true });
   });
+
+  it("does not fall back to the project root for an unsafe outputPath", async () => {
+    const root = await fixtureRoot("rsbuild", "clean");
+    await fs.writeFile(
+      path.join(root, "mf-manifest.json"),
+      JSON.stringify({
+        name: "stale-root-artifact",
+        metaData: {},
+        exposes: [],
+        shared: [],
+      }),
+    );
+    await fs.writeFile(path.join(root, "mf-stats.json"), JSON.stringify({ assets: [] }));
+    const plugin = asSinglePlugin(
+      rsbuildDoctor.raw(
+        {
+          ...doctorOptions(root, "clean"),
+          output: { formats: ["json"] },
+        },
+        { framework: "rsbuild", versions: { unplugin: "0.0.0" } } as UnpluginContextMeta,
+      ),
+    );
+    let afterBuild:
+      | ((args: { stats: { toJson: (options: { assets: boolean }) => unknown } }) => Promise<void>)
+      | undefined;
+    plugin.rsbuild?.setup?.({
+      context: { rootPath: root },
+      onAfterBuild(fn: typeof afterBuild) {
+        afterBuild = fn;
+      },
+    } as never);
+
+    await afterBuild!({
+      stats: {
+        toJson: () => ({
+          name: "client",
+          outputPath: path.join(root, "..", "outside"),
+          assets: [{ name: "mf-manifest.json" }, { name: "mf-stats.json" }],
+        }),
+      },
+    });
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as {
+      builds: Array<{
+        outputRoot?: string;
+        emittedAssets: string[];
+        artifacts: Array<{ path: string }>;
+      }>;
+    };
+    expect(project.builds).toEqual([
+      expect.objectContaining({
+        emittedAssets: ["mf-manifest.json", "mf-stats.json"],
+        artifacts: [],
+      }),
+    ]);
+    expect(project.builds[0]).not.toHaveProperty("outputRoot");
+    await fs.rm(root, { recursive: true, force: true });
+  });
 });
 
 describe("adapter quiet success and failure terminal path", () => {
