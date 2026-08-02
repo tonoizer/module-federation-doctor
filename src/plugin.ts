@@ -121,6 +121,75 @@ function compilerOutputRoot(compiler: CompilerLike): string | undefined {
   return relative.startsWith("[external]/") ? undefined : normalizePath(relative);
 }
 
+type RsbuildStatsJsonLike = {
+  assets?: Array<{ name?: unknown }>;
+  children?: unknown[];
+  name?: unknown;
+  outputPath?: unknown;
+  hash?: unknown;
+  fullHash?: unknown;
+  mode?: unknown;
+  target?: unknown;
+};
+
+type RsbuildStatsLike = {
+  toJson: (...args: never[]) => unknown;
+};
+
+function rsbuildTarget(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value) && value.every((item) => typeof item === "string"))
+    return (value as string[]).join(",");
+  return undefined;
+}
+
+/**
+ * Convert public Rsbuild/Rspack stats JSON into one build input per stats node.
+ * Children stay separate so parent and child compiler assets cannot be joined.
+ */
+function collectRsbuildBuildOutputs(stats: RsbuildStatsLike): BuildOutputInput[] {
+  const outputs: BuildOutputInput[] = [];
+  const visit = (value: unknown): void => {
+    if (!value || typeof value !== "object") return;
+    const data = value as RsbuildStatsJsonLike;
+    const target = rsbuildTarget(data.target);
+    const emittedAssets = (data.assets ?? [])
+      .flatMap((asset) => (typeof asset.name === "string" ? [normalizePath(asset.name)] : []))
+      .sort();
+    outputs.push({
+      adapter: "rsbuild",
+      bundler: "rsbuild",
+      ...(typeof data.name === "string" && data.name.length > 0
+        ? { compilationName: data.name }
+        : {}),
+      ...(typeof data.outputPath === "string" && data.outputPath.length > 0
+        ? { outputRoot: data.outputPath }
+        : {}),
+      ...(typeof data.fullHash === "string" && data.fullHash.length > 0
+        ? { hash: data.fullHash }
+        : typeof data.hash === "string" && data.hash.length > 0
+          ? { hash: data.hash }
+          : {}),
+      emittedAssets: [...new Set(emittedAssets)],
+      emittedAssetsSource: "bundle",
+      sourceHook: "onAfterBuild",
+      ...(typeof data.mode === "string" && data.mode.length > 0
+        ? { effectiveMode: data.mode }
+        : {}),
+      ...(target !== undefined
+        ? {
+            target,
+            ...(compilerTargetKind(target) ? { targetKind: compilerTargetKind(target) } : {}),
+          }
+        : {}),
+    });
+    for (const child of data.children ?? []) visit(child);
+  };
+
+  visit(stats.toJson({ assets: true } as never));
+  return outputs;
+}
+
 function compilerBuildOutput(
   compiler: CompilerLike,
   compilation: CompilationLike,
@@ -441,17 +510,6 @@ function createDoctorPlugin(bundler: BundlerName) {
       ...options,
       bundler,
     };
-    const statsAssets = (value: unknown): string[] => {
-      if (!value || typeof value !== "object") return [];
-      const data = value as {
-        assets?: Array<{ name?: string }>;
-        children?: unknown[];
-      };
-      return [
-        ...(data.assets ?? []).flatMap((asset) => (asset.name ? [asset.name] : [])),
-        ...(data.children ?? []).flatMap(statsAssets),
-      ];
-    };
 
     return {
       name: "module-federation-doctor",
@@ -477,8 +535,22 @@ function createDoctorPlugin(bundler: BundlerName) {
               setup(api) {
                 if (!configured.root) configured.root = api.context.rootPath;
                 api.onAfterBuild(async ({ stats }) => {
-                  const assets = stats ? statsAssets(stats.toJson({ assets: true })) : [];
-                  const result = await analyzeBuild(configured, assets);
+                  const outputs = stats ? collectRsbuildBuildOutputs(stats) : [];
+                  const assets = [
+                    ...new Set(
+                      outputs.flatMap((output) =>
+                        output.outputRoot
+                          ? output.emittedAssets.map((asset) => `${output.outputRoot}/${asset}`)
+                          : output.emittedAssets,
+                      ),
+                    ),
+                  ];
+                  const result = await analyzeBuild(
+                    configured,
+                    assets,
+                    undefined,
+                    outputs.length > 0 ? outputs : undefined,
+                  );
                   failAfterCollect(result);
                 });
               },
