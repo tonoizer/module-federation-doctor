@@ -143,11 +143,18 @@ function rsbuildTarget(value: unknown): string | undefined {
   return undefined;
 }
 
+function rsbuildOutputRoot(root: string, value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length === 0) return undefined;
+  const absolute = path.resolve(root, value);
+  const relative = relativePath(path.resolve(root), absolute);
+  return relative.startsWith("[external]/") ? undefined : normalizePath(relative);
+}
+
 /**
  * Convert public Rsbuild/Rspack stats JSON into one build input per stats node.
  * Children stay separate so parent and child compiler assets cannot be joined.
  */
-function collectRsbuildBuildOutputs(stats: RsbuildStatsLike): BuildOutputInput[] {
+function collectRsbuildBuildOutputs(stats: RsbuildStatsLike, root: string): BuildOutputInput[] {
   const outputs: BuildOutputInput[] = [];
   const visit = (value: unknown): void => {
     if (!value || typeof value !== "object") return;
@@ -156,33 +163,44 @@ function collectRsbuildBuildOutputs(stats: RsbuildStatsLike): BuildOutputInput[]
     const emittedAssets = (data.assets ?? [])
       .flatMap((asset) => (typeof asset.name === "string" ? [normalizePath(asset.name)] : []))
       .sort();
-    outputs.push({
-      adapter: "rsbuild",
-      bundler: "rsbuild",
-      ...(typeof data.name === "string" && data.name.length > 0
-        ? { compilationName: data.name }
-        : {}),
-      ...(typeof data.outputPath === "string" && data.outputPath.length > 0
-        ? { outputRoot: data.outputPath }
-        : {}),
-      ...(typeof data.fullHash === "string" && data.fullHash.length > 0
-        ? { hash: data.fullHash }
-        : typeof data.hash === "string" && data.hash.length > 0
-          ? { hash: data.hash }
+    const outputRoot = rsbuildOutputRoot(root, data.outputPath);
+    // MultiStats is only a wrapper around child compilations. Do not turn it
+    // into an empty build; emit records for its actual stats nodes below.
+    const isBuild =
+      emittedAssets.length > 0 ||
+      (typeof data.name === "string" && data.name.length > 0) ||
+      outputRoot !== undefined ||
+      (typeof data.fullHash === "string" && data.fullHash.length > 0) ||
+      (typeof data.hash === "string" && data.hash.length > 0) ||
+      (typeof data.mode === "string" && data.mode.length > 0) ||
+      target !== undefined;
+    if (isBuild) {
+      outputs.push({
+        adapter: "rsbuild",
+        bundler: "rsbuild",
+        ...(typeof data.name === "string" && data.name.length > 0
+          ? { compilationName: data.name }
           : {}),
-      emittedAssets: [...new Set(emittedAssets)],
-      emittedAssetsSource: "bundle",
-      sourceHook: "onAfterBuild",
-      ...(typeof data.mode === "string" && data.mode.length > 0
-        ? { effectiveMode: data.mode }
-        : {}),
-      ...(target !== undefined
-        ? {
-            target,
-            ...(compilerTargetKind(target) ? { targetKind: compilerTargetKind(target) } : {}),
-          }
-        : {}),
-    });
+        ...(outputRoot ? { outputRoot } : {}),
+        ...(typeof data.fullHash === "string" && data.fullHash.length > 0
+          ? { hash: data.fullHash }
+          : typeof data.hash === "string" && data.hash.length > 0
+            ? { hash: data.hash }
+            : {}),
+        emittedAssets: [...new Set(emittedAssets)],
+        emittedAssetsSource: "bundle",
+        sourceHook: "onAfterBuild",
+        ...(typeof data.mode === "string" && data.mode.length > 0
+          ? { effectiveMode: data.mode }
+          : {}),
+        ...(target !== undefined
+          ? {
+              target,
+              ...(compilerTargetKind(target) ? { targetKind: compilerTargetKind(target) } : {}),
+            }
+          : {}),
+      });
+    }
     for (const child of data.children ?? []) visit(child);
   };
 
@@ -535,7 +553,9 @@ function createDoctorPlugin(bundler: BundlerName) {
               setup(api) {
                 if (!configured.root) configured.root = api.context.rootPath;
                 api.onAfterBuild(async ({ stats }) => {
-                  const outputs = stats ? collectRsbuildBuildOutputs(stats) : [];
+                  const outputs = stats
+                    ? collectRsbuildBuildOutputs(stats, configured.root ?? api.context.rootPath)
+                    : [];
                   const assets = [
                     ...new Set(
                       outputs.flatMap((output) =>
