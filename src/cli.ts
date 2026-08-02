@@ -20,7 +20,12 @@ import {
   writeDiagnosticsDump,
 } from "./agent-prompt.js";
 import { analyze, analyzeFederation } from "./engine.js";
-import { EvidenceReaderError, readEvidenceFile, reportFromEvaluations } from "./evidence-reader.js";
+import {
+  EvidenceReaderError,
+  readEvidenceFile,
+  reportFromEvaluations,
+  reportFromV2Evaluations,
+} from "./evidence-reader.js";
 import { probeManifest } from "./probe.js";
 import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
 import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "./rules.js";
@@ -325,7 +330,11 @@ async function loadReport(reportPath: string): Promise<DoctorReport> {
   const isReportGraph = document.graph.assertions.some(
     (assertion) => assertion.predicate === "doctor.capabilities",
   );
-  if (document.kind === "project-facts" || !isReportGraph)
+  if (
+    document.kind === "project-facts" ||
+    (!isReportGraph &&
+      (document.kind !== "evidence-graph" || document.graph.evaluations.length === 0))
+  )
     throw new EvidenceReaderError(
       {
         fileLabel: reportPath,
@@ -337,7 +346,9 @@ async function loadReport(reportPath: string): Promise<DoctorReport> {
       `${reportPath}: Expected a Doctor report document at /; received ${document.kind}.`,
     );
   try {
-    return reportFromEvaluations(document.graph);
+    return isReportGraph
+      ? reportFromEvaluations(document.graph)
+      : reportFromV2Evaluations(document.graph);
   } catch (error) {
     throw new EvidenceReaderError(
       {

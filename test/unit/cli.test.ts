@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { main, parseArgs } from "../../src/cli.js";
 import reportFixture from "../../examples/evidence/v1-report.json";
+import v2ConflictFixture from "../../examples/evidence/v2-conflict.json";
 import { migrateDoctorReport } from "../../src/evidence-reader.js";
 
 const roots: string[] = [];
@@ -416,6 +417,27 @@ describe("CLI arguments", () => {
     } finally {
       process.chdir(cwd);
     }
+  });
+
+  it("projects a real v2 evaluation graph into a v1 baseline report", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-v2-graph-import-"));
+    roots.push(root);
+    const reportPath = path.join(root, "v2-conflict.json");
+    const baselinePath = path.join(root, "baseline.json");
+    await fs.writeFile(reportPath, JSON.stringify(v2ConflictFixture));
+
+    await expect(main(["baseline", "generate", reportPath, "--out", baselinePath])).resolves.toBe(
+      0,
+    );
+    expect(JSON.parse(await fs.readFile(baselinePath, "utf8"))).toMatchObject({
+      schemaVersion: 1,
+      entries: [
+        {
+          ruleId: "shared/version-conflict",
+          project: "checkout",
+        },
+      ],
+    });
   });
 
   it.each([
