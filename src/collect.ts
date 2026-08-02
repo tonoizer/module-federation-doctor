@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import fg from "fast-glob";
 import { parseSync, visitorKeys } from "oxc-parser";
@@ -57,22 +58,42 @@ async function readPackage(root: string): Promise<PackageJson> {
   }
 }
 
-async function installedVersions(
+export async function installedVersions(
   root: string,
   dependencies: Record<string, string>,
 ): Promise<Record<string, string>> {
   const installed: Record<string, string> = {};
+  const resolver = createRequire(path.join(root, "package.json"));
   for (const name of Object.keys(dependencies).sort()) {
     try {
-      const value = (await readJson(path.join(root, "node_modules", name, "package.json"))) as {
-        version?: string;
-      };
+      const entry = resolver.resolve(name, { paths: [root] });
+      const packageFile = await findPackageFile(entry, root);
+      const value = (await readJson(packageFile)) as { version?: string };
       if (value.version) installed[name] = value.version;
     } catch {
-      // Package can be hoisted or intentionally absent. Partial analysis reports it.
+      // Package can be absent or not expose a resolvable runtime entry.
     }
   }
   return installed;
+}
+
+async function findPackageFile(entry: string, root: string): Promise<string> {
+  let current = path.resolve(entry);
+  const boundary = path.parse(path.resolve(root)).root;
+  while (current !== boundary) {
+    if (path.basename(current) === "node_modules") {
+      current = path.dirname(current);
+      continue;
+    }
+    const candidate = path.join(current, "package.json");
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      current = path.dirname(current);
+    }
+  }
+  throw new Error(`Unable to find package.json for ${entry}`);
 }
 
 interface RawImportScan {

@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -68,5 +70,33 @@ describe("workspace discovery", () => {
     expect(result.findings).toContainEqual(
       expect.objectContaining({ ruleId: "doctor/partial-analysis" }),
     );
+  });
+
+  it("reports stale and conflicting project facts without changing discovery files", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-"));
+    try {
+      for (const app of ["apps/one", "apps/two"]) {
+        await fs.mkdir(path.join(root, app, ".mf", "doctor"), { recursive: true });
+        await fs.writeFile(
+          path.join(root, app, ".mf", "doctor", "project.json"),
+          JSON.stringify({
+            project: {
+              name: "same-app",
+              root: app === "apps/one" ? "." : "../missing",
+              identityKey: "mfid:v1:application:000000000000000000000000",
+            },
+          }),
+        );
+      }
+      const discovery = await discoverWorkspaceProjectsWithBudget({ cwd: root });
+      expect(discovery.files).toHaveLength(2);
+      expect(discovery.diagnostics.map((item) => item.kind)).toEqual([
+        "conflict",
+        "duplicate",
+        "stale",
+      ]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 });

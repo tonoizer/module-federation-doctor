@@ -38,6 +38,8 @@ export interface SourceLocation {
 export interface ProjectIdentity {
   name: string;
   root: string;
+  /** Stable workspace identity. Optional for legacy project.json files. */
+  identityKey?: string;
 }
 
 /** How the bundler `output.publicPath` was typed when Doctor observed the compiler. */

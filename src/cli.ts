@@ -422,6 +422,7 @@ async function runFederationAnalysis(
   forcePrompt = false,
   diagnosticsDir?: string,
   analysis?: import("./analysis-budgets.js").AnalysisBudgetReport,
+  workspaceDiagnostics?: import("./workspace.js").WorkspaceProjectDiagnostic[],
 ): Promise<number> {
   if (files.length === 0) {
     process.stderr.write("No project reports matched.\n");
@@ -440,6 +441,7 @@ async function runFederationAnalysis(
     ...(config.rules ? { rules: config.rules } : {}),
     ...(config.alwaysShared ? { alwaysShared: config.alwaysShared } : {}),
     ...(analysis ? { analysis } : {}),
+    ...(workspaceDiagnostics?.length ? { workspaceDiagnostics } : {}),
     root: process.cwd(),
   });
   const dumpDir = diagnosticsDir ?? config.diagnosticsDir;
@@ -530,6 +532,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           parsed.forcePrompt,
           parsed.diagnosticsDir,
           discovery.budget,
+          discovery.diagnostics,
         );
       }
       if (parsed.patterns.length === 0) {

@@ -77,7 +77,9 @@ function dtsFacts(project: ProjectFacts): FederationDtsFacts {
 }
 
 function projectId(project: ProjectFacts): string {
-  return `${project.moduleFederation?.name ?? ""}:${project.project.name}`;
+  return (
+    project.project.identityKey ?? `${project.moduleFederation?.name ?? ""}:${project.project.name}`
+  );
 }
 
 function sortNodes(nodes: FederationProjectNode[]): FederationProjectNode[] {
