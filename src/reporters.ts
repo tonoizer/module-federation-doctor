@@ -206,7 +206,7 @@ export async function writeReports(
   const persistedFacts =
     facts.schemaVersion === 1
       ? (() => {
-          const { analysis: _analysis, ...legacyFacts } = facts;
+          const { analysis: _analysis, canonicalConfig: _canonicalConfig, ...legacyFacts } = facts;
           return { ...legacyFacts, artifacts: { ...facts.artifacts, records: undefined } };
         })()
       : facts;
