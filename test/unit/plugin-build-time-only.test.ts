@@ -218,6 +218,240 @@ describe("build-time-only adapter contract", () => {
     plugin.rsbuild?.setup?.(api as never);
     expect(registered).toEqual(["onAfterBuild"]);
   });
+
+  it("keeps Rsbuild parent and child stats as separate build records", async () => {
+    const root = await fixtureRoot("rsbuild", "clean");
+    const plugin = asSinglePlugin(
+      rsbuildDoctor.raw(
+        {
+          ...doctorOptions(root, "clean"),
+          output: { formats: ["json"] },
+        },
+        { framework: "rsbuild", versions: { unplugin: "0.0.0" } } as UnpluginContextMeta,
+      ),
+    );
+    let afterBuild:
+      | ((args: { stats: { toJson: (options: { assets: boolean }) => unknown } }) => Promise<void>)
+      | undefined;
+    plugin.rsbuild?.setup?.({
+      context: { rootPath: root },
+      onAfterBuild(fn: typeof afterBuild) {
+        afterBuild = fn;
+      },
+    } as never);
+
+    await afterBuild!({
+      stats: {
+        toJson: () => ({
+          name: "parent",
+          outputPath: path.join(root, "dist"),
+          mode: "production",
+          assets: [{ name: "shared.js" }],
+          children: [
+            {
+              name: "server",
+              outputPath: path.join(root, "dist/server"),
+              hash: "server-hash",
+              target: "node",
+              assets: [{ name: "shared.js" }],
+            },
+          ],
+        }),
+      },
+    });
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as {
+      builds: Array<{
+        compilationName?: string;
+        outputRoot?: string;
+        emittedAssets: string[];
+        hash?: string;
+        target?: string;
+        targetKind?: string;
+      }>;
+      artifacts: { emittedAssets: string[] };
+      capabilities: { emittedAssets: boolean };
+    };
+    expect(project.builds).toHaveLength(2);
+    expect(project.builds).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          compilationName: "parent",
+          outputRoot: "dist",
+          emittedAssets: ["dist/shared.js"],
+        }),
+        expect.objectContaining({
+          compilationName: "server",
+          outputRoot: "dist/server",
+          emittedAssets: ["dist/server/shared.js"],
+          hash: "server-hash",
+          target: "node",
+          targetKind: "node",
+        }),
+      ]),
+    );
+    expect(project.artifacts.emittedAssets).toEqual(["dist/server/shared.js", "dist/shared.js"]);
+    expect(project.capabilities.emittedAssets).toBe(true);
+    await fs.rm(root, { recursive: true, force: true });
+  });
+
+  it("traverses a real MultiStats wrapper and matches child artifacts", async () => {
+    const root = await fixtureRoot("rsbuild", "clean");
+    await fs.mkdir(path.join(root, "dist", "server"), { recursive: true });
+    await fs.writeFile(
+      path.join(root, "dist", "mf-manifest.json"),
+      JSON.stringify({
+        name: "adapter_clean",
+        metaData: {},
+        exposes: [{ name: "./Widget" }],
+        shared: [],
+      }),
+    );
+    await fs.writeFile(path.join(root, "dist", "mf-stats.json"), JSON.stringify({ assets: [] }));
+    const plugin = asSinglePlugin(
+      rsbuildDoctor.raw(
+        {
+          ...doctorOptions(root, "clean"),
+          output: { formats: ["json"] },
+        },
+        { framework: "rsbuild", versions: { unplugin: "0.0.0" } } as UnpluginContextMeta,
+      ),
+    );
+    let afterBuild:
+      | ((args: { stats: { toJson: (options: { assets: boolean }) => unknown } }) => Promise<void>)
+      | undefined;
+    plugin.rsbuild?.setup?.({
+      context: { rootPath: root },
+      onAfterBuild(fn: typeof afterBuild) {
+        afterBuild = fn;
+      },
+    } as never);
+
+    await afterBuild!({
+      stats: {
+        toJson: () => ({
+          hash: "aggregate-hash",
+          children: [
+            {
+              name: "client",
+              outputPath: path.join(root, "dist"),
+              assets: [
+                { name: "dist/mf-manifest.json" },
+                { name: "dist/mf-stats.json" },
+                { name: "dist/shared.js" },
+              ],
+            },
+            {
+              name: "server",
+              outputPath: path.join(root, "dist/server"),
+              assets: [{ name: "dist/server/shared.js" }],
+            },
+          ],
+        }),
+      },
+    });
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as {
+      builds: Array<{
+        compilationName?: string;
+        outputRoot?: string;
+        emittedAssets: string[];
+        artifacts: Array<{ path: string }>;
+      }>;
+    };
+    expect(project.builds).toHaveLength(2);
+    expect(project.builds).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          compilationName: "client",
+          outputRoot: "dist",
+          emittedAssets: ["dist/mf-manifest.json", "dist/mf-stats.json", "dist/shared.js"],
+          artifacts: expect.arrayContaining([
+            expect.objectContaining({ path: "dist/mf-manifest.json" }),
+            expect.objectContaining({ path: "dist/mf-stats.json" }),
+          ]),
+        }),
+        expect.objectContaining({
+          compilationName: "server",
+          outputRoot: "dist/server",
+          emittedAssets: ["dist/server/shared.js"],
+          artifacts: [],
+        }),
+      ]),
+    );
+    await fs.rm(root, { recursive: true, force: true });
+  });
+
+  it("uses the project root when child stats omit outputPath", async () => {
+    const root = await fixtureRoot("rsbuild", "clean");
+    await fs.mkdir(path.join(root, "dist"), { recursive: true });
+    await fs.writeFile(
+      path.join(root, "dist", "mf-manifest.json"),
+      JSON.stringify({
+        name: "adapter_clean",
+        metaData: {},
+        exposes: [{ name: "./Widget" }],
+        shared: [],
+      }),
+    );
+    await fs.writeFile(path.join(root, "dist", "mf-stats.json"), JSON.stringify({ assets: [] }));
+    const plugin = asSinglePlugin(
+      rsbuildDoctor.raw(
+        {
+          ...doctorOptions(root, "clean"),
+          output: { formats: ["json"] },
+        },
+        { framework: "rsbuild", versions: { unplugin: "0.0.0" } } as UnpluginContextMeta,
+      ),
+    );
+    let afterBuild:
+      | ((args: { stats: { toJson: (options: { assets: boolean }) => unknown } }) => Promise<void>)
+      | undefined;
+    plugin.rsbuild?.setup?.({
+      context: { rootPath: root },
+      onAfterBuild(fn: typeof afterBuild) {
+        afterBuild = fn;
+      },
+    } as never);
+
+    await afterBuild!({
+      stats: {
+        toJson: () => ({
+          children: [
+            {
+              name: "client",
+              assets: [{ name: "dist/mf-manifest.json" }, { name: "dist/mf-stats.json" }],
+            },
+          ],
+        }),
+      },
+    });
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as {
+      builds: Array<{
+        outputRoot?: string;
+        emittedAssets: string[];
+        artifacts: Array<{ path: string }>;
+      }>;
+    };
+    expect(project.builds).toEqual([
+      expect.objectContaining({
+        outputRoot: ".",
+        emittedAssets: ["dist/mf-manifest.json", "dist/mf-stats.json"],
+        artifacts: expect.arrayContaining([
+          expect.objectContaining({ path: "dist/mf-manifest.json" }),
+          expect.objectContaining({ path: "dist/mf-stats.json" }),
+        ]),
+      }),
+    ]);
+    await fs.rm(root, { recursive: true, force: true });
+  });
 });
 
 describe("adapter quiet success and failure terminal path", () => {

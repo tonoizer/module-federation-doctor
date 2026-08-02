@@ -735,7 +735,14 @@ async function collectArtifacts(
   const patterns =
     boundedRoots !== undefined
       ? boundedRoots.flatMap((outputRoot) =>
-          allNames.map((name) => fg.escapePath(normalizePath(path.posix.join(outputRoot, name)))),
+          allNames.map((name) => {
+            // `.` is the safe project-root fallback used when a build hook
+            // omits outputPath. Keep normal recursive artifact discovery in
+            // that case so dist/build artifacts still attach to the build.
+            if (normalizePath(outputRoot) === ".")
+              return name.includes("/") ? fg.escapePath(name) : `**/${fg.escapePath(name)}`;
+            return fg.escapePath(normalizePath(path.posix.join(outputRoot, name)));
+          }),
         )
       : allNames.map((name) =>
           name.includes("/") ? fg.escapePath(name) : `**/${fg.escapePath(name)}`,
