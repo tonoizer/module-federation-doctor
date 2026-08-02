@@ -1083,12 +1083,6 @@ export const builtInRules: DoctorRule[] = [
         }),
       );
   }),
-  createRule("config/shared-externals-conflict", "error", (context) => {
-    const externals = context.facts.dependencies.declared["doctor:externals"]?.split(",") ?? [];
-    for (const name of Object.keys(mf(context)?.shared ?? {}))
-      if (externals.includes(name))
-        report(context, `"${name}" is both shared and external.`, { package: name });
-  }),
   createRule("shared/version-unsatisfied", "error", (context) => {
     for (const [name, shared] of Object.entries(mf(context)?.shared ?? {})) {
       const installed = context.facts.dependencies.installed[name];

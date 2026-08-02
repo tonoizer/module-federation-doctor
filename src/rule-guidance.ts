@@ -415,13 +415,6 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Enable DTS generation or document and test another declaration delivery path.",
     sources: ["https://module-federation.io/configure/dts.html"],
   },
-  "config/shared-externals-conflict": {
-    category: "correctness",
-    impact:
-      "A dependency cannot be provided by federation after the bundler removes it as an external.",
-    fix: "Remove the package from either `shared` or `externals`.",
-    sources: [shared],
-  },
   "shared/version-unsatisfied": {
     category: "correctness",
     impact: "The installed provider does not satisfy the configured consumer range.",
