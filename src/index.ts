@@ -282,10 +282,13 @@ export type {
   ParityValue,
 } from "./evidence-parity.js";
 export {
+  EvidenceProjectionError,
   EvidenceReaderError,
   migrateDoctorReport,
   migrateProjectFacts,
+  projectFactsFromEvidence,
   readEvidenceDocument,
+  reportFromEvaluations,
 } from "./evidence-reader.js";
 export type {
   EvidenceDocumentKind,
