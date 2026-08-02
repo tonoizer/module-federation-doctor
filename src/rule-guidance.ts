@@ -260,7 +260,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "reliability/version-first-offline-remotes": {
     category: "reliability",
     impact: "An unavailable remote can break startup before its exposed module is requested.",
-    fix: "Add `@module-federation/retry-plugin`, an `errorLoadRemote` recovery plugin, or choose `loaded-first` for delayed failure.",
+    fix: "Use `loaded-first` when delayed remote failure is acceptable, or keep `version-first` and add `@module-federation/retry-plugin` / an `errorLoadRemote` recovery plugin. A runtime plugin that deliberately sets `shareStrategy` to `loaded-first` (including Modern's shared-strategy plugin) is treated as the loaded-first choice.",
     sources: [
       "https://module-federation.io/configure/shareStrategy.html",
       runtimePlugins,
@@ -504,6 +504,13 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     category: "performance",
     impact: "A stateful framework dependency may be bundled separately by host and remote.",
     fix: "Evaluate sharing it as a singleton across all participating projects.",
+    sources: [shared],
+  },
+  "shared/react-host-missing": {
+    category: "correctness",
+    impact:
+      "A React host that loads remotes without sharing its imported React runtime can create separate React or renderer instances across the federation graph.",
+    fix: "Declare imported `react` and `react-dom` packages as singleton shared dependencies, for example `{ singleton: true }`, or suppress the rule when the separate runtime is intentional.",
     sources: [shared],
   },
   "shared/deep-import-bypass": {

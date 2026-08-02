@@ -1005,17 +1005,25 @@ function failedPhases(trace: RuntimeTraceReport): string[] {
   ];
 }
 
-function exactProject(
+function exactProjectCandidates(
   projects: ProjectFacts[],
   name: string | undefined,
-): ProjectFacts | undefined {
-  if (!name) return undefined;
-  return projects.find(
+): ProjectFacts[] {
+  if (!name) return [];
+  return projects.filter(
     (project) =>
       project.moduleFederation?.name === name ||
       project.artifacts.manifest?.name === name ||
       project.artifacts.manifest?.id === name,
   );
+}
+
+function exactProject(
+  projects: ProjectFacts[],
+  name: string | undefined,
+): ProjectFacts | undefined {
+  const candidates = exactProjectCandidates(projects, name);
+  return candidates.length === 1 ? candidates[0] : undefined;
 }
 
 function aliasRemoteProjects(projects: ProjectFacts[], alias: string | undefined): ProjectFacts[] {
@@ -1036,8 +1044,7 @@ function moduleInfoNameCandidates(projects: ProjectFacts[], trace: RuntimeTraceR
   return [
     ...new Set(
       names.flatMap((name) => {
-        const exact = exactProject(projects, name);
-        return exact ? [exact.project.name] : [];
+        return exactProjectCandidates(projects, name).map((project) => project.project.name);
       }),
     ),
   ].sort();
@@ -1087,6 +1094,8 @@ export function correlateRuntime(
     const matches = remoteName ? findProjectsForRemote(projects, remoteName) : [];
     const hostProject = exactProject(projects, trace.hostName);
     const producerProject = exactProject(projects, trace.remote?.name);
+    const hostCandidates = exactProjectCandidates(projects, trace.hostName);
+    const producerCandidates = exactProjectCandidates(projects, trace.remote?.name);
     const aliasHostMatches = aliasRemoteProjects(projects, trace.requestAlias);
     const aliasRemoteMatches = aliasRemoteProjects(projects, trace.remote?.alias);
     const moduleInfoCandidates = moduleInfoNameCandidates(projects, trace);
@@ -1108,6 +1117,8 @@ export function correlateRuntime(
       ownerHintConflict ||
       ownerHintUnresolved ||
       weakAliasOnly ||
+      hostCandidates.length > 1 ||
+      producerCandidates.length > 1 ||
       (!owner &&
         exactHost &&
         exactProducer &&
@@ -1176,15 +1187,17 @@ export function correlateRuntime(
               ? "conflicting owner hints; neutral runtime attribution"
               : ownerHintUnresolved
                 ? "owner hint did not match an exact candidate; neutral runtime attribution"
-                : weakAliasOnly
-                  ? "alias-only or requestAlias evidence is weak; neutral runtime attribution"
-                  : !supportedOwner
-                    ? "unsupported owner hint; neutral runtime attribution"
-                    : owner === "network"
-                      ? "network failure; requesting host is context"
-                      : owner === "shared"
-                        ? "shared resolver/provider evidence"
-                        : "ambiguous host/producer identity",
+                : hostCandidates.length > 1 || producerCandidates.length > 1
+                  ? "multiple exact candidates; neutral runtime attribution"
+                  : weakAliasOnly
+                    ? "alias-only or requestAlias evidence is weak; neutral runtime attribution"
+                    : !supportedOwner
+                      ? "unsupported owner hint; neutral runtime attribution"
+                      : owner === "network"
+                        ? "network failure; requesting host is context"
+                        : owner === "shared"
+                          ? "shared resolver/provider evidence"
+                          : "ambiguous host/producer identity",
             ...(ownerHintConflict && trace.ownerHints ? { ownerHints: trace.ownerHints } : {}),
             candidates: [
               ...new Set(
@@ -1207,9 +1220,10 @@ export function correlateRuntime(
                 : "runtime attribution",
           }),
     };
-    const matchedManifest = matches
+    const manifests = matches
       .map((project) => project.artifacts.manifest)
-      .find((manifest) => manifest && (manifest.valid || manifest.name || manifest.id));
+      .filter((manifest) => manifest && (manifest.valid || manifest.name || manifest.id));
+    const matchedManifest = manifests.length === 1 ? manifests[0] : undefined;
     const phases = failedPhases(trace);
 
     if (remoteName && matches.length === 0) {

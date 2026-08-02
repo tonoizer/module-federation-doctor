@@ -698,6 +698,35 @@ describe("runtime trace import", () => {
     });
   });
 
+  it("keeps duplicate exact producer identities neutral and order independent", () => {
+    const [trace] = parseRuntimeTraces({
+      hostName: "host",
+      remote: { name: "checkout" },
+      summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+    });
+    const host = baseProject({ name: "host" });
+    const checkoutA = baseProject({
+      name: "checkout",
+      project: { name: "checkout", root: "/workspace/a" },
+    });
+    const checkoutB = baseProject({
+      name: "checkout",
+      project: { name: "checkout", root: "/workspace/b" },
+    });
+
+    const forward = correlateRuntime([trace!], [host, checkoutA, checkoutB]);
+    const reverse = correlateRuntime([trace!], [host, checkoutB, checkoutA]);
+    const forwardFinding = forward.find((item) => item.ruleId === "runtime/remote-load-failed");
+    const reverseFinding = reverse.find((item) => item.ruleId === "runtime/remote-load-failed");
+
+    expect(forwardFinding?.project).toBe("runtime");
+    expect(reverseFinding?.project).toBe("runtime");
+    expect(forwardFinding?.fingerprint).toBe(reverseFinding?.fingerprint);
+    expect(forwardFinding?.evidence).toMatchObject({
+      identity: { matchReason: "multiple exact candidates; neutral runtime attribution" },
+    });
+  });
+
   it("does not blame a host from alias-only configuration evidence", () => {
     const host = baseProject({
       name: "host",

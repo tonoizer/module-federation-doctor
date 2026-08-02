@@ -45,6 +45,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`federation/share-scope-mismatch`](./federation/share-scope-mismatch.md) | error | Projects in different scopes cannot reuse the same shared provider. |
 | [`federation/version-conflict`](./federation/version-conflict.md) | error | No installed provider version satisfies every consumer range. |
 | [`runtime-plugins/invalid-factory`](./runtime-plugins/invalid-factory.md) | warning | A runtime plugin without a factory or usable `name` is ignored at runtime (silent no-op). |
+| [`shared/react-host-missing`](./shared/react-host-missing.md) | warning | A React host that loads remotes without sharing its imported React runtime can create separate React or renderer instances across the federation graph. |
 | [`shared/version-unsatisfied`](./shared/version-unsatisfied.md) | error | The installed provider does not satisfy the configured consumer range. |
 | [`ssr/node-remote-manifest`](./ssr/node-remote-manifest.md) | error | Node/SSR consumers that load the browser `mf-manifest.json` miss the server remote graph and can fail to resolve remotes during SSR. |
 | [`ssr/node-runtime-plugin-missing`](./ssr/node-runtime-plugin-missing.md) | error | Without `@module-federation/node/runtimePlugin`, Node Federation hosts cannot load remotes with the server runtime contract. |

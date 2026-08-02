@@ -9,7 +9,7 @@ An unavailable remote can break startup before its exposed module is requested.
 
 ## How to fix it
 
-Add `@module-federation/retry-plugin`, an `errorLoadRemote` recovery plugin, or choose `loaded-first` for delayed failure.
+Use `loaded-first` when delayed remote failure is acceptable, or keep `version-first` and add `@module-federation/retry-plugin` / an `errorLoadRemote` recovery plugin. A runtime plugin that deliberately sets `shareStrategy` to `loaded-first` (including Modern's shared-strategy plugin) is treated as the loaded-first choice.
 
 Suppress or retarget with `rules["reliability/version-first-offline-remotes"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 

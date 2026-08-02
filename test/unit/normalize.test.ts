@@ -25,6 +25,14 @@ describe("normalization", () => {
     ).toMatchSnapshot();
   });
 
+  it("normalizes runtime plugin tuples to their plugin paths", () => {
+    expect(
+      normalizeModuleFederation({
+        runtimePlugins: [["@module-federation/retry-plugin", { retries: 2 }]],
+      })?.runtimePlugins,
+    ).toEqual(["@module-federation/retry-plugin"]);
+  });
+
   it("understands scoped packages and deep imports", () => {
     expect(packageName("@scope/pkg/deep")).toBe("@scope/pkg");
     expect(packageName("react/jsx-runtime")).toBe("react");

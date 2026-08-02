@@ -782,6 +782,20 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "shared/react-host-missing",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.remotes = {
+          remote: {
+            name: "remote",
+            entry: "https://example.test/remote.js",
+            shareScope: "default",
+          },
+        };
+        facts.moduleFederation!.shared = {};
+        facts.imports.packages = ["react"];
+      },
+    ],
+    [
       "shared/deep-import-bypass",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.shared = {
@@ -1337,6 +1351,57 @@ describe("built-in rules", () => {
         name: "fixture",
         shareStrategy: "version-first",
         runtimePlugins: ["@module-federation/retry-plugin"],
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/mf-manifest.json",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+    const findings: Array<unknown> = [];
+    const selected = builtInRules.find(
+      (item) => item.meta.id === "reliability/version-first-offline-remotes",
+    )!;
+    await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toHaveLength(0);
+  });
+
+  it.each([
+    ["loaded-first", "loaded-first", undefined],
+    ["tuple retry plugin", "version-first", ["@module-federation/retry-plugin"]],
+    ["Modern shared strategy plugin", "version-first", ["./shared-strategy-plugin"]],
+  ])("skips offline remote warning for %s", async (_label, shareStrategy, runtimePlugins) => {
+    const facts: ProjectFacts = {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "modern", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: true,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        shareStrategy: shareStrategy as "version-first" | "loaded-first",
+        ...(runtimePlugins ? { runtimePlugins: runtimePlugins as string[] } : {}),
         exposes: {},
         remotes: {
           shop: {

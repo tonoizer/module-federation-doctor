@@ -174,6 +174,21 @@ function shareCandidateSet(context: RuleContext): Set<string> {
   ]);
 }
 
+function reactHostMissingShared(
+  context: RuleContext,
+  imported = new Set([
+    ...(context.facts.imports.packages ?? []),
+    ...(context.facts.imports.dynamicPackages ?? []),
+  ]),
+): string[] {
+  const config = mf(context);
+  if (!config || Object.keys(config.remotes).length === 0) return [];
+  const reactPackages = ["react", "react-dom"];
+  return reactPackages.filter(
+    (name) => imported.has(name) && !hasSharedPackage(config.shared, name),
+  );
+}
+
 function alwaysSharedSet(context: RuleContext): Set<string> {
   return new Set([
     ...(context.sharedPolicy?.alwaysShared ?? DEFAULT_ALWAYS_SHARED),
@@ -200,7 +215,9 @@ function isLoopbackRemoteUrl(url: string): boolean {
 function hasRemoteRecoveryPlugin(plugins: string[] | undefined): boolean {
   if (!plugins?.length) return false;
   return plugins.some((plugin) =>
-    /(?:^|[/\\@])(?:retry-plugin|error-?load-?remote)|errorLoadRemote/i.test(plugin),
+    /(?:^|[/\\@])(?:retry-plugin|error-?load-?remote|shared?-strategy(?:-plugin)?)(?:[/\\@]|$)|errorLoadRemote/i.test(
+      plugin,
+    ),
   );
 }
 
@@ -1403,12 +1420,40 @@ export const builtInRules: DoctorRule[] = [
           }),
         );
   }),
+  createRule("shared/react-host-missing", "warning", (context) => {
+    const imported = new Set([
+      ...(context.facts.imports.packages ?? []),
+      ...(context.facts.imports.dynamicPackages ?? []),
+    ]);
+    const missing = reactHostMissingShared(context, imported);
+    if (missing.length === 0) return;
+    const sharedSnippet = missing
+      .map((name) => `${JSON.stringify(name)}: { singleton: true }`)
+      .join(", ");
+    report(
+      context,
+      `React host imports ${missing.join(" and ")} but does not declare ${missing.length === 1 ? "it" : "them"} in shared.`,
+      {
+        role: "host",
+        remotes: Object.keys(mf(context)?.remotes ?? {}),
+        imports: missing,
+        missingShared: missing,
+      },
+      `Add ${sharedSnippet} to Module Federation shared config, or set rules["shared/react-host-missing"] to "off" when intentional.`,
+    );
+  }),
   // Package-name heuristic — advisory `info` (strict keeps it from becoming a hard error).
   createRule("shared/candidate", "info", (context) => {
     const shared = new Set(Object.keys(mf(context)?.shared ?? {}));
     const candidates = shareCandidateSet(context);
+    const reactHostMissing = new Set(reactHostMissingShared(context));
     for (const name of context.facts.imports.packages)
-      if (context.facts.dependencies.declared[name] && !shared.has(name) && candidates.has(name))
+      if (
+        context.facts.dependencies.declared[name] &&
+        !shared.has(name) &&
+        candidates.has(name) &&
+        !reactHostMissing.has(name)
+      )
         report(context, `"${name}" is a likely shared dependency.`, {
           package: name,
           importDepth: context.facts.imports.depth ?? context.sharedPolicy?.importDepth,
