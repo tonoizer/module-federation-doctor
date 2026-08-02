@@ -1,0 +1,94 @@
+name: Generate release files
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing plain-semver GitHub release tag
+        required: true
+        type: string
+
+concurrency:
+  group: release-files-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  build-release-files:
+    name: Build release files
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      release-tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+
+      - name: Verify release tag
+        id: release
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          case "$RELEASE_TAG" in v*) echo "Tag must not start with v"; exit 1;; esac
+          test "$RELEASE_TAG" = "$VERSION" || {
+            echo "Tag $RELEASE_TAG does not match package $VERSION"
+            exit 1
+          }
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Record checked-out commit
+        id: revision
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - name: Pack release files
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_COMMIT: ${{ steps.revision.outputs.commit }}
+        run: |
+          rm -rf release-files
+          mkdir release-files
+          pnpm pack --pack-destination release-files
+          node scripts/generate-release-files.mjs release-files
+
+      - name: Upload build output
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: release-files-${{ steps.release.outputs.tag }}
+          path: release-files
+          if-no-files-found: error
+
+  upload-release-files:
+    name: Upload release files
+    needs: build-release-files
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Download build output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-files-${{ needs.build-release-files.outputs.release-tag }}
+          path: release-files
+
+      - name: Upload release files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.build-release-files.outputs.release-tag }}
+        run: gh release upload "$RELEASE_TAG" release-files/* --clobber

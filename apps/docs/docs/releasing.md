@@ -28,6 +28,17 @@ tags such as `1.2.3` (never `v1.2.3`).
 5. Push the version commit without a tag.
 6. Create a GitHub release whose tag exactly matches `package.json`.
 
+When that release is published, `Generate release files` builds the package
+from the release tag and attaches three files to the GitHub release:
+
+- the npm package tarball
+- `SHA256SUMS` for the tarball
+- `release-manifest.json` with the package, version, tag, commit, and checksum
+
+This workflow only creates GitHub release assets. It does not publish to npm.
+It can be rerun from Actions with an existing release tag; uploads replace
+same-named assets so retries are safe.
+
 ## Compatibility matrix and release blockers
 
 Before claiming a bundler or runtime cell in release notes, confirm the
