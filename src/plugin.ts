@@ -9,6 +9,7 @@ import type {
   BuildOutputInput,
   BundlerName,
   DoctorOptions,
+  ModernContextFacts,
   OutputPublicPathKind,
 } from "./types.js";
 import { normalizePath, relativePath } from "./utils.js";
@@ -231,10 +232,11 @@ function collectRsbuildBuildOutputs(stats: RsbuildStatsLike, root: string): Buil
   return outputs;
 }
 
-function compilerBuildOutput(
+export function compilerBuildOutput(
   compiler: CompilerLike,
   compilation: CompilationLike,
   adapter: BundlerName,
+  modernContext?: ModernContextFacts,
 ): BuildOutputInput {
   const compilerName =
     typeof compiler.name === "string" && compiler.name.length > 0
@@ -249,6 +251,14 @@ function compilerBuildOutput(
       : typeof compilation.hash === "string"
         ? compilation.hash
         : undefined;
+  const compilerTarget = compiler.options?.target;
+  const target =
+    typeof compilerTarget === "string"
+      ? compilerTarget
+      : Array.isArray(compilerTarget)
+        ? compilerTarget.join(",")
+        : modernContext?.target;
+  const effectiveMode = compiler.options?.mode || modernContext?.env;
   return {
     adapter,
     bundler: adapter,
@@ -261,15 +271,10 @@ function compilerBuildOutput(
     emittedAssets: Object.keys(compilation.assets).sort(),
     emittedAssetsSource: "bundle",
     sourceHook: "afterEmit",
-    ...(compiler.options?.mode ? { effectiveMode: compiler.options.mode } : {}),
-    ...(typeof compiler.options?.target === "string"
-      ? { target: compiler.options.target }
-      : Array.isArray(compiler.options?.target)
-        ? { target: compiler.options.target.join(",") }
-        : {}),
-    ...(compilerTargetKind(compiler.options?.target)
-      ? { targetKind: compilerTargetKind(compiler.options?.target) }
-      : {}),
+    ...(effectiveMode ? { effectiveMode } : {}),
+    ...(target ? { target } : {}),
+    ...(compilerTargetKind(target) ? { targetKind: compilerTargetKind(target) } : {}),
+    ...(modernContext ? { modernContext } : {}),
   };
 }
 
@@ -279,11 +284,20 @@ function compilerBuildOutput(
  * Do not push per-finding warnings — that double-prints with the terminal block.
  * Shared by Rspack, Webpack, and the Modern.js adapter (which composes this hook).
  */
-export function attachDoctorAfterEmit(compiler: CompilerLike, configured: DoctorOptions): void {
+export function attachDoctorAfterEmit(
+  compiler: CompilerLike,
+  configured: DoctorOptions,
+  modernContext?: ModernContextFacts,
+): void {
   if (!configured.root) configured.root = compiler.context;
   compiler.hooks.afterEmit.tapPromise("ModuleFederationDoctor", async (compilation) => {
     const diagnostics = collectCompilerDiagnostics(compiler);
-    const output = compilerBuildOutput(compiler, compilation, configured.bundler ?? "webpack");
+    const output = compilerBuildOutput(
+      compiler,
+      compilation,
+      configured.bundler ?? "webpack",
+      modernContext,
+    );
     const emittedAssets = output.outputRoot
       ? output.emittedAssets.map((asset) => `${output.outputRoot}/${asset}`)
       : output.emittedAssets;

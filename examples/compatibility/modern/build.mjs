@@ -30,9 +30,16 @@ const doctor = pluginModuleFederationDoctor({
   },
 });
 await doctor.setup({
-  getAppContext: () => ({ bundlerType: "rspack", appDirectory: root }),
+  getAppContext: () => ({
+    packageName: "@mfdoctor-example/modern-smoke",
+    command: "build",
+    metaName: "modern-smoke",
+    bundlerType: "rspack",
+    appDirectory: root,
+    isProd: true,
+  }),
   modifyBundlerChain(handler) {
-    return handler(chain);
+    return handler(chain, { env: "production", target: "web" });
   },
 });
 

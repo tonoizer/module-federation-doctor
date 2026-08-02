@@ -166,6 +166,7 @@ export type {
   BuildCapabilityState,
   BuildOutputInput,
   BuildRecord,
+  ModernContextFacts,
   BaselineEntry,
   BaselineFile,
   BaselineOptions,

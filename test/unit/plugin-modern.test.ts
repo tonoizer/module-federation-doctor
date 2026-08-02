@@ -5,7 +5,7 @@ import {
   type BundlerChainLike,
 } from "../../src/modern.js";
 import { moduleFederationDoctorPlugin } from "../../src/rspack.js";
-import type { CompilerLike } from "../../src/plugin.js";
+import { compilerBuildOutput, type CompilerLike } from "../../src/plugin.js";
 
 describe("modern.js adapter", () => {
   it("registers afterEmit Doctor via modifyBundlerChain without client hooks", async () => {
@@ -17,7 +17,14 @@ describe("modern.js adapter", () => {
 
     const registered: Array<{ name: string; plugin: { name?: string; apply?: unknown } }> = [];
     await plugin.setup({
-      getAppContext: () => ({ bundlerType: "rspack", appDirectory: "/tmp/mfdoctor-modern" }),
+      getAppContext: () => ({
+        packageName: "modern-fixture",
+        command: "build",
+        metaName: "fixture-meta",
+        bundlerType: "rspack",
+        isProd: true,
+        appDirectory: "/tmp/mfdoctor-modern",
+      }),
       modifyBundlerChain(handler) {
         const chain: BundlerChainLike = {
           plugin(name: string) {
@@ -32,7 +39,7 @@ describe("modern.js adapter", () => {
             };
           },
         };
-        handler(chain);
+        handler(chain, { env: "production", target: "web" });
       },
     });
 
@@ -91,6 +98,57 @@ describe("modern.js adapter", () => {
     // Public Rspack entry factory — escape hatch must not invent a private plugin.
     expect(typeof moduleFederationDoctorPlugin).toBe("function");
     expect(registered[0]?.[1]).toMatchObject({ apply: expect.any(Function) });
+  });
+
+  it("records immutable public context and falls back to Modern utils", () => {
+    const modernContext = Object.freeze({
+      packageName: "modern-fixture",
+      command: "build",
+      metaName: "fixture-meta",
+      bundlerType: "rspack",
+      isProd: true,
+      env: "production",
+      target: "web",
+    });
+    const output = compilerBuildOutput(
+      {
+        context: "/tmp/mfdoctor-modern",
+        options: { output: { path: "/tmp/mfdoctor-modern/dist" } },
+        hooks: { afterEmit: { tapPromise() {} } },
+      },
+      { assets: { "remoteEntry.js": {} }, errors: [] },
+      "modern",
+      modernContext,
+    );
+    expect(Object.isFrozen(output.modernContext)).toBe(true);
+    expect(output).toMatchObject({
+      effectiveMode: "production",
+      target: "web",
+      targetKind: "web",
+      modernContext,
+      emittedAssets: ["remoteEntry.js"],
+      outputRoot: "dist",
+    });
+
+    const publicOptions = compilerBuildOutput(
+      {
+        context: "/tmp/mfdoctor-modern",
+        options: {
+          mode: "development",
+          target: "node",
+          output: { path: "/tmp/mfdoctor-modern/dist" },
+        },
+        hooks: { afterEmit: { tapPromise() {} } },
+      },
+      { assets: {}, errors: [] },
+      "modern",
+      modernContext,
+    );
+    expect(publicOptions).toMatchObject({
+      effectiveMode: "development",
+      target: "node",
+      targetKind: "node",
+    });
   });
 
   it("warns when modifyBundlerChain is missing instead of silently no-oping", async () => {
