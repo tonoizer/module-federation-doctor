@@ -1366,6 +1366,57 @@ describe("built-in rules", () => {
     await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
     expect(findings).toHaveLength(0);
   });
+
+  it.each([
+    ["loaded-first", "loaded-first", undefined],
+    ["tuple retry plugin", "version-first", ["@module-federation/retry-plugin"]],
+    ["Modern shared strategy plugin", "version-first", ["./shared-strategy-plugin"]],
+  ])("skips offline remote warning for %s", async (_label, shareStrategy, runtimePlugins) => {
+    const facts: ProjectFacts = {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "modern", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: true,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        shareStrategy: shareStrategy as "version-first" | "loaded-first",
+        ...(runtimePlugins ? { runtimePlugins: runtimePlugins as string[] } : {}),
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/mf-manifest.json",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+    const findings: Array<unknown> = [];
+    const selected = builtInRules.find(
+      (item) => item.meta.id === "reliability/version-first-offline-remotes",
+    )!;
+    await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toHaveLength(0);
+  });
 });
 
 describe("doctor/partial-analysis suggestions", () => {

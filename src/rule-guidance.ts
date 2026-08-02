@@ -260,7 +260,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "reliability/version-first-offline-remotes": {
     category: "reliability",
     impact: "An unavailable remote can break startup before its exposed module is requested.",
-    fix: "Add `@module-federation/retry-plugin`, an `errorLoadRemote` recovery plugin, or choose `loaded-first` for delayed failure.",
+    fix: "Use `loaded-first` when delayed remote failure is acceptable, or keep `version-first` and add `@module-federation/retry-plugin` / an `errorLoadRemote` recovery plugin. A runtime plugin that deliberately sets `shareStrategy` to `loaded-first` (including Modern's shared-strategy plugin) is treated as the loaded-first choice.",
     sources: [
       "https://module-federation.io/configure/shareStrategy.html",
       runtimePlugins,
