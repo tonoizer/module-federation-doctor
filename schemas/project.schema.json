@@ -234,6 +234,9 @@
           "targetKind": {
             "enum": ["web", "node", "ssr", "worker", "unknown"]
           },
+          "modernContext": {
+            "$ref": "#/$defs/modernContext"
+          },
           "capabilities": {
             "type": "object",
             "required": ["outputRoot", "emittedAssets", "artifacts", "effectiveMode", "target"],
@@ -318,6 +321,19 @@
         "source": {
           "type": "string"
         }
+      },
+      "additionalProperties": false
+    },
+    "modernContext": {
+      "type": "object",
+      "properties": {
+        "packageName": { "type": "string" },
+        "command": { "type": "string" },
+        "metaName": { "type": "string" },
+        "bundlerType": { "type": "string" },
+        "isProd": { "type": "boolean" },
+        "env": { "type": "string" },
+        "target": { "type": "string" }
       },
       "additionalProperties": false
     },

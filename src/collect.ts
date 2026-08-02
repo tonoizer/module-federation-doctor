@@ -1024,8 +1024,8 @@ export async function addBuildFacts(
     const orderedOutputs = outputs
       .slice()
       .sort((left, right) =>
-        `${left.adapter}:${left.compilerName ?? ""}:${left.compilationName ?? ""}:${left.hash ?? ""}:${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.sourceHook}`.localeCompare(
-          `${right.adapter}:${right.compilerName ?? ""}:${right.compilationName ?? ""}:${right.hash ?? ""}:${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.sourceHook}`,
+        `${left.adapter}:${left.compilerName ?? ""}:${left.compilationName ?? ""}:${left.hash ?? ""}:${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.sourceHook}:${JSON.stringify(left.modernContext ?? {})}`.localeCompare(
+          `${right.adapter}:${right.compilerName ?? ""}:${right.compilationName ?? ""}:${right.hash ?? ""}:${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.sourceHook}:${JSON.stringify(right.modernContext ?? {})}`,
         ),
       );
     const builds: BuildRecord[] = orderedOutputs.map((output, index) => {
@@ -1155,6 +1155,7 @@ export async function addBuildFacts(
       if (output.effectiveMode) build.effectiveMode = output.effectiveMode;
       if (output.target) build.target = output.target;
       if (output.targetKind) build.targetKind = output.targetKind;
+      if (output.modernContext) build.modernContext = output.modernContext;
       return build;
     });
     facts.builds = builds.sort((a, b) => a.id.localeCompare(b.id));

@@ -357,6 +357,7 @@ export interface BuildRecord {
   effectiveMode?: string;
   target?: string;
   targetKind?: "web" | "node" | "ssr" | "worker" | "unknown";
+  modernContext?: ModernContextFacts;
   capabilities: {
     outputRoot: BuildCapability;
     emittedAssets: BuildCapability;
@@ -390,9 +391,21 @@ export interface BuildOutputInput {
   effectiveMode?: string;
   target?: string;
   targetKind?: BuildRecord["targetKind"];
+  modernContext?: ModernContextFacts;
   flavor?: ViteLifecycleFlavor;
   engine?: ViteLifecycleEngine;
   buildWrite?: boolean;
+}
+
+/** Public Modern.js context and bundler-chain utility evidence for one build. */
+export interface ModernContextFacts {
+  packageName?: string;
+  command?: string;
+  metaName?: string;
+  bundlerType?: string;
+  isProd?: boolean;
+  env?: string;
+  target?: string;
 }
 
 /** @deprecated Use {@link BuildOutputInput}. Kept as an alias for the Vite slice. */
