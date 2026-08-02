@@ -39,6 +39,12 @@ describe("built-in rules", () => {
     expect(ids).toMatchSnapshot();
   });
 
+  it("does not register the synthetic external-conflict rule", () => {
+    expect(builtInRules.find((rule) => rule.meta.id === "config/shared-externals-conflict")).toBe(
+      undefined,
+    );
+  });
+
   it("finds invalid config, removes duplicate findings, and honors overrides", async () => {
     const root = await fixture();
     const result = await analyze({
@@ -632,10 +638,6 @@ describe("built-in rules", () => {
         facts.moduleFederation!.dts = { enabled: false, options: {} };
         facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
       },
-    ],
-    [
-      "config/shared-externals-conflict",
-      (facts: ProjectFacts) => (facts.dependencies.declared["doctor:externals"] = "react"),
     ],
     [
       "shared/version-unsatisfied",

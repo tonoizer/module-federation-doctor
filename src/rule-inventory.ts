@@ -74,7 +74,6 @@ const ids = [
   "config/runtime-plugin-missing",
   "config/share-scope-undeclared",
   "config/shared-capability-disabled",
-  "config/shared-externals-conflict",
   "config/tree-shaking-server-calc-injection",
   "doctor/partial-analysis",
   "federation/circular-remote-graph",
@@ -657,15 +656,6 @@ const plans: Record<string, RulePlan> = {
     "artifact",
     "exact",
     "Collected type artifact evidence is exact when complete.",
-  ),
-  "config/shared-externals-conflict": plan(
-    0,
-    "error",
-    "compiler.externals",
-    "artifact",
-    "build",
-    "unknown",
-    "Real compiler externals are required; synthetic package data is not valid.",
   ),
   "shared/version-unsatisfied": plan(
     3,
@@ -1354,11 +1344,6 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
   ],
   "config/share-scope-undeclared": ["project.scope", "moduleFederation"],
   "config/shared-capability-disabled": ["project.scope", "moduleFederation"],
-  "config/shared-externals-conflict": [
-    "project.scope",
-    "moduleFederation",
-    "dependencies.declared.doctor:externals",
-  ],
   "config/tree-shaking-server-calc-injection": ["project.scope", "moduleFederation"],
   "doctor/partial-analysis": [
     "project.scope",

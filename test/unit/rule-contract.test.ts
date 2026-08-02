@@ -66,7 +66,6 @@ describe("evidence-aware rule contract", () => {
       "imports.deepImports": "context.facts.imports.deepImports",
       "imports.deepImportFiles": "context.facts.imports.deepImportFiles",
       "dependencies.declared": "context.facts.dependencies.declared",
-      "dependencies.declared.doctor:externals": 'dependencies.declared["doctor:externals"]',
       "dependencies.installed": "context.facts.dependencies.installed",
       "artifacts.manifest": "context.facts.artifacts.manifest",
       "artifacts.emittedAssets": "context.facts.artifacts.emittedAssets",

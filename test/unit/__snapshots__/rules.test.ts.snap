@@ -52,7 +52,6 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "artifact/manifest-assets-disabled",
   "artifact/manifest-disabled",
   "artifact/dts-disabled",
-  "config/shared-externals-conflict",
   "shared/version-unsatisfied",
   "artifact/manifest-invalid",
   "artifact/manifest-name-mismatch",
