@@ -21,6 +21,7 @@ import type {
 } from "./types.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
 import { fingerprint, looksLikeUrl, redact, redactRuntimeUrl, sortFindings } from "./utils.js";
+import { mapBounded } from "./async-map.js";
 
 const FAILED = new Set(["error", "failed", "timeout"]);
 const REMOTE_PHASES = new Set([
@@ -1478,18 +1479,17 @@ export async function analyzeRuntime(options: {
 }): Promise<RuntimeAnalysisResult> {
   const traces = await loadRuntimeTraceFile(options.tracePath);
   const projects = (
-    await Promise.all(
-      [...options.projectFiles].sort().map(async (file) => {
-        const resolved = path.resolve(file);
-        const document = await readEvidenceFile(resolved);
-        if (document.kind !== "project-facts")
-          throw new RuntimeTraceError(
-            `Runtime project import requires project facts: ${resolved}`,
-            { fileLabel: resolved, failureCode: "wrong-document-kind", pointer: "/" },
-          );
-        return projectFactsFromEvidence(document.graph);
-      }),
-    )
+    await mapBounded([...options.projectFiles].sort(), async (file) => {
+      const resolved = path.resolve(file);
+      const document = await readEvidenceFile(resolved);
+      if (document.kind !== "project-facts")
+        throw new RuntimeTraceError(`Runtime project import requires project facts: ${resolved}`, {
+          fileLabel: resolved,
+          failureCode: "wrong-document-kind",
+          pointer: "/",
+        });
+      return projectFactsFromEvidence(document.graph);
+    })
   ).sort((a, b) => a.project.name.localeCompare(b.project.name));
   if (projects.length === 0)
     throw new RuntimeTraceError("No project.json files matched for runtime correlation.");

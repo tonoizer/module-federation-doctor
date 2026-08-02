@@ -41,6 +41,7 @@ import { deepFreeze, fingerprint, redact, sortFindings } from "./utils.js";
 import { writeFederationReports, writeReports } from "./reporters.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
 import type { AnalysisBudgetReport } from "./analysis-budgets.js";
+import { mapBounded } from "./async-map.js";
 
 function parseSetting(setting: RuleSetting | undefined, fallback: Severity) {
   if (!setting) return { severity: fallback, options: {} };
@@ -281,21 +282,19 @@ export async function analyzeFederation(
   const projectRoots = files.map(workspaceProjectRoot);
   const workspaceRoot = workspaceRootForProjects(projectRoots);
   const projects = (
-    await Promise.all(
-      files.sort().map(async (file) => {
-        const project = JSON.parse(await fs.readFile(path.resolve(file), "utf8")) as ProjectFacts;
-        Object.defineProperty(project.project, "identityKey", {
-          value: createWorkspaceApplicationIdentity(
-            project.project.name,
-            workspaceProjectRoot(file),
-            workspaceRoot,
-          ).key,
-          enumerable: false,
-          configurable: true,
-        });
-        return project;
-      }),
-    )
+    await mapBounded(files.sort(), async (file) => {
+      const project = JSON.parse(await fs.readFile(path.resolve(file), "utf8")) as ProjectFacts;
+      Object.defineProperty(project.project, "identityKey", {
+        value: createWorkspaceApplicationIdentity(
+          project.project.name,
+          workspaceProjectRoot(file),
+          workspaceRoot,
+        ).key,
+        enumerable: false,
+        configurable: true,
+      });
+      return project;
+    })
   ).sort((a, b) => a.project.name.localeCompare(b.project.name));
   const findings: DoctorFinding[] = [];
   if (options.analysis?.exceeded.length) {
