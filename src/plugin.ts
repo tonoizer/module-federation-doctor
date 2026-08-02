@@ -143,11 +143,15 @@ function rsbuildTarget(value: unknown): string | undefined {
   return undefined;
 }
 
-function rsbuildOutputRoot(root: string, value: unknown): string | undefined {
-  if (typeof value !== "string" || value.length === 0) return undefined;
-  const absolute = path.resolve(root, value);
-  const relative = relativePath(path.resolve(root), absolute);
-  return relative.startsWith("[external]/") ? undefined : normalizePath(relative);
+type RsbuildOutputRoot =
+  | { state: "missing" }
+  | { state: "unsafe" }
+  | { state: "safe"; path: string };
+
+async function rsbuildOutputRoot(root: string, value: unknown): Promise<RsbuildOutputRoot> {
+  if (typeof value !== "string" || value.length === 0) return { state: "missing" };
+  const safe = await safeOutputRoot(root, value);
+  return safe === undefined ? { state: "unsafe" } : { state: "safe", path: safe };
 }
 
 function rsbuildAssetName(value: string, outputRoot: string | undefined): string {
@@ -161,17 +165,22 @@ function rsbuildAssetName(value: string, outputRoot: string | undefined): string
  * Convert public Rsbuild/Rspack stats JSON into one build input per stats node.
  * Children stay separate so parent and child compiler assets cannot be joined.
  */
-function collectRsbuildBuildOutputs(stats: RsbuildStatsLike, root: string): BuildOutputInput[] {
+async function collectRsbuildBuildOutputs(
+  stats: RsbuildStatsLike,
+  root: string,
+): Promise<BuildOutputInput[]> {
   const outputs: BuildOutputInput[] = [];
-  const visit = (value: unknown): void => {
+  const visit = async (value: unknown): Promise<void> => {
     if (!value || typeof value !== "object") return;
     const data = value as RsbuildStatsJsonLike;
     const target = rsbuildTarget(data.target);
     const children = Array.isArray(data.children) ? data.children : [];
-    const reportedOutputRoot = rsbuildOutputRoot(root, data.outputPath);
+    const reportedOutputRoot = await rsbuildOutputRoot(root, data.outputPath);
+    const resolvedOutputRoot =
+      reportedOutputRoot.state === "safe" ? reportedOutputRoot.path : undefined;
     const emittedAssets = (data.assets ?? [])
       .flatMap((asset) =>
-        typeof asset.name === "string" ? [rsbuildAssetName(asset.name, reportedOutputRoot)] : [],
+        typeof asset.name === "string" ? [rsbuildAssetName(asset.name, resolvedOutputRoot)] : [],
       )
       .sort();
     // A real MultiStats wrapper can carry an aggregate hash while leaving all
@@ -181,13 +190,18 @@ function collectRsbuildBuildOutputs(stats: RsbuildStatsLike, root: string): Buil
       children.length > 0 &&
       emittedAssets.length === 0 &&
       typeof data.name !== "string" &&
-      reportedOutputRoot === undefined &&
+      reportedOutputRoot.state !== "safe" &&
       typeof data.mode !== "string" &&
       target === undefined;
-    // Missing/unsafe outputPath is still safe to represent at the project
-    // root. Stats asset names are then project-relative, and discovered
-    // artifacts keep their normal paths for matching.
-    const outputRoot = isMultiStatsWrapper ? undefined : (reportedOutputRoot ?? ".");
+    // Missing outputPath is safe to represent at the project root. An unsafe
+    // outputPath stays unknown so artifact matching cannot fall back to root.
+    const outputRoot = isMultiStatsWrapper
+      ? undefined
+      : reportedOutputRoot.state === "safe"
+        ? reportedOutputRoot.path
+        : reportedOutputRoot.state === "missing"
+          ? "."
+          : undefined;
     const isBuild =
       !isMultiStatsWrapper &&
       (emittedAssets.length > 0 ||
@@ -224,10 +238,10 @@ function collectRsbuildBuildOutputs(stats: RsbuildStatsLike, root: string): Buil
           : {}),
       });
     }
-    for (const child of data.children ?? []) visit(child);
+    for (const child of data.children ?? []) await visit(child);
   };
 
-  visit(stats.toJson({ assets: true } as never));
+  await visit(stats.toJson({ assets: true } as never));
   return outputs;
 }
 
@@ -387,6 +401,7 @@ async function safeOutputRoot(
   const relative = path.relative(root, absolute).replaceAll(path.sep, "/");
   if (relative !== "" && relative.startsWith("..")) return undefined;
   const rootReal = await fs.realpath(root).catch(() => undefined);
+  if (!rootReal) return undefined;
   const outputReal = await fs.realpath(absolute).catch(() => undefined);
   const outputStat = await fs.lstat(absolute).catch(() => undefined);
   if (outputStat?.isSymbolicLink() && !outputReal) return undefined;
@@ -400,14 +415,13 @@ async function safeOutputRoot(
         const resolvedTarget = path.resolve(path.dirname(existing), linkTarget);
         const targetReal = await fs.realpath(resolvedTarget).catch(() => undefined);
         const checkedTarget = targetReal ?? resolvedTarget;
-        if (rootReal && (path.relative(rootReal, checkedTarget) || ".").startsWith(".."))
-          return undefined;
+        if ((path.relative(rootReal, checkedTarget) || ".").startsWith("..")) return undefined;
       }
     }
     existing = path.dirname(existing);
     existingReal = await fs.realpath(existing).catch(() => undefined);
   }
-  if (rootReal && existingReal && (path.relative(rootReal, existingReal) || ".").startsWith(".."))
+  if (existingReal && (path.relative(rootReal, existingReal) || ".").startsWith(".."))
     return undefined;
   return relative === "" ? "." : relative;
 }
@@ -577,7 +591,10 @@ function createDoctorPlugin(bundler: BundlerName) {
                 if (!configured.root) configured.root = api.context.rootPath;
                 api.onAfterBuild(async ({ stats }) => {
                   const outputs = stats
-                    ? collectRsbuildBuildOutputs(stats, configured.root ?? api.context.rootPath)
+                    ? await collectRsbuildBuildOutputs(
+                        stats,
+                        configured.root ?? api.context.rootPath,
+                      )
                     : [];
                   const assets = [
                     ...new Set(
