@@ -56,6 +56,12 @@ severities; they do not change default runs or correctness rules. Use
 `rules: { "<rule-id>": "off" }` or a baseline when a production team
 intentionally accepts a recommendation.
 
+The manifest and DTS checks only recommend an enablement when MF config shows a
+federated surface and the option is explicitly disabled. They are advisory in
+the default profile: `demo` hides manifest guidance and keeps DTS at `info`,
+while `production` raises both to `warning`. A local `rules` entry wins over
+either profile, including `"off"`.
+
 ## Shareable packs
 
 A pack is a `DoctorPolicyPack`: optional `name`, a `rules` severity map, and

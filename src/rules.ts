@@ -120,6 +120,10 @@ function mf(context: RuleContext): NormalizedMFConfig | undefined {
   return context.facts.moduleFederation;
 }
 
+function hasFederatedSurface(config: NormalizedMFConfig): boolean {
+  return Object.keys(config.exposes).length > 0 || Object.keys(config.remotes).length > 0;
+}
+
 function report(
   context: RuleContext,
   message: string,
@@ -1122,16 +1126,16 @@ export const builtInRules: DoctorRule[] = [
     const config = mf(context);
     // Prefer emit evidence over normalized defaults (Enhanced omits → still emits).
     if (context.facts.capabilities.manifest || context.facts.artifacts.manifest) return;
-    if (
-      config &&
-      !config.manifest?.enabled &&
-      (Object.keys(config.exposes).length > 0 || Object.keys(config.remotes).length > 0)
-    )
+    if (config && config.manifest?.enabled === false && hasFederatedSurface(config))
       report(
         context,
-        "Manifest generation is disabled.",
-        {},
-        "Enable `manifest` for runtime metadata, preload analysis, DevTools, and stronger Doctor checks.",
+        "Manifest generation is disabled for a Module Federation surface.",
+        {
+          manifest: false,
+          exposes: Object.keys(config.exposes),
+          remotes: Object.keys(config.remotes),
+        },
+        'For a producer with exposes, set `manifest: true` to publish metadata for preloading, dynamic type hints, and DevTools. For a consumer, use manifest URLs when the remote publishes them. Set `rules["artifact/manifest-disabled"]` to `"off"` when direct remote entries are intentional.',
         findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {}),
       );
   }),
@@ -1142,9 +1146,9 @@ export const builtInRules: DoctorRule[] = [
     if (config && config.dts?.enabled === false && Object.keys(config.exposes).length > 0)
       report(
         context,
-        "Federated type generation is disabled for a producer.",
-        { exposes: Object.keys(config.exposes) },
-        "Enable `dts.generateTypes`, or document how consumers receive compatible declarations.",
+        "Federated type generation is disabled for exposed modules.",
+        { dts: false, exposes: Object.keys(config.exposes) },
+        'Set `dts: true` (or enable `dts.generateTypes`) so consumers get a checked declaration contract. If another declaration path is intentional, document and test it, or set `rules["artifact/dts-disabled"]` to `"off"`.',
         findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {
           exposes: Object.keys(config.exposes),
         }),
