@@ -32,7 +32,7 @@ describe("capability pack resolver", () => {
   it("matches the pinned Enhanced Webpack browser pack", () => {
     const resolution = resolveCapabilityPack(
       {
-        core: { name: "@module-federation/core", version: "0.0.1" },
+        core: { name: "@module-federation/sdk", version: "2.7.0" },
         adapter: { name: "@module-federation/enhanced", version: "2.7.0" },
         bundler: { name: "webpack", version: "5.99.0" },
         target: "browser",
@@ -47,6 +47,12 @@ describe("capability pack resolver", () => {
     expect(ENHANCED_WEBPACK_V5_BROWSER_PACK.provenance).toMatchObject({
       source: "module-federation/core@d927242",
       commit: "d927242",
+      package: "@module-federation/sdk",
+      version: "2.7.0",
+    });
+    expect(ENHANCED_WEBPACK_V5_BROWSER_PACK.core).toEqual({
+      name: "@module-federation/sdk",
+      version: ">=2.7.0 <2.8.0",
     });
     expect(ENHANCED_WEBPACK_V5_BROWSER_PACK.provenance?.reviewedFiles).toContain(
       "packages/sdk/src/types/plugins/ModuleFederationPlugin.ts",
@@ -55,7 +61,7 @@ describe("capability pack resolver", () => {
 
   it("keeps target and version mismatches unknown", () => {
     const query = {
-      core: { name: "@module-federation/core", version: "0.0.1" },
+      core: { name: "@module-federation/sdk", version: "2.7.0" },
       adapter: { name: "@module-federation/enhanced", version: "2.8.0" },
       bundler: { name: "webpack", version: "5.99.0" },
       target: "node",
@@ -69,7 +75,7 @@ describe("capability pack resolver", () => {
         { ...query, target: "browser", adapter: { ...query.adapter, version: "unknown" } },
         BUILT_IN_CAPABILITY_PACKS,
       ),
-    ).toMatchObject({ status: "unknown", reason: "no-match" });
+    ).toMatchObject({ status: "unknown", reason: "missing-version" });
   });
 
   it("reports the first pack field capabilities without changing them", () => {

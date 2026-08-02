@@ -51,12 +51,12 @@ export const ENHANCED_WEBPACK_V5_BROWSER_PACK: CapabilityPack = {
   provenance: {
     source: "module-federation/core@d927242",
     commit: "d927242",
-    package: "@module-federation/enhanced",
+    package: "@module-federation/sdk",
     version: "2.7.0",
     reviewedFiles: ["packages/sdk/src/types/plugins/ModuleFederationPlugin.ts"],
   },
-  core: { name: "@module-federation/core", version: "0.0.1" },
-  adapter: { name: "@module-federation/enhanced", version: "2.7.0" },
+  core: { name: "@module-federation/sdk", version: ">=2.7.0 <2.8.0" },
+  adapter: { name: "@module-federation/enhanced", version: ">=2.7.0 <2.8.0" },
   bundler: { name: "webpack", version: ">=5 <6" },
   target: "browser",
   fields: {
@@ -188,9 +188,9 @@ export function resolveCapabilityPack(
     status: "unknown",
     reason:
       dimensional.length > 0 &&
-      (query.core.version === undefined ||
-        query.adapter.version === undefined ||
-        query.bundler.version === undefined)
+      [query.core.version, query.adapter.version, query.bundler.version].some(
+        (version) => version === undefined || version === "unknown",
+      )
         ? "missing-version"
         : "no-match",
     candidates: dimensional.map((pack) => pack.id).sort(),
