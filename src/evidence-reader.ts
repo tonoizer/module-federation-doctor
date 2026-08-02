@@ -10,6 +10,7 @@ import {
   type EvidenceAssertion,
   type EvidenceCompletenessInfo,
   type EvidenceGraphV2,
+  type EvidenceLimits,
   type EvidenceSubject,
   type EvidenceValue,
 } from "./evidence.js";
@@ -18,6 +19,9 @@ import type { DoctorFinding, DoctorReport, ProjectFacts } from "./types.js";
 export type EvidenceDocumentKind = "project-facts" | "doctor-report" | "evidence-graph";
 export type EvidenceReaderFailureCode =
   | "malformed-json"
+  | "not-found"
+  | "permission-denied"
+  | "read-failed"
   | "wrong-document-kind"
   | "schema-invalid"
   | "unsupported-version"
@@ -350,8 +354,40 @@ function nonEmpty(value: string, fallback: string): string {
   return value || fallback;
 }
 
+function largeLegacyLimits(value: EvidenceValue): EvidenceLimits & { allowLarge: true } {
+  let nodes = 0;
+  let maxDepth = 0;
+  let maxWidth = 1;
+  const pending: Array<{ value: EvidenceValue; depth: number }> = [{ value, depth: 0 }];
+  while (pending.length > 0) {
+    const item = pending.pop();
+    if (!item) continue;
+    nodes += 1;
+    maxDepth = Math.max(maxDepth, item.depth);
+    if (Array.isArray(item.value)) {
+      maxWidth = Math.max(maxWidth, item.value.length);
+      item.value.forEach((child) => pending.push({ value: child, depth: item.depth + 1 }));
+    } else if (isRecord(item.value)) {
+      const entries = Object.values(item.value);
+      maxWidth = Math.max(maxWidth, entries.length);
+      entries.forEach((child) => pending.push({ value: child, depth: item.depth + 1 }));
+    }
+  }
+  const inputBytes = Buffer.byteLength(JSON.stringify(value));
+  return {
+    maxDepth: maxDepth + 16,
+    maxNodes: nodes * 4 + 256,
+    maxBytes: inputBytes * 8 + 65_536,
+    maxWidth: maxWidth + 16,
+    allowLarge: true,
+  };
+}
+
 function finalizeGraph(graph: EvidenceGraphV2, options: EvidenceReaderOptions): EvidenceGraphV2 {
-  const normalized = normalizeEvidenceGraph(graph);
+  const normalized = normalizeEvidenceGraph(
+    graph,
+    largeLegacyLimits(graph as unknown as EvidenceValue),
+  );
   validateOrThrow(normalized as unknown as JsonRecord, "evidence-graph", options);
   return normalized;
 }
@@ -361,8 +397,8 @@ function projectionRecord(value: EvidenceValue, label: string): JsonRecord {
   return value;
 }
 
-function projectionValue(value: EvidenceValue): EvidenceValue {
-  return canonicalizeEvidenceValue(value);
+function projectionValue(value: EvidenceValue, limits?: EvidenceLimits): EvidenceValue {
+  return canonicalizeEvidenceValue(value, limits);
 }
 
 function assertionValue(
@@ -389,7 +425,8 @@ function projectionSubject(graph: EvidenceGraphV2): string | undefined {
  * pure, additive compatibility view and does not enable v2 collection.
  */
 export function projectFactsFromEvidence(graph: EvidenceGraphV2): ProjectFacts {
-  const normalized = normalizeEvidenceGraph(graph);
+  const limits = largeLegacyLimits(graph as unknown as EvidenceValue);
+  const normalized = normalizeEvidenceGraph(graph, limits);
   const subject = projectionSubject(normalized);
   if (subject === undefined)
     throw new EvidenceProjectionError("Evidence graph has no project subject");
@@ -408,7 +445,7 @@ export function projectFactsFromEvidence(graph: EvidenceGraphV2): ProjectFacts {
   const output: JsonRecord = { schemaVersion: 1 };
   for (const field of fields) {
     const value = assertionValue(normalized, `project.${field}`, subject);
-    if (value !== undefined) output[field] = projectionValue(value);
+    if (value !== undefined) output[field] = projectionValue(value, limits);
   }
   for (const field of [
     "project",
@@ -430,7 +467,8 @@ export function projectFactsFromEvidence(graph: EvidenceGraphV2): ProjectFacts {
  * linked by fail evaluations. Non-fail outcomes stay out of strict v1.
  */
 export function reportFromEvaluations(graph: EvidenceGraphV2): DoctorReport {
-  const normalized = normalizeEvidenceGraph(graph);
+  const limits = largeLegacyLimits(graph as unknown as EvidenceValue);
+  const normalized = normalizeEvidenceGraph(graph, limits);
   const capabilities = assertionValue(normalized, "doctor.capabilities");
   const summary = assertionValue(normalized, "doctor.summary");
   if (capabilities === undefined || summary === undefined)
@@ -448,14 +486,17 @@ export function reportFromEvaluations(graph: EvidenceGraphV2): DoctorReport {
         `Fail evaluation ${evaluation.id} has no v1 doctor.finding assertion`,
       );
     findings.push(
-      projectionRecord(projectionValue(finding), "doctor.finding") as unknown as DoctorFinding,
+      projectionRecord(
+        projectionValue(finding, limits),
+        "doctor.finding",
+      ) as unknown as DoctorFinding,
     );
   }
 
   const output: JsonRecord = {
     schemaVersion: 1,
-    capabilities: projectionValue(capabilities),
-    summary: projectionValue(summary),
+    capabilities: projectionValue(capabilities, limits),
+    summary: projectionValue(summary, limits),
     findings,
   };
   validateOrThrow(output, "doctor-report", {});
@@ -470,13 +511,18 @@ function assertion(
   source: string,
   complete: EvidenceCompletenessInfo,
   idSuffix?: string | number,
+  limits?: EvidenceLimits,
 ): EvidenceAssertion {
-  const id = stableEvidenceId("assertion", {
-    subject: subject.id,
-    predicate,
-    value,
-    ...(idSuffix !== undefined ? { idSuffix: String(idSuffix) } : {}),
-  });
+  const id = stableEvidenceId(
+    "assertion",
+    {
+      subject: subject.id,
+      predicate,
+      value,
+      ...(idSuffix !== undefined ? { idSuffix: String(idSuffix) } : {}),
+    },
+    limits,
+  );
   return {
     id,
     subject: subject.id,
@@ -501,6 +547,7 @@ export function migrateProjectFacts(
 ): EvidenceGraphV2 {
   const value = jsonValue(input, "/", options) as JsonRecord;
   validateOrThrow(value, "project-facts", options);
+  const limits = largeLegacyLimits(value as EvidenceValue);
   const project = input.project.name;
   const scope = {
     adapter: input.bundler.name,
@@ -525,6 +572,8 @@ export function migrateProjectFacts(
     "dependencies",
     "imports",
     "artifacts",
+    "runtimePluginContracts",
+    "builds",
   ] as const;
   for (const field of fields) {
     const present = Object.prototype.hasOwnProperty.call(input, field);
@@ -537,10 +586,23 @@ export function migrateProjectFacts(
         scope,
         "v1-project-facts",
         fieldCompleteness(value, field, present),
+        undefined,
+        limits,
       ),
     );
   }
-  const missing = fields.filter((field) => !Object.prototype.hasOwnProperty.call(input, field));
+  const requiredFields = [
+    "project",
+    "bundler",
+    "capabilities",
+    "moduleFederation",
+    "dependencies",
+    "imports",
+    "artifacts",
+  ] as const;
+  const missing = requiredFields.filter(
+    (field) => !Object.prototype.hasOwnProperty.call(input, field),
+  );
   if (missing.length > 0)
     graph.assertions.push(
       assertion(
@@ -550,6 +612,8 @@ export function migrateProjectFacts(
         scope,
         "v1-project-facts",
         completeness("partial", "Optional v1 fields were omitted.", missing),
+        undefined,
+        limits,
       ),
     );
   return finalizeGraph(graph, options);
@@ -561,6 +625,7 @@ export function migrateDoctorReport(
 ): EvidenceGraphV2 {
   const value = jsonValue(input, "/", options) as JsonRecord;
   validateOrThrow(value, "doctor-report", options);
+  const limits = largeLegacyLimits(value as EvidenceValue);
   const scope = { adapter: "legacy-v1", bundler: { name: "unknown" }, target: "unknown" as const };
   const graph = baseGraph(scope, {}, "v1-doctor-report");
   const subjects = new Map<string, EvidenceSubject>();
@@ -568,7 +633,7 @@ export function migrateDoctorReport(
     let subject = subjects.get(project);
     if (!subject) {
       subject = {
-        id: stableEvidenceId("subject.project", { name: project }),
+        id: stableEvidenceId("subject.project", { name: project }, limits),
         kind: "project",
         name: nonEmpty(project, "[legacy-v1-report]"),
       };
@@ -583,7 +648,7 @@ export function migrateDoctorReport(
       finding,
       findingIndex,
       value: findingValue,
-      key: stableEvidenceId("finding", findingValue),
+      key: stableEvidenceId("finding", findingValue, limits),
       occurrence: 0,
     };
   });
@@ -593,8 +658,8 @@ export function migrateDoctorReport(
     .sort(
       (left, right) =>
         left.key.localeCompare(right.key) ||
-        JSON.stringify(canonicalizeEvidenceValue(left.value)).localeCompare(
-          JSON.stringify(canonicalizeEvidenceValue(right.value)),
+        JSON.stringify(canonicalizeEvidenceValue(left.value, limits)).localeCompare(
+          JSON.stringify(canonicalizeEvidenceValue(right.value, limits)),
         ) ||
         left.findingIndex - right.findingIndex,
     );
@@ -613,16 +678,21 @@ export function migrateDoctorReport(
       "v1-doctor-report",
       completeness("complete", "Finding is present in the v1 report."),
       occurrence,
+      limits,
     );
     graph.assertions.push(evidence);
     graph.evaluations.push({
-      id: stableEvidenceId("evaluation", {
-        project: finding.project,
-        ruleId: finding.ruleId,
-        fingerprint: finding.fingerprint,
-        findingKey,
-        occurrence,
-      }),
+      id: stableEvidenceId(
+        "evaluation",
+        {
+          project: finding.project,
+          ruleId: finding.ruleId,
+          fingerprint: finding.fingerprint,
+          findingKey,
+          occurrence,
+        },
+        limits,
+      ),
       rule: { id: finding.ruleId, version: "1" },
       subject: subject.id,
       outcome: "fail",
@@ -648,6 +718,7 @@ export function migrateDoctorReport(
         "v1-doctor-report",
         completeness("complete", "Report capabilities are copied from the schema-valid v1 report."),
         "capabilities",
+        limits,
       ),
       assertion(
         metadataSubject,
@@ -657,6 +728,7 @@ export function migrateDoctorReport(
         "v1-doctor-report",
         completeness("complete", "Report summary is copied from the schema-valid v1 report."),
         "summary",
+        limits,
       ),
     );
   }

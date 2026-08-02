@@ -57,6 +57,51 @@ describe("public evidence reader", () => {
     expect(compareV1Outputs(reportFixture, projectedReport).equal).toBe(true);
   });
 
+  it("preserves optional builds and runtime plugin contracts through v1 projection", () => {
+    const input = structuredClone(projectFixture) as Record<string, unknown>;
+    input.builds = [
+      {
+        id: "build-1",
+        adapter: "vite",
+        bundler: "vite",
+        emittedAssets: [],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "not-applicable", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "test",
+      },
+    ];
+    input.runtimePluginContracts = [{ plugin: "test", kind: "cors-parity" }];
+    const graph = migrateProjectFacts(input as never);
+    expect(projectFactsFromEvidence(graph)).toMatchObject({
+      builds: input.builds,
+      runtimePluginContracts: input.runtimePluginContracts,
+    });
+  });
+
+  it("accepts large schema-valid v1 values during migration", () => {
+    const input = structuredClone(projectFixture) as Record<string, any>;
+    input.imports.sourceFiles = Array.from({ length: 12_000 }, (_, index) => `src/${index}.ts`);
+    const graph = migrateProjectFacts(input as never);
+    expect(projectFactsFromEvidence(graph).imports.sourceFiles).toHaveLength(12_000);
+  });
+
+  it("accepts large schema-valid v1 reports during migration", () => {
+    const findings = Array.from({ length: 1_200 }, (_, index) => ({
+      ...reportFixture.findings[0],
+      fingerprint: `finding-${index}`,
+      evidence: { detail: "x".repeat(1_000) },
+    }));
+    const input = { ...reportFixture, findings };
+    const graph = migrateDoctorReport(input as never);
+    expect(reportFromEvaluations(graph).findings).toHaveLength(findings.length);
+  });
+
   it("does not invent a legacy report finding from a v2-only evaluation", () => {
     const graph = readEvidenceDocument(reportFixture).graph;
     graph.evaluations[0]!.evidenceIds = [];

@@ -200,6 +200,10 @@ describe("runtime trace import", () => {
       failureCode: "schema-invalid",
       pointer: "/project/name",
     });
+
+    await expect(
+      analyzeRuntime({ tracePath, projectFiles: [path.join(root, "missing-project.json")] }),
+    ).rejects.toMatchObject({ failureCode: "not-found" });
   });
 
   it("rejects malformed, future, oversized, and unredacted capture files before analysis", async () => {

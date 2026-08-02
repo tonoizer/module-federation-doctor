@@ -167,18 +167,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function limitsWithDefaults(options?: EvidenceLimits): Required<EvidenceLimits> {
+type ExtendedEvidenceLimits = EvidenceLimits & { allowLarge?: boolean };
+
+function limitsWithDefaults(options?: ExtendedEvidenceLimits): Required<EvidenceLimits> {
   const limits = { ...DEFAULT_LIMITS, ...options };
+  const allowLarge = options?.allowLarge === true;
   for (const [name, value] of Object.entries(limits)) {
+    if (name === "allowLarge") continue;
+    const numericValue = value as number;
     if (
-      !Number.isSafeInteger(value) ||
-      value < 1 ||
-      value > HARD_LIMITS[name as keyof EvidenceLimits]
+      !Number.isSafeInteger(numericValue) ||
+      numericValue < 1 ||
+      (!allowLarge && numericValue > HARD_LIMITS[name as keyof EvidenceLimits])
     ) {
       throw new EvidenceResourceError(`${name} must be a positive safe integer.`);
     }
   }
-  return limits;
+  return limits as Required<EvidenceLimits>;
 }
 
 /** Validate JSON-safe values without recursive traversal or unbounded work. */

@@ -69,6 +69,9 @@ const MAX_EVIDENCE_ITEMS = 24;
 
 type RuntimeTraceFailureCode =
   | "malformed-json"
+  | "not-found"
+  | "permission-denied"
+  | "read-failed"
   | "oversized-input"
   | "wrong-document-kind"
   | "unsupported-version"
@@ -1483,8 +1486,29 @@ export async function analyzeRuntime(options: {
       [...options.projectFiles].sort().map(async (file) => {
         const resolved = path.resolve(file);
         let raw: unknown;
+        let text: string;
         try {
-          raw = JSON.parse(await fs.readFile(resolved, "utf8")) as unknown;
+          text = await fs.readFile(resolved, "utf8");
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          const failureCode =
+            code === "ENOENT"
+              ? "not-found"
+              : code === "EACCES" || code === "EPERM"
+                ? "permission-denied"
+                : "read-failed";
+          throw new EvidenceReaderError(
+            {
+              fileLabel: resolved,
+              detectedDocumentKind: "unknown",
+              failureCode,
+              pointer: "/",
+            },
+            `${resolved}: Unable to read document${code ? ` (${code})` : ""}`,
+          );
+        }
+        try {
+          raw = JSON.parse(text) as unknown;
         } catch {
           throw new EvidenceReaderError(
             {
