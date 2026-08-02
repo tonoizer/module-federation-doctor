@@ -11,6 +11,10 @@ export interface CapabilityField {
 
 export interface CapabilityPack {
   id: string;
+  core: {
+    name: string;
+    version: CapabilityVersionSelector;
+  };
   adapter: {
     name: string;
     version: CapabilityVersionSelector;
@@ -25,6 +29,10 @@ export interface CapabilityPack {
 }
 
 export interface CapabilityQuery {
+  core: {
+    name: string;
+    version?: string;
+  };
   adapter: {
     name: string;
     version?: string;
@@ -70,6 +78,7 @@ function selectorMatches(
 
 function dimensionsMatch(pack: CapabilityPack, query: CapabilityQuery): boolean {
   return (
+    pack.core.name === query.core.name &&
     pack.adapter.name === query.adapter.name &&
     pack.bundler.name === query.bundler.name &&
     pack.target === query.target &&
@@ -88,7 +97,11 @@ export function assertCapabilityPacks(packs: readonly CapabilityPack[]): void {
     if (!pack.id || ids.has(pack.id))
       throw new TypeError(`Capability pack id is not unique: ${pack.id}`);
     ids.add(pack.id);
-    if (!versionRangeIsValid(pack.adapter.version) || !versionRangeIsValid(pack.bundler.version)) {
+    if (
+      !versionRangeIsValid(pack.core.version) ||
+      !versionRangeIsValid(pack.adapter.version) ||
+      !versionRangeIsValid(pack.bundler.version)
+    ) {
       throw new TypeError(`Capability pack ${pack.id} has an invalid version selector.`);
     }
   }
@@ -103,6 +116,7 @@ export function resolveCapabilityPack(
   const dimensional = packs.filter((pack) => dimensionsMatch(pack, query));
   const matches = dimensional.filter(
     (pack) =>
+      selectorMatches(pack.core.version, query.core.version) &&
       selectorMatches(pack.adapter.version, query.adapter.version) &&
       selectorMatches(pack.bundler.version, query.bundler.version),
   );
@@ -113,7 +127,9 @@ export function resolveCapabilityPack(
     status: "unknown",
     reason:
       dimensional.length > 0 &&
-      (query.adapter.version === undefined || query.bundler.version === undefined)
+      (query.core.version === undefined ||
+        query.adapter.version === undefined ||
+        query.bundler.version === undefined)
         ? "missing-version"
         : "no-match",
     candidates: dimensional.map((pack) => pack.id).sort(),
@@ -126,5 +142,7 @@ export function queryCapability(
   field: string,
 ): ResolvedCapability {
   if (resolution.status !== "matched") return { status: "unknown", acceptedForms: [] };
-  return resolution.pack.fields[field] ?? { status: "unknown", acceptedForms: [] };
+  return Object.prototype.hasOwnProperty.call(resolution.pack.fields, field)
+    ? resolution.pack.fields[field]!
+    : { status: "unknown", acceptedForms: [] };
 }

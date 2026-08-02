@@ -8,6 +8,7 @@ import {
 
 const webpackV5: CapabilityPack = {
   id: "webpack-enhanced-v5-browser",
+  core: { name: "@module-federation/core", version: ">=0.8 <1" },
   adapter: { name: "webpack", version: ">=5 <6" },
   bundler: { name: "webpack", version: ">=5 <6" },
   target: "browser",
@@ -18,6 +19,7 @@ const webpackV5: CapabilityPack = {
 
 const unknownWebpack: CapabilityPack = {
   id: "webpack-unknown-browser",
+  core: { name: "@module-federation/core", version: "unknown" },
   adapter: { name: "webpack", version: "unknown" },
   bundler: { name: "webpack", version: "unknown" },
   target: "browser",
@@ -28,6 +30,7 @@ describe("capability pack resolver", () => {
   it("matches known versions and exposes field capability", () => {
     const resolution = resolveCapabilityPack(
       {
+        core: { name: "@module-federation/core", version: "0.9.0" },
         adapter: { name: "webpack", version: "5.99.0" },
         bundler: { name: "webpack", version: "5.99.0" },
         target: "browser",
@@ -45,6 +48,7 @@ describe("capability pack resolver", () => {
   it("does not inherit a versioned pack when version evidence is missing", () => {
     const resolution = resolveCapabilityPack(
       {
+        core: { name: "@module-federation/core" },
         adapter: { name: "webpack" },
         bundler: { name: "webpack" },
         target: "browser",
@@ -66,6 +70,7 @@ describe("capability pack resolver", () => {
   it("allows an explicit unknown-version pack", () => {
     const resolution = resolveCapabilityPack(
       {
+        core: { name: "@module-federation/core" },
         adapter: { name: "webpack" },
         bundler: { name: "webpack" },
         target: "browser",
@@ -84,6 +89,7 @@ describe("capability pack resolver", () => {
     };
     const resolution = resolveCapabilityPack(
       {
+        core: { name: "@module-federation/core", version: "0.9.0" },
         adapter: { name: "webpack", version: "5.99.0" },
         bundler: { name: "webpack", version: "5.99.0" },
         target: "browser",
@@ -94,6 +100,67 @@ describe("capability pack resolver", () => {
     expect(resolution).toEqual({
       status: "ambiguous",
       candidates: [webpackV5.id, overlapping.id].sort(),
+    });
+  });
+
+  it("matches the MF core contract version as a distinct dimension", () => {
+    const coreMismatch = resolveCapabilityPack(
+      {
+        core: { name: "@module-federation/core", version: "1.0.0" },
+        adapter: { name: "webpack", version: "5.99.0" },
+        bundler: { name: "webpack", version: "5.99.0" },
+        target: "browser",
+      },
+      [webpackV5],
+    );
+
+    expect(coreMismatch).toEqual({
+      status: "unknown",
+      reason: "no-match",
+      candidates: [webpackV5.id],
+    });
+  });
+
+  it("reports ambiguity when core contract ranges overlap", () => {
+    const overlapping = {
+      ...webpackV5,
+      id: "webpack-enhanced-core-overlap",
+      core: { name: "@module-federation/core", version: ">=0.9 <1" },
+    };
+    const resolution = resolveCapabilityPack(
+      {
+        core: { name: "@module-federation/core", version: "0.9.0" },
+        adapter: { name: "webpack", version: "5.99.0" },
+        bundler: { name: "webpack", version: "5.99.0" },
+        target: "browser",
+      },
+      [webpackV5, overlapping],
+    );
+
+    expect(resolution).toEqual({
+      status: "ambiguous",
+      candidates: [webpackV5.id, overlapping.id].sort(),
+    });
+  });
+
+  it("does not resolve inherited or reserved field names", () => {
+    const resolution = resolveCapabilityPack(
+      {
+        core: { name: "@module-federation/core", version: "0.9.0" },
+        adapter: { name: "webpack", version: "5.99.0" },
+        bundler: { name: "webpack", version: "5.99.0" },
+        target: "browser",
+      },
+      [webpackV5],
+    );
+
+    expect(queryCapability(resolution, "toString")).toEqual({
+      status: "unknown",
+      acceptedForms: [],
+    });
+    expect(queryCapability(resolution, "__proto__")).toEqual({
+      status: "unknown",
+      acceptedForms: [],
     });
   });
 
