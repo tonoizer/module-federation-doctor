@@ -406,14 +406,15 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "artifact/manifest-disabled": {
     category: "tooling",
     impact:
-      "Without manifests, consumers lose metadata-powered preloading, type hints, and richer inspection.",
-    fix: "Enable `manifest` where those production and debugging features are needed.",
+      "When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection.",
+    fix: "For a producer, set `manifest: true` to publish the metadata. For a consumer, point remotes at the producer's `mf-manifest.json` when those capabilities are wanted. If direct `remoteEntry.js` URLs are intentional, document that choice and turn this rule off.",
     sources: [manifest],
   },
   "artifact/dts-disabled": {
     category: "reliability",
-    impact: "Consumers receive no automatic contract for exposed TypeScript modules.",
-    fix: "Enable DTS generation or document and test another declaration delivery path.",
+    impact:
+      "When a producer exposes modules but explicitly disables DTS, consumers receive no automatic checked declaration contract for those modules.",
+    fix: "Set `dts: true` (or enable `dts.generateTypes`). If another declaration delivery path is intentional, document and test it, then turn this rule off for that project.",
     sources: ["https://module-federation.io/configure/dts.html"],
   },
   "shared/version-unsatisfied": {

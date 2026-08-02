@@ -57,7 +57,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 
 | Rule | Severity | What it protects |
 | --- | --- | --- |
-| [`artifact/dts-disabled`](./artifact/dts-disabled.md) | warning | Consumers receive no automatic contract for exposed TypeScript modules. |
+| [`artifact/dts-disabled`](./artifact/dts-disabled.md) | warning | When a producer exposes modules but explicitly disables DTS, consumers receive no automatic checked declaration contract for those modules. |
 | [`artifact/manifest-assets-disabled`](./artifact/manifest-assets-disabled.md) | warning | Disabled asset analysis removes shared and expose asset details from producer metadata. |
 | [`artifact/manifest-expose-assets-empty`](./artifact/manifest-expose-assets-empty.md) | warning | Preload and debugging tools cannot map an expose to its assets. |
 | [`artifact/manifest-shared-version-mismatch`](./artifact/manifest-shared-version-mismatch.md) | warning | Stale version metadata can choose the wrong shared provider at runtime. |
@@ -122,7 +122,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 
 | Rule | Severity | What it protects |
 | --- | --- | --- |
-| [`artifact/manifest-disabled`](./artifact/manifest-disabled.md) | info | Without manifests, consumers lose metadata-powered preloading, type hints, and richer inspection. |
+| [`artifact/manifest-disabled`](./artifact/manifest-disabled.md) | info | When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. |
 | [`artifact/types-metadata-missing`](./artifact/types-metadata-missing.md) | warning | The manifest cannot advertise generated type archives to consumers. |
 | [`artifact/types-missing`](./artifact/types-missing.md) | warning | No emitted declaration artifact was found for a typed producer. |
 | [`bridge/disable-alias-deprecated`](./bridge/disable-alias-deprecated.md) | info | `bridge.disableAlias` is a deprecated escape hatch; explicit `enableBridgeRouter` communicates intent clearly. |
