@@ -1,6 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import semver from "semver";
+import {
+  HARD_RUNTIME_CAPTURE_LIMITS,
+  RuntimeCaptureValidationError,
+  validateRuntimeCaptureEnvelope,
+  type RuntimeCaptureEnvelope,
+  type RuntimeCaptureObservabilityRecord,
+} from "./capture.js";
 import { runtimeRuleMeta } from "./rules.js";
 import { writeFederationReports } from "./reporters.js";
 import type {
@@ -57,6 +64,7 @@ const MAX_EVIDENCE_ITEMS = 24;
 
 type RuntimeTraceFailureCode =
   | "malformed-json"
+  | "oversized-input"
   | "wrong-document-kind"
   | "unsupported-version"
   | "invalid-field"
@@ -107,6 +115,128 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 
 function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function isRuntimeCaptureEnvelope(value: unknown): value is RuntimeCaptureEnvelope {
+  const record = asRecord(value);
+  return Boolean(
+    record &&
+    record.contractVersion !== undefined &&
+    record.captureId !== undefined &&
+    Array.isArray(record.reports),
+  );
+}
+
+function captureOutcome(outcome: string | undefined): string | undefined {
+  if (outcome === undefined) return undefined;
+  if (outcome === "remote-loaded") return "runtime-loaded";
+  return outcome;
+}
+
+function captureRecordToRawReport(
+  record: RuntimeCaptureObservabilityRecord,
+): Record<string, unknown> {
+  const value = record.value;
+  const identity = record.identity;
+  const outcome = captureOutcome(value.outcome);
+  const phase = value.phase;
+  const raw: Record<string, unknown> = {
+    ...((value.traceId ?? identity.traceId) ? { traceId: value.traceId ?? identity.traceId } : {}),
+    ...((value.requestId ?? identity.requestId)
+      ? { requestId: value.requestId ?? identity.requestId }
+      : {}),
+    ...(value.requestAlias ? { requestAlias: value.requestAlias } : {}),
+    ...((value.hostName ?? identity.hostName)
+      ? { hostName: value.hostName ?? identity.hostName }
+      : {}),
+    ...((value.runtimeVersion ?? identity.runtimeVersion)
+      ? { runtimeVersion: value.runtimeVersion ?? identity.runtimeVersion }
+      : {}),
+    ...(value.errorCode ? { errorCode: value.errorCode } : {}),
+    ...(identity.remoteName || identity.remoteAlias
+      ? {
+          remote: {
+            ...(identity.remoteName ? { name: identity.remoteName } : {}),
+            ...(identity.remoteAlias ? { alias: identity.remoteAlias } : {}),
+          },
+        }
+      : {}),
+    ...(identity.sharedPackage ? { shared: { package: identity.sharedPackage } } : {}),
+    ...(value.loadedBefore !== undefined ? { loadedBefore: value.loadedBefore } : {}),
+    ...(outcome || phase
+      ? {
+          summary: {
+            ...(outcome ? { outcome } : {}),
+            ...(phase
+              ? {
+                  phases: {
+                    [phase]: { status: outcome === "failed" ? "failed" : "complete" },
+                  },
+                }
+              : {}),
+          },
+        }
+      : {}),
+    ...(value.ownerHint || value.diagnosisTitle
+      ? {
+          diagnosis: {
+            ...(value.ownerHint ? { ownerHint: value.ownerHint } : {}),
+            ...(value.diagnosisTitle ? { title: value.diagnosisTitle } : {}),
+          },
+        }
+      : {}),
+    ...(value.moduleInfoNames ? { moduleInfo: { availableNames: value.moduleInfoNames } } : {}),
+  };
+  return raw;
+}
+
+function parseRuntimeCapture(raw: RuntimeCaptureEnvelope): RuntimeTraceReport[] {
+  try {
+    validateRuntimeCaptureEnvelope(raw);
+  } catch (error) {
+    if (error instanceof RuntimeCaptureValidationError) {
+      const futureVersion = /unsupported capture contract version/.test(error.message);
+      throw new RuntimeTraceError(`Invalid runtime capture: ${error.message}`, {
+        failureCode: futureVersion ? "unsupported-version" : "invalid-field",
+        pointer: futureVersion ? "/contractVersion" : "/",
+      });
+    }
+    throw error;
+  }
+  if (raw.reports.length === 0)
+    throw new RuntimeTraceError("Runtime capture contains no Observability reports at /reports.", {
+      failureCode: "unsupported-shape",
+      pointer: "/reports",
+    });
+  const truncated = raw.truncation.some((item) => item.dropped > 0);
+  return raw.reports
+    .map(captureRecordToRawReport)
+    .map(normalizeReport)
+    .filter((report): report is RuntimeTraceReport => report !== undefined)
+    .map((report, index) => {
+      const record = raw.reports[index]!;
+      if (truncated || record.completeness.status !== "complete") report.evidenceClipped = true;
+      Object.defineProperty(report, "capture", {
+        configurable: false,
+        enumerable: false,
+        value: {
+          captureId: record.identity.captureId,
+          navigationId: record.identity.navigationId,
+          realmId: record.identity.realmId,
+          sequence: record.identity.sequence,
+          source: record.source,
+          capturedAt: record.capturedAt,
+          provenance: record.provenance,
+          completeness: record.completeness,
+          truncation: raw.truncation,
+          relations: raw.relations.filter(
+            (relation) => relation.from === record.id || relation.to === record.id,
+          ),
+        },
+        writable: false,
+      });
+      return report;
+    });
 }
 
 function expectNumber(value: unknown, fieldPath: string): number | undefined {
@@ -443,7 +573,9 @@ function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
     record.loadedBefore !== undefined ||
     record.retryable !== undefined ||
     Array.isArray(record.events) ||
-    errorCode !== undefined;
+    errorCode !== undefined ||
+    moduleInfo !== undefined ||
+    diagnosis !== undefined;
   if (!hasShape)
     throw new RuntimeTraceError(
       "Unsupported runtime trace report shape: expected an Observability report envelope.",
@@ -768,6 +900,7 @@ function assertSupportedDocumentVersion(value: unknown): void {
 }
 
 export function parseRuntimeTraces(raw: unknown): RuntimeTraceReport[] {
+  if (isRuntimeCaptureEnvelope(raw)) return parseRuntimeCapture(raw);
   const record = asRecord(raw);
   assertSupportedDocumentVersion(record);
   if (isBuildReportDocument(record))
@@ -794,27 +927,34 @@ export function parseRuntimeTraces(raw: unknown): RuntimeTraceReport[] {
 
 export async function loadRuntimeTraceFile(filePath: string): Promise<RuntimeTraceReport[]> {
   const resolved = path.resolve(filePath);
-  let text: string;
+  let handle: fs.FileHandle | undefined;
   try {
-    text = await fs.readFile(resolved, "utf8");
-  } catch {
-    throw new RuntimeTraceError(`Unable to read runtime trace: ${resolved}`, {
-      fileLabel: resolved,
-      failureCode: "malformed-json",
-      pointer: "/",
-    });
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text) as unknown;
-  } catch {
-    throw new RuntimeTraceError(`Runtime trace is not valid JSON: ${resolved}`, {
-      fileLabel: resolved,
-      failureCode: "malformed-json",
-      pointer: "/",
-    });
-  }
-  try {
+    handle = await fs.open(resolved, "r");
+    const stat = await handle.stat();
+    const maxBytes = HARD_RUNTIME_CAPTURE_LIMITS.maxBytes;
+    if (stat.size > maxBytes)
+      throw new RuntimeTraceError(
+        `Runtime trace exceeds the ${maxBytes} byte input limit: ${resolved}`,
+        { fileLabel: resolved, failureCode: "oversized-input", pointer: "/" },
+      );
+    const buffer = Buffer.allocUnsafe(Math.min(stat.size + 1, maxBytes + 1));
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    if (bytesRead > maxBytes || (await handle.stat()).size > maxBytes)
+      throw new RuntimeTraceError(
+        `Runtime trace exceeds the ${maxBytes} byte input limit: ${resolved}`,
+        { fileLabel: resolved, failureCode: "oversized-input", pointer: "/" },
+      );
+    const text = buffer.toString("utf8", 0, bytesRead);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text) as unknown;
+    } catch {
+      throw new RuntimeTraceError(`Runtime trace is not valid JSON: ${resolved}`, {
+        fileLabel: resolved,
+        failureCode: "malformed-json",
+        pointer: "/",
+      });
+    }
     return parseRuntimeTraces(parsed);
   } catch (error) {
     if (error instanceof RuntimeTraceError) {
@@ -824,7 +964,13 @@ export async function loadRuntimeTraceFile(filePath: string): Promise<RuntimeTra
         pointer: error.pointer,
       });
     }
-    throw error;
+    throw new RuntimeTraceError(`Unable to read runtime trace: ${resolved}`, {
+      fileLabel: resolved,
+      failureCode: "malformed-json",
+      pointer: "/",
+    });
+  } finally {
+    await handle?.close().catch(() => undefined);
   }
 }
 
