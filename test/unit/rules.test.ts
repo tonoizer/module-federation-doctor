@@ -782,6 +782,20 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "shared/react-host-missing",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.remotes = {
+          remote: {
+            name: "remote",
+            entry: "https://example.test/remote.js",
+            shareScope: "default",
+          },
+        };
+        facts.moduleFederation!.shared = {};
+        facts.imports.packages = ["react"];
+      },
+    ],
+    [
       "shared/deep-import-bypass",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.shared = {
