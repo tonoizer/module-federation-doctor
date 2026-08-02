@@ -29,6 +29,33 @@ afterEach(async () => {
 });
 
 describe("built-in rules", () => {
+  it("applies production overlay warnings after demo-only behavior is removed", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "development",
+      extends: ["recommended", "demo", "production"],
+      moduleFederation: {
+        name: "host",
+        remotes: { shop: { name: "shop", entry: "shop@http://localhost:3001/remoteEntry.js" } },
+        shareStrategy: "version-first",
+      },
+      output: { formats: [] },
+    });
+    expect(result.report.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ruleId: "config/remote-manifest-recommended",
+          severity: "warning",
+        }),
+        expect.objectContaining({
+          ruleId: "reliability/version-first-offline-remotes",
+          severity: "warning",
+        }),
+      ]),
+    );
+  });
   it("applies demo and production overlays to real findings", async () => {
     const root = await fixture();
     const moduleFederation = {
@@ -222,6 +249,55 @@ describe("built-in rules", () => {
     expect(ci.report.findings.map((finding) => finding.ruleId)).toContain(
       "reliability/version-first-offline-remotes",
     );
+  });
+
+  it("classifies authenticated and protocol-relative remotes conservatively", async () => {
+    const root = await fixture();
+    const analyzeRemote = (entry: string) =>
+      analyze({
+        root,
+        bundler: "vite",
+        mode: "development",
+        output: { formats: [] },
+        extends: ["recommended", "demo"],
+        moduleFederation: {
+          name: "demo-host",
+          shareStrategy: "version-first",
+          remotes: { shop: { name: "shop", entry } },
+        },
+        rules: { "config/plugin-package-mismatch": "off", "doctor/partial-analysis": "off" },
+      });
+
+    for (const entry of [
+      "//user:pass@localhost:3001/remoteEntry.js",
+      "shop@https://user:pass@localhost:3001/remoteEntry.js",
+    ]) {
+      const result = await analyzeRemote(entry);
+      expect(
+        result.report.findings.map((finding) => finding.ruleId),
+        entry,
+      ).not.toContain("config/remote-manifest-recommended");
+      expect(
+        result.report.findings.map((finding) => finding.ruleId),
+        entry,
+      ).not.toContain("reliability/version-first-offline-remotes");
+    }
+
+    for (const entry of [
+      "//user:pass@cdn.example.test/remoteEntry.js",
+      "shop@https://user:pass@cdn.example.test/remoteEntry.js",
+      "shop@https:remoteEntry.js",
+    ]) {
+      const result = await analyzeRemote(entry);
+      expect(
+        result.report.findings.map((finding) => finding.ruleId),
+        entry,
+      ).toContain("config/remote-manifest-recommended");
+      expect(
+        result.report.findings.map((finding) => finding.ruleId),
+        entry,
+      ).toContain("reliability/version-first-offline-remotes");
+    }
   });
 
   it("reports oversized federation assets and honors budget overrides", async () => {

@@ -204,21 +204,46 @@ function deepImportAllowlist(context: RuleContext): Set<string> {
 }
 
 function remoteEntryUrl(entry: string): string {
-  return entry.includes("@") ? entry.slice(entry.lastIndexOf("@") + 1) : entry;
+  const separator = entry.indexOf("@");
+  return separator > 0 && !entry.startsWith("//") && !entry.slice(0, separator).includes("://")
+    ? entry.slice(separator + 1)
+    : entry;
 }
 
 function isLoopbackRemoteUrl(url: string): boolean {
-  return /^(?:https?:\/\/)?(?:localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(url);
+  const candidate = url.startsWith("//") ? `http:${url}` : url;
+  try {
+    const parsed = new URL(candidate);
+    return (
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      /^(?:localhost|127\.0\.0\.1|\[::1\])$/i.test(parsed.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+type DemoRemoteClassification = "known-local" | "external" | "unknown";
+
+function classifyDemoRemote(entry: string): DemoRemoteClassification {
+  const url = remoteEntryUrl(entry).trim();
+  if (!url) return "unknown";
+  if (url.startsWith("//")) return isLoopbackRemoteUrl(url) ? "known-local" : "external";
+  if (/^[a-z][a-z\d+.-]*:\/\//i.test(url)) {
+    try {
+      const parsed = new URL(url);
+      return isLoopbackRemoteUrl(url) ? "known-local" : parsed.hostname ? "external" : "unknown";
+    } catch {
+      return "unknown";
+    }
+  }
+  if (/^[a-z][a-z\d+.-]*:/i.test(url)) return "unknown";
+  return "known-local";
 }
 
 function isDemoLocalRemote(context: RuleContext, entry: string): boolean {
   if (!context.options.localDemoOnly || context.facts.bundler.mode !== "development") return false;
-  const url = remoteEntryUrl(entry).trim();
-  // Relative / bare entries are the normal local demo shape. Keep deployed
-  // HTTPS and non-loopback hosts loud even when the demo pack is applied.
-  return !/^[a-z][a-z\d+.-]*:\/\//i.test(url) && !url.startsWith("//")
-    ? true
-    : isLoopbackRemoteUrl(url);
+  return classifyDemoRemote(entry) === "known-local";
 }
 
 /** Detect retry / errorLoadRemote recovery plugins from configured paths. */
@@ -333,10 +358,7 @@ export const builtInRules: DoctorRule[] = [
   createRule("config/remote-http-insecure", "warning", (context) => {
     for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {})) {
       const url = remoteEntryUrl(remote.entry);
-      if (
-        url.startsWith("http://") &&
-        !/^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/.test(url)
-      )
+      if (url.startsWith("http://") && !isLoopbackRemoteUrl(url))
         report(
           context,
           `Remote "${name}" uses plain HTTP outside localhost.`,

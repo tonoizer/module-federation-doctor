@@ -65,10 +65,17 @@ describe("built-in presets", () => {
   it("elevates selected recommendations in the production overlay", () => {
     expect(productionPreset.rules).toEqual({
       "config/remote-manifest-recommended": "warning",
+      "reliability/version-first-offline-remotes": "warning",
       "artifact/manifest-disabled": "warning",
       "artifact/dts-disabled": "warning",
       "bridge/router-implicit-enable": "warning",
     });
+  });
+
+  it("clears demo-only rule options when production is composed after demo", async () => {
+    const policy = await resolvePolicy(["recommended", "demo", "production"], repoRoot);
+    expect(policy.rules["config/remote-manifest-recommended"]).toBe("warning");
+    expect(policy.rules["reliability/version-first-offline-remotes"]).toBe("warning");
   });
 });
 

@@ -112,6 +112,7 @@ export const productionPreset: DoctorPolicyPack = definePolicyPack({
   name: "production",
   rules: {
     "config/remote-manifest-recommended": "warning",
+    "reliability/version-first-offline-remotes": "warning",
     "artifact/manifest-disabled": "warning",
     "artifact/dts-disabled": "warning",
     "bridge/router-implicit-enable": "warning",

@@ -5,7 +5,7 @@
 
 ## Issue
 
-An unavailable remote can break startup before its exposed module is requested.
+An unavailable remote can break startup before its exposed module is requested. The `demo` policy only softens this recommendation when every remote is an explicitly known-local bare/relative entry or loopback URL during development; external, authenticated non-loopback, unknown, and CI remotes remain visible.
 
 ## How to fix it
 
