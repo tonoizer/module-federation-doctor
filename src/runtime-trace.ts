@@ -9,11 +9,7 @@ import {
   type RuntimeCaptureObservabilityRecord,
 } from "./capture.js";
 import { runtimeRuleMeta } from "./rules.js";
-import {
-  EvidenceReaderError,
-  projectFactsFromEvidence,
-  readEvidenceDocument,
-} from "./evidence-reader.js";
+import { projectFactsFromEvidence, readEvidenceFile } from "./evidence-reader.js";
 import { writeFederationReports } from "./reporters.js";
 import type {
   DoctorFinding,
@@ -1485,42 +1481,7 @@ export async function analyzeRuntime(options: {
     await Promise.all(
       [...options.projectFiles].sort().map(async (file) => {
         const resolved = path.resolve(file);
-        let raw: unknown;
-        let text: string;
-        try {
-          text = await fs.readFile(resolved, "utf8");
-        } catch (error) {
-          const code = (error as NodeJS.ErrnoException).code;
-          const failureCode =
-            code === "ENOENT"
-              ? "not-found"
-              : code === "EACCES" || code === "EPERM"
-                ? "permission-denied"
-                : "read-failed";
-          throw new EvidenceReaderError(
-            {
-              fileLabel: resolved,
-              detectedDocumentKind: "unknown",
-              failureCode,
-              pointer: "/",
-            },
-            `${resolved}: Unable to read document${code ? ` (${code})` : ""}`,
-          );
-        }
-        try {
-          raw = JSON.parse(text) as unknown;
-        } catch {
-          throw new EvidenceReaderError(
-            {
-              fileLabel: resolved,
-              detectedDocumentKind: "unknown",
-              failureCode: "malformed-json",
-              pointer: "/",
-            },
-            `${resolved}: Document is not valid JSON at /`,
-          );
-        }
-        const document = readEvidenceDocument(raw, { fileLabel: resolved });
+        const document = await readEvidenceFile(resolved);
         if (document.kind !== "project-facts")
           throw new RuntimeTraceError(
             `Runtime project import requires project facts: ${resolved}`,

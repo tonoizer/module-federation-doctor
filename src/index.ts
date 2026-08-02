@@ -309,6 +309,7 @@ export {
   migrateDoctorReport,
   migrateProjectFacts,
   projectFactsFromEvidence,
+  readEvidenceFile,
   readEvidenceDocument,
   reportFromEvaluations,
 } from "./evidence-reader.js";
