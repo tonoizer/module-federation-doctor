@@ -81,8 +81,10 @@ export type {
 export {
   DOCTOR_PRESET_NAMES,
   definePolicyPack,
+  demoPreset,
   isDoctorPresetName,
   presets,
+  productionPreset,
   recommendedPreset,
   resolvePolicy,
   strictPreset,

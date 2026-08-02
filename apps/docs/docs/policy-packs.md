@@ -11,6 +11,8 @@ overrides, baselines, and `failOn`, see
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `recommended` | Documented severity map matching built-in / federation / runtime catalog defaults.                                                                                                                                         |
 | `strict`      | Production gate: `info` → `warning`, `warning` → `error`, except advisory tooling / soft-heuristic signals (`doctor/partial-analysis`, `shared/candidate`, `config/implementation-suspicious`, `federation/ghost-shares`). |
+| `demo`        | Local/demo overlay: hides selected opt-in tooling nudges and softens DTS guidance; correctness findings stay unchanged.                                                                                                    |
+| `production`  | Production overlay: elevates selected enable-this recommendations to `warning`; correctness findings stay unchanged.                                                                                                       |
 
 ```ts
 export default {
@@ -23,6 +25,32 @@ export default {
   extends: ["strict"],
 };
 ```
+
+Profiles are explicit policy overlays, not a second config system. Compose one
+with `recommended` when you want the full catalog, and keep local `rules`
+overrides last:
+
+```ts
+export default {
+  extends: ["recommended", "demo"],
+};
+```
+
+```ts
+export default {
+  extends: ["recommended", "production"],
+  rules: {
+    // Local intent still wins over the profile.
+  },
+};
+```
+
+The `demo` overlay turns off the manifest and implicit Bridge-router nudges and
+softens disabled DTS to `info`. The `production` overlay makes manifest,
+disabled DTS, and implicit Bridge-router nudges `warning`. These overlays only
+change existing recommendation severities; they do not change default runs or
+correctness rules. Use `rules: { "<rule-id>": "off" }` or a baseline when a
+production team intentionally accepts a recommendation.
 
 ## Shareable packs
 
@@ -122,6 +150,7 @@ entries or as `plugins` on a pack.
 ## API
 
 - `definePolicyPack` — author a pack
-- `presets` / `recommendedPreset` / `strictPreset` — built-in packs
+- `presets` / `recommendedPreset` / `strictPreset` / `demoPreset` /
+  `productionPreset` — built-in packs and recommendation overlays
 - `resolvePolicy` / `resolveOptions` — resolve `extends` + merge `rules`
 - Subpath: `@module-federation/doctor/policy`

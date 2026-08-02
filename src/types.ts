@@ -620,8 +620,8 @@ export interface BaselineOptions {
   reportStale?: boolean;
 }
 
-/** Built-in named severity presets (`recommended` / `strict`). */
-export type DoctorPresetName = "recommended" | "strict";
+/** Built-in named severity presets and recommendation profile overlays. */
+export type DoctorPresetName = "recommended" | "strict" | "demo" | "production";
 
 /**
  * Shared-dependency governance knobs for packs and local config (MFDOCTOR-122).
