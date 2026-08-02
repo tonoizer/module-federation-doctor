@@ -25,6 +25,20 @@ export {
 } from "./monorepo-identity.js";
 export { readCanonicalModuleFederationConfig } from "./canonical-config.js";
 export {
+  assertCapabilityPacks,
+  queryCapability,
+  resolveCapabilityPack,
+} from "./capability-packs.js";
+export type {
+  CapabilityField,
+  CapabilityPack,
+  CapabilityQuery,
+  CapabilityResolution,
+  CapabilityStatus,
+  CapabilityVersionSelector,
+  ResolvedCapability,
+} from "./capability-packs.js";
+export {
   resolveOptions,
   resolveQuiet,
   resolvePrintLog,
