@@ -75,6 +75,22 @@ describe("artifact collection", () => {
     expect(facts).not.toHaveProperty("budget");
   });
 
+  it("bounds artifact parsing and reports omitted records as partial", async () => {
+    const root = await fixture({
+      "dist/a/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+      "dist/b/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+    });
+
+    const facts = await collectProjectFacts(
+      await resolveOptions({ root, analysisBudgets: { maxArtifacts: 1 } }),
+    );
+
+    expect(facts.artifacts.records).toHaveLength(1);
+    expect(facts.artifacts.records?.[0]?.path).toBe("dist/a/mf-manifest.json");
+    expect(facts.analysis?.status).toBe("partial");
+    expect(facts.analysis?.exceeded).toEqual([{ kind: "artifacts", limit: 1 }]);
+  });
+
   it("returns exit code 2 when source collection is incomplete", async () => {
     const root = await fixture({
       "src/a.ts": "export const a = 1;\n",
