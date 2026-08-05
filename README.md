@@ -202,7 +202,9 @@ loop.
 
 ## Development
 
-Requires Node `>=22.12.0` and pnpm 11 (primary). See the
+Requires Node `>=22.12.0` and pnpm 11 only. The workspace policy pins the
+package manager to `pnpm@11.17.0`, delays new dependency releases by ten days,
+and requires explicit approval for dependency build scripts. See the
 [compatibility matrix](./apps/docs/docs/compatibility.md) for supported /
 partial / unsupported cells (Vite, Rspack, Rsbuild, Webpack, Modern.js; npm / yarn
 consumer notes; terminal / JSON / SARIF on CI).
