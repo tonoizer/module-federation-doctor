@@ -62,7 +62,7 @@ certainty (`shared/unused`, invented remotes, scraped private plugin fields).
 
 | Manager                | Status        | Notes                                                                                                                                                                                                            |
 | ---------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **pnpm** (primary)     | **supported** | `packageManager: "pnpm@11.17.0"`; CI uses `pnpm install --frozen-lockfile`; workspace filters for examples                                                                                                       |
+| **pnpm** (primary)     | **supported** | pnpm 11 only (`packageManager: "pnpm@11.17.0"`; `engines.pnpm: ">=11.0.0 <12.0.0"`); CI uses `pnpm install --frozen-lockfile`; workspace filters for examples; ten-day release-age and explicit build approvals are enforced |
 | npm                    | **partial**   | Published package installs with `npm i -D @module-federation/doctor`; CLI via `npx mfdoctor`. This monorepo’s lockfile and filters are pnpm-only — do not expect `npm install` at the repo root to reproduce CI. |
 | yarn (classic / Berry) | **partial**   | Same published-package install/CLI story as npm. Yarn workspaces are not the repo’s CI path; use pnpm for contributing and matrix jobs.                                                                          |
 

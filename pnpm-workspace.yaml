@@ -16,8 +16,29 @@ catalog:
 
 saveExact: true
 strictPeerDependencies: false
-# Exact pins + frozen lockfiles are the trust boundary; keep installs reproducible in CI.
-minimumReleaseAge: 0
+
+# Supply-chain guardrails. Keep these settings explicit so a pnpm upgrade cannot
+# silently weaken the repository's install policy.
+# Wait ten days before accepting a newly published version, including transitive
+# dependencies. Strict mode prevents falling back to a too-new version.
+minimumReleaseAge: 14400
+minimumReleaseAgeStrict: true
+# Fail closed when registry metadata does not provide a publication timestamp.
+minimumReleaseAgeIgnoreMissingTime: false
+# Reject releases whose npm trust evidence is weaker than an earlier release.
+trustPolicy: no-downgrade
+# Re-check the lockfile against the registry; do not treat it as implicitly trusted.
+trustLockfile: false
+# Transitive dependencies must not come from arbitrary git repositories or URLs.
+blockExoticSubdeps: true
+
+# Reproducibility and execution guardrails.
+# Refuse to run scripts against a stale node_modules tree.
+verifyDepsBeforeRun: error
+# Dependency lifecycle scripts require explicit review below.
+strictDepBuilds: true
+# Keep the escape hatch visible and disabled in the committed policy.
+dangerouslyAllowAllBuilds: false
 
 # GHSA-qwww-vcr4-c8h2 / issue #61 — Rspress still depends on react-router-dom ^7
 # (which pins react-router 7.x). Drop this override when @rspress/core depends on
