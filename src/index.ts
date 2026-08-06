@@ -19,6 +19,15 @@ export type {
 } from "./finding-details.js";
 export { analyze, analyzeFederation } from "./engine.js";
 export {
+  AnalysisContentCache,
+  DEFAULT_ANALYSIS_CACHE_OPTIONS,
+  analysisCacheKey,
+  contentDigest,
+  createAnalysisCacheIdentity,
+  stableSerialize,
+} from "./analysis-cache.js";
+export type { AnalysisCacheOptions, AnalysisCacheStats } from "./analysis-cache.js";
+export {
   createWorkspaceApplicationIdentity,
   workspaceProjectRoot,
   workspaceRootForProjects,

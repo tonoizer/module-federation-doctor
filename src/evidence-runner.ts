@@ -246,7 +246,6 @@ export async function runEvidenceAwareRules(
       .map((subject, index) => ({
         originalId: typeof subject.id === "string" ? subject.id : undefined,
         inputIndex: index,
-        subject,
       }))
       .filter(
         (subject) =>
@@ -258,7 +257,7 @@ export async function runEvidenceAwareRules(
           (left.originalId ?? "").localeCompare(right.originalId ?? "") ||
           left.inputIndex - right.inputIndex,
       )
-      .map((subject, index) => ({
+      .map((_subject, index) => ({
         safe: {
           id: opaqueSubjectId(index),
           kind: "project" as const,

@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { analyzeFederation } from "../../src/engine.js";
 import {
   DEFAULT_WORKSPACE_PROJECT_GLOBS,
@@ -96,6 +96,35 @@ describe("workspace discovery", () => {
         "stale",
       ]);
     } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("omits a project that grows beyond the serialized-byte budget before parsing", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-race-"));
+    try {
+      const file = path.join(root, ".mf", "doctor", "project.json");
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      const original = JSON.stringify({ project: { name: "growing" } });
+      await fs.writeFile(file, original);
+      const originalReadFile = fs.readFile;
+      vi.spyOn(fs, "readFile").mockImplementation(async (candidate, options) => {
+        if (String(candidate) === file) return `${original} `;
+        return originalReadFile(candidate, options);
+      });
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        analysisBudgets: { maxSerializedBytes: Buffer.byteLength(original) },
+      });
+
+      expect(discovery.files).toEqual([]);
+      expect(discovery.budget.status).toBe("unknown");
+      expect(discovery.budget.exceeded).toEqual([
+        { kind: "serializedBytes", limit: Buffer.byteLength(original) },
+      ]);
+    } finally {
+      vi.restoreAllMocks();
       await fs.rm(root, { recursive: true, force: true });
     }
   });

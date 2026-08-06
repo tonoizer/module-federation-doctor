@@ -124,6 +124,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   const quiet = resolveQuiet(options);
   const resolved: ResolvedDoctorOptions = {
     analysisBudgets: resolveAnalysisBudgets(options.analysisBudgets),
+    ...(options.analysisCache ? { analysisCache: options.analysisCache } : {}),
     bundler: options.bundler ?? "unknown",
     artifactNames: {
       manifest: options.artifactNames?.manifest ?? ["mf-manifest.json"],

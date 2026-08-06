@@ -4,6 +4,7 @@ import type {
   AnalysisBudgets,
 } from "./analysis-budgets.js";
 import type { CanonicalMFConfigV1 } from "./canonical-config.js";
+import type { AnalysisContentCache } from "./analysis-cache.js";
 
 export type BundlerName = "vite" | "rspack" | "rsbuild" | "webpack" | "modern" | "unknown";
 export type Severity = "info" | "warning" | "error";
@@ -687,6 +688,8 @@ export type HealthScoreLabel = "Great" | "OK" | "Needs work";
 
 export interface DoctorOptions {
   analysisBudgets?: AnalysisBudgetOptions;
+  /** Optional bounded parsed-input cache explicitly shared by one process. */
+  analysisCache?: AnalysisContentCache;
   moduleFederation?: ModuleFederationConfigLike;
   bundler?: BundlerName;
   bundlerVersion?: string;
@@ -782,6 +785,8 @@ export interface DoctorOptions {
 
 export interface ResolvedDoctorOptions {
   analysisBudgets: AnalysisBudgets;
+  /** Optional bounded parsed-input cache explicitly shared by one process. */
+  analysisCache?: AnalysisContentCache;
   moduleFederation?: ModuleFederationConfigLike;
   bundler: BundlerName;
   bundlerVersion?: string;

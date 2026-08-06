@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "fixtures": {
+    "small": {
+      "root": "fixtures/analysis-budgets/small",
+      "maxFiles": 100,
+      "maxSourceBytes": 1048576,
+      "maxArtifacts": 100,
+      "maxEvidenceNodes": 10000,
+      "maxSerializedBytes": 1048576,
+      "maxWallTimeMs": 30000,
+      "maxRssBytes": 268435456
+    },
+    "medium": {
+      "root": "fixtures/analysis-budgets/medium",
+      "maxFiles": 100,
+      "maxSourceBytes": 4194304,
+      "maxArtifacts": 100,
+      "maxEvidenceNodes": 50000,
+      "maxSerializedBytes": 4194304,
+      "maxWallTimeMs": 30000,
+      "maxRssBytes": 268435456
+    },
+    "large": {
+      "root": "fixtures/analysis-budgets/large",
+      "maxFiles": 100,
+      "maxSourceBytes": 16777216,
+      "maxArtifacts": 100,
+      "maxEvidenceNodes": 100000,
+      "maxSerializedBytes": 16777216,
+      "maxWallTimeMs": 30000,
+      "maxRssBytes": 268435456
+    }
+  },
+  "modes": ["legacy", "shadow", "v2-compat"]
+}

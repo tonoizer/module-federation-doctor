@@ -310,6 +310,7 @@ describe("evidence-aware rule contract", () => {
       id: "evaluation:1",
       rule: { id: "x", version: "1" },
       subject: "project:shop",
+      scope: {},
       confidence: "high" as const,
       evidenceIds: [],
       completeness: "complete" as const,

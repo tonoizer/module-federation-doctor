@@ -157,6 +157,7 @@ export class AnalysisBudgetTracker {
   }
 
   report(status: AnalysisBudgetReport["status"] = "complete"): AnalysisBudgetReport {
+    this.checkWallTime();
     const resolvedStatus = this.exceeded.size > 0 ? "partial" : status;
     return {
       status: resolvedStatus,
@@ -181,10 +182,9 @@ export function measureEvidenceUsage(
 ): EvidenceBudgetMeasurement {
   const maxNodes = ceilings.evidenceNodes ?? Number.MAX_SAFE_INTEGER;
   const maxBytes = ceilings.serializedBytes ?? Number.MAX_SAFE_INTEGER;
-  const pending: Array<
-    | { type: "value"; value: unknown }
-    | { type: "leave"; value: object }
-  > = [{ type: "value", value }];
+  const pending: Array<{ type: "value"; value: unknown } | { type: "leave"; value: object }> = [
+    { type: "value", value },
+  ];
   const active = new WeakSet<object>();
   let evidenceNodes = 0;
   let serializedBytes = 0;
@@ -212,9 +212,7 @@ export function measureEvidenceUsage(
       for (let index = current.length - 1; index >= 0; index -= 1)
         pending.push({ type: "value", value: current[index] });
     } else if (typeof current === "object") {
-      if (
-        !([Object.prototype, null] as (object | null)[]).includes(Object.getPrototypeOf(current))
-      )
+      if (!([Object.prototype, null] as (object | null)[]).includes(Object.getPrototypeOf(current)))
         throw new TypeError("Evidence value is not JSON serializable.");
       const object = current as Record<string, unknown>;
       if (active.has(object)) throw new TypeError("Evidence value contains a cycle.");
