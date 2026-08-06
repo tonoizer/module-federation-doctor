@@ -29,7 +29,9 @@ workspace project contract, against that file. Bound paths are normalized relati
 their fixture root. Timings, RSS, generated timestamps, absolute/temp paths, and other
 environment details are intentionally excluded from the semantic contract. The
 workspace rows also enforce bounded discovery, wall-time, RSS, repeat-run, and parity
-checks. To intentionally change the contract, update the expectation file in the same
+checks; source-byte usage remains enforced as a runtime ceiling but is excluded from
+the cross-platform semantic contract because checkout line endings can differ. To
+intentionally change the contract, update the expectation file in the same
 change after reviewing the resulting diff; CI never updates it automatically and the
 required suite cannot be reduced.
 

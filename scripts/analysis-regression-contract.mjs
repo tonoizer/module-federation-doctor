@@ -55,6 +55,14 @@ function normalizeBudget(budget, root) {
   );
 }
 
+function normalizeAnalysisBudget(budget, root) {
+  if (!budget) return undefined;
+  const usage = Object.fromEntries(
+    Object.entries(budget.usage ?? {}).filter(([key]) => key !== "sourceBytes"),
+  );
+  return normalizeValue({ ...budget, usage }, root);
+}
+
 function normalizeFinding(finding, root) {
   return {
     ruleId: finding.ruleId,
@@ -136,7 +144,7 @@ export function normalizeAnalysisRun(run, evidenceReader, root) {
         moduleFederation: facts.moduleFederation,
         dependencies: facts.dependencies,
         imports: facts.imports,
-        analysis: facts.analysis,
+        analysis: normalizeAnalysisBudget(facts.analysis, root),
         artifacts: normalizeArtifacts(facts.artifacts, root),
       },
       root,
