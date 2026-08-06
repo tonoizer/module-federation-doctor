@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { rspack } from "@rspack/core";
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
-import { pluginModuleFederationDoctor } from "@module-federation/doctor/modern";
+import { moduleFederationDoctorPlugin } from "@module-federation/doctor/modern";
 import { mfOptions } from "./modern.config.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -20,7 +20,7 @@ const chain = {
   },
 };
 
-const doctor = pluginModuleFederationDoctor({
+const doctor = moduleFederationDoctorPlugin({
   moduleFederation: mfOptions,
   rules: {
     // Smoke focuses on adapter wiring, not DTS generation.

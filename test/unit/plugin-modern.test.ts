@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   appendModuleFederationDoctor,
-  pluginModuleFederationDoctor,
+  moduleFederationDoctorPlugin,
   type BundlerChainLike,
 } from "../../src/modern.js";
-import { moduleFederationDoctorPlugin } from "../../src/rspack.js";
+import { moduleFederationDoctorPlugin as rspackModuleFederationDoctorPlugin } from "../../src/rspack.js";
 import { compilerBuildOutput, type CompilerLike } from "../../src/plugin.js";
 
 describe("modern.js adapter", () => {
   it("registers afterEmit Doctor via modifyBundlerChain without client hooks", async () => {
-    const plugin = pluginModuleFederationDoctor({
+    const plugin = moduleFederationDoctorPlugin({
       moduleFederation: { name: "modern_fixture" },
     });
     expect(plugin.name).toBe("@module-federation/doctor");
@@ -96,7 +96,7 @@ describe("modern.js adapter", () => {
     expect(registered).toHaveLength(1);
     expect(registered[0]?.[0]).toBe("module-federation-doctor");
     // Public Rspack entry factory — escape hatch must not invent a private plugin.
-    expect(typeof moduleFederationDoctorPlugin).toBe("function");
+    expect(typeof rspackModuleFederationDoctorPlugin).toBe("function");
     expect(registered[0]?.[1]).toMatchObject({ apply: expect.any(Function) });
   });
 
@@ -152,7 +152,7 @@ describe("modern.js adapter", () => {
   });
 
   it("warns when modifyBundlerChain is missing instead of silently no-oping", async () => {
-    const plugin = pluginModuleFederationDoctor({
+    const plugin = moduleFederationDoctorPlugin({
       moduleFederation: { name: "modern_fixture" },
     });
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});

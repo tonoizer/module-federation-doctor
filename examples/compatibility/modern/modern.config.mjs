@@ -8,7 +8,7 @@
  * ```ts
  * import { appTools, defineConfig } from "@modern-js/app-tools";
  * import { moduleFederationPlugin } from "@module-federation/modern-js";
- * import { pluginModuleFederationDoctor } from "@module-federation/doctor/modern";
+ * import { moduleFederationDoctorPlugin } from "@module-federation/doctor/modern";
  *
  * const mfOptions = { name: "modern_smoke", ... };
  *
@@ -16,7 +16,7 @@
  *   plugins: [
  *     appTools(),
  *     moduleFederationPlugin(),
- *     pluginModuleFederationDoctor({ moduleFederation: mfOptions }),
+ *     moduleFederationDoctorPlugin({ moduleFederation: mfOptions }),
  *   ],
  * });
  * ```
