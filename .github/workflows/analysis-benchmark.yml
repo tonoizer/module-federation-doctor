@@ -1,6 +1,8 @@
 name: Analysis benchmark
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

@@ -32,5 +32,15 @@
       "maxRssBytes": 268435456
     }
   },
-  "modes": ["legacy", "shadow", "v2-compat"]
+  "modes": ["legacy", "shadow", "v2-compat"],
+  "workspaces": {
+    "clean": {
+      "root": "fixtures/workspaces/clean",
+      "files": ["host/.mf/doctor/project.json", "remote/.mf/doctor/project.json"]
+    },
+    "conflict": {
+      "root": "fixtures/workspaces/conflict",
+      "files": ["host/.mf/doctor/project.json", "remote/.mf/doctor/project.json"]
+    }
+  }
 }

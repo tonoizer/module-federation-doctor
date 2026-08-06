@@ -4,18 +4,26 @@ import process from "node:process";
 import { performance } from "node:perf_hooks";
 import {
   analyze,
+  analyzeFederation,
   AnalysisContentCache,
   RELEASE_GATES,
   createEvidenceRolloutController,
   readEvidenceFile,
   stableSerialize,
 } from "../dist/index.js";
+import {
+  compareRegressionContract,
+  normalizeAnalysisRow,
+  normalizeWorkspaceResult,
+} from "./analysis-regression-contract.mjs";
 
 const repository = path.resolve(import.meta.dirname, "..");
 const baselinePath = path.join(repository, "benchmarks/analysis-cost-baseline.json");
+const expectedPath = path.join(repository, "benchmarks/analysis-cost-expected.json");
 const baseline = JSON.parse(await fs.readFile(baselinePath, "utf8"));
 const outputIndex = process.argv.indexOf("--output");
 const outputPath = outputIndex >= 0 ? path.resolve(process.argv[outputIndex + 1]) : undefined;
+const updateExpected = process.argv.includes("--update-golden");
 
 function controllerFor(mode) {
   if (mode === "legacy") return createEvidenceRolloutController({ defaultMode: "legacy" });
@@ -87,10 +95,33 @@ function assertBaseline(value) {
         throw new Error(`Invalid ${key} limit for ${name}`);
     }
   }
+  if (!value.workspaces || typeof value.workspaces !== "object")
+    throw new Error("Analysis benchmark must define workspace fixtures");
+  for (const [name, fixture] of Object.entries(value.workspaces)) {
+    if (
+      typeof fixture.root !== "string" ||
+      !Array.isArray(fixture.files) ||
+      fixture.files.length < 2
+    )
+      throw new Error(`Invalid workspace fixture for ${name}`);
+    const workspaceRoot = path.resolve(repository, fixture.root);
+    if (
+      fixture.files.some((file) => {
+        if (typeof file !== "string" || path.isAbsolute(file)) return true;
+        const resolved = path.resolve(workspaceRoot, file);
+        const relative = path.relative(workspaceRoot, resolved);
+        return (
+          relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)
+        );
+      })
+    )
+      throw new Error(`Workspace fixture paths must stay inside ${name}`);
+  }
 }
 
 assertBaseline(baseline);
 const results = [];
+const workspaceResults = [];
 const failures = [];
 
 for (const [fixtureName, fixture] of Object.entries(baseline.fixtures)) {
@@ -174,11 +205,48 @@ for (const [fixtureName, fixture] of Object.entries(baseline.fixtures)) {
   }
 }
 
+for (const [fixtureName, fixture] of Object.entries(baseline.workspaces)) {
+  const root = path.join(repository, fixture.root);
+  const files = fixture.files.map((file) => path.join(root, file));
+  const result = await analyzeFederation(files, {
+    root,
+    formats: [],
+    quiet: true,
+    failOn: "error",
+  });
+  workspaceResults.push(normalizeWorkspaceResult(fixtureName, result));
+}
+
+const semantic = {
+  schemaVersion: 1,
+  analysis: results.map(normalizeAnalysisRow),
+  workspaces: workspaceResults,
+};
+let expected;
+try {
+  expected = JSON.parse(await fs.readFile(expectedPath, "utf8"));
+} catch (error) {
+  if (!updateExpected || error?.code !== "ENOENT") throw error;
+}
+if (updateExpected) {
+  await fs.writeFile(expectedPath, `${JSON.stringify(semantic, null, 2)}\n`);
+  expected = semantic;
+}
+if (!expected) {
+  failures.push(`semantic expectations are missing: ${path.relative(repository, expectedPath)}`);
+} else {
+  failures.push(
+    ...compareRegressionContract(expected, semantic).map((diff) => `semantic drift: ${diff}`),
+  );
+}
+
 const report = {
   schemaVersion: 1,
   node: process.version,
   generatedAt: new Date().toISOString(),
+  semantic,
   results,
+  workspaceResults,
   failures,
 };
 if (outputPath) {

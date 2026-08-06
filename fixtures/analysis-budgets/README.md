@@ -19,3 +19,16 @@ gates; it does not claim that a separate v2 collector exists. The mixed
 Vite/Rspack/Rsbuild/Webpack coverage belongs to the existing compatibility
 matrix, not this source-only benchmark. Limits are kept in
 `benchmarks/analysis-cost-baseline.json`.
+
+The benchmark also analyzes the checked-in `fixtures/workspaces/clean` and
+`fixtures/workspaces/conflict` monorepo-style project facts. Its normalized semantic
+results are committed in `benchmarks/analysis-cost-expected.json`. CI compares exit
+codes, report summaries, findings, key facts, artifact/evidence state, and workspace
+projects against that file. Timings, RSS, generated timestamps, absolute paths, and
+temporary environment details are intentionally excluded from the semantic contract.
+To intentionally change the contract, update the expectation file in the same change
+after reviewing the resulting diff; CI never updates it automatically.
+
+The `legacy`, `shadow`, and `v2-compat` rows still exercise the existing v1 collector
+with different rollout-controller selections. They do not represent independent v2
+collector implementations.

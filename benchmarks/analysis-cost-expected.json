@@ -1,0 +1,1115 @@
+{
+  "schemaVersion": 1,
+  "analysis": [
+    {
+      "fixture": "small",
+      "mode": "legacy",
+      "rollout": {
+        "requestedMode": "legacy",
+        "selectedMode": "legacy",
+        "promotedBy": "not-promoted"
+      },
+      "collector": {
+        "name": "v1",
+        "evidenceReaderMode": "separate-seam"
+      },
+      "result": {
+        "exitCode": 0,
+        "report": {
+          "schemaVersion": 1,
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "summary": {
+            "projects": 1,
+            "info": 0,
+            "warnings": 1,
+            "errors": 0,
+            "score": null,
+            "scoreLabel": null
+          },
+          "findings": [
+            {
+              "ruleId": "doctor/partial-analysis",
+              "severity": "warning",
+              "project": "small",
+              "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
+              "detailsSchema": "doctor.partial-analysis.v1"
+            }
+          ]
+        },
+        "facts": {
+          "schemaVersion": 1,
+          "project": {
+            "name": "small",
+            "root": "."
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "analysis": {
+            "status": "complete",
+            "usage": {
+              "artifacts": 1,
+              "evidenceNodes": 0,
+              "files": 1,
+              "serializedBytes": 89,
+              "sourceBytes": 31
+            },
+            "exceeded": []
+          },
+          "imports": {
+            "sourceFiles": ["src/index.ts"],
+            "specifiers": [],
+            "packages": [],
+            "remotes": []
+          },
+          "artifacts": {
+            "manifest": {
+              "name": "analysis-budget-small",
+              "path": "dist/mf-manifest.json",
+              "valid": true,
+              "exposes": [],
+              "remotes": [],
+              "shared": []
+            },
+            "records": [
+              {
+                "kind": "manifest",
+                "path": "dist/mf-manifest.json",
+                "source": "discovered",
+                "state": "valid",
+                "valid": true
+              }
+            ],
+            "emittedAssets": []
+          }
+        },
+        "evidenceReader": {
+          "status": "read",
+          "kind": "project-facts",
+          "sourceVersion": 1,
+          "budget": {
+            "status": "complete",
+            "usage": {
+              "files": 0,
+              "sourceBytes": 0,
+              "artifacts": 0,
+              "evidenceNodes": 69,
+              "serializedBytes": 1651
+            },
+            "exceeded": []
+          }
+        }
+      }
+    },
+    {
+      "fixture": "small",
+      "mode": "shadow",
+      "rollout": {
+        "requestedMode": "shadow",
+        "selectedMode": "shadow",
+        "promotedBy": "not-promoted"
+      },
+      "collector": {
+        "name": "v1",
+        "evidenceReaderMode": "separate-seam"
+      },
+      "result": {
+        "exitCode": 0,
+        "report": {
+          "schemaVersion": 1,
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "summary": {
+            "projects": 1,
+            "info": 0,
+            "warnings": 1,
+            "errors": 0,
+            "score": null,
+            "scoreLabel": null
+          },
+          "findings": [
+            {
+              "ruleId": "doctor/partial-analysis",
+              "severity": "warning",
+              "project": "small",
+              "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
+              "detailsSchema": "doctor.partial-analysis.v1"
+            }
+          ]
+        },
+        "facts": {
+          "schemaVersion": 1,
+          "project": {
+            "name": "small",
+            "root": "."
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "analysis": {
+            "status": "complete",
+            "usage": {
+              "artifacts": 1,
+              "evidenceNodes": 0,
+              "files": 1,
+              "serializedBytes": 89,
+              "sourceBytes": 31
+            },
+            "exceeded": []
+          },
+          "imports": {
+            "sourceFiles": ["src/index.ts"],
+            "specifiers": [],
+            "packages": [],
+            "remotes": []
+          },
+          "artifacts": {
+            "manifest": {
+              "name": "analysis-budget-small",
+              "path": "dist/mf-manifest.json",
+              "valid": true,
+              "exposes": [],
+              "remotes": [],
+              "shared": []
+            },
+            "records": [
+              {
+                "kind": "manifest",
+                "path": "dist/mf-manifest.json",
+                "source": "discovered",
+                "state": "valid",
+                "valid": true
+              }
+            ],
+            "emittedAssets": []
+          }
+        },
+        "evidenceReader": {
+          "status": "read",
+          "kind": "project-facts",
+          "sourceVersion": 1,
+          "budget": {
+            "status": "complete",
+            "usage": {
+              "files": 0,
+              "sourceBytes": 0,
+              "artifacts": 0,
+              "evidenceNodes": 69,
+              "serializedBytes": 1651
+            },
+            "exceeded": []
+          }
+        }
+      }
+    },
+    {
+      "fixture": "small",
+      "mode": "v2-compat",
+      "rollout": {
+        "requestedMode": "v2-compat",
+        "selectedMode": "v2-compat",
+        "promotedBy": "all-release-gates"
+      },
+      "collector": {
+        "name": "v1",
+        "evidenceReaderMode": "separate-seam"
+      },
+      "result": {
+        "exitCode": 0,
+        "report": {
+          "schemaVersion": 1,
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "summary": {
+            "projects": 1,
+            "info": 0,
+            "warnings": 1,
+            "errors": 0,
+            "score": null,
+            "scoreLabel": null
+          },
+          "findings": [
+            {
+              "ruleId": "doctor/partial-analysis",
+              "severity": "warning",
+              "project": "small",
+              "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
+              "detailsSchema": "doctor.partial-analysis.v1"
+            }
+          ]
+        },
+        "facts": {
+          "schemaVersion": 1,
+          "project": {
+            "name": "small",
+            "root": "."
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "analysis": {
+            "status": "complete",
+            "usage": {
+              "artifacts": 1,
+              "evidenceNodes": 0,
+              "files": 1,
+              "serializedBytes": 89,
+              "sourceBytes": 31
+            },
+            "exceeded": []
+          },
+          "imports": {
+            "sourceFiles": ["src/index.ts"],
+            "specifiers": [],
+            "packages": [],
+            "remotes": []
+          },
+          "artifacts": {
+            "manifest": {
+              "name": "analysis-budget-small",
+              "path": "dist/mf-manifest.json",
+              "valid": true,
+              "exposes": [],
+              "remotes": [],
+              "shared": []
+            },
+            "records": [
+              {
+                "kind": "manifest",
+                "path": "dist/mf-manifest.json",
+                "source": "discovered",
+                "state": "valid",
+                "valid": true
+              }
+            ],
+            "emittedAssets": []
+          }
+        },
+        "evidenceReader": {
+          "status": "read",
+          "kind": "project-facts",
+          "sourceVersion": 1,
+          "budget": {
+            "status": "complete",
+            "usage": {
+              "files": 0,
+              "sourceBytes": 0,
+              "artifacts": 0,
+              "evidenceNodes": 69,
+              "serializedBytes": 1651
+            },
+            "exceeded": []
+          }
+        }
+      }
+    },
+    {
+      "fixture": "medium",
+      "mode": "legacy",
+      "rollout": {
+        "requestedMode": "legacy",
+        "selectedMode": "legacy",
+        "promotedBy": "not-promoted"
+      },
+      "collector": {
+        "name": "v1",
+        "evidenceReaderMode": "separate-seam"
+      },
+      "result": {
+        "exitCode": 0,
+        "report": {
+          "schemaVersion": 1,
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "summary": {
+            "projects": 1,
+            "info": 0,
+            "warnings": 1,
+            "errors": 0,
+            "score": null,
+            "scoreLabel": null
+          },
+          "findings": [
+            {
+              "ruleId": "doctor/partial-analysis",
+              "severity": "warning",
+              "project": "medium",
+              "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
+              "detailsSchema": "doctor.partial-analysis.v1"
+            }
+          ]
+        },
+        "facts": {
+          "schemaVersion": 1,
+          "project": {
+            "name": "medium",
+            "root": "."
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "analysis": {
+            "status": "complete",
+            "usage": {
+              "artifacts": 1,
+              "evidenceNodes": 0,
+              "files": 3,
+              "serializedBytes": 90,
+              "sourceBytes": 122
+            },
+            "exceeded": []
+          },
+          "imports": {
+            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
+            "specifiers": ["./a", "./b"],
+            "packages": [],
+            "remotes": []
+          },
+          "artifacts": {
+            "manifest": {
+              "name": "analysis-budget-medium",
+              "path": "dist/mf-manifest.json",
+              "valid": true,
+              "exposes": [],
+              "remotes": [],
+              "shared": []
+            },
+            "records": [
+              {
+                "kind": "manifest",
+                "path": "dist/mf-manifest.json",
+                "source": "discovered",
+                "state": "valid",
+                "valid": true
+              }
+            ],
+            "emittedAssets": []
+          }
+        },
+        "evidenceReader": {
+          "status": "read",
+          "kind": "project-facts",
+          "sourceVersion": 1,
+          "budget": {
+            "status": "complete",
+            "usage": {
+              "files": 0,
+              "sourceBytes": 0,
+              "artifacts": 0,
+              "evidenceNodes": 73,
+              "serializedBytes": 1720
+            },
+            "exceeded": []
+          }
+        }
+      }
+    },
+    {
+      "fixture": "medium",
+      "mode": "shadow",
+      "rollout": {
+        "requestedMode": "shadow",
+        "selectedMode": "shadow",
+        "promotedBy": "not-promoted"
+      },
+      "collector": {
+        "name": "v1",
+        "evidenceReaderMode": "separate-seam"
+      },
+      "result": {
+        "exitCode": 0,
+        "report": {
+          "schemaVersion": 1,
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "summary": {
+            "projects": 1,
+            "info": 0,
+            "warnings": 1,
+            "errors": 0,
+            "score": null,
+            "scoreLabel": null
+          },
+          "findings": [
+            {
+              "ruleId": "doctor/partial-analysis",
+              "severity": "warning",
+              "project": "medium",
+              "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
+              "detailsSchema": "doctor.partial-analysis.v1"
+            }
+          ]
+        },
+        "facts": {
+          "schemaVersion": 1,
+          "project": {
+            "name": "medium",
+            "root": "."
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "analysis": {
+            "status": "complete",
+            "usage": {
+              "artifacts": 1,
+              "evidenceNodes": 0,
+              "files": 3,
+              "serializedBytes": 90,
+              "sourceBytes": 122
+            },
+            "exceeded": []
+          },
+          "imports": {
+            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
+            "specifiers": ["./a", "./b"],
+            "packages": [],
+            "remotes": []
+          },
+          "artifacts": {
+            "manifest": {
+              "name": "analysis-budget-medium",
+              "path": "dist/mf-manifest.json",
+              "valid": true,
+              "exposes": [],
+              "remotes": [],
+              "shared": []
+            },
+            "records": [
+              {
+                "kind": "manifest",
+                "path": "dist/mf-manifest.json",
+                "source": "discovered",
+                "state": "valid",
+                "valid": true
+              }
+            ],
+            "emittedAssets": []
+          }
+        },
+        "evidenceReader": {
+          "status": "read",
+          "kind": "project-facts",
+          "sourceVersion": 1,
+          "budget": {
+            "status": "complete",
+            "usage": {
+              "files": 0,
+              "sourceBytes": 0,
+              "artifacts": 0,
+              "evidenceNodes": 73,
+              "serializedBytes": 1720
+            },
+            "exceeded": []
+          }
+        }
+      }
+    },
+    {
+      "fixture": "medium",
+      "mode": "v2-compat",
+      "rollout": {
+        "requestedMode": "v2-compat",
+        "selectedMode": "v2-compat",
+        "promotedBy": "all-release-gates"
+      },
+      "collector": {
+        "name": "v1",
+        "evidenceReaderMode": "separate-seam"
+      },
+      "result": {
+        "exitCode": 0,
+        "report": {
+          "schemaVersion": 1,
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "summary": {
+            "projects": 1,
+            "info": 0,
+            "warnings": 1,
+            "errors": 0,
+            "score": null,
+            "scoreLabel": null
+          },
+          "findings": [
+            {
+              "ruleId": "doctor/partial-analysis",
+              "severity": "warning",
+              "project": "medium",
+              "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
+              "detailsSchema": "doctor.partial-analysis.v1"
+            }
+          ]
+        },
+        "facts": {
+          "schemaVersion": 1,
+          "project": {
+            "name": "medium",
+            "root": "."
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "analysis": {
+            "status": "complete",
+            "usage": {
+              "artifacts": 1,
+              "evidenceNodes": 0,
+              "files": 3,
+              "serializedBytes": 90,
+              "sourceBytes": 122
+            },
+            "exceeded": []
+          },
+          "imports": {
+            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
+            "specifiers": ["./a", "./b"],
+            "packages": [],
+            "remotes": []
+          },
+          "artifacts": {
+            "manifest": {
+              "name": "analysis-budget-medium",
+              "path": "dist/mf-manifest.json",
+              "valid": true,
+              "exposes": [],
+              "remotes": [],
+              "shared": []
+            },
+            "records": [
+              {
+                "kind": "manifest",
+                "path": "dist/mf-manifest.json",
+                "source": "discovered",
+                "state": "valid",
+                "valid": true
+              }
+            ],
+            "emittedAssets": []
+          }
+        },
+        "evidenceReader": {
+          "status": "read",
+          "kind": "project-facts",
+          "sourceVersion": 1,
+          "budget": {
+            "status": "complete",
+            "usage": {
+              "files": 0,
+              "sourceBytes": 0,
+              "artifacts": 0,
+              "evidenceNodes": 73,
+              "serializedBytes": 1720
+            },
+            "exceeded": []
+          }
+        }
+      }
+    },
+    {
+      "fixture": "large",
+      "mode": "legacy",
+      "rollout": {
+        "requestedMode": "legacy",
+        "selectedMode": "legacy",
+        "promotedBy": "not-promoted"
+      },
+      "collector": {
+        "name": "v1",
+        "evidenceReaderMode": "separate-seam"
+      },
+      "result": {
+        "exitCode": 0,
+        "report": {
+          "schemaVersion": 1,
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "summary": {
+            "projects": 1,
+            "info": 0,
+            "warnings": 1,
+            "errors": 0,
+            "score": null,
+            "scoreLabel": null
+          },
+          "findings": [
+            {
+              "ruleId": "doctor/partial-analysis",
+              "severity": "warning",
+              "project": "large",
+              "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
+              "detailsSchema": "doctor.partial-analysis.v1"
+            }
+          ]
+        },
+        "facts": {
+          "schemaVersion": 1,
+          "project": {
+            "name": "large",
+            "root": "."
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "analysis": {
+            "status": "complete",
+            "usage": {
+              "artifacts": 1,
+              "evidenceNodes": 0,
+              "files": 6,
+              "serializedBytes": 89,
+              "sourceBytes": 250
+            },
+            "exceeded": []
+          },
+          "imports": {
+            "sourceFiles": [
+              "src/a.ts",
+              "src/b.ts",
+              "src/c.ts",
+              "src/d.ts",
+              "src/e.ts",
+              "src/index.ts"
+            ],
+            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
+            "packages": [],
+            "remotes": []
+          },
+          "artifacts": {
+            "manifest": {
+              "name": "analysis-budget-large",
+              "path": "dist/mf-manifest.json",
+              "valid": true,
+              "exposes": [],
+              "remotes": [],
+              "shared": []
+            },
+            "records": [
+              {
+                "kind": "manifest",
+                "path": "dist/mf-manifest.json",
+                "source": "discovered",
+                "state": "valid",
+                "valid": true
+              }
+            ],
+            "emittedAssets": []
+          }
+        },
+        "evidenceReader": {
+          "status": "read",
+          "kind": "project-facts",
+          "sourceVersion": 1,
+          "budget": {
+            "status": "complete",
+            "usage": {
+              "files": 0,
+              "sourceBytes": 0,
+              "artifacts": 0,
+              "evidenceNodes": 79,
+              "serializedBytes": 1810
+            },
+            "exceeded": []
+          }
+        }
+      }
+    },
+    {
+      "fixture": "large",
+      "mode": "shadow",
+      "rollout": {
+        "requestedMode": "shadow",
+        "selectedMode": "shadow",
+        "promotedBy": "not-promoted"
+      },
+      "collector": {
+        "name": "v1",
+        "evidenceReaderMode": "separate-seam"
+      },
+      "result": {
+        "exitCode": 0,
+        "report": {
+          "schemaVersion": 1,
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "summary": {
+            "projects": 1,
+            "info": 0,
+            "warnings": 1,
+            "errors": 0,
+            "score": null,
+            "scoreLabel": null
+          },
+          "findings": [
+            {
+              "ruleId": "doctor/partial-analysis",
+              "severity": "warning",
+              "project": "large",
+              "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
+              "detailsSchema": "doctor.partial-analysis.v1"
+            }
+          ]
+        },
+        "facts": {
+          "schemaVersion": 1,
+          "project": {
+            "name": "large",
+            "root": "."
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "analysis": {
+            "status": "complete",
+            "usage": {
+              "artifacts": 1,
+              "evidenceNodes": 0,
+              "files": 6,
+              "serializedBytes": 89,
+              "sourceBytes": 250
+            },
+            "exceeded": []
+          },
+          "imports": {
+            "sourceFiles": [
+              "src/a.ts",
+              "src/b.ts",
+              "src/c.ts",
+              "src/d.ts",
+              "src/e.ts",
+              "src/index.ts"
+            ],
+            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
+            "packages": [],
+            "remotes": []
+          },
+          "artifacts": {
+            "manifest": {
+              "name": "analysis-budget-large",
+              "path": "dist/mf-manifest.json",
+              "valid": true,
+              "exposes": [],
+              "remotes": [],
+              "shared": []
+            },
+            "records": [
+              {
+                "kind": "manifest",
+                "path": "dist/mf-manifest.json",
+                "source": "discovered",
+                "state": "valid",
+                "valid": true
+              }
+            ],
+            "emittedAssets": []
+          }
+        },
+        "evidenceReader": {
+          "status": "read",
+          "kind": "project-facts",
+          "sourceVersion": 1,
+          "budget": {
+            "status": "complete",
+            "usage": {
+              "files": 0,
+              "sourceBytes": 0,
+              "artifacts": 0,
+              "evidenceNodes": 79,
+              "serializedBytes": 1810
+            },
+            "exceeded": []
+          }
+        }
+      }
+    },
+    {
+      "fixture": "large",
+      "mode": "v2-compat",
+      "rollout": {
+        "requestedMode": "v2-compat",
+        "selectedMode": "v2-compat",
+        "promotedBy": "all-release-gates"
+      },
+      "collector": {
+        "name": "v1",
+        "evidenceReaderMode": "separate-seam"
+      },
+      "result": {
+        "exitCode": 0,
+        "report": {
+          "schemaVersion": 1,
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "summary": {
+            "projects": 1,
+            "info": 0,
+            "warnings": 1,
+            "errors": 0,
+            "score": null,
+            "scoreLabel": null
+          },
+          "findings": [
+            {
+              "ruleId": "doctor/partial-analysis",
+              "severity": "warning",
+              "project": "large",
+              "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
+              "detailsSchema": "doctor.partial-analysis.v1"
+            }
+          ]
+        },
+        "facts": {
+          "schemaVersion": 1,
+          "project": {
+            "name": "large",
+            "root": "."
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "analysis": {
+            "status": "complete",
+            "usage": {
+              "artifacts": 1,
+              "evidenceNodes": 0,
+              "files": 6,
+              "serializedBytes": 89,
+              "sourceBytes": 250
+            },
+            "exceeded": []
+          },
+          "imports": {
+            "sourceFiles": [
+              "src/a.ts",
+              "src/b.ts",
+              "src/c.ts",
+              "src/d.ts",
+              "src/e.ts",
+              "src/index.ts"
+            ],
+            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
+            "packages": [],
+            "remotes": []
+          },
+          "artifacts": {
+            "manifest": {
+              "name": "analysis-budget-large",
+              "path": "dist/mf-manifest.json",
+              "valid": true,
+              "exposes": [],
+              "remotes": [],
+              "shared": []
+            },
+            "records": [
+              {
+                "kind": "manifest",
+                "path": "dist/mf-manifest.json",
+                "source": "discovered",
+                "state": "valid",
+                "valid": true
+              }
+            ],
+            "emittedAssets": []
+          }
+        },
+        "evidenceReader": {
+          "status": "read",
+          "kind": "project-facts",
+          "sourceVersion": 1,
+          "budget": {
+            "status": "complete",
+            "usage": {
+              "files": 0,
+              "sourceBytes": 0,
+              "artifacts": 0,
+              "evidenceNodes": 79,
+              "serializedBytes": 1810
+            },
+            "exceeded": []
+          }
+        }
+      }
+    }
+  ],
+  "workspaces": [
+    {
+      "fixture": "clean",
+      "result": {
+        "exitCode": 0,
+        "projects": [
+          {
+            "name": "host",
+            "bundler": "vite"
+          },
+          {
+            "name": "remote",
+            "bundler": "rspack"
+          }
+        ],
+        "report": {
+          "schemaVersion": 1,
+          "capabilities": {
+            "config": true,
+            "sourceImports": true,
+            "manifest": false,
+            "stats": false,
+            "emittedAssets": false,
+            "installedVersions": true
+          },
+          "summary": {
+            "projects": 2,
+            "info": 0,
+            "warnings": 0,
+            "errors": 0,
+            "score": 100,
+            "scoreLabel": "Great"
+          },
+          "findings": []
+        }
+      }
+    },
+    {
+      "fixture": "conflict",
+      "result": {
+        "exitCode": 1,
+        "projects": [
+          {
+            "name": "host",
+            "bundler": "vite"
+          },
+          {
+            "name": "remote",
+            "bundler": "vite"
+          }
+        ],
+        "report": {
+          "schemaVersion": 1,
+          "capabilities": {
+            "config": true,
+            "sourceImports": true,
+            "manifest": false,
+            "stats": false,
+            "emittedAssets": false,
+            "installedVersions": true
+          },
+          "summary": {
+            "projects": 2,
+            "info": 0,
+            "warnings": 0,
+            "errors": 1,
+            "score": 99,
+            "scoreLabel": "Great"
+          },
+          "findings": [
+            {
+              "ruleId": "federation/version-conflict",
+              "severity": "error",
+              "project": "host",
+              "fingerprint": "13493ba6536cea8b970a465f07655bb67ab0931c99698fa345fb64b535b082f4"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
