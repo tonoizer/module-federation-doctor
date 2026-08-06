@@ -6,6 +6,7 @@ import {
   type EvidenceGraphV2,
   type EvidenceSubject,
 } from "./evidence.js";
+import { EvidenceBudgetExceededError } from "./evidence-budget.js";
 import {
   capConfidence,
   stableEvaluationId,
@@ -176,7 +177,7 @@ function applicability(
 function evaluationBase(
   rule: EvidenceAwareRule,
   subject: EvidenceSubject,
-  graph: EvidenceGraphV2,
+  graph: Pick<EvidenceGraphV2, "identity">,
   scope: EvidenceRuleScope,
 ) {
   return {
@@ -192,10 +193,93 @@ function evaluationBase(
   };
 }
 
+const SAFE_ADAPTERS = new Set(["modern", "rsbuild", "rspack", "vite", "webpack"]);
+const SAFE_BUNDLERS = new Set(["modern", "rsbuild", "rspack", "vite", "webpack"]);
+const SAFE_TARGETS = new Set(["web", "node", "browser", "ssr", "unknown"]);
+const MAX_FALLBACK_EVALUATIONS = 10_000;
+
+function safeEnum(value: unknown, allowed: ReadonlySet<string>): string {
+  return typeof value === "string" && allowed.has(value) ? value : "unknown";
+}
+
+function safeFallbackScope(input: EvidenceRuleRunnerInput): EvidenceRuleScope {
+  const graphScope = input.graph.scope;
+  const override = input.scope;
+  return {
+    adapter: safeEnum(override?.adapter ?? graphScope.adapter, SAFE_ADAPTERS),
+    bundler: {
+      name: safeEnum(override?.bundler?.name ?? graphScope.bundler.name, SAFE_BUNDLERS),
+    },
+    target: safeEnum(override?.target ?? graphScope.target, SAFE_TARGETS),
+  };
+}
+
+function opaqueSubjectId(index: number): string {
+  return `budget-subject:${index + 1}`;
+}
+
+function budgetUnknownEvaluation(
+  base: ReturnType<typeof evaluationBase>,
+  reason: string,
+): RuleEvaluationResult {
+  return {
+    ...base,
+    evidenceIds: [],
+    outcome: "unknown",
+    reasonCode: "prerequisite-incomplete",
+    reason,
+    confidence: "unknown",
+    completeness: "partial",
+    missingRequirements: [],
+  };
+}
+
 export async function runEvidenceAwareRules(
   input: EvidenceRuleRunnerInput,
 ): Promise<EvidenceRuleRunnerOutput> {
-  const graph = deepFreeze(normalizeEvidenceGraph(input.graph));
+  let graph: EvidenceGraphV2;
+  try {
+    graph = deepFreeze(normalizeEvidenceGraph(input.graph, undefined, input.analysisBudget));
+  } catch (error) {
+    if (!(error instanceof EvidenceBudgetExceededError)) throw error;
+    const subjects = input.graph.subjects
+      .map((subject, index) => ({
+        originalId: typeof subject.id === "string" ? subject.id : undefined,
+        inputIndex: index,
+        subject,
+      }))
+      .filter(
+        (subject) =>
+          !input.subjects ||
+          (subject.originalId !== undefined && input.subjects.includes(subject.originalId)),
+      )
+      .sort(
+        (left, right) =>
+          (left.originalId ?? "").localeCompare(right.originalId ?? "") ||
+          left.inputIndex - right.inputIndex,
+      )
+      .map((subject, index) => ({
+        safe: {
+          id: opaqueSubjectId(index),
+          kind: "project" as const,
+          name: "[redacted-subject]",
+        },
+      }));
+    const scope = safeFallbackScope(input);
+    const safeGraph: Pick<EvidenceGraphV2, "identity"> = { identity: {} };
+    const evaluations: RuleEvaluationResult[] = [];
+    for (const rule of input.rules) {
+      for (const subject of subjects) {
+        if (evaluations.length >= MAX_FALLBACK_EVALUATIONS) break;
+        const base = evaluationBase(rule, subject.safe, safeGraph, scope);
+        evaluations.push(
+          budgetUnknownEvaluation(base, "Evidence analysis was clipped by an analysis budget."),
+        );
+      }
+      if (evaluations.length >= MAX_FALLBACK_EVALUATIONS) break;
+    }
+    return { evaluations, execution: [], analysis: error.report };
+  }
   const subjects = graph.subjects.filter(
     (subject) => !input.subjects || input.subjects.includes(subject.id),
   );
@@ -211,6 +295,12 @@ export async function runEvidenceAwareRules(
   for (const rule of input.rules)
     for (const subject of subjects) {
       const base = evaluationBase(rule, subject, graph, scope);
+      if (input.analysisBudget && !input.analysisBudget.checkWallTime()) {
+        evaluations.push(
+          budgetUnknownEvaluation(base, "Rule evaluation was clipped by the wall-time budget."),
+        );
+        continue;
+      }
       if (seen.has(base.id)) {
         execution.push({
           state: "engine-error",
@@ -286,6 +376,12 @@ export async function runEvidenceAwareRules(
           evidence: query,
         });
         const decision = await rule.evaluate(context);
+        if (input.analysisBudget && !input.analysisBudget.checkWallTime()) {
+          evaluations.push(
+            budgetUnknownEvaluation(base, "Rule evaluation was clipped by the wall-time budget."),
+          );
+          continue;
+        }
         if (decision.outcome !== "pass" && decision.outcome !== "fail")
           throw new Error("Rule returned an invalid outcome.");
         evaluations.push({
@@ -298,6 +394,12 @@ export async function runEvidenceAwareRules(
           completeness: "complete",
         } as RuleEvaluationResult);
       } catch (error) {
+        if (input.analysisBudget && !input.analysisBudget.checkWallTime()) {
+          evaluations.push(
+            budgetUnknownEvaluation(base, "Rule evaluation was clipped by the wall-time budget."),
+          );
+          continue;
+        }
         execution.push({
           state: "engine-error",
           rule: base.rule,
@@ -306,5 +408,9 @@ export async function runEvidenceAwareRules(
         });
       }
     }
-  return { evaluations, execution };
+  return {
+    evaluations,
+    execution,
+    ...(input.analysisBudget ? { analysis: input.analysisBudget.report() } : {}),
+  };
 }

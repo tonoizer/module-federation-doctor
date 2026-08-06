@@ -85,6 +85,7 @@ export type { WorkspaceProjectDiagnostic, WorkspaceProjectDiagnosticKind } from 
 export {
   AnalysisBudgetTracker,
   DEFAULT_ANALYSIS_BUDGETS,
+  measureEvidenceUsage,
   resolveAnalysisBudgets,
 } from "./analysis-budgets.js";
 export type {
@@ -94,6 +95,7 @@ export type {
   AnalysisBudgetReport,
   AnalysisBudgetUsage,
   AnalysisBudgets,
+  EvidenceBudgetMeasurement,
 } from "./analysis-budgets.js";
 export {
   DOCTOR_PRESET_NAMES,
@@ -294,6 +296,7 @@ export {
   stableEvidenceId,
 } from "./evidence.js";
 export { EvidenceIntegrityError, EvidenceResourceError } from "./evidence.js";
+export { EvidenceBudgetExceededError, reserveEvidenceBudget } from "./evidence-budget.js";
 export {
   assertDriftLedgerEntry,
   compareV1Outputs,
@@ -321,6 +324,7 @@ export {
 export type {
   EvidenceDocumentKind,
   EvidenceDocumentReadResult,
+  EvidenceProjectionOptions,
   EvidenceReaderErrorDetails,
   EvidenceReaderFailureCode,
   EvidenceReaderOptions,

@@ -7,6 +7,7 @@ import type { RuleEvaluationResult } from "../../src/rule-contract.js";
 import { ruleInventory, ruleInventoryIds } from "../../src/rule-inventory.js";
 import { runEvidenceAwareRules } from "../../src/rule-contract.js";
 import type { EvidenceGraphV2 } from "../../src/evidence.js";
+import { AnalysisBudgetTracker, resolveAnalysisBudgets } from "../../src/analysis-budgets.js";
 
 describe("evidence-aware rule contract", () => {
   function graph(overrides: Partial<EvidenceGraphV2> = {}): EvidenceGraphV2 {
@@ -128,6 +129,95 @@ describe("evidence-aware rule contract", () => {
     );
     expect(result.execution[0]).toMatchObject({ state: "engine-error", error: "boom" });
   });
+
+  it("turns a normalization budget cutoff into deterministic unknown evaluations", async () => {
+    const input = graph();
+    const tracker = new AnalysisBudgetTracker(resolveAnalysisBudgets({ maxEvidenceNodes: 0 }));
+    const result = await runEvidenceAwareRules({
+      graph: input,
+      rules: [{ meta, evaluate: () => ({ outcome: "fail", reason: "must not run" }) }],
+      analysisBudget: tracker,
+    });
+    expect(result.evaluations[0]).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "prerequisite-incomplete",
+      completeness: "partial",
+      confidence: "unknown",
+    });
+    expect(result.analysis).toMatchObject({ status: "partial" });
+  });
+
+  it("redacts and orders overflow fallback metadata", async () => {
+    const input = graph({
+      scope: {
+        adapter: "C:\\workspace\\secret",
+        bundler: { name: "token=secret" },
+        target: "web",
+      } as never,
+      subjects: [
+        { id: "C:\\workspace\\alpha", kind: "project", name: "alpha" },
+        { id: "token=beta", kind: "remote", name: "beta" },
+      ],
+    });
+    const tracker = new AnalysisBudgetTracker(resolveAnalysisBudgets({ maxEvidenceNodes: 0 }));
+    const result = await runEvidenceAwareRules({
+      graph: input,
+      rules: [{ meta, evaluate: () => ({ outcome: "fail", reason: "must not run" }) }],
+      analysisBudget: tracker,
+    });
+    expect(result.evaluations).toHaveLength(2);
+    expect(result.evaluations.every((item) => item.outcome === "unknown")).toBe(true);
+    expect(result.evaluations.map((item) => item.subject)).toEqual([
+      "budget-subject:1",
+      "budget-subject:2",
+    ]);
+    expect(result.evaluations.map((item) => item.subject)).not.toContain("C:\\workspace\\alpha");
+    expect(result.evaluations.map((item) => item.subject)).not.toContain("token=beta");
+    expect(result.evaluations.every((item) => item.scope.adapter === "unknown")).toBe(true);
+    expect(result.evaluations.every((item) => item.scope.bundler?.name === "unknown")).toBe(true);
+  });
+
+  it("turns the current and remaining rule evaluations unknown after wall-time expiry", async () => {
+    let now = 0;
+    const tracker = new AnalysisBudgetTracker(resolveAnalysisBudgets({ maxWallTimeMs: 5 }), {
+      now: () => now,
+      startedAt: 0,
+    });
+    const assertion = {
+      id: "assertion:exact",
+      subject: "project:shop",
+      predicate: "config.declared",
+      value: true,
+      layer: "declared" as const,
+      scope: { adapter: "vite", bundler: { name: "vite" }, target: "web" as const },
+      provenance: {
+        collector: { name: "test", version: "1" },
+        inputKind: "test",
+        source: "test",
+        sourceSchemaVersion: "1",
+        parentEvidenceIds: [],
+      },
+      confidence: { level: "exact" as const, reason: "exact" },
+      completeness: { status: "complete" as const, reason: "complete" },
+    };
+    const rule = {
+      meta,
+      evaluate: () => {
+        now = 10;
+        return { outcome: "pass" as const, reason: "too late" };
+      },
+    };
+    const result = await runEvidenceAwareRules({
+      graph: graph({ assertions: [assertion] }),
+      rules: [rule, { ...rule, meta: { ...meta, id: "test/rule-2" } }],
+      analysisBudget: tracker,
+    });
+    expect(result.evaluations).toHaveLength(2);
+    expect(result.evaluations.every((item) => item.outcome === "unknown")).toBe(true);
+    expect(result.evaluations.every((item) => item.completeness === "partial")).toBe(true);
+    expect(result.analysis).toMatchObject({ status: "partial" });
+  });
+
   it("keeps the inventory in sync with every current built-in rule", () => {
     const runtimeIds = [
       ...builtInRules.map((rule) => rule.meta.id),

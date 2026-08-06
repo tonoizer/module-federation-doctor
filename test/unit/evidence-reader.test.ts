@@ -6,6 +6,12 @@ import projectFixture from "../../examples/evidence/v1-project.json";
 import reportFixture from "../../examples/evidence/v1-report.json";
 import { EvidenceIntegrityError } from "../../src/evidence.js";
 import {
+  AnalysisBudgetTracker,
+  measureEvidenceUsage,
+  resolveAnalysisBudgets,
+} from "../../src/analysis-budgets.js";
+import { EvidenceBudgetExceededError } from "../../src/evidence-budget.js";
+import {
   EvidenceReaderError,
   migrateDoctorReport,
   migrateProjectFacts,
@@ -60,6 +66,18 @@ describe("public evidence reader", () => {
 
     expect(compareV1Outputs(projectFixture, projectedProject).equal).toBe(true);
     expect(compareV1Outputs(reportFixture, projectedReport).equal).toBe(true);
+  });
+
+  it("fails an opted-in projection atomically at the evidence boundary", () => {
+    const graph = migrateProjectFacts(projectFixture as never);
+    const tracker = new AnalysisBudgetTracker(resolveAnalysisBudgets({ maxEvidenceNodes: 0 }));
+    expect(() => projectFactsFromEvidence(graph, { analysisBudget: tracker })).toThrow(
+      EvidenceBudgetExceededError,
+    );
+    expect(tracker.report()).toMatchObject({
+      status: "partial",
+      usage: { evidenceNodes: 0, serializedBytes: 0 },
+    });
   });
 
   it("preserves optional builds and runtime plugin contracts through v1 projection", () => {
@@ -140,6 +158,63 @@ describe("public evidence reader", () => {
     });
     expect(graph.graph.identity.sessionId).toBe("[REDACTED]");
     expect(readEvidenceDocument(graph.graph).graph).toEqual(graph.graph);
+  });
+
+  it("reports evidence budget usage without changing the normalized graph", () => {
+    const input = {
+      protocol: {
+        protocolVersion: 2,
+        schemaVersion: 2,
+        producer: { name: "test", version: "1" },
+        source: { kind: "fixture", schemaVersion: "2" },
+      },
+      scope: { adapter: "vite", bundler: { name: "vite" }, target: "web" },
+      identity: { project: "budget", sessionId: "secret-session" },
+      subjects: [{ id: "subject:budget", kind: "project", name: "budget" }],
+      assertions: [],
+      edges: [],
+      evaluations: [],
+    } as const;
+    const measurement = measureEvidenceUsage(input);
+    const tracker = new AnalysisBudgetTracker(
+      resolveAnalysisBudgets({
+        maxEvidenceNodes: measurement.evidenceNodes,
+        maxSerializedBytes: measurement.serializedBytes,
+      }),
+    );
+    const result = readEvidenceDocument(input, { analysisBudget: tracker });
+    expect(result.analysis).toMatchObject({ status: "complete", usage: measurement });
+    expect(result.graph.identity.sessionId).toBe("[REDACTED]");
+  });
+
+  it("rejects an oversized evidence document with a typed budget report", () => {
+    const input = {
+      protocol: {
+        protocolVersion: 2,
+        schemaVersion: 2,
+        producer: { name: "test", version: "1" },
+        source: { kind: "fixture", schemaVersion: "2" },
+      },
+      scope: { adapter: "vite", bundler: { name: "vite" }, target: "web" },
+      identity: { project: "budget" },
+      subjects: [{ id: "subject:budget", kind: "project", name: "budget" }],
+      assertions: [],
+      edges: [],
+      evaluations: [],
+    };
+    const measurement = measureEvidenceUsage(input);
+    const tracker = new AnalysisBudgetTracker(
+      resolveAnalysisBudgets({ maxEvidenceNodes: measurement.evidenceNodes - 1 }),
+    );
+    expect(() => readEvidenceDocument(input, { analysisBudget: tracker })).toThrow(EvidenceReaderError);
+    expect(() => readEvidenceDocument(input, { analysisBudget: tracker })).toThrowError(
+      expect.objectContaining({ failureCode: "budget-exceeded", report: expect.any(Object) }),
+    );
+    expect(tracker.report()).toMatchObject({
+      status: "partial",
+      usage: { evidenceNodes: 0, serializedBytes: 0 },
+      exceeded: [{ kind: "evidenceNodes" }],
+    });
   });
 
   it.each([
@@ -359,6 +434,32 @@ describe("public evidence reader", () => {
         name: "EvidenceReaderError",
         failureCode: "malformed-json",
         pointer: "/",
+      });
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reserves file bytes separately from parsed evidence nodes", async () => {
+    const root = await fs.mkdtemp(nodePath.join(os.tmpdir(), "mfdoctor-evidence-budget-"));
+    const file = nodePath.join(root, "project.json");
+    const serialized = JSON.stringify(projectFixture);
+    await fs.writeFile(file, serialized);
+    try {
+      const measurement = measureEvidenceUsage(projectFixture);
+      const tracker = new AnalysisBudgetTracker(
+        resolveAnalysisBudgets({
+          maxEvidenceNodes: measurement.evidenceNodes,
+          maxSerializedBytes: Buffer.byteLength(serialized),
+        }),
+      );
+      const result = await readEvidenceFile(file, { analysisBudget: tracker });
+      expect(result.analysis).toMatchObject({
+        status: "complete",
+        usage: {
+          evidenceNodes: measurement.evidenceNodes,
+          serializedBytes: Buffer.byteLength(serialized),
+        },
       });
     } finally {
       await fs.rm(root, { recursive: true, force: true });

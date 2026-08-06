@@ -5,6 +5,7 @@ import {
   type EvidenceLayer,
   type EvidenceSubjectKind,
 } from "./evidence.js";
+import type { AnalysisBudgetReport, AnalysisBudgetTracker } from "./analysis-budgets.js";
 
 /** A small, declarative selector for evidence a rule needs before it can judge. */
 export interface EvidenceSelector {
@@ -210,11 +211,13 @@ export interface EvidenceRuleRunnerInput {
   rules: readonly EvidenceAwareRule[];
   subjects?: readonly string[];
   scope?: EvidenceRuleScope;
+  analysisBudget?: AnalysisBudgetTracker;
 }
 
 export interface EvidenceRuleRunnerOutput {
   evaluations: RuleEvaluationResult[];
   execution: RuleExecutionState[];
+  analysis?: AnalysisBudgetReport;
 }
 
 /** Run evidence-aware rules against an immutable v2 evidence view. */
