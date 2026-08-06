@@ -17,14 +17,20 @@ function normalizePath(value, root, key) {
   const segments = text.split("/");
   if (segments.includes(".."))
     throw new Error(`Golden contract path ${key} contains traversal: ${value}`);
-  const absolute = path.isAbsolute(value) || path.win32.isAbsolute(value);
+  const posixAbsolute = path.posix.isAbsolute(value);
+  const windowsAbsolute = path.win32.isAbsolute(value);
+  const hostIsWindows = path.sep === "\\";
+  if ((windowsAbsolute && !hostIsWindows) || (posixAbsolute && hostIsWindows))
+    throw new Error(`Golden contract path ${key} uses a foreign absolute path style: ${value}`);
+  const absolute = posixAbsolute || windowsAbsolute;
   if (!absolute) return text;
-  const resolvedRoot = path.resolve(root);
-  const resolved = path.resolve(value);
-  const relative = path.relative(resolvedRoot, resolved);
-  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative))
+  const pathApi = windowsAbsolute ? path.win32 : path.posix;
+  const resolvedRoot = pathApi.resolve(root);
+  const resolved = pathApi.resolve(value);
+  const relative = pathApi.relative(resolvedRoot, resolved);
+  if (relative === ".." || relative.startsWith(`..${pathApi.sep}`) || pathApi.isAbsolute(relative))
     throw new Error(`Golden contract path ${key} escapes its fixture root: ${value}`);
-  return relative.replaceAll("\\", "/") || ".";
+  return relative.replaceAll(pathApi.sep, "/") || ".";
 }
 
 function normalizeValue(value, root, key = "") {
@@ -65,16 +71,20 @@ function normalizeAnalysisBudget(budget, root) {
 
 function normalizeFinding(finding, root) {
   return {
+    schemaVersion: finding.schemaVersion,
     ruleId: finding.ruleId,
     severity: finding.severity,
+    message: finding.message,
     project: finding.project,
     fingerprint: finding.fingerprint,
-    message: finding.message,
+    location: normalizeValue(finding.location, root, "location"),
     documentation: finding.documentation,
     suggestion: finding.suggestion,
     detailsSchema: finding.detailsSchema,
     details: normalizeValue(finding.details ?? null, root, "details"),
     evidence: normalizeValue(finding.evidence ?? null, root, "evidence"),
+    suppressed: finding.suppressed,
+    suppressionReason: finding.suppressionReason,
   };
 }
 
@@ -217,13 +227,35 @@ function assertReport(report, location) {
   if (!Array.isArray(report.findings)) throw new Error(`${location}.findings must be an array`);
   for (const [index, finding] of report.findings.entries()) {
     assertObject(finding, `${location}.findings[${index}]`);
-    for (const key of ["ruleId", "severity", "project", "fingerprint"])
+    if (finding.schemaVersion !== 1)
+      throw new Error(`${location}.findings[${index}].schemaVersion must be 1`);
+    for (const key of ["ruleId", "severity", "message", "project", "fingerprint"])
       if (typeof finding[key] !== "string")
         throw new Error(`${location}.findings[${index}].${key} must be a string`);
+    for (const key of ["documentation", "suggestion", "detailsSchema", "suppressionReason"])
+      if (key in finding && finding[key] !== undefined && typeof finding[key] !== "string")
+        throw new Error(`${location}.findings[${index}].${key} must be a string`);
+    if ("location" in finding && finding.location !== undefined) {
+      assertObject(finding.location, `${location}.findings[${index}].location`);
+      if (typeof finding.location.path !== "string")
+        throw new Error(`${location}.findings[${index}].location.path must be a string`);
+      for (const key of ["line", "column"])
+        if (key in finding.location && !Number.isSafeInteger(finding.location[key]))
+          throw new Error(`${location}.findings[${index}].location.${key} must be an integer`);
+    }
     if (!("details" in finding))
       throw new Error(`${location}.findings[${index}].details is required`);
     if (!("evidence" in finding))
       throw new Error(`${location}.findings[${index}].evidence is required`);
+    if (finding.details !== null)
+      assertObject(finding.details, `${location}.findings[${index}].details`);
+    assertObject(finding.evidence, `${location}.findings[${index}].evidence`);
+    if (
+      "suppressed" in finding &&
+      finding.suppressed !== undefined &&
+      typeof finding.suppressed !== "boolean"
+    )
+      throw new Error(`${location}.findings[${index}].suppressed must be a boolean`);
   }
 }
 

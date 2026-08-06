@@ -35,21 +35,34 @@
           },
           "findings": [
             {
+              "schemaVersion": 1,
               "ruleId": "doctor/partial-analysis",
               "severity": "warning",
+              "message": "Doctor completed with partial input.",
               "project": "small",
               "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
-              "message": "Doctor completed with partial input.",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               },
               "evidence": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               }
             }
           ]
@@ -114,10 +127,14 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": ["source"],
+            "evidenceSources": [
+              "source"
+            ],
             "packages": [],
             "remotes": [],
-            "sourceFiles": ["src/index.ts"],
+            "sourceFiles": [
+              "src/index.ts"
+            ],
             "specifiers": [],
             "unresolvedDynamic": []
           },
@@ -143,7 +160,9 @@
             "name": "analysis-budget-small",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": ["default"],
+            "shareScope": [
+              "default"
+            ],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -214,21 +233,34 @@
           },
           "findings": [
             {
+              "schemaVersion": 1,
               "ruleId": "doctor/partial-analysis",
               "severity": "warning",
+              "message": "Doctor completed with partial input.",
               "project": "small",
               "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
-              "message": "Doctor completed with partial input.",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               },
               "evidence": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               }
             }
           ]
@@ -293,10 +325,14 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": ["source"],
+            "evidenceSources": [
+              "source"
+            ],
             "packages": [],
             "remotes": [],
-            "sourceFiles": ["src/index.ts"],
+            "sourceFiles": [
+              "src/index.ts"
+            ],
             "specifiers": [],
             "unresolvedDynamic": []
           },
@@ -322,7 +358,9 @@
             "name": "analysis-budget-small",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": ["default"],
+            "shareScope": [
+              "default"
+            ],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -393,21 +431,34 @@
           },
           "findings": [
             {
+              "schemaVersion": 1,
               "ruleId": "doctor/partial-analysis",
               "severity": "warning",
+              "message": "Doctor completed with partial input.",
               "project": "small",
               "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
-              "message": "Doctor completed with partial input.",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               },
               "evidence": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               }
             }
           ]
@@ -472,10 +523,14 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": ["source"],
+            "evidenceSources": [
+              "source"
+            ],
             "packages": [],
             "remotes": [],
-            "sourceFiles": ["src/index.ts"],
+            "sourceFiles": [
+              "src/index.ts"
+            ],
             "specifiers": [],
             "unresolvedDynamic": []
           },
@@ -501,7 +556,9 @@
             "name": "analysis-budget-small",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": ["default"],
+            "shareScope": [
+              "default"
+            ],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -572,21 +629,34 @@
           },
           "findings": [
             {
+              "schemaVersion": 1,
               "ruleId": "doctor/partial-analysis",
               "severity": "warning",
+              "message": "Doctor completed with partial input.",
               "project": "medium",
               "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
-              "message": "Doctor completed with partial input.",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               },
               "evidence": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               }
             }
           ]
@@ -651,11 +721,20 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": ["source"],
+            "evidenceSources": [
+              "source"
+            ],
             "packages": [],
             "remotes": [],
-            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
-            "specifiers": ["./a", "./b"],
+            "sourceFiles": [
+              "src/a.ts",
+              "src/b.ts",
+              "src/index.ts"
+            ],
+            "specifiers": [
+              "./a",
+              "./b"
+            ],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -680,7 +759,9 @@
             "name": "analysis-budget-medium",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": ["default"],
+            "shareScope": [
+              "default"
+            ],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -751,21 +832,34 @@
           },
           "findings": [
             {
+              "schemaVersion": 1,
               "ruleId": "doctor/partial-analysis",
               "severity": "warning",
+              "message": "Doctor completed with partial input.",
               "project": "medium",
               "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
-              "message": "Doctor completed with partial input.",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               },
               "evidence": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               }
             }
           ]
@@ -830,11 +924,20 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": ["source"],
+            "evidenceSources": [
+              "source"
+            ],
             "packages": [],
             "remotes": [],
-            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
-            "specifiers": ["./a", "./b"],
+            "sourceFiles": [
+              "src/a.ts",
+              "src/b.ts",
+              "src/index.ts"
+            ],
+            "specifiers": [
+              "./a",
+              "./b"
+            ],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -859,7 +962,9 @@
             "name": "analysis-budget-medium",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": ["default"],
+            "shareScope": [
+              "default"
+            ],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -930,21 +1035,34 @@
           },
           "findings": [
             {
+              "schemaVersion": 1,
               "ruleId": "doctor/partial-analysis",
               "severity": "warning",
+              "message": "Doctor completed with partial input.",
               "project": "medium",
               "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
-              "message": "Doctor completed with partial input.",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               },
               "evidence": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               }
             }
           ]
@@ -1009,11 +1127,20 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": ["source"],
+            "evidenceSources": [
+              "source"
+            ],
             "packages": [],
             "remotes": [],
-            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
-            "specifiers": ["./a", "./b"],
+            "sourceFiles": [
+              "src/a.ts",
+              "src/b.ts",
+              "src/index.ts"
+            ],
+            "specifiers": [
+              "./a",
+              "./b"
+            ],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -1038,7 +1165,9 @@
             "name": "analysis-budget-medium",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": ["default"],
+            "shareScope": [
+              "default"
+            ],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -1109,21 +1238,34 @@
           },
           "findings": [
             {
+              "schemaVersion": 1,
               "ruleId": "doctor/partial-analysis",
               "severity": "warning",
+              "message": "Doctor completed with partial input.",
               "project": "large",
               "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
-              "message": "Doctor completed with partial input.",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               },
               "evidence": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               }
             }
           ]
@@ -1188,7 +1330,9 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": ["source"],
+            "evidenceSources": [
+              "source"
+            ],
             "packages": [],
             "remotes": [],
             "sourceFiles": [
@@ -1199,7 +1343,13 @@
               "src/e.ts",
               "src/index.ts"
             ],
-            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
+            "specifiers": [
+              "./a",
+              "./b",
+              "./c",
+              "./d",
+              "./e"
+            ],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -1224,7 +1374,9 @@
             "name": "analysis-budget-large",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": ["default"],
+            "shareScope": [
+              "default"
+            ],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -1295,21 +1447,34 @@
           },
           "findings": [
             {
+              "schemaVersion": 1,
               "ruleId": "doctor/partial-analysis",
               "severity": "warning",
+              "message": "Doctor completed with partial input.",
               "project": "large",
               "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
-              "message": "Doctor completed with partial input.",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               },
               "evidence": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               }
             }
           ]
@@ -1374,7 +1539,9 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": ["source"],
+            "evidenceSources": [
+              "source"
+            ],
             "packages": [],
             "remotes": [],
             "sourceFiles": [
@@ -1385,7 +1552,13 @@
               "src/e.ts",
               "src/index.ts"
             ],
-            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
+            "specifiers": [
+              "./a",
+              "./b",
+              "./c",
+              "./d",
+              "./e"
+            ],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -1410,7 +1583,9 @@
             "name": "analysis-budget-large",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": ["default"],
+            "shareScope": [
+              "default"
+            ],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -1481,21 +1656,34 @@
           },
           "findings": [
             {
+              "schemaVersion": 1,
               "ruleId": "doctor/partial-analysis",
               "severity": "warning",
+              "message": "Doctor completed with partial input.",
               "project": "large",
               "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
-              "message": "Doctor completed with partial input.",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               },
               "evidence": {
-                "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "evidenceSources": [
+                  "source"
+                ],
+                "missing": [
+                  "config",
+                  "emittedAssets",
+                  "stats"
+                ]
               }
             }
           ]
@@ -1560,7 +1748,9 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": ["source"],
+            "evidenceSources": [
+              "source"
+            ],
             "packages": [],
             "remotes": [],
             "sourceFiles": [
@@ -1571,7 +1761,13 @@
               "src/e.ts",
               "src/index.ts"
             ],
-            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
+            "specifiers": [
+              "./a",
+              "./b",
+              "./c",
+              "./d",
+              "./e"
+            ],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -1596,7 +1792,9 @@
             "name": "analysis-budget-large",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": ["default"],
+            "shareScope": [
+              "default"
+            ],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -1683,7 +1881,9 @@
                   "eager": false,
                   "package": "react",
                   "requiredVersion": "^19.1.0",
-                  "shareScope": ["default"],
+                  "shareScope": [
+                    "default"
+                  ],
                   "singleton": true
                 }
               }
@@ -1734,7 +1934,9 @@
                   "eager": false,
                   "package": "react",
                   "requiredVersion": "^19.1.0",
-                  "shareScope": ["default"],
+                  "shareScope": [
+                    "default"
+                  ],
                   "singleton": true
                 }
               }
@@ -1811,7 +2013,9 @@
                   "eager": false,
                   "package": "react",
                   "requiredVersion": "^19.1.0",
-                  "shareScope": ["default"],
+                  "shareScope": [
+                    "default"
+                  ],
                   "singleton": true
                 }
               }
@@ -1860,7 +2064,9 @@
                   "eager": false,
                   "package": "react",
                   "requiredVersion": "^18.3.0",
-                  "shareScope": ["default"],
+                  "shareScope": [
+                    "default"
+                  ],
                   "singleton": true
                 }
               }
@@ -1892,11 +2098,12 @@
           },
           "findings": [
             {
+              "schemaVersion": 1,
               "ruleId": "federation/version-conflict",
               "severity": "error",
+              "message": "\"react\" versions do not satisfy all consumer ranges.",
               "project": "host",
               "fingerprint": "13493ba6536cea8b970a465f07655bb67ab0931c99698fa345fb64b535b082f4",
-              "message": "\"react\" versions do not satisfy all consumer ranges.",
               "documentation": "/rules/federation/version-conflict",
               "suggestion": "Align lockfiles and compatible `requiredVersion` ranges.",
               "details": null,

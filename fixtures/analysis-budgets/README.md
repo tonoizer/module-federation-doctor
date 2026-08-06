@@ -35,6 +35,10 @@ intentionally change the contract, update the expectation file in the same
 change after reviewing the resulting diff; CI never updates it automatically and the
 required suite cannot be reduced.
 
+The baseline lists the exact committed files for each source fixture and workspace.
+Preflight validation and workspace discovery use those bounded file lists rather than
+recursively walking arbitrary fixture directories.
+
 The `legacy`, `shadow`, and `v2-compat` rows still exercise the existing v1 collector
 with different rollout-controller selections. They do not represent independent v2
 collector implementations.

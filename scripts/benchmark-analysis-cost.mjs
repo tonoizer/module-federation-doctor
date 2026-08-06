@@ -103,34 +103,42 @@ async function writeValidatedJson(relativePath, label, value) {
   await fs.writeFile(destination, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-async function validateSafeTree(root, rootRealPath, fixture, label) {
-  const pending = [root];
-  let files = 0;
+async function validateFixtureFiles(root, rootRealPath, fixture, label) {
+  if (!Array.isArray(fixture.files) || fixture.files.length === 0)
+    throw new Error(`${label}.files must list the committed fixture files`);
+  const seen = new Set();
   let bytes = 0;
-  while (pending.length > 0) {
-    const current = pending.pop();
-    const entries = (await fs.readdir(current, { withFileTypes: true })).sort((left, right) =>
-      left.name.localeCompare(right.name),
-    );
-    for (const entry of entries) {
-      const candidate = path.join(current, entry.name);
-      const stat = await fs.lstat(candidate);
-      if (stat.isSymbolicLink()) throw new Error(`${label} contains a symbolic link: ${candidate}`);
-      await realpathInside(candidate, rootRealPath, label);
-      if (stat.isDirectory()) {
-        pending.push(candidate);
-        continue;
-      }
-      if (!stat.isFile()) throw new Error(`${label} contains a non-regular file: ${candidate}`);
-      files += 1;
-      bytes += stat.size;
-      if (files > fixture.maxFiles)
-        throw new Error(`${label} exceeds maxFiles ${fixture.maxFiles}`);
-      if (bytes > fixture.maxSourceBytes)
-        throw new Error(`${label} exceeds maxSourceBytes ${fixture.maxSourceBytes}`);
+  for (const file of fixture.files) {
+    assertRelativePath(file, `${label}.files`);
+    if (seen.has(file)) throw new Error(`${label}.files contains a duplicate: ${file}`);
+    seen.add(file);
+    const candidate = path.resolve(root, file);
+    if (!isWithin(root, candidate))
+      throw new Error(`${label}.files escapes its fixture root: ${file}`);
+    let parent = root;
+    const relativeParent = path.dirname(file);
+    if (relativeParent !== ".") parent = path.resolve(root, relativeParent);
+    while (true) {
+      const parentStat = await fs.lstat(parent);
+      if (parentStat.isSymbolicLink())
+        throw new Error(`${label}.files contains a symbolic link: ${file}`);
+      if (!parentStat.isDirectory())
+        throw new Error(`${label}.files parent must be a directory: ${file}`);
+      await realpathInside(parent, rootRealPath, `${label}.files/${file}`);
+      if (parent === root) break;
+      parent = path.dirname(parent);
     }
+    const stat = await fs.lstat(candidate);
+    if (stat.isSymbolicLink()) throw new Error(`${label}.files contains a symbolic link: ${file}`);
+    if (!stat.isFile()) throw new Error(`${label}.files must contain regular files: ${file}`);
+    await realpathInside(candidate, rootRealPath, `${label}.files/${file}`);
+    bytes += stat.size;
+    if (seen.size > fixture.maxFiles)
+      throw new Error(`${label} exceeds maxFiles ${fixture.maxFiles}`);
+    if (bytes > fixture.maxSourceBytes)
+      throw new Error(`${label} exceeds maxSourceBytes ${fixture.maxSourceBytes}`);
   }
-  return { files, bytes };
+  return { files: seen.size, bytes };
 }
 
 async function validateRootFixture(name, fixture, workspace = false) {
@@ -141,20 +149,9 @@ async function validateRootFixture(name, fixture, workspace = false) {
   if (rootStat.isSymbolicLink()) throw new Error(`${name}.root must not be a symbolic link`);
   if (!rootStat.isDirectory()) throw new Error(`${name}.root must be a directory`);
   const rootRealPath = await realpathInside(root, repositoryRealPath, `${name}.root`);
-  await validateSafeTree(root, rootRealPath, fixture, `${name}.root`);
-  for (const file of fixture.files ?? []) {
-    assertRelativePath(file, `${name}.files`);
-    const candidate = path.resolve(root, file);
-    if (!isWithin(root, candidate))
-      throw new Error(`${name}.files escapes its fixture root: ${file}`);
-    const stat = await fs.lstat(candidate);
-    if (stat.isSymbolicLink()) throw new Error(`${name}.files contains a symbolic link: ${file}`);
-    if (!stat.isFile()) throw new Error(`${name}.files must contain regular files: ${file}`);
-    await realpathInside(candidate, rootRealPath, `${name}.files/${file}`);
-  }
-  if (workspace && fixture.files.length < 2)
-    throw new Error(`${name} must contain at least two projects`);
-  return { root, rootRealPath };
+  const metrics = await validateFixtureFiles(root, rootRealPath, fixture, name);
+  if (workspace && metrics.files < 2) throw new Error(`${name} must contain at least two projects`);
+  return { root, rootRealPath, metrics };
 }
 
 function assertLimit(value, label) {
@@ -273,6 +270,7 @@ async function runWorkspaceFixture(fixtureName, fixture, rootInfo, failures) {
     const discovery = await discoverWorkspaceProjectsWithBudget({
       cwd: repository,
       roots: [fixture.root],
+      globs: fixture.files,
       analysisBudgets: {
         maxFiles: fixture.maxFiles,
         maxSerializedBytes: fixture.maxSerializedBytes,

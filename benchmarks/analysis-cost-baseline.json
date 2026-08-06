@@ -3,6 +3,7 @@
   "fixtures": {
     "small": {
       "root": "fixtures/analysis-budgets/small",
+      "files": ["dist/mf-manifest.json", "src/index.ts"],
       "maxFiles": 100,
       "maxSourceBytes": 1048576,
       "maxArtifacts": 100,
@@ -13,6 +14,7 @@
     },
     "medium": {
       "root": "fixtures/analysis-budgets/medium",
+      "files": ["dist/mf-manifest.json", "src/a.ts", "src/b.ts", "src/index.ts"],
       "maxFiles": 100,
       "maxSourceBytes": 4194304,
       "maxArtifacts": 100,
@@ -23,6 +25,15 @@
     },
     "large": {
       "root": "fixtures/analysis-budgets/large",
+      "files": [
+        "dist/mf-manifest.json",
+        "src/a.ts",
+        "src/b.ts",
+        "src/c.ts",
+        "src/d.ts",
+        "src/e.ts",
+        "src/index.ts"
+      ],
       "maxFiles": 100,
       "maxSourceBytes": 16777216,
       "maxArtifacts": 100,

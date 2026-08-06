@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertRegressionContract,
   compareRegressionContract,
+  normalizeAnalysisRun,
   normalizeReport,
   REQUIRED_ANALYSIS_FIXTURES,
   REQUIRED_MODES,
@@ -22,10 +23,14 @@ function analysisRow(fixture: string, mode: string) {
         summary: { projects: 1, info: 0, warnings: 0, errors: 0 },
         findings: [
           {
+            schemaVersion: 1,
             ruleId: "rule/test",
             severity: "warning",
+            message: "Test finding",
             project: fixture,
             fingerprint: `${fixture}-${mode}`,
+            location: { path: "src/index.ts", line: 2, column: 1 },
+            detailsSchema: "rule.test.v1",
             details: { stable: true },
             evidence: { sourceFile: "src/index.ts" },
           },
@@ -72,6 +77,7 @@ describe("analysis regression contract", () => {
             severity: "warning",
             project: "small",
             fingerprint: "stable",
+            location: { path: "src/index.ts", line: 3, column: 1 },
             detailsSchema: "rule.test.v1",
             details: { file: "src/index.ts" },
             evidence: { sourceFile: "src/index.ts" },
@@ -83,6 +89,7 @@ describe("analysis regression contract", () => {
     const findings = report.findings as Array<Record<string, unknown>>;
     expect(findings[0]).toMatchObject({
       detailsSchema: "rule.test.v1",
+      location: { path: "src/index.ts", line: 3, column: 1 },
       details: { file: "src/index.ts" },
     });
     expect(() =>
@@ -105,6 +112,26 @@ describe("analysis regression contract", () => {
         "fixtures/analysis-budgets/small",
       ),
     ).toThrow("contains traversal");
+    expect(() =>
+      normalizeReport(
+        {
+          schemaVersion: 1,
+          capabilities: {},
+          summary: {},
+          findings: [
+            {
+              ruleId: "rule/test",
+              severity: "warning",
+              project: "small",
+              fingerprint: "stable",
+              details: { file: "C:\\outside\\file" },
+              evidence: {},
+            },
+          ],
+        },
+        "fixtures/analysis-budgets/small",
+      ),
+    ).toThrow(/foreign absolute path style|escapes its fixture root/);
   });
 
   it("reports finding-detail and fact drift with stable fixture paths", () => {
@@ -112,11 +139,32 @@ describe("analysis regression contract", () => {
     const actual = structuredClone(expected);
     actual.analysis[0]!.result.report.findings[0]!.details.stable = false;
     actual.analysis[0]!.result.facts.moduleFederation.name = "changed";
+    actual.analysis[0]!.result.report.findings[0]!.location.line = 99;
+    actual.analysis[0]!.result.report.findings[0]!.detailsSchema = "rule.test.v2";
 
     expect(compareRegressionContract(expected, actual)).toEqual([
       'analysis/small/legacy.result.facts.moduleFederation.name: expected "small", received "changed"',
       "analysis/small/legacy.result.report.findings[0].details.stable: expected true, received false",
+      'analysis/small/legacy.result.report.findings[0].detailsSchema: expected "rule.test.v1", received "rule.test.v2"',
+      "analysis/small/legacy.result.report.findings[0].location.line: expected 2, received 99",
     ]);
+  });
+
+  it("keeps source-byte measurements out of semantic goldens", () => {
+    const normalized = normalizeAnalysisRun(
+      {
+        exitCode: 0,
+        digest: JSON.stringify({
+          facts: { analysis: { usage: { files: 1, sourceBytes: 123 } } },
+          report: { schemaVersion: 1, capabilities: {}, summary: {}, findings: [] },
+        }),
+      },
+      { status: "read" },
+      "fixtures/analysis-budgets/small",
+    );
+    expect((normalized.facts as { analysis: { usage: unknown } }).analysis.usage).toEqual({
+      files: 1,
+    });
   });
 
   it("rejects removed and unexpected required rows", () => {
@@ -146,6 +194,12 @@ describe("analysis regression contract", () => {
     duplicateActual.workspaces.push(duplicateActual.workspaces[0]!);
     expect(() => compareRegressionContract(validContract(), duplicateActual)).toThrow(
       "duplicate row",
+    );
+
+    const malformedFinding = validContract();
+    malformedFinding.analysis[0]!.result.report.findings[0]!.schemaVersion = 2;
+    expect(() => assertRegressionContract(malformedFinding, "malformed finding")).toThrow(
+      "findings[0].schemaVersion must be 1",
     );
   });
 
