@@ -39,6 +39,35 @@ stay unchanged. Runtime collection has a separate budget later. Projection helpe
 and reserve the normalized input and complete output as separate atomic units;
 they never return silently truncated v1 data.
 
+Source and discovered-artifact reads use a fixed worker bound and reduce results
+in sorted path order, so concurrency does not change file selection or report
+ordering. Applications that run multiple analyses in one process can opt into a
+bounded parsed-input cache:
+
+```ts
+import { AnalysisContentCache } from "@module-federation/doctor";
+
+const analysisCache = new AnalysisContentCache({
+  maxEntries: 256,
+  maxBytes: 16 * 1024 * 1024,
+});
+
+await analyze({ analysisCache });
+```
+
+The cache is process-local and opt-in. Entries are invalidated by source or
+artifact content digest and include adapter/config identity in their key; the
+LRU entry and byte ceilings prevent unbounded retention. It does not replace a
+remote or daemon cache. The checked-in `pnpm benchmark:analysis` command runs
+the small/medium/large fixtures twice through the legacy, shadow, and explicitly
+gate-promoted v2-compat controller selections. It records wall time/RSS/budget
+usage/cache reuse, checks stable v1 output, and uses the existing
+`readEvidenceFile` seam when fixture evidence is present. The v2-compat row
+measures the current v1 collector at the rollout-controller seam; it does not
+claim a separate v2 collector is enabled. Mixed Vite/Rspack/Rsbuild/Webpack
+coverage is provided by the existing compatibility matrix rather than this
+source-only benchmark.
+
 ## Startup strategy
 
 Issue: `version-first` loads every configured remote entry during

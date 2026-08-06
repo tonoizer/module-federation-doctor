@@ -65,6 +65,7 @@ interface RuleEvaluationBase {
   id: string;
   rule: { id: string; version: string };
   subject: string;
+  scope: EvidenceRuleScope;
   evidenceIds: string[];
 }
 

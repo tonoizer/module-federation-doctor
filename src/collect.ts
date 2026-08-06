@@ -28,6 +28,13 @@ import { analyzeLocalRuntimePlugin } from "./runtime-plugin-contract.js";
 import { normalizePath, relativePath } from "./utils.js";
 import { detectViteLifecycle } from "./vite-lifecycle.js";
 import { AnalysisBudgetTracker } from "./analysis-budgets.js";
+import { mapBounded } from "./async-map.js";
+import {
+  analysisCacheKey,
+  contentDigest,
+  createAnalysisCacheIdentity,
+  type AnalysisContentCache,
+} from "./analysis-cache.js";
 
 interface PackageJson {
   name?: string;
@@ -111,6 +118,62 @@ interface RawImportScan {
   remoteSpecifiers: Set<string>;
   unresolvedDynamic: UnresolvedDynamicImport[];
   budget?: import("./analysis-budgets.js").AnalysisBudgetReport;
+}
+
+interface SourceScanSnapshot {
+  specifierDynamic: Array<[string, boolean]>;
+  reexportOnly: string[];
+  specifierFiles: Array<[string, string[]]>;
+  remoteSpecifiers: string[];
+  unresolvedDynamic: UnresolvedDynamicImport[];
+}
+
+function emptyImportScan(): RawImportScan {
+  return {
+    sourceFiles: [],
+    specifierDynamic: new Map(),
+    reexportOnly: new Set(),
+    specifierFiles: new Map(),
+    remoteSpecifiers: new Set(),
+    unresolvedDynamic: [],
+  };
+}
+
+function snapshotImportScan(scan: RawImportScan): SourceScanSnapshot {
+  return {
+    specifierDynamic: [...scan.specifierDynamic.entries()].sort(([a], [b]) => a.localeCompare(b)),
+    reexportOnly: [...scan.reexportOnly].sort(),
+    specifierFiles: [...scan.specifierFiles.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([specifier, files]) => [specifier, [...files].sort()]),
+    remoteSpecifiers: [...scan.remoteSpecifiers].sort(),
+    unresolvedDynamic: scan.unresolvedDynamic
+      .slice()
+      .sort((a, b) => `${a.file}:${a.api}`.localeCompare(`${b.file}:${b.api}`)),
+  };
+}
+
+function scanFromSnapshot(file: string, snapshot: SourceScanSnapshot): RawImportScan {
+  return {
+    sourceFiles: [file],
+    specifierDynamic: new Map(snapshot.specifierDynamic),
+    reexportOnly: new Set(snapshot.reexportOnly),
+    specifierFiles: new Map(
+      snapshot.specifierFiles.map(([specifier, files]) => [specifier, new Set(files)] as const),
+    ),
+    remoteSpecifiers: new Set(snapshot.remoteSpecifiers),
+    unresolvedDynamic: snapshot.unresolvedDynamic.map((item) => ({ ...item, file })),
+  };
+}
+
+function mergeImportScan(target: RawImportScan, source: RawImportScan): void {
+  for (const [specifier, dynamic] of source.specifierDynamic) {
+    const files = source.specifierFiles.get(specifier) ?? new Set<string>();
+    for (const file of files) recordSpecifier(target, specifier, dynamic, file, "import");
+    if (source.reexportOnly.has(specifier)) target.reexportOnly.add(specifier);
+  }
+  for (const remote of source.remoteSpecifiers) target.remoteSpecifiers.add(remote);
+  target.unresolvedDynamic.push(...source.unresolvedDynamic);
 }
 
 const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
@@ -197,14 +260,14 @@ function recordSpecifier(
   else if (!hadNonReexport) scan.reexportOnly.add(specifier);
 }
 
-function scanSourceImports(source: string, file: string, scan: RawImportScan): void {
+function scanSourceImports(source: string, file: string, scan: RawImportScan): boolean {
   const unresolved = (api: UnresolvedDynamicApi): void => {
     scan.unresolvedDynamic.push({ api, file });
   };
 
   if (Buffer.byteLength(source, "utf8") > MAX_SOURCE_BYTES) {
     unresolved("import");
-    return;
+    return false;
   }
 
   try {
@@ -214,7 +277,7 @@ function scanSourceImports(source: string, file: string, scan: RawImportScan): v
     });
     if (parsed.errors.length > 0) {
       unresolved("import");
-      return;
+      return false;
     }
 
     walkAst(parsed.program as unknown as AstNode, (node) => {
@@ -280,9 +343,11 @@ function scanSourceImports(source: string, file: string, scan: RawImportScan): v
       recordSpecifier(scan, specifier, true, file, "import");
       if (api === "loadRemote") scan.remoteSpecifiers.add(specifier);
     });
+    return true;
   } catch {
     // A bounded parser failure is incomplete evidence, never a confident import result.
     unresolved("import");
+    return false;
   }
 }
 
@@ -306,18 +371,77 @@ async function scanProjectImports(
     remoteSpecifiers: new Set(),
     unresolvedDynamic: [],
   };
-  const selected: string[] = [];
-  for (const file of scan.sourceFiles) {
-    const size = await fs
+  const stats = await mapBounded(scan.sourceFiles, async (file) =>
+    fs
       .stat(path.join(options.root, file))
       .then((item) => item.size)
-      .catch(() => 0);
+      .catch(() => 0),
+  );
+  const selected: Array<{ file: string; reservedBytes: number }> = [];
+  for (const [index, file] of scan.sourceFiles.entries()) {
+    const size = stats[index] ?? 0;
     if (!tracker.reserve({ files: 1, sourceBytes: size })) continue;
-    selected.push(file);
-    const source = await fs.readFile(path.join(options.root, file), "utf8");
-    scanSourceImports(source, file, scan);
+    selected.push({ file, reservedBytes: size });
   }
-  scan.sourceFiles = selected;
+  scan.sourceFiles = selected.map(({ file }) => file);
+  const identity = createAnalysisCacheIdentity(options);
+  const contents = await mapBounded(selected, async ({ file }) => {
+    if (!tracker.checkWallTime()) return { kind: "read-failed" as const };
+    const source = await fs.readFile(path.join(options.root, file), "utf8").catch(() => undefined);
+    if (source === undefined) return { kind: "read-failed" as const };
+    return { kind: "read" as const, source, bytes: Buffer.byteLength(source, "utf8") };
+  });
+  const parseable: Array<{ file: string; source: string; key: string }> = [];
+  for (const [index, selectedFile] of selected.entries()) {
+    const input = contents[index];
+    if (input?.kind === "read-failed") {
+      // A file can disappear between glob/stat and read. Keep that loss
+      // explicit without aborting the other deterministic workers.
+      scan.unresolvedDynamic.push({ api: "import", file: selectedFile.file });
+      continue;
+    }
+    if (!input) continue;
+    if (
+      input.bytes > selectedFile.reservedBytes &&
+      !tracker.reserve({ sourceBytes: input.bytes - selectedFile.reservedBytes })
+    ) {
+      scan.unresolvedDynamic.push({ api: "import", file: selectedFile.file });
+      continue;
+    }
+    if (!tracker.checkWallTime()) {
+      scan.unresolvedDynamic.push({ api: "import", file: selectedFile.file });
+      continue;
+    }
+    parseable.push({
+      file: selectedFile.file,
+      source: input.source,
+      key: analysisCacheKey("source", selectedFile.file, contentDigest(input.source), identity),
+    });
+  }
+  const cached = new Map<string, RawImportScan>();
+  const misses: Array<{ file: string; source: string; key: string }> = [];
+  for (const item of parseable) {
+    const value = options.analysisCache?.get<SourceScanSnapshot>(item.key);
+    if (value) cached.set(item.key, scanFromSnapshot(item.file, value));
+    else misses.push(item);
+  }
+  const parsedMisses = await mapBounded(misses, async ({ file, source, key }) => {
+    const local = emptyImportScan();
+    const complete = scanSourceImports(source, file, local);
+    return { file, key, scan: local, complete, bytes: Buffer.byteLength(source, "utf8") };
+  });
+  const parsedByKey = new Map(parsedMisses.map((item) => [item.key, item] as const));
+  const parsed = parseable.map((item) => {
+    const hit = cached.get(item.key);
+    if (hit) return { file: item.file, scan: hit };
+    const miss = parsedByKey.get(item.key);
+    if (!miss) return { file: item.file, scan: emptyImportScan() };
+    if (miss.complete)
+      options.analysisCache?.set(item.key, snapshotImportScan(miss.scan), miss.bytes);
+    return { file: item.file, scan: miss.scan };
+  });
+  scan.sourceFiles = parsed.map(({ file }) => file);
+  for (const item of parsed) mergeImportScan(scan, item.scan);
   const budget = tracker.report();
   scan.budget = budget.exceeded.length > 0 ? { ...budget, status: "partial" } : budget;
   scan.unresolvedDynamic.sort((a, b) => a.file.localeCompare(b.file) || a.api.localeCompare(b.api));
@@ -638,7 +762,8 @@ export async function attachAssetSizes(
     : root;
   const sizes: Record<string, number> = {};
 
-  for (const name of names) {
+  const orderedNames = [...names].sort((a, b) => a.localeCompare(b));
+  const resolved = await mapBounded(orderedNames, async (name) => {
     const normalizedName = normalizePath(name);
     const basename = path.basename(normalizedName);
     const candidates =
@@ -665,22 +790,25 @@ export async function attachAssetSizes(
               .map((emitted) => path.join(root, emitted)),
           ];
 
+    const result: Record<string, number> = {};
     for (const candidate of candidates) {
       try {
         const stat = await fs.stat(candidate);
         if (!stat.isFile()) continue;
         const relative = relativePath(root, candidate);
-        sizes[relative] = stat.size;
+        result[relative] = stat.size;
         if (outputRoots === undefined || outputRoots.length === 1) {
-          sizes[normalizedName] = stat.size;
-          sizes[basename] = stat.size;
+          result[normalizedName] = stat.size;
+          result[basename] = stat.size;
         }
         break;
       } catch {
         // Missing candidates are expected before a build or for remote-only names.
       }
     }
-  }
+    return result;
+  });
+  for (const result of resolved) Object.assign(sizes, result);
 
   if (Object.keys(sizes).length > 0) facts.artifacts.assetSizes = sizes;
   else delete facts.artifacts.assetSizes;
@@ -719,6 +847,8 @@ async function collectArtifacts(
   names: ResolvedDoctorOptions["artifactNames"],
   boundedRoots?: string[],
   tracker?: AnalysisBudgetTracker,
+  analysisCache?: AnalysisContentCache,
+  cacheIdentity?: string,
 ): Promise<ArtifactFacts> {
   const validateName = (name: string): string => {
     if (!name || path.isAbsolute(name) || path.win32.isAbsolute(name) || /^[A-Za-z]:/.test(name))
@@ -768,19 +898,87 @@ async function collectArtifacts(
   };
   const records: ArtifactRecord[] = [];
   const artifact: ArtifactFacts = { records, emittedAssets: [] };
-  for (const file of candidates.sort()) {
+  const preflight = await mapBounded([...new Set(candidates)].sort(), async (file) => {
     const relative = normalizePath(file);
     const kinds = kindsFor(relative);
-    if (kinds.length === 0) continue;
+    if (kinds.length === 0) return undefined;
     const real = await fs.realpath(path.join(root, file)).catch(() => undefined);
-    if (!real || (path.relative(rootReal, real) || ".").startsWith("..")) continue;
-    if (tracker && !tracker.reserve({ artifacts: kinds.length })) continue;
-    let data: unknown;
-    try {
-      data = await readJson(path.join(root, file));
-    } catch {
-      data = undefined;
+    if (!real || (path.relative(rootReal, real) || ".").startsWith("..")) return undefined;
+    const stat = await fs.stat(path.join(root, file)).catch(() => undefined);
+    if (!stat || !stat.isFile() || !Number.isSafeInteger(stat.size) || stat.size < 0)
+      return undefined;
+    return { file, relative, kinds, bytes: stat.size };
+  });
+  const selected: Array<{
+    file: string;
+    relative: string;
+    kinds: ArtifactKind[];
+    reservedBytes: number;
+  }> = [];
+  for (const candidate of preflight) {
+    if (!candidate) continue;
+    if (tracker && !tracker.checkWallTime()) break;
+    if (
+      tracker &&
+      !tracker.reserve({ artifacts: candidate.kinds.length, serializedBytes: candidate.bytes })
+    )
+      continue;
+    selected.push({ ...candidate, reservedBytes: candidate.bytes });
+  }
+  const contents = await mapBounded(selected, async ({ file }) => {
+    if (tracker && !tracker.checkWallTime()) return { kind: "skipped" as const };
+    const value = await fs.readFile(path.join(root, file), "utf8").catch(() => undefined);
+    if (value === undefined) return { kind: "read-failed" as const };
+    return { kind: "read" as const, value, bytes: Buffer.byteLength(value, "utf8") };
+  });
+  const parseable: Array<{ index: number; relative: string; value: string }> = [];
+  const readFailed = new Set<number>();
+  for (const [index, candidate] of selected.entries()) {
+    const input = contents[index];
+    if (input?.kind === "skipped") continue;
+    if (input?.kind === "read-failed") {
+      readFailed.add(index);
+      continue;
     }
+    if (!input) continue;
+    if (tracker && input.bytes > candidate.reservedBytes) {
+      if (!tracker.reserve({ serializedBytes: input.bytes - candidate.reservedBytes })) continue;
+    }
+    if (tracker && !tracker.checkWallTime()) break;
+    parseable.push({ index, relative: candidate.relative, value: input.value });
+  }
+  const cached = new Map<number, unknown>();
+  const misses: Array<{ index: number; relative: string; value: string; key?: string }> = [];
+  for (const item of parseable) {
+    const key = analysisCache
+      ? analysisCacheKey("artifact", item.relative, contentDigest(item.value), cacheIdentity ?? "")
+      : undefined;
+    const value = key ? analysisCache?.get<unknown>(key) : undefined;
+    if (value !== undefined) cached.set(item.index, value);
+    else misses.push({ ...item, ...(key ? { key } : {}) });
+  }
+  const parsedMisses = await mapBounded(misses, async ({ value }) => {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      return undefined;
+    }
+  });
+  for (const [index, item] of misses.entries()) {
+    const data = parsedMisses[index];
+    if (data !== undefined) {
+      cached.set(item.index, data);
+      if (item.key) analysisCache?.set(item.key, data, Buffer.byteLength(item.value, "utf8"));
+    }
+  }
+  const parseableIndices = new Set(parseable.map((item) => item.index));
+  const parsedBySelected: Array<unknown | undefined> = Array.from({ length: selected.length });
+  for (const item of parseable.entries())
+    parsedBySelected[item[1].index] = cached.get(item[1].index);
+  for (const [index, candidate] of selected.entries()) {
+    if (!parseableIndices.has(index) && !readFailed.has(index)) continue;
+    const data = parsedBySelected[index];
+    const { relative, kinds } = candidate;
     for (const kind of kinds) {
       if (kind === "manifest") {
         const manifest = manifestFrom(data, relative);
@@ -864,11 +1062,14 @@ export async function collectProjectFacts(
   };
   const tracker = new AnalysisBudgetTracker(options.analysisBudgets);
   const scan = await scanProjectImports(options, tracker);
+  const cacheIdentity = createAnalysisCacheIdentity(options);
   const artifacts = await collectArtifacts(
     options.root,
     options.artifactNames,
     boundedRoots,
     tracker,
+    options.analysisCache,
+    cacheIdentity,
   );
   const normalizedMf =
     normalizeModuleFederation(options.moduleFederation, { bundler: options.bundler }) ??
@@ -913,7 +1114,12 @@ export async function collectProjectFacts(
     .filter((value): value is string => Boolean(value));
   const traceHints = await runtimeTraceHints(options.runtimeTrace);
   const evidenceSources = new Set<ImportEvidenceSource>();
-  if (scan.sourceFiles.length > 0 || scan.specifierDynamic.size > 0) evidenceSources.add("source");
+  if (
+    scan.sourceFiles.length > 0 ||
+    scan.specifierDynamic.size > 0 ||
+    scan.unresolvedDynamic.length > 0
+  )
+    evidenceSources.add("source");
   if (manifestRemotes.length > 0) evidenceSources.add("manifest");
   if (traceHints.used) evidenceSources.add("runtime-trace");
 
@@ -990,13 +1196,18 @@ export async function collectProjectFacts(
     analysis: tracker.report(),
   };
   if (normalizedMf) facts.moduleFederation = normalizedMf;
-  const runtimePluginContracts = await collectRuntimePluginContracts(
-    options.root,
-    normalizedMf?.runtimePlugins,
-    imports.sourceFiles,
-  );
-  if (runtimePluginContracts.length > 0) facts.runtimePluginContracts = runtimePluginContracts;
-  await attachAssetSizes(facts, options.root);
+  if (tracker.checkWallTime()) {
+    const runtimePluginContracts = await collectRuntimePluginContracts(
+      options.root,
+      normalizedMf?.runtimePlugins,
+      imports.sourceFiles,
+    );
+    if (runtimePluginContracts.length > 0) facts.runtimePluginContracts = runtimePluginContracts;
+    if (tracker.checkWallTime()) await attachAssetSizes(facts, options.root);
+  }
+  // Plugin and asset-size collection can consume the remaining wall-time
+  // budget. Publish the shared tracker snapshot only after both phases.
+  facts.analysis = tracker.report();
   return facts;
 }
 

@@ -1,11 +1,12 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { addBuildFacts, collectProjectFacts } from "../../src/collect.js";
 import { resolveOptions } from "../../src/config.js";
 import { analyze, analyzeBuild } from "../../src/engine.js";
 import { writeReports } from "../../src/reporters.js";
+import { AnalysisContentCache } from "../../src/analysis-cache.js";
 import { validatePayload } from "../helpers/schema-contract.js";
 import type { ArtifactRecord, ArtifactStats, BuildOutputInput } from "../../src/types.js";
 
@@ -33,6 +34,7 @@ function viteOutput(partial: Omit<BuildOutputInput, "adapter" | "bundler">): Bui
 const roots: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
 });
 
@@ -75,6 +77,38 @@ describe("artifact collection", () => {
     expect(facts).not.toHaveProperty("budget");
   });
 
+  it("keeps a disappearing source file unresolved without aborting the scan", async () => {
+    const root = await fixture({
+      "src/race.ts": 'import "remote";\n',
+      "src/kept.ts": 'import "kept";\n',
+    });
+    const originalReadFile = fs.readFile;
+    vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+      if (String(file).endsWith(`${path.sep}src${path.sep}race.ts`)) {
+        const error = new Error("file disappeared");
+        (error as NodeJS.ErrnoException).code = "ENOENT";
+        throw error;
+      }
+      return originalReadFile(file, options);
+    });
+
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    expect(facts.imports.sourceFiles).toEqual(["src/kept.ts"]);
+    expect(facts.imports.unresolvedDynamic).toContainEqual({ api: "import", file: "src/race.ts" });
+  });
+
+  it("does not expose mutable artifact cache values to the next analysis", async () => {
+    const root = await fixture({ "dist/mf-stats.json": JSON.stringify({ assets: ["first.js"] }) });
+    const analysisCache = new AnalysisContentCache();
+    const options = await resolveOptions({ root, analysisCache });
+    const first = await collectProjectFacts(options);
+    first.artifacts.stats!.data!.assets = ["mutated.js"];
+
+    const second = await collectProjectFacts(options);
+    expect(second.artifacts.stats!.data!.assets).toEqual(["first.js"]);
+  });
+
   it("bounds artifact parsing and reports omitted records as partial", async () => {
     const root = await fixture({
       "dist/a/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
@@ -89,6 +123,45 @@ describe("artifact collection", () => {
     expect(facts.artifacts.records?.[0]?.path).toBe("dist/a/mf-manifest.json");
     expect(facts.analysis?.status).toBe("partial");
     expect(facts.analysis?.exceeded).toEqual([{ kind: "artifacts", limit: 1 }]);
+  });
+
+  it("preflights artifact bytes before parsing", async () => {
+    const contents = JSON.stringify({ metaData: {}, exposes: [], shared: [] });
+    const root = await fixture({ "dist/mf-manifest.json": contents });
+    const facts = await collectProjectFacts(
+      await resolveOptions({
+        root,
+        analysisBudgets: { maxSerializedBytes: Buffer.byteLength(contents) - 1 },
+      }),
+    );
+
+    expect(facts.artifacts.records).toEqual([]);
+    expect(facts.analysis?.exceeded).toEqual([
+      { kind: "serializedBytes", limit: contents.length - 1 },
+    ]);
+  });
+
+  it("does not start artifact parsing after a wall-time cutoff", async () => {
+    const root = await fixture({
+      "dist/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+    });
+    const facts = await collectProjectFacts(
+      await resolveOptions({ root, analysisBudgets: { maxWallTimeMs: 0 } }),
+    );
+
+    expect(facts.artifacts.records).toEqual([]);
+    expect(facts.analysis?.exceeded).toContainEqual({ kind: "wallTimeMs", limit: 0 });
+  });
+
+  it("reuses the bounded cache through source collection", async () => {
+    const root = await fixture({ "src/a.ts": 'import "remote";\n' });
+    const analysisCache = new AnalysisContentCache();
+    const options = await resolveOptions({ root, analysisCache });
+    const first = await collectProjectFacts(options);
+    const second = await collectProjectFacts(options);
+
+    expect(second.imports).toEqual(first.imports);
+    expect(analysisCache.stats.hits).toBeGreaterThan(0);
   });
 
   it("returns exit code 2 when source collection is incomplete", async () => {

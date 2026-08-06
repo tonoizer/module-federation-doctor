@@ -51,6 +51,19 @@ describe("analysis budgets", () => {
     expect(tracker.report("unknown").exceeded).toEqual([{ kind: "wallTimeMs", limit: 2 }]);
   });
 
+  it("reports wall-time expiry even without a later reservation", () => {
+    let now = 1;
+    const tracker = new AnalysisBudgetTracker(resolveAnalysisBudgets({ maxWallTimeMs: 2 }), {
+      now: () => now,
+      startedAt: 1,
+    });
+    now = 3;
+    expect(tracker.report()).toMatchObject({
+      status: "partial",
+      exceeded: [{ kind: "wallTimeMs", limit: 2 }],
+    });
+  });
+
   it("reserves artifact records as one bounded unit", () => {
     const tracker = new AnalysisBudgetTracker(resolveAnalysisBudgets({ maxArtifacts: 1 }), {
       now: () => 1,
@@ -95,9 +108,7 @@ describe("analysis budgets", () => {
     const tracker = new AnalysisBudgetTracker(
       resolveAnalysisBudgets({ maxEvidenceNodes: 0, maxSerializedBytes: 0 }),
     );
-    expect(() => reserveEvidenceBudget({ a: "x" }, tracker)).toThrow(
-      EvidenceBudgetExceededError,
-    );
+    expect(() => reserveEvidenceBudget({ a: "x" }, tracker)).toThrow(EvidenceBudgetExceededError);
     expect(tracker.report()).toMatchObject({
       usage: { evidenceNodes: 0, serializedBytes: 0 },
       exceeded: [
