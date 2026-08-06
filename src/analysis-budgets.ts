@@ -34,6 +34,11 @@ export interface AnalysisBudgetUsage {
   serializedBytes: number;
 }
 
+export interface EvidenceBudgetMeasurement {
+  evidenceNodes: number;
+  serializedBytes: number;
+}
+
 export interface AnalysisBudgetExceeded {
   kind: AnalysisBudgetKind;
   limit: number;
@@ -106,40 +111,48 @@ export class AnalysisBudgetTracker {
     return Math.max(0, this.now() - this.startedAt);
   }
 
+  get usageSnapshot(): AnalysisBudgetUsage {
+    return { ...this.usage };
+  }
+
+  /** Check the only budget that can expire while a value is being processed. */
+  checkWallTime(): boolean {
+    if (this.elapsedMs < this.limits.maxWallTimeMs) return true;
+    this.exceeded.set("wallTimeMs", this.limits.maxWallTimeMs);
+    return false;
+  }
+
+  reserveEvidence(measurement: EvidenceBudgetMeasurement): boolean {
+    return this.reserve(measurement);
+  }
+
   reserve(values: Partial<AnalysisBudgetUsage>): boolean {
-    if (this.elapsedMs >= this.limits.maxWallTimeMs) {
-      this.exceeded.set("wallTimeMs", this.limits.maxWallTimeMs);
-      return false;
+    const exceeded: Array<[AnalysisBudgetKind, number]> = [];
+    if (!this.checkWallTime()) {
+      exceeded.push(["wallTimeMs", this.limits.maxWallTimeMs]);
     }
-    for (const kind of [
+    const usageKinds = [
       "files",
       "sourceBytes",
       "artifacts",
       "evidenceNodes",
       "serializedBytes",
-    ] as const) {
+    ] as const;
+    for (const kind of usageKinds) {
       const amount = values[kind] ?? 0;
       if (!Number.isSafeInteger(amount) || amount < 0)
         throw new TypeError(`${kind} usage must be a non-negative safe integer.`);
-      if (
-        this.usage[kind] + amount >
-        this.limits[`max${kind[0]!.toUpperCase()}${kind.slice(1)}` as keyof AnalysisBudgets]
-      ) {
-        this.exceeded.set(
-          kind,
-          this.limits[`max${kind[0]!.toUpperCase()}${kind.slice(1)}` as keyof AnalysisBudgets],
-        );
-        return false;
-      }
+      const limit =
+        this.limits[`max${kind[0]!.toUpperCase()}${kind.slice(1)}` as keyof AnalysisBudgets];
+      if (this.usage[kind] + amount > limit) exceeded.push([kind, limit]);
     }
-    for (const kind of [
-      "files",
-      "sourceBytes",
-      "artifacts",
-      "evidenceNodes",
-      "serializedBytes",
-    ] as const)
-      this.usage[kind] += values[kind] ?? 0;
+    for (const [kind, limit] of exceeded) {
+      this.exceeded.set(kind, limit);
+    }
+    if (exceeded.length > 0) {
+      return false;
+    }
+    for (const kind of usageKinds) this.usage[kind] += values[kind] ?? 0;
     return true;
   }
 
@@ -154,4 +167,74 @@ export class AnalysisBudgetTracker {
         .sort((a, b) => a.kind.localeCompare(b.kind)),
     };
   }
+}
+
+/**
+ * Count JSON nodes and UTF-8 serialized bytes without constructing a normalized
+ * document. The walk continues until every configured ceiling has either been
+ * exceeded or the value has been fully measured, so a rejected reservation can
+ * report all exceeded limits deterministically.
+ */
+export function measureEvidenceUsage(
+  value: unknown,
+  ceilings: Partial<EvidenceBudgetMeasurement> = {},
+): EvidenceBudgetMeasurement {
+  const maxNodes = ceilings.evidenceNodes ?? Number.MAX_SAFE_INTEGER;
+  const maxBytes = ceilings.serializedBytes ?? Number.MAX_SAFE_INTEGER;
+  const pending: Array<
+    | { type: "value"; value: unknown }
+    | { type: "leave"; value: object }
+  > = [{ type: "value", value }];
+  const active = new WeakSet<object>();
+  let evidenceNodes = 0;
+  let serializedBytes = 0;
+  while (pending.length > 0) {
+    const item = pending.pop()!;
+    if (item.type === "leave") {
+      active.delete(item.value);
+      continue;
+    }
+    const current = item.value;
+    evidenceNodes += 1;
+    if (current === null || typeof current === "boolean") {
+      serializedBytes += Buffer.byteLength(JSON.stringify(current));
+    } else if (typeof current === "number" || typeof current === "string") {
+      if (typeof current === "number" && !Number.isFinite(current))
+        throw new TypeError("Evidence value is not JSON serializable.");
+      const serialized = JSON.stringify(current);
+      if (serialized === undefined) throw new TypeError("Evidence value is not JSON serializable.");
+      serializedBytes += Buffer.byteLength(serialized);
+    } else if (Array.isArray(current)) {
+      if (active.has(current)) throw new TypeError("Evidence value contains a cycle.");
+      active.add(current);
+      serializedBytes += 2 + Math.max(0, current.length - 1);
+      pending.push({ type: "leave", value: current });
+      for (let index = current.length - 1; index >= 0; index -= 1)
+        pending.push({ type: "value", value: current[index] });
+    } else if (typeof current === "object") {
+      if (
+        !([Object.prototype, null] as (object | null)[]).includes(Object.getPrototypeOf(current))
+      )
+        throw new TypeError("Evidence value is not JSON serializable.");
+      const object = current as Record<string, unknown>;
+      if (active.has(object)) throw new TypeError("Evidence value contains a cycle.");
+      active.add(object);
+      const entries = Object.entries(object);
+      serializedBytes += 2 + Math.max(0, entries.length - 1);
+      pending.push({ type: "leave", value: object });
+      for (let index = entries.length - 1; index >= 0; index -= 1) {
+        const [key, child] = entries[index]!;
+        const serializedKey = JSON.stringify(key);
+        if (serializedKey === undefined)
+          throw new TypeError("Evidence key is not JSON serializable.");
+        serializedBytes += Buffer.byteLength(serializedKey) + 1;
+        pending.push({ type: "value", value: child });
+      }
+    } else {
+      throw new TypeError("Evidence value is not JSON serializable.");
+    }
+    if (evidenceNodes > maxNodes && serializedBytes > maxBytes)
+      return { evidenceNodes, serializedBytes };
+  }
+  return { evidenceNodes, serializedBytes };
 }

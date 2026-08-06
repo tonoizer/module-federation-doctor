@@ -27,8 +27,17 @@ collection without silently claiming completeness: project analysis emits the
 existing `doctor/partial-analysis` finding and workspace analysis returns exit
 code `2` with unknown input. Artifact records are also selected in sorted path
 order and capped before JSON parsing; hitting `maxArtifacts` produces the same
-partial analysis signal. Legacy project/report schemas and normal runs stay
-unchanged. Runtime collection has a separate budget later.
+partial analysis signal. Imported evidence uses the same tracker: the node and
+serialized-byte reservation happens before copying, graph normalization, or
+stable-ID hashing. Bytes mean the UTF-8 size of the raw JSON representation,
+including keys and separators, and a rejected reservation is atomic. The reader
+throws a typed `EvidenceReaderError` with `failureCode: "budget-exceeded"` and
+its budget report; it does not return a clipped graph. Budget-clipped rule
+processing returns `unknown` with partial completeness, so no finding is treated
+as conclusive from clipped input. Legacy project/report schemas and normal runs
+stay unchanged. Runtime collection has a separate budget later. Projection helpers accept an optional `analysisBudget`
+and reserve the normalized input and complete output as separate atomic units;
+they never return silently truncated v1 data.
 
 ## Startup strategy
 

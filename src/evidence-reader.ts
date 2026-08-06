@@ -17,6 +17,17 @@ import {
   type EvidenceSubject,
   type EvidenceValue,
 } from "./evidence.js";
+import {
+  AnalysisBudgetTracker,
+  resolveAnalysisBudgets,
+  type AnalysisBudgetOptions,
+  type AnalysisBudgetReport,
+} from "./analysis-budgets.js";
+import {
+  EvidenceBudgetExceededError,
+  markEvidenceBudgetDimension,
+  reserveEvidenceBudget,
+} from "./evidence-budget.js";
 import type { DoctorFinding, DoctorReport, ProjectFacts } from "./types.js";
 import { fingerprint } from "./utils.js";
 
@@ -29,10 +40,22 @@ export type EvidenceReaderFailureCode =
   | "wrong-document-kind"
   | "schema-invalid"
   | "unsupported-version"
-  | "integrity-invalid";
+  | "integrity-invalid"
+  | "budget-exceeded";
 
 export interface EvidenceReaderOptions {
   fileLabel?: string;
+  /** Reuse one analysis budget across imported evidence documents. */
+  analysisBudget?: AnalysisBudgetTracker;
+  /** Convenience form for one document; prefer analysisBudget for batches. */
+  analysisBudgets?: AnalysisBudgetOptions;
+}
+
+export interface EvidenceProjectionOptions {
+  /** Bound normalization and the atomically-created legacy projection. */
+  analysisBudget?: AnalysisBudgetTracker;
+  /** Convenience form for one projection. */
+  analysisBudgets?: AnalysisBudgetOptions;
 }
 
 export interface EvidenceReaderErrorDetails {
@@ -41,6 +64,7 @@ export interface EvidenceReaderErrorDetails {
   sourceVersion?: number | string;
   failureCode: EvidenceReaderFailureCode;
   pointer: string;
+  report?: AnalysisBudgetReport;
 }
 
 export class EvidenceReaderError extends Error {
@@ -50,6 +74,7 @@ export class EvidenceReaderError extends Error {
   readonly sourceVersion: number | string | undefined;
   readonly failureCode: EvidenceReaderFailureCode;
   readonly pointer: string;
+  readonly report: AnalysisBudgetReport | undefined;
 
   constructor(details: EvidenceReaderErrorDetails, message: string) {
     super(message);
@@ -60,6 +85,7 @@ export class EvidenceReaderError extends Error {
     this.sourceVersion = details.sourceVersion;
     this.failureCode = details.failureCode;
     this.pointer = details.pointer;
+    this.report = details.report;
   }
 }
 
@@ -75,6 +101,48 @@ export interface EvidenceDocumentReadResult {
   kind: EvidenceDocumentKind;
   sourceVersion: 1 | 2;
   graph: EvidenceGraphV2;
+  analysis?: AnalysisBudgetReport;
+}
+
+function trackerFor(options: EvidenceReaderOptions): AnalysisBudgetTracker | undefined {
+  return (
+    options.analysisBudget ??
+    (options.analysisBudgets
+      ? new AnalysisBudgetTracker(resolveAnalysisBudgets(options.analysisBudgets))
+      : undefined)
+  );
+}
+
+function reserveBeforeCopy(
+  value: unknown,
+  tracker: AnalysisBudgetTracker,
+  options: EvidenceReaderOptions,
+  kind: EvidenceDocumentKind | "unknown",
+  version?: number | string,
+): AnalysisBudgetReport {
+  try {
+    reserveEvidenceBudget(value, tracker);
+  } catch (error) {
+    if (error instanceof EvidenceBudgetExceededError)
+      throwReader(
+        options,
+        kind,
+        version,
+        "budget-exceeded",
+        "/",
+        error.message,
+        error.report,
+      );
+    throwReader(
+      options,
+      kind,
+      version,
+      "malformed-json",
+      "/",
+      error instanceof Error ? error.message : "Document is not JSON-safe.",
+    );
+  }
+  return tracker.report();
 }
 
 /** Read one local v1/v2 evidence file through the same reader used by commands. */
@@ -84,11 +152,25 @@ export async function readEvidenceFile(
 ): Promise<EvidenceDocumentReadResult> {
   const resolved = nodePath.resolve(filePath);
   const fileLabel = options.fileLabel ?? resolved;
+  const tracker = trackerFor(options);
   let raw: unknown;
   try {
-    const text = await fs.readFile(resolved, "utf8");
+    const stat = await fs.stat(resolved);
+    if (tracker && !tracker.reserve({ serializedBytes: stat.size }))
+      throwReader(
+        { ...options, fileLabel },
+        "unknown",
+        undefined,
+        "budget-exceeded",
+        "/",
+        `Evidence file exceeds the serialized-byte budget (${stat.size} bytes).`,
+        tracker.report(),
+      );
+    const contents = await fs.readFile(resolved);
+    const text = contents.toString("utf8");
     try {
       raw = JSON.parse(text) as unknown;
+      if (tracker) markEvidenceBudgetDimension(raw, tracker, "serializedBytes");
     } catch {
       throw new EvidenceReaderError(
         {
@@ -119,7 +201,7 @@ export async function readEvidenceFile(
       `${fileLabel}: Unable to read document${code ? ` (${code})` : ""}`,
     );
   }
-  return readEvidenceDocument(raw, { ...options, fileLabel });
+  return readEvidenceDocument(raw, { ...options, fileLabel, ...(tracker ? { analysisBudget: tracker } : {}) });
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -213,7 +295,10 @@ function jsonValue(
   path: string,
   options: EvidenceReaderOptions,
   seen = new WeakSet<object>(),
+  tracker?: AnalysisBudgetTracker,
 ): EvidenceValue {
+  if (tracker && !tracker.checkWallTime())
+    throw new EvidenceBudgetExceededError(tracker.report());
   if (value === undefined || typeof value === "function" || typeof value === "symbol")
     throwReader(options, "unknown", undefined, "malformed-json", path, "Value is not JSON-safe.");
   if (typeof value === "bigint")
@@ -246,7 +331,7 @@ function jsonValue(
   }
   if (Array.isArray(value)) {
     const result = value.map((item, index) =>
-      jsonValue(item, `${path === "/" ? "" : path}/${index}`, options, seen),
+      jsonValue(item, `${path === "/" ? "" : path}/${index}`, options, seen, tracker),
     );
     seen.delete(value);
     return result;
@@ -260,6 +345,7 @@ function jsonValue(
           `${path === "/" ? "" : path}/${escapeJsonPointerSegment(key)}`,
           options,
           seen,
+          tracker,
         ),
       ]),
     );
@@ -276,6 +362,7 @@ function throwReader(
   code: EvidenceReaderFailureCode,
   path: string,
   message: string,
+  report?: AnalysisBudgetReport,
 ): never {
   const label = options.fileLabel ? `${options.fileLabel}: ` : "";
   throw new EvidenceReaderError(
@@ -285,6 +372,7 @@ function throwReader(
       ...(version !== undefined ? { sourceVersion: version } : {}),
       failureCode: code,
       pointer: path,
+      ...(report ? { report } : {}),
     },
     `${label}${message} at ${path}`,
   );
@@ -403,13 +491,18 @@ function nonEmpty(value: string, fallback: string): string {
   return value || fallback;
 }
 
-function largeLegacyLimits(value: EvidenceValue): EvidenceLimits & { allowLarge: true } {
+function largeLegacyLimits(
+  value: EvidenceValue,
+  tracker?: AnalysisBudgetTracker,
+): EvidenceLimits & { allowLarge: true } {
   let nodes = 0;
   let maxDepth = 0;
   let maxWidth = 1;
   const seen = new WeakSet<object>();
   const pending: Array<{ value: EvidenceValue; depth: number }> = [{ value, depth: 0 }];
   while (pending.length > 0) {
+    if (tracker && !tracker.checkWallTime())
+      throw new EvidenceBudgetExceededError(tracker.report());
     const item = pending.pop();
     if (!item) continue;
     nodes += 1;
@@ -429,6 +522,8 @@ function largeLegacyLimits(value: EvidenceValue): EvidenceLimits & { allowLarge:
       entries.forEach((child) => pending.push({ value: child, depth: item.depth + 1 }));
     }
   }
+  if (tracker && !tracker.checkWallTime())
+    throw new EvidenceBudgetExceededError(tracker.report());
   const inputBytes = Buffer.byteLength(JSON.stringify(value));
   return {
     maxDepth: maxDepth + 16,
@@ -440,9 +535,15 @@ function largeLegacyLimits(value: EvidenceValue): EvidenceLimits & { allowLarge:
 }
 
 function finalizeGraph(graph: EvidenceGraphV2, options: EvidenceReaderOptions): EvidenceGraphV2 {
+  const tracker = trackerFor(options);
+  if (tracker) {
+    markEvidenceBudgetDimension(graph, tracker, "evidenceNodes");
+    markEvidenceBudgetDimension(graph, tracker, "serializedBytes");
+  }
   const normalized = normalizeEvidenceGraph(
     graph,
-    largeLegacyLimits(graph as unknown as EvidenceValue),
+    largeLegacyLimits(graph as unknown as EvidenceValue, tracker),
+    tracker,
   );
   validateOrThrow(normalized as unknown as JsonRecord, "evidence-graph", options);
   return normalized;
@@ -480,9 +581,13 @@ function projectionSubject(graph: EvidenceGraphV2): string | undefined {
  * compatibility assertions. The graph stays the source of truth; this is a
  * pure, additive compatibility view and does not enable v2 collection.
  */
-export function projectFactsFromEvidence(graph: EvidenceGraphV2): ProjectFacts {
-  const limits = largeLegacyLimits(graph as unknown as EvidenceValue);
-  const normalized = normalizeEvidenceGraph(graph, limits);
+export function projectFactsFromEvidence(
+  graph: EvidenceGraphV2,
+  options: EvidenceProjectionOptions = {},
+): ProjectFacts {
+  const tracker = trackerFor(options);
+  const limits = largeLegacyLimits(graph as unknown as EvidenceValue, tracker);
+  const normalized = normalizeEvidenceGraph(graph, limits, tracker);
   const subject = projectionSubject(normalized);
   if (subject === undefined)
     throw new EvidenceProjectionError("Evidence graph has no project subject");
@@ -515,6 +620,7 @@ export function projectFactsFromEvidence(graph: EvidenceGraphV2): ProjectFacts {
       throw new EvidenceProjectionError(`Evidence graph is missing project.${field}`);
 
   validateOrThrow(output, "project-facts", {});
+  if (tracker) reserveEvidenceBudget(output, tracker);
   return output as unknown as ProjectFacts;
 }
 
@@ -522,9 +628,13 @@ export function projectFactsFromEvidence(graph: EvidenceGraphV2): ProjectFacts {
  * Build the legacy DoctorReport view from v1-compatible finding assertions
  * linked by fail evaluations. Non-fail outcomes stay out of strict v1.
  */
-export function reportFromEvaluations(graph: EvidenceGraphV2): DoctorReport {
-  const limits = largeLegacyLimits(graph as unknown as EvidenceValue);
-  const normalized = normalizeEvidenceGraph(graph, limits);
+export function reportFromEvaluations(
+  graph: EvidenceGraphV2,
+  options: EvidenceProjectionOptions = {},
+): DoctorReport {
+  const tracker = trackerFor(options);
+  const limits = largeLegacyLimits(graph as unknown as EvidenceValue, tracker);
+  const normalized = normalizeEvidenceGraph(graph, limits, tracker);
   const capabilities = assertionValue(normalized, "doctor.capabilities");
   const summary = assertionValue(normalized, "doctor.summary");
   if (capabilities === undefined || summary === undefined)
@@ -556,6 +666,7 @@ export function reportFromEvaluations(graph: EvidenceGraphV2): DoctorReport {
     findings,
   };
   validateOrThrow(output, "doctor-report", {});
+  if (tracker) reserveEvidenceBudget(output, tracker);
   return output as unknown as DoctorReport;
 }
 
@@ -564,10 +675,15 @@ export function reportFromEvaluations(graph: EvidenceGraphV2): DoctorReport {
  * Graphs produced before Doctor finding assertions existed still have enough
  * stable rule/evidence data for a useful offline report and baseline entry.
  */
-export function reportFromV2Evaluations(graph: EvidenceGraphV2): DoctorReport {
+export function reportFromV2Evaluations(
+  graph: EvidenceGraphV2,
+  options: EvidenceProjectionOptions = {},
+): DoctorReport {
+  const tracker = trackerFor(options);
   const normalized = normalizeEvidenceGraph(
     graph,
-    largeLegacyLimits(graph as unknown as EvidenceValue),
+    largeLegacyLimits(graph as unknown as EvidenceValue, tracker),
+    tracker,
   );
   const subjects = new Map(normalized.subjects.map((subject) => [subject.id, subject] as const));
   const project =
@@ -625,6 +741,7 @@ export function reportFromV2Evaluations(graph: EvidenceGraphV2): DoctorReport {
     findings,
   };
   validateOrThrow(output, "doctor-report", {});
+  if (tracker) reserveEvidenceBudget(output, tracker);
   return output as unknown as DoctorReport;
 }
 
@@ -670,9 +787,16 @@ export function migrateProjectFacts(
   input: ProjectFacts,
   options: EvidenceReaderOptions = {},
 ): EvidenceGraphV2 {
-  const value = jsonValue(input, "/", options) as JsonRecord;
+  const tracker = trackerFor(options);
+  if (tracker)
+    reserveBeforeCopy(input, tracker, options, "project-facts", 1);
+  const value = jsonValue(input, "/", options, new WeakSet<object>(), tracker) as JsonRecord;
+  if (tracker) {
+    markEvidenceBudgetDimension(value, tracker, "evidenceNodes");
+    markEvidenceBudgetDimension(value, tracker, "serializedBytes");
+  }
   validateOrThrow(value, "project-facts", options);
-  const limits = largeLegacyLimits(value as EvidenceValue);
+  const limits = largeLegacyLimits(value as EvidenceValue, tracker);
   const project = input.project.name;
   const scope = {
     adapter: input.bundler.name,
@@ -707,7 +831,7 @@ export function migrateProjectFacts(
       assertion(
         subject,
         `project.${field}`,
-        jsonValue(input[field], `/` + field, options),
+        jsonValue(input[field], `/` + field, options, new WeakSet<object>(), tracker),
         scope,
         "v1-project-facts",
         fieldCompleteness(value, field, present),
@@ -748,9 +872,16 @@ export function migrateDoctorReport(
   input: DoctorReport,
   options: EvidenceReaderOptions = {},
 ): EvidenceGraphV2 {
-  const value = jsonValue(input, "/", options) as JsonRecord;
+  const tracker = trackerFor(options);
+  if (tracker)
+    reserveBeforeCopy(input, tracker, options, "doctor-report", 1);
+  const value = jsonValue(input, "/", options, new WeakSet<object>(), tracker) as JsonRecord;
+  if (tracker) {
+    markEvidenceBudgetDimension(value, tracker, "evidenceNodes");
+    markEvidenceBudgetDimension(value, tracker, "serializedBytes");
+  }
   validateOrThrow(value, "doctor-report", options);
-  const limits = largeLegacyLimits(value as EvidenceValue);
+  const limits = largeLegacyLimits(value as EvidenceValue, tracker);
   const scope = { adapter: "legacy-v1", bundler: { name: "unknown" }, target: "unknown" as const };
   const graph = baseGraph(scope, {}, "v1-doctor-report");
   const subjects = new Map<string, EvidenceSubject>();
@@ -768,7 +899,13 @@ export function migrateDoctorReport(
     return subject;
   };
   const findingEntries = input.findings.map((finding, findingIndex) => {
-    const findingValue = jsonValue(finding, `/findings/${findingIndex}`, options);
+    const findingValue = jsonValue(
+      finding,
+      `/findings/${findingIndex}`,
+      options,
+      new WeakSet<object>(),
+      tracker,
+    );
     return {
       finding,
       findingIndex,
@@ -838,7 +975,7 @@ export function migrateDoctorReport(
       assertion(
         metadataSubject,
         "doctor.capabilities",
-        jsonValue(input.capabilities, "/capabilities", options),
+        jsonValue(input.capabilities, "/capabilities", options, new WeakSet<object>(), tracker),
         scope,
         "v1-doctor-report",
         completeness("complete", "Report capabilities are copied from the schema-valid v1 report."),
@@ -848,7 +985,7 @@ export function migrateDoctorReport(
       assertion(
         metadataSubject,
         "doctor.summary",
-        jsonValue(input.summary, "/summary", options),
+        jsonValue(input.summary, "/summary", options, new WeakSet<object>(), tracker),
         scope,
         "v1-doctor-report",
         completeness("complete", "Report summary is copied from the schema-valid v1 report."),
@@ -866,10 +1003,27 @@ export function readEvidenceDocument(
 ): EvidenceDocumentReadResult {
   const detectedKind = isRecord(input) ? documentKindOf(input) : "unknown";
   const detectedVersion = isRecord(input) ? sourceVersionOf(input) : undefined;
+  const tracker = trackerFor(options);
+  if (tracker)
+    reserveBeforeCopy(input, tracker, options, detectedKind, detectedVersion);
   let value: EvidenceValue;
   try {
-    value = jsonValue(input, "/", options);
+    value = jsonValue(input, "/", options, new WeakSet<object>(), tracker);
+    if (tracker) {
+      markEvidenceBudgetDimension(value, tracker, "evidenceNodes");
+      markEvidenceBudgetDimension(value, tracker, "serializedBytes");
+    }
   } catch (error) {
+    if (error instanceof EvidenceBudgetExceededError)
+      throwReader(
+        options,
+        detectedKind,
+        detectedVersion,
+        "budget-exceeded",
+        "/",
+        error.message,
+        error.report,
+      );
     if (error instanceof EvidenceReaderError) {
       if (
         error.failureCode === "malformed-json" &&
@@ -916,21 +1070,26 @@ export function readEvidenceDocument(
       return {
         kind,
         sourceVersion: 2,
-        graph: normalizeEvidenceGraph(value as unknown as EvidenceGraphV2),
+        graph: normalizeEvidenceGraph(value as unknown as EvidenceGraphV2, undefined, tracker),
+        ...(tracker ? { analysis: tracker.report() } : {}),
       };
     if (kind === "project-facts")
       return {
         kind,
         sourceVersion: 1,
         graph: migrateProjectFacts(value as unknown as ProjectFacts, options),
+        ...(tracker ? { analysis: tracker.report() } : {}),
       };
     return {
       kind,
       sourceVersion: 1,
       graph: migrateDoctorReport(value as unknown as DoctorReport, options),
+        ...(tracker ? { analysis: tracker.report() } : {}),
     };
   } catch (error) {
     if (error instanceof EvidenceReaderError) throw error;
+    if (error instanceof EvidenceBudgetExceededError)
+      throwReader(options, kind, version, "budget-exceeded", "/", error.message, error.report);
     throwReader(
       options,
       kind,

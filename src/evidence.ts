@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import type { AnalysisBudgetTracker } from "./analysis-budgets.js";
+import { EvidenceBudgetExceededError, reserveEvidenceBudget } from "./evidence-budget.js";
 
 /** Values that can be safely persisted in an evidence document. */
 export type EvidenceValue =
@@ -578,17 +580,25 @@ export function assertEvidenceGraphIntegrity(
 export function normalizeEvidenceGraph(
   graph: EvidenceGraphV2,
   options?: EvidenceLimits,
+  analysisBudget?: AnalysisBudgetTracker,
 ): EvidenceGraphV2 {
+  if (analysisBudget && !analysisBudget.checkWallTime())
+    throw new EvidenceBudgetExceededError(analysisBudget.report());
+  if (analysisBudget) reserveEvidenceBudget(graph, analysisBudget);
   assertEvidenceGraphIntegrity(graph, options);
   const redacted = redactEvidenceValue(
     graph as unknown as EvidenceValue,
     options,
   ) as unknown as EvidenceGraphV2;
+  if (analysisBudget && !analysisBudget.checkWallTime())
+    throw new EvidenceBudgetExceededError(analysisBudget.report());
   assertEvidenceGraphIntegrity(redacted, options);
   const canonical = canonicalizeEvidenceValue(
     redacted as unknown as EvidenceValue,
     options,
   ) as unknown as EvidenceGraphV2;
+  if (analysisBudget && !analysisBudget.checkWallTime())
+    throw new EvidenceBudgetExceededError(analysisBudget.report());
   const sortSet = <T extends { id: string }>(records: T[]): T[] =>
     records.slice().sort(compareRecords);
   return {
