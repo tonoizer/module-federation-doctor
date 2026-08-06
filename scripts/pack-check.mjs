@@ -70,7 +70,8 @@ assert.equal(typeof rspack.moduleFederationDoctorPlugin, "function");
 assert.equal(typeof rsbuild.pluginModuleFederationDoctor, "function");
 assert.equal(typeof webpack.ModuleFederationDoctorPlugin, "function");
 assert.equal(webpack.moduleFederationDoctorPlugin, webpack.ModuleFederationDoctorPlugin);
-assert.equal(typeof modern.pluginModuleFederationDoctor, "function");
+assert.equal(typeof modern.moduleFederationDoctorPlugin, "function");
+assert.equal(modern.pluginModuleFederationDoctor, undefined);
 assert.equal(typeof modern.appendModuleFederationDoctor, "function");
 assert.equal(typeof vite.default, "function");
 assert.equal(typeof rspack.default, "function");
@@ -146,8 +147,8 @@ export default { mode: "production", entry: "./src/index.js", plugins: [ModuleFe
   await fs.writeFile(
     path.join(consumer, "modern-smoke.mjs"),
     `import assert from "node:assert/strict";
-import { pluginModuleFederationDoctor, appendModuleFederationDoctor } from "@module-federation/doctor/modern";
-const plugin = pluginModuleFederationDoctor(${doctorOptions});
+import { moduleFederationDoctorPlugin, appendModuleFederationDoctor } from "@module-federation/doctor/modern";
+const plugin = moduleFederationDoctorPlugin(${doctorOptions});
 assert.equal(plugin.name, "@module-federation/doctor");
 assert.equal(typeof plugin.setup, "function");
 const registered = [];

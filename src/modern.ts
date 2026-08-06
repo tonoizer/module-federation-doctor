@@ -1,5 +1,5 @@
 import { attachDoctorAfterEmit, type CompilerLike } from "./plugin.js";
-import { moduleFederationDoctorPlugin } from "./rspack.js";
+import { moduleFederationDoctorPlugin as rspackModuleFederationDoctorPlugin } from "./rspack.js";
 import type { DoctorOptions } from "./types.js";
 import type { ModernContextFacts } from "./types.js";
 
@@ -64,7 +64,7 @@ function createAfterEmitPlugin(
  * `@module-federation/doctor/rspack` — bare `@rspack/core` projects should keep
  * using that entry.
  */
-export function pluginModuleFederationDoctor(options: DoctorOptions = {}): ModernDoctorPlugin {
+export function moduleFederationDoctorPlugin(options: DoctorOptions = {}): ModernDoctorPlugin {
   return {
     name: "@module-federation/doctor",
     setup(api) {
@@ -103,17 +103,17 @@ export function pluginModuleFederationDoctor(options: DoctorOptions = {}): Moder
 /**
  * Escape hatch for `tools.bundlerChain` / `tools.rspack` when you want the
  * **public Rspack adapter** inside a Modern.js (or Rsbuild) config. Facts are
- * recorded as `bundler: "rspack"`. Prefer {@link pluginModuleFederationDoctor}
+ * recorded as `bundler: "rspack"`. Prefer {@link moduleFederationDoctorPlugin}
  * for first-class Modern.js projects.
  */
 export function appendModuleFederationDoctor(
   chain: BundlerChainLike,
   options: DoctorOptions = {},
 ): void {
-  chain.plugin("module-federation-doctor").use(moduleFederationDoctorPlugin(options));
+  chain.plugin("module-federation-doctor").use(rspackModuleFederationDoctorPlugin(options));
 }
 
-/** @deprecated Use `pluginModuleFederationDoctor`. */
-export const doctor = pluginModuleFederationDoctor;
+/** @deprecated Use `moduleFederationDoctorPlugin`. */
+export const doctor = moduleFederationDoctorPlugin;
 
-export default pluginModuleFederationDoctor;
+export default moduleFederationDoctorPlugin;

@@ -70,12 +70,12 @@ plugins: [
 
 ```ts
 import { moduleFederationPlugin } from "@module-federation/modern-js";
-import { pluginModuleFederationDoctor } from "@module-federation/doctor/modern";
+import { moduleFederationDoctorPlugin } from "@module-federation/doctor/modern";
 
 plugins: [
   appTools(),
   moduleFederationPlugin(),
-  pluginModuleFederationDoctor({ moduleFederation: mfOptions }),
+  moduleFederationDoctorPlugin({ moduleFederation: mfOptions }),
 ];
 ```
 
