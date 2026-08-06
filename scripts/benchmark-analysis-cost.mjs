@@ -23,6 +23,7 @@ import {
   REQUIRED_WORKSPACE_FIXTURES,
 } from "./analysis-regression-contract.mjs";
 import {
+  artifactNamesFromFixtureFiles,
   assertLiteralFixturePath,
   highWaterRssBytes,
   sourceFilesFromFixtureFiles,
@@ -389,6 +390,10 @@ for (const fixtureName of REQUIRED_ANALYSIS_FIXTURES) {
   const fixture = baseline.fixtures[fixtureName];
   const rootInfo = fixtureRoots.get(fixtureName);
   const sourceFiles = sourceFilesFromFixtureFiles(fixture.files, `fixtures.${fixtureName}.files`);
+  const artifactNames = artifactNamesFromFixtureFiles(
+    fixture.files,
+    `fixtures.${fixtureName}.files`,
+  );
   for (const mode of REQUIRED_MODES) {
     const rollout = controllerFor(mode);
     const rolloutMode = rollout.modeFor("federation-workspace");
@@ -404,6 +409,7 @@ for (const fixtureName of REQUIRED_ANALYSIS_FIXTURES) {
           root: rootInfo.root,
           bundler: "unknown",
           mode: "ci",
+          artifactNames,
           include: sourceFiles,
           output: { directory: output.directory, formats: [] },
           analysisCache: cache,

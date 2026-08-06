@@ -9,6 +9,7 @@ import {
   REQUIRED_WORKSPACE_FIXTURES,
 } from "../../scripts/analysis-regression-contract.mjs";
 import {
+  artifactNamesFromFixtureFiles,
   highWaterRssBytes,
   sourceFilesFromFixtureFiles,
 } from "../../scripts/analysis-benchmark-guards.mjs";
@@ -224,6 +225,24 @@ describe("analysis regression contract", () => {
     expect(() =>
       sourceFilesFromFixtureFiles(["dist/mf-manifest.json", "src/**/*.{ts,tsx}"], "fixture.files"),
     ).toThrow("literal file paths");
+  });
+
+  it("derives literal artifact inputs and excludes unlisted matching artifacts", () => {
+    expect(
+      artifactNamesFromFixtureFiles(
+        ["dist/mf-manifest.json", "src/index.ts", "dist/mf-stats.json"],
+        "fixture.files",
+      ),
+    ).toEqual({
+      manifest: ["dist/mf-manifest.json"],
+      stats: ["dist/mf-stats.json"],
+    });
+    expect(
+      artifactNamesFromFixtureFiles(
+        ["dist/mf-manifest.json", "src/mf-manifest.json"],
+        "fixture.files",
+      ),
+    ).toEqual({ manifest: ["dist/mf-manifest.json"], stats: [] });
   });
 
   it("converts resourceUsage maxRSS kilobytes into a high-water byte value", () => {
