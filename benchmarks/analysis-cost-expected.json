@@ -26,12 +26,12 @@
             "stats": false
           },
           "summary": {
-            "projects": 1,
-            "info": 0,
-            "warnings": 1,
             "errors": 0,
+            "info": 0,
+            "projects": 1,
             "score": null,
-            "scoreLabel": null
+            "scoreLabel": null,
+            "warnings": 1
           },
           "findings": [
             {
@@ -39,25 +39,32 @@
               "severity": "warning",
               "project": "small",
               "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
-              "detailsSchema": "doctor.partial-analysis.v1"
+              "message": "Doctor completed with partial input.",
+              "documentation": "/rules/doctor/partial-analysis",
+              "suggestion": "Pass explicit MF options.",
+              "detailsSchema": "doctor.partial-analysis.v1",
+              "details": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              },
+              "evidence": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              }
             }
           ]
         },
         "facts": {
-          "schemaVersion": 1,
-          "project": {
-            "name": "small",
-            "root": "."
-          },
-          "capabilities": {
-            "config": false,
-            "emittedAssets": false,
-            "installedVersions": true,
-            "manifest": true,
-            "sourceImports": true,
-            "stats": false
-          },
           "analysis": {
+            "exceeded": [],
+            "limits": {
+              "maxArtifacts": 100,
+              "maxEvidenceNodes": 10000,
+              "maxFiles": 100,
+              "maxSerializedBytes": 1048576,
+              "maxSourceBytes": 1048576,
+              "maxWallTimeMs": 30000
+            },
             "status": "complete",
             "usage": {
               "artifacts": 1,
@@ -65,23 +72,17 @@
               "files": 1,
               "serializedBytes": 89,
               "sourceBytes": 31
-            },
-            "exceeded": []
-          },
-          "imports": {
-            "sourceFiles": ["src/index.ts"],
-            "specifiers": [],
-            "packages": [],
-            "remotes": []
+            }
           },
           "artifacts": {
+            "emittedAssets": [],
             "manifest": {
+              "exposes": [],
               "name": "analysis-budget-small",
               "path": "dist/mf-manifest.json",
-              "valid": true,
-              "exposes": [],
               "remotes": [],
-              "shared": []
+              "shared": [],
+              "valid": true
             },
             "records": [
               {
@@ -91,24 +92,91 @@
                 "state": "valid",
                 "valid": true
               }
-            ],
-            "emittedAssets": []
-          }
+            ]
+          },
+          "bundler": {
+            "mode": "ci",
+            "name": "unknown"
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "dependencies": {
+            "declared": {},
+            "installed": {}
+          },
+          "imports": {
+            "deepImportFiles": {},
+            "deepImports": [],
+            "depth": "local-graph",
+            "dynamicPackages": [],
+            "evidenceSources": ["source"],
+            "packages": [],
+            "remotes": [],
+            "sourceFiles": ["src/index.ts"],
+            "specifiers": [],
+            "unresolvedDynamic": []
+          },
+          "moduleFederation": {
+            "dev": {
+              "enabled": true,
+              "options": {}
+            },
+            "dts": {
+              "enabled": true,
+              "options": {}
+            },
+            "experiments": {
+              "asyncStartup": false,
+              "externalRuntime": false,
+              "provideExternalRuntime": false
+            },
+            "exposes": {},
+            "manifest": {
+              "enabled": false,
+              "options": {}
+            },
+            "name": "analysis-budget-small",
+            "remotes": {},
+            "runtimePlugins": [],
+            "shareScope": ["default"],
+            "shareStrategy": "version-first",
+            "shared": {},
+            "treeShaking": {
+              "excludePlugins": [],
+              "plugins": []
+            },
+            "vite": {
+              "bundleAllCSS": false,
+              "ignoreOrigin": false,
+              "ssrExternals": []
+            }
+          },
+          "project": {
+            "name": "small",
+            "root": "."
+          },
+          "schemaVersion": 1
         },
         "evidenceReader": {
           "status": "read",
           "kind": "project-facts",
           "sourceVersion": 1,
           "budget": {
+            "exceeded": [],
             "status": "complete",
             "usage": {
-              "files": 0,
-              "sourceBytes": 0,
               "artifacts": 0,
               "evidenceNodes": 69,
-              "serializedBytes": 1651
-            },
-            "exceeded": []
+              "files": 0,
+              "serializedBytes": 1651,
+              "sourceBytes": 0
+            }
           }
         }
       }
@@ -138,12 +206,12 @@
             "stats": false
           },
           "summary": {
-            "projects": 1,
-            "info": 0,
-            "warnings": 1,
             "errors": 0,
+            "info": 0,
+            "projects": 1,
             "score": null,
-            "scoreLabel": null
+            "scoreLabel": null,
+            "warnings": 1
           },
           "findings": [
             {
@@ -151,25 +219,32 @@
               "severity": "warning",
               "project": "small",
               "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
-              "detailsSchema": "doctor.partial-analysis.v1"
+              "message": "Doctor completed with partial input.",
+              "documentation": "/rules/doctor/partial-analysis",
+              "suggestion": "Pass explicit MF options.",
+              "detailsSchema": "doctor.partial-analysis.v1",
+              "details": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              },
+              "evidence": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              }
             }
           ]
         },
         "facts": {
-          "schemaVersion": 1,
-          "project": {
-            "name": "small",
-            "root": "."
-          },
-          "capabilities": {
-            "config": false,
-            "emittedAssets": false,
-            "installedVersions": true,
-            "manifest": true,
-            "sourceImports": true,
-            "stats": false
-          },
           "analysis": {
+            "exceeded": [],
+            "limits": {
+              "maxArtifacts": 100,
+              "maxEvidenceNodes": 10000,
+              "maxFiles": 100,
+              "maxSerializedBytes": 1048576,
+              "maxSourceBytes": 1048576,
+              "maxWallTimeMs": 30000
+            },
             "status": "complete",
             "usage": {
               "artifacts": 1,
@@ -177,23 +252,17 @@
               "files": 1,
               "serializedBytes": 89,
               "sourceBytes": 31
-            },
-            "exceeded": []
-          },
-          "imports": {
-            "sourceFiles": ["src/index.ts"],
-            "specifiers": [],
-            "packages": [],
-            "remotes": []
+            }
           },
           "artifacts": {
+            "emittedAssets": [],
             "manifest": {
+              "exposes": [],
               "name": "analysis-budget-small",
               "path": "dist/mf-manifest.json",
-              "valid": true,
-              "exposes": [],
               "remotes": [],
-              "shared": []
+              "shared": [],
+              "valid": true
             },
             "records": [
               {
@@ -203,24 +272,91 @@
                 "state": "valid",
                 "valid": true
               }
-            ],
-            "emittedAssets": []
-          }
+            ]
+          },
+          "bundler": {
+            "mode": "ci",
+            "name": "unknown"
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "dependencies": {
+            "declared": {},
+            "installed": {}
+          },
+          "imports": {
+            "deepImportFiles": {},
+            "deepImports": [],
+            "depth": "local-graph",
+            "dynamicPackages": [],
+            "evidenceSources": ["source"],
+            "packages": [],
+            "remotes": [],
+            "sourceFiles": ["src/index.ts"],
+            "specifiers": [],
+            "unresolvedDynamic": []
+          },
+          "moduleFederation": {
+            "dev": {
+              "enabled": true,
+              "options": {}
+            },
+            "dts": {
+              "enabled": true,
+              "options": {}
+            },
+            "experiments": {
+              "asyncStartup": false,
+              "externalRuntime": false,
+              "provideExternalRuntime": false
+            },
+            "exposes": {},
+            "manifest": {
+              "enabled": false,
+              "options": {}
+            },
+            "name": "analysis-budget-small",
+            "remotes": {},
+            "runtimePlugins": [],
+            "shareScope": ["default"],
+            "shareStrategy": "version-first",
+            "shared": {},
+            "treeShaking": {
+              "excludePlugins": [],
+              "plugins": []
+            },
+            "vite": {
+              "bundleAllCSS": false,
+              "ignoreOrigin": false,
+              "ssrExternals": []
+            }
+          },
+          "project": {
+            "name": "small",
+            "root": "."
+          },
+          "schemaVersion": 1
         },
         "evidenceReader": {
           "status": "read",
           "kind": "project-facts",
           "sourceVersion": 1,
           "budget": {
+            "exceeded": [],
             "status": "complete",
             "usage": {
-              "files": 0,
-              "sourceBytes": 0,
               "artifacts": 0,
               "evidenceNodes": 69,
-              "serializedBytes": 1651
-            },
-            "exceeded": []
+              "files": 0,
+              "serializedBytes": 1651,
+              "sourceBytes": 0
+            }
           }
         }
       }
@@ -250,12 +386,12 @@
             "stats": false
           },
           "summary": {
-            "projects": 1,
-            "info": 0,
-            "warnings": 1,
             "errors": 0,
+            "info": 0,
+            "projects": 1,
             "score": null,
-            "scoreLabel": null
+            "scoreLabel": null,
+            "warnings": 1
           },
           "findings": [
             {
@@ -263,25 +399,32 @@
               "severity": "warning",
               "project": "small",
               "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
-              "detailsSchema": "doctor.partial-analysis.v1"
+              "message": "Doctor completed with partial input.",
+              "documentation": "/rules/doctor/partial-analysis",
+              "suggestion": "Pass explicit MF options.",
+              "detailsSchema": "doctor.partial-analysis.v1",
+              "details": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              },
+              "evidence": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              }
             }
           ]
         },
         "facts": {
-          "schemaVersion": 1,
-          "project": {
-            "name": "small",
-            "root": "."
-          },
-          "capabilities": {
-            "config": false,
-            "emittedAssets": false,
-            "installedVersions": true,
-            "manifest": true,
-            "sourceImports": true,
-            "stats": false
-          },
           "analysis": {
+            "exceeded": [],
+            "limits": {
+              "maxArtifacts": 100,
+              "maxEvidenceNodes": 10000,
+              "maxFiles": 100,
+              "maxSerializedBytes": 1048576,
+              "maxSourceBytes": 1048576,
+              "maxWallTimeMs": 30000
+            },
             "status": "complete",
             "usage": {
               "artifacts": 1,
@@ -289,23 +432,17 @@
               "files": 1,
               "serializedBytes": 89,
               "sourceBytes": 31
-            },
-            "exceeded": []
-          },
-          "imports": {
-            "sourceFiles": ["src/index.ts"],
-            "specifiers": [],
-            "packages": [],
-            "remotes": []
+            }
           },
           "artifacts": {
+            "emittedAssets": [],
             "manifest": {
+              "exposes": [],
               "name": "analysis-budget-small",
               "path": "dist/mf-manifest.json",
-              "valid": true,
-              "exposes": [],
               "remotes": [],
-              "shared": []
+              "shared": [],
+              "valid": true
             },
             "records": [
               {
@@ -315,24 +452,91 @@
                 "state": "valid",
                 "valid": true
               }
-            ],
-            "emittedAssets": []
-          }
+            ]
+          },
+          "bundler": {
+            "mode": "ci",
+            "name": "unknown"
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "dependencies": {
+            "declared": {},
+            "installed": {}
+          },
+          "imports": {
+            "deepImportFiles": {},
+            "deepImports": [],
+            "depth": "local-graph",
+            "dynamicPackages": [],
+            "evidenceSources": ["source"],
+            "packages": [],
+            "remotes": [],
+            "sourceFiles": ["src/index.ts"],
+            "specifiers": [],
+            "unresolvedDynamic": []
+          },
+          "moduleFederation": {
+            "dev": {
+              "enabled": true,
+              "options": {}
+            },
+            "dts": {
+              "enabled": true,
+              "options": {}
+            },
+            "experiments": {
+              "asyncStartup": false,
+              "externalRuntime": false,
+              "provideExternalRuntime": false
+            },
+            "exposes": {},
+            "manifest": {
+              "enabled": false,
+              "options": {}
+            },
+            "name": "analysis-budget-small",
+            "remotes": {},
+            "runtimePlugins": [],
+            "shareScope": ["default"],
+            "shareStrategy": "version-first",
+            "shared": {},
+            "treeShaking": {
+              "excludePlugins": [],
+              "plugins": []
+            },
+            "vite": {
+              "bundleAllCSS": false,
+              "ignoreOrigin": false,
+              "ssrExternals": []
+            }
+          },
+          "project": {
+            "name": "small",
+            "root": "."
+          },
+          "schemaVersion": 1
         },
         "evidenceReader": {
           "status": "read",
           "kind": "project-facts",
           "sourceVersion": 1,
           "budget": {
+            "exceeded": [],
             "status": "complete",
             "usage": {
-              "files": 0,
-              "sourceBytes": 0,
               "artifacts": 0,
               "evidenceNodes": 69,
-              "serializedBytes": 1651
-            },
-            "exceeded": []
+              "files": 0,
+              "serializedBytes": 1651,
+              "sourceBytes": 0
+            }
           }
         }
       }
@@ -362,12 +566,12 @@
             "stats": false
           },
           "summary": {
-            "projects": 1,
-            "info": 0,
-            "warnings": 1,
             "errors": 0,
+            "info": 0,
+            "projects": 1,
             "score": null,
-            "scoreLabel": null
+            "scoreLabel": null,
+            "warnings": 1
           },
           "findings": [
             {
@@ -375,25 +579,32 @@
               "severity": "warning",
               "project": "medium",
               "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
-              "detailsSchema": "doctor.partial-analysis.v1"
+              "message": "Doctor completed with partial input.",
+              "documentation": "/rules/doctor/partial-analysis",
+              "suggestion": "Pass explicit MF options.",
+              "detailsSchema": "doctor.partial-analysis.v1",
+              "details": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              },
+              "evidence": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              }
             }
           ]
         },
         "facts": {
-          "schemaVersion": 1,
-          "project": {
-            "name": "medium",
-            "root": "."
-          },
-          "capabilities": {
-            "config": false,
-            "emittedAssets": false,
-            "installedVersions": true,
-            "manifest": true,
-            "sourceImports": true,
-            "stats": false
-          },
           "analysis": {
+            "exceeded": [],
+            "limits": {
+              "maxArtifacts": 100,
+              "maxEvidenceNodes": 50000,
+              "maxFiles": 100,
+              "maxSerializedBytes": 4194304,
+              "maxSourceBytes": 4194304,
+              "maxWallTimeMs": 30000
+            },
             "status": "complete",
             "usage": {
               "artifacts": 1,
@@ -401,23 +612,17 @@
               "files": 3,
               "serializedBytes": 90,
               "sourceBytes": 122
-            },
-            "exceeded": []
-          },
-          "imports": {
-            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
-            "specifiers": ["./a", "./b"],
-            "packages": [],
-            "remotes": []
+            }
           },
           "artifacts": {
+            "emittedAssets": [],
             "manifest": {
+              "exposes": [],
               "name": "analysis-budget-medium",
               "path": "dist/mf-manifest.json",
-              "valid": true,
-              "exposes": [],
               "remotes": [],
-              "shared": []
+              "shared": [],
+              "valid": true
             },
             "records": [
               {
@@ -427,24 +632,91 @@
                 "state": "valid",
                 "valid": true
               }
-            ],
-            "emittedAssets": []
-          }
+            ]
+          },
+          "bundler": {
+            "mode": "ci",
+            "name": "unknown"
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "dependencies": {
+            "declared": {},
+            "installed": {}
+          },
+          "imports": {
+            "deepImportFiles": {},
+            "deepImports": [],
+            "depth": "local-graph",
+            "dynamicPackages": [],
+            "evidenceSources": ["source"],
+            "packages": [],
+            "remotes": [],
+            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
+            "specifiers": ["./a", "./b"],
+            "unresolvedDynamic": []
+          },
+          "moduleFederation": {
+            "dev": {
+              "enabled": true,
+              "options": {}
+            },
+            "dts": {
+              "enabled": true,
+              "options": {}
+            },
+            "experiments": {
+              "asyncStartup": false,
+              "externalRuntime": false,
+              "provideExternalRuntime": false
+            },
+            "exposes": {},
+            "manifest": {
+              "enabled": false,
+              "options": {}
+            },
+            "name": "analysis-budget-medium",
+            "remotes": {},
+            "runtimePlugins": [],
+            "shareScope": ["default"],
+            "shareStrategy": "version-first",
+            "shared": {},
+            "treeShaking": {
+              "excludePlugins": [],
+              "plugins": []
+            },
+            "vite": {
+              "bundleAllCSS": false,
+              "ignoreOrigin": false,
+              "ssrExternals": []
+            }
+          },
+          "project": {
+            "name": "medium",
+            "root": "."
+          },
+          "schemaVersion": 1
         },
         "evidenceReader": {
           "status": "read",
           "kind": "project-facts",
           "sourceVersion": 1,
           "budget": {
+            "exceeded": [],
             "status": "complete",
             "usage": {
-              "files": 0,
-              "sourceBytes": 0,
               "artifacts": 0,
               "evidenceNodes": 73,
-              "serializedBytes": 1720
-            },
-            "exceeded": []
+              "files": 0,
+              "serializedBytes": 1720,
+              "sourceBytes": 0
+            }
           }
         }
       }
@@ -474,12 +746,12 @@
             "stats": false
           },
           "summary": {
-            "projects": 1,
-            "info": 0,
-            "warnings": 1,
             "errors": 0,
+            "info": 0,
+            "projects": 1,
             "score": null,
-            "scoreLabel": null
+            "scoreLabel": null,
+            "warnings": 1
           },
           "findings": [
             {
@@ -487,25 +759,32 @@
               "severity": "warning",
               "project": "medium",
               "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
-              "detailsSchema": "doctor.partial-analysis.v1"
+              "message": "Doctor completed with partial input.",
+              "documentation": "/rules/doctor/partial-analysis",
+              "suggestion": "Pass explicit MF options.",
+              "detailsSchema": "doctor.partial-analysis.v1",
+              "details": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              },
+              "evidence": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              }
             }
           ]
         },
         "facts": {
-          "schemaVersion": 1,
-          "project": {
-            "name": "medium",
-            "root": "."
-          },
-          "capabilities": {
-            "config": false,
-            "emittedAssets": false,
-            "installedVersions": true,
-            "manifest": true,
-            "sourceImports": true,
-            "stats": false
-          },
           "analysis": {
+            "exceeded": [],
+            "limits": {
+              "maxArtifacts": 100,
+              "maxEvidenceNodes": 50000,
+              "maxFiles": 100,
+              "maxSerializedBytes": 4194304,
+              "maxSourceBytes": 4194304,
+              "maxWallTimeMs": 30000
+            },
             "status": "complete",
             "usage": {
               "artifacts": 1,
@@ -513,23 +792,17 @@
               "files": 3,
               "serializedBytes": 90,
               "sourceBytes": 122
-            },
-            "exceeded": []
-          },
-          "imports": {
-            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
-            "specifiers": ["./a", "./b"],
-            "packages": [],
-            "remotes": []
+            }
           },
           "artifacts": {
+            "emittedAssets": [],
             "manifest": {
+              "exposes": [],
               "name": "analysis-budget-medium",
               "path": "dist/mf-manifest.json",
-              "valid": true,
-              "exposes": [],
               "remotes": [],
-              "shared": []
+              "shared": [],
+              "valid": true
             },
             "records": [
               {
@@ -539,24 +812,91 @@
                 "state": "valid",
                 "valid": true
               }
-            ],
-            "emittedAssets": []
-          }
+            ]
+          },
+          "bundler": {
+            "mode": "ci",
+            "name": "unknown"
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "dependencies": {
+            "declared": {},
+            "installed": {}
+          },
+          "imports": {
+            "deepImportFiles": {},
+            "deepImports": [],
+            "depth": "local-graph",
+            "dynamicPackages": [],
+            "evidenceSources": ["source"],
+            "packages": [],
+            "remotes": [],
+            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
+            "specifiers": ["./a", "./b"],
+            "unresolvedDynamic": []
+          },
+          "moduleFederation": {
+            "dev": {
+              "enabled": true,
+              "options": {}
+            },
+            "dts": {
+              "enabled": true,
+              "options": {}
+            },
+            "experiments": {
+              "asyncStartup": false,
+              "externalRuntime": false,
+              "provideExternalRuntime": false
+            },
+            "exposes": {},
+            "manifest": {
+              "enabled": false,
+              "options": {}
+            },
+            "name": "analysis-budget-medium",
+            "remotes": {},
+            "runtimePlugins": [],
+            "shareScope": ["default"],
+            "shareStrategy": "version-first",
+            "shared": {},
+            "treeShaking": {
+              "excludePlugins": [],
+              "plugins": []
+            },
+            "vite": {
+              "bundleAllCSS": false,
+              "ignoreOrigin": false,
+              "ssrExternals": []
+            }
+          },
+          "project": {
+            "name": "medium",
+            "root": "."
+          },
+          "schemaVersion": 1
         },
         "evidenceReader": {
           "status": "read",
           "kind": "project-facts",
           "sourceVersion": 1,
           "budget": {
+            "exceeded": [],
             "status": "complete",
             "usage": {
-              "files": 0,
-              "sourceBytes": 0,
               "artifacts": 0,
               "evidenceNodes": 73,
-              "serializedBytes": 1720
-            },
-            "exceeded": []
+              "files": 0,
+              "serializedBytes": 1720,
+              "sourceBytes": 0
+            }
           }
         }
       }
@@ -586,12 +926,12 @@
             "stats": false
           },
           "summary": {
-            "projects": 1,
-            "info": 0,
-            "warnings": 1,
             "errors": 0,
+            "info": 0,
+            "projects": 1,
             "score": null,
-            "scoreLabel": null
+            "scoreLabel": null,
+            "warnings": 1
           },
           "findings": [
             {
@@ -599,25 +939,32 @@
               "severity": "warning",
               "project": "medium",
               "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
-              "detailsSchema": "doctor.partial-analysis.v1"
+              "message": "Doctor completed with partial input.",
+              "documentation": "/rules/doctor/partial-analysis",
+              "suggestion": "Pass explicit MF options.",
+              "detailsSchema": "doctor.partial-analysis.v1",
+              "details": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              },
+              "evidence": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              }
             }
           ]
         },
         "facts": {
-          "schemaVersion": 1,
-          "project": {
-            "name": "medium",
-            "root": "."
-          },
-          "capabilities": {
-            "config": false,
-            "emittedAssets": false,
-            "installedVersions": true,
-            "manifest": true,
-            "sourceImports": true,
-            "stats": false
-          },
           "analysis": {
+            "exceeded": [],
+            "limits": {
+              "maxArtifacts": 100,
+              "maxEvidenceNodes": 50000,
+              "maxFiles": 100,
+              "maxSerializedBytes": 4194304,
+              "maxSourceBytes": 4194304,
+              "maxWallTimeMs": 30000
+            },
             "status": "complete",
             "usage": {
               "artifacts": 1,
@@ -625,23 +972,17 @@
               "files": 3,
               "serializedBytes": 90,
               "sourceBytes": 122
-            },
-            "exceeded": []
-          },
-          "imports": {
-            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
-            "specifiers": ["./a", "./b"],
-            "packages": [],
-            "remotes": []
+            }
           },
           "artifacts": {
+            "emittedAssets": [],
             "manifest": {
+              "exposes": [],
               "name": "analysis-budget-medium",
               "path": "dist/mf-manifest.json",
-              "valid": true,
-              "exposes": [],
               "remotes": [],
-              "shared": []
+              "shared": [],
+              "valid": true
             },
             "records": [
               {
@@ -651,24 +992,91 @@
                 "state": "valid",
                 "valid": true
               }
-            ],
-            "emittedAssets": []
-          }
+            ]
+          },
+          "bundler": {
+            "mode": "ci",
+            "name": "unknown"
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "dependencies": {
+            "declared": {},
+            "installed": {}
+          },
+          "imports": {
+            "deepImportFiles": {},
+            "deepImports": [],
+            "depth": "local-graph",
+            "dynamicPackages": [],
+            "evidenceSources": ["source"],
+            "packages": [],
+            "remotes": [],
+            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
+            "specifiers": ["./a", "./b"],
+            "unresolvedDynamic": []
+          },
+          "moduleFederation": {
+            "dev": {
+              "enabled": true,
+              "options": {}
+            },
+            "dts": {
+              "enabled": true,
+              "options": {}
+            },
+            "experiments": {
+              "asyncStartup": false,
+              "externalRuntime": false,
+              "provideExternalRuntime": false
+            },
+            "exposes": {},
+            "manifest": {
+              "enabled": false,
+              "options": {}
+            },
+            "name": "analysis-budget-medium",
+            "remotes": {},
+            "runtimePlugins": [],
+            "shareScope": ["default"],
+            "shareStrategy": "version-first",
+            "shared": {},
+            "treeShaking": {
+              "excludePlugins": [],
+              "plugins": []
+            },
+            "vite": {
+              "bundleAllCSS": false,
+              "ignoreOrigin": false,
+              "ssrExternals": []
+            }
+          },
+          "project": {
+            "name": "medium",
+            "root": "."
+          },
+          "schemaVersion": 1
         },
         "evidenceReader": {
           "status": "read",
           "kind": "project-facts",
           "sourceVersion": 1,
           "budget": {
+            "exceeded": [],
             "status": "complete",
             "usage": {
-              "files": 0,
-              "sourceBytes": 0,
               "artifacts": 0,
               "evidenceNodes": 73,
-              "serializedBytes": 1720
-            },
-            "exceeded": []
+              "files": 0,
+              "serializedBytes": 1720,
+              "sourceBytes": 0
+            }
           }
         }
       }
@@ -698,12 +1106,12 @@
             "stats": false
           },
           "summary": {
-            "projects": 1,
-            "info": 0,
-            "warnings": 1,
             "errors": 0,
+            "info": 0,
+            "projects": 1,
             "score": null,
-            "scoreLabel": null
+            "scoreLabel": null,
+            "warnings": 1
           },
           "findings": [
             {
@@ -711,25 +1119,32 @@
               "severity": "warning",
               "project": "large",
               "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
-              "detailsSchema": "doctor.partial-analysis.v1"
+              "message": "Doctor completed with partial input.",
+              "documentation": "/rules/doctor/partial-analysis",
+              "suggestion": "Pass explicit MF options.",
+              "detailsSchema": "doctor.partial-analysis.v1",
+              "details": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              },
+              "evidence": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              }
             }
           ]
         },
         "facts": {
-          "schemaVersion": 1,
-          "project": {
-            "name": "large",
-            "root": "."
-          },
-          "capabilities": {
-            "config": false,
-            "emittedAssets": false,
-            "installedVersions": true,
-            "manifest": true,
-            "sourceImports": true,
-            "stats": false
-          },
           "analysis": {
+            "exceeded": [],
+            "limits": {
+              "maxArtifacts": 100,
+              "maxEvidenceNodes": 100000,
+              "maxFiles": 100,
+              "maxSerializedBytes": 16777216,
+              "maxSourceBytes": 16777216,
+              "maxWallTimeMs": 30000
+            },
             "status": "complete",
             "usage": {
               "artifacts": 1,
@@ -737,30 +1152,17 @@
               "files": 6,
               "serializedBytes": 89,
               "sourceBytes": 250
-            },
-            "exceeded": []
-          },
-          "imports": {
-            "sourceFiles": [
-              "src/a.ts",
-              "src/b.ts",
-              "src/c.ts",
-              "src/d.ts",
-              "src/e.ts",
-              "src/index.ts"
-            ],
-            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
-            "packages": [],
-            "remotes": []
+            }
           },
           "artifacts": {
+            "emittedAssets": [],
             "manifest": {
+              "exposes": [],
               "name": "analysis-budget-large",
               "path": "dist/mf-manifest.json",
-              "valid": true,
-              "exposes": [],
               "remotes": [],
-              "shared": []
+              "shared": [],
+              "valid": true
             },
             "records": [
               {
@@ -770,24 +1172,98 @@
                 "state": "valid",
                 "valid": true
               }
+            ]
+          },
+          "bundler": {
+            "mode": "ci",
+            "name": "unknown"
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "dependencies": {
+            "declared": {},
+            "installed": {}
+          },
+          "imports": {
+            "deepImportFiles": {},
+            "deepImports": [],
+            "depth": "local-graph",
+            "dynamicPackages": [],
+            "evidenceSources": ["source"],
+            "packages": [],
+            "remotes": [],
+            "sourceFiles": [
+              "src/a.ts",
+              "src/b.ts",
+              "src/c.ts",
+              "src/d.ts",
+              "src/e.ts",
+              "src/index.ts"
             ],
-            "emittedAssets": []
-          }
+            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
+            "unresolvedDynamic": []
+          },
+          "moduleFederation": {
+            "dev": {
+              "enabled": true,
+              "options": {}
+            },
+            "dts": {
+              "enabled": true,
+              "options": {}
+            },
+            "experiments": {
+              "asyncStartup": false,
+              "externalRuntime": false,
+              "provideExternalRuntime": false
+            },
+            "exposes": {},
+            "manifest": {
+              "enabled": false,
+              "options": {}
+            },
+            "name": "analysis-budget-large",
+            "remotes": {},
+            "runtimePlugins": [],
+            "shareScope": ["default"],
+            "shareStrategy": "version-first",
+            "shared": {},
+            "treeShaking": {
+              "excludePlugins": [],
+              "plugins": []
+            },
+            "vite": {
+              "bundleAllCSS": false,
+              "ignoreOrigin": false,
+              "ssrExternals": []
+            }
+          },
+          "project": {
+            "name": "large",
+            "root": "."
+          },
+          "schemaVersion": 1
         },
         "evidenceReader": {
           "status": "read",
           "kind": "project-facts",
           "sourceVersion": 1,
           "budget": {
+            "exceeded": [],
             "status": "complete",
             "usage": {
-              "files": 0,
-              "sourceBytes": 0,
               "artifacts": 0,
               "evidenceNodes": 79,
-              "serializedBytes": 1810
-            },
-            "exceeded": []
+              "files": 0,
+              "serializedBytes": 1810,
+              "sourceBytes": 0
+            }
           }
         }
       }
@@ -817,12 +1293,12 @@
             "stats": false
           },
           "summary": {
-            "projects": 1,
-            "info": 0,
-            "warnings": 1,
             "errors": 0,
+            "info": 0,
+            "projects": 1,
             "score": null,
-            "scoreLabel": null
+            "scoreLabel": null,
+            "warnings": 1
           },
           "findings": [
             {
@@ -830,25 +1306,32 @@
               "severity": "warning",
               "project": "large",
               "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
-              "detailsSchema": "doctor.partial-analysis.v1"
+              "message": "Doctor completed with partial input.",
+              "documentation": "/rules/doctor/partial-analysis",
+              "suggestion": "Pass explicit MF options.",
+              "detailsSchema": "doctor.partial-analysis.v1",
+              "details": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              },
+              "evidence": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              }
             }
           ]
         },
         "facts": {
-          "schemaVersion": 1,
-          "project": {
-            "name": "large",
-            "root": "."
-          },
-          "capabilities": {
-            "config": false,
-            "emittedAssets": false,
-            "installedVersions": true,
-            "manifest": true,
-            "sourceImports": true,
-            "stats": false
-          },
           "analysis": {
+            "exceeded": [],
+            "limits": {
+              "maxArtifacts": 100,
+              "maxEvidenceNodes": 100000,
+              "maxFiles": 100,
+              "maxSerializedBytes": 16777216,
+              "maxSourceBytes": 16777216,
+              "maxWallTimeMs": 30000
+            },
             "status": "complete",
             "usage": {
               "artifacts": 1,
@@ -856,30 +1339,17 @@
               "files": 6,
               "serializedBytes": 89,
               "sourceBytes": 250
-            },
-            "exceeded": []
-          },
-          "imports": {
-            "sourceFiles": [
-              "src/a.ts",
-              "src/b.ts",
-              "src/c.ts",
-              "src/d.ts",
-              "src/e.ts",
-              "src/index.ts"
-            ],
-            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
-            "packages": [],
-            "remotes": []
+            }
           },
           "artifacts": {
+            "emittedAssets": [],
             "manifest": {
+              "exposes": [],
               "name": "analysis-budget-large",
               "path": "dist/mf-manifest.json",
-              "valid": true,
-              "exposes": [],
               "remotes": [],
-              "shared": []
+              "shared": [],
+              "valid": true
             },
             "records": [
               {
@@ -889,24 +1359,98 @@
                 "state": "valid",
                 "valid": true
               }
+            ]
+          },
+          "bundler": {
+            "mode": "ci",
+            "name": "unknown"
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "dependencies": {
+            "declared": {},
+            "installed": {}
+          },
+          "imports": {
+            "deepImportFiles": {},
+            "deepImports": [],
+            "depth": "local-graph",
+            "dynamicPackages": [],
+            "evidenceSources": ["source"],
+            "packages": [],
+            "remotes": [],
+            "sourceFiles": [
+              "src/a.ts",
+              "src/b.ts",
+              "src/c.ts",
+              "src/d.ts",
+              "src/e.ts",
+              "src/index.ts"
             ],
-            "emittedAssets": []
-          }
+            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
+            "unresolvedDynamic": []
+          },
+          "moduleFederation": {
+            "dev": {
+              "enabled": true,
+              "options": {}
+            },
+            "dts": {
+              "enabled": true,
+              "options": {}
+            },
+            "experiments": {
+              "asyncStartup": false,
+              "externalRuntime": false,
+              "provideExternalRuntime": false
+            },
+            "exposes": {},
+            "manifest": {
+              "enabled": false,
+              "options": {}
+            },
+            "name": "analysis-budget-large",
+            "remotes": {},
+            "runtimePlugins": [],
+            "shareScope": ["default"],
+            "shareStrategy": "version-first",
+            "shared": {},
+            "treeShaking": {
+              "excludePlugins": [],
+              "plugins": []
+            },
+            "vite": {
+              "bundleAllCSS": false,
+              "ignoreOrigin": false,
+              "ssrExternals": []
+            }
+          },
+          "project": {
+            "name": "large",
+            "root": "."
+          },
+          "schemaVersion": 1
         },
         "evidenceReader": {
           "status": "read",
           "kind": "project-facts",
           "sourceVersion": 1,
           "budget": {
+            "exceeded": [],
             "status": "complete",
             "usage": {
-              "files": 0,
-              "sourceBytes": 0,
               "artifacts": 0,
               "evidenceNodes": 79,
-              "serializedBytes": 1810
-            },
-            "exceeded": []
+              "files": 0,
+              "serializedBytes": 1810,
+              "sourceBytes": 0
+            }
           }
         }
       }
@@ -936,12 +1480,12 @@
             "stats": false
           },
           "summary": {
-            "projects": 1,
-            "info": 0,
-            "warnings": 1,
             "errors": 0,
+            "info": 0,
+            "projects": 1,
             "score": null,
-            "scoreLabel": null
+            "scoreLabel": null,
+            "warnings": 1
           },
           "findings": [
             {
@@ -949,25 +1493,32 @@
               "severity": "warning",
               "project": "large",
               "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
-              "detailsSchema": "doctor.partial-analysis.v1"
+              "message": "Doctor completed with partial input.",
+              "documentation": "/rules/doctor/partial-analysis",
+              "suggestion": "Pass explicit MF options.",
+              "detailsSchema": "doctor.partial-analysis.v1",
+              "details": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              },
+              "evidence": {
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
+              }
             }
           ]
         },
         "facts": {
-          "schemaVersion": 1,
-          "project": {
-            "name": "large",
-            "root": "."
-          },
-          "capabilities": {
-            "config": false,
-            "emittedAssets": false,
-            "installedVersions": true,
-            "manifest": true,
-            "sourceImports": true,
-            "stats": false
-          },
           "analysis": {
+            "exceeded": [],
+            "limits": {
+              "maxArtifacts": 100,
+              "maxEvidenceNodes": 100000,
+              "maxFiles": 100,
+              "maxSerializedBytes": 16777216,
+              "maxSourceBytes": 16777216,
+              "maxWallTimeMs": 30000
+            },
             "status": "complete",
             "usage": {
               "artifacts": 1,
@@ -975,30 +1526,17 @@
               "files": 6,
               "serializedBytes": 89,
               "sourceBytes": 250
-            },
-            "exceeded": []
-          },
-          "imports": {
-            "sourceFiles": [
-              "src/a.ts",
-              "src/b.ts",
-              "src/c.ts",
-              "src/d.ts",
-              "src/e.ts",
-              "src/index.ts"
-            ],
-            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
-            "packages": [],
-            "remotes": []
+            }
           },
           "artifacts": {
+            "emittedAssets": [],
             "manifest": {
+              "exposes": [],
               "name": "analysis-budget-large",
               "path": "dist/mf-manifest.json",
-              "valid": true,
-              "exposes": [],
               "remotes": [],
-              "shared": []
+              "shared": [],
+              "valid": true
             },
             "records": [
               {
@@ -1008,24 +1546,98 @@
                 "state": "valid",
                 "valid": true
               }
+            ]
+          },
+          "bundler": {
+            "mode": "ci",
+            "name": "unknown"
+          },
+          "capabilities": {
+            "config": false,
+            "emittedAssets": false,
+            "installedVersions": true,
+            "manifest": true,
+            "sourceImports": true,
+            "stats": false
+          },
+          "dependencies": {
+            "declared": {},
+            "installed": {}
+          },
+          "imports": {
+            "deepImportFiles": {},
+            "deepImports": [],
+            "depth": "local-graph",
+            "dynamicPackages": [],
+            "evidenceSources": ["source"],
+            "packages": [],
+            "remotes": [],
+            "sourceFiles": [
+              "src/a.ts",
+              "src/b.ts",
+              "src/c.ts",
+              "src/d.ts",
+              "src/e.ts",
+              "src/index.ts"
             ],
-            "emittedAssets": []
-          }
+            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
+            "unresolvedDynamic": []
+          },
+          "moduleFederation": {
+            "dev": {
+              "enabled": true,
+              "options": {}
+            },
+            "dts": {
+              "enabled": true,
+              "options": {}
+            },
+            "experiments": {
+              "asyncStartup": false,
+              "externalRuntime": false,
+              "provideExternalRuntime": false
+            },
+            "exposes": {},
+            "manifest": {
+              "enabled": false,
+              "options": {}
+            },
+            "name": "analysis-budget-large",
+            "remotes": {},
+            "runtimePlugins": [],
+            "shareScope": ["default"],
+            "shareStrategy": "version-first",
+            "shared": {},
+            "treeShaking": {
+              "excludePlugins": [],
+              "plugins": []
+            },
+            "vite": {
+              "bundleAllCSS": false,
+              "ignoreOrigin": false,
+              "ssrExternals": []
+            }
+          },
+          "project": {
+            "name": "large",
+            "root": "."
+          },
+          "schemaVersion": 1
         },
         "evidenceReader": {
           "status": "read",
           "kind": "project-facts",
           "sourceVersion": 1,
           "budget": {
+            "exceeded": [],
             "status": "complete",
             "usage": {
-              "files": 0,
-              "sourceBytes": 0,
               "artifacts": 0,
               "evidenceNodes": 79,
-              "serializedBytes": 1810
-            },
-            "exceeded": []
+              "files": 0,
+              "serializedBytes": 1810,
+              "sourceBytes": 0
+            }
           }
         }
       }
@@ -1038,31 +1650,128 @@
         "exitCode": 0,
         "projects": [
           {
-            "name": "host",
-            "bundler": "vite"
+            "artifacts": {
+              "emittedAssets": []
+            },
+            "bundler": {
+              "mode": "ci",
+              "name": "vite"
+            },
+            "capabilities": {
+              "config": true,
+              "emittedAssets": false,
+              "installedVersions": true,
+              "manifest": false,
+              "sourceImports": true,
+              "stats": false
+            },
+            "dependencies": {
+              "declared": {
+                "react": "^19.1.0"
+              },
+              "installed": {
+                "react": "19.2.8"
+              }
+            },
+            "imports": {
+              "packages": [],
+              "sourceFiles": [],
+              "specifiers": []
+            },
+            "moduleFederation": {
+              "exposes": {},
+              "name": "host",
+              "remotes": {
+                "remote": {
+                  "entry": "http://localhost:3001/mf-manifest.json",
+                  "name": "remote"
+                }
+              },
+              "shared": {
+                "react": {
+                  "eager": false,
+                  "package": "react",
+                  "requiredVersion": "^19.1.0",
+                  "shareScope": ["default"],
+                  "singleton": true
+                }
+              }
+            },
+            "project": {
+              "name": "host",
+              "root": "."
+            },
+            "schemaVersion": 1
           },
           {
-            "name": "remote",
-            "bundler": "rspack"
+            "artifacts": {
+              "emittedAssets": []
+            },
+            "bundler": {
+              "mode": "ci",
+              "name": "rspack"
+            },
+            "capabilities": {
+              "config": true,
+              "emittedAssets": false,
+              "installedVersions": true,
+              "manifest": false,
+              "sourceImports": true,
+              "stats": false
+            },
+            "dependencies": {
+              "declared": {
+                "react": "^19.1.0"
+              },
+              "installed": {
+                "react": "19.2.8"
+              }
+            },
+            "imports": {
+              "packages": [],
+              "sourceFiles": [],
+              "specifiers": []
+            },
+            "moduleFederation": {
+              "exposes": {
+                "./Widget": "./src/Widget.tsx"
+              },
+              "name": "remote",
+              "remotes": {},
+              "shared": {
+                "react": {
+                  "eager": false,
+                  "package": "react",
+                  "requiredVersion": "^19.1.0",
+                  "shareScope": ["default"],
+                  "singleton": true
+                }
+              }
+            },
+            "project": {
+              "name": "remote",
+              "root": "."
+            },
+            "schemaVersion": 1
           }
         ],
         "report": {
           "schemaVersion": 1,
           "capabilities": {
             "config": true,
-            "sourceImports": true,
-            "manifest": false,
-            "stats": false,
             "emittedAssets": false,
-            "installedVersions": true
+            "installedVersions": true,
+            "manifest": false,
+            "sourceImports": true,
+            "stats": false
           },
           "summary": {
-            "projects": 2,
-            "info": 0,
-            "warnings": 0,
             "errors": 0,
+            "info": 0,
+            "projects": 2,
             "score": 100,
-            "scoreLabel": "Great"
+            "scoreLabel": "Great",
+            "warnings": 0
           },
           "findings": []
         }
@@ -1074,38 +1783,147 @@
         "exitCode": 1,
         "projects": [
           {
-            "name": "host",
-            "bundler": "vite"
+            "artifacts": {
+              "emittedAssets": []
+            },
+            "bundler": {
+              "mode": "ci",
+              "name": "vite"
+            },
+            "capabilities": {
+              "config": true,
+              "emittedAssets": false,
+              "installedVersions": true,
+              "manifest": false,
+              "sourceImports": true,
+              "stats": false
+            },
+            "dependencies": {
+              "declared": {
+                "react": "^19.1.0"
+              },
+              "installed": {
+                "react": "19.2.8"
+              }
+            },
+            "imports": {
+              "packages": [],
+              "sourceFiles": [],
+              "specifiers": []
+            },
+            "moduleFederation": {
+              "exposes": {},
+              "name": "host",
+              "remotes": {},
+              "shared": {
+                "react": {
+                  "eager": false,
+                  "package": "react",
+                  "requiredVersion": "^19.1.0",
+                  "shareScope": ["default"],
+                  "singleton": true
+                }
+              }
+            },
+            "project": {
+              "name": "host",
+              "root": "."
+            },
+            "schemaVersion": 1
           },
           {
-            "name": "remote",
-            "bundler": "vite"
+            "artifacts": {
+              "emittedAssets": []
+            },
+            "bundler": {
+              "mode": "ci",
+              "name": "vite"
+            },
+            "capabilities": {
+              "config": true,
+              "emittedAssets": false,
+              "installedVersions": true,
+              "manifest": false,
+              "sourceImports": true,
+              "stats": false
+            },
+            "dependencies": {
+              "declared": {
+                "react": "^18.3.0"
+              },
+              "installed": {
+                "react": "18.3.1"
+              }
+            },
+            "imports": {
+              "packages": [],
+              "sourceFiles": [],
+              "specifiers": []
+            },
+            "moduleFederation": {
+              "exposes": {},
+              "name": "remote",
+              "remotes": {},
+              "shared": {
+                "react": {
+                  "eager": false,
+                  "package": "react",
+                  "requiredVersion": "^18.3.0",
+                  "shareScope": ["default"],
+                  "singleton": true
+                }
+              }
+            },
+            "project": {
+              "name": "remote",
+              "root": "."
+            },
+            "schemaVersion": 1
           }
         ],
         "report": {
           "schemaVersion": 1,
           "capabilities": {
             "config": true,
-            "sourceImports": true,
-            "manifest": false,
-            "stats": false,
             "emittedAssets": false,
-            "installedVersions": true
+            "installedVersions": true,
+            "manifest": false,
+            "sourceImports": true,
+            "stats": false
           },
           "summary": {
-            "projects": 2,
-            "info": 0,
-            "warnings": 0,
             "errors": 1,
+            "info": 0,
+            "projects": 2,
             "score": 99,
-            "scoreLabel": "Great"
+            "scoreLabel": "Great",
+            "warnings": 0
           },
           "findings": [
             {
               "ruleId": "federation/version-conflict",
               "severity": "error",
               "project": "host",
-              "fingerprint": "13493ba6536cea8b970a465f07655bb67ab0931c99698fa345fb64b535b082f4"
+              "fingerprint": "13493ba6536cea8b970a465f07655bb67ab0931c99698fa345fb64b535b082f4",
+              "message": "\"react\" versions do not satisfy all consumer ranges.",
+              "documentation": "/rules/federation/version-conflict",
+              "suggestion": "Align lockfiles and compatible `requiredVersion` ranges.",
+              "details": null,
+              "evidence": {
+                "package": "react",
+                "versions": [
+                  {
+                    "project": "host",
+                    "range": "^19.1.0",
+                    "version": "19.2.8"
+                  },
+                  {
+                    "project": "remote",
+                    "range": "^18.3.0",
+                    "version": "18.3.1"
+                  }
+                ]
+              }
             }
           ]
         }

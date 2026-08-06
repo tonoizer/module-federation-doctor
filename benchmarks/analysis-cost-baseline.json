@@ -36,11 +36,21 @@
   "workspaces": {
     "clean": {
       "root": "fixtures/workspaces/clean",
-      "files": ["host/.mf/doctor/project.json", "remote/.mf/doctor/project.json"]
+      "files": ["host/.mf/doctor/project.json", "remote/.mf/doctor/project.json"],
+      "maxFiles": 10,
+      "maxSourceBytes": 1048576,
+      "maxSerializedBytes": 1048576,
+      "maxWallTimeMs": 30000,
+      "maxRssBytes": 268435456
     },
     "conflict": {
       "root": "fixtures/workspaces/conflict",
-      "files": ["host/.mf/doctor/project.json", "remote/.mf/doctor/project.json"]
+      "files": ["host/.mf/doctor/project.json", "remote/.mf/doctor/project.json"],
+      "maxFiles": 10,
+      "maxSourceBytes": 1048576,
+      "maxSerializedBytes": 1048576,
+      "maxWallTimeMs": 30000,
+      "maxRssBytes": 268435456
     }
   }
 }

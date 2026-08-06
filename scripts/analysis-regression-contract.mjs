@@ -1,45 +1,82 @@
+import path from "node:path";
+
+export const REQUIRED_ANALYSIS_FIXTURES = ["small", "medium", "large"];
+export const REQUIRED_MODES = ["legacy", "shadow", "v2-compat"];
+export const REQUIRED_WORKSPACE_FIXTURES = ["clean", "conflict"];
+
+const VOLATILE_KEY = /^(generatedAt|timestamp|startedAt|finishedAt|sessionId|traceId)$/i;
+const PATH_KEY = /(?:path|root|directory|directories|file|files|filename|filenames)$/i;
+
 function sortedStrings(values) {
   return [...new Set((values ?? []).filter((value) => typeof value === "string"))].sort();
 }
 
-function normalizeBudget(budget) {
-  if (!budget) return undefined;
-  return {
-    status: budget.status,
-    usage: budget.usage,
-    exceeded: budget.exceeded ?? [],
-  };
+function normalizePath(value, root, key) {
+  const text = value.replaceAll("\\", "/");
+  if (text.includes("://")) return text;
+  const segments = text.split("/");
+  if (segments.includes(".."))
+    throw new Error(`Golden contract path ${key} contains traversal: ${value}`);
+  const absolute = path.isAbsolute(value) || path.win32.isAbsolute(value);
+  if (!absolute) return text;
+  const resolvedRoot = path.resolve(root);
+  const resolved = path.resolve(value);
+  const relative = path.relative(resolvedRoot, resolved);
+  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative))
+    throw new Error(`Golden contract path ${key} escapes its fixture root: ${value}`);
+  return relative.replaceAll("\\", "/") || ".";
 }
 
-function normalizeFinding(finding) {
+function normalizeValue(value, root, key = "") {
+  if (value === undefined) return undefined;
+  if (VOLATILE_KEY.test(key)) return "[VOLATILE]";
+  if (typeof value === "string")
+    return PATH_KEY.test(key) ? normalizePath(value, root, key) : value;
+  if (Array.isArray(value)) return value.map((item) => normalizeValue(item, root, key));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.keys(value)
+        .sort()
+        .map((childKey) => [childKey, normalizeValue(value[childKey], root, childKey)]),
+    );
+  }
+  return value;
+}
+
+function normalizeBudget(budget, root) {
+  if (!budget) return undefined;
+  return normalizeValue(
+    {
+      status: budget.status,
+      usage: budget.usage,
+      exceeded: budget.exceeded ?? [],
+    },
+    root,
+  );
+}
+
+function normalizeFinding(finding, root) {
   return {
     ruleId: finding.ruleId,
     severity: finding.severity,
     project: finding.project,
     fingerprint: finding.fingerprint,
-    ...(finding.detailsSchema ? { detailsSchema: finding.detailsSchema } : {}),
+    message: finding.message,
+    documentation: finding.documentation,
+    suggestion: finding.suggestion,
+    detailsSchema: finding.detailsSchema,
+    details: normalizeValue(finding.details ?? null, root, "details"),
+    evidence: normalizeValue(finding.evidence ?? null, root, "evidence"),
   };
 }
 
-export function normalizeReport(report) {
+export function normalizeReport(report, root) {
   return {
     schemaVersion: report?.schemaVersion,
-    capabilities: report?.capabilities,
-    summary: {
-      projects: report?.summary?.projects,
-      info: report?.summary?.info,
-      warnings: report?.summary?.warnings,
-      errors: report?.summary?.errors,
-      ...(report?.summary?.suppressed !== undefined
-        ? { suppressed: report.summary.suppressed }
-        : {}),
-      ...(report?.summary?.score !== undefined ? { score: report.summary.score } : {}),
-      ...(report?.summary?.scoreLabel !== undefined
-        ? { scoreLabel: report.summary.scoreLabel }
-        : {}),
-    },
+    capabilities: normalizeValue(report?.capabilities, root, "capabilities"),
+    summary: normalizeValue(report?.summary, root, "summary"),
     findings: (report?.findings ?? [])
-      .map(normalizeFinding)
+      .map((finding) => normalizeFinding(finding, root))
       .sort((left, right) =>
         `${left.ruleId}:${left.project}:${left.fingerprint}`.localeCompare(
           `${right.ruleId}:${right.project}:${right.fingerprint}`,
@@ -48,67 +85,72 @@ export function normalizeReport(report) {
   };
 }
 
-function normalizeArtifacts(artifacts) {
+function normalizeArtifacts(artifacts, root) {
   if (!artifacts) return undefined;
   const manifest = artifacts.manifest
-    ? {
-        name: artifacts.manifest.name,
-        path: artifacts.manifest.path?.replaceAll("\\", "/"),
-        valid: artifacts.manifest.valid,
-        exposes: sortedStrings(artifacts.manifest.exposes),
-        remotes: sortedStrings(artifacts.manifest.remotes),
-        shared: sortedStrings(artifacts.manifest.shared),
-      }
+    ? normalizeValue(
+        {
+          name: artifacts.manifest.name,
+          path: artifacts.manifest.path,
+          valid: artifacts.manifest.valid,
+          exposes: sortedStrings(artifacts.manifest.exposes),
+          remotes: sortedStrings(artifacts.manifest.remotes),
+          shared: sortedStrings(artifacts.manifest.shared),
+        },
+        root,
+      )
     : undefined;
-  return {
-    ...(manifest ? { manifest } : {}),
-    records: (artifacts.records ?? [])
-      .map((record) => ({
-        kind: record.kind,
-        path: record.path?.replaceAll("\\", "/"),
-        source: record.source,
-        state: record.state,
-        valid: record.valid,
-      }))
-      .sort((left, right) =>
-        `${left.kind}:${left.path}`.localeCompare(`${right.kind}:${right.path}`),
-      ),
-    emittedAssets: sortedStrings(artifacts.emittedAssets),
-  };
+  return normalizeValue(
+    {
+      ...(manifest ? { manifest } : {}),
+      records: (artifacts.records ?? [])
+        .map((record) => ({
+          kind: record.kind,
+          path: record.path,
+          source: record.source,
+          state: record.state,
+          valid: record.valid,
+        }))
+        .sort((left, right) =>
+          `${left.kind}:${left.path}`.localeCompare(`${right.kind}:${right.path}`),
+        ),
+      emittedAssets: sortedStrings(artifacts.emittedAssets),
+    },
+    root,
+  );
 }
 
-export function normalizeAnalysisRun(run, evidenceReader) {
+export function normalizeAnalysisRun(run, evidenceReader, root) {
   const serialized = JSON.parse(run.digest);
   const facts = serialized.facts;
   return {
     exitCode: run.exitCode,
-    report: normalizeReport(serialized.report),
-    facts: {
-      schemaVersion: facts.schemaVersion,
-      project: {
-        name: facts.project?.name,
-        root: facts.project?.root,
+    report: normalizeReport(serialized.report, root),
+    facts: normalizeValue(
+      {
+        schemaVersion: facts.schemaVersion,
+        project: facts.project,
+        bundler: facts.bundler,
+        capabilities: facts.capabilities,
+        config: facts.config,
+        moduleFederation: facts.moduleFederation,
+        dependencies: facts.dependencies,
+        imports: facts.imports,
+        analysis: facts.analysis,
+        artifacts: normalizeArtifacts(facts.artifacts, root),
       },
-      capabilities: facts.capabilities,
-      analysis: normalizeBudget(facts.analysis),
-      imports: {
-        sourceFiles: sortedStrings(facts.imports?.sourceFiles),
-        specifiers: sortedStrings(facts.imports?.specifiers),
-        packages: sortedStrings(facts.imports?.packages),
-        remotes: sortedStrings(facts.imports?.remotes),
-      },
-      artifacts: normalizeArtifacts(facts.artifacts),
-    },
+      root,
+    ),
     evidenceReader: {
       status: evidenceReader.status,
       kind: evidenceReader.kind,
       sourceVersion: evidenceReader.sourceVersion,
-      budget: normalizeBudget(evidenceReader.budget),
+      budget: normalizeBudget(evidenceReader.budget, root),
     },
   };
 }
 
-export function normalizeAnalysisRow(row) {
+export function normalizeAnalysisRow(row, root) {
   return {
     fixture: row.fixture,
     mode: row.mode,
@@ -118,28 +160,118 @@ export function normalizeAnalysisRow(row) {
       promotedBy: row.rollout.promotedBy,
     },
     collector: row.collector,
-    result: normalizeAnalysisRun(row.runs[0], row.evidenceReader),
+    result: normalizeAnalysisRun(row.runs[0], row.evidenceReader, root),
   };
 }
 
-export function normalizeWorkspaceResult(fixture, result) {
+export function normalizeWorkspaceResult(fixture, result, root) {
   return {
     fixture,
     result: {
       exitCode: result.exitCode,
       projects: result.projects
-        .map((project) => ({
-          name: project.project.name,
-          bundler: project.bundler.name,
-        }))
-        .sort((left, right) => left.name.localeCompare(right.name)),
-      report: normalizeReport(result.report),
+        .map((project) =>
+          normalizeValue(
+            {
+              schemaVersion: project.schemaVersion,
+              project: project.project,
+              bundler: project.bundler,
+              capabilities: project.capabilities,
+              config: project.config,
+              moduleFederation: project.moduleFederation,
+              dependencies: project.dependencies,
+              imports: project.imports,
+              artifacts: project.artifacts,
+            },
+            root,
+          ),
+        )
+        .sort((left, right) => left.project.name.localeCompare(right.project.name)),
+      report: normalizeReport(result.report, root),
     },
   };
 }
 
 function display(value) {
   return JSON.stringify(value);
+}
+
+function assertObject(value, location) {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error(`${location} must be an object`);
+}
+
+function assertReport(report, location) {
+  assertObject(report, location);
+  if (report.schemaVersion !== 1) throw new Error(`${location}.schemaVersion must be 1`);
+  assertObject(report.capabilities, `${location}.capabilities`);
+  assertObject(report.summary, `${location}.summary`);
+  if (!Array.isArray(report.findings)) throw new Error(`${location}.findings must be an array`);
+  for (const [index, finding] of report.findings.entries()) {
+    assertObject(finding, `${location}.findings[${index}]`);
+    for (const key of ["ruleId", "severity", "project", "fingerprint"])
+      if (typeof finding[key] !== "string")
+        throw new Error(`${location}.findings[${index}].${key} must be a string`);
+    if (!("details" in finding))
+      throw new Error(`${location}.findings[${index}].details is required`);
+    if (!("evidence" in finding))
+      throw new Error(`${location}.findings[${index}].evidence is required`);
+  }
+}
+
+function assertRows(value, group, requiredIds, shape) {
+  if (!Array.isArray(value)) throw new Error(`${group} must be an array`);
+  const ids = value.map((row) => {
+    assertObject(row, `${group} row`);
+    if (typeof row.fixture !== "string") throw new Error(`${group} row fixture must be a string`);
+    if (shape === "analysis" && typeof row.mode !== "string")
+      throw new Error(`${group}/${row.fixture} mode must be a string`);
+    const id = `${row.fixture}${shape === "analysis" ? `/${row.mode}` : ""}`;
+    return id;
+  });
+  const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+  if (duplicates.length > 0) throw new Error(`${group} has duplicate row: ${duplicates[0]}`);
+  const expected = [...requiredIds].sort();
+  const actual = [...ids].sort();
+  for (const id of actual) {
+    if (!expected.includes(id)) throw new Error(`${group} contains unexpected row: ${id}`);
+  }
+  for (const id of expected) {
+    if (!ids.includes(id)) throw new Error(`${group} is missing required row: ${id}`);
+  }
+  if (actual.length !== expected.length)
+    throw new Error(
+      `${group} must contain exactly ${expected.length} rows, received ${actual.length}`,
+    );
+  for (const row of value) {
+    assertObject(
+      row.result,
+      `${group}/${row.fixture}${shape === "analysis" ? `/${row.mode}` : ""}.result`,
+    );
+    if (typeof row.result.exitCode !== "number")
+      throw new Error(`${group}/${row.fixture} result.exitCode must be a number`);
+    assertReport(row.result.report, `${group}/${row.fixture}.result.report`);
+    if (shape === "analysis") {
+      assertObject(row.result.facts, `${group}/${row.fixture}/${row.mode}.result.facts`);
+      assertObject(
+        row.result.evidenceReader,
+        `${group}/${row.fixture}/${row.mode}.result.evidenceReader`,
+      );
+    } else if (!Array.isArray(row.result.projects)) {
+      throw new Error(`${group}/${row.fixture}.result.projects must be an array`);
+    }
+  }
+}
+
+export function assertRegressionContract(value, label = "contract") {
+  assertObject(value, label);
+  if (value.schemaVersion !== 1) throw new Error(`${label}.schemaVersion must be 1`);
+  const analysisIds = REQUIRED_ANALYSIS_FIXTURES.flatMap((fixture) =>
+    REQUIRED_MODES.map((mode) => `${fixture}/${mode}`),
+  );
+  assertRows(value.analysis, `${label}.analysis`, analysisIds, "analysis");
+  assertRows(value.workspaces, `${label}.workspaces`, REQUIRED_WORKSPACE_FIXTURES, "workspace");
+  return value;
 }
 
 function collectDiffs(expected, actual, location, diffs) {
@@ -165,13 +297,20 @@ function collectDiffs(expected, actual, location, diffs) {
   diffs.push(`${location}: expected ${display(expected)}, received ${display(actual)}`);
 }
 
-function compareRows(expectedRows, actualRows, group, diffs) {
-  const expectedById = new Map(
-    expectedRows.map((row) => [row.fixture + (row.mode ? `/${row.mode}` : ""), row]),
-  );
-  const actualById = new Map(
-    actualRows.map((row) => [row.fixture + (row.mode ? `/${row.mode}` : ""), row]),
-  );
+function compareRows(expectedRows, actualRows, group) {
+  const diffs = [];
+  const expectedById = new Map();
+  const actualById = new Map();
+  for (const row of expectedRows) {
+    const id = `${row.fixture}${row.mode ? `/${row.mode}` : ""}`;
+    if (expectedById.has(id)) diffs.push(`${group}/${id}: duplicate expected row`);
+    expectedById.set(id, row);
+  }
+  for (const row of actualRows) {
+    const id = `${row.fixture}${row.mode ? `/${row.mode}` : ""}`;
+    if (actualById.has(id)) diffs.push(`${group}/${id}: duplicate actual row`);
+    actualById.set(id, row);
+  }
   const ids = new Set([...expectedById.keys(), ...actualById.keys()]);
   for (const id of [...ids].sort()) {
     const expected = expectedById.get(id);
@@ -186,15 +325,19 @@ function compareRows(expectedRows, actualRows, group, diffs) {
     }
     collectDiffs(expected, actual, `${group}/${id}`, diffs);
   }
+  return diffs;
 }
 
 export function compareRegressionContract(expected, actual) {
-  const diffs = [];
-  if (expected?.schemaVersion !== actual?.schemaVersion)
-    diffs.push(
-      `schemaVersion: expected ${display(expected?.schemaVersion)}, received ${display(actual?.schemaVersion)}`,
-    );
-  compareRows(expected?.analysis ?? [], actual?.analysis ?? [], "analysis", diffs);
-  compareRows(expected?.workspaces ?? [], actual?.workspaces ?? [], "workspace", diffs);
-  return diffs;
+  assertRegressionContract(expected, "expected contract");
+  assertRegressionContract(actual, "actual contract");
+  return [
+    ...(expected.schemaVersion !== actual.schemaVersion
+      ? [
+          `schemaVersion: expected ${display(expected.schemaVersion)}, received ${display(actual.schemaVersion)}`,
+        ]
+      : []),
+    ...compareRows(expected.analysis, actual.analysis, "analysis"),
+    ...compareRows(expected.workspaces, actual.workspaces, "workspace"),
+  ];
 }

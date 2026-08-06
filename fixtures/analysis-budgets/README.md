@@ -23,11 +23,15 @@ matrix, not this source-only benchmark. Limits are kept in
 The benchmark also analyzes the checked-in `fixtures/workspaces/clean` and
 `fixtures/workspaces/conflict` monorepo-style project facts. Its normalized semantic
 results are committed in `benchmarks/analysis-cost-expected.json`. CI compares exit
-codes, report summaries, findings, key facts, artifact/evidence state, and workspace
-projects against that file. Timings, RSS, generated timestamps, absolute paths, and
-temporary environment details are intentionally excluded from the semantic contract.
-To intentionally change the contract, update the expectation file in the same change
-after reviewing the resulting diff; CI never updates it automatically.
+codes, report summaries, machine-readable finding details and evidence, and stable
+bundler/project/module-federation/import/config/dependency/artifact facts, plus the
+workspace project contract, against that file. Bound paths are normalized relative to
+their fixture root. Timings, RSS, generated timestamps, absolute/temp paths, and other
+environment details are intentionally excluded from the semantic contract. The
+workspace rows also enforce bounded discovery, wall-time, RSS, repeat-run, and parity
+checks. To intentionally change the contract, update the expectation file in the same
+change after reviewing the resulting diff; CI never updates it automatically and the
+required suite cannot be reduced.
 
 The `legacy`, `shadow`, and `v2-compat` rows still exercise the existing v1 collector
 with different rollout-controller selections. They do not represent independent v2
