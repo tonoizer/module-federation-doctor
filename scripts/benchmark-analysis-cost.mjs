@@ -22,6 +22,11 @@ import {
   REQUIRED_MODES,
   REQUIRED_WORKSPACE_FIXTURES,
 } from "./analysis-regression-contract.mjs";
+import {
+  assertLiteralFixturePath,
+  highWaterRssBytes,
+  sourceFilesFromFixtureFiles,
+} from "./analysis-benchmark-guards.mjs";
 
 const repository = path.resolve(import.meta.dirname, "..");
 const repositoryRealPath = await fs.realpath(repository);
@@ -150,12 +155,13 @@ async function removeSafeAnalysisOutput(output) {
   await fs.rm(output.directory, { recursive: true, force: true });
 }
 
-async function validateFixtureFiles(root, rootRealPath, fixture, label) {
+async function validateFixtureFiles(root, rootRealPath, fixture, label, sourceBytesLimit) {
   if (!Array.isArray(fixture.files) || fixture.files.length === 0)
     throw new Error(`${label}.files must list the committed fixture files`);
   const seen = new Set();
   let bytes = 0;
   for (const file of fixture.files) {
+    assertLiteralFixturePath(file, `${label}.files`);
     assertRelativePath(file, `${label}.files`);
     if (seen.has(file)) throw new Error(`${label}.files contains a duplicate: ${file}`);
     seen.add(file);
@@ -182,8 +188,8 @@ async function validateFixtureFiles(root, rootRealPath, fixture, label) {
     bytes += stat.size;
     if (seen.size > fixture.maxFiles)
       throw new Error(`${label} exceeds maxFiles ${fixture.maxFiles}`);
-    if (bytes > fixture.maxSourceBytes)
-      throw new Error(`${label} exceeds maxSourceBytes ${fixture.maxSourceBytes}`);
+    if (sourceBytesLimit !== undefined && bytes > sourceBytesLimit)
+      throw new Error(`${label} exceeds maxSourceBytes ${sourceBytesLimit}`);
   }
   return { files: seen.size, bytes };
 }
@@ -196,7 +202,13 @@ async function validateRootFixture(name, fixture, workspace = false) {
   if (rootStat.isSymbolicLink()) throw new Error(`${name}.root must not be a symbolic link`);
   if (!rootStat.isDirectory()) throw new Error(`${name}.root must be a directory`);
   const rootRealPath = await realpathInside(root, repositoryRealPath, `${name}.root`);
-  const metrics = await validateFixtureFiles(root, rootRealPath, fixture, name);
+  const metrics = await validateFixtureFiles(
+    root,
+    rootRealPath,
+    fixture,
+    name,
+    workspace ? undefined : fixture.maxSourceBytes,
+  );
   if (workspace && metrics.files < 2) throw new Error(`${name} must contain at least two projects`);
   return { root, rootRealPath, metrics };
 }
@@ -244,13 +256,9 @@ async function assertBaseline(value) {
   for (const name of REQUIRED_WORKSPACE_FIXTURES) {
     const fixture = value.workspaces[name];
     if (!Array.isArray(fixture.files)) throw new Error(`workspaces.${name}.files must be an array`);
-    for (const key of [
-      "maxFiles",
-      "maxSourceBytes",
-      "maxSerializedBytes",
-      "maxWallTimeMs",
-      "maxRssBytes",
-    ])
+    if (Object.hasOwn(fixture, "maxSourceBytes"))
+      throw new Error(`workspaces.${name}.maxSourceBytes is not supported`);
+    for (const key of ["maxFiles", "maxSerializedBytes", "maxWallTimeMs", "maxRssBytes"])
       assertLimit(fixture[key], `workspaces.${name}.${key}`);
     workspaceRoots.set(name, await validateRootFixture(`workspaces.${name}`, fixture, true));
   }
@@ -335,7 +343,7 @@ async function runWorkspaceFixture(fixtureName, fixture, rootInfo, failures) {
     });
     runs.push({
       elapsedMs: Math.round((performance.now() - started) * 100) / 100,
-      rssBytes: process.memoryUsage().rss,
+      peakRssBytes: highWaterRssBytes(),
       budget: discovery.budget,
       semantic: normalizeWorkspaceResult(fixtureName, result, rootInfo.realRootPath),
     });
@@ -348,7 +356,7 @@ async function runWorkspaceFixture(fixtureName, fixture, rootInfo, failures) {
     const label = `${fixtureName} run ${index + 1}`;
     if (run.elapsedMs > fixture.maxWallTimeMs)
       failures.push(`${label}: wall time exceeded ${fixture.maxWallTimeMs}ms`);
-    if (run.rssBytes > fixture.maxRssBytes)
+    if (run.peakRssBytes > fixture.maxRssBytes)
       failures.push(`${label}: RSS exceeded ${fixture.maxRssBytes} bytes`);
     if (run.budget.exceeded.length > 0) failures.push(`${label}: workspace budget was exceeded`);
   }
@@ -356,7 +364,11 @@ async function runWorkspaceFixture(fixtureName, fixture, rootInfo, failures) {
     semantic: first.semantic,
     detail: {
       fixture: fixtureName,
-      runs: runs.map(({ elapsedMs, rssBytes, budget }) => ({ elapsedMs, rssBytes, budget })),
+      runs: runs.map(({ elapsedMs, peakRssBytes, budget }) => ({
+        elapsedMs,
+        peakRssBytes,
+        budget,
+      })),
       parity: { stable },
       limits: fixture,
     },
@@ -376,6 +388,7 @@ const failures = [];
 for (const fixtureName of REQUIRED_ANALYSIS_FIXTURES) {
   const fixture = baseline.fixtures[fixtureName];
   const rootInfo = fixtureRoots.get(fixtureName);
+  const sourceFiles = sourceFilesFromFixtureFiles(fixture.files, `fixtures.${fixtureName}.files`);
   for (const mode of REQUIRED_MODES) {
     const rollout = controllerFor(mode);
     const rolloutMode = rollout.modeFor("federation-workspace");
@@ -391,7 +404,7 @@ for (const fixtureName of REQUIRED_ANALYSIS_FIXTURES) {
           root: rootInfo.root,
           bundler: "unknown",
           mode: "ci",
-          include: ["src/**/*.{ts,tsx,js,jsx,mts,mjs}"],
+          include: sourceFiles,
           output: { directory: output.directory, formats: [] },
           analysisCache: cache,
           analysisBudgets: {
@@ -410,7 +423,7 @@ for (const fixtureName of REQUIRED_ANALYSIS_FIXTURES) {
           evidenceReader = await evidenceReaderMeasurement(output.realPath, mode, fixture);
         runs.push({
           elapsedMs: Math.round((performance.now() - started) * 100) / 100,
-          rssBytes: process.memoryUsage().rss,
+          peakRssBytes: highWaterRssBytes(),
           exitCode: result.exitCode,
           digest: stableSerialize({ facts: result.facts, report: result.report }),
           findings: result.report.findings.map((finding) => finding.fingerprint),
@@ -453,7 +466,7 @@ for (const fixtureName of REQUIRED_ANALYSIS_FIXTURES) {
       const label = `${fixtureName}/${mode} run ${index + 1}`;
       if (currentRun.elapsedMs > fixture.maxWallTimeMs)
         failures.push(`${label}: wall time exceeded ${fixture.maxWallTimeMs}ms`);
-      if (currentRun.rssBytes > fixture.maxRssBytes)
+      if (currentRun.peakRssBytes > fixture.maxRssBytes)
         failures.push(`${label}: RSS exceeded ${fixture.maxRssBytes} bytes`);
       if (currentRun.budget?.exceeded?.length)
         failures.push(`${label}: configured analysis budget was exceeded`);

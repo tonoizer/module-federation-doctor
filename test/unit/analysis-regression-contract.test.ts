@@ -8,6 +8,10 @@ import {
   REQUIRED_MODES,
   REQUIRED_WORKSPACE_FIXTURES,
 } from "../../scripts/analysis-regression-contract.mjs";
+import {
+  highWaterRssBytes,
+  sourceFilesFromFixtureFiles,
+} from "../../scripts/analysis-benchmark-guards.mjs";
 
 function analysisRow(fixture: string, mode: string) {
   return {
@@ -208,6 +212,22 @@ describe("analysis regression contract", () => {
     const actual = structuredClone(expected);
     expect(compareRegressionContract(expected, actual)).toEqual([]);
     expect(Object.hasOwn(actual.analysis[0]!.result, "elapsedMs")).toBe(false);
-    expect(Object.hasOwn(actual.analysis[0]!.result, "rssBytes")).toBe(false);
+    expect(Object.hasOwn(actual.analysis[0]!.result, "peakRssBytes")).toBe(false);
+  });
+
+  it("derives only literal source inputs from the committed fixture manifest", () => {
+    const manifest = ["dist/mf-manifest.json", "src/index.ts", "src/added.ts"];
+    expect(sourceFilesFromFixtureFiles(manifest, "fixture.files")).toEqual([
+      "src/index.ts",
+      "src/added.ts",
+    ]);
+    expect(() =>
+      sourceFilesFromFixtureFiles(["dist/mf-manifest.json", "src/**/*.{ts,tsx}"], "fixture.files"),
+    ).toThrow("literal file paths");
+  });
+
+  it("converts resourceUsage maxRSS kilobytes into a high-water byte value", () => {
+    expect(highWaterRssBytes({ rss: 2048 }, { maxRSS: 3 })).toBe(3072);
+    expect(highWaterRssBytes({ rss: 4096 }, { maxRSS: 3 })).toBe(4096);
   });
 });

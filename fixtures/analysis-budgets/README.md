@@ -10,7 +10,7 @@ pnpm benchmark:analysis -- --output analysis-cost-results.json
 ```
 
 The command runs the actual v1 collector under the legacy, shadow, and
-v2-compat rollout-controller selections. It records wall time, RSS, budget
+v2-compat rollout-controller selections. It records wall time, high-water RSS, budget
 usage, bounded-cache hits/misses, repeated-run parity, and an optional
 `readEvidenceFile` seam measurement with evidence-node and serialized-byte
 budgets.
@@ -28,16 +28,17 @@ bundler/project/module-federation/import/config/dependency/artifact facts, plus 
 workspace project contract, against that file. Bound paths are normalized relative to
 their fixture root. Timings, RSS, generated timestamps, absolute/temp paths, and other
 environment details are intentionally excluded from the semantic contract. The
-workspace rows also enforce bounded discovery, wall-time, RSS, repeat-run, and parity
-checks; source-byte usage remains enforced as a runtime ceiling but is excluded from
-the cross-platform semantic contract because checkout line endings can differ. To
-intentionally change the contract, update the expectation file in the same
-change after reviewing the resulting diff; CI never updates it automatically and the
-required suite cannot be reduced.
+workspace rows enforce literal-file discovery through `maxFiles` and
+`maxSerializedBytes`, plus wall-time, high-water RSS, repeat-run, and parity checks.
+Source-byte limits apply only to the source-analysis fixtures; workspace discovery
+does not claim a source-byte ceiling. To intentionally change the contract, update
+the expectation file in the same change after reviewing the resulting diff; CI never
+updates it automatically and the required suite cannot be reduced.
 
 The baseline lists the exact committed files for each source fixture and workspace.
-Preflight validation and workspace discovery use those bounded file lists rather than
-recursively walking arbitrary fixture directories.
+Source analysis passes only the literal `src/` entries from each validated manifest
+list to the collector; preflight validation and workspace discovery use those bounded
+file lists rather than recursively walking arbitrary fixture directories.
 
 The `legacy`, `shadow`, and `v2-compat` rows still exercise the existing v1 collector
 with different rollout-controller selections. They do not represent independent v2
