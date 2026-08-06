@@ -38,4 +38,4 @@ jobs:
         with:
           name: analysis-cost-node${{ matrix.node }}
           path: analysis-cost-node${{ matrix.node }}.json
-          if-no-files-found: ignore
+          if-no-files-found: error

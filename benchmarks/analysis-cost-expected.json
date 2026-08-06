@@ -45,24 +45,12 @@
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               },
               "evidence": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               }
             }
           ]
@@ -127,14 +115,10 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": [
-              "source"
-            ],
+            "evidenceSources": ["source"],
             "packages": [],
             "remotes": [],
-            "sourceFiles": [
-              "src/index.ts"
-            ],
+            "sourceFiles": ["src/index.ts"],
             "specifiers": [],
             "unresolvedDynamic": []
           },
@@ -160,9 +144,7 @@
             "name": "analysis-budget-small",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": [
-              "default"
-            ],
+            "shareScope": ["default"],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -243,24 +225,12 @@
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               },
               "evidence": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               }
             }
           ]
@@ -325,14 +295,10 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": [
-              "source"
-            ],
+            "evidenceSources": ["source"],
             "packages": [],
             "remotes": [],
-            "sourceFiles": [
-              "src/index.ts"
-            ],
+            "sourceFiles": ["src/index.ts"],
             "specifiers": [],
             "unresolvedDynamic": []
           },
@@ -358,9 +324,7 @@
             "name": "analysis-budget-small",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": [
-              "default"
-            ],
+            "shareScope": ["default"],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -441,24 +405,12 @@
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               },
               "evidence": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               }
             }
           ]
@@ -523,14 +475,10 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": [
-              "source"
-            ],
+            "evidenceSources": ["source"],
             "packages": [],
             "remotes": [],
-            "sourceFiles": [
-              "src/index.ts"
-            ],
+            "sourceFiles": ["src/index.ts"],
             "specifiers": [],
             "unresolvedDynamic": []
           },
@@ -556,9 +504,7 @@
             "name": "analysis-budget-small",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": [
-              "default"
-            ],
+            "shareScope": ["default"],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -639,24 +585,12 @@
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               },
               "evidence": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               }
             }
           ]
@@ -721,20 +655,11 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": [
-              "source"
-            ],
+            "evidenceSources": ["source"],
             "packages": [],
             "remotes": [],
-            "sourceFiles": [
-              "src/a.ts",
-              "src/b.ts",
-              "src/index.ts"
-            ],
-            "specifiers": [
-              "./a",
-              "./b"
-            ],
+            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
+            "specifiers": ["./a", "./b"],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -759,9 +684,7 @@
             "name": "analysis-budget-medium",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": [
-              "default"
-            ],
+            "shareScope": ["default"],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -842,24 +765,12 @@
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               },
               "evidence": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               }
             }
           ]
@@ -924,20 +835,11 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": [
-              "source"
-            ],
+            "evidenceSources": ["source"],
             "packages": [],
             "remotes": [],
-            "sourceFiles": [
-              "src/a.ts",
-              "src/b.ts",
-              "src/index.ts"
-            ],
-            "specifiers": [
-              "./a",
-              "./b"
-            ],
+            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
+            "specifiers": ["./a", "./b"],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -962,9 +864,7 @@
             "name": "analysis-budget-medium",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": [
-              "default"
-            ],
+            "shareScope": ["default"],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -1045,24 +945,12 @@
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               },
               "evidence": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               }
             }
           ]
@@ -1127,20 +1015,11 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": [
-              "source"
-            ],
+            "evidenceSources": ["source"],
             "packages": [],
             "remotes": [],
-            "sourceFiles": [
-              "src/a.ts",
-              "src/b.ts",
-              "src/index.ts"
-            ],
-            "specifiers": [
-              "./a",
-              "./b"
-            ],
+            "sourceFiles": ["src/a.ts", "src/b.ts", "src/index.ts"],
+            "specifiers": ["./a", "./b"],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -1165,9 +1044,7 @@
             "name": "analysis-budget-medium",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": [
-              "default"
-            ],
+            "shareScope": ["default"],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -1248,24 +1125,12 @@
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               },
               "evidence": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               }
             }
           ]
@@ -1330,9 +1195,7 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": [
-              "source"
-            ],
+            "evidenceSources": ["source"],
             "packages": [],
             "remotes": [],
             "sourceFiles": [
@@ -1343,13 +1206,7 @@
               "src/e.ts",
               "src/index.ts"
             ],
-            "specifiers": [
-              "./a",
-              "./b",
-              "./c",
-              "./d",
-              "./e"
-            ],
+            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -1374,9 +1231,7 @@
             "name": "analysis-budget-large",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": [
-              "default"
-            ],
+            "shareScope": ["default"],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -1457,24 +1312,12 @@
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               },
               "evidence": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               }
             }
           ]
@@ -1539,9 +1382,7 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": [
-              "source"
-            ],
+            "evidenceSources": ["source"],
             "packages": [],
             "remotes": [],
             "sourceFiles": [
@@ -1552,13 +1393,7 @@
               "src/e.ts",
               "src/index.ts"
             ],
-            "specifiers": [
-              "./a",
-              "./b",
-              "./c",
-              "./d",
-              "./e"
-            ],
+            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -1583,9 +1418,7 @@
             "name": "analysis-budget-large",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": [
-              "default"
-            ],
+            "shareScope": ["default"],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -1666,24 +1499,12 @@
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               },
               "evidence": {
-                "evidenceSources": [
-                  "source"
-                ],
-                "missing": [
-                  "config",
-                  "emittedAssets",
-                  "stats"
-                ]
+                "evidenceSources": ["source"],
+                "missing": ["config", "emittedAssets", "stats"]
               }
             }
           ]
@@ -1748,9 +1569,7 @@
             "deepImports": [],
             "depth": "local-graph",
             "dynamicPackages": [],
-            "evidenceSources": [
-              "source"
-            ],
+            "evidenceSources": ["source"],
             "packages": [],
             "remotes": [],
             "sourceFiles": [
@@ -1761,13 +1580,7 @@
               "src/e.ts",
               "src/index.ts"
             ],
-            "specifiers": [
-              "./a",
-              "./b",
-              "./c",
-              "./d",
-              "./e"
-            ],
+            "specifiers": ["./a", "./b", "./c", "./d", "./e"],
             "unresolvedDynamic": []
           },
           "moduleFederation": {
@@ -1792,9 +1605,7 @@
             "name": "analysis-budget-large",
             "remotes": {},
             "runtimePlugins": [],
-            "shareScope": [
-              "default"
-            ],
+            "shareScope": ["default"],
             "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
@@ -1881,9 +1692,7 @@
                   "eager": false,
                   "package": "react",
                   "requiredVersion": "^19.1.0",
-                  "shareScope": [
-                    "default"
-                  ],
+                  "shareScope": ["default"],
                   "singleton": true
                 }
               }
@@ -1934,9 +1743,7 @@
                   "eager": false,
                   "package": "react",
                   "requiredVersion": "^19.1.0",
-                  "shareScope": [
-                    "default"
-                  ],
+                  "shareScope": ["default"],
                   "singleton": true
                 }
               }
@@ -2013,9 +1820,7 @@
                   "eager": false,
                   "package": "react",
                   "requiredVersion": "^19.1.0",
-                  "shareScope": [
-                    "default"
-                  ],
+                  "shareScope": ["default"],
                   "singleton": true
                 }
               }
@@ -2064,9 +1869,7 @@
                   "eager": false,
                   "package": "react",
                   "requiredVersion": "^18.3.0",
-                  "shareScope": [
-                    "default"
-                  ],
+                  "shareScope": ["default"],
                   "singleton": true
                 }
               }

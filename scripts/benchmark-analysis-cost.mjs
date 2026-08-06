@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { performance } from "node:perf_hooks";
@@ -101,6 +102,52 @@ async function writeValidatedJson(relativePath, label, value) {
   await fs.mkdir(path.dirname(destination), { recursive: true });
   await validateOutputDestination(relativePath, label);
   await fs.writeFile(destination, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+async function createSafeAnalysisOutput(fixtureName, mode) {
+  const tempRoot = await fs.realpath(os.tmpdir());
+  const directory = await fs.mkdtemp(
+    path.join(tempRoot, `mfdoctor-analysis-${fixtureName}-${mode}-`),
+  );
+  const stat = await fs.lstat(directory);
+  if (stat.isSymbolicLink() || !stat.isDirectory())
+    throw new Error(`Analysis output is not a regular temporary directory: ${directory}`);
+  const realPath = await fs.realpath(directory);
+  if (!isWithin(tempRoot, realPath))
+    throw new Error(`Analysis output escapes the OS temporary directory: ${directory}`);
+  return { directory, realPath, tempRoot };
+}
+
+async function validateSafeAnalysisOutput(output, fixtureName, mode) {
+  const stat = await fs.lstat(output.directory);
+  if (stat.isSymbolicLink() || !stat.isDirectory())
+    throw new Error(`Analysis output was replaced for ${fixtureName}/${mode}`);
+  const realPath = await fs.realpath(output.directory);
+  if (realPath !== output.realPath || !isWithin(output.tempRoot, realPath))
+    throw new Error(
+      `Analysis output escaped its validated temporary directory for ${fixtureName}/${mode}`,
+    );
+  const projectPath = path.join(output.directory, "project.json");
+  const projectStat = await fs.lstat(projectPath);
+  if (projectStat.isSymbolicLink() || !projectStat.isFile())
+    throw new Error(
+      `Analysis output project.json is not a regular file for ${fixtureName}/${mode}`,
+    );
+  await fs.realpath(projectPath);
+}
+
+async function removeSafeAnalysisOutput(output) {
+  let stat;
+  try {
+    stat = await fs.lstat(output.directory);
+  } catch (error) {
+    if (error?.code === "ENOENT") return;
+    throw error;
+  }
+  if (stat.isSymbolicLink() || !stat.isDirectory()) return;
+  const realPath = await fs.realpath(output.directory);
+  if (realPath !== output.realPath || !isWithin(output.tempRoot, realPath)) return;
+  await fs.rm(output.directory, { recursive: true, force: true });
 }
 
 async function validateFixtureFiles(root, rootRealPath, fixture, label) {
@@ -223,8 +270,8 @@ function controllerFor(mode) {
   );
 }
 
-async function evidenceReaderMeasurement(root, mode, fixture) {
-  const file = path.join(root, ".mf", "doctor", "project.json");
+async function evidenceReaderMeasurement(outputDirectory, mode, fixture) {
+  const file = path.join(outputDirectory, "project.json");
   try {
     await fs.stat(file);
   } catch {
@@ -297,13 +344,14 @@ async function runWorkspaceFixture(fixtureName, fixture, rootInfo, failures) {
   const second = runs[1];
   const stable = stableSerialize(first.semantic) === stableSerialize(second.semantic);
   if (!stable) failures.push(`${fixtureName}: repeated workspace analysis changed semantic output`);
-  if (second.elapsedMs > fixture.maxWallTimeMs)
-    failures.push(`${fixtureName}: wall time exceeded ${fixture.maxWallTimeMs}ms`);
-  if (second.rssBytes > fixture.maxRssBytes)
-    failures.push(`${fixtureName}: RSS exceeded ${fixture.maxRssBytes} bytes`);
-  for (const run of runs)
-    if (run.budget.exceeded.length > 0)
-      failures.push(`${fixtureName}: workspace budget was exceeded`);
+  for (const [index, run] of runs.entries()) {
+    const label = `${fixtureName} run ${index + 1}`;
+    if (run.elapsedMs > fixture.maxWallTimeMs)
+      failures.push(`${label}: wall time exceeded ${fixture.maxWallTimeMs}ms`);
+    if (run.rssBytes > fixture.maxRssBytes)
+      failures.push(`${label}: RSS exceeded ${fixture.maxRssBytes} bytes`);
+    if (run.budget.exceeded.length > 0) failures.push(`${label}: workspace budget was exceeded`);
+  }
   return {
     semantic: first.semantic,
     detail: {
@@ -334,35 +382,44 @@ for (const fixtureName of REQUIRED_ANALYSIS_FIXTURES) {
     if (rolloutMode !== mode)
       throw new Error(`Rollout gate selected ${rolloutMode}, expected ${mode}`);
     const cache = new AnalysisContentCache({ maxEntries: 64, maxBytes: 4 * 1024 * 1024 });
-    const options = {
-      root: rootInfo.root,
-      bundler: "unknown",
-      mode: "ci",
-      include: ["src/**/*.{ts,tsx,js,jsx,mts,mjs}"],
-      output: { formats: [] },
-      analysisCache: cache,
-      analysisBudgets: {
-        maxFiles: fixture.maxFiles,
-        maxSourceBytes: fixture.maxSourceBytes,
-        maxArtifacts: fixture.maxArtifacts,
-        maxEvidenceNodes: fixture.maxEvidenceNodes,
-        maxSerializedBytes: fixture.maxSerializedBytes,
-        maxWallTimeMs: fixture.maxWallTimeMs,
-      },
-    };
     const runs = [];
+    let evidenceReader;
     for (let iteration = 0; iteration < 2; iteration += 1) {
-      const started = performance.now();
-      const result = await analyze(options);
-      runs.push({
-        elapsedMs: Math.round((performance.now() - started) * 100) / 100,
-        rssBytes: process.memoryUsage().rss,
-        exitCode: result.exitCode,
-        digest: stableSerialize({ facts: result.facts, report: result.report }),
-        findings: result.report.findings.map((finding) => finding.fingerprint),
-        budget: result.facts.analysis,
-        cache: { ...cache.stats },
-      });
+      const output = await createSafeAnalysisOutput(fixtureName, mode);
+      try {
+        const options = {
+          root: rootInfo.root,
+          bundler: "unknown",
+          mode: "ci",
+          include: ["src/**/*.{ts,tsx,js,jsx,mts,mjs}"],
+          output: { directory: output.directory, formats: [] },
+          analysisCache: cache,
+          analysisBudgets: {
+            maxFiles: fixture.maxFiles,
+            maxSourceBytes: fixture.maxSourceBytes,
+            maxArtifacts: fixture.maxArtifacts,
+            maxEvidenceNodes: fixture.maxEvidenceNodes,
+            maxSerializedBytes: fixture.maxSerializedBytes,
+            maxWallTimeMs: fixture.maxWallTimeMs,
+          },
+        };
+        const started = performance.now();
+        const result = await analyze(options);
+        await validateSafeAnalysisOutput(output, fixtureName, mode);
+        if (iteration === 1)
+          evidenceReader = await evidenceReaderMeasurement(output.realPath, mode, fixture);
+        runs.push({
+          elapsedMs: Math.round((performance.now() - started) * 100) / 100,
+          rssBytes: process.memoryUsage().rss,
+          exitCode: result.exitCode,
+          digest: stableSerialize({ facts: result.facts, report: result.report }),
+          findings: result.report.findings.map((finding) => finding.fingerprint),
+          budget: result.facts.analysis,
+          cache: { ...cache.stats },
+        });
+      } finally {
+        await removeSafeAnalysisOutput(output);
+      }
     }
     const first = runs[0];
     const second = runs[1];
@@ -378,7 +435,7 @@ for (const fixtureName of REQUIRED_ANALYSIS_FIXTURES) {
         promotedBy: mode === "v2-compat" ? "all-release-gates" : "not-promoted",
       },
       collector: { name: "v1", evidenceReaderMode: "separate-seam" },
-      evidenceReader: await evidenceReaderMeasurement(rootInfo.root, mode, fixture),
+      evidenceReader,
       runs,
       cache: {
         firstRunHits: first.cache.hits,
@@ -392,12 +449,15 @@ for (const fixtureName of REQUIRED_ANALYSIS_FIXTURES) {
     results.push(run);
     if (!stable || !findingParity || !run.parity.exitCodeStable)
       failures.push(`${fixtureName}/${mode}: repeated analysis changed v1 output`);
-    if (second.elapsedMs > fixture.maxWallTimeMs)
-      failures.push(`${fixtureName}/${mode}: wall time exceeded ${fixture.maxWallTimeMs}ms`);
-    if (second.rssBytes > fixture.maxRssBytes)
-      failures.push(`${fixtureName}/${mode}: RSS exceeded ${fixture.maxRssBytes} bytes`);
-    if (second.budget?.exceeded?.length)
-      failures.push(`${fixtureName}/${mode}: configured analysis budget was exceeded`);
+    for (const [index, currentRun] of runs.entries()) {
+      const label = `${fixtureName}/${mode} run ${index + 1}`;
+      if (currentRun.elapsedMs > fixture.maxWallTimeMs)
+        failures.push(`${label}: wall time exceeded ${fixture.maxWallTimeMs}ms`);
+      if (currentRun.rssBytes > fixture.maxRssBytes)
+        failures.push(`${label}: RSS exceeded ${fixture.maxRssBytes} bytes`);
+      if (currentRun.budget?.exceeded?.length)
+        failures.push(`${label}: configured analysis budget was exceeded`);
+    }
     if (run.cache.secondRunHits < 1)
       failures.push(`${fixtureName}/${mode}: bounded parsed-input cache did not produce a hit`);
     if (run.evidenceReader.status !== "read")
