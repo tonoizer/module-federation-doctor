@@ -43,6 +43,10 @@ import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
 import type { AnalysisBudgetReport } from "./analysis-budgets.js";
 import { mapBounded } from "./async-map.js";
 
+export function isAnalysisIncomplete(analysis: AnalysisBudgetReport | undefined): boolean {
+  return Boolean(analysis && (analysis.status !== "complete" || analysis.exceeded.length > 0));
+}
+
 function parseSetting(setting: RuleSetting | undefined, fallback: Severity) {
   if (!setting) return { severity: fallback, options: {} };
   if (setting === "off") return undefined;
@@ -197,12 +201,11 @@ async function runAnalysis(
     return {
       facts: safeFacts,
       report,
-      exitCode:
-        facts.analysis?.status === "unknown" || facts.analysis?.exceeded.length
-          ? 2
-          : policyFails(findings, resolved.failOn, failOnSuppressed)
-            ? 1
-            : 0,
+      exitCode: isAnalysisIncomplete(facts.analysis)
+        ? 2
+        : policyFails(findings, resolved.failOn, failOnSuppressed)
+          ? 1
+          : 0,
     };
   } catch (error) {
     if (resolved.output.formats.includes("terminal"))
@@ -280,8 +283,7 @@ function aggregateWorkspaceSourceReadFailures(
 }
 
 function hasIncompleteProjectAnalysis(project: ProjectFacts): boolean {
-  const analysis = project.analysis;
-  return Boolean(analysis && (analysis.status !== "complete" || analysis.exceeded.length > 0));
+  return isAnalysisIncomplete(project.analysis);
 }
 
 function hasPackageCapableUnresolvedDynamic(project: ProjectFacts): boolean {
@@ -386,14 +388,15 @@ export async function analyzeFederation(
         `${right.kind}:${right.files.join(",")}:${right.message}`,
       ),
     );
-  if (options.analysis?.exceeded.length) {
+  const workspaceAnalysis = options.analysis;
+  if (workspaceAnalysis && isAnalysisIncomplete(workspaceAnalysis)) {
     pushWorkspacePartialFinding(
       findings,
-      options.analysis.status === "unknown"
+      workspaceAnalysis.status === "unknown"
         ? "Doctor completed with unknown workspace input due to an analysis budget."
         : "Doctor completed with partial workspace input.",
-      { analysisBudget: options.analysis },
-      { missing: [], analysisBudget: options.analysis },
+      { analysisBudget: workspaceAnalysis },
+      { missing: [], analysisBudget: workspaceAnalysis },
     );
   }
   const sourceReadFailures = aggregateWorkspaceSourceReadFailures(loadedProjects, workspaceRoot);
@@ -424,7 +427,7 @@ export async function analyzeFederation(
   const workspaceAnalysisIncomplete =
     incompleteProjects.length > 0 ||
     sourceReadFailures.length > 0 ||
-    Boolean(options.analysis?.exceeded.length) ||
+    isAnalysisIncomplete(options.analysis) ||
     workspaceDiagnostics.length > 0;
   const workspaceEvidenceIncomplete =
     workspaceAnalysisIncomplete || packageCapableUnresolvedProjects.length > 0;

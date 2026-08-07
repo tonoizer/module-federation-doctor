@@ -1460,10 +1460,8 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("shared/unused", "warning", (context) => {
     const alwaysShared = alwaysSharedSet(context);
-    const sourceReadFailures = context.facts.imports.sourceReadFailures ?? [];
-    const budgetExceeded = context.facts.analysis?.exceeded.length ?? 0;
     // Failed or budget-limited source collection cannot establish unused certainty.
-    if (sourceReadFailures.length > 0 || budgetExceeded > 0) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const unresolvedMayHideUsage = (context.facts.imports.unresolvedDynamic ?? []).some((item) =>
       ["import", "loadShare", "loadShareSync"].includes(item.api),
     );
@@ -1722,7 +1720,6 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/ssr-server-entry-leak", "error", (context) => {
     if (!isReactBridgeProject(context.facts)) return;
-    if (sourceEvidenceIncomplete(context.facts)) return;
     const ssrMode = optionSsrMode(context.options);
     if (!isNodeOrSsrTarget(context.facts, ssrMode)) return;
     if (ssrMode !== "node" && hasBridgeServerEntry(context.facts)) return;
@@ -1742,7 +1739,6 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/missing-fallback-loading", "warning", async (context) => {
     if (!isReactBridgeProject(context.facts)) return;
-    if (sourceEvidenceIncomplete(context.facts)) return;
     const root = context.root ?? context.facts.project.root;
     for (const file of context.facts.imports.sourceFiles ?? []) {
       let source: string;

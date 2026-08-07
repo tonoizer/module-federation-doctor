@@ -1741,6 +1741,13 @@ describe("doctor/partial-analysis suggestions", () => {
     return findings;
   }
 
+  async function runSharedUnused(facts: ProjectFacts) {
+    const findings: Array<unknown> = [];
+    const rule = builtInRules.find((item) => item.meta.id === "shared/unused")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
   const baseFacts = (): ProjectFacts => ({
     schemaVersion: 1,
     project: { name: "fixture", root: "." },
@@ -1819,6 +1826,31 @@ describe("doctor/partial-analysis suggestions", () => {
       const findings = await runPartial(facts);
       expect(findings).toHaveLength(1);
       expect(findings[0]?.evidence).toMatchObject({ analysisBudget: { status } });
+    },
+  );
+
+  it.each(["unknown", "partial"] as const)(
+    "does not claim shared packages are unused for %s analysis with no listed budget limit",
+    async (status) => {
+      const facts = baseFacts();
+      facts.moduleFederation!.shared = {
+        lodash: { package: "lodash", singleton: false, eager: false, shareScope: "default" },
+      };
+      facts.analysis = {
+        status,
+        limits: {
+          maxFiles: 10,
+          maxSourceBytes: 100,
+          maxArtifacts: 10,
+          maxEvidenceNodes: 100,
+          maxSerializedBytes: 100,
+          maxWallTimeMs: 100,
+        },
+        usage: { files: 1, sourceBytes: 10, artifacts: 0, evidenceNodes: 0, serializedBytes: 0 },
+        exceeded: [],
+      };
+
+      expect(await runSharedUnused(facts)).toEqual([]);
     },
   );
 

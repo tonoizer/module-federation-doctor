@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { analyze } from "../../src/engine.js";
 import { builtInRules } from "../../src/rules.js";
 import type { DoctorFinding, ModuleFederationConfigLike } from "../../src/types.js";
@@ -214,6 +214,142 @@ describe("bridge error batch (#139)", () => {
       },
     });
     expect(result.report.findings.map((f) => f.ruleId)).toContain("bridge/ssr-server-entry-leak");
+  });
+
+  it("keeps positive Bridge findings from readable files when another source read fails", async () => {
+    const root = await fixture(
+      {
+        name: "bridge-ssr-leak-with-read-failure",
+        dependencies: {
+          react: "19.1.1",
+          "@module-federation/bridge-react": "0.2.0",
+        },
+      },
+      'import "@module-federation/bridge-react/v19";\n',
+    );
+    const unreadable = path.join(root, "src/unreadable.tsx");
+    await fs.writeFile(unreadable, "export const hidden = true;\n");
+    const originalReadFile = fs.readFile;
+    const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+      if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
+      return originalReadFile(file, options);
+    });
+    try {
+      const result = await analyze({
+        root,
+        bundler: "vite",
+        mode: "ci",
+        output: { formats: [] },
+        moduleFederation: goodBridgeConfig({ target: "node" }),
+        rules: {
+          ...quietExtras,
+          "bridge/router-shared-conflict": "off",
+          "bridge/react-version-entry-mismatch": "off",
+          "bridge/provider-shape-invalid": "off",
+        },
+      });
+      expect(result.facts.imports.sourceReadFailures).toContain("src/unreadable.tsx");
+      expect(result.report.findings.map((f) => f.ruleId)).toContain("bridge/ssr-server-entry-leak");
+    } finally {
+      readFileSpy.mockRestore();
+    }
+  });
+
+  it("keeps readable Bridge fallback violations visible after a source read failure", async () => {
+    const root = await fixture(
+      {
+        name: "bridge-fallback-with-read-failure",
+        dependencies: {
+          react: "19.1.1",
+          "@module-federation/bridge-react": "0.2.0",
+        },
+      },
+      [
+        'import { createRemoteAppComponent } from "@module-federation/bridge-react/v19";',
+        "export const Remote = createRemoteAppComponent({ loader: async () => ({ default: () => null }) });",
+        "",
+      ].join("\n"),
+    );
+    const unreadable = path.join(root, "src/unreadable.tsx");
+    await fs.writeFile(unreadable, "export const hidden = true;\n");
+    const originalReadFile = fs.readFile;
+    const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+      if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
+      return originalReadFile(file, options);
+    });
+    try {
+      const result = await analyze({
+        root,
+        bundler: "rspack",
+        mode: "ci",
+        output: { formats: [] },
+        moduleFederation: goodBridgeConfig(),
+        rules: {
+          ...quietExtras,
+          "bridge/router-shared-conflict": "off",
+          "bridge/react-version-entry-mismatch": "off",
+          "bridge/ssr-server-entry-leak": "off",
+          "bridge/provider-shape-invalid": "off",
+        },
+      });
+      expect(result.facts.imports.sourceReadFailures).toContain("src/unreadable.tsx");
+      expect(result.report.findings.map((f) => f.ruleId)).toContain(
+        "bridge/missing-fallback-loading",
+      );
+    } finally {
+      readFileSpy.mockRestore();
+    }
+  });
+
+  it("does not claim a Bridge helper is absent while source evidence is incomplete", async () => {
+    const root = await fixture(
+      {
+        name: "bridge-manual-with-read-failure",
+        dependencies: {
+          react: "19.1.1",
+          "@module-federation/bridge-react": "0.2.0",
+          "@module-federation/runtime": "0.0.0",
+        },
+      },
+      'import { loadRemote } from "@module-federation/runtime";\nloadRemote("shop/App");\n',
+    );
+    const unreadable = path.join(root, "src/unreadable.tsx");
+    await fs.writeFile(unreadable, "export const hidden = true;\n");
+    const originalReadFile = fs.readFile;
+    const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+      if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
+      return originalReadFile(file, options);
+    });
+    try {
+      const result = await analyze({
+        root,
+        bundler: "rspack",
+        mode: "ci",
+        output: { formats: [] },
+        moduleFederation: goodBridgeConfig({
+          remotes: {
+            shop: {
+              name: "shop",
+              entry: "https://example.test/mf-manifest.json",
+              shareScope: "default",
+            },
+          },
+        }),
+        rules: {
+          ...quietExtras,
+          "bridge/router-shared-conflict": "off",
+          "bridge/react-version-entry-mismatch": "off",
+          "bridge/ssr-server-entry-leak": "off",
+          "bridge/provider-shape-invalid": "off",
+        },
+      });
+      expect(result.facts.imports.sourceReadFailures).toContain("src/unreadable.tsx");
+      expect(result.report.findings.map((f) => f.ruleId)).not.toContain(
+        "bridge/consumer-api-manual",
+      );
+    } finally {
+      readFileSpy.mockRestore();
+    }
   });
 
   it("stays quiet for node builds that import Bridge /server only", async () => {
