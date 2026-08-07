@@ -116,6 +116,28 @@ function emittedAssetMatches(
   return asset.endsWith(candidate) || asset.endsWith(path.posix.basename(candidate));
 }
 
+/**
+ * Some Vite SSR integrations intentionally suffix the server container entry
+ * (for example `remoteEntry.ssr.js`) while the client build emits the
+ * configured `remoteEntry.js`. When a report only contains the server output,
+ * the suffixed entry proves that the SSR build ran; it must not be treated as
+ * a missing client container.
+ */
+function hasViteSsrRemoteEntryAlternative(facts: ProjectFacts, expected: string): boolean {
+  if (facts.bundler.name !== "vite" || !facts.builds || facts.builds.length === 0) return false;
+  if (!facts.builds.every((build) => build.targetKind === "node" || build.targetKind === "ssr"))
+    return false;
+  const expectedName = path.posix.basename(expected);
+  const stem = expectedName.endsWith(".js") ? expectedName.slice(0, -3) : expectedName;
+  const alternatives = new Set([
+    `${stem}.ssr.js`,
+    expectedName.replace("remoteEntry", "remote-entry"),
+  ]);
+  return facts.artifacts.emittedAssets.some((asset) =>
+    [...alternatives].some((candidate) => asset.endsWith(candidate)),
+  );
+}
+
 function mf(context: RuleContext): NormalizedMFConfig | undefined {
   return context.facts.moduleFederation;
 }
@@ -132,17 +154,10 @@ function sourceEvidenceIncomplete(facts: ProjectFacts): boolean {
 function manifestExplicitlyDisabled(context: RuleContext): boolean {
   const config = mf(context);
   if (!config || config.manifest?.enabled !== false) return false;
-  // Enhanced-family adapters default manifest generation on, so a normalized
-  // `enabled: false` is already an explicit opt-out. Vite defaults it off;
-  // there we only suppress the optional-artifact warning when the canonical
-  // config proves that the user explicitly set `manifest: false`.
-  if (context.facts.bundler.name !== "vite") return true;
-  return (
-    context.facts.canonicalConfig?.declared.fields.some(
-      (entry) =>
-        entry.key === "manifest" && entry.value.state === "known" && entry.value.value === false,
-    ) ?? false
-  );
+  // A normalized disabled manifest is the complete evidence available to the
+  // rule. Vite defaults this capability off, so keep it as one actionable
+  // manifest warning instead of duplicating it as partial analysis.
+  return true;
 }
 
 function hasFederatedSurface(config: NormalizedMFConfig): boolean {
@@ -172,6 +187,12 @@ function cleanRange(range: string): string {
 
 function optionBoolean(options: Record<string, unknown>, key: string): boolean | undefined {
   return typeof options[key] === "boolean" ? options[key] : undefined;
+}
+
+function optionString(options: Record<string, unknown>, key: string): string | undefined {
+  return typeof options[key] === "string" && options[key].trim().length > 0
+    ? options[key].trim()
+    : undefined;
 }
 
 function optionBytes(options: Record<string, unknown>, key: string, fallback: number): number {
@@ -327,6 +348,34 @@ const DEFAULT_REMOTE_ENTRY_MAX_BYTES = 524_288;
 const DEFAULT_SHARED_MAX_BYTES = 524_288;
 const DEFAULT_EXPOSE_MAX_BYTES = 358_400;
 
+function mergeOverlappingAssetGroups(
+  groups: Array<{ packages: string[]; assets: string[]; scopedAssets: string[] }>,
+  item: { package: string; assets: string[]; scopedAssets: string[] },
+): void {
+  const overlapping = groups.filter((group) =>
+    item.scopedAssets.some((asset) => group.scopedAssets.includes(asset)),
+  );
+  if (overlapping.length === 0) {
+    groups.push({
+      packages: [item.package],
+      assets: [...item.assets],
+      scopedAssets: [...item.scopedAssets],
+    });
+    return;
+  }
+  const merged = {
+    packages: [
+      ...new Set([item.package, ...overlapping.flatMap((group) => group.packages)]),
+    ].sort(),
+    assets: [...new Set([item.assets, ...overlapping.map((group) => group.assets)].flat())].sort(),
+    scopedAssets: [
+      ...new Set([item.scopedAssets, ...overlapping.map((group) => group.scopedAssets)].flat()),
+    ].sort(),
+  };
+  for (const group of overlapping) groups.splice(groups.indexOf(group), 1);
+  groups.push(merged);
+}
+
 export const builtInRules: DoctorRule[] = [
   createRule("config/name-required", "error", (context) => {
     if (mf(context) && !mf(context)?.name?.trim())
@@ -339,7 +388,17 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("config/expose-path-missing", "error", (context) => {
     if (sourceEvidenceIncomplete(context.facts)) return;
+    const emittedExposeKeys = new Set(
+      (context.facts.artifacts.manifest?.valid
+        ? (context.facts.artifacts.manifest.exposes ?? [])
+        : []
+      ).map((expose) => expose.key),
+    );
     for (const [key, target] of Object.entries(mf(context)?.exposes ?? {})) {
+      // Some framework collectors only include files that contain imports. A
+      // build manifest is stronger evidence that an extensionless expose path
+      // resolved successfully (for example, a Vue `.vue` file).
+      if (emittedExposeKeys.has(key)) continue;
       const normalized = target.replaceAll("\\", "/").replace(/^\.\/+/, "");
       const sourceFiles = context.facts.imports.sourceFiles;
       const exists = sourceFiles.some(
@@ -808,18 +867,33 @@ export const builtInRules: DoctorRule[] = [
         );
     }
 
+    const sharedGroups: Array<{
+      packages: string[];
+      assets: string[];
+      scopedAssets: string[];
+    }> = [];
     for (const shared of manifest.shared) {
-      const bytes = sumAssetSizes(
-        sizes,
-        shared.assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
-      );
+      const assets = [...new Set(shared.assets)].sort();
+      mergeOverlappingAssetGroups(sharedGroups, {
+        package: shared.name,
+        assets,
+        scopedAssets: assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
+      });
+    }
+    for (const shared of sharedGroups) {
+      const bytes = sumAssetSizes(sizes, shared.scopedAssets);
       if (bytes === undefined || bytes <= sharedMax) continue;
+      const target =
+        shared.packages.length === 1 ? shared.packages[0]! : "shared federation assets";
       report(
         context,
-        `Shared package "${shared.name}" exceeds the ${sharedMax} byte budget (${bytes} bytes).`,
+        shared.packages.length === 1
+          ? `Shared package "${target}" exceeds the ${sharedMax} byte budget (${bytes} bytes).`
+          : `Shared federation assets used by ${shared.packages.map((name) => `"${name}"`).join(", ")} exceed the ${sharedMax} byte budget (${bytes} bytes).`,
         {
           class: "shared",
-          target: shared.name,
+          target,
+          packages: shared.packages,
           bytes,
           maxBytes: sharedMax,
           assets: shared.assets,
@@ -1057,7 +1131,7 @@ export const builtInRules: DoctorRule[] = [
       "Align shared React with `ssrExternals` / `ssrEntryLoader`, or remove the share when Nitro owns the server React instance.",
     );
   }),
-  createRule("vite/manual-chunks-conflict", "warning", (context) => {
+  createRule("vite/manual-chunks-conflict", "info", (context) => {
     if (context.facts.bundler.name !== "vite") return;
     if (optionBoolean(context.options, "allowManualChunks") === true) return;
     const viteConfig = context.facts.bundler.viteConfig;
@@ -1125,7 +1199,7 @@ export const builtInRules: DoctorRule[] = [
       "Remove the alias, exclude the package from shared, or allowlist intentional bypasses via `allowPackages`.",
     );
   }),
-  createRule("vite/server-origin", "warning", (context) => {
+  createRule("vite/server-origin", "info", (context) => {
     if (context.facts.bundler.name !== "vite") return;
     if (optionBoolean(context.options, "requireServerOrigin") === false) return;
     const remotes = mf(context)?.remotes ?? {};
@@ -1134,11 +1208,17 @@ export const builtInRules: DoctorRule[] = [
     // Origin fact absent (CLI partial) → skip.
     if (!viteConfig || !("serverOrigin" in viteConfig)) return;
     if (typeof viteConfig.serverOrigin === "string" && viteConfig.serverOrigin.length > 0) return;
+    const serverPort =
+      typeof viteConfig.serverPort === "number" && viteConfig.serverPort > 0
+        ? viteConfig.serverPort
+        : 5173;
+    const recommendedOrigin =
+      optionString(context.options, "recommendedOrigin") ?? `http://localhost:${serverPort}`;
     report(
       context,
       "`server.origin` is missing while this app consumes remotes.",
-      { serverOrigin: viteConfig.serverOrigin ?? null },
-      "Set `server.origin` to the public origin remote consumers should use in development.",
+      { serverOrigin: viteConfig.serverOrigin ?? null, recommendedOrigin },
+      `Set \`server.origin\` to \`${recommendedOrigin}\` (or the public origin remote consumers should use in development). Override the recommendation with the \`recommendedOrigin\` rule option, or set \`requireServerOrigin: false\` when the dev server is intentionally not consumed remotely.`,
     );
   }),
   createRule("config/transform-import-share-conflict", "warning", (context) => {
@@ -1176,7 +1256,7 @@ export const builtInRules: DoctorRule[] = [
         }),
       );
   }),
-  createRule("artifact/manifest-disabled", "info", (context) => {
+  createRule("artifact/manifest-disabled", "warning", (context) => {
     const config = mf(context);
     if (isLocalDemo(context)) return;
     // Prefer emit evidence over normalized defaults (Enhanced omits → still emits).
@@ -1356,7 +1436,8 @@ export const builtInRules: DoctorRule[] = [
       config.filename ?? context.facts.artifacts.manifest?.remoteEntry?.name ?? "remoteEntry.js";
     if (
       Object.keys(config.exposes).length > 0 &&
-      !context.facts.artifacts.emittedAssets.some((asset) => asset.endsWith(expected))
+      !context.facts.artifacts.emittedAssets.some((asset) => asset.endsWith(expected)) &&
+      !hasViteSsrRemoteEntryAlternative(context.facts, expected)
     )
       report(
         context,

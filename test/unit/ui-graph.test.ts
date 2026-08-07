@@ -86,4 +86,40 @@ describe("ui graphs", () => {
     expect(ui.graphs.orchestration.nodes.some((node) => node.kind === "expose")).toBe(true);
     expect(ui.graphs.orchestration.nodes.some((node) => node.id === "runtime:external")).toBe(true);
   });
+
+  it("keeps explicit federation groups separate in every graph", () => {
+    const checkoutHost = project("host", {
+      name: "host",
+      exposes: {},
+      remotes: {},
+      shared: {
+        react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+      },
+      experiments: { asyncStartup: false, externalRuntime: true, provideExternalRuntime: false },
+    });
+    checkoutHost.project.federationGroup = "checkout";
+    const catalogHost = structuredClone(checkoutHost);
+    catalogHost.project.federationGroup = "catalog";
+
+    const ui = buildUiPayload(
+      [checkoutHost, catalogHost],
+      reportFromFindings([checkoutHost, catalogHost], []),
+    );
+    const projectIds = ui.graphs.remotes.nodes
+      .filter((node) => node.kind === "project")
+      .map((node) => node.id);
+    expect(new Set(projectIds).size).toBe(2);
+    expect(projectIds).toEqual(["project:group:catalog:host", "project:group:checkout:host"]);
+    expect(ui.graphs.shared.nodes.map((node) => node.id)).toEqual([
+      "project:group:catalog:host",
+      "project:group:checkout:host",
+      "shared:group:catalog:react",
+      "shared:group:checkout:react",
+    ]);
+    expect(
+      ui.graphs.orchestration.nodes
+        .filter((node) => node.kind === "runtime")
+        .map((node) => node.id),
+    ).toEqual(["runtime:external:catalog", "runtime:external:checkout"]);
+  });
 });

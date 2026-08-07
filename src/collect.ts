@@ -881,7 +881,13 @@ async function collectArtifacts(
             // that case so dist/build artifacts still attach to the build.
             if (normalizePath(outputRoot) === ".")
               return name.includes("/") ? fg.escapePath(name) : `**/${fg.escapePath(name)}`;
-            return fg.escapePath(normalizePath(path.posix.join(outputRoot, name)));
+            if (name.includes("/"))
+              return fg.escapePath(normalizePath(path.posix.join(outputRoot, name)));
+            // Enhanced/Rspack allows `manifest.filePath` to place the
+            // manifest below the compiler output root. The root is already
+            // bounded by the build hook, so recursive lookup here remains
+            // safe while covering `dist/<custom-dir>/mf-manifest.json`.
+            return `${fg.escapePath(normalizePath(outputRoot))}/**/${fg.escapePath(name)}`;
           }),
         )
       : allNames.map((name) =>
@@ -1024,8 +1030,19 @@ async function collectArtifacts(
   records.sort((left, right) =>
     `${left.kind}:${left.path}`.localeCompare(`${right.kind}:${right.path}`),
   );
-  const firstManifest = records.find((record) => record.kind === "manifest")?.manifest;
-  const firstStats = records.find((record) => record.kind === "stats")?.stats;
+  // With bounded build roots, several nested manifests are valid evidence for
+  // different compilations. Do not project an arbitrary first file into the
+  // legacy singular fields; addBuildFacts will select the records linked to
+  // each emitted output. This prevents a stale sibling manifest from shaping
+  // config detection and rule results for the current build.
+  const firstManifest =
+    boundedRoots && records.filter((record) => record.kind === "manifest").length > 1
+      ? undefined
+      : records.find((record) => record.kind === "manifest")?.manifest;
+  const firstStats =
+    boundedRoots && records.filter((record) => record.kind === "stats").length > 1
+      ? undefined
+      : records.find((record) => record.kind === "stats")?.stats;
   if (firstManifest) artifact.manifest = firstManifest;
   if (firstStats) artifact.stats = firstStats;
   return artifact;
@@ -1181,6 +1198,7 @@ export async function collectProjectFacts(
     project: {
       name: packageJson.name ?? path.basename(options.root),
       root: ".",
+      ...(options.federationGroup ? { federationGroup: options.federationGroup } : {}),
     },
     bundler: {
       name: options.bundler,

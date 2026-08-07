@@ -315,6 +315,19 @@ function pushWorkspacePartialFinding(
   findings.push({ ...finding, fingerprint: fingerprint(fingerprintBase) });
 }
 
+function federationProjectGroups(projects: ProjectFacts[]): ProjectFacts[][] {
+  const groups = new Map<string, ProjectFacts[]>();
+  for (const project of projects) {
+    const key = project.project.federationGroup ?? "\0ungrouped";
+    groups.set(key, [...(groups.get(key) ?? []), project]);
+  }
+  return [...groups.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, group]) =>
+      group.sort((left, right) => left.project.name.localeCompare(right.project.name)),
+    );
+}
+
 export async function analyzeFederation(
   files: string[],
   options: {
@@ -364,10 +377,20 @@ export async function analyzeFederation(
       analysis: project.analysis!,
     }))
     .sort((left, right) => left.project.localeCompare(right.project));
-  const packageCapableUnresolvedProjects = loadedProjects
-    .filter(({ project }) => hasPackageCapableUnresolvedDynamic(project))
-    .map(({ project }) => project.project.name)
-    .sort();
+  const projectGroupKey = (project: ProjectFacts): string =>
+    project.project.federationGroup ?? "\0ungrouped";
+  const diagnosticGroups = new Set<string>();
+  let hasUnscopedDiagnostic = false;
+  for (const diagnostic of options.workspaceDiagnostics ?? []) {
+    const groups = new Set<string>();
+    for (const file of diagnostic.files) {
+      const absolute = path.resolve(path.isAbsolute(file) ? file : path.join(workspaceRoot, file));
+      for (const entry of loadedProjects)
+        if (path.resolve(entry.file) === absolute) groups.add(projectGroupKey(entry.project));
+    }
+    if (groups.size === 0) hasUnscopedDiagnostic = true;
+    for (const group of groups) diagnosticGroups.add(group);
+  }
   const workspaceDiagnostics = (options.workspaceDiagnostics ?? [])
     .map((diagnostic) => ({
       kind: diagnostic.kind,
@@ -429,256 +452,263 @@ export async function analyzeFederation(
     sourceReadFailures.length > 0 ||
     isAnalysisIncomplete(options.analysis) ||
     workspaceDiagnostics.length > 0;
-  const workspaceEvidenceIncomplete =
-    workspaceAnalysisIncomplete || packageCapableUnresolvedProjects.length > 0;
   const rules = options.rules;
   const alwaysShared = new Set<string>([...DEFAULT_ALWAYS_SHARED, ...(options.alwaysShared ?? [])]);
-  const federation = buildFederationModel(projects);
-  for (const [name, owners] of federation.federationNames)
-    if (owners.length > 1)
-      pushFederationFinding(
-        findings,
-        rules,
-        "federation/name-conflict",
-        owners[0]?.projectName ?? "federation",
-        `Module Federation name "${name}" is used by more than one project.`,
-        { name, projects: owners.map((owner) => owner.projectName).sort() },
+  for (const projectGroup of federationProjectGroups(projects)) {
+    const groupKey = projectGroupKey(projectGroup[0]!);
+    const groupEvidenceIncomplete =
+      isAnalysisIncomplete(options.analysis) ||
+      hasUnscopedDiagnostic ||
+      diagnosticGroups.has(groupKey) ||
+      projectGroup.some(
+        (project) =>
+          hasIncompleteProjectAnalysis(project) ||
+          hasPackageCapableUnresolvedDynamic(project) ||
+          (project.imports?.sourceReadFailures?.length ?? 0) > 0,
       );
-
-  const strategyOwners = new Map<string, string[]>();
-  for (const node of federation.projects) {
-    if (!node.project.moduleFederation) continue;
-    strategyOwners.set(node.shareStrategy, [
-      ...(strategyOwners.get(node.shareStrategy) ?? []),
-      node.projectName,
-    ]);
-  }
-  if (strategyOwners.size > 1)
-    pushFederationFinding(
-      findings,
-      rules,
-      "federation/share-strategy-mismatch",
-      [...strategyOwners.values()][0]?.[0] ?? "federation",
-      "Federation projects disagree on `shareStrategy`.",
-      {
-        strategies: Object.fromEntries(
-          [...strategyOwners.entries()]
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([strategy, owners]) => [strategy, [...owners].sort()]),
-        ),
-      },
-    );
-
-  for (const group of findFederationCycleGroups(federation)) {
-    if (group.riskEdges.length === 0) continue;
-    const first = group.members[0];
-    if (!first) continue;
-    pushFederationFinding(
-      findings,
-      rules,
-      "federation/circular-remote-graph",
-      first.projectName,
-      `Remote graph has a cycle with eager \`version-first\` startup risk: ${group.members
-        .map((member) => member.federationName ?? member.projectName)
-        .join(" -> ")}.`,
-      {
-        projects: group.members.map((member) => member.projectName),
-        members: group.members.map((member) => ({
-          project: member.projectName,
-          federationName: member.federationName,
-          shareStrategy: member.shareStrategy,
-          asyncStartup: member.asyncStartup,
-        })),
-        edges: group.edges.map((edge) => ({
-          from: edge.fromFederationName,
-          to: edge.targetFederationName,
-          project: edge.fromProject,
-          remote: edge.remoteName,
-          alias: edge.alias,
-          entry: edge.entry,
-        })),
-        riskMembers: group.riskMembers.map((member) => ({
-          project: member.projectName,
-          federationName: member.federationName,
-          shareStrategy: member.shareStrategy,
-          asyncStartup: member.asyncStartup,
-        })),
-      },
-    );
-  }
-
-  const externalRuntimeConsumers = projects.filter(
-    (project) => project.moduleFederation?.experiments?.externalRuntime,
-  );
-  const runtimeProviders = projects.filter(
-    (project) => project.moduleFederation?.experiments?.provideExternalRuntime,
-  );
-  if (
-    !workspaceEvidenceIncomplete &&
-    externalRuntimeConsumers.length > 0 &&
-    runtimeProviders.length === 0
-  )
-    pushFederationFinding(
-      findings,
-      rules,
-      "federation/external-runtime-provider-missing",
-      externalRuntimeConsumers[0]?.project.name ?? "federation",
-      "Projects externalize the Module Federation runtime, but no project provides it.",
-      {
-        consumers: externalRuntimeConsumers.map((project) => project.project.name).sort(),
-      },
-    );
-
-  const packages = new Set(
-    projects.flatMap((project) => Object.keys(project.moduleFederation?.shared ?? {})),
-  );
-  for (const name of [...packages].sort()) {
-    const entries = projects
-      .map((project) => ({ project, shared: project.moduleFederation?.shared[name] }))
-      .filter((entry) => entry.shared);
-    const scopes = new Set(
-      entries.map((entry) => JSON.stringify(entry.shared?.shareScope ?? ["default"])),
-    );
-    if (scopes.size > 1)
-      pushFederationFinding(
-        findings,
-        rules,
-        "federation/share-scope-mismatch",
-        entries[0]?.project.project.name ?? "federation",
-        `"${name}" uses different share scopes.`,
-        { package: name, scopes: [...scopes].sort().map((scope) => JSON.parse(scope)) },
-      );
-    const singleton = new Set(entries.map((entry) => entry.shared?.singleton));
-    if (singleton.size > 1)
-      pushFederationFinding(
-        findings,
-        rules,
-        "shared/singleton-mismatch",
-        entries[0]?.project.project.name ?? "federation",
-        `"${name}" has inconsistent singleton settings.`,
-        { package: name },
-        {
-          detailsSchema: FINDING_DETAILS_SCHEMAS.SHARED_SINGLETON,
-          details: { package: name, kind: "mismatch" },
-        },
-      );
-    const versions = entries
-      .map((entry) => ({
-        project: entry.project.project.name,
-        version: entry.project.dependencies.installed[name],
-        range: entry.shared?.requiredVersion,
-      }))
-      .filter((entry) => entry.version);
-    if (
-      versions.some((left) =>
-        versions.some(
-          (right) =>
-            left.version &&
-            typeof right.range === "string" &&
-            semver.valid(left.version) &&
-            semver.validRange(right.range) &&
-            !semver.satisfies(left.version, right.range),
-        ),
-      )
-    )
-      pushFederationFinding(
-        findings,
-        rules,
-        "federation/version-conflict",
-        versions[0]?.project ?? "federation",
-        `"${name}" versions do not satisfy all consumer ranges.`,
-        { package: name, versions },
-      );
-    const consumersWithoutFallback = entries.filter((entry) => entry.shared?.import === false);
-    const providers = entries.filter((entry) => entry.shared?.import !== false);
-    if (
-      !workspaceEvidenceIncomplete &&
-      consumersWithoutFallback.length > 0 &&
-      providers.length === 0
-    )
-      pushFederationFinding(
-        findings,
-        rules,
-        "federation/missing-provider",
-        entries[0]?.project.project.name ?? "federation",
-        `"${name}" has no provider or local fallback.`,
-        {
-          package: name,
-          consumers: consumersWithoutFallback.map((entry) => entry.project.project.name).sort(),
-        },
-      );
-  }
-
-  // Cross-project usage vs shared declarations (MFDOCTOR-122 / shared-inspector).
-  if (projects.length > 1) {
-    const sharedByPkg = new Map<string, Set<string>>();
-    const usedByPkg = new Map<string, Set<string>>();
-    for (const project of projects) {
-      const mfName = project.project.name;
-      for (const pkg of Object.keys(project.moduleFederation?.shared ?? {})) {
-        if (!sharedByPkg.has(pkg)) sharedByPkg.set(pkg, new Set());
-        sharedByPkg.get(pkg)!.add(mfName);
-      }
-      for (const pkg of project.imports?.packages ?? []) {
-        if (!usedByPkg.has(pkg)) usedByPkg.set(pkg, new Set());
-        usedByPkg.get(pkg)!.add(mfName);
-      }
-    }
-
-    for (const [pkg, usedByMfs] of [...usedByPkg.entries()].sort(([a], [b]) =>
-      a.localeCompare(b),
-    )) {
-      if (!workspaceEvidenceIncomplete) {
-        if (usedByMfs.size < 2) continue;
-        if (alwaysShared.has(pkg)) continue;
-        const sharedByMfs = sharedByPkg.get(pkg);
-        if (sharedByMfs && sharedByMfs.size > 0) continue;
-        // Workspace protocol deps are monorepo source links, not federation share gaps.
-        const isWorkspacePackage = projects.some((project) => {
-          const range = project.dependencies?.declared?.[pkg];
-          return typeof range === "string" && range.startsWith("workspace:");
-        });
-        if (isWorkspacePackage) continue;
+    const federation = buildFederationModel(projectGroup);
+    for (const [name, owners] of federation.federationNames)
+      if (owners.length > 1)
         pushFederationFinding(
           findings,
           rules,
-          "federation/host-gaps",
-          [...usedByMfs].sort()[0] ?? "federation",
-          `"${pkg}" is imported by ${usedByMfs.size} projects but is not in any shared config.`,
-          { package: pkg, missingIn: [...usedByMfs].sort() },
+          "federation/name-conflict",
+          owners[0]?.projectName ?? "federation",
+          `Module Federation name "${name}" is used by more than one project.`,
+          { name, projects: owners.map((owner) => owner.projectName).sort() },
         );
-      }
+
+    const strategyOwners = new Map<string, string[]>();
+    for (const node of federation.projects) {
+      if (!node.project.moduleFederation) continue;
+      strategyOwners.set(node.shareStrategy, [
+        ...(strategyOwners.get(node.shareStrategy) ?? []),
+        node.projectName,
+      ]);
+    }
+    if (strategyOwners.size > 1)
+      pushFederationFinding(
+        findings,
+        rules,
+        "federation/share-strategy-mismatch",
+        [...strategyOwners.values()][0]?.[0] ?? "federation",
+        "Federation projects disagree on `shareStrategy`.",
+        {
+          strategies: Object.fromEntries(
+            [...strategyOwners.entries()]
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([strategy, owners]) => [strategy, [...owners].sort()]),
+          ),
+        },
+      );
+
+    for (const cycle of findFederationCycleGroups(federation)) {
+      if (cycle.riskEdges.length === 0) continue;
+      const first = cycle.members[0];
+      if (!first) continue;
+      pushFederationFinding(
+        findings,
+        rules,
+        "federation/circular-remote-graph",
+        first.projectName,
+        `Remote graph has a cycle with eager \`version-first\` startup risk: ${cycle.members
+          .map((member) => member.federationName ?? member.projectName)
+          .join(" -> ")}.`,
+        {
+          projects: cycle.members.map((member) => member.projectName),
+          members: cycle.members.map((member) => ({
+            project: member.projectName,
+            federationName: member.federationName,
+            shareStrategy: member.shareStrategy,
+            asyncStartup: member.asyncStartup,
+          })),
+          edges: cycle.edges.map((edge) => ({
+            from: edge.fromFederationName,
+            to: edge.targetFederationName,
+            project: edge.fromProject,
+            remote: edge.remoteName,
+            alias: edge.alias,
+            entry: edge.entry,
+          })),
+          riskMembers: cycle.riskMembers.map((member) => ({
+            project: member.projectName,
+            federationName: member.federationName,
+            shareStrategy: member.shareStrategy,
+            asyncStartup: member.asyncStartup,
+          })),
+        },
+      );
     }
 
-    if (!workspaceEvidenceIncomplete)
-      for (const [pkg, sharedByMfs] of [...sharedByPkg.entries()].sort(([a], [b]) =>
+    const externalRuntimeConsumers = projectGroup.filter(
+      (project) => project.moduleFederation?.experiments?.externalRuntime,
+    );
+    const runtimeProviders = projectGroup.filter(
+      (project) => project.moduleFederation?.experiments?.provideExternalRuntime,
+    );
+    if (
+      !groupEvidenceIncomplete &&
+      externalRuntimeConsumers.length > 0 &&
+      runtimeProviders.length === 0
+    )
+      pushFederationFinding(
+        findings,
+        rules,
+        "federation/external-runtime-provider-missing",
+        externalRuntimeConsumers[0]?.project.name ?? "federation",
+        "Projects externalize the Module Federation runtime, but no project provides it.",
+        {
+          consumers: externalRuntimeConsumers.map((project) => project.project.name).sort(),
+        },
+      );
+
+    const packages = new Set(
+      projectGroup.flatMap((project) => Object.keys(project.moduleFederation?.shared ?? {})),
+    );
+    for (const name of [...packages].sort()) {
+      const entries = projectGroup
+        .map((project) => ({ project, shared: project.moduleFederation?.shared[name] }))
+        .filter((entry) => entry.shared);
+      const scopes = new Set(
+        entries.map((entry) => JSON.stringify(entry.shared?.shareScope ?? ["default"])),
+      );
+      if (scopes.size > 1)
+        pushFederationFinding(
+          findings,
+          rules,
+          "federation/share-scope-mismatch",
+          entries[0]?.project.project.name ?? "federation",
+          `"${name}" uses different share scopes.`,
+          { package: name, scopes: [...scopes].sort().map((scope) => JSON.parse(scope)) },
+        );
+      const singleton = new Set(entries.map((entry) => entry.shared?.singleton));
+      if (singleton.size > 1)
+        pushFederationFinding(
+          findings,
+          rules,
+          "shared/singleton-mismatch",
+          entries[0]?.project.project.name ?? "federation",
+          `"${name}" has inconsistent singleton settings.`,
+          { package: name },
+          {
+            detailsSchema: FINDING_DETAILS_SCHEMAS.SHARED_SINGLETON,
+            details: { package: name, kind: "mismatch" },
+          },
+        );
+      const versions = entries
+        .map((entry) => ({
+          project: entry.project.project.name,
+          version: entry.project.dependencies.installed[name],
+          range: entry.shared?.requiredVersion,
+        }))
+        .filter((entry) => entry.version);
+      if (
+        versions.some((left) =>
+          versions.some(
+            (right) =>
+              left.version &&
+              typeof right.range === "string" &&
+              semver.valid(left.version) &&
+              semver.validRange(right.range) &&
+              !semver.satisfies(left.version, right.range),
+          ),
+        )
+      )
+        pushFederationFinding(
+          findings,
+          rules,
+          "federation/version-conflict",
+          versions[0]?.project ?? "federation",
+          `"${name}" versions do not satisfy all consumer ranges.`,
+          { package: name, versions },
+        );
+      const consumersWithoutFallback = entries.filter((entry) => entry.shared?.import === false);
+      const providers = entries.filter((entry) => entry.shared?.import !== false);
+      if (!groupEvidenceIncomplete && consumersWithoutFallback.length > 0 && providers.length === 0)
+        pushFederationFinding(
+          findings,
+          rules,
+          "federation/missing-provider",
+          entries[0]?.project.project.name ?? "federation",
+          `"${name}" has no provider or local fallback.`,
+          {
+            package: name,
+            consumers: consumersWithoutFallback.map((entry) => entry.project.project.name).sort(),
+          },
+        );
+    }
+
+    // Cross-project usage vs shared declarations (MFDOCTOR-122 / shared-inspector).
+    if (projectGroup.length > 1) {
+      const sharedByPkg = new Map<string, Set<string>>();
+      const usedByPkg = new Map<string, Set<string>>();
+      for (const project of projectGroup) {
+        const mfName = project.project.name;
+        for (const pkg of Object.keys(project.moduleFederation?.shared ?? {})) {
+          if (!sharedByPkg.has(pkg)) sharedByPkg.set(pkg, new Set());
+          sharedByPkg.get(pkg)!.add(mfName);
+        }
+        for (const pkg of project.imports?.packages ?? []) {
+          if (!usedByPkg.has(pkg)) usedByPkg.set(pkg, new Set());
+          usedByPkg.get(pkg)!.add(mfName);
+        }
+      }
+
+      for (const [pkg, usedByMfs] of [...usedByPkg.entries()].sort(([a], [b]) =>
         a.localeCompare(b),
       )) {
-        if (alwaysShared.has(pkg)) continue;
-        if (sharedByMfs.size !== 1) continue;
-        const soloMf = [...sharedByMfs][0]!;
-        const usedByMfs = usedByPkg.get(pkg) ?? new Set<string>();
-        const usedUnsharedBy = [...usedByMfs]
-          .filter((mf) => mf !== soloMf && !sharedByPkg.get(pkg)?.has(mf))
-          .sort();
-        const otherMfsUseIt = [...usedByMfs].some((mf) => mf !== soloMf);
-        if (!otherMfsUseIt || usedUnsharedBy.length > 0) {
+        if (!groupEvidenceIncomplete) {
+          if (usedByMfs.size < 2) continue;
+          if (alwaysShared.has(pkg)) continue;
+          const sharedByMfs = sharedByPkg.get(pkg);
+          if (sharedByMfs && sharedByMfs.size > 0) continue;
+          // Workspace protocol deps are monorepo source links, not federation share gaps.
+          const isWorkspacePackage = projectGroup.some((project) => {
+            const range = project.dependencies?.declared?.[pkg];
+            return typeof range === "string" && range.startsWith("workspace:");
+          });
+          if (isWorkspacePackage) continue;
           pushFederationFinding(
             findings,
             rules,
-            "federation/ghost-shares",
-            soloMf,
-            otherMfsUseIt
-              ? `"${pkg}" is shared only by "${soloMf}" while other projects import it without sharing.`
-              : `"${pkg}" is shared only by "${soloMf}" and unused elsewhere in the federation graph.`,
-            {
-              package: pkg,
-              sharedBy: soloMf,
-              usedUnsharedBy,
-            },
+            "federation/host-gaps",
+            [...usedByMfs].sort()[0] ?? "federation",
+            `"${pkg}" is imported by ${usedByMfs.size} projects but is not in any shared config.`,
+            { package: pkg, missingIn: [...usedByMfs].sort() },
           );
         }
       }
+
+      if (!groupEvidenceIncomplete)
+        for (const [pkg, sharedByMfs] of [...sharedByPkg.entries()].sort(([a], [b]) =>
+          a.localeCompare(b),
+        )) {
+          if (alwaysShared.has(pkg)) continue;
+          if (sharedByMfs.size !== 1) continue;
+          const soloMf = [...sharedByMfs][0]!;
+          const usedByMfs = usedByPkg.get(pkg) ?? new Set<string>();
+          const usedUnsharedBy = [...usedByMfs]
+            .filter((mf) => mf !== soloMf && !sharedByPkg.get(pkg)?.has(mf))
+            .sort();
+          const otherMfsUseIt = [...usedByMfs].some((mf) => mf !== soloMf);
+          if (!otherMfsUseIt || usedUnsharedBy.length > 0) {
+            pushFederationFinding(
+              findings,
+              rules,
+              "federation/ghost-shares",
+              soloMf,
+              otherMfsUseIt
+                ? `"${pkg}" is shared only by "${soloMf}" while other projects import it without sharing.`
+                : `"${pkg}" is shared only by "${soloMf}" and unused elsewhere in the federation graph.`,
+              {
+                package: pkg,
+                sharedBy: soloMf,
+                usedUnsharedBy,
+              },
+            );
+          }
+        }
+    }
   }
 
   const root = path.resolve(options.root ?? process.cwd());

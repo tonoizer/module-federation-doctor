@@ -13,6 +13,7 @@ export interface FederationProjectNode {
   id: string;
   project: ProjectFacts;
   projectName: string;
+  federationGroup?: string;
   federationName?: string;
   shareStrategy: "version-first" | "loaded-first";
   asyncStartup: boolean;
@@ -96,6 +97,9 @@ export function buildFederationModel(projects: ProjectFacts[]): FederationModel 
       id: projectId(project),
       project,
       projectName: project.project.name,
+      ...(project.project.federationGroup
+        ? { federationGroup: project.project.federationGroup }
+        : {}),
       ...(project.moduleFederation?.name ? { federationName: project.moduleFederation.name } : {}),
       shareStrategy: project.moduleFederation?.shareStrategy ?? "version-first",
       asyncStartup: project.moduleFederation?.experiments?.asyncStartup ?? false,
@@ -120,7 +124,9 @@ export function buildFederationModel(projects: ProjectFacts[]): FederationModel 
       ([left], [right]) => left.localeCompare(right),
     );
     for (const [alias, remote] of remotes) {
-      const owners = federationNames.get(remote.name) ?? [];
+      const owners = (federationNames.get(remote.name) ?? []).filter(
+        (owner) => owner.federationGroup === node.federationGroup,
+      );
       const target = owners.length === 1 ? owners[0] : undefined;
       const edge: FederationRemoteEdge = {
         id: `${node.id}->${target?.id ?? `remote:${remote.name}`}:${alias}`,

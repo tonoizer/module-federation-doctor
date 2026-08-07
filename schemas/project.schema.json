@@ -29,6 +29,10 @@
         "identityKey": {
           "type": "string",
           "pattern": "^mfid:v1:application:[a-f0-9]{24}$"
+        },
+        "federationGroup": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "additionalProperties": false
@@ -74,6 +78,20 @@
         },
         "outputPublicPathKind": {
           "enum": ["string", "non-string", "auto", "unknown"]
+        },
+        "viteConfig": {
+          "type": "object",
+          "properties": {
+            "manualChunks": { "type": "boolean" },
+            "codeSplittingGroups": { "type": "boolean" },
+            "resolveAliases": { "$ref": "#/$defs/stringMap" },
+            "serverOrigin": { "type": ["string", "null"] },
+            "serverPort": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "transformImportLibraries": {
+          "$ref": "#/$defs/stringArray"
         }
       },
       "additionalProperties": false

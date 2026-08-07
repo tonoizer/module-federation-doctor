@@ -8,53 +8,93 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": {
+        "import": "./dist/index.d.ts",
+        "require": "./dist/index.d.cts"
+      },
       "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
       "default": "./dist/index.js"
     },
     "./vite": {
-      "types": "./dist/vite.d.ts",
+      "types": {
+        "import": "./dist/vite.d.ts",
+        "require": "./dist/vite.d.cts"
+      },
       "import": "./dist/vite.js",
+      "require": "./dist/vite.cjs",
       "default": "./dist/vite.js"
     },
     "./nuxt": {
-      "types": "./dist/nuxt.d.ts",
+      "types": {
+        "import": "./dist/nuxt.d.ts",
+        "require": "./dist/nuxt.d.cts"
+      },
       "import": "./dist/nuxt.js",
+      "require": "./dist/nuxt.cjs",
       "default": "./dist/nuxt.js"
     },
     "./rspack": {
-      "types": "./dist/rspack.d.ts",
+      "types": {
+        "import": "./dist/rspack.d.ts",
+        "require": "./dist/rspack.d.cts"
+      },
       "import": "./dist/rspack.js",
+      "require": "./dist/rspack.cjs",
       "default": "./dist/rspack.js"
     },
     "./rsbuild": {
-      "types": "./dist/rsbuild.d.ts",
+      "types": {
+        "import": "./dist/rsbuild.d.ts",
+        "require": "./dist/rsbuild.d.cts"
+      },
       "import": "./dist/rsbuild.js",
+      "require": "./dist/rsbuild.cjs",
       "default": "./dist/rsbuild.js"
     },
     "./webpack": {
-      "types": "./dist/webpack.d.ts",
+      "types": {
+        "import": "./dist/webpack.d.ts",
+        "require": "./dist/webpack.d.cts"
+      },
       "import": "./dist/webpack.js",
+      "require": "./dist/webpack.cjs",
       "default": "./dist/webpack.js"
     },
     "./modern": {
-      "types": "./dist/modern.d.ts",
+      "types": {
+        "import": "./dist/modern.d.ts",
+        "require": "./dist/modern.d.cts"
+      },
       "import": "./dist/modern.js",
+      "require": "./dist/modern.cjs",
       "default": "./dist/modern.js"
     },
     "./rules": {
-      "types": "./dist/rules.d.ts",
+      "types": {
+        "import": "./dist/rules.d.ts",
+        "require": "./dist/rules.d.cts"
+      },
       "import": "./dist/rules.js",
+      "require": "./dist/rules.cjs",
       "default": "./dist/rules.js"
     },
     "./policy": {
-      "types": "./dist/policy.d.ts",
+      "types": {
+        "import": "./dist/policy.d.ts",
+        "require": "./dist/policy.d.cts"
+      },
       "import": "./dist/policy.js",
+      "require": "./dist/policy.cjs",
       "default": "./dist/policy.js"
     },
     "./capture": {
-      "types": "./dist/capture.d.ts",
+      "types": {
+        "import": "./dist/capture.d.ts",
+        "require": "./dist/capture.d.cts"
+      },
       "import": "./dist/capture.js",
+      "require": "./dist/capture.cjs",
       "default": "./dist/capture.js"
     },
     "./schemas/project.schema.json": "./schemas/project.schema.json",
@@ -70,6 +110,40 @@
     "./package.json": "./package.json"
   },
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "vite": [
+        "dist/vite.d.ts"
+      ],
+      "nuxt": [
+        "dist/nuxt.d.ts"
+      ],
+      "rspack": [
+        "dist/rspack.d.ts"
+      ],
+      "rsbuild": [
+        "dist/rsbuild.d.ts"
+      ],
+      "webpack": [
+        "dist/webpack.d.ts"
+      ],
+      "modern": [
+        "dist/modern.d.ts"
+      ],
+      "rules": [
+        "dist/rules.d.ts"
+      ],
+      "policy": [
+        "dist/policy.d.ts"
+      ],
+      "capture": [
+        "dist/capture.d.ts"
+      ],
+      "*": [
+        "dist/index.d.ts"
+      ]
+    }
+  },
   "files": [
     "dist",
     "schemas",
@@ -128,7 +202,7 @@
     "demo:examples": "corepack pnpm --filter @mfdoctor-example/demos demo",
     "docs:dev": "corepack pnpm --filter @module-federation/doctor-docs dev",
     "docs:build": "corepack pnpm --filter @module-federation/doctor-docs build",
-    "pack:check": "corepack pnpm build && publint && attw --pack . --profile esm-only && corepack pnpm schema:check && node scripts/pack-check.mjs",
+    "pack:check": "corepack pnpm build && publint run --pack npm . && attw --pack . --profile esm-only && corepack pnpm schema:check && node scripts/pack-check.mjs",
     "changeset:check": "node scripts/changeset-contract.mjs",
     "schema:check": "node --experimental-strip-types scripts/schema-contract.mjs",
     "evidence:drift": "corepack pnpm build && node scripts/evidence-drift-check.mjs",

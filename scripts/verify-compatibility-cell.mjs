@@ -4,19 +4,26 @@
  * CI report surfaces (JSON + SARIF). Optionally assert a captured terminal log.
  *
  * Usage:
- *   node scripts/verify-compatibility-cell.mjs <example-dir> <bundler-id> [terminal-log]
+ *   node scripts/verify-compatibility-cell.mjs <example-dir> <cell-id> [terminal-log]
  */
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const [, , exampleDir, bundlerId, terminalLogArg] = process.argv;
-if (!exampleDir || !bundlerId) {
+const [, , exampleDir, cellId, terminalLogArg] = process.argv;
+if (!exampleDir || !cellId) {
   process.stderr.write(
-    "Usage: node scripts/verify-compatibility-cell.mjs <example-dir> <bundler-id> [terminal-log]\n",
+    "Usage: node scripts/verify-compatibility-cell.mjs <example-dir> <cell-id> [terminal-log]\n",
   );
   process.exit(2);
 }
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const matrixPath = path.join(root, "fixtures/compatibility-matrix.json");
+const matrix = JSON.parse(await fs.readFile(matrixPath, "utf8"));
+const matrixCell = matrix.localCi.find((cell) => cell.id === cellId);
+const bundlerId = matrixCell?.bundler ?? cellId;
 
 const doctorDir = path.resolve(exampleDir, ".mf/doctor");
 const projectPath = path.join(doctorDir, "project.json");
@@ -27,7 +34,7 @@ for (const file of [projectPath, reportPath, sarifPath]) {
   try {
     await fs.access(file);
   } catch {
-    throw new Error(`Missing Doctor artifact for ${bundlerId}: ${file}`);
+    throw new Error(`Missing Doctor artifact for ${cellId}: ${file}`);
   }
 }
 
@@ -67,7 +74,7 @@ if (terminalLog) {
 const capabilities = project.capabilities ?? {};
 process.stdout.write(
   [
-    `compatibility-cell ok bundler=${bundlerId} project=${project.project.name}`,
+    `compatibility-cell ok cell=${cellId} bundler=${bundlerId} project=${project.project.name}`,
     `  artifacts=project.json,report.json,results.sarif${terminalLog ? ",terminal" : ""}`,
     `  summary=errors:${report.summary.errors},warnings:${report.summary.warnings},findings:${report.findings.length}`,
     `  capabilities=${JSON.stringify(capabilities)}`,

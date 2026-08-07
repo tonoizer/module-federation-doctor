@@ -27,6 +27,9 @@ jobs:
           - id: vite
             filter: "@mfdoctor-example/host-vite"
             dir: examples/mixed-federation/host-vite
+          - id: vite-cjs-v5
+            filter: "@mfdoctor-example/vite-cjs-v5"
+            dir: examples/compatibility/vite-cjs
           - id: rspack
             filter: "@mfdoctor-example/remote-rspack"
             dir: examples/mixed-federation/remote-rspack

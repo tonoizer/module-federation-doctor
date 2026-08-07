@@ -1,23 +1,39 @@
 import { defineConfig } from "tsdown";
 
-export default defineConfig({
-  entry: [
-    "src/index.ts",
-    "src/cli.ts",
-    "src/vite.ts",
-    "src/nuxt.ts",
-    "src/rspack.ts",
-    "src/rsbuild.ts",
-    "src/webpack.ts",
-    "src/modern.ts",
-    "src/rules.ts",
-    "src/policy.ts",
-    "src/capture.ts",
-  ],
-  format: ["esm"],
+const entries = [
+  "src/index.ts",
+  "src/cli.ts",
+  "src/vite.ts",
+  "src/nuxt.ts",
+  "src/rspack.ts",
+  "src/rsbuild.ts",
+  "src/webpack.ts",
+  "src/modern.ts",
+  "src/rules.ts",
+  "src/policy.ts",
+  "src/capture.ts",
+];
+
+const common = {
   outDir: "dist",
-  outExtensions: () => ({ js: ".js", dts: ".d.ts" }),
-  dts: true,
-  clean: true,
   sourcemap: true,
-});
+};
+
+export default defineConfig([
+  {
+    ...common,
+    entry: entries,
+    format: "esm",
+    outExtensions: () => ({ js: ".js", dts: ".d.ts" }),
+    dts: true,
+    clean: true,
+  },
+  {
+    ...common,
+    entry: entries.filter((entry) => entry !== "src/cli.ts"),
+    format: "cjs",
+    outExtensions: () => ({ js: ".cjs", dts: ".d.cts" }),
+    dts: true,
+    clean: false,
+  },
+]);

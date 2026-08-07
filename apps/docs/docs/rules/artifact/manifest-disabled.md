@@ -1,11 +1,11 @@
 # `artifact/manifest-disabled`
 
 - Category: **tooling**
-- Default severity: **info**
+- Default severity: **warning**
 
 ## Issue
 
-When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection.
+When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. Doctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis.
 
 ## How to fix it
 

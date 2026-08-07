@@ -92,8 +92,8 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`shared/singleton-risk`](./shared/singleton-risk.md) | warning | Multiple framework runtimes can split global state, contexts, hooks, or renderers. |
 | [`ssr/node-library-dts`](./ssr/node-library-dts.md) | warning | Node/SSR producers that keep ESM-style `library.type` or enabled `dts` diverge from the commonjs dual-env contract used by server remotes. |
 | [`vite/hashed-remote-filename`](./vite/hashed-remote-filename.md) | warning | Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds. |
-| [`vite/manual-chunks-conflict`](./vite/manual-chunks-conflict.md) | warning | Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles. |
-| [`vite/server-origin`](./vite/server-origin.md) | warning | Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development. |
+| [`vite/manual-chunks-conflict`](./vite/manual-chunks-conflict.md) | info | Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles. This is an advisory signal because static config cannot prove a runtime cycle for every framework. |
+| [`vite/server-origin`](./vite/server-origin.md) | info | Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development. |
 | [`vite/ssr-nitro-externals`](./vite/ssr-nitro-externals.md) | warning | Shared React (or react-dom) can conflict with Nitro/SSR externals and `ssrEntryLoader` when the server expects a different module instance. |
 
 ## Performance
@@ -102,7 +102,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | --- | --- | --- |
 | [`federation/ghost-shares`](./federation/ghost-shares.md) | info | A package is declared in `shared` by only one project and is unused elsewhere in the federation graph, creating one-sided version coupling. |
 | [`federation/host-gaps`](./federation/host-gaps.md) | warning | A package used by two or more federation projects is missing from every `shared` config, so each app may bundle its own copy. |
-| [`performance/asset-budget`](./performance/asset-budget.md) | warning | Federation assets that exceed project budgets slow startup and transfer more bytes than planned. |
+| [`performance/asset-budget`](./performance/asset-budget.md) | warning | Federation assets that exceed project budgets slow startup and transfer more bytes than planned. Overlapping manifest groups are merged before the comparison so one physical asset is not counted twice. |
 | [`performance/version-first-startup`](./performance/version-first-startup.md) | info | `version-first` loads all remote entries during initialization, adding startup work. |
 | [`performance/vite-bundle-all-css`](./performance/vite-bundle-all-css.md) | warning | Vite attaches all bundle CSS to every expose, which can duplicate transfer and style work. |
 | [`shared/candidate`](./shared/candidate.md) | info | A stateful framework dependency may be bundled separately by host and remote. |
@@ -122,7 +122,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 
 | Rule | Severity | What it protects |
 | --- | --- | --- |
-| [`artifact/manifest-disabled`](./artifact/manifest-disabled.md) | info | When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. |
+| [`artifact/manifest-disabled`](./artifact/manifest-disabled.md) | warning | When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. Doctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis. |
 | [`artifact/types-metadata-missing`](./artifact/types-metadata-missing.md) | warning | The manifest cannot advertise generated type archives to consumers. |
 | [`artifact/types-missing`](./artifact/types-missing.md) | warning | No emitted declaration artifact was found for a typed producer. |
 | [`bridge/disable-alias-deprecated`](./bridge/disable-alias-deprecated.md) | info | `bridge.disableAlias` is a deprecated escape hatch; explicit `enableBridgeRouter` communicates intent clearly. |

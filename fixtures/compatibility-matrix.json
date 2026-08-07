@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "localCi": [
+    {
+      "id": "vite",
+      "fixture": "examples/mixed-federation/host-vite",
+      "bundler": "vite",
+      "package": "@mfdoctor-example/host-vite",
+      "expectedErrors": 0,
+      "coverage": ["Vite 8", "ESM config", "manifest", "stats", "production"]
+    },
+    {
+      "id": "vite-cjs-v5",
+      "fixture": "examples/compatibility/vite-cjs",
+      "bundler": "vite",
+      "package": "@mfdoctor-example/vite-cjs-v5",
+      "expectedErrors": 0,
+      "coverage": ["Vite 5", "CommonJS config", "async ESM bridge", "manifest", "production"]
+    },
+    {
+      "id": "rspack",
+      "fixture": "examples/mixed-federation/remote-rspack",
+      "bundler": "rspack",
+      "package": "@mfdoctor-example/remote-rspack",
+      "expectedErrors": 0,
+      "coverage": ["Rspack", "Enhanced", "manifest", "stats", "production"]
+    },
+    {
+      "id": "rsbuild",
+      "fixture": "examples/mixed-federation/remote-rsbuild",
+      "bundler": "rsbuild",
+      "package": "@mfdoctor-example/remote-rsbuild",
+      "expectedErrors": 0,
+      "coverage": ["Rsbuild", "nested manifest path", "production"]
+    },
+    {
+      "id": "webpack",
+      "fixture": "examples/compatibility/webpack",
+      "bundler": "webpack",
+      "package": "@mfdoctor-example/webpack-smoke",
+      "expectedErrors": 0,
+      "coverage": ["Webpack", "CommonJS adapter", "production"]
+    },
+    {
+      "id": "modern",
+      "fixture": "examples/compatibility/modern",
+      "bundler": "modern",
+      "package": "@mfdoctor-example/modern-smoke",
+      "expectedErrors": 0,
+      "coverage": ["Modern.js adapter", "Rspack lifecycle", "production"]
+    }
+  ],
+  "unitContracts": [
+    {
+      "id": "vite-sveltekit-ssr-entry",
+      "test": "test/unit/rules.test.ts",
+      "status": "validated",
+      "coverage": ["SvelteKit SSR remoteEntry.ssr.js", "remote-entry false-positive guard"]
+    },
+    {
+      "id": "rsbuild-extensionless-vue-expose",
+      "test": "test/unit/rules.test.ts",
+      "status": "validated",
+      "coverage": ["manifest-backed extensionless .vue expose", "expose-path false-positive guard"]
+    },
+    {
+      "id": "shared-asset-budget-overlap",
+      "test": "test/unit/rules.test.ts",
+      "status": "validated",
+      "coverage": ["overlapping shared asset records", "deduplicated performance budget"]
+    }
+  ],
+  "upstreamValidation": [
+    {
+      "id": "vite-sveltekit-ssr",
+      "repository": "gioboa/module-federation-vite-examples",
+      "ref": "c08c557",
+      "variant": "SvelteKit + SSR",
+      "status": "validated",
+      "doctorErrors": 0,
+      "notes": ["SSR-suffixed remote entries are accepted when the build target is server"]
+    },
+    {
+      "id": "vite-svelte",
+      "repository": "gioboa/module-federation-vite-examples",
+      "ref": "c08c557",
+      "variant": "Svelte",
+      "status": "validated",
+      "doctorErrors": 0,
+      "notes": ["Production app report completed without Doctor errors"]
+    },
+    {
+      "id": "vite-angular",
+      "repository": "gioboa/module-federation-vite-examples",
+      "ref": "c08c557",
+      "variant": "Angular",
+      "status": "baseline-blocked",
+      "doctorErrors": 0,
+      "notes": [
+        "Example build was blocked by its existing Angular/package baseline; no Doctor-specific error was introduced"
+      ]
+    },
+    {
+      "id": "core-rsbuild-manifest",
+      "repository": "module-federation/core",
+      "ref": "b022032",
+      "variant": "Rsbuild/Rspack manifest examples",
+      "status": "validated",
+      "doctorErrors": 0,
+      "notes": ["Custom nested manifest paths are discovered within the bounded build output"]
+    },
+    {
+      "id": "core-modernjs-rspack",
+      "repository": "module-federation/module-federation-examples",
+      "ref": "9c4e554",
+      "variant": "Modern.js/Rspack",
+      "status": "validated",
+      "doctorErrors": 0,
+      "notes": ["Production app reports completed without Doctor errors"]
+    },
+    {
+      "id": "nuxt-vite-adapter",
+      "repository": "module-federation/nuxt",
+      "ref": "6f145fb",
+      "variant": "Nuxt 3/4 + Vite",
+      "status": "baseline-blocked",
+      "doctorErrors": 0,
+      "notes": [
+        "The upstream example build remained blocked by its existing package-resolution baseline; no new Doctor-specific finding was observed"
+      ]
+    }
+  ]
+}

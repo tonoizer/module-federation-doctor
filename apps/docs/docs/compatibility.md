@@ -22,11 +22,32 @@ Related: [capabilities](./capabilities.md) ·
 | Bundler              | Status        | Adapter entry                       | CI evidence                                                | Notes                                                                                                        |
 | -------------------- | ------------- | ----------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Vite                 | **supported** | `@module-federation/doctor/vite`    | `compatibility` workflow → `host-vite` build + Doctor      | Primary host path in `examples/mixed-federation`                                                             |
+| Vite 5 + CommonJS    | **supported** | `@module-federation/doctor/vite`    | `compatibility` workflow → `vite-cjs-v5` build + Doctor    | Async ESM bridge for the Vite MF plugin; validates Doctor's published CommonJS adapter                       |
 | Rolldown / Vite Plus | **partial**   | `@module-federation/doctor/vite`    | unit lifecycle hooks + honest `doctor/partial-analysis`    | Same Vite entry; usable with gaps until a real Rolldown/Vite Plus smoke build lands in CI (#11)              |
 | Rspack               | **supported** | `@module-federation/doctor/rspack`  | `compatibility` workflow → `remote-rspack` build + Doctor  | Direct `@module-federation/enhanced/rspack` (first-class)                                                    |
 | Rsbuild              | **supported** | `@module-federation/doctor/rsbuild` | `compatibility` workflow → `remote-rsbuild` build + Doctor | `@module-federation/rsbuild-plugin`                                                                          |
 | Webpack              | **supported** | `@module-federation/doctor/webpack` | `compatibility` workflow → `webpack-smoke` build + Doctor  | `@module-federation/enhanced/webpack` (#10 shipped)                                                          |
 | Modern.js            | **partial**   | `@module-federation/doctor/modern`  | `compatibility` workflow → `modern-smoke` (Rspack stub)    | Adapter API + Rspack-under-the-hood smoke; not full `@modern-js/app-tools` until a real Modern.js cell (#12) |
+
+## Variant coverage
+
+The machine-readable contract lives in
+[`fixtures/compatibility-matrix.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/fixtures/compatibility-matrix.json).
+It distinguishes reproducible local CI cells from unit contracts and pinned
+upstream validation records:
+
+| Surface                                     | Current evidence                                                                     | Matrix status    |
+| ------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------- |
+| Vite current ESM + Vite 5 CommonJS          | Production build + project/report/SARIF assertions on Node 22 and 24                 | CI               |
+| Rspack, Rsbuild, Webpack, Modern.js adapter | Production build + Doctor report assertions                                          | CI               |
+| Svelte and SvelteKit SSR                    | Pinned upstream app reports plus SvelteKit SSR-entry regression test                 | validated        |
+| Angular                                     | Pinned upstream validation; the example's existing package baseline blocks the build | baseline-blocked |
+| Nuxt 3/4                                    | Adapter contract and pinned upstream validation record                               | baseline-blocked |
+
+The upstream rows are evidence records, not release claims: CI uses pinned
+local fixtures so a moving external repository cannot silently change the
+release gate. Refresh the pinned ref and rerun the external validation before
+changing a row's status.
 
 Nuxt 3 / Nuxt 4 use the first-class adapter `@module-federation/doctor/nuxt`.
 It hooks the public `vite:extendConfig` API and is covered by the adapter

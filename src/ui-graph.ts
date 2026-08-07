@@ -39,20 +39,36 @@ function findingsByPackage(findings: DoctorFinding[]): Map<string, Severity> {
   return map;
 }
 
+function encodedGroup(group: string | undefined): string | undefined {
+  return group ? encodeURIComponent(group) : undefined;
+}
+
 function projectNodeId(project: ProjectFacts): string {
-  return `project:${project.project.name}`;
+  const group = encodedGroup(project.project.federationGroup);
+  return group
+    ? `project:group:${group}:${project.project.name}`
+    : `project:${project.project.name}`;
 }
 
-function remoteNodeId(consumer: string, remoteName: string): string {
-  return `remote:${consumer}:${remoteName}`;
+function remoteNodeId(consumer: string, remoteName: string, group?: string): string {
+  const scope = encodedGroup(group);
+  return scope
+    ? `remote:group:${scope}:${consumer}:${remoteName}`
+    : `remote:${consumer}:${remoteName}`;
 }
 
-function sharedNodeId(packageName: string): string {
-  return `shared:${packageName}`;
+function sharedNodeId(packageName: string, group?: string): string {
+  const scope = encodedGroup(group);
+  return scope ? `shared:group:${scope}:${packageName}` : `shared:${packageName}`;
 }
 
-function exposeNodeId(project: string, exposeKey: string): string {
-  return `expose:${project}:${exposeKey}`;
+function exposeNodeId(project: ProjectFacts, exposeKey: string): string {
+  return `expose:${projectNodeId(project)}:${exposeKey}`;
+}
+
+function runtimeNodeId(group?: string): string {
+  const scope = encodedGroup(group);
+  return scope ? `runtime:external:${scope}` : "runtime:external";
 }
 
 function withSeverity<T extends object>(
@@ -119,13 +135,14 @@ function buildRemotesGraph(
     );
   }
 
-  const projectsById = new Map(federation.projects.map((node) => [node.id, node.project] as const));
+  const projectsById = new Map(federation.projects.map((node) => [node.id, node] as const));
   for (const edge of federation.remoteEdges) {
-    const matched = edge.targetId ? projectsById.get(edge.targetId) : undefined;
-    const targetId = matched
-      ? projectNodeId(matched)
-      : remoteNodeId(edge.fromProject, edge.remoteName);
-    if (!matched)
+    const sourceNode = projectsById.get(edge.fromId);
+    const targetNode = edge.targetId ? projectsById.get(edge.targetId) : undefined;
+    const targetId = targetNode
+      ? projectNodeId(targetNode.project)
+      : remoteNodeId(edge.fromProject, edge.remoteName, sourceNode?.federationGroup);
+    if (!targetNode)
       addNode(nodes, {
         id: targetId,
         label: edge.remoteName,
@@ -136,7 +153,7 @@ function buildRemotesGraph(
           alias: edge.alias,
         },
       });
-    const source = `project:${edge.fromProject}`;
+    const source = sourceNode ? projectNodeId(sourceNode.project) : `project:${edge.fromProject}`;
     addEdge(edges, {
       id: `${source}->${targetId}`,
       source,
@@ -171,7 +188,7 @@ function buildSharedGraph(projects: ProjectFacts[], findings: DoctorFinding[]): 
       ),
     );
     for (const shared of Object.values(project.moduleFederation?.shared ?? {})) {
-      const id = sharedNodeId(shared.package);
+      const id = sharedNodeId(shared.package, project.project.federationGroup);
       const previous = nodes.get(id);
       const previousVersions = previous?.meta?.versions as Record<string, string> | undefined;
       const versions = previousVersions
@@ -248,7 +265,7 @@ function buildOrchestrationGraph(
     );
 
     for (const [key, filePath] of Object.entries(project.moduleFederation?.exposes ?? {})) {
-      const id = exposeNodeId(project.project.name, key);
+      const id = exposeNodeId(project, key);
       addNode(nodes, {
         id,
         label: key,
@@ -265,28 +282,36 @@ function buildOrchestrationGraph(
     }
   }
 
-  const projectsById = new Map(federation.projects.map((node) => [node.id, node.project] as const));
+  const projectsById = new Map(federation.projects.map((node) => [node.id, node] as const));
   for (const edge of federation.remoteEdges) {
-    const provider = edge.targetId ? projectsById.get(edge.targetId) : undefined;
-    if (!provider) continue;
-    for (const key of Object.keys(provider.moduleFederation?.exposes ?? {})) {
+    const providerNode = edge.targetId ? projectsById.get(edge.targetId) : undefined;
+    const sourceNode = projectsById.get(edge.fromId);
+    if (!providerNode || !sourceNode) continue;
+    for (const key of Object.keys(providerNode.project.moduleFederation?.exposes ?? {})) {
       addEdge(edges, {
-        id: `project:${edge.fromProject}->${exposeNodeId(provider.project.name, key)}`,
-        source: `project:${edge.fromProject}`,
-        target: exposeNodeId(provider.project.name, key),
+        id: `${projectNodeId(sourceNode.project)}->${exposeNodeId(providerNode.project, key)}`,
+        source: projectNodeId(sourceNode.project),
+        target: exposeNodeId(providerNode.project, key),
         label: `consumes ${edge.remoteName}`,
       });
     }
   }
 
-  const providers = projects.filter(
-    (project) => project.moduleFederation?.experiments?.provideExternalRuntime,
-  );
-  const consumers = projects.filter(
-    (project) => project.moduleFederation?.experiments?.externalRuntime,
-  );
-  if (providers.length > 0 || consumers.length > 0) {
-    const runtimeId = "runtime:external";
+  const projectsByGroup = new Map<string, ProjectFacts[]>();
+  for (const project of projects) {
+    const key = project.project.federationGroup ?? "\0ungrouped";
+    projectsByGroup.set(key, [...(projectsByGroup.get(key) ?? []), project]);
+  }
+  for (const groupProjects of projectsByGroup.values()) {
+    const group = groupProjects[0]?.project.federationGroup;
+    const providers = groupProjects.filter(
+      (project) => project.moduleFederation?.experiments?.provideExternalRuntime,
+    );
+    const consumers = groupProjects.filter(
+      (project) => project.moduleFederation?.experiments?.externalRuntime,
+    );
+    if (providers.length === 0 && consumers.length === 0) continue;
+    const runtimeId = runtimeNodeId(group);
     addNode(
       nodes,
       withSeverity(
@@ -294,6 +319,7 @@ function buildOrchestrationGraph(
           id: runtimeId,
           label: "external runtime",
           kind: "runtime" as const,
+          ...(group ? { meta: { federationGroup: group } } : {}),
         },
         findings.some((item) => item.ruleId.includes("external-runtime")) ? "error" : undefined,
       ),

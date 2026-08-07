@@ -574,7 +574,7 @@ const plans: Record<string, RulePlan> = {
   ),
   "vite/manual-chunks-conflict": plan(
     6,
-    "warning",
+    "info",
     "config.declared",
     "declared",
     "project",
@@ -614,7 +614,7 @@ const plans: Record<string, RulePlan> = {
   ),
   "vite/server-origin": plan(
     6,
-    "warning",
+    "info",
     "config.declared",
     "declared",
     "project",
@@ -642,7 +642,7 @@ const plans: Record<string, RulePlan> = {
   ),
   "artifact/manifest-disabled": plan(
     2,
-    "info",
+    "warning",
     "artifact.manifest",
     "artifact",
     "artifact",

@@ -3,13 +3,13 @@
   "upstreamSources": [
     {
       "repository": "gioboa/module-federation-vite-examples",
-      "validatedRef": "faa1605",
+      "validatedRef": "c08c557",
       "surface": "Vite example application wiring",
       "localFixtures": ["examples/mixed-federation/host-vite", "examples/standalone-findings/vite"]
     },
     {
       "repository": "module-federation/vite",
-      "validatedRef": "e8e9515",
+      "validatedRef": "e9da956",
       "surface": "Vite/Rolldown federation lifecycle and emitted assets",
       "localFixtures": ["examples/mixed-federation/host-vite"]
     },
@@ -28,6 +28,12 @@
       "validatedRef": "6f145fb",
       "surface": "Nuxt 3/4 public Vite-hook adapter contract",
       "localFixtures": ["test/unit/nuxt.test.ts"]
+    },
+    {
+      "repository": "module-federation/module-federation-examples",
+      "validatedRef": "9c4e554",
+      "surface": "Modern.js, Rsbuild, Svelte, Angular, and cross-framework example wiring",
+      "localFixtures": ["examples/compatibility/modern", "test/unit/rules.test.ts"]
     }
   ],
   "policy": {

@@ -19,8 +19,10 @@ mfdoctor check --diagnostics-dir .mf/doctor/diagnostics
 mfdoctor prompt --finding config/name-required
 mfdoctor workspace
 mfdoctor workspace apps packages --format terminal,json,sarif
+mfdoctor workspace apps packages --group checkout
 mfdoctor federation --workspace
 mfdoctor federation --workspace apps packages --format terminal,json,sarif
+mfdoctor federation --workspace apps packages --group checkout
 mfdoctor federation ".mf/doctor/**/project.json"
 mfdoctor federation ".mf/doctor/**/project.json" --baseline ./mfdoctor.baseline.json
 mfdoctor baseline generate .mf/doctor/report.json --out mfdoctor.baseline.json
@@ -98,6 +100,12 @@ hand-tuned CI:
 ```bash
 mfdoctor federation ".mf/doctor/**/project.json"
 ```
+
+Use `federationGroup` in adapter options when a repository contains multiple
+independent federation graphs. `--group <name>` selects that graph; projects
+in different explicit groups are excluded from federation-wide comparisons.
+For repositories containing unrelated fixtures, prefer separate workspace
+roots/globs or assign a group to each fixture set.
 
 ## Fingerprint baselines
 
