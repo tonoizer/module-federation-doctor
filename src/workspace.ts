@@ -31,11 +31,19 @@ export interface DiscoverWorkspaceProjectsOptions {
   globs?: string[];
   /** Base directory for relative roots. Defaults to `process.cwd()`. */
   cwd?: string;
+  /** Select one explicit federation group while discovering project facts. */
+  group?: string;
   analysisBudgets?: AnalysisBudgetOptions;
 }
 
 export interface WorkspaceProjectDiscovery {
   files: string[];
+  /** Explicit groups observed in the discovered project facts. */
+  groups: string[];
+  /** Number of discovered projects without an explicit federation group. */
+  ungrouped: number;
+  /** Group used to filter `files`, when supplied. */
+  selectedGroup?: string;
   budget: AnalysisBudgetReport;
   diagnostics: WorkspaceProjectDiagnostic[];
 }
@@ -49,7 +57,23 @@ export interface WorkspaceProjectDiagnostic {
 }
 
 interface ProjectEnvelope {
-  project?: { name?: unknown; root?: unknown; identityKey?: unknown };
+  project?: {
+    name?: unknown;
+    root?: unknown;
+    identityKey?: unknown;
+    federationGroup?: unknown;
+  };
+}
+
+function federationGroupFromContents(contents: string | undefined): string | undefined {
+  if (!contents) return undefined;
+  try {
+    const value = JSON.parse(contents) as ProjectEnvelope;
+    const group = value.project?.federationGroup;
+    return typeof group === "string" && group.trim().length > 0 ? group.trim() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 interface WorkspaceReadResult {
@@ -99,6 +123,7 @@ async function inspectWorkspaceProjects(
   workspaceRoot: string,
   tracker: AnalysisBudgetTracker,
   preloadedContents: Map<string, string | undefined>,
+  selectedGroup?: string,
 ): Promise<{ files: string[]; diagnostics: WorkspaceProjectDiagnostic[] }> {
   const diagnostics: WorkspaceProjectDiagnostic[] = [];
   const identities = new Map<string, string[]>();
@@ -118,6 +143,7 @@ async function inspectWorkspaceProjects(
         file: file.file,
         contents: read.contents,
         identity: undefined,
+        included: true,
         diagnostics: [
           {
             kind: "invalid",
@@ -129,6 +155,8 @@ async function inspectWorkspaceProjects(
     }
     const declaredRoot =
       typeof envelope.project.root === "string" ? envelope.project.root : undefined;
+    const federationGroup = federationGroupFromContents(read.contents);
+    const included = selectedGroup === undefined || federationGroup === selectedGroup;
     const resolvedRoot = path.resolve(projectRoot, declaredRoot ?? ".");
     const rootExists = await fs
       .stat(resolvedRoot)
@@ -142,16 +170,19 @@ async function inspectWorkspaceProjects(
     return {
       file: file.file,
       contents: read.contents,
-      identity,
-      diagnostics: rootExists
+      identity: included ? identity : undefined,
+      included,
+      diagnostics: !included
         ? []
-        : [
-            {
-              kind: "stale",
-              files: [displayFile],
-              message: `Project facts point to a missing project root: ${declaredRoot ?? "<missing>"}`,
-            } satisfies WorkspaceProjectDiagnostic,
-          ],
+        : rootExists
+          ? []
+          : [
+              {
+                kind: "stale",
+                files: [displayFile],
+                message: `Project facts point to a missing project root: ${declaredRoot ?? "<missing>"}`,
+              } satisfies WorkspaceProjectDiagnostic,
+            ],
     };
   });
   for (const item of inspected) {
@@ -179,7 +210,7 @@ async function inspectWorkspaceProjects(
   }
   return {
     files: inspected
-      .filter((item): item is NonNullable<typeof item> => !!item)
+      .filter((item): item is NonNullable<typeof item> => !!item && item.included)
       .map((item) => item.file),
     diagnostics: diagnostics.sort((left, right) =>
       `${left.kind}:${left.files.join(",")}`.localeCompare(
@@ -213,24 +244,47 @@ export async function discoverWorkspaceProjectsWithBudget(
     });
     for (const file of matches) files.add(path.normalize(file));
   }
-  const selected: Array<{ file: string; reservedBytes: number }> = [];
   const orderedFiles = [...files].sort((left, right) => left.localeCompare(right));
-  const sizes = await mapBounded(orderedFiles, (file) =>
+  // A selected group is a scope boundary, not a post-processing filter. Probe
+  // the tiny project envelopes first so unrelated fixture groups cannot spend
+  // the selected group's file/byte budget. The selected files are still fully
+  // budgeted below; invalid/unreadable envelopes are left out of an explicit
+  // group selection because their group cannot be established safely.
+  const scopedContents = new Map<string, string | undefined>();
+  const observedGroups = new Set<string>();
+  let observedUngrouped = 0;
+  let scopedFiles = orderedFiles;
+  if (options.group !== undefined) {
+    const probed = await mapBounded(orderedFiles, async (file) => ({
+      file,
+      contents: await fs.readFile(file, "utf8").catch(() => undefined),
+    }));
+    for (const { file, contents } of probed) {
+      const group = federationGroupFromContents(contents);
+      if (group) observedGroups.add(group);
+      else if (contents !== undefined) observedUngrouped += 1;
+      if (group !== options.group) continue;
+      scopedContents.set(file, contents);
+    }
+    scopedFiles = [...scopedContents.keys()].sort((left, right) => left.localeCompare(right));
+  }
+  const selected: Array<{ file: string; reservedBytes: number }> = [];
+  const sizes = await mapBounded(scopedFiles, (file) =>
     fs
       .stat(file)
       .then((item) => item.size)
       .catch(() => 0),
   );
-  for (const [index, file] of orderedFiles.entries()) {
+  for (const [index, file] of scopedFiles.entries()) {
     const size = sizes[index] ?? 0;
     if (tracker.reserve({ files: 1, serializedBytes: size }))
       selected.push({ file, reservedBytes: size });
   }
   const selectedContents = await mapBounded(selected, async ({ file }) => {
     if (!tracker.checkWallTime()) return undefined;
-    return fs.readFile(file, "utf8").catch(() => undefined);
+    return scopedContents.get(file) ?? fs.readFile(file, "utf8").catch(() => undefined);
   });
-  const preloadedContents = new Map<string, string | undefined>();
+  const preloadedContents = new Map(scopedContents);
   const prepared: Array<{ file: string; reservedBytes: number }> = [];
   for (const [index, selectedFile] of selected.entries()) {
     const contents = selectedContents[index];
@@ -253,11 +307,29 @@ export async function discoverWorkspaceProjectsWithBudget(
     workspaceRoot,
     tracker,
     preloadedContents,
+    options.group,
   );
   const budget = tracker.report();
   const selectedFiles = inspected.files.sort((left, right) => left.localeCompare(right));
+  const groups = new Set<string>(observedGroups);
+  let ungrouped = observedUngrouped;
+  for (const selectedFile of prepared) {
+    if (options.group !== undefined) continue;
+    const contents = preloadedContents.get(selectedFile.file);
+    if (!contents) continue;
+    try {
+      const group = federationGroupFromContents(contents);
+      if (group) groups.add(group);
+      else ungrouped += 1;
+    } catch {
+      // Invalid payloads are surfaced through diagnostics, not group metadata.
+    }
+  }
   return {
     files: selectedFiles,
+    groups: [...groups].sort((left, right) => left.localeCompare(right)),
+    ungrouped,
+    ...(options.group ? { selectedGroup: options.group } : {}),
     budget: budget.exceeded.length > 0 ? { ...budget, status: "unknown" } : budget,
     diagnostics: budget.exceeded.length > 0 ? [] : inspected.diagnostics,
   };

@@ -345,7 +345,7 @@ type ViteResolvedConfigLike = {
   };
   ssr?: { target?: string };
   resolve?: { alias?: unknown };
-  server?: { origin?: string };
+  server?: { origin?: string; port?: number };
 };
 
 function extractViteConfigFacts(
@@ -377,6 +377,8 @@ function extractViteConfigFacts(
   if (config.server) {
     const origin = config.server.origin;
     facts.serverOrigin = typeof origin === "string" && origin.length > 0 ? origin : null;
+    if (typeof config.server.port === "number" && Number.isFinite(config.server.port))
+      facts.serverPort = config.server.port;
   }
 
   return facts;

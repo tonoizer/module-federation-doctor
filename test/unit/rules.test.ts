@@ -1978,6 +1978,39 @@ describe("doctor/partial-analysis suggestions", () => {
     expect(findings).toEqual([]);
   });
 
+  it("trusts a valid build manifest for an expose omitted from the source import scan", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.exposes = { "./AppIndex": "./src/views/AppIndex" };
+    facts.capabilities.manifest = true;
+    facts.artifacts.manifest = {
+      path: "dist/mf-manifest.json",
+      valid: true,
+      exposes: [{ key: "./AppIndex", assets: ["AppIndex.js"] }],
+      shared: [],
+    };
+    const findings: Array<unknown> = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/expose-path-missing")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([]);
+  });
+
+  it("does not trust expose keys from a malformed manifest", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.exposes = { "./Missing": "./src/Missing" };
+    facts.capabilities.manifest = true;
+    facts.artifacts.manifest = {
+      path: "dist/mf-manifest.json",
+      valid: false,
+      exposes: [{ key: "./Missing", assets: [] }],
+      shared: [],
+    };
+    const findings: Array<unknown> = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/expose-path-missing")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ evidence: { key: "./Missing" } });
+  });
+
   it("does not duplicate a deliberate dts: false finding with types-missing", async () => {
     const facts = baseFacts();
     facts.moduleFederation!.dts = { enabled: false, options: {} };
@@ -2010,6 +2043,22 @@ describe("doctor/partial-analysis suggestions", () => {
       shared: [],
     };
     facts.artifacts.emittedAssets = ["dist/mf-manifest.json", "dist/assets/remoteEntry-AbCd.js"];
+    const findings: Array<unknown> = [];
+    const rule = builtInRules.find((item) => item.meta.id === "artifact/remote-entry-missing")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([]);
+  });
+
+  it("does not flag a Vite SSR-suffixed remote entry as a missing client entry", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
+    facts.capabilities.emittedAssets = true;
+    facts.artifacts.emittedAssets = [".svelte-kit/output/server/remoteEntry.ssr.js"];
+    facts.builds = [
+      {
+        targetKind: "node",
+      } as NonNullable<ProjectFacts["builds"]>[number],
+    ];
     const findings: Array<unknown> = [];
     const rule = builtInRules.find((item) => item.meta.id === "artifact/remote-entry-missing")!;
     await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
@@ -2080,10 +2129,10 @@ describe("config/implementation-suspicious", () => {
 });
 
 describe("Vite/Nuxt artifact false positives", () => {
-  async function runRule(id: string, facts: ProjectFacts) {
-    const findings: Array<{ message: string }> = [];
+  async function runRule(id: string, facts: ProjectFacts, options: Record<string, unknown> = {}) {
+    const findings: Array<{ message: string; evidence?: Record<string, unknown> }> = [];
     const rule = builtInRules.find((item) => item.meta.id === id)!;
-    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    await rule.check({ facts, options, report: (finding) => findings.push(finding) });
     return findings;
   }
 
@@ -2155,6 +2204,23 @@ describe("Vite/Nuxt artifact false positives", () => {
     expect(await runRule("artifact/manifest-expose-assets-empty", viteBase())).toHaveLength(0);
   });
 
+  it("deduplicates shared manifest records that point at one emitted chunk", async () => {
+    const facts = viteBase();
+    facts.artifacts.manifest!.shared = [
+      { name: "react", assets: ["assets/shared.js"] },
+      { name: "react-dom", assets: ["assets/shared.js"] },
+      { name: "react-dom/client", assets: ["assets/shared.js"] },
+    ];
+    facts.artifacts.assetSizes = { "assets/shared.js": 600_000 };
+    const findings = await runRule("performance/asset-budget", facts);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.evidence).toMatchObject({
+      target: "shared federation assets",
+      packages: ["react", "react-dom", "react-dom/client"],
+      bytes: 600_000,
+    });
+  });
+
   it("does not call an explicit manifest opt-out partial analysis", async () => {
     const facts = viteBase();
     facts.bundler.name = "rspack";
@@ -2162,6 +2228,16 @@ describe("Vite/Nuxt artifact false positives", () => {
     facts.capabilities.stats = false;
     facts.moduleFederation!.manifest = { enabled: false, options: {} };
     expect(await runRule("doctor/partial-analysis", facts)).toHaveLength(0);
+  });
+
+  it("does not duplicate Vite's disabled default manifest as partial analysis", async () => {
+    const facts = viteBase();
+    facts.capabilities.manifest = false;
+    facts.capabilities.stats = false;
+    facts.moduleFederation!.manifest = { enabled: false, options: {} };
+    delete facts.artifacts.manifest;
+    expect(await runRule("doctor/partial-analysis", facts)).toHaveLength(0);
+    expect(await runRule("artifact/manifest-disabled", facts)).toHaveLength(1);
   });
 
   it("accepts a root runtime plugin that is outside the source scanner", async () => {
@@ -2485,6 +2561,48 @@ describe("vite dialect follow-ons", () => {
       await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
       expect(findings, id).toHaveLength(0);
     }
+  });
+
+  it("uses an explicit recommendation for the Vite server-origin signal", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "development",
+      viteConfigFacts: { serverOrigin: null, serverPort: 4173 },
+      moduleFederation: {
+        name: "host",
+        remotes: { shop: { name: "shop", entry: "http://localhost:4174/remoteEntry.js" } },
+      },
+      output: { formats: [] },
+      rules: {
+        "vite/server-origin": ["info", { recommendedOrigin: "http://localhost:9999" }],
+      },
+    });
+    expect(
+      result.report.findings.find((item) => item.ruleId === "vite/server-origin"),
+    ).toMatchObject({
+      severity: "info",
+      evidence: { recommendedOrigin: "http://localhost:9999" },
+    });
+  });
+
+  it("uses the Vite default when the dev server requests an automatic port", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "development",
+      viteConfigFacts: { serverOrigin: null, serverPort: 0 },
+      moduleFederation: {
+        name: "host",
+        remotes: { shop: { name: "shop", entry: "http://localhost:4174/remoteEntry.js" } },
+      },
+      output: { formats: [] },
+    });
+    expect(
+      result.report.findings.find((item) => item.ruleId === "vite/server-origin"),
+    ).toMatchObject({ evidence: { recommendedOrigin: "http://localhost:5173" } });
   });
 });
 

@@ -3,8 +3,9 @@
  * One-command production/build/runtime contract gate for the local MF matrix.
  *
  * The upstream repositories are represented by small, reviewed fixtures in
- * this repository. The provenance file records which upstream surfaces each
- * fixture mirrors, so CI does not need to clone five moving repositories.
+ * this repository. The provenance and compatibility files record which
+ * upstream surfaces each fixture mirrors, so CI does not need to clone moving
+ * repositories.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -132,6 +133,9 @@ runRequired("production build: compatibility cells", packageManager, [
 for (const dir of ["examples/compatibility/webpack", "examples/compatibility/modern"]) {
   assertReport(dir, { errors: 0 });
 }
+runRequired("compatibility matrix contract", process.execPath, [
+  "scripts/verify-compatibility-matrix.mjs",
+]);
 
 runRequired("standalone findings catalog", "node", ["scripts/demo-standalone-findings.mjs"]);
 runRequired("CLI showcase catalog", "node", ["scripts/demo-showcase.mjs"]);

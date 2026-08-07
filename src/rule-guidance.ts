@@ -253,8 +253,8 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "performance/asset-budget": {
     category: "performance",
     impact:
-      "Federation assets that exceed project budgets slow startup and transfer more bytes than planned.",
-    fix: 'Reduce the oversized entry, expose, or shared assets, or raise `rules["performance/asset-budget"]` byte limits.',
+      "Federation assets that exceed project budgets slow startup and transfer more bytes than planned. Overlapping manifest groups are merged before the comparison so one physical asset is not counted twice.",
+    fix: 'Reduce the oversized entry, expose, or shared assets, or raise `rules["performance/asset-budget"]` byte limits. Review the reported asset list before changing the budget.',
     sources: [manifest, "https://module-federation.io/configure/shareStrategy.html"],
   },
   "reliability/version-first-offline-remotes": {
@@ -354,8 +354,8 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "vite/manual-chunks-conflict": {
     category: "reliability",
     impact:
-      "Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles.",
-    fix: "Keep federation runtime chunks isolated; move general splitting outside that graph or allowlist a proven layout.",
+      "Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles. This is an advisory signal because static config cannot prove a runtime cycle for every framework.",
+    fix: "Keep federation runtime chunks isolated; move general splitting outside that graph or allowlist a proven layout. Treat the finding as informational until a production build or runtime trace confirms an ordering problem.",
     sources: [vite],
   },
   "vite/hashed-remote-filename": {
@@ -382,7 +382,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     category: "reliability",
     impact:
       "Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development.",
-    fix: "Set Vite `server.origin` to the URL remotes should publish for consumers.",
+    fix: 'Set Vite `server.origin` to the URL remotes should publish for consumers. Doctor recommends `http://localhost:<server.port>` (default port 5173); configure `rules["vite/server-origin"].recommendedOrigin` or turn off `requireServerOrigin` when your topology differs.',
     sources: [vite],
   },
   "config/transform-import-share-conflict": {
@@ -406,7 +406,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "artifact/manifest-disabled": {
     category: "tooling",
     impact:
-      "When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection.",
+      "When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. Doctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis.",
     fix: "For a producer, set `manifest: true` to publish the metadata. For a consumer, point remotes at the producer's `mf-manifest.json` when those capabilities are wanted. If direct `remoteEntry.js` URLs are intentional, document that choice and turn this rule off.",
     sources: [manifest],
   },
@@ -475,7 +475,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     category: "tooling",
     impact:
       "Missing facts, unresolved dynamic imports, unreadable source files recorded in `imports.sourceReadFailures`, budget-limited persisted projects, or omitted workspace projects reduce confidence and can hide relevant findings. Source read failures make project or workspace input `unknown`; a pure analysis-budget cutoff is `partial`. Incomplete workspace evidence suppresses absence-based federation rules (`host-gaps`, `ghost-shares`, `missing-provider`, and `external-runtime-provider-missing`) while positive mismatches remain useful. Package-capable unresolved dynamics suppress workspace absence certainty without changing the ordinary project exit code.",
-    fix: "When MF options are missing, pass them explicitly. On Vite, missing `mf-manifest.json` / `mf-stats.json` usually means enable `manifest: true` — not missing options. Fix source permissions or transient read races when `imports.sourceReadFailures` is present, or raise the analysis budget when only a budget cutoff made the workspace `partial`. Prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
+    fix: "When MF options are missing, pass them explicitly. On Vite, missing `mf-manifest.json` / `mf-stats.json` usually means enable `manifest: true` — not missing options; an explicit `manifest: false` is reported by `artifact/manifest-disabled` instead. Fix source permissions or transient read races when `imports.sourceReadFailures` is present, or raise the analysis budget when only a budget cutoff made the workspace `partial`. Prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
     sources: [configure],
   },
   "config/plugin-package-mismatch": {

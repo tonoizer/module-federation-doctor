@@ -1,7 +1,7 @@
 # `vite/server-origin`
 
 - Category: **reliability**
-- Default severity: **warning**
+- Default severity: **info**
 
 ## Issue
 
@@ -9,7 +9,7 @@ Without `server.origin`, remote consumers may resolve assets against the wrong p
 
 ## How to fix it
 
-Set Vite `server.origin` to the URL remotes should publish for consumers.
+Set Vite `server.origin` to the URL remotes should publish for consumers. Doctor recommends `http://localhost:<server.port>` (default port 5173); configure `rules["vite/server-origin"].recommendedOrigin` or turn off `requireServerOrigin` when your topology differs.
 
 Suppress or retarget with `rules["vite/server-origin"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 

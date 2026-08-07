@@ -232,6 +232,25 @@ describe("CLI arguments", () => {
     });
   });
 
+  it("parses an explicit federation group", () => {
+    expect(parseArgs(["federation", "--workspace", "apps", "--group", "checkout"])).toEqual({
+      command: "federation",
+      patterns: [],
+      roots: ["apps"],
+      globs: [],
+      group: "checkout",
+      workspace: true,
+      ci: false,
+      verbose: false,
+      score: true,
+      prompt: true,
+      forcePrompt: false,
+    });
+    expect(() => parseArgs(["federation", "--workspace", "--group"])).toThrow(
+      "--group needs a group name",
+    );
+  });
+
   it("parses runtime trace and project globs", () => {
     expect(
       parseArgs([

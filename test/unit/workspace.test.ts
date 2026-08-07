@@ -62,12 +62,157 @@ describe("workspace discovery", () => {
     ]);
   });
 
+  it("reports explicit federation groups and filters one group without cross-group diagnostics", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-groups-"));
+    try {
+      const fixture = JSON.parse(
+        await fs.readFile(
+          path.join(repository, "fixtures/workspaces/clean/host/.mf/doctor/project.json"),
+          "utf8",
+        ),
+      );
+      for (const [index, group] of ["checkout", "catalog"].entries()) {
+        const projectRoot = path.join(root, `apps/${group}`);
+        const project = structuredClone(fixture);
+        project.project.name = `${group}-host`;
+        project.project.federationGroup = group;
+        await fs.mkdir(path.join(projectRoot, ".mf/doctor"), { recursive: true });
+        await fs.writeFile(
+          path.join(projectRoot, ".mf/doctor/project.json"),
+          JSON.stringify(project),
+        );
+        if (index === 0) await fs.mkdir(path.join(projectRoot, "src"), { recursive: true });
+      }
+
+      const all = await discoverWorkspaceProjectsWithBudget({ cwd: root });
+      expect(all.groups).toEqual(["catalog", "checkout"]);
+      expect(all.ungrouped).toBe(0);
+      expect(all.files).toHaveLength(2);
+
+      const checkout = await discoverWorkspaceProjectsWithBudget({ cwd: root, group: "checkout" });
+      expect(checkout.selectedGroup).toBe("checkout");
+      expect(checkout.groups).toEqual(["catalog", "checkout"]);
+      expect(checkout.files).toHaveLength(1);
+      expect(checkout.diagnostics).toEqual([]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("applies an explicit group before workspace budgets are spent", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-budget-"));
+    try {
+      const fixture = JSON.parse(
+        await fs.readFile(
+          path.join(repository, "fixtures/workspaces/clean/host/.mf/doctor/project.json"),
+          "utf8",
+        ),
+      );
+      const entries = [
+        ["a-independent", "independent"],
+        ["z-selected", "selected"],
+      ] as const;
+      for (const [directory, group] of entries) {
+        const file = path.join(root, "apps", directory, ".mf/doctor/project.json");
+        const project = structuredClone(fixture);
+        project.project.name = directory;
+        project.project.federationGroup = group;
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.writeFile(file, JSON.stringify(project));
+      }
+
+      const selected = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        group: "selected",
+        analysisBudgets: { maxFiles: 1 },
+      });
+
+      expect(selected.files).toHaveLength(1);
+      expect(selected.files[0]).toContain(`${path.sep}z-selected${path.sep}`);
+      expect(selected.budget.status).toBe("complete");
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("returns an empty list when nothing matches", async () => {
     const files = await discoverWorkspaceProjects({
       cwd: repository,
       roots: ["fixtures/manifests"],
     });
     expect(files).toEqual([]);
+  });
+
+  it("keeps federation-wide conflicts inside explicit groups", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-federation-groups-"));
+    try {
+      const fixture = JSON.parse(
+        await fs.readFile(
+          path.join(repository, "fixtures/workspaces/clean/host/.mf/doctor/project.json"),
+          "utf8",
+        ),
+      );
+      const files: string[] = [];
+      for (const group of ["checkout", "catalog"]) {
+        for (const suffix of ["one", "two"]) {
+          const projectRoot = path.join(root, "apps", `${group}-${suffix}`);
+          const project = structuredClone(fixture);
+          project.project.name = `${group}-${suffix}`;
+          project.project.federationGroup = group;
+          project.moduleFederation.name = "shared-name";
+          const file = path.join(projectRoot, ".mf/doctor/project.json");
+          await fs.mkdir(path.dirname(file), { recursive: true });
+          await fs.writeFile(file, JSON.stringify(project));
+          files.push(file);
+        }
+      }
+
+      const result = await analyzeFederation(files);
+      const conflicts = result.findings.filter(
+        (item) => item.ruleId === "federation/name-conflict",
+      );
+      expect(conflicts).toHaveLength(2);
+      expect(conflicts.map((item) => item.evidence.projects)).toEqual([
+        ["catalog-one", "catalog-two"],
+        ["checkout-one", "checkout-two"],
+      ]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not let incomplete evidence in one group suppress another group", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-federation-group-evidence-"));
+    try {
+      const fixture = JSON.parse(
+        await fs.readFile(
+          path.join(repository, "fixtures/workspaces/clean/host/.mf/doctor/project.json"),
+          "utf8",
+        ),
+      );
+      const files: string[] = [];
+      for (const [index, group] of ["complete", "complete", "partial"].entries()) {
+        const project = structuredClone(fixture);
+        project.project.name = `${group}-${index}`;
+        project.project.federationGroup = group;
+        project.moduleFederation.shared = {};
+        project.imports.packages = group === "complete" ? ["lodash"] : [];
+        if (group === "partial") {
+          project.analysis = { status: "partial", exceeded: [{ kind: "files", limit: 1 }] };
+        }
+        const file = path.join(root, "apps", `${group}-${index}`, ".mf/doctor/project.json");
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.writeFile(file, JSON.stringify(project));
+        files.push(file);
+      }
+
+      const result = await analyzeFederation(files);
+
+      expect(result.findings.some((item) => item.ruleId === "federation/host-gaps")).toBe(true);
+      expect(result.findings.some((item) => item.ruleId === "doctor/partial-analysis")).toBe(true);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 
   it("suppresses ghost shares when a workspace budget omits project facts", async () => {

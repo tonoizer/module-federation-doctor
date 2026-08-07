@@ -59,6 +59,7 @@ interface Parsed {
   patterns: string[];
   roots: string[];
   globs: string[];
+  group?: string;
   workspace: boolean;
   ci: boolean;
   /** Print the legacy "no findings" success line (`printLog.success`). */
@@ -102,7 +103,9 @@ Usage:
   mfdoctor prompt [--finding <fingerprint|ruleId>] [.mf/doctor/report.json]
   mfdoctor workspace [root...]
   mfdoctor workspace [root...] --glob "**/.mf/doctor/project.json"
+  mfdoctor workspace [root...] --group <name>
   mfdoctor federation --workspace [root...]
+  mfdoctor federation --workspace [root...] --group <name>
   mfdoctor federation --workspace [root...] --format terminal,json,sarif
   mfdoctor federation ".mf/doctor/**/project.json"
   mfdoctor federation ".mf/doctor/**/project.json" --baseline ./mfdoctor.baseline.json
@@ -118,7 +121,11 @@ Usage:
 Workspace: after each app builds with the Doctor plugin, \`workspace\` (or
 \`federation --workspace\`) auto-discovers \`.mf/doctor/project.json\` under the
 given roots. Pass explicit globs to \`federation\` only when you need a manual
-escape hatch. Exit codes: 0 pass, 1 policy fail, 2 analysis incomplete.
+escape hatch. Set \`federationGroup\` in each app's Doctor options when one
+repository contains multiple independent federation graphs, then select one
+with \`--group <name>\`. Projects in different explicit groups are never
+compared by federation-wide rules. Exit codes: 0 pass, 1 policy fail, 2
+analysis incomplete.
 
 CI tip: CI mode is auto-detected from CI / provider env vars (GitHub Actions,
 GitLab, Circle, Jenkins, …). No mode: "ci" needed in plugin config. Pass --ci
@@ -230,6 +237,21 @@ export function parseArgs(argv: string[]): Parsed {
       const glob = value.slice("--glob=".length);
       if (!glob) throw new Error("--glob needs a pattern.");
       parsed.globs.push(glob);
+      parsed.workspace = true;
+    } else if (value === "--group" && (command === "federation" || command === "workspace")) {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-")) throw new Error("--group needs a group name.");
+      parsed.group = next.trim();
+      if (!parsed.group) throw new Error("--group needs a group name.");
+      parsed.workspace = true;
+      index += 1;
+    } else if (
+      value?.startsWith("--group=") &&
+      (command === "federation" || command === "workspace")
+    ) {
+      const group = value.slice("--group=".length).trim();
+      if (!group) throw new Error("--group needs a group name.");
+      parsed.group = group;
       parsed.workspace = true;
     } else if (value === "--remote-entry" && command === "probe") parsed.remoteEntry = true;
     else if ((value === "--timeout" || value === "--max-bytes") && command === "probe") {
@@ -553,6 +575,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         const discovery = await discoverWorkspaceProjectsWithBudget({
           roots: parsed.roots,
           ...(parsed.globs.length > 0 ? { globs: parsed.globs } : {}),
+          ...(parsed.group ? { group: parsed.group } : {}),
           ...(config.analysisBudgets ? { analysisBudgets: config.analysisBudgets } : {}),
         });
         return await runFederationAnalysis(

@@ -41,6 +41,8 @@ export interface ProjectIdentity {
   root: string;
   /** Stable workspace identity. Optional for legacy project.json files. */
   identityKey?: string;
+  /** Explicit federation analysis group. Projects in different groups are not compared. */
+  federationGroup?: string;
 }
 
 /** How the bundler `output.publicPath` was typed when Doctor observed the compiler. */
@@ -87,6 +89,8 @@ export interface ViteBundlerConfigFacts {
    * `null` means observed but unset/empty; omit the field when not observed (CLI).
    */
   serverOrigin?: string | null;
+  /** Resolved Vite dev-server port when the adapter observed it. */
+  serverPort?: number;
 }
 
 export interface AnalysisCapabilities {
@@ -695,6 +699,8 @@ export interface DoctorOptions {
   /** Optional bounded parsed-input cache explicitly shared by one process. */
   analysisCache?: AnalysisContentCache;
   moduleFederation?: ModuleFederationConfigLike;
+  /** Explicit workspace scope for federation-wide comparisons. */
+  federationGroup?: string;
   bundler?: BundlerName;
   bundlerVersion?: string;
   /** Optional public artifact names used to bound post-build discovery. */
@@ -792,6 +798,8 @@ export interface ResolvedDoctorOptions {
   /** Optional bounded parsed-input cache explicitly shared by one process. */
   analysisCache?: AnalysisContentCache;
   moduleFederation?: ModuleFederationConfigLike;
+  /** Explicit workspace scope for federation-wide comparisons. */
+  federationGroup?: string;
   bundler: BundlerName;
   bundlerVersion?: string;
   artifactNames: {

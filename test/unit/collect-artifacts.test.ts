@@ -342,6 +342,61 @@ describe("artifact collection", () => {
     expect(facts.builds?.[0]?.capabilities.emittedAssets.state).toBe("exact");
   });
 
+  it("discovers custom nested artifacts inside a bounded output root", async () => {
+    const outputRoot = "dist";
+    const root = await fixture({
+      [`${outputRoot}/manifestpath/mf-manifest.json`]: JSON.stringify({
+        metaData: { remoteEntry: { name: "static/js/container.js", path: "" } },
+        exposes: [],
+        shared: [],
+      }),
+      [`${outputRoot}/manifestpath/mf-stats.json`]: JSON.stringify({ assets: [] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }), [outputRoot]);
+    await addBuildFacts(
+      facts,
+      [`${outputRoot}/manifestpath/mf-manifest.json`, `${outputRoot}/manifestpath/mf-stats.json`],
+      root,
+      undefined,
+      [
+        viteOutput({
+          outputRoot,
+          emittedAssets: ["manifestpath/mf-manifest.json", "manifestpath/mf-stats.json"],
+          emittedAssetsSource: "bundle",
+          emittedAssetsComplete: true,
+          sourceHook: "closeBundle",
+        }),
+      ],
+    );
+    expect(facts.artifacts.manifest?.path).toBe(`${outputRoot}/manifestpath/mf-manifest.json`);
+    expect(facts.artifacts.stats?.path).toBe(`${outputRoot}/manifestpath/mf-stats.json`);
+  });
+
+  it("does not project an arbitrary nested manifest before build linkage", async () => {
+    const outputRoot = "dist";
+    const root = await fixture({
+      [`${outputRoot}/client/mf-manifest.json`]: JSON.stringify({
+        metaData: { remoteEntry: { name: "client.js", path: "" } },
+        exposes: [],
+        shared: [],
+      }),
+      [`${outputRoot}/server/mf-manifest.json`]: JSON.stringify({
+        metaData: { remoteEntry: { name: "server.js", path: "" } },
+        exposes: [],
+        shared: [],
+      }),
+    });
+
+    const facts = await collectProjectFacts(await resolveOptions({ root }), [outputRoot]);
+
+    expect(facts.artifacts.records?.map((record) => record.path)).toEqual([
+      `${outputRoot}/client/mf-manifest.json`,
+      `${outputRoot}/server/mf-manifest.json`,
+    ]);
+    expect(facts.artifacts.manifest).toBeUndefined();
+    expect(facts.capabilities.manifest).toBe(false);
+  });
+
   it("requires exact relative asset matching for output artifact linkage", async () => {
     const root = await fixture({
       "dist/nested/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),

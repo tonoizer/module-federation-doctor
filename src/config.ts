@@ -152,6 +152,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   const baseline = resolveBaselineOptions(options.baseline, root);
   if (baseline) resolved.baseline = baseline;
   if (options.moduleFederation !== undefined) resolved.moduleFederation = options.moduleFederation;
+  if (options.federationGroup?.trim()) resolved.federationGroup = options.federationGroup.trim();
   if (options.bundlerVersion !== undefined) resolved.bundlerVersion = options.bundlerVersion;
   if (options.viteLifecycle !== undefined) resolved.viteLifecycle = options.viteLifecycle;
   if (options.viteConfigFacts !== undefined) resolved.viteConfigFacts = options.viteConfigFacts;
