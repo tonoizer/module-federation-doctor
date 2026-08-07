@@ -37,7 +37,8 @@ describe("Nuxt adapter", () => {
       },
     });
 
-    module.setup({}, context);
+    expect(typeof module).toBe("function");
+    module({}, context);
     expect(callbacks).toHaveLength(1);
 
     const config: { plugins?: unknown[] } = {};

@@ -19,6 +19,7 @@ export type NuxtModuleContext = {
 };
 
 export type NuxtModule = {
+  (options: NuxtDoctorOptions | undefined, nuxt: NuxtModuleContext): void;
   meta: { name: string; configKey: string };
   setup: (options: NuxtDoctorOptions | undefined, nuxt: NuxtModuleContext) => void;
 };
@@ -31,6 +32,21 @@ function isDoctorPlugin(value: unknown): boolean {
   );
 }
 
+function normalizeNuxtFederationConfig(
+  config: ModuleFederationConfigLike | undefined,
+): ModuleFederationConfigLike | undefined {
+  if (!config) return undefined;
+  // @module-federation/nuxt resolves these defaults before it creates the
+  // Vite plugin: manifests are on, while DTS generation is off by default.
+  // Apply the same effective values so Vite-family rules do not report Nuxt's
+  // normal defaults as missing artifacts.
+  return {
+    ...config,
+    manifest: config.manifest ?? true,
+    dts: config.dts ?? false,
+  };
+}
+
 /**
  * Create the first-class Nuxt adapter.
  *
@@ -40,28 +56,33 @@ function isDoctorPlugin(value: unknown): boolean {
  * owned by the Nuxt integration or the application's Vite config.
  */
 export function createNuxtDoctorModule(defaults: NuxtDoctorOptions = {}): NuxtModule {
-  return {
-    meta: {
-      name: "@module-federation/doctor/nuxt",
-      configKey: "moduleFederationDoctor",
-    },
-    setup(options = {}, nuxt) {
-      const resolved = { ...defaults, ...options };
-      const root = resolved.root ?? nuxt.options?.rootDir ?? process.cwd();
-      const moduleFederation = resolved.moduleFederation ?? nuxt.options?.moduleFederation?.config;
-      const doctorOptions: DoctorOptions = {
-        ...resolved,
-        root,
-        ...(moduleFederation ? { moduleFederation } : {}),
-      };
+  const setup = (options: NuxtDoctorOptions | undefined, nuxt: NuxtModuleContext): void => {
+    const resolved = { ...defaults, ...options };
+    const root = resolved.root ?? nuxt.options?.rootDir ?? process.cwd();
+    const moduleFederation = normalizeNuxtFederationConfig(
+      resolved.moduleFederation ?? nuxt.options?.moduleFederation?.config,
+    );
+    const doctorOptions: DoctorOptions = {
+      ...resolved,
+      root,
+      ...(moduleFederation ? { moduleFederation } : {}),
+    };
 
-      nuxt.hook("vite:extendConfig", (config) => {
-        config.plugins ??= [];
-        if (config.plugins.some(isDoctorPlugin)) return;
-        config.plugins.push(federationDoctor(doctorOptions));
-      });
-    },
+    nuxt.hook("vite:extendConfig", (config) => {
+      config.plugins ??= [];
+      if (config.plugins.some(isDoctorPlugin)) return;
+      config.plugins.push(federationDoctor(doctorOptions));
+    });
   };
+  const module = ((options: NuxtDoctorOptions | undefined, nuxt: NuxtModuleContext) => {
+    setup(options, nuxt);
+  }) as NuxtModule;
+  module.meta = {
+    name: "@module-federation/doctor/nuxt",
+    configKey: "moduleFederationDoctor",
+  };
+  module.setup = setup;
+  return module;
 }
 
 /** Nuxt module for tuple registration and programmatic module loading. */
