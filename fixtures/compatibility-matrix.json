@@ -89,6 +89,12 @@
       "test": "test/unit/plugin-vite-lifecycle.test.ts",
       "status": "validated",
       "coverage": ["Nitro .output/public + .output/server", "SSR close-cycle false-positive guard"]
+    },
+    {
+      "id": "vite-manual-chunks-provenance",
+      "test": "test/unit/plugin-vite-lifecycle.test.ts",
+      "status": "validated",
+      "coverage": ["federation-owned manualChunks", "explicit user manualChunks advisory"]
     }
   ],
   "upstreamValidation": [

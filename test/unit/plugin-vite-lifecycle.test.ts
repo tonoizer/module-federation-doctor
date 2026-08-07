@@ -15,6 +15,12 @@ afterEach(async () => {
 });
 
 type VitePluginHooks = UnpluginOptions & {
+  config?:
+    | ((config: unknown, env?: unknown) => void | Promise<void>)
+    | {
+        order?: "pre" | "post" | null;
+        handler: (config: unknown, env?: unknown) => void | Promise<void>;
+      };
   configResolved?: (config: unknown) => void;
   buildStart?: () => void | Promise<void>;
   writeBundle?: (
@@ -68,6 +74,16 @@ function doctorOptions(root: string): DoctorOptions {
   };
 }
 
+async function runViteConfigHook(plugin: VitePluginHooks, config: unknown): Promise<void> {
+  const hook = plugin.config;
+  if (!hook) return;
+  if (typeof hook === "function") {
+    await hook(config);
+    return;
+  }
+  await hook.handler(config);
+}
+
 describe("detectViteLifecycle", () => {
   it("detects classic Vite as rollup engine", async () => {
     const root = await makeRoot({ vite: "5.0.0" });
@@ -118,6 +134,98 @@ describe("detectViteLifecycle", () => {
 });
 
 describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
+  it("does not report federation-owned manualChunks as user configuration", async () => {
+    const root = await makeRoot({ vite: "8.1.5" });
+    await fs.mkdir(path.join(root, "dist"), { recursive: true });
+    await fs.writeFile(path.join(root, "dist/remoteEntry.js"), "export {};\n");
+
+    const raw = viteDoctor.raw(
+      {
+        ...doctorOptions(root),
+        output: { formats: ["json"] },
+        rules: {
+          ...doctorOptions(root).rules,
+          "doctor/partial-analysis": "off",
+          "vite/manual-chunks-conflict": "info",
+        },
+      },
+      { framework: "vite", versions: { unplugin: "3.3.0" } } as never,
+    );
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+
+    await runViteConfigHook(plugin, {
+      root,
+      build: { outDir: "dist", rollupOptions: { output: {} } },
+    });
+    plugin.configResolved?.({
+      root,
+      mode: "production",
+      build: {
+        outDir: "dist",
+        write: true,
+        rollupOptions: { output: { manualChunks: () => "mf-bootstrap" } },
+      },
+    });
+    await plugin.writeBundle!.call({}, { dir: path.join(root, "dist") }, { "remoteEntry.js": {} });
+    await plugin.closeBundle!.call({});
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as { bundler: { viteConfig?: { manualChunks?: boolean } } };
+    const report = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/report.json"), "utf8"),
+    ) as { findings: Array<{ ruleId: string }> };
+
+    expect(project.bundler.viteConfig?.manualChunks).toBeUndefined();
+    expect(
+      report.findings.some((finding) => finding.ruleId === "vite/manual-chunks-conflict"),
+    ).toBe(false);
+  });
+
+  it("keeps an explicitly configured manualChunks advisory", async () => {
+    const root = await makeRoot({ vite: "8.1.5" });
+    await fs.mkdir(path.join(root, "dist"), { recursive: true });
+    await fs.writeFile(path.join(root, "dist/remoteEntry.js"), "export {};\n");
+    const userManualChunks = () => "user-chunk";
+
+    const raw = viteDoctor.raw(
+      {
+        ...doctorOptions(root),
+        output: { formats: ["json"] },
+        rules: {
+          ...doctorOptions(root).rules,
+          "doctor/partial-analysis": "off",
+          "vite/manual-chunks-conflict": "info",
+        },
+      },
+      { framework: "vite", versions: { unplugin: "3.3.0" } } as never,
+    );
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+
+    await runViteConfigHook(plugin, {
+      root,
+      build: { outDir: "dist", rolldownOptions: { output: { manualChunks: userManualChunks } } },
+    });
+    plugin.configResolved?.({
+      root,
+      mode: "production",
+      build: {
+        outDir: "dist",
+        write: true,
+        rollupOptions: { output: { manualChunks: () => "mf-bootstrap" } },
+      },
+    });
+    await plugin.writeBundle!.call({}, { dir: path.join(root, "dist") }, { "remoteEntry.js": {} });
+    await plugin.closeBundle!.call({});
+
+    const report = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/report.json"), "utf8"),
+    ) as { findings: Array<{ ruleId: string }> };
+    expect(
+      report.findings.some((finding) => finding.ruleId === "vite/manual-chunks-conflict"),
+    ).toBe(true);
+  });
+
   it("keeps resolved multi-output evidence exact and bounded", async () => {
     const root = await makeRoot({ vite: "5.4.0" });
     await fs.mkdir(path.join(root, "artifacts/web"), { recursive: true });

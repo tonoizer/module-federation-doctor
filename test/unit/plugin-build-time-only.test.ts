@@ -23,7 +23,7 @@ const CLIENT_INJECTION_HOOKS = [
 ] as const;
 
 /** Public fact-gathering hooks allowed before post-emit analysis. */
-const VITE_FACT_GATHERING_HOOKS = ["configResolved", "buildStart"] as const;
+const VITE_FACT_GATHERING_HOOKS = ["config", "configResolved", "buildStart"] as const;
 
 function asSinglePlugin(value: UnpluginOptions | UnpluginOptions[]): UnpluginOptions {
   expect(Array.isArray(value)).toBe(false);
@@ -91,7 +91,13 @@ describe("build-time-only adapter contract", () => {
     expect(plugin.name).toBe("module-federation-doctor");
     expect(plugin.enforce).toBe("post");
     for (const hook of VITE_FACT_GATHERING_HOOKS) {
-      expect(typeof plugin[hook as keyof typeof plugin]).toBe("function");
+      const value = plugin[hook as keyof typeof plugin];
+      if (typeof value === "object" && value !== null) {
+        expect(typeof (value as { handler?: unknown }).handler).toBe("function");
+        if (hook === "config") expect((value as { order?: string }).order).toBe("pre");
+      } else {
+        expect(typeof value).toBe("function");
+      }
     }
     expect(typeof plugin.writeBundle).toBe("function");
     expect(typeof plugin.closeBundle).toBe("function");

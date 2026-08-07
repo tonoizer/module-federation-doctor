@@ -78,7 +78,7 @@ export interface BundlerFacts {
 
 /** Static Vite config slices collected for dialect rules (never invent when missing). */
 export interface ViteBundlerConfigFacts {
-  /** True when `build.rollupOptions.output.manualChunks` is configured. */
+  /** True when user `build.rollupOptions.output` / `build.rolldownOptions.output.manualChunks` is configured. */
   manualChunks?: boolean;
   /** True when Rolldown/Vite Plus `codeSplitting.groups` is configured. */
   codeSplittingGroups?: boolean;
