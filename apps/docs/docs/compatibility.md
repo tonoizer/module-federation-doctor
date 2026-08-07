@@ -28,6 +28,12 @@ Related: [capabilities](./capabilities.md) ·
 | Webpack              | **supported** | `@module-federation/doctor/webpack` | `compatibility` workflow → `webpack-smoke` build + Doctor  | `@module-federation/enhanced/webpack` (#10 shipped)                                                          |
 | Modern.js            | **partial**   | `@module-federation/doctor/modern`  | `compatibility` workflow → `modern-smoke` (Rspack stub)    | Adapter API + Rspack-under-the-hood smoke; not full `@modern-js/app-tools` until a real Modern.js cell (#12) |
 
+Nuxt 3 / Nuxt 4 use the partial first-class adapter
+`@module-federation/doctor/nuxt`. It hooks the public `vite:extendConfig` API
+and is covered by the adapter contract test plus pinned Nuxt provenance in the
+Giga Smoke gate. A full Nuxt application build remains dependent on the
+upstream Nuxt package-resolution issue documented in the release validation.
+
 Runtime-only Module Federation (no bundler MF **build** plugin) is
 **unsupported** as a first-class path — see
 [limitations](./limitations.md#permanent-guarantees--non-goals) and
@@ -119,6 +125,7 @@ Reds that **do not** block other cells:
 | `integration.yml` / `e2e.yml` | Adapter tests and Playwright mixed-federation path                |
 | `package.yml`                 | Pack/consume smoke on Node 22 + 24 (includes Webpack)             |
 | `quality.yml`                 | fmt, lint, types, unit tests, `docs:build`                        |
+| `giga-smoke.yml`              | Pinned local green/red/nested/compatibility builds + cross-app gate + Playwright runtime smoke |
 
 ## mf-toolkit shapes
 

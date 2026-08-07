@@ -31,3 +31,30 @@ test.describe("mixed-federation green path", () => {
     expect(errors, "browser console errors while loading remotes").toEqual([]);
   });
 });
+
+test.describe("mixed-federation intentional findings path", () => {
+  test("exposes the intentional shared-runtime incompatibility", async ({ page, request }) => {
+    const browserErrors: string[] = [];
+    page.on("pageerror", (error) => browserErrors.push(`pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") browserErrors.push(`console: ${message.text()}`);
+    });
+
+    for (const url of [
+      "http://127.0.0.1:3011/remoteEntry.js",
+      "http://127.0.0.1:3012/remoteEntry.js",
+      "http://127.0.0.1:5183/",
+    ]) {
+      const response = await request.get(url);
+      expect(response.ok(), `${url} did not serve during negative runtime smoke`).toBe(true);
+    }
+
+    await page.goto("http://127.0.0.1:5183/");
+    await expect
+      .poll(() => browserErrors.join(" | "), {
+        timeout: 15_000,
+        message: "the intentional React shared-version mismatch did not surface at runtime",
+      })
+      .toContain("ReactCurrentDispatcher");
+  });
+});

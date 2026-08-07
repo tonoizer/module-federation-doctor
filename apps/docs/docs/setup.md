@@ -39,6 +39,7 @@ already exports those variables.
 | Project surface                | Doctor entry                        | Notes                                                                                  |
 | ------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------- |
 | Vite                           | `@module-federation/doctor/vite`    | Primary host path                                                                      |
+| Nuxt 3 / Nuxt 4                | `@module-federation/doctor/nuxt`    | Public `vite:extendConfig`; observes client + SSR builds                              |
 | Direct Rspack (`@rspack/core`) | `@module-federation/doctor/rspack`  | First-class; do **not** replace with the Modern.js entry                               |
 | Rsbuild                        | `@module-federation/doctor/rsbuild` | `onAfterBuild`                                                                         |
 | Webpack                        | `@module-federation/doctor/webpack` | `@module-federation/enhanced/webpack`                                                  |
@@ -79,6 +80,32 @@ export default {
 The same `@module-federation/doctor/vite` entry covers classic Vite,
 Rolldown-integrated Vite (`rolldown-vite` / Vite 8+), and Vite Plus. See
 [Vite integration](./vite-integration.md#rolldown-and-vite-plus).
+
+## Nuxt 3 and Nuxt 4
+
+Register the Doctor Nuxt module next to the official Module Federation Nuxt
+module. Pass the same federation options to both integrations when the
+application owns the configuration:
+
+```ts
+import nuxtDoctor from "@module-federation/doctor/nuxt";
+
+const mfOptions = { name: "host", remotes: {} };
+
+export default defineNuxtConfig({
+  modules: [
+    "@module-federation/nuxt",
+    [nuxtDoctor, { moduleFederation: mfOptions }],
+  ],
+});
+```
+
+The adapter uses Nuxt's public `vite:extendConfig` hook, so it observes the
+client and SSR Vite configurations in Nuxt 3 and Nuxt 4. It only adds Doctor;
+the official federation Nuxt module remains responsible for the federation
+plugin. If the Nuxt integration already exposes its config on
+`nuxt.options.moduleFederation.config`, the explicit `moduleFederation` option
+can be omitted.
 
 ## Rspack
 

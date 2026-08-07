@@ -7,13 +7,20 @@ import { pathToFileURL } from "node:url";
 
 const root = process.cwd();
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-pack-"));
+const packageManager = process.platform === "win32" ? "corepack.cmd" : "corepack";
+const packageManagerArgs = ["pnpm"];
 
 function run(command, args, cwd = temporary) {
-  execFileSync(command, args, { cwd, stdio: "inherit", env: { ...process.env, CI: "" } });
+  execFileSync(command, args, {
+    cwd,
+    stdio: "inherit",
+    shell: process.platform === "win32" && command.endsWith(".cmd"),
+    env: { ...process.env, CI: "" },
+  });
 }
 
 try {
-  run("pnpm", ["pack", "--pack-destination", temporary], root);
+  run(packageManager, [...packageManagerArgs, "pack", "--pack-destination", temporary], root);
   const archive = (await fs.readdir(temporary)).find((file) => file.endsWith(".tgz"));
   assert(archive, "pnpm pack did not create a tarball");
   const tarball = path.join(temporary, archive);
@@ -55,6 +62,7 @@ try {
     `import assert from "node:assert/strict";
 const api = await import("@module-federation/doctor");
 const vite = await import("@module-federation/doctor/vite");
+const nuxt = await import("@module-federation/doctor/nuxt");
 const rspack = await import("@module-federation/doctor/rspack");
 const rsbuild = await import("@module-federation/doctor/rsbuild");
 const webpack = await import("@module-federation/doctor/webpack");
@@ -66,6 +74,9 @@ assert.equal(typeof api.analyze, "function");
 assert.equal(typeof api.probeManifest, "function");
 assert.equal(typeof api.buildUiPayload, "function");
 assert.equal(typeof vite.federationDoctor, "function");
+assert.equal(typeof nuxt.nuxtDoctor.setup, "function");
+assert.equal(nuxt.federationDoctorNuxt, nuxt.nuxtDoctor);
+assert.equal(typeof nuxt.default.setup, "function");
 assert.equal(typeof rspack.moduleFederationDoctorPlugin, "function");
 assert.equal(typeof rsbuild.pluginModuleFederationDoctor, "function");
 assert.equal(typeof webpack.ModuleFederationDoctorPlugin, "function");
@@ -169,15 +180,15 @@ assert.equal(rspackChain.length, 1);
 assert.equal(rspackChain[0][0], "module-federation-doctor");
 `,
   );
-  run("pnpm", ["install", "--ignore-scripts"], consumer);
-  run("pnpm", ["check"], consumer);
-  run("pnpm", ["cli"], consumer);
+  run(packageManager, [...packageManagerArgs, "install", "--ignore-scripts"], consumer);
+  run(packageManager, [...packageManagerArgs, "check"], consumer);
+  run(packageManager, [...packageManagerArgs, "cli"], consumer);
   run("npx", ["--no-install", "mfdoctor", "--help"], consumer);
-  run("pnpm", ["vite"], consumer);
-  run("pnpm", ["rspack"], consumer);
-  run("pnpm", ["rsbuild"], consumer);
-  run("pnpm", ["webpack"], consumer);
-  run("pnpm", ["modern"], consumer);
+  run(packageManager, [...packageManagerArgs, "vite"], consumer);
+  run(packageManager, [...packageManagerArgs, "rspack"], consumer);
+  run(packageManager, [...packageManagerArgs, "rsbuild"], consumer);
+  run(packageManager, [...packageManagerArgs, "webpack"], consumer);
+  run(packageManager, [...packageManagerArgs, "modern"], consumer);
   process.stdout.write(`Tarball consumer passed: ${pathToFileURL(tarball).href}\n`);
 } finally {
   await fs.rm(temporary, { recursive: true, force: true });

@@ -2,7 +2,7 @@
 
 `@module-federation/doctor` finds config, sharing, runtime, manifest, and output
 problems in Module Federation projects built with Vite, Rspack, Rsbuild,
-Webpack, and Modern.js.
+Webpack, Modern.js, and Nuxt 3/4.
 
 Install as a **devDependency**. Doctor is **build/CI-only**: adapters run after
 emit in Node and are not part of the browser bundle. They add CI time, not
@@ -29,6 +29,20 @@ import { federationDoctor } from "@module-federation/doctor/vite";
 
 plugins: [federation(mfOptions), federationDoctor({ moduleFederation: mfOptions })];
 ```
+
+**Nuxt 3/4** (public `vite:extendConfig` adapter)
+
+```ts
+import nuxtDoctor from "@module-federation/doctor/nuxt";
+
+export default defineNuxtConfig({
+  modules: [[nuxtDoctor, { moduleFederation: mfOptions }]],
+});
+```
+
+Keep the official Nuxt Module Federation module in `modules` as well. The
+Doctor module observes both client and SSR Vite builds without owning the
+federation plugin or duplicating its configuration.
 
 **Rspack** (direct `@rspack/core` — first-class; not replaced by Modern.js)
 
@@ -229,7 +243,10 @@ Examples:
   `pnpm demo:showcase`
 - From `examples/`: `pnpm --dir examples demo` runs showcase + standalone +
   mixed-issues + nested (or `pnpm demo:examples` from the repo root)
-- See [Examples](./apps/docs/docs/examples.md) for the full catalog
+- See [Examples](./apps/docs/docs/examples.md) for the full catalog. The
+  one-command production matrix is `pnpm test:giga`; it builds the green,
+  intentional-finding, nested, and compatibility cells, runs cross-app gates,
+  and executes the green and negative Playwright runtime paths.
 
 Doctor-specific agent UX prefers CLI/plugin finding output (rule id, fix,
 Doctor docs URL, official MF sources, exit codes) plus an offline health score

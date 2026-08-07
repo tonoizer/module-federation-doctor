@@ -4,6 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const packageManager = process.platform === "win32" ? "corepack.cmd" : "corepack";
+const packageManagerArgs = ["pnpm"];
 
 /** @type {Array<{ label: string; filter: string; dir: string; ruleIds: string[] }>} */
 const cells = [
@@ -38,7 +40,11 @@ const cells = [
 ];
 
 function run(command, args) {
-  const result = spawnSync(command, args, { encoding: "utf8", cwd: root });
+  const result = spawnSync(command, args, {
+    encoding: "utf8",
+    cwd: root,
+    shell: process.platform === "win32" && command.endsWith(".cmd"),
+  });
   return {
     output: `${result.stdout ?? ""}${result.stderr ?? ""}`,
     exitCode: result.status ?? 1,
@@ -59,7 +65,7 @@ function assertRules(label, ruleIds, findings) {
 let failed = false;
 
 for (const cell of cells) {
-  const build = run("pnpm", ["--filter", cell.filter, "build"]);
+  const build = run(packageManager, [...packageManagerArgs, "--filter", cell.filter, "build"]);
   if (build.exitCode !== 0) {
     process.stdout.write(`FAIL build ${cell.label}\n${build.output}`);
     failed = true;
