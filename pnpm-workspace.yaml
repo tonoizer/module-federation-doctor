@@ -31,25 +31,24 @@ minimumReleaseAgeIgnoreMissingTime: false
 minimumReleaseAgeExclude:
   - fast-uri@3.1.5
   - js-yaml@3.15.1 || 4.3.1
-  - undici@7.29.0
-  - '@module-federation/dts-plugin@2.8.2'
-  - '@module-federation/enhanced@2.8.2'
-  - '@module-federation/rsbuild-plugin@2.8.2'
-  - '@module-federation/vite@1.20.4'
-  - '@module-federation/bridge-react-webpack-plugin@2.8.2'
-  - '@module-federation/cli@2.8.2'
-  - '@module-federation/error-codes@2.8.2'
-  - '@module-federation/inject-external-runtime-core-plugin@2.8.2'
-  - '@module-federation/managers@2.8.2'
-  - '@module-federation/manifest@2.8.2'
-  - '@module-federation/node@2.7.49'
-  - '@module-federation/rspack@2.8.2'
-  - '@module-federation/runtime-core@2.8.2'
-  - '@module-federation/runtime-tools@2.8.2'
-  - '@module-federation/runtime@2.8.2'
-  - '@module-federation/sdk@2.8.2'
-  - '@module-federation/third-party-dts-extractor@2.8.2'
-  - '@module-federation/webpack-bundler-runtime@2.8.2'
+  - "@module-federation/dts-plugin@2.8.2"
+  - "@module-federation/enhanced@2.8.2"
+  - "@module-federation/rsbuild-plugin@2.8.2"
+  - "@module-federation/vite@1.20.4"
+  - "@module-federation/bridge-react-webpack-plugin@2.8.2"
+  - "@module-federation/cli@2.8.2"
+  - "@module-federation/error-codes@2.8.2"
+  - "@module-federation/inject-external-runtime-core-plugin@2.8.2"
+  - "@module-federation/managers@2.8.2"
+  - "@module-federation/manifest@2.8.2"
+  - "@module-federation/node@2.7.49"
+  - "@module-federation/rspack@2.8.2"
+  - "@module-federation/runtime-core@2.8.2"
+  - "@module-federation/runtime-tools@2.8.2"
+  - "@module-federation/runtime@2.8.2"
+  - "@module-federation/sdk@2.8.2"
+  - "@module-federation/third-party-dts-extractor@2.8.2"
+  - "@module-federation/webpack-bundler-runtime@2.8.2"
 # Reject releases whose npm trust evidence is weaker than an earlier release.
 trustPolicy: no-downgrade
 # Re-check the lockfile against the registry; do not treat it as implicitly trusted.
