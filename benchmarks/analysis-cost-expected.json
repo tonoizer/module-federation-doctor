@@ -40,17 +40,17 @@
               "severity": "warning",
               "message": "Doctor completed with partial input.",
               "project": "small",
-              "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
+              "fingerprint": "a905e1cc07303353b80d505fc671541a0b46ec28ef80974044a91db3a9599c35",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               },
               "evidence": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               }
             }
           ]
@@ -71,7 +71,7 @@
               "artifacts": 1,
               "evidenceNodes": 0,
               "files": 1,
-              "serializedBytes": 89
+              "serializedBytes": 95
             }
           },
           "artifacts": {
@@ -220,17 +220,17 @@
               "severity": "warning",
               "message": "Doctor completed with partial input.",
               "project": "small",
-              "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
+              "fingerprint": "a905e1cc07303353b80d505fc671541a0b46ec28ef80974044a91db3a9599c35",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               },
               "evidence": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               }
             }
           ]
@@ -251,7 +251,7 @@
               "artifacts": 1,
               "evidenceNodes": 0,
               "files": 1,
-              "serializedBytes": 89
+              "serializedBytes": 95
             }
           },
           "artifacts": {
@@ -400,17 +400,17 @@
               "severity": "warning",
               "message": "Doctor completed with partial input.",
               "project": "small",
-              "fingerprint": "649b5c80f51d77aa0badd4d939d9c008d0c404bd702f373d6260ef6fa1e9df56",
+              "fingerprint": "a905e1cc07303353b80d505fc671541a0b46ec28ef80974044a91db3a9599c35",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               },
               "evidence": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               }
             }
           ]
@@ -431,7 +431,7 @@
               "artifacts": 1,
               "evidenceNodes": 0,
               "files": 1,
-              "serializedBytes": 89
+              "serializedBytes": 95
             }
           },
           "artifacts": {
@@ -580,17 +580,17 @@
               "severity": "warning",
               "message": "Doctor completed with partial input.",
               "project": "medium",
-              "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
+              "fingerprint": "9deb1eb82b33ae9add6ddcce68fc2ade69f5a23f67cb374868355828788c578a",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               },
               "evidence": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               }
             }
           ]
@@ -611,7 +611,7 @@
               "artifacts": 1,
               "evidenceNodes": 0,
               "files": 3,
-              "serializedBytes": 90
+              "serializedBytes": 96
             }
           },
           "artifacts": {
@@ -760,17 +760,17 @@
               "severity": "warning",
               "message": "Doctor completed with partial input.",
               "project": "medium",
-              "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
+              "fingerprint": "9deb1eb82b33ae9add6ddcce68fc2ade69f5a23f67cb374868355828788c578a",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               },
               "evidence": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               }
             }
           ]
@@ -791,7 +791,7 @@
               "artifacts": 1,
               "evidenceNodes": 0,
               "files": 3,
-              "serializedBytes": 90
+              "serializedBytes": 96
             }
           },
           "artifacts": {
@@ -940,17 +940,17 @@
               "severity": "warning",
               "message": "Doctor completed with partial input.",
               "project": "medium",
-              "fingerprint": "b862cbb1749385fb72789c123b82e7918ca7f8acc6be565e1029ecc0aad03ed7",
+              "fingerprint": "9deb1eb82b33ae9add6ddcce68fc2ade69f5a23f67cb374868355828788c578a",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               },
               "evidence": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               }
             }
           ]
@@ -971,7 +971,7 @@
               "artifacts": 1,
               "evidenceNodes": 0,
               "files": 3,
-              "serializedBytes": 90
+              "serializedBytes": 96
             }
           },
           "artifacts": {
@@ -1120,17 +1120,17 @@
               "severity": "warning",
               "message": "Doctor completed with partial input.",
               "project": "large",
-              "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
+              "fingerprint": "d5ad1f9ebc00ac163a119d5aa4311b11ba78851e1010f789f30f482027469400",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               },
               "evidence": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               }
             }
           ]
@@ -1151,7 +1151,7 @@
               "artifacts": 1,
               "evidenceNodes": 0,
               "files": 6,
-              "serializedBytes": 89
+              "serializedBytes": 95
             }
           },
           "artifacts": {
@@ -1307,17 +1307,17 @@
               "severity": "warning",
               "message": "Doctor completed with partial input.",
               "project": "large",
-              "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
+              "fingerprint": "d5ad1f9ebc00ac163a119d5aa4311b11ba78851e1010f789f30f482027469400",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               },
               "evidence": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               }
             }
           ]
@@ -1338,7 +1338,7 @@
               "artifacts": 1,
               "evidenceNodes": 0,
               "files": 6,
-              "serializedBytes": 89
+              "serializedBytes": 95
             }
           },
           "artifacts": {
@@ -1494,17 +1494,17 @@
               "severity": "warning",
               "message": "Doctor completed with partial input.",
               "project": "large",
-              "fingerprint": "315bc62a166068a5a3084da8b7aa50386a239a265312f29ed5337d1d276f70b2",
+              "fingerprint": "d5ad1f9ebc00ac163a119d5aa4311b11ba78851e1010f789f30f482027469400",
               "documentation": "/rules/doctor/partial-analysis",
               "suggestion": "Pass explicit MF options.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               },
               "evidence": {
                 "evidenceSources": ["source"],
-                "missing": ["config", "emittedAssets", "stats"]
+                "missing": ["config", "emittedAssets"]
               }
             }
           ]
@@ -1525,7 +1525,7 @@
               "artifacts": 1,
               "evidenceNodes": 0,
               "files": 6,
-              "serializedBytes": 89
+              "serializedBytes": 95
             }
           },
           "artifacts": {

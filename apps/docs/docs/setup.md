@@ -39,7 +39,7 @@ already exports those variables.
 | Project surface                | Doctor entry                        | Notes                                                                                  |
 | ------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------- |
 | Vite                           | `@module-federation/doctor/vite`    | Primary host path                                                                      |
-| Nuxt 3 / Nuxt 4                | `@module-federation/doctor/nuxt`    | Public `vite:extendConfig`; observes client + SSR builds                              |
+| Nuxt 3 / Nuxt 4                | `@module-federation/doctor/nuxt`    | Public `vite:extendConfig`; observes client + SSR builds                               |
 | Direct Rspack (`@rspack/core`) | `@module-federation/doctor/rspack`  | First-class; do **not** replace with the Modern.js entry                               |
 | Rsbuild                        | `@module-federation/doctor/rsbuild` | `onAfterBuild`                                                                         |
 | Webpack                        | `@module-federation/doctor/webpack` | `@module-federation/enhanced/webpack`                                                  |
@@ -93,10 +93,7 @@ import nuxtDoctor from "@module-federation/doctor/nuxt";
 const mfOptions = { name: "host", remotes: {} };
 
 export default defineNuxtConfig({
-  modules: [
-    "@module-federation/nuxt",
-    [nuxtDoctor, { moduleFederation: mfOptions }],
-  ],
+  modules: ["@module-federation/nuxt", [nuxtDoctor, { moduleFederation: mfOptions }]],
 });
 ```
 
