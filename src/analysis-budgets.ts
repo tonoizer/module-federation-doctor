@@ -158,7 +158,10 @@ export class AnalysisBudgetTracker {
 
   report(status: AnalysisBudgetReport["status"] = "complete"): AnalysisBudgetReport {
     this.checkWallTime();
-    const resolvedStatus = this.exceeded.size > 0 ? "partial" : status;
+    // A real unreadable source keeps the analysis unknown even when another
+    // budget was also exceeded. Pure budget cutoffs remain partial.
+    const resolvedStatus =
+      status === "unknown" ? "unknown" : this.exceeded.size > 0 ? "partial" : status;
     return {
       status: resolvedStatus,
       limits: this.limits,

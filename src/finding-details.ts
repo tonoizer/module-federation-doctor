@@ -1,3 +1,5 @@
+import type { AnalysisBudgetReport } from "./analysis-budgets.js";
+
 /**
  * Versioned, machine-readable finding detail payloads (#136).
  *
@@ -98,7 +100,18 @@ export interface ArtifactDetailsV1 {
 export interface DoctorPartialAnalysisDetailsV1 {
   missing: string[];
   unresolvedDynamic?: Array<Record<string, unknown>>;
+  sourceReadFailures?: string[];
   evidenceSources?: string[];
+  analysisBudget?: AnalysisBudgetReport;
+  projectAnalysis?: Array<{
+    project: string;
+    analysis: AnalysisBudgetReport;
+  }>;
+  workspaceDiagnostics?: Array<{
+    kind: string;
+    files: string[];
+    message: string;
+  }>;
 }
 
 export type FindingDetailsV1 =

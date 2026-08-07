@@ -48,7 +48,10 @@ describe("analysis budgets", () => {
       startedAt: 1,
     });
     expect(tracker.reserve({ files: 1 })).toBe(false);
-    expect(tracker.report("unknown").exceeded).toEqual([{ kind: "wallTimeMs", limit: 2 }]);
+    expect(tracker.report("unknown")).toMatchObject({
+      status: "unknown",
+      exceeded: [{ kind: "wallTimeMs", limit: 2 }],
+    });
   });
 
   it("reports wall-time expiry even without a later reservation", () => {

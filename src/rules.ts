@@ -120,6 +120,15 @@ function mf(context: RuleContext): NormalizedMFConfig | undefined {
   return context.facts.moduleFederation;
 }
 
+function sourceEvidenceIncomplete(facts: ProjectFacts): boolean {
+  const analysis = facts.analysis;
+  return (
+    (facts.imports.sourceReadFailures?.length ?? 0) > 0 ||
+    (analysis?.exceeded.length ?? 0) > 0 ||
+    (analysis !== undefined && analysis.status !== "complete")
+  );
+}
+
 function hasFederatedSurface(config: NormalizedMFConfig): boolean {
   return Object.keys(config.exposes).length > 0 || Object.keys(config.remotes).length > 0;
 }
@@ -313,6 +322,7 @@ export const builtInRules: DoctorRule[] = [
         report(context, `Expose key "${key}" must start with "./".`, { key });
   }),
   createRule("config/expose-path-missing", "error", (context) => {
+    if (sourceEvidenceIncomplete(context.facts)) return;
     for (const [key, target] of Object.entries(mf(context)?.exposes ?? {})) {
       const normalized = target.replaceAll("\\", "/").replace(/^\.\/+/, "");
       if (!context.facts.imports.sourceFiles.includes(normalized))
@@ -531,6 +541,7 @@ export const builtInRules: DoctorRule[] = [
           );
   }),
   createRule("config/runtime-plugin-missing", "error", (context) => {
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const files = new Set(context.facts.imports.sourceFiles);
     for (const plugin of mf(context)?.runtimePlugins ?? []) {
       if (!plugin.startsWith(".") && !plugin.startsWith("/")) continue;
@@ -1324,8 +1335,16 @@ export const builtInRules: DoctorRule[] = [
       .sort();
     if (!mf(context)) missing.push("moduleFederation");
     const unresolvedDynamic = context.facts.imports.unresolvedDynamic ?? [];
+    const sourceReadFailures = context.facts.imports.sourceReadFailures ?? [];
     const budget = context.facts.analysis;
-    if (missing.length === 0 && unresolvedDynamic.length === 0 && !budget?.exceeded.length) return;
+    const analysisIncomplete = sourceEvidenceIncomplete(context.facts);
+    if (
+      missing.length === 0 &&
+      unresolvedDynamic.length === 0 &&
+      sourceReadFailures.length === 0 &&
+      !analysisIncomplete
+    )
+      return;
     const configMissing = missing.includes("config") || missing.includes("moduleFederation");
     const artifactOnlyMissing =
       !configMissing &&
@@ -1339,25 +1358,30 @@ export const builtInRules: DoctorRule[] = [
         : undefined;
     report(
       context,
-      budget?.status === "unknown"
-        ? "Doctor completed with unknown input due to an analysis budget."
-        : unresolvedDynamic.length > 0 && missing.length === 0
-          ? "Doctor completed with unresolved dynamic import patterns."
-          : "Doctor completed with partial input.",
+      sourceReadFailures.length > 0
+        ? "Doctor encountered unreadable source input; analysis is unknown."
+        : budget?.status === "unknown"
+          ? "Doctor completed with unknown input due to an analysis budget."
+          : unresolvedDynamic.length > 0 && missing.length === 0
+            ? "Doctor completed with unresolved dynamic import patterns."
+            : "Doctor completed with partial input.",
       {
         ...(missing.length > 0 ? { missing } : {}),
         ...(unresolvedDynamic.length > 0 ? { unresolvedDynamic } : {}),
-        ...(budget?.exceeded.length ? { analysisBudget: budget } : {}),
+        ...(sourceReadFailures.length > 0 ? { sourceReadFailures } : {}),
+        ...(analysisIncomplete && budget ? { analysisBudget: budget } : {}),
         ...(context.facts.imports.evidenceSources
           ? { evidenceSources: context.facts.imports.evidenceSources }
           : {}),
       },
-      unresolvedDynamic.length > 0
-        ? "Prefer string-literal `import()` / `loadRemote` / `loadShare`, or pass an opt-in Observability export via `runtimeTrace` / `mfdoctor runtime`."
-        : configMissing
-          ? "Pass explicit MF options."
-          : (viteArtifactSuggestion ??
-            "Run Doctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
+      sourceReadFailures.length > 0
+        ? "Restore access to unreadable source input and re-run Doctor."
+        : unresolvedDynamic.length > 0
+          ? "Prefer string-literal `import()` / `loadRemote` / `loadShare`, or pass an opt-in Observability export via `runtimeTrace` / `mfdoctor runtime`."
+          : configMissing
+            ? "Pass explicit MF options."
+            : (viteArtifactSuggestion ??
+              "Run Doctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
       findingDetails(FINDING_DETAILS_SCHEMAS.DOCTOR_PARTIAL_ANALYSIS, {
         missing,
         ...(unresolvedDynamic.length > 0
@@ -1365,6 +1389,8 @@ export const builtInRules: DoctorRule[] = [
               unresolvedDynamic: unresolvedDynamic as unknown as Array<Record<string, unknown>>,
             }
           : {}),
+        ...(sourceReadFailures.length > 0 ? { sourceReadFailures } : {}),
+        ...(analysisIncomplete && budget ? { analysisBudget: budget } : {}),
         ...(context.facts.imports.evidenceSources
           ? { evidenceSources: context.facts.imports.evidenceSources }
           : {}),
@@ -1434,6 +1460,10 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("shared/unused", "warning", (context) => {
     const alwaysShared = alwaysSharedSet(context);
+    const sourceReadFailures = context.facts.imports.sourceReadFailures ?? [];
+    const budgetExceeded = context.facts.analysis?.exceeded.length ?? 0;
+    // Failed or budget-limited source collection cannot establish unused certainty.
+    if (sourceReadFailures.length > 0 || budgetExceeded > 0) return;
     const unresolvedMayHideUsage = (context.facts.imports.unresolvedDynamic ?? []).some((item) =>
       ["import", "loadShare", "loadShareSync"].includes(item.api),
     );
@@ -1692,6 +1722,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/ssr-server-entry-leak", "error", (context) => {
     if (!isReactBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const ssrMode = optionSsrMode(context.options);
     if (!isNodeOrSsrTarget(context.facts, ssrMode)) return;
     if (ssrMode !== "node" && hasBridgeServerEntry(context.facts)) return;
@@ -1711,6 +1742,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/missing-fallback-loading", "warning", async (context) => {
     if (!isReactBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const root = context.root ?? context.facts.project.root;
     for (const file of context.facts.imports.sourceFiles ?? []) {
       let source: string;
@@ -1732,6 +1764,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/consumer-api-manual", "warning", async (context) => {
     if (!isReactBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const hasRemotes = Object.keys(mf(context)?.remotes ?? {}).length > 0;
     if (!hasRemotes && (context.facts.imports.remotes?.length ?? 0) === 0) return;
     const root = context.root ?? context.facts.project.root;
@@ -1836,6 +1869,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/vue-ssr-fresh-context", "warning", async (context) => {
     if (!isVueBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const ssrMode = optionSsrMode(context.options);
     if (
       !isSsrNodeEnvApplicable(context.facts, ssrMode) &&
@@ -1872,6 +1906,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/vue-server-entry", "warning", (context) => {
     if (!isVueBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const ssrMode = optionSsrMode(context.options);
     if (
       !isSsrNodeEnvApplicable(context.facts, ssrMode) &&
@@ -1894,6 +1929,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/vue-consumer-manual", "warning", async (context) => {
     if (!isVueBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const hasRemotes = Object.keys(mf(context)?.remotes ?? {}).length > 0;
     if (!hasRemotes && (context.facts.imports.remotes?.length ?? 0) === 0) return;
     const root = context.root ?? context.facts.project.root;

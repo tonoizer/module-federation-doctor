@@ -206,8 +206,14 @@ export async function writeReports(
   const persistedFacts =
     facts.schemaVersion === 1
       ? (() => {
-          const { analysis: _analysis, canonicalConfig: _canonicalConfig, ...legacyFacts } = facts;
-          return { ...legacyFacts, artifacts: { ...facts.artifacts, records: undefined } };
+          const { canonicalConfig: _canonicalConfig, analysis, ...legacyFacts } = facts;
+          return {
+            ...legacyFacts,
+            ...(analysis && (analysis.status !== "complete" || analysis.exceeded.length > 0)
+              ? { analysis }
+              : {}),
+            artifacts: { ...facts.artifacts, records: undefined },
+          };
         })()
       : facts;
   await fs.writeFile(

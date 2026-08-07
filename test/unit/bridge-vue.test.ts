@@ -95,4 +95,23 @@ describe("vue bridge rules (#135)", () => {
     facts.imports.specifiers = ["@module-federation/bridge-vue3/server"];
     expect(await run("bridge/vue-server-entry", facts)).toHaveLength(0);
   });
+
+  it("does not infer a missing Vue server entry from incomplete source evidence", async () => {
+    const facts = baseFacts();
+    facts.dependencies.declared["@module-federation/bridge-vue3"] = "0.2.0";
+    facts.imports.packages = ["@module-federation/bridge-vue3"];
+    facts.imports.specifiers = ["@module-federation/bridge-vue3"];
+    facts.imports.sourceReadFailures = ["src/server.ts"];
+    facts.moduleFederation!.experiments = {
+      asyncStartup: false,
+      externalRuntime: false,
+      provideExternalRuntime: false,
+      target: "node",
+    };
+    facts.moduleFederation!.shared = {
+      vue: { package: "vue", singleton: true, eager: false, shareScope: "default" },
+    };
+
+    expect(await run("bridge/vue-server-entry", facts)).toHaveLength(0);
+  });
 });

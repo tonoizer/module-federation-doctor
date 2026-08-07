@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { analyze } from "../../src/engine.js";
 import { defineRule } from "../../src/rules.js";
 
@@ -57,7 +57,7 @@ describe("diagnostic edge cases", () => {
       expect(result.report.findings[0]).toMatchObject({
         ruleId: "team/custom",
         message: "Found .",
-        evidence: { token: "[REDACTED]", path: "./x" },
+        evidence: { token: "[REDACTED]", path: `.${path.sep}x` },
       });
     } finally {
       await fs.rm(root, { recursive: true, force: true });
@@ -69,17 +69,71 @@ describe("diagnostic edge cases", () => {
     try {
       await fs.writeFile(path.join(root, "package.json"), '{"name":"failure"}');
       await fs.mkdir(path.join(root, "src"));
-      await fs.writeFile(path.join(root, "src/bad.ts"), "x");
-      await fs.chmod(path.join(root, "src/bad.ts"), 0o000);
-      const result = await analyze({
-        root,
-        include: ["src/bad.ts"],
-        output: { formats: [] },
+      const badFile = path.join(root, "src/bad.ts");
+      await fs.writeFile(badFile, "x");
+      const originalReadFile = fs.readFile;
+      const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+        if (path.resolve(String(file)) === badFile) {
+          const error = new Error("fixture read failed");
+          (error as NodeJS.ErrnoException).code = "EACCES";
+          throw error;
+        }
+        return originalReadFile(file, options);
       });
-      if (process.getuid?.() === 0) expect([0, 2]).toContain(result.exitCode);
-      else expect(result.exitCode).toBe(2);
+      try {
+        const result = await analyze({
+          root,
+          include: ["src/bad.ts"],
+          output: { formats: [] },
+        });
+        expect(result.exitCode).toBe(2);
+        expect(result.facts.analysis?.status).toBe("unknown");
+        expect(result.facts.imports.unresolvedDynamic).toEqual([]);
+        expect(result.facts.imports.sourceReadFailures).toEqual(["src/bad.ts"]);
+        const finding = result.report.findings.find(
+          (item) => item.ruleId === "doctor/partial-analysis",
+        );
+        expect(finding?.message).toMatch(/unreadable|unknown source input/i);
+        expect(finding?.suggestion).toMatch(/unreadable|unknown source input/i);
+        expect(finding?.message).not.toMatch(/dynamic import/i);
+        expect(finding?.suggestion).not.toMatch(/dynamic import/i);
+      } finally {
+        readFileSpy.mockRestore();
+      }
     } finally {
-      await fs.chmod(path.join(root, "src/bad.ts"), 0o600).catch(() => undefined);
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps unreadable input unknown when a file budget also skips later sources", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-failure-budget-"));
+    try {
+      await fs.writeFile(path.join(root, "package.json"), '{"name":"failure-budget"}');
+      await fs.mkdir(path.join(root, "src"));
+      const unreadable = path.join(root, "src/a.ts");
+      await fs.writeFile(unreadable, 'import "react";\n');
+      await fs.writeFile(path.join(root, "src/b.ts"), 'import "react";\n');
+      const originalReadFile = fs.readFile;
+      const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+        if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
+        return originalReadFile(file, options);
+      });
+      try {
+        const result = await analyze({
+          root,
+          include: ["src/*.ts"],
+          analysisBudgets: { maxFiles: 1 },
+          output: { formats: [] },
+        });
+        expect(result.facts.analysis?.status).toBe("unknown");
+        expect(result.facts.analysis?.exceeded).toEqual([{ kind: "files", limit: 1 }]);
+        expect(result.facts.imports.sourceReadFailures).toEqual(["src/a.ts"]);
+        expect(result.facts.imports.unresolvedDynamic).toEqual([]);
+        expect(result.exitCode).toBe(2);
+      } finally {
+        readFileSpy.mockRestore();
+      }
+    } finally {
       await fs.rm(root, { recursive: true, force: true });
     }
   });

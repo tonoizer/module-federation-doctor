@@ -233,6 +233,8 @@ export interface ImportFacts {
    * Prefer `doctor/partial-analysis` over claiming unused/missing usage.
    */
   unresolvedDynamic: UnresolvedDynamicImport[];
+  /** Workspace-relative source files that could not be read during collection. */
+  sourceReadFailures?: string[];
   /** Evidence channels that contributed to packages/remotes. */
   evidenceSources: ImportEvidenceSource[];
   /**
@@ -440,7 +442,7 @@ export interface ProjectFacts {
   /** Static runtimePlugins contract probes; absent/empty when none apply. */
   runtimePluginContracts?: RuntimePluginContractFinding[];
   artifacts: ArtifactFacts;
-  /** In-memory completeness metadata; omitted from legacy persisted project.json. */
+  /** Optional source-analysis completeness metadata persisted by current reporters. */
   analysis?: AnalysisBudgetReport;
   /** Exact per-output records. Legacy artifact fields remain the compatibility view. */
   builds?: BuildRecord[];
