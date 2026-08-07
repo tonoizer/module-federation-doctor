@@ -450,6 +450,48 @@ function nuxtClientOutputRoot(outputRoot: string | undefined): string | undefine
   return `${normalized.slice(0, -"/server".length)}/client`;
 }
 
+function nitroClientOutputRoot(outputRoot: string | undefined): string | undefined {
+  if (!outputRoot) return undefined;
+  const normalized = normalizePath(outputRoot);
+  const outputSuffix = "/.output/server";
+  if (normalized === ".output/server") return ".output/public";
+  if (normalized.endsWith(outputSuffix))
+    return `${normalized.slice(0, -outputSuffix.length)}/.output/public`;
+
+  // Nitro's internal SSR environment writes a temporary Vite build below
+  // node_modules before the final .output/server build. The corresponding
+  // browser assets still live in the project-level .output/public directory.
+  if (/(?:^|\/)node_modules\/\.nitro\/vite\/services\/ssr$/.test(normalized))
+    return ".output/public";
+  return undefined;
+}
+
+function isNitroPublicOutputRoot(outputRoot: string | undefined): boolean {
+  if (!outputRoot) return false;
+  const normalized = normalizePath(outputRoot);
+  return normalized === ".output/public" || normalized.endsWith("/.output/public");
+}
+
+async function hasNitroProjectSignal(root: string): Promise<boolean> {
+  const raw = await fs.readFile(path.join(root, "package.json"), "utf8").catch(() => undefined);
+  if (!raw) return false;
+  try {
+    const packageJson = JSON.parse(raw) as Record<string, unknown>;
+    return ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"].some(
+      (section) => {
+        const dependencies = packageJson[section];
+        return (
+          dependencies !== null &&
+          typeof dependencies === "object" &&
+          ["nitro", "nitropack", "nuxt"].some((name) => name in (dependencies as object))
+        );
+      },
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Nuxt can run its client and SSR Vite builds in separate processes. In that
  * case an in-memory output registry cannot carry the client manifest/stats to
@@ -481,6 +523,69 @@ async function includeNuxtClientOutput(
       targetKind: "web",
     },
   ];
+}
+
+/**
+ * Nitro's Vite integration finalizes the browser build in `.output/public`
+ * and the server build in `.output/server`. A server close hook can therefore
+ * observe only the latter even though the client remote entry and manifest
+ * were emitted successfully. Recover the sibling public output with the same
+ * bounded scan used by the Nuxt adapter so SSR builds do not report a false
+ * `artifact/remote-entry-missing` finding.
+ */
+async function includeNitroClientOutput(
+  root: string,
+  incoming: BuildOutputInput[],
+): Promise<BuildOutputInput[]> {
+  if (!(await hasNitroProjectSignal(root))) return incoming;
+  const server = incoming.find(
+    (output) => output.buildWrite !== false && nitroClientOutputRoot(output.outputRoot),
+  );
+  const clientRoot = nitroClientOutputRoot(server?.outputRoot);
+  if (!server || !clientRoot || incoming.some((output) => output.outputRoot === clientRoot))
+    return incoming;
+  const emittedAssets = await listBoundedOutputAssets(root, clientRoot);
+  if (emittedAssets.length === 0) return incoming;
+  const { target: _serverTarget, ...clientBase } = server;
+  return [
+    ...incoming,
+    {
+      ...clientBase,
+      outputRoot: clientRoot,
+      emittedAssets,
+      emittedAssetsSource: "output-root-scan",
+      emittedAssetsComplete: true,
+      sourceHook: "closeBundle",
+      targetKind: "web",
+    },
+  ];
+}
+
+/**
+ * The Nitro client environment can write generated DTS files after the Vite
+ * bundle object was assembled. For the framework-owned `.output/public` root,
+ * use the complete bounded disk listing at close time so those declarations
+ * are not mistaken for missing emitted assets.
+ */
+async function includeNitroGeneratedOutputAssets(
+  root: string,
+  incoming: BuildOutputInput[],
+): Promise<BuildOutputInput[]> {
+  if (!(await hasNitroProjectSignal(root))) return incoming;
+  return Promise.all(
+    incoming.map(async (output) => {
+      if (output.buildWrite === false || !isNitroPublicOutputRoot(output.outputRoot)) return output;
+      const emittedAssets = await listBoundedOutputAssets(root, output.outputRoot!);
+      if (emittedAssets.length === 0) return output;
+      return {
+        ...output,
+        emittedAssets,
+        emittedAssetsSource: "output-root-scan" as const,
+        emittedAssetsComplete: true,
+        sourceHook: "closeBundle",
+      };
+    }),
+  );
 }
 
 /**
@@ -561,7 +666,9 @@ function createViteFamilyHooks(configured: DoctorOptions) {
     }
     if (hook === "writeBundle") return;
     try {
-      const buildOutputs = await includeNuxtClientOutput(root, outputs);
+      const withNuxtClient = await includeNuxtClientOutput(root, outputs);
+      const withNitroClient = await includeNitroClientOutput(root, withNuxtClient);
+      const buildOutputs = await includeNitroGeneratedOutputAssets(root, withNitroClient);
       const allAssets = buildOutputs.flatMap((item) =>
         item.buildWrite === false
           ? []

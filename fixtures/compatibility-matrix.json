@@ -18,6 +18,21 @@
       "coverage": ["Vite 5", "CommonJS config", "async ESM bridge", "manifest", "production"]
     },
     {
+      "id": "vite-nitro-react",
+      "fixture": "examples/compatibility/vite-nitro-react",
+      "bundler": "vite",
+      "package": "@mfdoctor-example/vite-nitro-react",
+      "expectedErrors": 0,
+      "coverage": [
+        "Vite 8",
+        "Nitro 3",
+        "React SSR",
+        ".output/public client artifacts",
+        ".output/server SSR artifacts",
+        "production"
+      ]
+    },
+    {
       "id": "rspack",
       "fixture": "examples/mixed-federation/remote-rspack",
       "bundler": "rspack",
@@ -68,6 +83,12 @@
       "test": "test/unit/rules.test.ts",
       "status": "validated",
       "coverage": ["overlapping shared asset records", "deduplicated performance budget"]
+    },
+    {
+      "id": "vite-nitro-output-pairing",
+      "test": "test/unit/plugin-vite-lifecycle.test.ts",
+      "status": "validated",
+      "coverage": ["Nitro .output/public + .output/server", "SSR close-cycle false-positive guard"]
     }
   ],
   "upstreamValidation": [

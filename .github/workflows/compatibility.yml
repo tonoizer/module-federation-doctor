@@ -30,6 +30,9 @@ jobs:
           - id: vite-cjs-v5
             filter: "@mfdoctor-example/vite-cjs-v5"
             dir: examples/compatibility/vite-cjs
+          - id: vite-nitro-react
+            filter: "@mfdoctor-example/vite-nitro-react"
+            dir: examples/compatibility/vite-nitro-react
           - id: rspack
             filter: "@mfdoctor-example/remote-rspack"
             dir: examples/mixed-federation/remote-rspack
