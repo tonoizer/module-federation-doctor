@@ -1,4 +1,4 @@
-name: Integration
+name: Giga smoke
 
 on:
   push:
@@ -9,8 +9,11 @@ permissions:
   contents: read
 
 jobs:
-  adapter:
+  matrix:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
@@ -19,17 +22,14 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - run: pnpm test:integration
-      # One-rule showcase fixtures (config, shared, federation, runtime).
-      - run: node scripts/demo-showcase.mjs
-      # Red multi-bundler demo: asserts planted findings and federation conflicts.
-      - run: node scripts/demo-mixed-issues.mjs
+      - run: pnpm test:giga
       - if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: doctor-integration
+          name: giga-smoke-reports
           path: |
-            examples/mixed-federation/*/.mf/doctor
-            examples/mixed-federation-issues/*/.mf/doctor
+            examples/**/.mf/doctor
+            .mf/doctor
+            test-results
+            playwright-report
           if-no-files-found: ignore

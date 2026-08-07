@@ -5,6 +5,7 @@ export default defineConfig({
     "src/index.ts",
     "src/cli.ts",
     "src/vite.ts",
+    "src/nuxt.ts",
     "src/rspack.ts",
     "src/rsbuild.ts",
     "src/webpack.ts",

@@ -2,11 +2,16 @@ import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const fixtureRoot = path.resolve("fixtures/runtime-traces");
 const execFileAsync = promisify(execFile);
+
+function normalizedFixtureBytes(value: Buffer): Buffer {
+  return Buffer.from(value.toString("utf8").replaceAll("\r\n", "\n"), "utf8");
+}
 
 async function readFixture(name: string): Promise<Record<string, unknown>> {
   return JSON.parse(await fs.readFile(path.join(fixtureRoot, name), "utf8")) as Record<
@@ -43,7 +48,9 @@ describe("runtime Observability contract fixtures", () => {
     const cases = provenance.cases as Array<Record<string, unknown>>;
 
     for (const item of cases.filter((entry) => entry.sanitizedSha256)) {
-      const fixture = await fs.readFile(path.join(fixtureRoot, item.fixture as string));
+      const fixture = normalizedFixtureBytes(
+        await fs.readFile(path.join(fixtureRoot, item.fixture as string)),
+      );
       const digest = crypto.createHash("sha256").update(fixture).digest("hex");
       expect(digest).toBe(item.sanitizedSha256);
     }
@@ -51,7 +58,7 @@ describe("runtime Observability contract fixtures", () => {
   });
 
   it("replays sanitized fixture bytes and recorded digests", async () => {
-    const rawDir = await fs.mkdtemp(path.join("/tmp", "mfdoctor-replay-input-"));
+    const rawDir = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-replay-input-"));
     await Promise.all([
       fs.copyFile(
         path.join(fixtureRoot, "current-2.5.3.json"),

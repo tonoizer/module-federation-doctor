@@ -129,6 +129,22 @@ function sourceEvidenceIncomplete(facts: ProjectFacts): boolean {
   );
 }
 
+function manifestExplicitlyDisabled(context: RuleContext): boolean {
+  const config = mf(context);
+  if (!config || config.manifest?.enabled !== false) return false;
+  // Enhanced-family adapters default manifest generation on, so a normalized
+  // `enabled: false` is already an explicit opt-out. Vite defaults it off;
+  // there we only suppress the optional-artifact warning when the canonical
+  // config proves that the user explicitly set `manifest: false`.
+  if (context.facts.bundler.name !== "vite") return true;
+  return (
+    context.facts.canonicalConfig?.declared.fields.some(
+      (entry) =>
+        entry.key === "manifest" && entry.value.state === "known" && entry.value.value === false,
+    ) ?? false
+  );
+}
+
 function hasFederatedSurface(config: NormalizedMFConfig): boolean {
   return Object.keys(config.exposes).length > 0 || Object.keys(config.remotes).length > 0;
 }
@@ -318,14 +334,21 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("config/expose-key-invalid", "error", (context) => {
     for (const key of Object.keys(mf(context)?.exposes ?? {}))
-      if (!key.startsWith("./") || key === "./")
+      if ((!key.startsWith("./") || key === "./") && key !== ".")
         report(context, `Expose key "${key}" must start with "./".`, { key });
   }),
   createRule("config/expose-path-missing", "error", (context) => {
     if (sourceEvidenceIncomplete(context.facts)) return;
     for (const [key, target] of Object.entries(mf(context)?.exposes ?? {})) {
       const normalized = target.replaceAll("\\", "/").replace(/^\.\/+/, "");
-      if (!context.facts.imports.sourceFiles.includes(normalized))
+      const sourceFiles = context.facts.imports.sourceFiles;
+      const exists = sourceFiles.some(
+        (file) =>
+          file === normalized ||
+          file.startsWith(`${normalized}.`) ||
+          file.startsWith(`${normalized}/index.`),
+      );
+      if (!exists)
         report(
           context,
           `Exposed module "${key}" points to a missing file.`,
@@ -540,7 +563,7 @@ export const builtInRules: DoctorRule[] = [
             "Add the scope to the top-level `shareScope` option or use a declared scope.",
           );
   }),
-  createRule("config/runtime-plugin-missing", "error", (context) => {
+  createRule("config/runtime-plugin-missing", "error", async (context) => {
     if (sourceEvidenceIncomplete(context.facts)) return;
     const files = new Set(context.facts.imports.sourceFiles);
     for (const plugin of mf(context)?.runtimePlugins ?? []) {
@@ -555,10 +578,32 @@ export const builtInRules: DoctorRule[] = [
         `${normalized}/index.ts`,
         `${normalized}/index.js`,
       ];
-      if (!candidates.some((candidate) => files.has(candidate)))
+      const scanned = candidates.some((candidate) => files.has(candidate));
+      if (scanned) continue;
+      // Bundler runtimePlugins are often resolved from the config root and
+      // therefore are not part of the source scanner's include set. Verify a
+      // safe on-disk path before claiming that the plugin is missing.
+      const root = context.root;
+      let onDisk = false;
+      if (root && !path.isAbsolute(normalized) && !path.win32.isAbsolute(normalized)) {
+        const resolved = path.resolve(root, normalized);
+        const relative = path.relative(root, resolved);
+        if (relative && !relative.startsWith("..") && !path.isAbsolute(relative)) {
+          for (const candidate of candidates) {
+            try {
+              await fs.stat(path.resolve(root, candidate));
+              onDisk = true;
+              break;
+            } catch {
+              // Try the next extension/index candidate.
+            }
+          }
+        }
+      }
+      if (!onDisk)
         report(
           context,
-          `Runtime plugin "${plugin}" does not resolve to a scanned source file.`,
+          `Runtime plugin "${plugin}" does not resolve to a scanned source file or on-disk plugin file.`,
           { plugin },
           "Fix the runtime plugin path or include that file in Doctor's source scan.",
         );
@@ -951,6 +996,10 @@ export const builtInRules: DoctorRule[] = [
     const config = mf(context);
     if (!config) return;
     if (optionBoolean(context.options, "requireHostInitEntryForSsr") === false) return;
+    // Host init is a consumer concern. A server-side producer with no
+    // configured remotes does not need the host bootstrap injected into an
+    // entry; requiring it there creates noise for SSR remotes.
+    if (Object.keys(config.remotes ?? {}).length === 0) return;
 
     const inject = config.vite?.hostInitInjectLocation;
     const ssr = detectViteSsrSignal(context.facts);
@@ -1216,7 +1265,10 @@ export const builtInRules: DoctorRule[] = [
   createRule("artifact/manifest-remote-entry-missing", "error", (context) => {
     const manifest = context.facts.artifacts.manifest;
     const remoteEntry = manifest?.remoteEntry;
-    if (!manifest?.valid || !remoteEntry || !context.facts.capabilities.emittedAssets) return;
+    // Enhanced/Webpack hosts may emit a manifest for their remotes while
+    // intentionally having no own container. Such manifests use an empty
+    // remoteEntry object; there is no producer asset to validate.
+    if (!manifest?.valid || !remoteEntry?.name || !context.facts.capabilities.emittedAssets) return;
     const candidate = `${remoteEntry.path}${remoteEntry.name}`;
     const emitted = context.facts.artifacts.emittedAssets.some((asset) =>
       emittedAssetMatches(context, manifest.path, candidate, asset),
@@ -1300,7 +1352,8 @@ export const builtInRules: DoctorRule[] = [
   createRule("artifact/remote-entry-missing", "error", (context) => {
     const config = mf(context);
     if (!config || !context.facts.capabilities.emittedAssets) return;
-    const expected = config.filename ?? "remoteEntry.js";
+    const expected =
+      config.filename ?? context.facts.artifacts.manifest?.remoteEntry?.name ?? "remoteEntry.js";
     if (
       Object.keys(config.exposes).length > 0 &&
       !context.facts.artifacts.emittedAssets.some((asset) => asset.endsWith(expected))
@@ -1329,8 +1382,12 @@ export const builtInRules: DoctorRule[] = [
         );
   }),
   createRule("doctor/partial-analysis", "warning", (context) => {
+    const optionalArtifactDisabled = manifestExplicitlyDisabled(context);
     const missing = Object.entries(context.facts.capabilities)
-      .filter(([, value]) => !value)
+      .filter(
+        ([name, value]) =>
+          !value && !(optionalArtifactDisabled && (name === "manifest" || name === "stats")),
+      )
       .map(([name]) => name)
       .sort();
     if (!mf(context)) missing.push("moduleFederation");
@@ -1423,7 +1480,16 @@ export const builtInRules: DoctorRule[] = [
       return;
     }
     const packageName = expected[bundler];
-    if (packageName && !context.facts.dependencies.declared[packageName])
+    const declared = context.facts.dependencies.declared;
+    // Nuxt owns the Vite federation integration through its official adapter;
+    // the adapter depends on @module-federation/vite internally.
+    if (bundler === "vite" && declared["@module-federation/nuxt"]) return;
+    // Webpack's native ModuleFederationPlugin is a valid integration path even
+    // when the MF2 enhanced package is not installed. The compiler probe is
+    // stronger evidence than package metadata in this case.
+    if (bundler === "webpack" && (context.facts.bundler.moduleFederationPluginCount ?? 0) > 0)
+      return;
+    if (packageName && !declared[packageName])
       report(context, `Expected "${packageName}" for ${bundler}.`, {
         bundler,
         expectedPackage: packageName,
@@ -1592,6 +1658,7 @@ export const builtInRules: DoctorRule[] = [
     if (
       manifest?.valid &&
       manifest.exposes.length > 0 &&
+      mf(context)?.dts?.enabled !== false &&
       !context.facts.artifacts.emittedAssets.some((asset) =>
         /(?:\.d\.(ts|mts)|@mf-types\.zip)$/.test(asset),
       )

@@ -5,6 +5,10 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(root, "dist/cli.js");
 
+function portableGlob(relativePath) {
+  return path.join(root, relativePath).replaceAll("\\", "/");
+}
+
 /** @type {Array<{ dir?: string; pattern?: string; ruleId?: string; forbiddenRuleIds?: string[]; expectNoFindings?: boolean; expectedExit: number; command?: "check" | "federation" | "runtime" }>} */
 const cases = [
   {
@@ -203,14 +207,13 @@ for (const item of cases) {
   /** @type {string[]} */
   let args;
   if (command === "federation") {
-    args = [cli, "federation", path.join(root, item.pattern), "--format", "terminal"];
+    args = [cli, "federation", portableGlob(item.pattern), "--format", "terminal"];
   } else if (command === "runtime") {
-    const dir = path.join(root, item.dir);
     args = [
       cli,
       "runtime",
-      path.join(dir, "trace.json"),
-      path.join(dir, "*.project.json"),
+      portableGlob(path.join(item.dir, "trace.json")),
+      portableGlob(path.join(item.dir, "*.project.json")),
       "--format",
       "terminal",
     ];

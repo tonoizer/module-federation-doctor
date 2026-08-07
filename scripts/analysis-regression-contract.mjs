@@ -63,8 +63,14 @@ function normalizeBudget(budget, root) {
 
 function normalizeAnalysisBudget(budget, root) {
   if (!budget) return undefined;
+  // Raw serialized bytes reflect the checkout's line-ending policy (for
+  // example, CRLF on Windows versus LF on Linux), not analyzer semantics.
+  // Keep the runtime measurement in the product report, but exclude it from
+  // the cross-platform golden contract alongside sourceBytes.
   const usage = Object.fromEntries(
-    Object.entries(budget.usage ?? {}).filter(([key]) => key !== "sourceBytes"),
+    Object.entries(budget.usage ?? {}).filter(
+      ([key]) => key !== "sourceBytes" && key !== "serializedBytes",
+    ),
   );
   return normalizeValue({ ...budget, usage }, root);
 }
