@@ -127,7 +127,7 @@
     "demo:nested": "pnpm build && node scripts/demo-nested.mjs",
     "demo:examples": "pnpm --filter @mfdoctor-example/demos demo",
     "docs:dev": "pnpm --filter @module-federation/doctor-docs dev",
-    "docs:build": "pnpm --filter @module-federation/doctor-docs build",
+    "docs:build": "corepack pnpm --filter @module-federation/doctor-docs build",
     "pack:check": "pnpm build && publint && attw --pack . --profile esm-only && pnpm schema:check && node scripts/pack-check.mjs",
     "changeset:check": "node scripts/changeset-contract.mjs",
     "schema:check": "node --experimental-strip-types scripts/schema-contract.mjs",
