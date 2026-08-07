@@ -268,7 +268,7 @@ function aggregateWorkspaceSourceReadFailures(
       workspaceProjectRoot(entry.file),
       entry.project.project.root || ".",
     );
-    for (const failure of entry.project.imports.sourceReadFailures ?? []) {
+    for (const failure of entry.project.imports?.sourceReadFailures ?? []) {
       if (typeof failure !== "string") continue;
       const safePath = redact(
         relativePath(workspaceRoot, path.resolve(projectRoot, failure)),
@@ -277,6 +277,40 @@ function aggregateWorkspaceSourceReadFailures(
     }
   }
   return [...failures].sort();
+}
+
+function hasIncompleteProjectAnalysis(project: ProjectFacts): boolean {
+  const analysis = project.analysis;
+  return Boolean(analysis && (analysis.status !== "complete" || analysis.exceeded.length > 0));
+}
+
+function hasPackageCapableUnresolvedDynamic(project: ProjectFacts): boolean {
+  return (project.imports?.unresolvedDynamic ?? []).some((item) =>
+    ["import", "loadShare", "loadShareSync"].includes(item.api),
+  );
+}
+
+function pushWorkspacePartialFinding(
+  findings: DoctorFinding[],
+  message: string,
+  evidence: Record<string, unknown>,
+  details: Record<string, unknown>,
+): void {
+  const fingerprintBase = {
+    schemaVersion: 1 as const,
+    ruleId: "doctor/partial-analysis",
+    severity: "warning" as const,
+    project: "workspace",
+    message,
+    evidence,
+    documentation: "/rules/doctor/partial-analysis",
+  };
+  const finding = {
+    ...fingerprintBase,
+    detailsSchema: FINDING_DETAILS_SCHEMAS.DOCTOR_PARTIAL_ANALYSIS,
+    details,
+  };
+  findings.push({ ...finding, fingerprint: fingerprint(fingerprintBase) });
 }
 
 export async function analyzeFederation(
@@ -321,54 +355,79 @@ export async function analyzeFederation(
   ).sort((a, b) => a.project.project.name.localeCompare(b.project.project.name));
   const projects = loadedProjects.map(({ project }) => project);
   const findings: DoctorFinding[] = [];
+  const incompleteProjects = loadedProjects
+    .filter(({ project }) => hasIncompleteProjectAnalysis(project))
+    .map(({ project }) => ({
+      project: project.project.name,
+      analysis: project.analysis!,
+    }))
+    .sort((left, right) => left.project.localeCompare(right.project));
+  const packageCapableUnresolvedProjects = loadedProjects
+    .filter(({ project }) => hasPackageCapableUnresolvedDynamic(project))
+    .map(({ project }) => project.project.name)
+    .sort();
+  const workspaceDiagnostics = (options.workspaceDiagnostics ?? [])
+    .map((diagnostic) => ({
+      kind: diagnostic.kind,
+      files: [
+        ...new Set(
+          diagnostic.files.map((file) =>
+            relativePath(
+              workspaceRoot,
+              path.resolve(path.isAbsolute(file) ? file : path.join(workspaceRoot, file)),
+            ),
+          ),
+        ),
+      ].sort(),
+      message: diagnostic.message,
+    }))
+    .sort((left, right) =>
+      `${left.kind}:${left.files.join(",")}:${left.message}`.localeCompare(
+        `${right.kind}:${right.files.join(",")}:${right.message}`,
+      ),
+    );
   if (options.analysis?.exceeded.length) {
-    const finding = {
-      schemaVersion: 1 as const,
-      ruleId: "doctor/partial-analysis",
-      severity: "warning" as const,
-      project: "workspace",
-      message:
-        options.analysis.status === "unknown"
-          ? "Doctor completed with unknown workspace input due to an analysis budget."
-          : "Doctor completed with partial workspace input.",
-      evidence: { analysisBudget: options.analysis },
-      documentation: "/rules/doctor/partial-analysis",
-    };
-    findings.push({ ...finding, fingerprint: fingerprint(finding) });
+    pushWorkspacePartialFinding(
+      findings,
+      options.analysis.status === "unknown"
+        ? "Doctor completed with unknown workspace input due to an analysis budget."
+        : "Doctor completed with partial workspace input.",
+      { analysisBudget: options.analysis },
+      { missing: [], analysisBudget: options.analysis },
+    );
   }
   const sourceReadFailures = aggregateWorkspaceSourceReadFailures(loadedProjects, workspaceRoot);
-  const workspaceInputIncomplete =
-    sourceReadFailures.length > 0 || Boolean(options.analysis?.exceeded.length);
+  if (incompleteProjects.length > 0) {
+    pushWorkspacePartialFinding(
+      findings,
+      "Doctor found persisted project facts with incomplete source analysis.",
+      { projectAnalysis: incompleteProjects },
+      { missing: [], projectAnalysis: incompleteProjects },
+    );
+  }
   if (sourceReadFailures.length > 0) {
-    const finding = {
-      schemaVersion: 1 as const,
-      ruleId: "doctor/partial-analysis",
-      severity: "warning" as const,
-      project: "workspace",
-      message: "Doctor encountered unreadable source input in workspace; analysis is unknown.",
-      evidence: { sourceReadFailures },
-      documentation: "/rules/doctor/partial-analysis",
-    };
-    findings.push({ ...finding, fingerprint: fingerprint(finding) });
+    pushWorkspacePartialFinding(
+      findings,
+      "Doctor encountered unreadable source input in workspace; analysis is unknown.",
+      { sourceReadFailures },
+      { missing: [], sourceReadFailures },
+    );
   }
-  if (options.workspaceDiagnostics?.length) {
-    const finding = {
-      schemaVersion: 1 as const,
-      ruleId: "doctor/partial-analysis",
-      severity: "warning" as const,
-      project: "workspace",
-      message: "Doctor found stale, duplicate, or conflicting workspace project facts.",
-      evidence: {
-        workspaceDiagnostics: options.workspaceDiagnostics.map((diagnostic) => ({
-          kind: diagnostic.kind,
-          files: diagnostic.files,
-          message: diagnostic.message,
-        })),
-      },
-      documentation: "/rules/doctor/partial-analysis",
-    };
-    findings.push({ ...finding, fingerprint: fingerprint(finding) });
+  if (workspaceDiagnostics.length > 0) {
+    pushWorkspacePartialFinding(
+      findings,
+      "Doctor found stale, duplicate, conflicting, or invalid workspace project facts.",
+      { workspaceDiagnostics },
+      { missing: [], workspaceDiagnostics },
+    );
   }
+  const workspaceAnalysisIncomplete =
+    incompleteProjects.length > 0 ||
+    sourceReadFailures.length > 0 ||
+    Boolean(options.analysis?.exceeded.length) ||
+    workspaceDiagnostics.length > 0;
+  const workspaceEvidenceIncomplete =
+    workspaceAnalysisIncomplete || packageCapableUnresolvedProjects.length > 0;
   const rules = options.rules;
   const alwaysShared = new Set<string>([...DEFAULT_ALWAYS_SHARED, ...(options.alwaysShared ?? [])]);
   const federation = buildFederationModel(projects);
@@ -451,7 +510,11 @@ export async function analyzeFederation(
   const runtimeProviders = projects.filter(
     (project) => project.moduleFederation?.experiments?.provideExternalRuntime,
   );
-  if (externalRuntimeConsumers.length > 0 && runtimeProviders.length === 0)
+  if (
+    !workspaceEvidenceIncomplete &&
+    externalRuntimeConsumers.length > 0 &&
+    runtimeProviders.length === 0
+  )
     pushFederationFinding(
       findings,
       rules,
@@ -525,7 +588,11 @@ export async function analyzeFederation(
       );
     const consumersWithoutFallback = entries.filter((entry) => entry.shared?.import === false);
     const providers = entries.filter((entry) => entry.shared?.import !== false);
-    if (consumersWithoutFallback.length > 0 && providers.length === 0)
+    if (
+      !workspaceEvidenceIncomplete &&
+      consumersWithoutFallback.length > 0 &&
+      providers.length === 0
+    )
       pushFederationFinding(
         findings,
         rules,
@@ -549,7 +616,7 @@ export async function analyzeFederation(
         if (!sharedByPkg.has(pkg)) sharedByPkg.set(pkg, new Set());
         sharedByPkg.get(pkg)!.add(mfName);
       }
-      for (const pkg of project.imports.packages ?? []) {
+      for (const pkg of project.imports?.packages ?? []) {
         if (!usedByPkg.has(pkg)) usedByPkg.set(pkg, new Set());
         usedByPkg.get(pkg)!.add(mfName);
       }
@@ -558,27 +625,29 @@ export async function analyzeFederation(
     for (const [pkg, usedByMfs] of [...usedByPkg.entries()].sort(([a], [b]) =>
       a.localeCompare(b),
     )) {
-      if (usedByMfs.size < 2) continue;
-      if (alwaysShared.has(pkg)) continue;
-      const sharedByMfs = sharedByPkg.get(pkg);
-      if (sharedByMfs && sharedByMfs.size > 0) continue;
-      // Workspace protocol deps are monorepo source links, not federation share gaps.
-      const isWorkspacePackage = projects.some((project) => {
-        const range = project.dependencies.declared[pkg];
-        return typeof range === "string" && range.startsWith("workspace:");
-      });
-      if (isWorkspacePackage) continue;
-      pushFederationFinding(
-        findings,
-        rules,
-        "federation/host-gaps",
-        [...usedByMfs].sort()[0] ?? "federation",
-        `"${pkg}" is imported by ${usedByMfs.size} projects but is not in any shared config.`,
-        { package: pkg, missingIn: [...usedByMfs].sort() },
-      );
+      if (!workspaceEvidenceIncomplete) {
+        if (usedByMfs.size < 2) continue;
+        if (alwaysShared.has(pkg)) continue;
+        const sharedByMfs = sharedByPkg.get(pkg);
+        if (sharedByMfs && sharedByMfs.size > 0) continue;
+        // Workspace protocol deps are monorepo source links, not federation share gaps.
+        const isWorkspacePackage = projects.some((project) => {
+          const range = project.dependencies?.declared?.[pkg];
+          return typeof range === "string" && range.startsWith("workspace:");
+        });
+        if (isWorkspacePackage) continue;
+        pushFederationFinding(
+          findings,
+          rules,
+          "federation/host-gaps",
+          [...usedByMfs].sort()[0] ?? "federation",
+          `"${pkg}" is imported by ${usedByMfs.size} projects but is not in any shared config.`,
+          { package: pkg, missingIn: [...usedByMfs].sort() },
+        );
+      }
     }
 
-    if (!workspaceInputIncomplete)
+    if (!workspaceEvidenceIncomplete)
       for (const [pkg, sharedByMfs] of [...sharedByPkg.entries()].sort(([a], [b]) =>
         a.localeCompare(b),
       )) {
@@ -631,13 +700,10 @@ export async function analyzeFederation(
     findings: baselined,
     report,
     ui,
-    exitCode:
-      sourceReadFailures.length > 0 ||
-      options.analysis?.exceeded.length ||
-      options.workspaceDiagnostics?.length
-        ? 2
-        : policyFails(baselined, failOn, failOnSuppressed)
-          ? 1
-          : 0,
+    exitCode: workspaceAnalysisIncomplete
+      ? 2
+      : policyFails(baselined, failOn, failOnSuppressed)
+        ? 1
+        : 0,
   };
 }

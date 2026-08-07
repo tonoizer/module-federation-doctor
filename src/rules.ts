@@ -120,6 +120,13 @@ function mf(context: RuleContext): NormalizedMFConfig | undefined {
   return context.facts.moduleFederation;
 }
 
+function sourceEvidenceIncomplete(facts: ProjectFacts): boolean {
+  return (
+    (facts.imports.sourceReadFailures?.length ?? 0) > 0 ||
+    (facts.analysis?.exceeded.length ?? 0) > 0
+  );
+}
+
 function hasFederatedSurface(config: NormalizedMFConfig): boolean {
   return Object.keys(config.exposes).length > 0 || Object.keys(config.remotes).length > 0;
 }
@@ -313,6 +320,7 @@ export const builtInRules: DoctorRule[] = [
         report(context, `Expose key "${key}" must start with "./".`, { key });
   }),
   createRule("config/expose-path-missing", "error", (context) => {
+    if (sourceEvidenceIncomplete(context.facts)) return;
     for (const [key, target] of Object.entries(mf(context)?.exposes ?? {})) {
       const normalized = target.replaceAll("\\", "/").replace(/^\.\/+/, "");
       if (!context.facts.imports.sourceFiles.includes(normalized))
@@ -531,6 +539,7 @@ export const builtInRules: DoctorRule[] = [
           );
   }),
   createRule("config/runtime-plugin-missing", "error", (context) => {
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const files = new Set(context.facts.imports.sourceFiles);
     for (const plugin of mf(context)?.runtimePlugins ?? []) {
       if (!plugin.startsWith(".") && !plugin.startsWith("/")) continue;

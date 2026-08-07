@@ -84,6 +84,9 @@
     "moduleFederation": {
       "type": "object"
     },
+    "analysis": {
+      "$ref": "#/$defs/analysisBudget"
+    },
     "dependencies": {
       "type": "object",
       "required": ["declared", "installed"],
@@ -337,6 +340,78 @@
         "isProd": { "type": "boolean" },
         "env": { "type": "string" },
         "target": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "analysisBudget": {
+      "type": "object",
+      "required": ["status", "limits", "usage", "exceeded"],
+      "properties": {
+        "status": {
+          "enum": ["complete", "partial", "unknown"]
+        },
+        "limits": {
+          "$ref": "#/$defs/analysisBudgetLimits"
+        },
+        "usage": {
+          "$ref": "#/$defs/analysisBudgetUsage"
+        },
+        "exceeded": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/analysisBudgetExceeded"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "analysisBudgetLimits": {
+      "type": "object",
+      "required": [
+        "maxFiles",
+        "maxSourceBytes",
+        "maxArtifacts",
+        "maxEvidenceNodes",
+        "maxSerializedBytes",
+        "maxWallTimeMs"
+      ],
+      "properties": {
+        "maxFiles": { "type": "integer", "minimum": 0 },
+        "maxSourceBytes": { "type": "integer", "minimum": 0 },
+        "maxArtifacts": { "type": "integer", "minimum": 0 },
+        "maxEvidenceNodes": { "type": "integer", "minimum": 0 },
+        "maxSerializedBytes": { "type": "integer", "minimum": 0 },
+        "maxWallTimeMs": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "analysisBudgetUsage": {
+      "type": "object",
+      "required": ["files", "sourceBytes", "artifacts", "evidenceNodes", "serializedBytes"],
+      "properties": {
+        "files": { "type": "integer", "minimum": 0 },
+        "sourceBytes": { "type": "integer", "minimum": 0 },
+        "artifacts": { "type": "integer", "minimum": 0 },
+        "evidenceNodes": { "type": "integer", "minimum": 0 },
+        "serializedBytes": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "analysisBudgetExceeded": {
+      "type": "object",
+      "required": ["kind", "limit"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "files",
+            "sourceBytes",
+            "artifacts",
+            "evidenceNodes",
+            "serializedBytes",
+            "wallTimeMs"
+          ]
+        },
+        "limit": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     },

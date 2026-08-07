@@ -442,7 +442,7 @@ export interface ProjectFacts {
   /** Static runtimePlugins contract probes; absent/empty when none apply. */
   runtimePluginContracts?: RuntimePluginContractFinding[];
   artifacts: ArtifactFacts;
-  /** In-memory completeness metadata; omitted from legacy persisted project.json. */
+  /** Optional source-analysis completeness metadata persisted by current reporters. */
   analysis?: AnalysisBudgetReport;
   /** Exact per-output records. Legacy artifact fields remain the compatibility view. */
   builds?: BuildRecord[];

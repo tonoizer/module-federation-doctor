@@ -4,6 +4,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { analyzeFederation } from "../../src/engine.js";
+import { writeReports } from "../../src/reporters.js";
+import { resolveAnalysisBudgets } from "../../src/analysis-budgets.js";
+import type { DoctorReport, ProjectFacts } from "../../src/types.js";
 import {
   DEFAULT_WORKSPACE_PROJECT_GLOBS,
   discoverWorkspaceProjects,
@@ -11,6 +14,15 @@ import {
 } from "../../src/workspace.js";
 
 const repository = path.resolve(fileURLToPath(import.meta.url), "../../..");
+
+function emptyWorkspaceReport(project: ProjectFacts): DoctorReport {
+  return {
+    schemaVersion: 1,
+    capabilities: project.capabilities,
+    summary: { projects: 1, info: 0, warnings: 0, errors: 0 },
+    findings: [],
+  };
+}
 
 describe("workspace discovery", () => {
   it("defaults to Doctor project.json layout", () => {
@@ -144,7 +156,140 @@ describe("workspace discovery", () => {
       expect(finding?.evidence).toEqual({
         sourceReadFailures: ["host/src/unreadable.ts"],
       });
+      expect(finding?.detailsSchema).toBe("doctor.partial-analysis.v1");
+      expect(finding?.details).toEqual({
+        missing: [],
+        sourceReadFailures: ["host/src/unreadable.ts"],
+      });
       expect(result.findings.some((item) => item.ruleId === "federation/ghost-shares")).toBe(false);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("persists project analysis and suppresses absence findings after reload", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-persisted-analysis-"));
+    try {
+      const fixtureRoot = path.join(repository, "fixtures/workspaces/clean");
+      const files: string[] = [];
+      for (const name of ["host", "remote"]) {
+        const project = JSON.parse(
+          await fs.readFile(path.join(fixtureRoot, name, ".mf/doctor/project.json"), "utf8"),
+        ) as ProjectFacts;
+        project.moduleFederation = project.moduleFederation ?? {
+          name,
+          exposes: {},
+          remotes: {},
+          shared: {},
+        };
+        project.moduleFederation.shared =
+          name === "host"
+            ? {
+                lodash: {
+                  package: "lodash",
+                  singleton: false,
+                  eager: false,
+                  shareScope: ["default"],
+                },
+              }
+            : {};
+        if (name === "host") {
+          project.analysis = {
+            status: "partial",
+            limits: resolveAnalysisBudgets({ maxFiles: 1 }),
+            usage: { files: 1, sourceBytes: 0, artifacts: 0, evidenceNodes: 0, serializedBytes: 0 },
+            exceeded: [{ kind: "files", limit: 1 }],
+          };
+        }
+        const output = path.join(root, `apps/${name}/.mf/doctor`);
+        await writeReports(project, emptyWorkspaceReport(project), output, []);
+        files.push(path.join(output, "project.json"));
+      }
+
+      const result = await analyzeFederation(files);
+
+      expect(result.exitCode).toBe(2);
+      expect(result.findings.some((item) => item.ruleId === "federation/ghost-shares")).toBe(false);
+      const finding = result.findings.find(
+        (item) => item.ruleId === "doctor/partial-analysis" && item.evidence.projectAnalysis,
+      );
+      expect(finding?.detailsSchema).toBe("doctor.partial-analysis.v1");
+      expect(finding?.details).toMatchObject({
+        missing: [],
+        projectAnalysis: [{ project: "host", analysis: { status: "partial" } }],
+      });
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("suppresses all absence federation rules for unresolved package-capable usage", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-unresolved-"));
+    try {
+      const files: string[] = [];
+      for (const [index, name] of ["host", "consumer"].entries()) {
+        const project = JSON.parse(
+          await fs.readFile(
+            path.join(repository, "fixtures/workspaces/clean/host/.mf/doctor/project.json"),
+            "utf8",
+          ),
+        ) as ProjectFacts;
+        project.project.name = name;
+        project.moduleFederation = {
+          name,
+          exposes: {},
+          remotes: {},
+          shared:
+            name === "host"
+              ? {
+                  lodash: {
+                    package: "lodash",
+                    singleton: false,
+                    eager: false,
+                    shareScope: ["default"],
+                  },
+                }
+              : {
+                  react: {
+                    package: "react",
+                    import: false,
+                    singleton: true,
+                    eager: false,
+                    shareScope: ["default"],
+                  },
+                },
+          ...(name === "host"
+            ? {
+                experiments: {
+                  asyncStartup: false,
+                  externalRuntime: true,
+                  provideExternalRuntime: false,
+                },
+              }
+            : {}),
+        };
+        project.imports.packages = ["lodash"];
+        project.imports.unresolvedDynamic = [{ api: "loadShare", file: "src/app.ts" }];
+        const output = path.join(
+          root,
+          `apps/${String.fromCharCode(97 + index)}-${name}/.mf/doctor`,
+        );
+        await fs.mkdir(output, { recursive: true });
+        await fs.writeFile(path.join(output, "project.json"), JSON.stringify(project));
+        files.push(path.join(output, "project.json"));
+      }
+
+      const result = await analyzeFederation(files);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.findings.map((item) => item.ruleId)).not.toEqual(
+        expect.arrayContaining([
+          "federation/host-gaps",
+          "federation/ghost-shares",
+          "federation/missing-provider",
+          "federation/external-runtime-provider-missing",
+        ]),
+      );
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }
@@ -173,6 +318,28 @@ describe("workspace discovery", () => {
         "duplicate",
         "stale",
       ]);
+      const cleanFiles = await discoverWorkspaceProjects({
+        cwd: repository,
+        roots: ["fixtures/workspaces/clean"],
+      });
+      const result = await analyzeFederation(cleanFiles, {
+        workspaceDiagnostics: [
+          {
+            kind: "invalid",
+            files: ["apps/invalid/.mf/doctor/project.json"],
+            message: "Invalid project facts: apps/invalid/.mf/doctor/project.json",
+          },
+        ],
+      });
+      expect(result.exitCode).toBe(2);
+      const finding = result.findings.find((item) => item.ruleId === "doctor/partial-analysis");
+      expect(finding?.detailsSchema).toBe("doctor.partial-analysis.v1");
+      expect(finding?.details).toMatchObject({
+        missing: [],
+        workspaceDiagnostics: expect.arrayContaining([
+          expect.objectContaining({ kind: "invalid" }),
+        ]),
+      });
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }

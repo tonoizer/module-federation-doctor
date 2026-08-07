@@ -1798,6 +1798,38 @@ describe("doctor/partial-analysis suggestions", () => {
     expect(findings[0]?.suggestion).not.toMatch(/dynamic import/i);
     expect(findings[0]?.evidence).toMatchObject({ sourceReadFailures: ["src/unreadable.ts"] });
   });
+
+  it("does not claim a valid late expose is missing after a source-file budget cutoff", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.exposes = { "./Late": "./src/Late.ts" };
+    facts.analysis = {
+      status: "partial",
+      limits: {
+        maxFiles: 1,
+        maxSourceBytes: 100,
+        maxArtifacts: 100,
+        maxEvidenceNodes: 100,
+        maxSerializedBytes: 100,
+        maxWallTimeMs: 100,
+      },
+      usage: { files: 1, sourceBytes: 10, artifacts: 0, evidenceNodes: 0, serializedBytes: 0 },
+      exceeded: [{ kind: "files", limit: 1 }],
+    };
+    const findings: Array<unknown> = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/expose-path-missing")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([]);
+  });
+
+  it("does not claim a read-failed runtime plugin is missing from source evidence", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.runtimePlugins = ["./src/runtime-plugin.ts"];
+    facts.imports.sourceReadFailures = ["src/runtime-plugin.ts"];
+    const findings: Array<unknown> = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/runtime-plugin-missing")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([]);
+  });
 });
 
 describe("config/implementation-suspicious", () => {

@@ -85,13 +85,63 @@ describe("reporters", () => {
 
     const json = JSON.parse(await fs.readFile(path.join(output, "report.json"), "utf8"));
     const sarif = JSON.parse(await fs.readFile(path.join(output, "results.sarif"), "utf8"));
+    const project = JSON.parse(await fs.readFile(path.join(output, "project.json"), "utf8"));
     expect(json.findings[0].ruleId).toBe("config/name-required");
     expect(json.findings[0].suppressed).toBe(true);
     expect(sarif.runs[0].results[0].ruleId).toBe("config/name-required");
+    expect(project.analysis).toBeUndefined();
     expect(sarif.runs[0].results[0].suppressions).toEqual([
       { kind: "external", justification: "legacy debt" },
     ]);
     await expect(fs.access(path.join(output, "report.html"))).rejects.toThrow();
+  });
+
+  it("persists source-analysis completeness while omitting in-memory config", async () => {
+    const output = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-reporters-analysis-"));
+    roots.push(output);
+    const facts = {
+      schemaVersion: 1,
+      project: { name: "budgeted", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
+      artifacts: { emittedAssets: [] },
+      analysis: {
+        status: "partial" as const,
+        limits: {
+          maxFiles: 1,
+          maxSourceBytes: 2,
+          maxArtifacts: 3,
+          maxEvidenceNodes: 4,
+          maxSerializedBytes: 5,
+          maxWallTimeMs: 6,
+        },
+        usage: { files: 1, sourceBytes: 2, artifacts: 0, evidenceNodes: 0, serializedBytes: 0 },
+        exceeded: [{ kind: "files" as const, limit: 1 }],
+      },
+    } satisfies ProjectFacts;
+
+    await writeReports(facts, emptyReport(), output, []);
+
+    const project = JSON.parse(await fs.readFile(path.join(output, "project.json"), "utf8"));
+    expect(project.analysis.status).toBe("partial");
+    expect(project.analysis.exceeded).toEqual([{ kind: "files", limit: 1 }]);
   });
 
   it("stays quiet on success by default", () => {
