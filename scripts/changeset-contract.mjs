@@ -10,7 +10,9 @@ const files = fs
 
 const errors = [];
 for (const file of files) {
-  const source = fs.readFileSync(path.join(directory, file), "utf8");
+  // Git preserves the repository's CRLF files on Windows; validate the
+  // changeset grammar independently of the checkout line ending.
+  const source = fs.readFileSync(path.join(directory, file), "utf8").replaceAll("\r\n", "\n");
   if (!source.startsWith("---\n")) {
     errors.push(`${file}: frontmatter must start with ---`);
     continue;

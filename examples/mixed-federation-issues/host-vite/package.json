@@ -6,12 +6,12 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite --port 5183 --strictPort",
-    "preview": "vite preview --port 5183 --strictPort",
+    "preview": "vite preview --host 127.0.0.1 --port 5183 --strictPort",
     "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\"",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@module-federation/vite": "1.19.1",
+    "@module-federation/vite": "1.20.4",
     "@mfdoctor-example/shared-ui": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"

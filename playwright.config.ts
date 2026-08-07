@@ -3,20 +3,40 @@ import { defineConfig, devices } from "@playwright/test";
 const federationWebServers = [
   {
     name: "rspack-remote",
-    command: "pnpm --dir examples/mixed-federation/remote-rspack preview",
+    command: "corepack pnpm --dir examples/mixed-federation/remote-rspack preview",
     url: "http://127.0.0.1:3001/remoteEntry.js",
   },
   {
     name: "rsbuild-remote",
-    command: "pnpm --dir examples/mixed-federation/remote-rsbuild preview",
+    command: "corepack pnpm --dir examples/mixed-federation/remote-rsbuild preview",
     url: "http://127.0.0.1:3002/remoteEntry.js",
   },
   {
     name: "host-vite",
-    command: "pnpm --dir examples/mixed-federation/host-vite preview",
+    command: "corepack pnpm --dir examples/mixed-federation/host-vite preview",
     url: "http://127.0.0.1:5173",
   },
 ] as const;
+
+const issueWebServers = [
+  {
+    name: "issues-rspack-remote",
+    command: "corepack pnpm --dir examples/mixed-federation-issues/remote-rspack preview",
+    url: "http://127.0.0.1:3011/remoteEntry.js",
+  },
+  {
+    name: "issues-rsbuild-remote",
+    command: "corepack pnpm --dir examples/mixed-federation-issues/remote-rsbuild preview",
+    url: "http://127.0.0.1:3012/remoteEntry.js",
+  },
+  {
+    name: "issues-host-vite",
+    command: "corepack pnpm --dir examples/mixed-federation-issues/host-vite preview",
+    url: "http://127.0.0.1:5183",
+  },
+] as const;
+
+const allFederationWebServers = [...federationWebServers, ...issueWebServers];
 
 export default defineConfig({
   testDir: "test/e2e",
@@ -32,7 +52,7 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: federationWebServers.map((server) => ({
+  webServer: allFederationWebServers.map((server) => ({
     // Prefix so Playwright webServer failure logs name the process.
     command: `echo "[mfdoctor-e2e:${server.name}] starting" && ${server.command}`,
     url: server.url,

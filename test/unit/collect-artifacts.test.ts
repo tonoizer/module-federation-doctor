@@ -308,6 +308,40 @@ describe("artifact collection", () => {
     expect(facts.artifacts.emittedAssets).toEqual(["dist/remoteEntry.js"]);
   });
 
+  it("collects exact artifacts from a bounded node_modules output root", async () => {
+    const outputRoot = "node_modules/.cache/framework/dist";
+    const root = await fixture({
+      [`${outputRoot}/mf-manifest.json`]: JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+      [`${outputRoot}/mf-stats.json`]: JSON.stringify({ assets: ["remoteEntry.js"] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }), [outputRoot]);
+    await addBuildFacts(
+      facts,
+      [`${outputRoot}/mf-manifest.json`, `${outputRoot}/mf-stats.json`],
+      root,
+      undefined,
+      [
+        viteOutput({
+          outputRoot,
+          emittedAssets: ["mf-manifest.json", "mf-stats.json"],
+          emittedAssetsSource: "output-root-scan",
+          emittedAssetsComplete: true,
+          sourceHook: "closeBundle",
+        }),
+      ],
+    );
+    expect(facts.artifacts.records?.map((record) => record.path)).toEqual([
+      `${outputRoot}/mf-manifest.json`,
+      `${outputRoot}/mf-stats.json`,
+    ]);
+    expect(facts.capabilities).toMatchObject({
+      emittedAssets: true,
+      manifest: true,
+      stats: true,
+    });
+    expect(facts.builds?.[0]?.capabilities.emittedAssets.state).toBe("exact");
+  });
+
   it("requires exact relative asset matching for output artifact linkage", async () => {
     const root = await fixture({
       "dist/nested/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),

@@ -1328,7 +1328,12 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
   "config/library-remote-type-mismatch": ["project.scope", "moduleFederation"],
   "config/name-required": ["project.scope", "moduleFederation"],
   "config/nested-producer-dts-extract": ["project.scope", "moduleFederation"],
-  "config/plugin-package-mismatch": ["project.scope", "bundler.name", "dependencies.declared"],
+  "config/plugin-package-mismatch": [
+    "project.scope",
+    "bundler.name",
+    "bundler.moduleFederationPluginCount",
+    "dependencies.declared",
+  ],
   "config/remote-alias-prefix-collision": ["project.scope", "moduleFederation"],
   "config/remote-capability-disabled": ["project.scope", "moduleFederation"],
   "config/remote-entry-invalid": ["project.scope", "moduleFederation"],

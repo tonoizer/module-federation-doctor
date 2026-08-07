@@ -390,6 +390,8 @@ export interface BuildOutputInput {
    * `output-root-scan` is a bounded disk recovery (partial).
    */
   emittedAssetsSource?: "bundle" | "output-root-scan";
+  /** A framework adapter may prove that a bounded scan is complete. */
+  emittedAssetsComplete?: boolean;
   sourceHook: string;
   effectiveMode?: string;
   target?: string;

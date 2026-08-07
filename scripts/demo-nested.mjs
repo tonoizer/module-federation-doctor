@@ -5,16 +5,27 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(root, "dist/cli.js");
+const packageManager = process.platform === "win32" ? "corepack.cmd" : "corepack";
+const packageManagerArgs = ["pnpm"];
 
 function run(command, args) {
-  const result = spawnSync(command, args, { encoding: "utf8", cwd: root });
+  const result = spawnSync(command, args, {
+    encoding: "utf8",
+    cwd: root,
+    shell: process.platform === "win32" && command.endsWith(".cmd"),
+  });
   return {
     output: `${result.stdout ?? ""}${result.stderr ?? ""}`,
     exitCode: result.status ?? 1,
   };
 }
 
-const build = run("pnpm", ["--filter", "./examples/nested-federation/**", "build"]);
+const build = run(packageManager, [
+  ...packageManagerArgs,
+  "--filter",
+  "./examples/nested-federation/**",
+  "build",
+]);
 if (build.exitCode !== 0) {
   process.stdout.write(`FAIL build nested-federation\n${build.output}`);
   process.exit(1);

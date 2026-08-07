@@ -440,6 +440,47 @@ async function safeOutputRoot(
   return relative === "" ? "." : relative;
 }
 
+function nuxtClientOutputRoot(outputRoot: string | undefined): string | undefined {
+  if (!outputRoot) return undefined;
+  const normalized = normalizePath(outputRoot);
+  const suffix = "/.nuxt/dist/server";
+  if (!normalized.endsWith(suffix)) return undefined;
+  return `${normalized.slice(0, -"/server".length)}/client`;
+}
+
+/**
+ * Nuxt can run its client and SSR Vite builds in separate processes. In that
+ * case an in-memory output registry cannot carry the client manifest/stats to
+ * the SSR close hook. The client directory is a bounded, framework-owned
+ * sibling of the observed SSR output, so recover its emitted files when they
+ * are present rather than treating the SSR output as the complete build.
+ */
+async function includeNuxtClientOutput(
+  root: string,
+  incoming: BuildOutputInput[],
+): Promise<BuildOutputInput[]> {
+  const server = incoming.find(
+    (output) => output.targetKind === "node" && output.buildWrite !== false,
+  );
+  const clientRoot = nuxtClientOutputRoot(server?.outputRoot);
+  if (!server || !clientRoot || incoming.some((output) => output.outputRoot === clientRoot))
+    return incoming;
+  const emittedAssets = await listBoundedOutputAssets(root, clientRoot);
+  if (emittedAssets.length === 0) return incoming;
+  return [
+    ...incoming,
+    {
+      ...server,
+      outputRoot: clientRoot,
+      emittedAssets,
+      emittedAssetsSource: "output-root-scan",
+      emittedAssetsComplete: true,
+      sourceHook: "closeBundle",
+      targetKind: "web",
+    },
+  ];
+}
+
 /**
  * Vite / Rolldown / Vite Plus post-emit path.
  *
@@ -518,14 +559,15 @@ function createViteFamilyHooks(configured: DoctorOptions) {
     }
     if (hook === "writeBundle") return;
     try {
-      const allAssets = outputs.flatMap((item) =>
+      const buildOutputs = await includeNuxtClientOutput(root, outputs);
+      const allAssets = buildOutputs.flatMap((item) =>
         item.buildWrite === false
           ? []
           : item.outputRoot
             ? item.emittedAssets.map((asset) => `${item.outputRoot}/${asset}`)
             : item.emittedAssets,
       );
-      const result = await analyzeBuild(configured, allAssets, undefined, outputs);
+      const result = await analyzeBuild(configured, allAssets, undefined, buildOutputs);
       failAfterCollect(result);
     } finally {
       outputs = [];

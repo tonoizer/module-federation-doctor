@@ -17,9 +17,43 @@ function strings(value: string | string[] | undefined, fallback = "default"): st
   ].sort();
 }
 
+function jsonSafe(value: unknown, active = new WeakSet<object>()): unknown {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  if (typeof value !== "object") return undefined;
+  if (active.has(value)) return undefined;
+  active.add(value);
+  if (Array.isArray(value)) {
+    const result = value
+      .map((item) => jsonSafe(item, active))
+      .filter((item): item is Exclude<typeof item, undefined> => item !== undefined);
+    active.delete(value);
+    return result;
+  }
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(value)) {
+    const item = jsonSafe((value as Record<string, unknown>)[key], active);
+    if (item !== undefined) result[key] = item;
+  }
+  active.delete(value);
+  return result;
+}
+
+function jsonSafeRecord(value: Record<string, unknown> | undefined): Record<string, unknown> {
+  const safe = jsonSafe(value ?? {});
+  return safe && typeof safe === "object" && !Array.isArray(safe)
+    ? (safe as Record<string, unknown>)
+    : {};
+}
+
 function toggle(value: boolean | Record<string, unknown> | undefined, defaultEnabled: boolean) {
   if (typeof value === "boolean") return { enabled: value, options: {} };
-  return { enabled: value === undefined ? defaultEnabled : true, options: value ?? {} };
+  // MF options commonly contain callbacks (for example manifest.additionalData).
+  // Facts are cloned before rules run, so keep only the JSON-safe policy data.
+  return {
+    enabled: value === undefined ? defaultEnabled : true,
+    options: jsonSafeRecord(value),
+  };
 }
 
 /** Enhanced family emits mf-manifest unless `manifest === false`; Vite omits unless opted in. */

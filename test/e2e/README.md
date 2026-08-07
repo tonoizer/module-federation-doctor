@@ -1,7 +1,9 @@
 # End-to-end tests
 
-Playwright drives the healthy [`examples/mixed-federation`](../../examples/mixed-federation)
-green path: a Vite host plus Rspack and Rsbuild remotes started as preview servers.
+Playwright drives both the healthy [`examples/mixed-federation`](../../examples/mixed-federation)
+green path and the intentional [`examples/mixed-federation-issues`](../../examples/mixed-federation-issues)
+red path. The latter proves that the known-bad host/remotes still boot and serve their
+runtime entrypoints; the expected Doctor findings are asserted by `scripts/giga-smoke.mjs`.
 
 ## Run locally
 
@@ -10,7 +12,14 @@ pnpm test:e2e
 ```
 
 `pnpm test:e2e` builds the repo and mixed-federation examples, then runs Playwright.
-Playwright starts the three preview servers defined in `playwright.config.ts`.
+Playwright starts the six preview servers defined in `playwright.config.ts`.
+
+For the complete local gate, including nested, compatibility, standalone, CLI,
+cross-app, and runtime checks, run:
+
+```bash
+pnpm test:giga
+```
 
 ## Flake triage
 
