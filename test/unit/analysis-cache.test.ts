@@ -17,6 +17,14 @@ describe("analysis content cache", () => {
     }
   });
 
+  it("bounds workspace facts with serialized bytes instead of source bytes", () => {
+    for (const fixture of Object.values(baseline.workspaces)) {
+      expect(fixture).not.toHaveProperty("maxSourceBytes");
+      for (const key of ["maxFiles", "maxSerializedBytes", "maxWallTimeMs", "maxRssBytes"])
+        expect(fixture[key as keyof typeof fixture]).toEqual(expect.any(Number));
+    }
+  });
+
   it("keys parsed input by kind, path, content, and identity", () => {
     const digest = contentDigest("source");
     expect(analysisCacheKey("source", "src/a.ts", digest, "vite-a")).not.toBe(

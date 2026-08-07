@@ -1,7 +1,10 @@
 name: Analysis benchmark
 
 on:
+  push:
+    branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
@@ -35,4 +38,4 @@ jobs:
         with:
           name: analysis-cost-node${{ matrix.node }}
           path: analysis-cost-node${{ matrix.node }}.json
-          if-no-files-found: ignore
+          if-no-files-found: error
