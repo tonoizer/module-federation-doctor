@@ -144,6 +144,55 @@ describe("reporters", () => {
     expect(project.analysis.exceeded).toEqual([{ kind: "files", limit: 1 }]);
   });
 
+  it("keeps complete analysis out of legacy project facts for stable evidence baselines", async () => {
+    const output = await fs.mkdtemp(
+      path.join(os.tmpdir(), "mfdoctor-reporters-complete-analysis-"),
+    );
+    roots.push(output);
+    const facts = {
+      schemaVersion: 1,
+      project: { name: "complete", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
+      artifacts: { emittedAssets: [] },
+      analysis: {
+        status: "complete" as const,
+        limits: {
+          maxFiles: 1,
+          maxSourceBytes: 2,
+          maxArtifacts: 3,
+          maxEvidenceNodes: 4,
+          maxSerializedBytes: 5,
+          maxWallTimeMs: 6,
+        },
+        usage: { files: 0, sourceBytes: 0, artifacts: 0, evidenceNodes: 0, serializedBytes: 0 },
+        exceeded: [],
+      },
+    } satisfies ProjectFacts;
+
+    await writeReports(facts, emptyReport(), output, []);
+
+    const project = JSON.parse(await fs.readFile(path.join(output, "project.json"), "utf8"));
+    expect(project.analysis).toBeUndefined();
+  });
+
   it("stays quiet on success by default", () => {
     expect(formatTerminalReport(emptyReport())).toBe("");
   });

@@ -1799,6 +1799,29 @@ describe("doctor/partial-analysis suggestions", () => {
     expect(findings[0]?.evidence).toMatchObject({ sourceReadFailures: ["src/unreadable.ts"] });
   });
 
+  it.each(["unknown", "partial"] as const)(
+    "reports %s analysis status even when no budget limit is listed",
+    async (status) => {
+      const facts = baseFacts();
+      facts.analysis = {
+        status,
+        limits: {
+          maxFiles: 10,
+          maxSourceBytes: 100,
+          maxArtifacts: 10,
+          maxEvidenceNodes: 100,
+          maxSerializedBytes: 100,
+          maxWallTimeMs: 100,
+        },
+        usage: { files: 1, sourceBytes: 10, artifacts: 0, evidenceNodes: 0, serializedBytes: 0 },
+        exceeded: [],
+      };
+      const findings = await runPartial(facts);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.evidence).toMatchObject({ analysisBudget: { status } });
+    },
+  );
+
   it("does not claim a valid late expose is missing after a source-file budget cutoff", async () => {
     const facts = baseFacts();
     facts.moduleFederation!.exposes = { "./Late": "./src/Late.ts" };

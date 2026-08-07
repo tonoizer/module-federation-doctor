@@ -3,6 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import { collectProjectFacts } from "../../src/collect.js";
+import { resolveOptions } from "../../src/config.js";
 import { analyzeFederation } from "../../src/engine.js";
 import { writeReports } from "../../src/reporters.js";
 import { resolveAnalysisBudgets } from "../../src/analysis-budgets.js";
@@ -218,6 +220,88 @@ describe("workspace discovery", () => {
         missing: [],
         projectAnalysis: [{ project: "host", analysis: { status: "partial" } }],
       });
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("persists collected source-read incompleteness through workspace reload", async () => {
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "mfdoctor-workspace-collected-read-failure-"),
+    );
+    try {
+      const hostRoot = path.join(root, "apps/host");
+      const remoteRoot = path.join(root, "apps/remote");
+      for (const [projectRoot, name] of [
+        [hostRoot, "host"],
+        [remoteRoot, "remote"],
+      ] as const) {
+        await fs.mkdir(path.join(projectRoot, "src"), { recursive: true });
+        await fs.writeFile(path.join(projectRoot, "package.json"), JSON.stringify({ name }));
+        await fs.writeFile(path.join(projectRoot, "src/index.ts"), 'import "lodash";\n');
+      }
+
+      const hostSource = path.join(hostRoot, "src/index.ts");
+      const originalReadFile = fs.readFile;
+      const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+        if (path.resolve(String(file)) === hostSource) throw new Error("fixture read failed");
+        return originalReadFile(file, options);
+      });
+      try {
+        const host = await collectProjectFacts(
+          await resolveOptions({
+            root: hostRoot,
+            bundler: "vite",
+            mode: "ci",
+            include: ["src/index.ts"],
+            moduleFederation: {
+              name: "host",
+              exposes: {},
+              remotes: {},
+              shared: { lodash: { singleton: false, eager: false } },
+            },
+          }),
+        );
+        const remote = await collectProjectFacts(
+          await resolveOptions({
+            root: remoteRoot,
+            bundler: "vite",
+            mode: "ci",
+            include: ["src/index.ts"],
+            moduleFederation: { name: "remote", exposes: {}, remotes: {}, shared: {} },
+          }),
+        );
+        expect(host.imports.sourceReadFailures).toEqual(["src/index.ts"]);
+        expect(host.analysis?.status).toBe("unknown");
+
+        const projectFiles: string[] = [];
+        for (const [name, facts] of [
+          ["host", host],
+          ["remote", remote],
+        ] as const) {
+          const output = path.join(root, `apps/${name}/.mf/doctor`);
+          await writeReports(facts, emptyWorkspaceReport(facts), output, []);
+          projectFiles.push(path.join(output, "project.json"));
+        }
+        const persistedHost = JSON.parse(await fs.readFile(projectFiles[0]!, "utf8"));
+        expect(persistedHost.imports.sourceReadFailures).toEqual(["src/index.ts"]);
+        expect(persistedHost.analysis.status).toBe("unknown");
+
+        const result = await analyzeFederation(projectFiles);
+        expect(result.exitCode).toBe(2);
+        expect(result.findings.some((item) => item.ruleId === "federation/ghost-shares")).toBe(
+          false,
+        );
+        const partial = result.findings.find(
+          (item) => item.ruleId === "doctor/partial-analysis" && item.evidence.projectAnalysis,
+        );
+        expect(partial?.detailsSchema).toBe("doctor.partial-analysis.v1");
+        expect(partial?.details).toMatchObject({
+          projectAnalysis: [{ project: "host", analysis: { status: "unknown" } }],
+        });
+      } finally {
+        readFileSpy.mockRestore();
+      }
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }

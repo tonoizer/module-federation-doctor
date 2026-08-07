@@ -121,9 +121,11 @@ function mf(context: RuleContext): NormalizedMFConfig | undefined {
 }
 
 function sourceEvidenceIncomplete(facts: ProjectFacts): boolean {
+  const analysis = facts.analysis;
   return (
     (facts.imports.sourceReadFailures?.length ?? 0) > 0 ||
-    (facts.analysis?.exceeded.length ?? 0) > 0
+    (analysis?.exceeded.length ?? 0) > 0 ||
+    (analysis !== undefined && analysis.status !== "complete")
   );
 }
 
@@ -1335,11 +1337,12 @@ export const builtInRules: DoctorRule[] = [
     const unresolvedDynamic = context.facts.imports.unresolvedDynamic ?? [];
     const sourceReadFailures = context.facts.imports.sourceReadFailures ?? [];
     const budget = context.facts.analysis;
+    const analysisIncomplete = sourceEvidenceIncomplete(context.facts);
     if (
       missing.length === 0 &&
       unresolvedDynamic.length === 0 &&
       sourceReadFailures.length === 0 &&
-      !budget?.exceeded.length
+      !analysisIncomplete
     )
       return;
     const configMissing = missing.includes("config") || missing.includes("moduleFederation");
@@ -1366,7 +1369,7 @@ export const builtInRules: DoctorRule[] = [
         ...(missing.length > 0 ? { missing } : {}),
         ...(unresolvedDynamic.length > 0 ? { unresolvedDynamic } : {}),
         ...(sourceReadFailures.length > 0 ? { sourceReadFailures } : {}),
-        ...(budget?.exceeded.length ? { analysisBudget: budget } : {}),
+        ...(analysisIncomplete && budget ? { analysisBudget: budget } : {}),
         ...(context.facts.imports.evidenceSources
           ? { evidenceSources: context.facts.imports.evidenceSources }
           : {}),
@@ -1387,6 +1390,7 @@ export const builtInRules: DoctorRule[] = [
             }
           : {}),
         ...(sourceReadFailures.length > 0 ? { sourceReadFailures } : {}),
+        ...(analysisIncomplete && budget ? { analysisBudget: budget } : {}),
         ...(context.facts.imports.evidenceSources
           ? { evidenceSources: context.facts.imports.evidenceSources }
           : {}),
@@ -1718,6 +1722,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/ssr-server-entry-leak", "error", (context) => {
     if (!isReactBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const ssrMode = optionSsrMode(context.options);
     if (!isNodeOrSsrTarget(context.facts, ssrMode)) return;
     if (ssrMode !== "node" && hasBridgeServerEntry(context.facts)) return;
@@ -1737,6 +1742,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/missing-fallback-loading", "warning", async (context) => {
     if (!isReactBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const root = context.root ?? context.facts.project.root;
     for (const file of context.facts.imports.sourceFiles ?? []) {
       let source: string;
@@ -1758,6 +1764,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/consumer-api-manual", "warning", async (context) => {
     if (!isReactBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const hasRemotes = Object.keys(mf(context)?.remotes ?? {}).length > 0;
     if (!hasRemotes && (context.facts.imports.remotes?.length ?? 0) === 0) return;
     const root = context.root ?? context.facts.project.root;
@@ -1862,6 +1869,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/vue-ssr-fresh-context", "warning", async (context) => {
     if (!isVueBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const ssrMode = optionSsrMode(context.options);
     if (
       !isSsrNodeEnvApplicable(context.facts, ssrMode) &&
@@ -1898,6 +1906,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/vue-server-entry", "warning", (context) => {
     if (!isVueBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const ssrMode = optionSsrMode(context.options);
     if (
       !isSsrNodeEnvApplicable(context.facts, ssrMode) &&
@@ -1920,6 +1929,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/vue-consumer-manual", "warning", async (context) => {
     if (!isVueBridgeProject(context.facts)) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
     const hasRemotes = Object.keys(mf(context)?.remotes ?? {}).length > 0;
     if (!hasRemotes && (context.facts.imports.remotes?.length ?? 0) === 0) return;
     const root = context.root ?? context.facts.project.root;
