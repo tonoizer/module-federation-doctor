@@ -56,45 +56,95 @@ describe("workspace discovery", () => {
     expect(files).toEqual([]);
   });
 
-  it("marks omitted projects as unknown when a workspace budget is hit", async () => {
-    const discovery = await discoverWorkspaceProjectsWithBudget({
-      cwd: repository,
-      roots: ["fixtures/workspaces/clean"],
-      analysisBudgets: { maxFiles: 1 },
-    });
-    expect(discovery.files).toHaveLength(1);
-    expect(discovery.budget.status).toBe("unknown");
-    expect(discovery.budget.exceeded).toEqual([{ kind: "files", limit: 1 }]);
-    const result = await analyzeFederation(discovery.files, { analysis: discovery.budget });
-    expect(result.exitCode).toBe(2);
-    expect(result.findings).toContainEqual(
-      expect.objectContaining({ ruleId: "doctor/partial-analysis" }),
-    );
+  it("suppresses ghost shares when a workspace budget omits project facts", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-budget-"));
+    try {
+      const fixtureRoot = path.join(repository, "fixtures/workspaces/clean");
+      const fixtureFiles = ["host", "remote"];
+      for (const [index, name] of [...fixtureFiles, "omitted"].entries()) {
+        const fixtureName = name === "omitted" ? "remote" : name;
+        const project = JSON.parse(
+          await fs.readFile(path.join(fixtureRoot, fixtureName, ".mf/doctor/project.json"), "utf8"),
+        );
+        if (name === "host") {
+          project.moduleFederation.shared = {
+            lodash: {
+              package: "lodash",
+              singleton: false,
+              eager: false,
+              shareScope: ["default"],
+            },
+          };
+        }
+        if (name === "remote") project.moduleFederation.shared = {};
+        if (name === "omitted") project.project.name = "omitted";
+        const file = path.join(
+          root,
+          `apps/${String.fromCharCode(97 + index)}-${name}/.mf/doctor/project.json`,
+        );
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.writeFile(file, JSON.stringify(project));
+      }
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        analysisBudgets: { maxFiles: 2 },
+      });
+      expect(discovery.files).toHaveLength(2);
+      expect(discovery.budget.status).toBe("unknown");
+      expect(discovery.budget.exceeded).toEqual([{ kind: "files", limit: 2 }]);
+
+      const result = await analyzeFederation(discovery.files, { analysis: discovery.budget });
+      expect(result.exitCode).toBe(2);
+      expect(result.findings.some((item) => item.ruleId === "federation/ghost-shares")).toBe(false);
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({ ruleId: "doctor/partial-analysis" }),
+      );
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 
-  it("aggregates persisted source read failures into a workspace partial finding", async () => {
+  it("suppresses ghost shares when a project reports unreadable source input", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-read-failure-"));
     try {
-      const file = path.join(root, "apps/host/.mf/doctor/project.json");
-      await fs.mkdir(path.dirname(file), { recursive: true });
-      const project = JSON.parse(
-        await fs.readFile(
-          path.join(repository, "fixtures/workspaces/clean/host/.mf/doctor/project.json"),
-          "utf8",
-        ),
-      );
-      project.imports.sourceReadFailures = [
-        "src/unreadable.ts",
-        path.join(root, "apps/host/src/unreadable.ts"),
-        "src/unreadable.ts",
-      ];
-      await fs.writeFile(file, JSON.stringify(project));
+      const fixtureRoot = path.join(repository, "fixtures/workspaces/clean");
+      const files: string[] = [];
+      for (const name of ["host", "remote"]) {
+        const project = JSON.parse(
+          await fs.readFile(path.join(fixtureRoot, name, ".mf/doctor/project.json"), "utf8"),
+        );
+        if (name === "host") {
+          project.moduleFederation.shared = {
+            lodash: {
+              package: "lodash",
+              singleton: false,
+              eager: false,
+              shareScope: ["default"],
+            },
+          };
+          project.imports.sourceReadFailures = [
+            "src/unreadable.ts",
+            path.join(root, "apps/host/src/unreadable.ts"),
+            "src/unreadable.ts",
+          ];
+        } else {
+          project.moduleFederation.shared = {};
+        }
+        const file = path.join(root, `apps/${name}/.mf/doctor/project.json`);
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.writeFile(file, JSON.stringify(project));
+        files.push(file);
+      }
 
-      const result = await analyzeFederation([file]);
+      const result = await analyzeFederation(files);
       const finding = result.findings.find((item) => item.ruleId === "doctor/partial-analysis");
       expect(result.exitCode).toBe(2);
       expect(finding?.project).toBe("workspace");
-      expect(finding?.evidence).toEqual({ sourceReadFailures: ["src/unreadable.ts"] });
+      expect(finding?.evidence).toEqual({
+        sourceReadFailures: ["host/src/unreadable.ts"],
+      });
+      expect(result.findings.some((item) => item.ruleId === "federation/ghost-shares")).toBe(false);
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }

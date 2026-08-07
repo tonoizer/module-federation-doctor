@@ -337,6 +337,8 @@ export async function analyzeFederation(
     findings.push({ ...finding, fingerprint: fingerprint(finding) });
   }
   const sourceReadFailures = aggregateWorkspaceSourceReadFailures(loadedProjects, workspaceRoot);
+  const workspaceInputIncomplete =
+    sourceReadFailures.length > 0 || Boolean(options.analysis?.exceeded.length);
   if (sourceReadFailures.length > 0) {
     const finding = {
       schemaVersion: 1 as const,
@@ -576,34 +578,35 @@ export async function analyzeFederation(
       );
     }
 
-    for (const [pkg, sharedByMfs] of [...sharedByPkg.entries()].sort(([a], [b]) =>
-      a.localeCompare(b),
-    )) {
-      if (alwaysShared.has(pkg)) continue;
-      if (sharedByMfs.size !== 1) continue;
-      const soloMf = [...sharedByMfs][0]!;
-      const usedByMfs = usedByPkg.get(pkg) ?? new Set<string>();
-      const usedUnsharedBy = [...usedByMfs]
-        .filter((mf) => mf !== soloMf && !sharedByPkg.get(pkg)?.has(mf))
-        .sort();
-      const otherMfsUseIt = [...usedByMfs].some((mf) => mf !== soloMf);
-      if (!otherMfsUseIt || usedUnsharedBy.length > 0) {
-        pushFederationFinding(
-          findings,
-          rules,
-          "federation/ghost-shares",
-          soloMf,
-          otherMfsUseIt
-            ? `"${pkg}" is shared only by "${soloMf}" while other projects import it without sharing.`
-            : `"${pkg}" is shared only by "${soloMf}" and unused elsewhere in the federation graph.`,
-          {
-            package: pkg,
-            sharedBy: soloMf,
-            usedUnsharedBy,
-          },
-        );
+    if (!workspaceInputIncomplete)
+      for (const [pkg, sharedByMfs] of [...sharedByPkg.entries()].sort(([a], [b]) =>
+        a.localeCompare(b),
+      )) {
+        if (alwaysShared.has(pkg)) continue;
+        if (sharedByMfs.size !== 1) continue;
+        const soloMf = [...sharedByMfs][0]!;
+        const usedByMfs = usedByPkg.get(pkg) ?? new Set<string>();
+        const usedUnsharedBy = [...usedByMfs]
+          .filter((mf) => mf !== soloMf && !sharedByPkg.get(pkg)?.has(mf))
+          .sort();
+        const otherMfsUseIt = [...usedByMfs].some((mf) => mf !== soloMf);
+        if (!otherMfsUseIt || usedUnsharedBy.length > 0) {
+          pushFederationFinding(
+            findings,
+            rules,
+            "federation/ghost-shares",
+            soloMf,
+            otherMfsUseIt
+              ? `"${pkg}" is shared only by "${soloMf}" while other projects import it without sharing.`
+              : `"${pkg}" is shared only by "${soloMf}" and unused elsewhere in the federation graph.`,
+            {
+              package: pkg,
+              sharedBy: soloMf,
+              usedUnsharedBy,
+            },
+          );
+        }
       }
-    }
   }
 
   const root = path.resolve(options.root ?? process.cwd());
