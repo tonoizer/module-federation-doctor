@@ -889,7 +889,10 @@ async function collectArtifacts(
         );
   const candidates = await fg([...new Set(patterns)], {
     cwd: root,
-    ignore: ["**/node_modules/**", "**/.mf/**"],
+    // Build adapters provide already-bounded output roots. Some frameworks,
+    // notably Nuxt, intentionally emit their Vite artifacts below
+    // node_modules/.cache, so do not discard those exact bounded candidates.
+    ignore: [...(boundedRoots === undefined ? ["**/node_modules/**"] : []), "**/.mf/**"],
     onlyFiles: true,
     dot: true,
     followSymbolicLinks: false,
@@ -1297,7 +1300,9 @@ export async function addBuildFacts(
               reason: "Build writing was disabled; no files were written.",
               source: output.sourceHook,
             }
-          : output.emittedAssetsSource === "output-root-scan" && output.emittedAssets.length > 0
+          : output.emittedAssetsSource === "output-root-scan" &&
+              !output.emittedAssetsComplete &&
+              output.emittedAssets.length > 0
             ? {
                 state: "partial" as const,
                 reason:

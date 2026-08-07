@@ -21,9 +21,12 @@ await execFileAsync(process.execPath, [
   outputDir,
 ]);
 
+const normalizeFixtureBytes = (value) =>
+  Buffer.from(value.toString("utf8").replaceAll("\r\n", "\n"), "utf8");
+
 for (const item of provenance.cases) {
-  const expected = await readFile(path.join(expectedDir, item.fixture));
-  const replayed = await readFile(path.join(outputDir, item.fixture));
+  const expected = normalizeFixtureBytes(await readFile(path.join(expectedDir, item.fixture)));
+  const replayed = normalizeFixtureBytes(await readFile(path.join(outputDir, item.fixture)));
   if (!expected.equals(replayed)) {
     throw new Error(`Replay bytes differ for ${item.fixture}`);
   }

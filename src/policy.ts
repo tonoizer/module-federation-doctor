@@ -154,13 +154,14 @@ function packLabel(pack: DoctorPolicyPack, fallback: string): string {
 
 async function loadModule(specifier: string, root: string): Promise<unknown> {
   // Non-goal: remote HTTP(S) policy download. Only local paths and package names.
-  if (/^[a-z][a-z0-9+.-]*:/i.test(specifier)) {
+  const absolutePath = path.isAbsolute(specifier) || path.win32.isAbsolute(specifier);
+  if (/^[a-z][a-z0-9+.-]*:/i.test(specifier) && !absolutePath) {
     throw new Error(
       `Policy pack "${specifier}" uses a URL scheme. Doctor only loads local paths or installed packages (no remote HTTP download).`,
     );
   }
   const absolute =
-    specifier.startsWith(".") || path.isAbsolute(specifier)
+    specifier.startsWith(".") || absolutePath
       ? path.resolve(root, specifier)
       : createRequire(path.join(root, "package.json")).resolve(specifier);
   return import(pathToFileURL(absolute).href);

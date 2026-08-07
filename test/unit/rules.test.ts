@@ -165,6 +165,101 @@ describe("built-in rules", () => {
     );
   });
 
+  it("accepts the Vite/Core root expose key and extensionless expose paths", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "fixture",
+        exposes: { ".": "./src/index" },
+      },
+      rules: {
+        "config/plugin-package-mismatch": "off",
+        "doctor/partial-analysis": "off",
+      },
+    });
+    expect(result.report.findings.map((item) => item.ruleId)).not.toContain(
+      "config/expose-key-invalid",
+    );
+    expect(result.report.findings.map((item) => item.ruleId)).not.toContain(
+      "config/expose-path-missing",
+    );
+  });
+
+  it("keeps function-valued MF options clone-safe for rule execution", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "fixture",
+        manifest: { additionalData: () => ({}) },
+      },
+      rules: {
+        "config/plugin-package-mismatch": "off",
+        "doctor/partial-analysis": "off",
+      },
+    });
+    expect(
+      result.report.findings.some((item) => item.message.includes("could not be cloned")),
+    ).toBe(false);
+  });
+
+  it("accepts native Webpack Module Federation when the compiler probe sees the plugin", async () => {
+    const facts: ProjectFacts = {
+      schemaVersion: 1,
+      project: { name: "webpack-native", root: "." },
+      bundler: { name: "webpack", mode: "ci", moduleFederationPluginCount: 1 },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: { name: "webpack-native", exposes: {}, remotes: {}, shared: {} },
+      dependencies: {
+        declared: { webpack: "5.109.2", react: "18.3.1" },
+        installed: { webpack: "5.109.2", react: "18.3.1" },
+      },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/plugin-package-mismatch")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([]);
+  });
+
+  it("accepts Nuxt's official Vite federation adapter", async () => {
+    const facts = {
+      bundler: { name: "vite", mode: "ci" },
+      dependencies: { declared: { "@module-federation/nuxt": "0.1.0" } },
+    } as unknown as ProjectFacts;
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/plugin-package-mismatch")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([]);
+  });
+
   it("accepts a version-only remote resolved through a manifest service", async () => {
     const root = await fixture();
     const result = await analyze({
@@ -828,6 +923,13 @@ describe("built-in rules", () => {
           ssrExternals: [],
           hostInitInjectLocation: "html",
           target: "node",
+        };
+        facts.moduleFederation!.remotes = {
+          catalog: {
+            name: "catalog",
+            entry: "https://example.test/mf-manifest.json",
+            shareScope: "default",
+          },
         };
       },
     ],
@@ -1876,6 +1978,44 @@ describe("doctor/partial-analysis suggestions", () => {
     expect(findings).toEqual([]);
   });
 
+  it("does not duplicate a deliberate dts: false finding with types-missing", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.dts = { enabled: false, options: {} };
+    facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
+    facts.capabilities.manifest = true;
+    facts.capabilities.emittedAssets = true;
+    facts.artifacts.manifest = {
+      path: "dist/mf-manifest.json",
+      valid: true,
+      exposes: [{ key: "./Widget", assets: ["Widget.js"] }],
+      shared: [],
+    };
+    facts.artifacts.emittedAssets = ["dist/mf-manifest.json", "dist/remoteEntry.js"];
+    const findings: Array<unknown> = [];
+    const rule = builtInRules.find((item) => item.meta.id === "artifact/types-missing")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([]);
+  });
+
+  it("uses the manifest remote-entry asset when Vite hashes the default filename", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
+    facts.capabilities.manifest = true;
+    facts.capabilities.emittedAssets = true;
+    facts.artifacts.manifest = {
+      path: "dist/mf-manifest.json",
+      valid: true,
+      remoteEntry: { name: "assets/remoteEntry-AbCd.js", path: "" },
+      exposes: [{ key: "./Widget", assets: ["assets/Widget.js"] }],
+      shared: [],
+    };
+    facts.artifacts.emittedAssets = ["dist/mf-manifest.json", "dist/assets/remoteEntry-AbCd.js"];
+    const findings: Array<unknown> = [];
+    const rule = builtInRules.find((item) => item.meta.id === "artifact/remote-entry-missing")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([]);
+  });
+
   it("does not claim a read-failed runtime plugin is missing from source evidence", async () => {
     const facts = baseFacts();
     facts.moduleFederation!.runtimePlugins = ["./src/runtime-plugin.ts"];
@@ -1993,6 +2133,13 @@ describe("Vite/Nuxt artifact false positives", () => {
     expect(await runRule("artifact/manifest-remote-entry-missing", viteBase())).toHaveLength(0);
   });
 
+  it("accepts a host manifest with no own remote entry", async () => {
+    const facts = viteBase();
+    facts.moduleFederation!.exposes = {};
+    facts.artifacts.manifest!.remoteEntry = { name: "", path: "" };
+    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
+  });
+
   it("still flags non-empty remoteEntry.path missing from emit and exact sizes", async () => {
     const facts = viteBase();
     facts.artifacts.manifest!.remoteEntry = { name: "remoteEntry.js", path: "assets/" };
@@ -2006,6 +2153,28 @@ describe("Vite/Nuxt artifact false positives", () => {
 
   it("skips all-empty Vite expose asset lists", async () => {
     expect(await runRule("artifact/manifest-expose-assets-empty", viteBase())).toHaveLength(0);
+  });
+
+  it("does not call an explicit manifest opt-out partial analysis", async () => {
+    const facts = viteBase();
+    facts.bundler.name = "rspack";
+    facts.capabilities.manifest = false;
+    facts.capabilities.stats = false;
+    facts.moduleFederation!.manifest = { enabled: false, options: {} };
+    expect(await runRule("doctor/partial-analysis", facts)).toHaveLength(0);
+  });
+
+  it("accepts a root runtime plugin that is outside the source scanner", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-runtime-plugin-"));
+    roots.push(root);
+    await fs.writeFile(path.join(root, "runtimePlugin.ts"), "export default {};");
+    const facts = viteBase();
+    facts.moduleFederation!.runtimePlugins = ["./runtimePlugin.ts"];
+    facts.imports.sourceFiles = [];
+    const findings: unknown[] = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/runtime-plugin-missing")!;
+    await rule.check({ facts, root, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([]);
   });
 });
 
@@ -2188,12 +2357,25 @@ describe("vite SSR inject dialect", () => {
 
   it("flags SSR Vite with wrong or missing hostInitInjectLocation", async () => {
     const facts = baseFacts();
+    facts.moduleFederation!.remotes = {
+      catalog: {
+        name: "catalog",
+        entry: "https://example.test/mf-manifest.json",
+        shareScope: "default",
+      },
+    };
     facts.moduleFederation!.vite!.target = "node";
     facts.moduleFederation!.vite!.hostInitInjectLocation = "html";
     expect(await run("vite/host-init-inject-ssr", facts)).not.toHaveLength(0);
 
     delete facts.moduleFederation!.vite!.hostInitInjectLocation;
     expect(await run("vite/host-init-inject-ssr", facts)).not.toHaveLength(0);
+  });
+
+  it("stays quiet for an SSR producer without configured remotes", async () => {
+    const producer = baseFacts();
+    producer.moduleFederation!.vite!.target = "node";
+    expect(await run("vite/host-init-inject-ssr", producer)).toHaveLength(0);
   });
 
   it("stays quiet for SSR with entry inject and for browser-only hosts", async () => {
