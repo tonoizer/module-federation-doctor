@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { AnalysisBudgetTracker, resolveAnalysisBudgets } from "../../src/analysis-budgets.js";
 import { analyze } from "../../src/engine.js";
 import { defineRule } from "../../src/rules.js";
 
@@ -104,6 +105,47 @@ describe("diagnostic edge cases", () => {
       await fs.rm(root, { recursive: true, force: true });
     }
   });
+
+  it.each(["partial", "unknown"] as const)(
+    "returns exit 2 and typed partial details for %s status without exceeded limits",
+    async (status) => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), `mfdoctor-status-${status}-`));
+      const report = {
+        status,
+        limits: resolveAnalysisBudgets(),
+        usage: { files: 1, sourceBytes: 1, artifacts: 0, evidenceNodes: 0, serializedBytes: 0 },
+        exceeded: [],
+      };
+      const reportSpy = vi.spyOn(AnalysisBudgetTracker.prototype, "report").mockReturnValue(report);
+      try {
+        await fs.writeFile(path.join(root, "package.json"), '{"name":"status-fixture"}');
+        await fs.mkdir(path.join(root, "src"));
+        await fs.writeFile(path.join(root, "src/index.ts"), 'import "react";\n');
+
+        const result = await analyze({
+          root,
+          include: ["src/index.ts"],
+          output: { formats: [] },
+        });
+
+        expect(result.facts.analysis?.status).toBe(status);
+        expect(result.facts.analysis?.exceeded).toEqual([]);
+        expect(result.exitCode).toBe(2);
+        expect(result.report.findings).toContainEqual(
+          expect.objectContaining({
+            ruleId: "doctor/partial-analysis",
+            detailsSchema: "doctor.partial-analysis.v1",
+            details: expect.objectContaining({
+              analysisBudget: expect.objectContaining({ status, exceeded: [] }),
+            }),
+          }),
+        );
+      } finally {
+        reportSpy.mockRestore();
+        await fs.rm(root, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("keeps unreadable input unknown when a file budget also skips later sources", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-failure-budget-"));
