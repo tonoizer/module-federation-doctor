@@ -114,4 +114,44 @@ describe("vue bridge rules (#135)", () => {
 
     expect(await run("bridge/vue-server-entry", facts)).toHaveLength(0);
   });
+
+  it("does not infer a missing Vue SSR fresh context from unreadable source evidence", async () => {
+    const facts = baseFacts();
+    facts.dependencies.declared["@module-federation/bridge-vue3"] = "0.2.0";
+    facts.imports.sourceFiles = ["src/App.ts"];
+    facts.imports.packages = ["@module-federation/bridge-vue3"];
+    facts.imports.sourceReadFailures = ["src/App.ts"];
+    facts.moduleFederation!.experiments = {
+      asyncStartup: false,
+      externalRuntime: false,
+      provideExternalRuntime: false,
+      target: "node",
+    };
+    facts.moduleFederation!.shared = {
+      vue: { package: "vue", singleton: true, eager: false, shareScope: "default" },
+    };
+
+    expect(await run("bridge/vue-ssr-fresh-context", facts)).toHaveLength(0);
+  });
+
+  it("does not infer manual Vue remote consumption from unreadable source evidence", async () => {
+    const facts = baseFacts();
+    facts.dependencies.declared["@module-federation/bridge-vue3"] = "0.2.0";
+    facts.imports.sourceFiles = ["src/App.ts"];
+    facts.imports.packages = ["@module-federation/bridge-vue3", "@module-federation/runtime"];
+    facts.imports.remotes = ["shop"];
+    facts.imports.sourceReadFailures = ["src/App.ts"];
+    facts.moduleFederation!.shared = {
+      vue: { package: "vue", singleton: true, eager: false, shareScope: "default" },
+    };
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "https://example.test/mf-manifest.json",
+        shareScope: "default",
+      },
+    };
+
+    expect(await run("bridge/vue-consumer-manual", facts)).toHaveLength(0);
+  });
 });

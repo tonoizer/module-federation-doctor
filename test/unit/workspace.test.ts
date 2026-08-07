@@ -225,6 +225,76 @@ describe("workspace discovery", () => {
     }
   });
 
+  it.each(["partial", "unknown"] as const)(
+    "preserves %s project analysis status through workspace reload",
+    async (status) => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), `mfdoctor-workspace-status-${status}-`));
+      try {
+        const fixtureRoot = path.join(repository, "fixtures/workspaces/clean");
+        const files: string[] = [];
+        for (const name of ["host", "remote"]) {
+          const project = JSON.parse(
+            await fs.readFile(path.join(fixtureRoot, name, ".mf/doctor/project.json"), "utf8"),
+          ) as ProjectFacts;
+          project.moduleFederation = project.moduleFederation ?? {
+            name,
+            exposes: {},
+            remotes: {},
+            shared: {},
+          };
+          project.moduleFederation.shared =
+            name === "host"
+              ? {
+                  lodash: {
+                    package: "lodash",
+                    singleton: false,
+                    eager: false,
+                    shareScope: ["default"],
+                  },
+                }
+              : {};
+          if (name === "host") {
+            project.analysis = {
+              status,
+              limits: resolveAnalysisBudgets({ maxFiles: 10 }),
+              usage: {
+                files: 1,
+                sourceBytes: 0,
+                artifacts: 0,
+                evidenceNodes: 0,
+                serializedBytes: 0,
+              },
+              exceeded: [],
+            };
+          }
+          const output = path.join(root, `apps/${name}/.mf/doctor`);
+          await writeReports(project, emptyWorkspaceReport(project), output, []);
+          files.push(path.join(output, "project.json"));
+        }
+
+        const persistedHost = JSON.parse(await fs.readFile(files[0]!, "utf8")) as ProjectFacts;
+        expect(persistedHost.analysis?.status).toBe(status);
+
+        const result = await analyzeFederation(files);
+
+        expect(result.exitCode).toBe(2);
+        expect(result.findings.some((item) => item.ruleId === "federation/ghost-shares")).toBe(
+          false,
+        );
+        const finding = result.findings.find(
+          (item) => item.ruleId === "doctor/partial-analysis" && item.evidence.projectAnalysis,
+        );
+        expect(finding?.detailsSchema).toBe("doctor.partial-analysis.v1");
+        expect(finding?.details).toMatchObject({
+          missing: [],
+          projectAnalysis: [{ project: "host", analysis: { status } }],
+        });
+      } finally {
+        await fs.rm(root, { recursive: true, force: true });
+      }
+    },
+  );
+
   it("persists collected source-read incompleteness through workspace reload", async () => {
     const root = await fs.mkdtemp(
       path.join(os.tmpdir(), "mfdoctor-workspace-collected-read-failure-"),
