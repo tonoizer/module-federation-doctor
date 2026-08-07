@@ -70,8 +70,7 @@
             "usage": {
               "artifacts": 1,
               "evidenceNodes": 0,
-              "files": 1,
-              "serializedBytes": 95
+              "files": 1
             }
           },
           "artifacts": {
@@ -250,8 +249,7 @@
             "usage": {
               "artifacts": 1,
               "evidenceNodes": 0,
-              "files": 1,
-              "serializedBytes": 95
+              "files": 1
             }
           },
           "artifacts": {
@@ -430,8 +428,7 @@
             "usage": {
               "artifacts": 1,
               "evidenceNodes": 0,
-              "files": 1,
-              "serializedBytes": 95
+              "files": 1
             }
           },
           "artifacts": {
@@ -610,8 +607,7 @@
             "usage": {
               "artifacts": 1,
               "evidenceNodes": 0,
-              "files": 3,
-              "serializedBytes": 96
+              "files": 3
             }
           },
           "artifacts": {
@@ -790,8 +786,7 @@
             "usage": {
               "artifacts": 1,
               "evidenceNodes": 0,
-              "files": 3,
-              "serializedBytes": 96
+              "files": 3
             }
           },
           "artifacts": {
@@ -970,8 +965,7 @@
             "usage": {
               "artifacts": 1,
               "evidenceNodes": 0,
-              "files": 3,
-              "serializedBytes": 96
+              "files": 3
             }
           },
           "artifacts": {
@@ -1150,8 +1144,7 @@
             "usage": {
               "artifacts": 1,
               "evidenceNodes": 0,
-              "files": 6,
-              "serializedBytes": 95
+              "files": 6
             }
           },
           "artifacts": {
@@ -1337,8 +1330,7 @@
             "usage": {
               "artifacts": 1,
               "evidenceNodes": 0,
-              "files": 6,
-              "serializedBytes": 95
+              "files": 6
             }
           },
           "artifacts": {
@@ -1524,8 +1516,7 @@
             "usage": {
               "artifacts": 1,
               "evidenceNodes": 0,
-              "files": 6,
-              "serializedBytes": 95
+              "files": 6
             }
           },
           "artifacts": {
