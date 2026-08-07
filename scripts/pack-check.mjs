@@ -9,6 +9,7 @@ const root = process.cwd();
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-pack-"));
 const packageManager = process.platform === "win32" ? "corepack.cmd" : "corepack";
 const packageManagerArgs = ["pnpm"];
+const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 
 function run(command, args, cwd = temporary) {
   execFileSync(command, args, {
@@ -187,7 +188,7 @@ assert.equal(rspackChain[0][0], "module-federation-doctor");
   run(packageManager, [...consumerPnpmArgs, "install", "--ignore-scripts"], root);
   run(packageManager, [...consumerPnpmArgs, "check"], root);
   run(packageManager, [...consumerPnpmArgs, "cli"], root);
-  run("npx", ["--no-install", "mfdoctor", "--help"], consumer);
+  run(npxCommand, ["--no-install", "mfdoctor", "--help"], consumer);
   run(packageManager, [...consumerPnpmArgs, "vite"], root);
   run(packageManager, [...consumerPnpmArgs, "rspack"], root);
   run(packageManager, [...consumerPnpmArgs, "rsbuild"], root);
