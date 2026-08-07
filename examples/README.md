@@ -1,18 +1,19 @@
 # Examples
 
-Six stories live here. Use the flat green path for healthy e2e, nested for
+Seven stories live here. Use the flat green path for healthy e2e, nested for
 multi-level multi-bundler orchestration, standalone cells for per-bundler
 build+Doctor findings, the red path for intentional conflicts, the showcase for
-one-rule demos, and compatibility for Webpack matrix smoke.
+one-rule demos, and compatibility for production framework/bundler smoke.
 
-| Suite                                                  | Intent                                                         | Command                                 |
-| ------------------------------------------------------ | -------------------------------------------------------------- | --------------------------------------- |
-| [`mixed-federation`](./mixed-federation)               | Healthy Vite + Rspack + Rsbuild e2e                            | `pnpm test:examples` / `pnpm test:e2e`  |
-| [`nested-federation`](./nested-federation)             | Nested Vite host → Vite/Rsbuild → Rspack/Webpack               | `pnpm test:nested` / `pnpm demo:nested` |
-| [`standalone-findings`](./standalone-findings)         | Per-bundler standalone cells with visible Doctor findings      | `pnpm demo:standalone`                  |
-| [`mixed-federation-issues`](./mixed-federation-issues) | Same flat topology, intentional shared/federation conflicts    | `pnpm demo:mixed-issues`                |
-| [`showcase`](./showcase)                               | One-rule CLI fixtures (config / shared / federation / runtime) | `pnpm demo:showcase`                    |
-| [`compatibility/webpack`](./compatibility/webpack)     | Webpack smoke for the compatibility matrix                     | compatibility workflow                  |
+| Suite                                                                | Intent                                                         | Command                                 |
+| -------------------------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------- |
+| [`mixed-federation`](./mixed-federation)                             | Healthy Vite + Rspack + Rsbuild e2e                            | `pnpm test:examples` / `pnpm test:e2e`  |
+| [`nested-federation`](./nested-federation)                           | Nested Vite host → Vite/Rsbuild → Rspack/Webpack               | `pnpm test:nested` / `pnpm demo:nested` |
+| [`standalone-findings`](./standalone-findings)                       | Per-bundler standalone cells with visible Doctor findings      | `pnpm demo:standalone`                  |
+| [`mixed-federation-issues`](./mixed-federation-issues)               | Same flat topology, intentional shared/federation conflicts    | `pnpm demo:mixed-issues`                |
+| [`showcase`](./showcase)                                             | One-rule CLI fixtures (config / shared / federation / runtime) | `pnpm demo:showcase`                    |
+| [`compatibility/webpack`](./compatibility/webpack)                   | Webpack smoke for the compatibility matrix                     | compatibility workflow                  |
+| [`compatibility/vite-nitro-react`](./compatibility/vite-nitro-react) | Vite + Nitro + React SSR output-shape smoke                    | compatibility workflow                  |
 
 From the repo root:
 

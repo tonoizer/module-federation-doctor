@@ -1327,17 +1327,23 @@ export async function addBuildFacts(
                   "Asset names came from a bounded output-root scan after an empty public bundle.",
                 source: "closeBundle",
               }
-            : output.emittedAssets.length > 0
+            : output.emittedAssetsSource === "output-root-scan" && output.emittedAssetsComplete
               ? {
                   state: "exact" as const,
-                  reason: "Asset names came from the public bundle.",
+                  reason: "Asset names came from a complete bounded output-root scan.",
                   source: output.sourceHook,
                 }
-              : {
-                  state: "partial" as const,
-                  reason: "The public bundle contained no asset names.",
-                  source: output.sourceHook,
-                };
+              : output.emittedAssets.length > 0
+                ? {
+                    state: "exact" as const,
+                    reason: "Asset names came from the public bundle.",
+                    source: output.sourceHook,
+                  }
+                : {
+                    state: "partial" as const,
+                    reason: "The public bundle contained no asset names.",
+                    source: output.sourceHook,
+                  };
       const artifactCapability =
         output.buildWrite === false
           ? {
@@ -1426,6 +1432,13 @@ export async function addBuildFacts(
     else delete facts.artifacts.manifest;
     if (currentStats) facts.artifacts.stats = currentStats;
     else delete facts.artifacts.stats;
+    // A multi-environment build can legitimately contain one manifest/stats
+    // pair per output root. `collectArtifacts` keeps the singular legacy
+    // projection empty until build records link those files to an emitted
+    // output. Once that linkage is known, publish the capability as present so
+    // a valid Nitro/Nuxt client artifact is not reported as partial analysis.
+    facts.capabilities.manifest = facts.artifacts.manifest !== undefined;
+    facts.capabilities.stats = facts.artifacts.stats !== undefined;
   }
   const recordedOutputRoots = facts.builds
     ?.filter((build) => build.capabilities.emittedAssets.state !== "not-applicable")

@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
-pnpm fmt:check
-pnpm lint
+corepack pnpm fmt:check
+corepack pnpm lint

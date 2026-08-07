@@ -511,6 +511,150 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
     expect(project.builds[0]).toMatchObject({ target: "node22", targetKind: "node" });
   });
 
+  it("joins Nitro's public client output to the server close cycle", async () => {
+    const root = await makeRoot({ vite: "8.1.5", nitro: "3.0.0" });
+    await fs.mkdir(path.join(root, ".output/public/assets"), { recursive: true });
+    await fs.mkdir(path.join(root, ".output/server"), { recursive: true });
+    await fs.writeFile(path.join(root, ".output/public/remoteEntry.js"), "export {};");
+    await fs.writeFile(path.join(root, ".output/public/@mf-types.d.ts"), "export {};");
+    await fs.writeFile(path.join(root, ".output/public/mf-stats.json"), "{}");
+    await fs.writeFile(
+      path.join(root, ".output/public/mf-manifest.json"),
+      JSON.stringify({
+        id: "vite_lifecycle_nitro",
+        name: "vite_lifecycle",
+        metaData: {
+          name: "vite_lifecycle",
+          remoteEntry: { name: "remoteEntry.js", path: "", type: "module" },
+          ssrRemoteEntry: { name: "remoteEntry.ssr.js", path: "", type: "module" },
+          types: { path: "", name: "" },
+        },
+        shared: [],
+        remotes: [],
+        exposes: [
+          {
+            id: "vite_lifecycle:Widget",
+            name: "Widget",
+            path: "./Widget",
+            assets: { js: { async: [], sync: ["assets/Widget.js"] }, css: { async: [], sync: [] } },
+          },
+        ],
+      }),
+    );
+    await fs.writeFile(path.join(root, ".output/public/assets/Widget.js"), "export {};");
+    await fs.writeFile(path.join(root, ".output/server/remoteEntry.ssr.js"), "export {};");
+    await fs.writeFile(path.join(root, ".output/server/index.mjs"), "export {};");
+
+    const raw = viteDoctor.raw(
+      {
+        ...doctorOptions(root),
+        output: { formats: ["json"] },
+        rules: {
+          ...doctorOptions(root).rules,
+          "artifact/remote-entry-missing": "error",
+        },
+      },
+      { framework: "vite", versions: { unplugin: "3.3.0" } } as never,
+    );
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+    plugin.configResolved?.({
+      root,
+      mode: "production",
+      build: { outDir: ".output/server", write: true, ssr: true },
+      ssr: { target: "node" },
+    });
+    await plugin.writeBundle!.call(
+      {},
+      { dir: path.join(root, ".output/server") },
+      { "remoteEntry.ssr.js": {}, "index.mjs": {} },
+    );
+    await plugin.closeBundle!.call({});
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as {
+      builds: Array<{
+        outputRoot?: string;
+        targetKind?: string;
+        artifacts: Array<{ path: string }>;
+      }>;
+      artifacts: { emittedAssets: string[] };
+    };
+    const report = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/report.json"), "utf8"),
+    ) as { findings: Array<{ ruleId: string }> };
+
+    expect(project.builds.map((build) => build.outputRoot)).toEqual([
+      ".output/public",
+      ".output/server",
+    ]);
+    expect(project.builds.map((build) => build.targetKind)).toEqual(["web", "node"]);
+    expect(project.artifacts.emittedAssets).toEqual(
+      expect.arrayContaining([
+        ".output/public/mf-manifest.json",
+        ".output/public/remoteEntry.js",
+        ".output/server/remoteEntry.ssr.js",
+      ]),
+    );
+    expect(project.builds.flatMap((build) => build.artifacts.map((record) => record.path))).toEqual(
+      expect.arrayContaining([".output/public/mf-manifest.json", ".output/public/mf-stats.json"]),
+    );
+    expect(
+      report.findings.some((finding) => finding.ruleId === "artifact/remote-entry-missing"),
+    ).toBe(false);
+    expect(report.findings.some((finding) => finding.ruleId === "doctor/partial-analysis")).toBe(
+      false,
+    );
+  });
+
+  it("joins Nitro's transient SSR environment to the public client output", async () => {
+    const root = await makeRoot({ vite: "8.1.5", nitro: "3.0.0" });
+    const publicRoot = path.join(root, ".output/public");
+    const transientSsrRoot = path.join(root, "node_modules/.nitro/vite/services/ssr");
+    await fs.mkdir(publicRoot, { recursive: true });
+    await fs.mkdir(transientSsrRoot, { recursive: true });
+    await fs.writeFile(path.join(publicRoot, "remoteEntry.js"), "export {};");
+    await fs.writeFile(path.join(transientSsrRoot, "remoteEntry.ssr.js"), "export {};");
+
+    const raw = viteDoctor.raw(
+      {
+        ...doctorOptions(root),
+        output: { formats: ["json"] },
+        rules: {
+          ...doctorOptions(root).rules,
+          "artifact/remote-entry-missing": "error",
+          "doctor/partial-analysis": "off",
+        },
+      },
+      { framework: "vite", versions: { unplugin: "3.3.0" } } as never,
+    );
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+    plugin.configResolved?.({
+      root,
+      mode: "production",
+      build: { outDir: "node_modules/.nitro/vite/services/ssr", write: true, ssr: true },
+      ssr: { target: "node" },
+    });
+    await plugin.writeBundle!.call({}, { dir: transientSsrRoot }, { "remoteEntry.ssr.js": {} });
+    await plugin.closeBundle!.call({});
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as { builds: Array<{ outputRoot?: string; emittedAssets: string[] }> };
+    const report = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/report.json"), "utf8"),
+    ) as { findings: Array<{ ruleId: string }> };
+
+    expect(project.builds.map((build) => build.outputRoot)).toEqual([
+      ".output/public",
+      "node_modules/.nitro/vite/services/ssr",
+    ]);
+    expect(project.builds[0]?.emittedAssets).toContain(".output/public/remoteEntry.js");
+    expect(
+      report.findings.some((finding) => finding.ruleId === "artifact/remote-entry-missing"),
+    ).toBe(false);
+  });
+
   it("emits doctor/partial-analysis when Rolldown emit facts stay missing", async () => {
     const root = await makeRoot({ "vite-plus": "0.2.0" });
     const raw = viteDoctor.raw(
