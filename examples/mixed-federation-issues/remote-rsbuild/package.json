@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@module-federation/rsbuild-plugin": "2.8.0",
+    "@module-federation/rsbuild-plugin": "2.8.2",
     "@mfdoctor-example/shared-ui": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
