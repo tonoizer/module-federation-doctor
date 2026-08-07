@@ -96,6 +96,7 @@ describe("artifact collection", () => {
 
     expect(facts.imports.sourceFiles).toEqual(["src/kept.ts"]);
     expect(facts.imports.unresolvedDynamic).toContainEqual({ api: "import", file: "src/race.ts" });
+    expect(facts.analysis?.status).toBe("unknown");
   });
 
   it("does not expose mutable artifact cache values to the next analysis", async () => {

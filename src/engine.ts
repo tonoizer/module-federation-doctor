@@ -197,7 +197,7 @@ async function runAnalysis(
     return {
       facts: safeFacts,
       report,
-      exitCode: facts.analysis?.exceeded.length
+      exitCode: facts.analysis?.status === "unknown" || facts.analysis?.exceeded.length
         ? 2
         : policyFails(findings, resolved.failOn, failOnSuppressed)
           ? 1

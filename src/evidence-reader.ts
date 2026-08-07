@@ -124,15 +124,7 @@ function reserveBeforeCopy(
     reserveEvidenceBudget(value, tracker);
   } catch (error) {
     if (error instanceof EvidenceBudgetExceededError)
-      throwReader(
-        options,
-        kind,
-        version,
-        "budget-exceeded",
-        "/",
-        error.message,
-        error.report,
-      );
+      throwReader(options, kind, version, "budget-exceeded", "/", error.message, error.report);
     throwReader(
       options,
       kind,
@@ -201,7 +193,11 @@ export async function readEvidenceFile(
       `${fileLabel}: Unable to read document${code ? ` (${code})` : ""}`,
     );
   }
-  return readEvidenceDocument(raw, { ...options, fileLabel, ...(tracker ? { analysisBudget: tracker } : {}) });
+  return readEvidenceDocument(raw, {
+    ...options,
+    fileLabel,
+    ...(tracker ? { analysisBudget: tracker } : {}),
+  });
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -297,8 +293,7 @@ function jsonValue(
   seen = new WeakSet<object>(),
   tracker?: AnalysisBudgetTracker,
 ): EvidenceValue {
-  if (tracker && !tracker.checkWallTime())
-    throw new EvidenceBudgetExceededError(tracker.report());
+  if (tracker && !tracker.checkWallTime()) throw new EvidenceBudgetExceededError(tracker.report());
   if (value === undefined || typeof value === "function" || typeof value === "symbol")
     throwReader(options, "unknown", undefined, "malformed-json", path, "Value is not JSON-safe.");
   if (typeof value === "bigint")
@@ -522,8 +517,7 @@ function largeLegacyLimits(
       entries.forEach((child) => pending.push({ value: child, depth: item.depth + 1 }));
     }
   }
-  if (tracker && !tracker.checkWallTime())
-    throw new EvidenceBudgetExceededError(tracker.report());
+  if (tracker && !tracker.checkWallTime()) throw new EvidenceBudgetExceededError(tracker.report());
   const inputBytes = Buffer.byteLength(JSON.stringify(value));
   return {
     maxDepth: maxDepth + 16,
@@ -788,8 +782,7 @@ export function migrateProjectFacts(
   options: EvidenceReaderOptions = {},
 ): EvidenceGraphV2 {
   const tracker = trackerFor(options);
-  if (tracker)
-    reserveBeforeCopy(input, tracker, options, "project-facts", 1);
+  if (tracker) reserveBeforeCopy(input, tracker, options, "project-facts", 1);
   const value = jsonValue(input, "/", options, new WeakSet<object>(), tracker) as JsonRecord;
   if (tracker) {
     markEvidenceBudgetDimension(value, tracker, "evidenceNodes");
@@ -873,8 +866,7 @@ export function migrateDoctorReport(
   options: EvidenceReaderOptions = {},
 ): EvidenceGraphV2 {
   const tracker = trackerFor(options);
-  if (tracker)
-    reserveBeforeCopy(input, tracker, options, "doctor-report", 1);
+  if (tracker) reserveBeforeCopy(input, tracker, options, "doctor-report", 1);
   const value = jsonValue(input, "/", options, new WeakSet<object>(), tracker) as JsonRecord;
   if (tracker) {
     markEvidenceBudgetDimension(value, tracker, "evidenceNodes");
@@ -1004,8 +996,7 @@ export function readEvidenceDocument(
   const detectedKind = isRecord(input) ? documentKindOf(input) : "unknown";
   const detectedVersion = isRecord(input) ? sourceVersionOf(input) : undefined;
   const tracker = trackerFor(options);
-  if (tracker)
-    reserveBeforeCopy(input, tracker, options, detectedKind, detectedVersion);
+  if (tracker) reserveBeforeCopy(input, tracker, options, detectedKind, detectedVersion);
   let value: EvidenceValue;
   try {
     value = jsonValue(input, "/", options, new WeakSet<object>(), tracker);
@@ -1084,7 +1075,7 @@ export function readEvidenceDocument(
       kind,
       sourceVersion: 1,
       graph: migrateDoctorReport(value as unknown as DoctorReport, options),
-        ...(tracker ? { analysis: tracker.report() } : {}),
+      ...(tracker ? { analysis: tracker.report() } : {}),
     };
   } catch (error) {
     if (error instanceof EvidenceReaderError) throw error;

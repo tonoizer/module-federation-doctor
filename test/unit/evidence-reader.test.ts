@@ -206,7 +206,9 @@ describe("public evidence reader", () => {
     const tracker = new AnalysisBudgetTracker(
       resolveAnalysisBudgets({ maxEvidenceNodes: measurement.evidenceNodes - 1 }),
     );
-    expect(() => readEvidenceDocument(input, { analysisBudget: tracker })).toThrow(EvidenceReaderError);
+    expect(() => readEvidenceDocument(input, { analysisBudget: tracker })).toThrow(
+      EvidenceReaderError,
+    );
     expect(() => readEvidenceDocument(input, { analysisBudget: tracker })).toThrowError(
       expect.objectContaining({ failureCode: "budget-exceeded", report: expect.any(Object) }),
     );

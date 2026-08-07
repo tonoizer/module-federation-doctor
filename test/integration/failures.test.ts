@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { analyze } from "../../src/engine.js";
 import { defineRule } from "../../src/rules.js";
 
@@ -69,17 +69,33 @@ describe("diagnostic edge cases", () => {
     try {
       await fs.writeFile(path.join(root, "package.json"), '{"name":"failure"}');
       await fs.mkdir(path.join(root, "src"));
-      await fs.writeFile(path.join(root, "src/bad.ts"), "x");
-      await fs.chmod(path.join(root, "src/bad.ts"), 0o000);
-      const result = await analyze({
-        root,
-        include: ["src/bad.ts"],
-        output: { formats: [] },
+      const badFile = path.join(root, "src/bad.ts");
+      await fs.writeFile(badFile, "x");
+      const originalReadFile = fs.readFile;
+      const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+        if (path.resolve(String(file)) === badFile) {
+          const error = new Error("fixture read failed");
+          (error as NodeJS.ErrnoException).code = "EACCES";
+          throw error;
+        }
+        return originalReadFile(file, options);
       });
-      if (process.getuid?.() === 0) expect([0, 2]).toContain(result.exitCode);
-      else expect(result.exitCode).toBe(2);
+      try {
+        const result = await analyze({
+          root,
+          include: ["src/bad.ts"],
+          output: { formats: [] },
+        });
+        expect(result.exitCode).toBe(2);
+        expect(result.facts.analysis?.status).toBe("unknown");
+        expect(result.facts.imports.unresolvedDynamic).toContainEqual({
+          api: "import",
+          file: "src/bad.ts",
+        });
+      } finally {
+        readFileSpy.mockRestore();
+      }
     } finally {
-      await fs.chmod(path.join(root, "src/bad.ts"), 0o600).catch(() => undefined);
       await fs.rm(root, { recursive: true, force: true });
     }
   });

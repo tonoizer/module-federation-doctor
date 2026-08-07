@@ -117,6 +117,7 @@ interface RawImportScan {
   /** Specifiers that come from loadRemote / registerRemotes (always remotes, not packages). */
   remoteSpecifiers: Set<string>;
   unresolvedDynamic: UnresolvedDynamicImport[];
+  sourceReadFailed: boolean;
   budget?: import("./analysis-budgets.js").AnalysisBudgetReport;
 }
 
@@ -136,6 +137,7 @@ function emptyImportScan(): RawImportScan {
     specifierFiles: new Map(),
     remoteSpecifiers: new Set(),
     unresolvedDynamic: [],
+    sourceReadFailed: false,
   };
 }
 
@@ -163,6 +165,7 @@ function scanFromSnapshot(file: string, snapshot: SourceScanSnapshot): RawImport
     ),
     remoteSpecifiers: new Set(snapshot.remoteSpecifiers),
     unresolvedDynamic: snapshot.unresolvedDynamic.map((item) => ({ ...item, file })),
+    sourceReadFailed: false,
   };
 }
 
@@ -174,6 +177,7 @@ function mergeImportScan(target: RawImportScan, source: RawImportScan): void {
   }
   for (const remote of source.remoteSpecifiers) target.remoteSpecifiers.add(remote);
   target.unresolvedDynamic.push(...source.unresolvedDynamic);
+  target.sourceReadFailed ||= source.sourceReadFailed;
 }
 
 const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
@@ -370,6 +374,7 @@ async function scanProjectImports(
     specifierFiles: new Map(),
     remoteSpecifiers: new Set(),
     unresolvedDynamic: [],
+    sourceReadFailed: false,
   };
   const stats = await mapBounded(scan.sourceFiles, async (file) =>
     fs
@@ -386,7 +391,7 @@ async function scanProjectImports(
   scan.sourceFiles = selected.map(({ file }) => file);
   const identity = createAnalysisCacheIdentity(options);
   const contents = await mapBounded(selected, async ({ file }) => {
-    if (!tracker.checkWallTime()) return { kind: "read-failed" as const };
+    if (!tracker.checkWallTime()) return { kind: "skipped" as const };
     const source = await fs.readFile(path.join(options.root, file), "utf8").catch(() => undefined);
     if (source === undefined) return { kind: "read-failed" as const };
     return { kind: "read" as const, source, bytes: Buffer.byteLength(source, "utf8") };
@@ -397,6 +402,11 @@ async function scanProjectImports(
     if (input?.kind === "read-failed") {
       // A file can disappear between glob/stat and read. Keep that loss
       // explicit without aborting the other deterministic workers.
+      scan.sourceReadFailed = true;
+      scan.unresolvedDynamic.push({ api: "import", file: selectedFile.file });
+      continue;
+    }
+    if (input?.kind === "skipped") {
       scan.unresolvedDynamic.push({ api: "import", file: selectedFile.file });
       continue;
     }
@@ -442,8 +452,7 @@ async function scanProjectImports(
   });
   scan.sourceFiles = parsed.map(({ file }) => file);
   for (const item of parsed) mergeImportScan(scan, item.scan);
-  const budget = tracker.report();
-  scan.budget = budget.exceeded.length > 0 ? { ...budget, status: "partial" } : budget;
+  scan.budget = tracker.report(scan.sourceReadFailed ? "unknown" : "complete");
   scan.unresolvedDynamic.sort((a, b) => a.file.localeCompare(b.file) || a.api.localeCompare(b.api));
   return scan;
 }
@@ -1193,7 +1202,7 @@ export async function collectProjectFacts(
     imports,
     artifacts,
     ...(canonicalConfig ? { canonicalConfig } : {}),
-    analysis: tracker.report(),
+    analysis: tracker.report(scan.sourceReadFailed ? "unknown" : "complete"),
   };
   if (normalizedMf) facts.moduleFederation = normalizedMf;
   if (tracker.checkWallTime()) {
@@ -1207,7 +1216,7 @@ export async function collectProjectFacts(
   }
   // Plugin and asset-size collection can consume the remaining wall-time
   // budget. Publish the shared tracker snapshot only after both phases.
-  facts.analysis = tracker.report();
+  facts.analysis = tracker.report(scan.sourceReadFailed ? "unknown" : "complete");
   return facts;
 }
 
