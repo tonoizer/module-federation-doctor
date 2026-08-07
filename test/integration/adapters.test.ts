@@ -10,6 +10,7 @@ import type { BundlerName, DoctorOptions, ProjectFacts } from "../../src/types.j
 const execFileAsync = promisify(execFile);
 const pnpmCommand = process.platform === "win32" ? "corepack.cmd" : "pnpm";
 const pnpmArgs = process.platform === "win32" ? ["pnpm"] : [];
+const pnpmExecOptions = { shell: process.platform === "win32" };
 const roots: string[] = [];
 
 async function project(bundler: BundlerName, kind: "clean" | "warning" | "error") {
@@ -99,6 +100,7 @@ describe("adapter cases", () => {
         pnpmCommand,
         [...pnpmArgs, "--filter", packageName, "build"],
         {
+          ...pnpmExecOptions,
           cwd: repository,
           env: baseEnvironment,
         },
@@ -123,7 +125,10 @@ describe("adapter cases", () => {
 
   it("demos intentional showcase findings through the CLI", async () => {
     const repository = path.resolve(import.meta.dirname, "../..");
-    await execFileAsync(pnpmCommand, [...pnpmArgs, "build"], { cwd: repository });
+    await execFileAsync(pnpmCommand, [...pnpmArgs, "build"], {
+      ...pnpmExecOptions,
+      cwd: repository,
+    });
     const { stdout } = await execFileAsync("node", ["scripts/demo-showcase.mjs"], {
       cwd: repository,
     });
