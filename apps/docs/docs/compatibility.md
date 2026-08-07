@@ -28,11 +28,11 @@ Related: [capabilities](./capabilities.md) ·
 | Webpack              | **supported** | `@module-federation/doctor/webpack` | `compatibility` workflow → `webpack-smoke` build + Doctor  | `@module-federation/enhanced/webpack` (#10 shipped)                                                          |
 | Modern.js            | **partial**   | `@module-federation/doctor/modern`  | `compatibility` workflow → `modern-smoke` (Rspack stub)    | Adapter API + Rspack-under-the-hood smoke; not full `@modern-js/app-tools` until a real Modern.js cell (#12) |
 
-Nuxt 3 / Nuxt 4 use the partial first-class adapter
-`@module-federation/doctor/nuxt`. It hooks the public `vite:extendConfig` API
-and is covered by the adapter contract test plus pinned Nuxt provenance in the
-Giga Smoke gate. A full Nuxt application build remains dependent on the
-upstream Nuxt package-resolution issue documented in the release validation.
+Nuxt 3 / Nuxt 4 use the first-class adapter `@module-federation/doctor/nuxt`.
+It hooks the public `vite:extendConfig` API and is covered by the adapter
+contract test plus pinned Nuxt provenance in the Giga Smoke gate. A full Nuxt
+application build remains dependent on the upstream package-resolution issue
+tracked in [nuxt/nuxt#36009](https://github.com/nuxt/nuxt/issues/36009).
 
 Runtime-only Module Federation (no bundler MF **build** plugin) is
 **unsupported** as a first-class path — see
