@@ -180,15 +180,19 @@ assert.equal(rspackChain.length, 1);
 assert.equal(rspackChain[0][0], "module-federation-doctor");
 `,
   );
-  run(packageManager, [...packageManagerArgs, "install", "--ignore-scripts"], consumer);
-  run(packageManager, [...packageManagerArgs, "check"], consumer);
-  run(packageManager, [...packageManagerArgs, "cli"], consumer);
+  const consumerPnpmArgs = [...packageManagerArgs, "--dir", consumer];
+  // Keep Corepack's project lookup anchored at the Doctor workspace. A temp
+  // consumer can otherwise inherit an unrelated parent packageManager field
+  // (for example yarn in a user's home package.json).
+  run(packageManager, [...consumerPnpmArgs, "install", "--ignore-scripts"], root);
+  run(packageManager, [...consumerPnpmArgs, "check"], root);
+  run(packageManager, [...consumerPnpmArgs, "cli"], root);
   run("npx", ["--no-install", "mfdoctor", "--help"], consumer);
-  run(packageManager, [...packageManagerArgs, "vite"], consumer);
-  run(packageManager, [...packageManagerArgs, "rspack"], consumer);
-  run(packageManager, [...packageManagerArgs, "rsbuild"], consumer);
-  run(packageManager, [...packageManagerArgs, "webpack"], consumer);
-  run(packageManager, [...packageManagerArgs, "modern"], consumer);
+  run(packageManager, [...consumerPnpmArgs, "vite"], root);
+  run(packageManager, [...consumerPnpmArgs, "rspack"], root);
+  run(packageManager, [...consumerPnpmArgs, "rsbuild"], root);
+  run(packageManager, [...consumerPnpmArgs, "webpack"], root);
+  run(packageManager, [...consumerPnpmArgs, "modern"], root);
   process.stdout.write(`Tarball consumer passed: ${pathToFileURL(tarball).href}\n`);
 } finally {
   await fs.rm(temporary, { recursive: true, force: true });
