@@ -57,7 +57,7 @@ describe("diagnostic edge cases", () => {
       expect(result.report.findings[0]).toMatchObject({
         ruleId: "team/custom",
         message: "Found .",
-        evidence: { token: "[REDACTED]", path: "./x" },
+        evidence: { token: "[REDACTED]", path: `.${path.sep}x` },
       });
     } finally {
       await fs.rm(root, { recursive: true, force: true });
@@ -88,10 +88,15 @@ describe("diagnostic edge cases", () => {
         });
         expect(result.exitCode).toBe(2);
         expect(result.facts.analysis?.status).toBe("unknown");
-        expect(result.facts.imports.unresolvedDynamic).toContainEqual({
-          api: "import",
-          file: "src/bad.ts",
-        });
+        expect(result.facts.imports.unresolvedDynamic).toEqual([]);
+        expect(result.facts.imports.sourceReadFailures).toEqual(["src/bad.ts"]);
+        const finding = result.report.findings.find(
+          (item) => item.ruleId === "doctor/partial-analysis",
+        );
+        expect(finding?.message).toMatch(/unreadable|unknown source input/i);
+        expect(finding?.suggestion).toMatch(/unreadable|unknown source input/i);
+        expect(finding?.message).not.toMatch(/dynamic import/i);
+        expect(finding?.suggestion).not.toMatch(/dynamic import/i);
       } finally {
         readFileSpy.mockRestore();
       }

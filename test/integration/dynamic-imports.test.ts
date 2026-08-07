@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { analyze } from "../../src/engine.js";
 
 const fixtures = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../fixtures");
@@ -71,10 +71,57 @@ describe("dynamic-import integration", () => {
     expect(result.facts.imports.unresolvedDynamic.some((item) => item.api === "loadShare")).toBe(
       true,
     );
+    expect(result.facts.analysis?.status).toBe("complete");
+    expect(result.exitCode).toBe(0);
     expect(result.report.findings.some((item) => item.ruleId === "doctor/partial-analysis")).toBe(
       true,
     );
     expect(result.report.findings.some((item) => item.ruleId === "shared/unused")).toBe(false);
+  });
+
+  it("reports unreadable static-import source as unknown input", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-dyn-read-failure-"));
+    roots.push(root);
+    await fs.writeFile(path.join(root, "package.json"), '{"name":"dyn-read-failure"}');
+    await fs.mkdir(path.join(root, "src"), { recursive: true });
+    await fs.writeFile(path.join(root, "src/app.ts"), 'import "./unreadable";\n');
+    const unreadable = path.join(root, "src/unreadable.ts");
+    await fs.writeFile(unreadable, "export const value = 1;\n");
+
+    const originalReadFile = fs.readFile;
+    const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+      if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
+      return originalReadFile(file, options);
+    });
+    try {
+      const result = await analyze({
+        root,
+        bundler: "vite",
+        mode: "development",
+        output: { formats: [] },
+        rules: {
+          "config/plugin-package-mismatch": "off",
+          "shared/singleton-risk": "off",
+        },
+        moduleFederation: { name: "dyn_read_failure", shared: {} },
+      });
+
+      expect(result.facts.imports.unresolvedDynamic).toEqual([]);
+      expect(result.facts.imports.sourceReadFailures).toEqual(["src/unreadable.ts"]);
+      expect(result.facts.analysis?.status).toBe("unknown");
+      expect(result.exitCode).toBe(2);
+      const finding = result.report.findings.find(
+        (item) => item.ruleId === "doctor/partial-analysis",
+      );
+      expect(finding?.message).toMatch(/unreadable|unknown source input/i);
+      expect(finding?.suggestion).toMatch(/unreadable|unknown source input/i);
+      expect(finding?.evidence).toMatchObject({ sourceReadFailures: ["src/unreadable.ts"] });
+      expect(finding?.details).toMatchObject({ sourceReadFailures: ["src/unreadable.ts"] });
+      expect(finding?.message).not.toMatch(/dynamic import/i);
+      expect(finding?.suggestion).not.toMatch(/dynamic import/i);
+    } finally {
+      readFileSpy.mockRestore();
+    }
   });
 
   it("uses opt-in runtimeTrace during check without network", async () => {

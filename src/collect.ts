@@ -117,7 +117,7 @@ interface RawImportScan {
   /** Specifiers that come from loadRemote / registerRemotes (always remotes, not packages). */
   remoteSpecifiers: Set<string>;
   unresolvedDynamic: UnresolvedDynamicImport[];
-  sourceReadFailed: boolean;
+  sourceReadFailures: string[];
   budget?: import("./analysis-budgets.js").AnalysisBudgetReport;
 }
 
@@ -137,7 +137,7 @@ function emptyImportScan(): RawImportScan {
     specifierFiles: new Map(),
     remoteSpecifiers: new Set(),
     unresolvedDynamic: [],
-    sourceReadFailed: false,
+    sourceReadFailures: [],
   };
 }
 
@@ -165,7 +165,7 @@ function scanFromSnapshot(file: string, snapshot: SourceScanSnapshot): RawImport
     ),
     remoteSpecifiers: new Set(snapshot.remoteSpecifiers),
     unresolvedDynamic: snapshot.unresolvedDynamic.map((item) => ({ ...item, file })),
-    sourceReadFailed: false,
+    sourceReadFailures: [],
   };
 }
 
@@ -177,7 +177,7 @@ function mergeImportScan(target: RawImportScan, source: RawImportScan): void {
   }
   for (const remote of source.remoteSpecifiers) target.remoteSpecifiers.add(remote);
   target.unresolvedDynamic.push(...source.unresolvedDynamic);
-  target.sourceReadFailed ||= source.sourceReadFailed;
+  target.sourceReadFailures.push(...source.sourceReadFailures);
 }
 
 const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
@@ -374,7 +374,7 @@ async function scanProjectImports(
     specifierFiles: new Map(),
     remoteSpecifiers: new Set(),
     unresolvedDynamic: [],
-    sourceReadFailed: false,
+    sourceReadFailures: [],
   };
   const stats = await mapBounded(scan.sourceFiles, async (file) =>
     fs
@@ -402,8 +402,7 @@ async function scanProjectImports(
     if (input?.kind === "read-failed") {
       // A file can disappear between glob/stat and read. Keep that loss
       // explicit without aborting the other deterministic workers.
-      scan.sourceReadFailed = true;
-      scan.unresolvedDynamic.push({ api: "import", file: selectedFile.file });
+      scan.sourceReadFailures.push(selectedFile.file);
       continue;
     }
     if (input?.kind === "skipped") {
@@ -452,8 +451,9 @@ async function scanProjectImports(
   });
   scan.sourceFiles = parsed.map(({ file }) => file);
   for (const item of parsed) mergeImportScan(scan, item.scan);
-  scan.budget = tracker.report(scan.sourceReadFailed ? "unknown" : "complete");
+  scan.budget = tracker.report(scan.sourceReadFailures.length > 0 ? "unknown" : "complete");
   scan.unresolvedDynamic.sort((a, b) => a.file.localeCompare(b.file) || a.api.localeCompare(b.api));
+  scan.sourceReadFailures = [...new Set(scan.sourceReadFailures)].sort();
   return scan;
 }
 
@@ -528,6 +528,9 @@ function finalizeImports(input: {
     dynamicPackages: [...dynamicPackages].sort(),
     remotes: [...remotes].sort(),
     unresolvedDynamic,
+    ...(input.scan.sourceReadFailures.length > 0
+      ? { sourceReadFailures: [...new Set(input.scan.sourceReadFailures)].sort() }
+      : {}),
     evidenceSources: [...input.evidenceSources].sort(),
     depth: input.depth,
     deepImports: [...deepImports].sort(),
@@ -1126,7 +1129,8 @@ export async function collectProjectFacts(
   if (
     scan.sourceFiles.length > 0 ||
     scan.specifierDynamic.size > 0 ||
-    scan.unresolvedDynamic.length > 0
+    scan.unresolvedDynamic.length > 0 ||
+    scan.sourceReadFailures.length > 0
   )
     evidenceSources.add("source");
   if (manifestRemotes.length > 0) evidenceSources.add("manifest");
@@ -1202,7 +1206,7 @@ export async function collectProjectFacts(
     imports,
     artifacts,
     ...(canonicalConfig ? { canonicalConfig } : {}),
-    analysis: tracker.report(scan.sourceReadFailed ? "unknown" : "complete"),
+    analysis: tracker.report(scan.sourceReadFailures.length > 0 ? "unknown" : "complete"),
   };
   if (normalizedMf) facts.moduleFederation = normalizedMf;
   if (tracker.checkWallTime()) {
@@ -1216,7 +1220,7 @@ export async function collectProjectFacts(
   }
   // Plugin and asset-size collection can consume the remaining wall-time
   // budget. Publish the shared tracker snapshot only after both phases.
-  facts.analysis = tracker.report(scan.sourceReadFailed ? "unknown" : "complete");
+  facts.analysis = tracker.report(scan.sourceReadFailures.length > 0 ? "unknown" : "complete");
   return facts;
 }
 

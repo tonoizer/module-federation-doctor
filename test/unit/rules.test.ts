@@ -1787,6 +1787,17 @@ describe("doctor/partial-analysis suggestions", () => {
     expect(findings).toHaveLength(1);
     expect(findings[0]?.suggestion).toBe("Pass explicit MF options.");
   });
+
+  it("describes unreadable source input without suggesting dynamic-import remediation", async () => {
+    const facts = baseFacts();
+    facts.imports.sourceReadFailures = ["src/unreadable.ts"];
+    const findings = await runPartial(facts);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/unreadable|unknown source input/i);
+    expect(findings[0]?.suggestion).toMatch(/unreadable|unknown source input/i);
+    expect(findings[0]?.suggestion).not.toMatch(/dynamic import/i);
+    expect(findings[0]?.evidence).toMatchObject({ sourceReadFailures: ["src/unreadable.ts"] });
+  });
 });
 
 describe("config/implementation-suspicious", () => {

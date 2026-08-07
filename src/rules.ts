@@ -1324,8 +1324,15 @@ export const builtInRules: DoctorRule[] = [
       .sort();
     if (!mf(context)) missing.push("moduleFederation");
     const unresolvedDynamic = context.facts.imports.unresolvedDynamic ?? [];
+    const sourceReadFailures = context.facts.imports.sourceReadFailures ?? [];
     const budget = context.facts.analysis;
-    if (missing.length === 0 && unresolvedDynamic.length === 0 && !budget?.exceeded.length) return;
+    if (
+      missing.length === 0 &&
+      unresolvedDynamic.length === 0 &&
+      sourceReadFailures.length === 0 &&
+      !budget?.exceeded.length
+    )
+      return;
     const configMissing = missing.includes("config") || missing.includes("moduleFederation");
     const artifactOnlyMissing =
       !configMissing &&
@@ -1339,25 +1346,30 @@ export const builtInRules: DoctorRule[] = [
         : undefined;
     report(
       context,
-      budget?.status === "unknown"
-        ? "Doctor completed with unknown input due to an analysis budget."
-        : unresolvedDynamic.length > 0 && missing.length === 0
-          ? "Doctor completed with unresolved dynamic import patterns."
-          : "Doctor completed with partial input.",
+      sourceReadFailures.length > 0
+        ? "Doctor encountered unreadable source input; analysis is unknown."
+        : budget?.status === "unknown"
+          ? "Doctor completed with unknown input due to an analysis budget."
+          : unresolvedDynamic.length > 0 && missing.length === 0
+            ? "Doctor completed with unresolved dynamic import patterns."
+            : "Doctor completed with partial input.",
       {
         ...(missing.length > 0 ? { missing } : {}),
         ...(unresolvedDynamic.length > 0 ? { unresolvedDynamic } : {}),
+        ...(sourceReadFailures.length > 0 ? { sourceReadFailures } : {}),
         ...(budget?.exceeded.length ? { analysisBudget: budget } : {}),
         ...(context.facts.imports.evidenceSources
           ? { evidenceSources: context.facts.imports.evidenceSources }
           : {}),
       },
-      unresolvedDynamic.length > 0
-        ? "Prefer string-literal `import()` / `loadRemote` / `loadShare`, or pass an opt-in Observability export via `runtimeTrace` / `mfdoctor runtime`."
-        : configMissing
-          ? "Pass explicit MF options."
-          : (viteArtifactSuggestion ??
-            "Run Doctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
+      sourceReadFailures.length > 0
+        ? "Restore access to unreadable source input and re-run Doctor."
+        : unresolvedDynamic.length > 0
+          ? "Prefer string-literal `import()` / `loadRemote` / `loadShare`, or pass an opt-in Observability export via `runtimeTrace` / `mfdoctor runtime`."
+          : configMissing
+            ? "Pass explicit MF options."
+            : (viteArtifactSuggestion ??
+              "Run Doctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
       findingDetails(FINDING_DETAILS_SCHEMAS.DOCTOR_PARTIAL_ANALYSIS, {
         missing,
         ...(unresolvedDynamic.length > 0
@@ -1365,6 +1377,7 @@ export const builtInRules: DoctorRule[] = [
               unresolvedDynamic: unresolvedDynamic as unknown as Array<Record<string, unknown>>,
             }
           : {}),
+        ...(sourceReadFailures.length > 0 ? { sourceReadFailures } : {}),
         ...(context.facts.imports.evidenceSources
           ? { evidenceSources: context.facts.imports.evidenceSources }
           : {}),

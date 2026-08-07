@@ -132,6 +132,9 @@
             "additionalProperties": false
           }
         },
+        "sourceReadFailures": {
+          "$ref": "#/$defs/stringArray"
+        },
         "evidenceSources": {
           "type": "array",
           "items": {

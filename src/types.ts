@@ -233,6 +233,8 @@ export interface ImportFacts {
    * Prefer `doctor/partial-analysis` over claiming unused/missing usage.
    */
   unresolvedDynamic: UnresolvedDynamicImport[];
+  /** Workspace-relative source files that could not be read during collection. */
+  sourceReadFailures?: string[];
   /** Evidence channels that contributed to packages/remotes. */
   evidenceSources: ImportEvidenceSource[];
   /**

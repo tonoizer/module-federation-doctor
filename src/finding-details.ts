@@ -98,6 +98,7 @@ export interface ArtifactDetailsV1 {
 export interface DoctorPartialAnalysisDetailsV1 {
   missing: string[];
   unresolvedDynamic?: Array<Record<string, unknown>>;
+  sourceReadFailures?: string[];
   evidenceSources?: string[];
 }
 

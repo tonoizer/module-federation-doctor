@@ -95,7 +95,8 @@ describe("artifact collection", () => {
     const facts = await collectProjectFacts(await resolveOptions({ root }));
 
     expect(facts.imports.sourceFiles).toEqual(["src/kept.ts"]);
-    expect(facts.imports.unresolvedDynamic).toContainEqual({ api: "import", file: "src/race.ts" });
+    expect(facts.imports.unresolvedDynamic).toEqual([]);
+    expect(facts.imports.sourceReadFailures).toEqual(["src/race.ts"]);
     expect(facts.analysis?.status).toBe("unknown");
   });
 

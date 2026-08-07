@@ -197,11 +197,12 @@ async function runAnalysis(
     return {
       facts: safeFacts,
       report,
-      exitCode: facts.analysis?.status === "unknown" || facts.analysis?.exceeded.length
-        ? 2
-        : policyFails(findings, resolved.failOn, failOnSuppressed)
-          ? 1
-          : 0,
+      exitCode:
+        facts.analysis?.status === "unknown" || facts.analysis?.exceeded.length
+          ? 2
+          : policyFails(findings, resolved.failOn, failOnSuppressed)
+            ? 1
+            : 0,
     };
   } catch (error) {
     if (resolved.output.formats.includes("terminal"))
