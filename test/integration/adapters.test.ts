@@ -8,6 +8,8 @@ import { analyze, analyzeFederation } from "../../src/engine.js";
 import type { BundlerName, DoctorOptions, ProjectFacts } from "../../src/types.js";
 
 const execFileAsync = promisify(execFile);
+const pnpmCommand = process.platform === "win32" ? "corepack.cmd" : "pnpm";
+const pnpmArgs = process.platform === "win32" ? ["pnpm"] : [];
 const roots: string[] = [];
 
 async function project(bundler: BundlerName, kind: "clean" | "warning" | "error") {
@@ -93,10 +95,14 @@ describe("adapter cases", () => {
     delete baseEnvironment.VITEST_WORKER_ID;
 
     for (const packageName of packages) {
-      const { stdout, stderr } = await execFileAsync("pnpm", ["--filter", packageName, "build"], {
-        cwd: repository,
-        env: baseEnvironment,
-      });
+      const { stdout, stderr } = await execFileAsync(
+        pnpmCommand,
+        [...pnpmArgs, "--filter", packageName, "build"],
+        {
+          cwd: repository,
+          env: baseEnvironment,
+        },
+      );
       expect(stderr).not.toContain("Doctor could not complete");
       expect(stdout).not.toContain("Module Federation Doctor: no findings.");
       // Quiet success: no Doctor findings block on a clean build.
@@ -117,7 +123,7 @@ describe("adapter cases", () => {
 
   it("demos intentional showcase findings through the CLI", async () => {
     const repository = path.resolve(import.meta.dirname, "../..");
-    await execFileAsync("pnpm", ["build"], { cwd: repository });
+    await execFileAsync(pnpmCommand, [...pnpmArgs, "build"], { cwd: repository });
     const { stdout } = await execFileAsync("node", ["scripts/demo-showcase.mjs"], {
       cwd: repository,
     });
