@@ -579,7 +579,7 @@ const plans: Record<string, RulePlan> = {
     "declared",
     "project",
     "high",
-    "Requires plugin-resolved viteConfig.manualChunks / codeSplittingGroups; CLI skips when absent.",
+    "Requires adapter-observed user viteConfig.manualChunks / codeSplittingGroups; CLI skips when absent.",
     VITE,
   ),
   "vite/hashed-remote-filename": plan(

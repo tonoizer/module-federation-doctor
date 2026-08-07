@@ -340,6 +340,9 @@ type ViteResolvedConfigLike = {
     rollupOptions?: {
       output?: { manualChunks?: unknown } | Array<{ manualChunks?: unknown }>;
     };
+    rolldownOptions?: {
+      output?: { manualChunks?: unknown } | Array<{ manualChunks?: unknown }>;
+    };
     // Rolldown / Vite Plus
     codeSplitting?: { groups?: unknown };
   };
@@ -348,14 +351,27 @@ type ViteResolvedConfigLike = {
   server?: { origin?: string; port?: number };
 };
 
+type ViteChunkingFacts = Pick<
+  import("./types.js").ViteBundlerConfigFacts,
+  "manualChunks" | "codeSplittingGroups"
+>;
+
+function extractViteChunkingFacts(config: ViteResolvedConfigLike): ViteChunkingFacts {
+  const facts: ViteChunkingFacts = {};
+  const outputs = [
+    config.build?.rollupOptions?.output,
+    config.build?.rolldownOptions?.output,
+  ].flatMap((output) => (Array.isArray(output) ? output : output ? [output] : []));
+  if (outputs.some((item) => item.manualChunks !== undefined)) facts.manualChunks = true;
+  if (config.build?.codeSplitting?.groups !== undefined) facts.codeSplittingGroups = true;
+  return facts;
+}
+
 function extractViteConfigFacts(
   config: ViteResolvedConfigLike,
 ): import("./types.js").ViteBundlerConfigFacts {
   const facts: import("./types.js").ViteBundlerConfigFacts = {};
-  const output = config.build?.rollupOptions?.output;
-  const outputs = Array.isArray(output) ? output : output ? [output] : [];
-  if (outputs.some((item) => item.manualChunks !== undefined)) facts.manualChunks = true;
-  if (config.build?.codeSplitting?.groups !== undefined) facts.codeSplittingGroups = true;
+  Object.assign(facts, extractViteChunkingFacts(config));
 
   const aliases: Record<string, string> = {};
   const alias = config.resolve?.alias;
@@ -599,6 +615,7 @@ async function includeNitroGeneratedOutputAssets(
  */
 function createViteFamilyHooks(configured: DoctorOptions) {
   let resolvedConfig: ViteResolvedConfigLike | undefined;
+  let userChunkingFacts: ViteChunkingFacts | undefined;
   let outputs: BuildOutputInput[] = [];
   let pendingCloseFinalization: number | undefined;
 
@@ -685,10 +702,25 @@ function createViteFamilyHooks(configured: DoctorOptions) {
   };
 
   return {
+    // The Module Federation Vite plugin adds an internal manualChunks hook in
+    // its own config hook. Capture the user-authored config first so that the
+    // advisory rule does not report that federation-owned implementation detail.
+    config: {
+      order: "pre" as const,
+      handler(config: ViteResolvedConfigLike) {
+        userChunkingFacts = extractViteChunkingFacts(config);
+      },
+    },
     configResolved(config: ViteResolvedConfigLike) {
       resolvedConfig = config;
       if (!configured.root && config.root) configured.root = config.root;
       const facts = extractViteConfigFacts(config);
+      if (userChunkingFacts) {
+        if (userChunkingFacts.manualChunks) facts.manualChunks = true;
+        else delete facts.manualChunks;
+        if (userChunkingFacts.codeSplittingGroups) facts.codeSplittingGroups = true;
+        else delete facts.codeSplittingGroups;
+      }
       if (Object.keys(facts).length > 0) configured.viteConfigFacts = facts;
     },
     buildStart() {
@@ -709,6 +741,10 @@ function createViteFamilyHooks(configured: DoctorOptions) {
       await run("closeBundle", meta);
     },
   } as Pick<UnpluginOptions, "writeBundle"> & {
+    config: {
+      order: "pre";
+      handler: (config: ViteResolvedConfigLike) => void;
+    };
     configResolved: (config: ViteResolvedConfigLike) => void;
     buildStart: NonNullable<UnpluginOptions["buildStart"]>;
     closeBundle: NonNullable<UnpluginOptions["writeBundle"]>;
