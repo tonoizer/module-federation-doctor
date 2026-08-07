@@ -72,6 +72,34 @@ describe("workspace discovery", () => {
     );
   });
 
+  it("aggregates persisted source read failures into a workspace partial finding", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-read-failure-"));
+    try {
+      const file = path.join(root, "apps/host/.mf/doctor/project.json");
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      const project = JSON.parse(
+        await fs.readFile(
+          path.join(repository, "fixtures/workspaces/clean/host/.mf/doctor/project.json"),
+          "utf8",
+        ),
+      );
+      project.imports.sourceReadFailures = [
+        "src/unreadable.ts",
+        path.join(root, "apps/host/src/unreadable.ts"),
+        "src/unreadable.ts",
+      ];
+      await fs.writeFile(file, JSON.stringify(project));
+
+      const result = await analyzeFederation([file]);
+      const finding = result.findings.find((item) => item.ruleId === "doctor/partial-analysis");
+      expect(result.exitCode).toBe(2);
+      expect(finding?.project).toBe("workspace");
+      expect(finding?.evidence).toEqual({ sourceReadFailures: ["src/unreadable.ts"] });
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("reports stale and conflicting project facts without changing discovery files", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-"));
     try {

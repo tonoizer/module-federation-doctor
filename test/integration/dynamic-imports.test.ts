@@ -103,7 +103,7 @@ describe("dynamic-import integration", () => {
           "config/plugin-package-mismatch": "off",
           "shared/singleton-risk": "off",
         },
-        moduleFederation: { name: "dyn_read_failure", shared: {} },
+        moduleFederation: { name: "dyn_read_failure", shared: { react: { singleton: true } } },
       });
 
       expect(result.facts.imports.unresolvedDynamic).toEqual([]);
@@ -119,6 +119,7 @@ describe("dynamic-import integration", () => {
       expect(finding?.details).toMatchObject({ sourceReadFailures: ["src/unreadable.ts"] });
       expect(finding?.message).not.toMatch(/dynamic import/i);
       expect(finding?.suggestion).not.toMatch(/dynamic import/i);
+      expect(result.report.findings.some((item) => item.ruleId === "shared/unused")).toBe(false);
     } finally {
       readFileSpy.mockRestore();
     }

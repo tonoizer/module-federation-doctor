@@ -37,7 +37,7 @@ import type {
   Severity,
 } from "./types.js";
 import { FINDING_DETAILS_SCHEMAS } from "./finding-details.js";
-import { deepFreeze, fingerprint, redact, sortFindings } from "./utils.js";
+import { deepFreeze, fingerprint, redact, relativePath, sortFindings } from "./utils.js";
 import { writeFederationReports, writeReports } from "./reporters.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
 import type { AnalysisBudgetReport } from "./analysis-budgets.js";
@@ -258,6 +258,27 @@ function pushFederationFinding(
   });
 }
 
+function aggregateWorkspaceSourceReadFailures(
+  entries: Array<{ file: string; project: ProjectFacts }>,
+  workspaceRoot: string,
+): string[] {
+  const failures = new Set<string>();
+  for (const entry of entries) {
+    const projectRoot = path.resolve(
+      workspaceProjectRoot(entry.file),
+      entry.project.project.root || ".",
+    );
+    for (const failure of entry.project.imports.sourceReadFailures ?? []) {
+      if (typeof failure !== "string") continue;
+      const safePath = redact(
+        relativePath(workspaceRoot, path.resolve(projectRoot, failure)),
+      ) as string;
+      failures.add(safePath);
+    }
+  }
+  return [...failures].sort();
+}
+
 export async function analyzeFederation(
   files: string[],
   options: {
@@ -280,10 +301,11 @@ export async function analyzeFederation(
     workspaceDiagnostics?: WorkspaceProjectDiagnostic[];
   } = {},
 ): Promise<FederationAnalysisResult> {
-  const projectRoots = files.map(workspaceProjectRoot);
+  const orderedFiles = files.slice().sort();
+  const projectRoots = orderedFiles.map(workspaceProjectRoot);
   const workspaceRoot = workspaceRootForProjects(projectRoots);
-  const projects = (
-    await mapBounded(files.sort(), async (file) => {
+  const loadedProjects = (
+    await mapBounded(orderedFiles, async (file) => {
       const project = JSON.parse(await fs.readFile(path.resolve(file), "utf8")) as ProjectFacts;
       Object.defineProperty(project.project, "identityKey", {
         value: createWorkspaceApplicationIdentity(
@@ -294,9 +316,10 @@ export async function analyzeFederation(
         enumerable: false,
         configurable: true,
       });
-      return project;
+      return { file, project };
     })
-  ).sort((a, b) => a.project.name.localeCompare(b.project.name));
+  ).sort((a, b) => a.project.project.name.localeCompare(b.project.project.name));
+  const projects = loadedProjects.map(({ project }) => project);
   const findings: DoctorFinding[] = [];
   if (options.analysis?.exceeded.length) {
     const finding = {
@@ -309,6 +332,19 @@ export async function analyzeFederation(
           ? "Doctor completed with unknown workspace input due to an analysis budget."
           : "Doctor completed with partial workspace input.",
       evidence: { analysisBudget: options.analysis },
+      documentation: "/rules/doctor/partial-analysis",
+    };
+    findings.push({ ...finding, fingerprint: fingerprint(finding) });
+  }
+  const sourceReadFailures = aggregateWorkspaceSourceReadFailures(loadedProjects, workspaceRoot);
+  if (sourceReadFailures.length > 0) {
+    const finding = {
+      schemaVersion: 1 as const,
+      ruleId: "doctor/partial-analysis",
+      severity: "warning" as const,
+      project: "workspace",
+      message: "Doctor encountered unreadable source input in workspace; analysis is unknown.",
+      evidence: { sourceReadFailures },
       documentation: "/rules/doctor/partial-analysis",
     };
     findings.push({ ...finding, fingerprint: fingerprint(finding) });
@@ -593,7 +629,9 @@ export async function analyzeFederation(
     report,
     ui,
     exitCode:
-      options.analysis?.exceeded.length || options.workspaceDiagnostics?.length
+      sourceReadFailures.length > 0 ||
+      options.analysis?.exceeded.length ||
+      options.workspaceDiagnostics?.length
         ? 2
         : policyFails(baselined, failOn, failOnSuppressed)
           ? 1

@@ -406,7 +406,7 @@ async function scanProjectImports(
       continue;
     }
     if (input?.kind === "skipped") {
-      scan.unresolvedDynamic.push({ api: "import", file: selectedFile.file });
+      // The file was never read, so it provides no import-shape evidence.
       continue;
     }
     if (!input) continue;
@@ -414,11 +414,9 @@ async function scanProjectImports(
       input.bytes > selectedFile.reservedBytes &&
       !tracker.reserve({ sourceBytes: input.bytes - selectedFile.reservedBytes })
     ) {
-      scan.unresolvedDynamic.push({ api: "import", file: selectedFile.file });
       continue;
     }
     if (!tracker.checkWallTime()) {
-      scan.unresolvedDynamic.push({ api: "import", file: selectedFile.file });
       continue;
     }
     parseable.push({

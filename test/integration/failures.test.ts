@@ -104,4 +104,37 @@ describe("diagnostic edge cases", () => {
       await fs.rm(root, { recursive: true, force: true });
     }
   });
+
+  it("keeps unreadable input unknown when a file budget also skips later sources", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-failure-budget-"));
+    try {
+      await fs.writeFile(path.join(root, "package.json"), '{"name":"failure-budget"}');
+      await fs.mkdir(path.join(root, "src"));
+      const unreadable = path.join(root, "src/a.ts");
+      await fs.writeFile(unreadable, 'import "react";\n');
+      await fs.writeFile(path.join(root, "src/b.ts"), 'import "react";\n');
+      const originalReadFile = fs.readFile;
+      const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+        if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
+        return originalReadFile(file, options);
+      });
+      try {
+        const result = await analyze({
+          root,
+          include: ["src/*.ts"],
+          analysisBudgets: { maxFiles: 1 },
+          output: { formats: [] },
+        });
+        expect(result.facts.analysis?.status).toBe("unknown");
+        expect(result.facts.analysis?.exceeded).toEqual([{ kind: "files", limit: 1 }]);
+        expect(result.facts.imports.sourceReadFailures).toEqual(["src/a.ts"]);
+        expect(result.facts.imports.unresolvedDynamic).toEqual([]);
+        expect(result.exitCode).toBe(2);
+      } finally {
+        readFileSpy.mockRestore();
+      }
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
 });

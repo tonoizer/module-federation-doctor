@@ -1447,6 +1447,10 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("shared/unused", "warning", (context) => {
     const alwaysShared = alwaysSharedSet(context);
+    const sourceReadFailures = context.facts.imports.sourceReadFailures ?? [];
+    const budgetExceeded = context.facts.analysis?.exceeded.length ?? 0;
+    // Failed or budget-limited source collection cannot establish unused certainty.
+    if (sourceReadFailures.length > 0 || budgetExceeded > 0) return;
     const unresolvedMayHideUsage = (context.facts.imports.unresolvedDynamic ?? []).some((item) =>
       ["import", "loadShare", "loadShareSync"].includes(item.api),
     );
