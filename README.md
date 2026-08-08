@@ -257,4 +257,12 @@ footer (`Score: N/100`) and top-3 copy-paste agent prompts. Use `--no-score` /
 `.agents/skills/mf`. Upstream evidence for rule work lives in
 [docs/sources](apps/docs/docs/sources.md).
 
+## Contribution
+
+New contributors are welcome. Please read the [Contributing Guide](./CONTRIBUTING.md).
+
+## Code of Conduct
+
+Please follow the [Code of Conduct](./CODE_OF_CONDUCT.md).
+
 MIT © 2026 tonoizer and contributors.

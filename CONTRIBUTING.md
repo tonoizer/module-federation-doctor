@@ -1,102 +1,52 @@
-# Contributing to Module Federation Doctor
+# Module Federation Doctor Contributing Guide
 
-Thanks for helping improve Module Federation Doctor. Contributions are
-welcome, including bug fixes, tests, documentation, examples, and rule or
-adapter improvements.
+Thanks for your interest in contributing! New contributors are welcome.
+Please read the [Code of Conduct](./CODE_OF_CONDUCT.md) first.
 
-Please read the [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
+## Sending a Pull Request
 
-## Before opening an issue
+1. Create a focused branch from `main` (`feat/`, `fix/`, `docs/`, or similar).
+2. Make the smallest change that solves the problem.
+3. Add or update tests when behavior changes.
+4. Run the relevant checks and make sure CI passes.
+5. Open a concise PR with a clear summary, related issue, and test results.
 
-- Search existing issues and discussions first.
-- For bugs, use the [bug report template][bug-report] and include a minimal
-  reproduction when possible.
-- Include the Doctor, Node, package manager, and bundler versions involved.
-- Remove secrets, credentials, private paths, and sensitive report data from
-  logs and fixtures.
-- Report security vulnerabilities privately as described in the
-  [security policy][security]. Do not open a public issue for a vulnerability.
+## Setup
 
-Questions and general discussion belong in the project's
-[Discord community][discord].
-
-## Development setup
-
-The repository requires Node `>=22.12.0` and pnpm 11. The pinned package
-manager version is `pnpm@11.17.0`.
+The repository requires Node `>=22.12.0` and pnpm `11.17.0`.
 
 ```bash
 corepack enable
-corepack pnpm install --frozen-lockfile
+pnpm install --frozen-lockfile
 ```
 
-Use the smallest relevant check while iterating:
+## Testing
+
+Run focused checks while working:
 
 ```bash
-corepack pnpm fmt:check
-corepack pnpm lint
-corepack pnpm test:unit
-corepack pnpm test:integration
-corepack pnpm typecheck
-corepack pnpm docs:build
+pnpm fmt:check
+pnpm lint
+pnpm test:unit
+pnpm test:integration
 ```
 
-Before requesting review, run the complete repository check:
+Before submitting a PR, run the full repository check:
 
 ```bash
-corepack pnpm check
+pnpm check
 ```
 
-The full check includes formatting, linting, build and type validation, unit
-and integration tests, examples, end-to-end tests, documentation, and package
-validation. If a check cannot run locally, explain that in the pull request.
+## Changesets
 
-## Making changes
+If a change affects the published `@module-federation/doctor` package, add a
+changeset with `pnpm changeset` and commit the generated file. Documentation,
+test-only, and repository-maintenance changes normally do not need one.
 
-- Keep changes focused and preserve unrelated work.
-- Add or update tests for behavior changes and regression fixes.
-- Keep diagnostics deterministic and avoid leaking secrets or private paths in
-  reports, fixtures, or documentation.
-- Update user-facing documentation and examples when behavior or CLI output
-  changes.
-- For new or changed rules, document the issue, impact, fix, category, and
-  relevant source links alongside the rule documentation.
+For bugs, use the [bug report template][bug]. For security issues, follow the
+[security policy][security] and do not open a public issue. General questions
+belong in the [Discord community][discord].
 
-### Changesets
-
-Changes that affect the published `@module-federation/doctor` package should
-include a changeset:
-
-```bash
-corepack pnpm changeset
-```
-
-Select `@module-federation/doctor`, describe the user-facing change, and commit
-the generated file in `.changeset/`. Documentation-only, test-only, and
-repository-maintenance changes normally do not need a changeset.
-
-## Pull requests
-
-Use a focused branch with a descriptive conventional prefix such as `feat/`,
-`fix/`, `docs/`, `test/`, `refactor/`, or `chore/`.
-
-A good pull request:
-
-- Explains the problem and the approach taken.
-- Links the relevant issue or discussion, if one exists.
-- Lists the checks that were run and any known limitations.
-- Includes tests, documentation, and a changeset when applicable.
-- Avoids unrelated formatting or generated-file churn.
-- Responds to review feedback and keeps all required checks passing.
-
-Maintainers may ask for a smaller reproduction, additional coverage, or a
-follow-up changeset before merging.
-
-## License
-
-By contributing to this repository, you agree that your contributions will be
-licensed under the repository's [MIT License](./LICENSE).
-
-[bug-report]: https://github.com/tonoizer/module-federation-doctor/issues/new?template=bug_report.yml
+[bug]: https://github.com/tonoizer/module-federation-doctor/issues/new?template=bug_report.yml
 [discord]: https://discord.gg/VYtDGFmgVN
 [security]: https://github.com/tonoizer/module-federation-doctor/blob/main/.github/SECURITY.md

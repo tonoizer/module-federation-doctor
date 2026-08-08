@@ -2,115 +2,40 @@
 
 ## Our Pledge
 
-We as members, contributors, and maintainers pledge to make participation in
-our community a harassment-free experience for everyone, regardless of age,
-body size, visible or invisible disability, ethnicity, sex characteristics,
-gender identity and expression, level of experience, education, socio-economic
-status, nationality, personal appearance, race, religion, or sexual identity
-and orientation.
+We want Module Federation Doctor to be a welcoming, respectful, and inclusive
+community. Everyone should be able to participate without discrimination,
+harassment, or intimidation.
 
-We pledge to act and interact in ways that contribute to an open, welcoming,
-diverse, inclusive, and healthy community.
+## Our Standard
 
-## Our Standards
+We expect everyone to:
 
-Examples of behavior that contributes to a positive environment for our
-community include:
+- Treat others with kindness and respect.
+- Listen to different viewpoints and give constructive feedback.
+- Take responsibility for mistakes and correct them.
+- Keep discussions focused on the work, not on personal attacks.
 
-- Demonstrating empathy and kindness toward other people
-- Respecting different opinions, viewpoints, and experiences
-- Giving and gracefully accepting constructive feedback
-- Accepting responsibility and apologizing to those affected by our mistakes
-- Focusing on what is best for the community, not just for ourselves
-
-Examples of unacceptable behavior include:
-
-- Trolling, insulting or derogatory comments, and personal or political attacks
-- Public or private harassment
-- Publishing others' private information without their explicit permission
-- Sexualized language or imagery, and unwelcome sexual attention or advances
-- Other conduct that could reasonably be considered inappropriate in a
-  professional setting
-
-## Enforcement Responsibilities
-
-Project maintainers are responsible for clarifying and enforcing our standards
-of acceptable behavior and will take appropriate and fair corrective action in
-response to any behavior that they consider inappropriate, threatening,
-offensive, or harmful.
-
-Maintainers have the right and responsibility to remove, edit, or reject
-comments, commits, code, wiki edits, issues, and other contributions that are
-not aligned to this Code of Conduct, and will communicate reasons for
-moderation decisions when appropriate.
-
-## Scope
-
-This Code of Conduct applies within all project spaces and also applies when
-an individual is officially representing the project in public spaces.
-Examples of representing our project include using an official project email
-address, posting through an official social media account, or acting as an
-appointed representative at an online or offline event.
+Unacceptable behavior includes harassment, discrimination, threats, sexualized
+language or imagery, publishing private information without permission, and
+other conduct that would be inappropriate in a professional setting.
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project maintainers at **hey@kevinbeier.com**. All complaints
-will be reviewed and investigated promptly and fairly.
+Maintainers may remove, edit, or reject contributions that do not follow this
+Code of Conduct. Report abusive or otherwise unacceptable behavior to
+**hey@kevinbeier.com**. Reports will be reviewed promptly and kept private.
 
-All project maintainers are obligated to respect the privacy and security of
-the reporter of any incident.
+For security vulnerabilities, please follow the [security policy][security]
+instead of opening a public issue.
 
-## Enforcement Guidelines
+## Scope
 
-Project maintainers will follow these Community Impact Guidelines in
-determining the consequences for any action they deem in violation of this
-Code of Conduct:
-
-### 1. Correction
-
-**Community Impact**: Use of inappropriate language or other behavior deemed
-unprofessional or unwelcome in the community.
-
-**Consequence**: A private, written warning from project maintainers,
-providing clarity around the nature of the violation and an explanation of why
-the behavior was inappropriate. A public apology may be requested.
-
-### 2. Warning
-
-**Community Impact**: A violation through a single incident or series of
-actions.
-
-**Consequence**: A warning with consequences for continued behavior. No
-interaction with the people involved, including unsolicited interaction with
-those enforcing the Code of Conduct, for a specified period of time. This
-includes avoiding interactions in community spaces as well as external channels
-like social media. Violating these terms may lead to a temporary or permanent
-ban.
-
-### 3. Temporary Ban
-
-**Community Impact**: A serious violation of community standards, including
-sustained inappropriate behavior.
-
-**Consequence**: A temporary ban from any sort of interaction or public
-communication with the community for a specified period of time. No public or
-private interaction with the people involved, including unsolicited interaction
-with those enforcing the Code of Conduct, is allowed during this period.
-Violating these terms may lead to a permanent ban.
-
-### 4. Permanent Ban
-
-**Community Impact**: Demonstrating a pattern of violation of community
-standards, including sustained inappropriate behavior, harassment of an
-individual, or aggression toward or disparagement of classes of individuals.
-
-**Consequence**: A permanent ban from any sort of public interaction within the
-community.
+This Code of Conduct applies in all project spaces, including issues, pull
+requests, discussions, chat, and events where someone represents the project.
 
 ## Attribution
 
-This Code of Conduct is adapted from the [Contributor Covenant][homepage],
-version 2.1.
+Adapted from the [Contributor Covenant][covenant], version 2.1.
 
-[homepage]: https://www.contributor-covenant.org/version/2/1/code_of_conduct/
+[covenant]: https://www.contributor-covenant.org/version/2/1/code_of_conduct.html
+[security]: https://github.com/tonoizer/module-federation-doctor/blob/main/.github/SECURITY.md
