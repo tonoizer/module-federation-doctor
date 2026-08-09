@@ -27,7 +27,7 @@ import {
   shouldSkipFragmentRemoteEntryInvalid,
   shouldSkipMf2SharedUnused,
 } from "./mf-toolkit-shapes.js";
-import { lookupAssetSize, sumAssetSizes } from "./collect.js";
+import { lookupAssetSize } from "./collect.js";
 import { ruleGuidance } from "./rule-guidance.js";
 import {
   hasNodeRuntimePlugin,
@@ -93,16 +93,84 @@ function manifestAssetPath(manifestPath: string, asset: string): string {
   return path.posix.normalize(path.posix.join(manifestDir, normalizedAsset));
 }
 
-function buildScopedAssetPath(
+function buildsForManifest(context: { facts: ProjectFacts }, manifestPath: string) {
+  const builds = context.facts.builds ?? [];
+  const normalizedManifestPath = manifestPath.replaceAll("\\", "/").replace(/^\.\//, "");
+  const linked = builds.filter((build) =>
+    build.artifacts.some(
+      (artifact) => artifact.path.replaceAll("\\", "/") === normalizedManifestPath,
+    ),
+  );
+  if (linked.length > 0) return linked;
+  const rooted = builds.filter((build) => {
+    const outputRoot = build.outputRoot
+      ?.replaceAll("\\", "/")
+      .replace(/^\.\//, "")
+      .replace(/\/$/, "");
+    return outputRoot && normalizedManifestPath.startsWith(`${outputRoot}/`);
+  });
+  return rooted.length > 0 ? rooted : builds;
+}
+
+function buildScopedAssetPaths(
   context: { facts: ProjectFacts },
   manifestPath: string,
   asset: string,
-): string {
+): string[] {
   // When per-output build records exist, resolve assets against the manifest
   // directory so same-named files in other outputs cannot satisfy the rule.
-  return context.facts.builds && context.facts.builds.length > 0
-    ? manifestAssetPath(manifestPath, asset)
-    : asset;
+  if (!context.facts.builds || context.facts.builds.length === 0) return [asset];
+
+  const normalizedAsset = asset.replaceAll("\\", "/").replace(/^\.\//, "");
+  const manifestDir = path.posix.dirname(manifestPath);
+  const outputRoots = [
+    ...new Set(
+      buildsForManifest(context, manifestPath)
+        .map((build) => build.outputRoot)
+        .filter((outputRoot): outputRoot is string => Boolean(outputRoot)),
+    ),
+  ];
+  const candidates = outputRoots.map((outputRoot) =>
+    normalizedAsset === outputRoot || normalizedAsset.startsWith(`${outputRoot}/`)
+      ? normalizedAsset
+      : path.posix.normalize(path.posix.join(outputRoot, normalizedAsset)),
+  );
+  candidates.push(manifestAssetPath(manifestPath, normalizedAsset));
+  // Some adapters serialize the output-directory basename into the manifest
+  // remoteEntry name even though the manifest path already contains it.
+  const manifestDirectoryName = path.posix.basename(manifestDir);
+  const directoryPrefix = `${manifestDirectoryName}/`;
+  if (manifestDirectoryName !== "." && normalizedAsset.startsWith(directoryPrefix))
+    candidates.push(manifestAssetPath(manifestPath, normalizedAsset.slice(directoryPrefix.length)));
+  return [...new Set(candidates)];
+}
+
+function lookupScopedAssetSize(
+  context: { facts: ProjectFacts },
+  manifestPath: string,
+  asset: string,
+): number | undefined {
+  for (const candidate of buildScopedAssetPaths(context, manifestPath, asset)) {
+    const bytes = lookupAssetSize(context.facts.artifacts.assetSizes, candidate);
+    if (bytes !== undefined) return bytes;
+  }
+  return undefined;
+}
+
+function sumScopedAssetSizes(
+  context: { facts: ProjectFacts },
+  manifestPath: string,
+  assets: readonly string[],
+): number | undefined {
+  let total = 0;
+  let found = 0;
+  for (const asset of assets) {
+    const bytes = lookupScopedAssetSize(context, manifestPath, asset);
+    if (bytes === undefined) continue;
+    total += bytes;
+    found += 1;
+  }
+  return found > 0 ? total : undefined;
 }
 
 function emittedAssetMatches(
@@ -111,8 +179,12 @@ function emittedAssetMatches(
   candidate: string,
   asset: string,
 ): boolean {
-  if (context.facts.builds && context.facts.builds.length > 0)
-    return asset === manifestAssetPath(manifestPath, candidate);
+  if (context.facts.builds && context.facts.builds.length > 0) {
+    const normalizedAsset = asset.replaceAll("\\", "/").replace(/^\.\//, "");
+    return buildScopedAssetPaths(context, manifestPath, candidate).some(
+      (expected) => normalizedAsset === expected,
+    );
+  }
   return asset.endsWith(candidate) || asset.endsWith(path.posix.basename(candidate));
 }
 
@@ -1100,10 +1172,7 @@ export const builtInRules: DoctorRule[] = [
 
     if (manifest.remoteEntry?.name) {
       const assets = [manifest.remoteEntry.name];
-      const bytes = lookupAssetSize(
-        sizes,
-        buildScopedAssetPath(context, manifest.path, manifest.remoteEntry.name),
-      );
+      const bytes = lookupScopedAssetSize(context, manifest.path, manifest.remoteEntry.name);
       if (bytes !== undefined && bytes > remoteEntryMax)
         report(
           context,
@@ -1129,11 +1198,13 @@ export const builtInRules: DoctorRule[] = [
       mergeOverlappingAssetGroups(sharedGroups, {
         package: shared.name,
         assets,
-        scopedAssets: assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
+        scopedAssets: assets.flatMap((asset) =>
+          buildScopedAssetPaths(context, manifest.path, asset),
+        ),
       });
     }
     for (const shared of sharedGroups) {
-      const bytes = sumAssetSizes(sizes, shared.scopedAssets);
+      const bytes = sumScopedAssetSizes(context, manifest.path, shared.assets);
       if (bytes === undefined || bytes <= sharedMax) continue;
       const target =
         shared.packages.length === 1 ? shared.packages[0]! : "shared federation assets";
@@ -1155,10 +1226,7 @@ export const builtInRules: DoctorRule[] = [
     }
 
     for (const expose of manifest.exposes) {
-      const bytes = sumAssetSizes(
-        sizes,
-        expose.assets.map((asset) => buildScopedAssetPath(context, manifest.path, asset)),
-      );
+      const bytes = sumScopedAssetSizes(context, manifest.path, expose.assets);
       if (bytes === undefined || bytes <= exposeMax) continue;
       report(
         context,

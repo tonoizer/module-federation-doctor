@@ -156,10 +156,20 @@ describe("adapter cases", () => {
       "webpack_smoke_checkout",
       "webpack_smoke_catalog",
     ]);
-    expect(instances[0]?.artifacts?.emittedAssets).toContain("dist/checkoutRemoteEntry.js");
-    expect(instances[0]?.artifacts?.emittedAssets).not.toContain("dist/catalogRemoteEntry.js");
-    expect(instances[1]?.artifacts?.emittedAssets).toContain("dist/catalogRemoteEntry.js");
-    expect(instances[1]?.artifacts?.emittedAssets).not.toContain("dist/checkoutRemoteEntry.js");
+    expect(instances[0]?.artifacts?.emittedAssets).toContain(
+      "dist/checkout/checkoutRemoteEntry.js",
+    );
+    expect(instances[0]?.artifacts?.emittedAssets).toContain("dist/checkout/mf-manifest.json");
+    expect(instances[0]?.artifacts?.emittedAssets).toContain("dist/checkout/mf-stats.json");
+    expect(instances[0]?.artifacts?.emittedAssets).not.toContain(
+      "dist/catalog/catalogRemoteEntry.js",
+    );
+    expect(instances[1]?.artifacts?.emittedAssets).toContain("dist/catalog/catalogRemoteEntry.js");
+    expect(instances[1]?.artifacts?.emittedAssets).toContain("dist/catalog/mf-manifest.json");
+    expect(instances[1]?.artifacts?.emittedAssets).toContain("dist/catalog/mf-stats.json");
+    expect(instances[1]?.artifacts?.emittedAssets).not.toContain(
+      "dist/checkout/checkoutRemoteEntry.js",
+    );
   }, 120_000);
 
   it("demos intentional showcase findings through the CLI", async () => {

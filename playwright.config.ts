@@ -46,16 +46,33 @@ const issueWebServers = [
   },
 ] as const;
 
-const multiInstanceWebServer = {
-  name: "multi-instance-webpack",
-  command: "node scripts/serve-dist.mjs examples/compatibility/webpack 3003",
-  url: e2eUrl(3003),
-} as const;
+const multiInstanceWebServers = [
+  {
+    name: "multi-instance-webpack",
+    command: "node scripts/serve-dist.mjs examples/compatibility/webpack 3003",
+    url: e2eUrl(3003),
+  },
+  {
+    name: "multi-instance-vite",
+    command: "node scripts/serve-dist.mjs examples/compatibility/vite-multi-instance 3004",
+    url: e2eUrl(3004),
+  },
+  {
+    name: "adapter-rspack",
+    command: "node scripts/serve-dist.mjs examples/compatibility/rspack-adapter 3005",
+    url: e2eUrl(3005),
+  },
+  {
+    name: "adapter-rsbuild",
+    command: "node scripts/serve-dist.mjs examples/compatibility/rsbuild-adapter 3006",
+    url: e2eUrl(3006),
+  },
+] as const;
 
 const allFederationWebServers = [
   ...federationWebServers,
   ...issueWebServers,
-  multiInstanceWebServer,
+  ...multiInstanceWebServers,
 ];
 
 export default defineConfig({

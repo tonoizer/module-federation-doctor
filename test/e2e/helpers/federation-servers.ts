@@ -2,9 +2,9 @@ import type { APIRequestContext } from "@playwright/test";
 
 export type FederationServer = {
   name: string;
-  /** HTTP readiness probe URL (server root — not a downloadable asset). */
+  /** Base URL used for page navigation and diagnostics. */
   url: string;
-  /** Human-facing entry URL used in failure messages. */
+  /** HTTP readiness probe and human-facing entry URL. */
   entryUrl: string;
 };
 
@@ -70,8 +70,8 @@ export async function waitForFederationServers(
       try {
         // Probe via Playwright's request client (same stack as webServer), not
         // global fetch — Node fetch to `localhost` can miss IPv4-only binds in CI.
-        const response = await request.get(server.url);
-        if (response.status() >= 500) {
+        const response = await request.get(server.entryUrl);
+        if (response.status() !== 200) {
           lastFailures.push(`${server.name} (${server.entryUrl}): HTTP ${response.status()}`);
         }
       } catch (error) {

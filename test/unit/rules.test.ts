@@ -2200,6 +2200,125 @@ describe("Vite/Nuxt artifact false positives", () => {
     expect(await runRule("artifact/manifest-remote-entry-missing", viteBase())).toHaveLength(0);
   });
 
+  it("accepts an output-directory-prefixed remote entry beside its manifest", async () => {
+    const facts = viteBase();
+    facts.artifacts.manifest = {
+      ...facts.artifacts.manifest!,
+      path: "dist/first/mf-manifest.json",
+      remoteEntry: { name: "first/firstRemoteEntry.js", path: "" },
+    };
+    facts.artifacts.emittedAssets = ["dist/first/firstRemoteEntry.js"];
+    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
+  });
+
+  it("matches output-directory-prefixed entries against the active build only", async () => {
+    const facts = viteBase();
+    facts.artifacts.manifest = {
+      ...facts.artifacts.manifest!,
+      path: "dist/first/mf-manifest.json",
+      remoteEntry: { name: "first/firstRemoteEntry.js", path: "" },
+    };
+    facts.artifacts.emittedAssets = ["dist/first/firstRemoteEntry.js"];
+    facts.builds = [
+      {
+        id: "vite-build-1",
+        adapter: "vite",
+        bundler: "vite",
+        emittedAssets: ["dist/first/firstRemoteEntry.js"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+      },
+    ];
+    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
+
+    facts.artifacts.emittedAssets = ["dist/second/firstRemoteEntry.js"];
+    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).not.toHaveLength(0);
+  });
+
+  it("applies the remote-entry budget to an output-directory-prefixed entry", async () => {
+    const facts = viteBase();
+    facts.artifacts.manifest = {
+      ...facts.artifacts.manifest!,
+      path: "dist/first/mf-manifest.json",
+      remoteEntry: { name: "first/firstRemoteEntry.js", path: "" },
+    };
+    facts.artifacts.assetSizes = { "dist/first/firstRemoteEntry.js": 1200 };
+    facts.builds = [
+      {
+        id: "vite-build-1",
+        adapter: "vite",
+        bundler: "vite",
+        emittedAssets: ["dist/first/firstRemoteEntry.js"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+      },
+    ];
+
+    const findings = await runRule("performance/asset-budget", facts, {
+      remoteEntryMaxBytes: 5,
+    });
+    expect(findings.some((finding) => finding.message.includes("Remote entry exceeds"))).toBe(true);
+  });
+
+  it("applies expose and shared budgets relative to the build output root", async () => {
+    const facts = viteBase();
+    facts.artifacts.manifest = {
+      ...facts.artifacts.manifest!,
+      path: "dist/first/mf-manifest.json",
+      exposes: [{ key: "./Widget", assets: ["assets/expose.js"] }],
+      shared: [{ name: "react", assets: ["assets/shared.js"] }],
+    };
+    facts.artifacts.assetSizes = {
+      "dist/assets/expose.js": 1200,
+      "dist/assets/shared.js": 1200,
+    };
+    facts.builds = [
+      {
+        id: "vite-build-1",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: "dist",
+        emittedAssets: ["dist/assets/expose.js", "dist/assets/shared.js"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+      },
+    ];
+
+    const findings = await runRule("performance/asset-budget", facts, {
+      exposeMaxBytes: 5,
+      sharedMaxBytes: 5,
+    });
+    expect(findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: expect.stringContaining('Expose "./Widget" exceeds') }),
+        expect.objectContaining({
+          message: expect.stringContaining('Shared package "react" exceeds'),
+        }),
+      ]),
+    );
+  });
+
   it("accepts a host manifest with no own remote entry", async () => {
     const facts = viteBase();
     facts.moduleFederation!.exposes = {};

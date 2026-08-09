@@ -24,7 +24,16 @@ http
       return;
     }
     fs.stat(candidate, (statError, stat) => {
-      const file = !statError && stat.isFile() ? candidate : path.join(root, "index.html");
+      const file =
+        !statError && stat.isFile()
+          ? candidate
+          : pathname === "/" || !path.extname(pathname)
+            ? path.join(root, "index.html")
+            : undefined;
+      if (!file) {
+        response.writeHead(404).end("Not found");
+        return;
+      }
       fs.readFile(file, (readError, content) => {
         if (readError) {
           response.writeHead(404).end("Not found");

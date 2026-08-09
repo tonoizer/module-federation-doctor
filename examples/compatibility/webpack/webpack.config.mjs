@@ -7,16 +7,16 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 const checkoutOptions = {
   name: "webpack_smoke_checkout",
-  manifest: true,
-  filename: "checkoutRemoteEntry.js",
+  manifest: { filePath: "checkout" },
+  filename: "checkout/checkoutRemoteEntry.js",
   exposes: { "./Widget": "./src/Widget.js" },
   shared: {},
 };
 
 const catalogOptions = {
   name: "webpack_smoke_catalog",
-  manifest: true,
-  filename: "catalogRemoteEntry.js",
+  manifest: { filePath: "catalog" },
+  filename: "catalog/catalogRemoteEntry.js",
   exposes: { "./Catalog": "./src/Catalog.js" },
   shared: {},
 };

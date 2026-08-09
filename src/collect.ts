@@ -1103,11 +1103,19 @@ function artifactRemoteEntryNames(record: ArtifactRecord): string[] {
     .replace(/^\.\//, "")
     .replace(/\/$/, "");
   const manifestDirectory = path.posix.dirname(normalizePath(record.path));
-  return [
-    normalizePath(
-      path.posix.normalize(path.posix.join(manifestDirectory, directory, name)),
-    ).replace(/^\.\//, ""),
-  ];
+  const relativeEntry = path.posix.normalize(path.posix.join(directory, name));
+  const candidates = [path.posix.join(manifestDirectory, relativeEntry)];
+  // Some adapters put the manifest and its remote entry in the same output
+  // directory while still serializing the output-directory name into
+  // remoteEntry.name. Keep the artifact association scoped to that directory
+  // instead of looking for a duplicated nested path.
+  const manifestDirectoryName = path.posix.basename(manifestDirectory);
+  const directoryPrefix = `${manifestDirectoryName}/`;
+  if (manifestDirectoryName !== "." && relativeEntry.startsWith(directoryPrefix))
+    candidates.push(
+      path.posix.join(manifestDirectory, relativeEntry.slice(directoryPrefix.length)),
+    );
+  return [...new Set(candidates.map((candidate) => normalizePath(candidate).replace(/^\.\//, "")))];
 }
 
 function artifactStem(value: string): string {

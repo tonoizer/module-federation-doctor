@@ -80,7 +80,7 @@ async function hasOwnedServerIdentity({ pid, startedAt }) {
 
 const processStartIdentity = await readProcessStartIdentity(process.pid);
 const root = await fs.realpath(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."));
-const BASE_PORTS = [3001, 3002, 3003, 5173, 3011, 3012, 5183];
+const BASE_PORTS = [3001, 3002, 3003, 3004, 3005, 3006, 5173, 3011, 3012, 5183];
 const MAX_OFFSET = 20_000;
 const PORT_LOCK_PREFIX = path.join(os.tmpdir(), "mfdoctor-e2e-port");
 const SERVER_REGISTRY_PREFIX = "mfdoctor-e2e-";
@@ -500,7 +500,7 @@ async function chooseOffset() {
     const release = await claimOffset(offset);
     if (release) return { offset, release };
   }
-  throw new Error(`Could not find seven free E2E ports within offset range 0-${MAX_OFFSET}`);
+  throw new Error(`Could not find ten free E2E ports within offset range 0-${MAX_OFFSET}`);
 }
 
 async function run(label, command, args, env, { captureOutput = false } = {}) {

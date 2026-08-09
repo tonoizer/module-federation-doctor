@@ -19,6 +19,9 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const provenancePath = path.join(root, "fixtures/upstream-compatibility.json");
 const provenance = JSON.parse(fs.readFileSync(provenancePath, "utf8"));
+const compatibilityMatrix = JSON.parse(
+  fs.readFileSync(path.join(root, "fixtures/compatibility-matrix.json"), "utf8"),
+);
 const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const packageManagerArgs = [];
 
@@ -141,8 +144,56 @@ runRequired("production build: compatibility cells", packageManager, [
   "./examples/compatibility/**",
   "build",
 ]);
-for (const dir of ["examples/compatibility/webpack", "examples/compatibility/modern"]) {
+for (const dir of [
+  "examples/compatibility/webpack",
+  "examples/compatibility/vite-multi-instance",
+  "examples/compatibility/rspack-adapter",
+  "examples/compatibility/rsbuild-adapter",
+  "examples/compatibility/modern",
+]) {
   assertReport(dir, { errors: 0 });
+}
+
+const matrixContracts = compatibilityMatrix.localCi
+  .filter((cell) => cell.runtime)
+  .map((cell) => ({
+    dir: cell.fixture,
+    names: cell.runtime.instances.map((instance) => instance.identity),
+    entries: cell.runtime.instances.map((instance) => instance.fileName),
+  }));
+
+for (const contract of matrixContracts) {
+  const projectPath = path.join(root, contract.dir, ".mf/doctor/project.json");
+  const project = JSON.parse(fs.readFileSync(projectPath, "utf8"));
+  const instances = Array.isArray(project.federationInstances)
+    ? project.federationInstances
+    : project.moduleFederation
+      ? [project]
+      : [];
+  assert.equal(instances.length, contract.names.length, `${contract.dir}: instance count`);
+  const instancesByName = new Map(
+    instances.map((instance) => [instance.moduleFederation.name, instance]),
+  );
+  for (const name of contract.names)
+    assert.ok(instancesByName.has(name), `${contract.dir}: missing instance ${name}`);
+  for (const [index, entry] of contract.entries.entries()) {
+    const name = contract.names[index];
+    const instance = instancesByName.get(name);
+    assert.ok(instance, `${contract.dir}: missing instance ${name}`);
+    const assets = instance.artifacts.emittedAssets;
+    assert.ok(
+      assets.some((asset) => asset.endsWith(`/${entry}`) || asset === entry),
+      `${contract.dir}: instance ${name} does not own ${entry}`,
+    );
+    for (const otherEntry of contract.entries) {
+      if (otherEntry === entry) continue;
+      assert.ok(
+        !assets.some((asset) => asset.endsWith(`/${otherEntry}`) || asset === otherEntry),
+        `${contract.dir}: instance ${name} incorrectly owns ${otherEntry}`,
+      );
+    }
+  }
+  process.stdout.write(`ok matrix ${contract.dir} (${instances.length} instance scope(s))\n`);
 }
 runRequired("compatibility matrix contract", process.execPath, [
   "scripts/verify-compatibility-matrix.mjs",

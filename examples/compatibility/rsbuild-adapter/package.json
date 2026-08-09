@@ -1,0 +1,17 @@
+{
+  "name": "@mfdoctor-example/rsbuild-adapter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rsbuild build",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\""
+  },
+  "dependencies": {
+    "@module-federation/rsbuild-plugin": "2.8.2"
+  },
+  "devDependencies": {
+    "@module-federation/doctor": "workspace:*",
+    "@rsbuild/core": "2.1.8"
+  }
+}
