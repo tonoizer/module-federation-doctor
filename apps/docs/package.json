@@ -13,13 +13,13 @@
   "dependencies": {
     "@rspress/core": "2.0.18",
     "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@module-federation/doctor": "workspace:*",
     "@types/node": "26.1.1",
     "@types/react": "^19.1.6",
-    "@types/react-dom": "^19.1.5",
+    "@types/react-dom": "^19.2.4",
     "typescript": "5.9.3"
   }
 }
