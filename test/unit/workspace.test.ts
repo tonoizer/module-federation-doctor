@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { collectProjectFacts } from "../../src/collect.js";
@@ -387,6 +388,32 @@ describe("workspace discovery", () => {
       ]);
       expect(discovery.diagnostics[0]?.message).not.toContain("aggregate cap");
     } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not restart the wall-time budget after selected-group preflight", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-shared-time-"));
+    let clock = 0;
+    const nowSpy = vi.spyOn(performance, "now").mockImplementation(() => clock++);
+    try {
+      const file = path.join(root, ".mf", "doctor", "project.json");
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(
+        file,
+        JSON.stringify({ project: { name: "selected", federationGroup: "selected" } }),
+      );
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        group: "selected",
+        analysisBudgets: { maxWallTimeMs: 6 },
+      });
+
+      expect(discovery.files).toEqual([]);
+      expect(discovery.budget.exceeded).toEqual([{ kind: "wallTimeMs", limit: 6 }]);
+    } finally {
+      nowSpy.mockRestore();
       await fs.rm(root, { recursive: true, force: true });
     }
   });

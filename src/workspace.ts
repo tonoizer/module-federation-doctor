@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { performance } from "node:perf_hooks";
 import fg from "fast-glob";
 import {
   AnalysisBudgetTracker,
@@ -71,9 +72,10 @@ interface ProjectEnvelope {
 }
 
 const GROUP_PROBE_MAX_BYTES = 16 * 1024;
-// Keep group selection preflight independent from analysis budgets while
-// bounding its total disk read to 8 MiB. Probes start with a 16 KiB prefix and
-// may continue in deterministic, ordered chunks when the group is later.
+// Keep group selection preflight's file/serialized-byte reservations isolated
+// from selected analysis while bounding its total disk read to 8 MiB. Probes
+// start with a 16 KiB prefix and may continue in deterministic, ordered chunks
+// when the group is later.
 const GROUP_PROBE_MAX_TOTAL_BYTES = 8 * 1024 * 1024;
 
 type GroupProbeStatus = "found" | "absent" | "unknown";
@@ -310,6 +312,7 @@ async function probeWorkspaceGroups(
   sizes: number[],
   selectedGroup: string,
   maxWallTimeMs: number,
+  startedAt: number,
 ): Promise<{
   scopedFiles: string[];
   scopedContents: Map<string, string | undefined>;
@@ -318,7 +321,8 @@ async function probeWorkspaceGroups(
   diagnostics: WorkspaceProjectDiagnostic[];
 }> {
   // Group selection is a scope preflight, so unrelated projects must not
-  // consume the selected group's analysis budget. The aggregate cap is
+  // consume the selected group's file/serialized-byte budget. Its wall-time
+  // deadline is shared with selected analysis. The aggregate cap is
   // deliberately deterministic: files are already sorted by the caller.
   const probeTracker = new AnalysisBudgetTracker(
     resolveAnalysisBudgets({
@@ -326,6 +330,7 @@ async function probeWorkspaceGroups(
       maxSerializedBytes: GROUP_PROBE_MAX_TOTAL_BYTES,
       maxWallTimeMs,
     }),
+    { startedAt },
   );
   const probed: GroupProbeResult[] = [];
   const skippedFiles: string[] = [];
@@ -654,7 +659,10 @@ export async function discoverWorkspaceProjectsWithBudget(
   let scopedFiles = orderedFiles;
   let preflightSizes: Map<string, number> | undefined;
   let probeDiagnostics: WorkspaceProjectDiagnostic[] = [];
+  let sharedWallTimeStartedAt: number | undefined;
   if (options.group !== undefined) {
+    const groupPreflightStartedAt = performance.now();
+    sharedWallTimeStartedAt = groupPreflightStartedAt;
     const allSizes = await mapBounded(orderedFiles, (file) =>
       fs
         .stat(file)
@@ -666,6 +674,7 @@ export async function discoverWorkspaceProjectsWithBudget(
       allSizes,
       options.group,
       analysisBudgets.maxWallTimeMs,
+      groupPreflightStartedAt,
     );
     scopedFiles = probe.scopedFiles.sort((left, right) => left.localeCompare(right));
     scopedContents = probe.scopedContents;
@@ -674,7 +683,10 @@ export async function discoverWorkspaceProjectsWithBudget(
     probeDiagnostics = probe.diagnostics;
     preflightSizes = new Map(orderedFiles.map((file, index) => [file, allSizes[index] ?? 0]));
   }
-  const tracker = new AnalysisBudgetTracker(analysisBudgets);
+  const tracker = new AnalysisBudgetTracker(
+    analysisBudgets,
+    sharedWallTimeStartedAt === undefined ? {} : { startedAt: sharedWallTimeStartedAt },
+  );
   const selected: Array<{ file: string; reservedBytes: number }> = [];
   const sizes =
     preflightSizes !== undefined
