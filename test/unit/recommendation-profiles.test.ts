@@ -162,15 +162,18 @@ describe("issue #133 recommendation nudges", () => {
     ).toHaveLength(0);
   });
 
-  it("accepts a range that includes a stable version after a prerelease floor", async () => {
-    const facts = baseFacts();
-    facts.dependencies.declared["@module-federation/enhanced"] = ">=2.6.0-beta.1 <2.7.0";
-    expect(
-      await run("config/observability-plugin-recommended", facts, {
-        recommendWithoutPackage: true,
-      }),
-    ).toHaveLength(1);
-  });
+  it.each([">=2.6.0-beta.1 <2.7.0", ">2.5.0 <2.6.0", ">=2.5.0-0 <2.6.0"])(
+    "accepts a range that includes a stable supported version: %s",
+    async (version) => {
+      const facts = baseFacts();
+      facts.dependencies.declared["@module-federation/enhanced"] = version;
+      expect(
+        await run("config/observability-plugin-recommended", facts, {
+          recommendWithoutPackage: true,
+        }),
+      ).toHaveLength(1);
+    },
+  );
 
   it.each(["x", "X", "workspace:x", "*", "workspace:*"])(
     "does not treat %s dependency ranges as supported MF versions",
