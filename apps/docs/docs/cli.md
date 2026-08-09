@@ -203,7 +203,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: npm install --global pnpm@11.17.0 && pnpm install --frozen-lockfile
       - run: pnpm --filter './apps/docs' build
       - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@main
         with:

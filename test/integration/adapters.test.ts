@@ -8,8 +8,8 @@ import { analyze, analyzeFederation } from "../../src/engine.js";
 import type { BundlerName, DoctorOptions, ProjectFacts } from "../../src/types.js";
 
 const execFileAsync = promisify(execFile);
-const pnpmCommand = process.platform === "win32" ? "corepack.cmd" : "pnpm";
-const pnpmArgs = process.platform === "win32" ? ["pnpm"] : [];
+const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const pnpmArgs: string[] = [];
 const pnpmExecOptions = { shell: process.platform === "win32" };
 const roots: string[] = [];
 

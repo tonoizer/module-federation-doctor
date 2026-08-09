@@ -8,6 +8,7 @@ const fixtures = [
   "examples/compatibility/vite-multi-instance",
   "examples/compatibility/rspack-adapter",
   "examples/compatibility/rsbuild-adapter",
+  "examples/compatibility/modern",
 ];
 
 await Promise.all(

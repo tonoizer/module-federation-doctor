@@ -3,6 +3,9 @@ import { federationDoctor } from "@module-federation/doctor/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+const portOffset = Number(process.env.MFDOCTOR_E2E_PORT_OFFSET ?? 0);
+const e2ePort = (basePort: number) => basePort + portOffset;
+
 const mfOptions = {
   name: "host_vite",
   manifest: true,
@@ -10,14 +13,14 @@ const mfOptions = {
     rspackRemote: {
       type: "global",
       name: "rspack_remote",
-      entry: "http://127.0.0.1:3001/remoteEntry.js",
+      entry: `http://127.0.0.1:${e2ePort(3001)}/remoteEntry.js`,
       entryGlobalName: "rspack_remote",
       shareScope: "default",
     },
     rsbuildRemote: {
       type: "global",
       name: "rsbuild_remote",
-      entry: "http://127.0.0.1:3002/remoteEntry.js",
+      entry: `http://127.0.0.1:${e2ePort(3002)}/remoteEntry.js`,
       entryGlobalName: "rsbuild_remote",
       shareScope: "default",
     },
@@ -55,10 +58,10 @@ export default defineConfig({
   // the rspack static server (and Playwright probes) use 127.0.0.1.
   server: {
     host: "127.0.0.1",
-    port: 5173,
+    port: e2ePort(5173),
     strictPort: true,
-    origin: "http://127.0.0.1:5173",
+    origin: `http://127.0.0.1:${e2ePort(5173)}`,
   },
-  preview: { host: "127.0.0.1", port: 5173, strictPort: true },
+  preview: { host: "127.0.0.1", port: e2ePort(5173), strictPort: true },
   build: { target: "esnext" },
 });

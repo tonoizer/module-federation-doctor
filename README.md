@@ -249,7 +249,9 @@ partial / unsupported cells (Vite, Rspack, Rsbuild, Webpack, Modern.js; npm / ya
 consumer notes; terminal / JSON / SARIF on CI).
 
 ```bash
+npm install --global pnpm@11.17.0
 pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
 pnpm check
 pnpm release:dry-run
 ```
@@ -269,9 +271,10 @@ Examples:
 - From `examples/`: `pnpm --dir examples demo` runs showcase + standalone +
   mixed-issues + nested (or `pnpm demo:examples` from the repo root)
 - See [Examples](./apps/docs/docs/examples.md) for the full catalog. The
-  one-command production matrix is `pnpm test:giga`; it builds the green,
+  one-command full E2E gate is `pnpm test:e2e`; it builds the green,
   intentional-finding, nested, and compatibility cells, runs cross-app gates,
-  and executes the green and negative Playwright runtime paths.
+  and executes the green and negative Playwright runtime paths. `pnpm test:giga`
+  remains as a compatibility alias for existing automation.
 
 Doctor-specific agent UX prefers CLI/plugin finding output (rule id, fix,
 Doctor docs URL, official MF sources, exit codes) plus an offline health score

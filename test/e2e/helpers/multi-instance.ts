@@ -38,6 +38,7 @@ const compatibilityMatrix = JSON.parse(
   fs.readFileSync(path.resolve(process.cwd(), "fixtures/compatibility-matrix.json"), "utf8"),
 ) as { localCi: readonly MatrixCell[] };
 const localMatrix = compatibilityMatrix.localCi;
+const portOffset = Number(process.env.MFDOCTOR_E2E_PORT_OFFSET ?? 0);
 
 function matrixFixture(id: string): MatrixFixture {
   const cell = localMatrix.find((candidate) => candidate.id === id);
@@ -46,7 +47,7 @@ function matrixFixture(id: string): MatrixFixture {
     name: cell.runtime.label,
     bundler: cell.bundler,
     projectPath: cell.fixture,
-    baseUrl: `http://127.0.0.1:${cell.runtime.port}`,
+    baseUrl: `http://127.0.0.1:${cell.runtime.port + portOffset}`,
     entryKind: cell.runtime.entryKind,
     instances: cell.runtime.instances,
   };

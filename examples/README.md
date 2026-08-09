@@ -34,7 +34,7 @@ pnpm --dir examples demo:standalone
 pnpm --dir examples demo:mixed-issues
 pnpm --dir examples demo:nested
 pnpm --dir examples build:green       # build healthy mixed-federation
-pnpm --dir examples test:e2e          # Playwright green path
+pnpm --dir examples test:e2e          # full E2E gate
 ```
 
 Or with the workspace filter:

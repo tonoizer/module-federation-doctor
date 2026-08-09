@@ -4,8 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const packageManager = process.platform === "win32" ? "corepack.cmd" : "corepack";
-const packageManagerArgs = ["pnpm"];
+const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const packageManagerArgs = [];
 
 /** @type {Array<{ label: string; filter: string; dir: string; ruleIds: string[] }>} */
 const cells = [

@@ -3,6 +3,8 @@ import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild"
 import { defineConfig } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 
+const portOffset = Number(process.env.MFDOCTOR_E2E_PORT_OFFSET ?? 0);
+
 const mfOptions = {
   name: "rsbuild_remote_issues",
   manifest: true,
@@ -24,7 +26,7 @@ export default defineConfig({
     pluginModuleFederationDoctor({ moduleFederation: mfOptions, failOn: "never" }),
   ],
   server: {
-    port: 3012,
+    port: 3012 + portOffset,
     headers: { "Access-Control-Allow-Origin": "*" },
   },
   output: { assetPrefix: "auto" },

@@ -1,8 +1,14 @@
 # Contributing
 
-Use Node `>=22.12.0` and pnpm 11. Run `pnpm install
---frozen-lockfile`, then `pnpm check`. Add behavior tests for rules and adapters.
-Run `pnpm changeset` for a public package change.
+Use Node `>=22.12.0` and pnpm 11. Install the pinned package manager, then run
+`pnpm install --frozen-lockfile` and `pnpm check`. Add behavior tests for rules
+and adapters. Run `pnpm changeset` for a public package change.
+
+```bash
+npm install --global pnpm@11.17.0
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
+```
 
 For mixed-federation Playwright flake triage, see
 [`test/e2e/README.md`](https://github.com/tonoizer/module-federation-doctor/blob/main/test/e2e/README.md).
