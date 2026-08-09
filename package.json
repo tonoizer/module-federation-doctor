@@ -234,7 +234,7 @@
     "playwright": "1.61.1",
     "publint": "0.3.22",
     "tsdown": "0.22.14",
-    "typescript": "5.9.3",
+    "typescript": "7.0.2",
     "vitest": "4.1.10"
   }
 }
