@@ -311,6 +311,158 @@ function hasRemoteRecoveryPlugin(plugins: string[] | undefined): boolean {
   );
 }
 
+const OBSERVABILITY_PACKAGE = "@module-federation/observability-plugin";
+const OBSERVABILITY_SUPPORT_FLOOR = "2.5.0";
+const OBSERVABILITY_SUPPORT_RANGE = `>=${OBSERVABILITY_SUPPORT_FLOOR}`;
+const OBSERVABILITY_PACKAGE_PATH = `/node_modules/${OBSERVABILITY_PACKAGE}/`;
+const MF2_VERSION_PACKAGES = new Set([
+  "@module-federation/enhanced",
+  "@module-federation/manifest",
+  "@module-federation/modern-js",
+  "@module-federation/modern-js-v3",
+  "@module-federation/observability-plugin",
+  "@module-federation/rsbuild-plugin",
+  "@module-federation/rspack",
+  "@module-federation/runtime",
+  "@module-federation/runtime-tools",
+  "@module-federation/vite",
+  "@module-federation/webpack-bundler-runtime",
+]);
+
+function normalizeDependencyRange(version: string): string {
+  return version.trim().replace(/^workspace:/, "");
+}
+
+function isSupportedMfVersion(version: string): boolean {
+  try {
+    const normalized = normalizeDependencyRange(version);
+    if (!normalized || normalized === "*" || normalized.toLowerCase() === "latest") return false;
+    const exact = semver.valid(normalized);
+    if (exact) return semver.gte(exact, OBSERVABILITY_SUPPORT_FLOOR);
+    const range = semver.validRange(normalized);
+    return range !== null && semver.intersects(range, OBSERVABILITY_SUPPORT_RANGE);
+  } catch {
+    return false;
+  }
+}
+
+function supportedMfVersions(
+  declared: Record<string, string>,
+  installed: Record<string, string>,
+): string[] {
+  const versions = new Set<string>();
+  const packageNames = new Set(
+    [...Object.keys(declared), ...Object.keys(installed)].filter((name) =>
+      MF2_VERSION_PACKAGES.has(name),
+    ),
+  );
+  for (const name of packageNames) {
+    const installedVersion = installed[name];
+    const installedExact =
+      typeof installedVersion === "string" &&
+      semver.valid(normalizeDependencyRange(installedVersion));
+    // An exact installed version is stronger evidence than a permissive
+    // declared range; do not recommend a feature the resolved package cannot
+    // support merely because package.json allows a newer version.
+    if (installedExact) {
+      if (isSupportedMfVersion(installedVersion!))
+        versions.add(`${name}@${normalizeDependencyRange(installedVersion!)}`);
+      continue;
+    }
+    const declaredVersion = declared[name];
+    if (typeof declaredVersion === "string" && isSupportedMfVersion(declaredVersion))
+      versions.add(`${name}@${normalizeDependencyRange(declaredVersion)}`);
+  }
+  return [...versions].sort();
+}
+
+function observabilityPackagePath(
+  value: string,
+): { normalized: string; suffix: string } | undefined {
+  const normalized = value.replaceAll("\\", "/");
+  const marker = normalized.indexOf(OBSERVABILITY_PACKAGE);
+  if (marker < 0 || (marker > 0 && !normalized.slice(0, marker).endsWith("/"))) return undefined;
+  const suffix = normalized.slice(marker + OBSERVABILITY_PACKAGE.length);
+  if (suffix !== "" && !suffix.startsWith("/")) return undefined;
+  return { normalized, suffix };
+}
+
+function isObservabilitySourceSpecifier(value: string): boolean {
+  const match = observabilityPackagePath(value);
+  return match !== undefined && (match.suffix === "" || match.suffix === "/node");
+}
+
+function isObservabilityRuntimePlugin(value: string): boolean {
+  const match = observabilityPackagePath(value);
+  if (!match) return false;
+  if (match.suffix === "" || match.suffix === "/node") return true;
+  const packageMarker = match.normalized.indexOf(OBSERVABILITY_PACKAGE_PATH);
+  if (packageMarker < 0) return false;
+  const resolvedEntry = match.normalized
+    .slice(packageMarker + OBSERVABILITY_PACKAGE_PATH.length)
+    .replace(/^\/+/, "");
+  return /^(?:dist\/)?(?:index|node)(?:\.[cm]?js)?$/.test(resolvedEntry);
+}
+
+function hasObservabilityRuntimeRegistration(
+  runtimePlugins: string[] | undefined,
+  specifiers: string[],
+  deepImports: string[],
+): boolean {
+  return (
+    (runtimePlugins ?? []).some(isObservabilityRuntimePlugin) ||
+    specifiers.some(isObservabilitySourceSpecifier) ||
+    deepImports.some(isObservabilitySourceSpecifier)
+  );
+}
+
+function hasDeclaredObservabilityPackage(
+  declared: Record<string, string>,
+  installed: Record<string, string>,
+): boolean {
+  return Boolean(declared[OBSERVABILITY_PACKAGE] || installed[OBSERVABILITY_PACKAGE]);
+}
+
+function sharedKeysForPackage(
+  shared: Record<string, NormalizedMFConfig["shared"][string]>,
+  packageName: string,
+): Set<string> {
+  const keys = new Set<string>();
+  for (const [key, entry] of Object.entries(shared)) {
+    const names = [key, entry.package, entry.shareKey].filter(
+      (name): name is string => typeof name === "string",
+    );
+    if (names.some((name) => name === packageName || name.startsWith(`${packageName}/`))) {
+      keys.add(key);
+      keys.add(entry.package);
+      if (entry.shareKey) keys.add(entry.shareKey);
+    }
+  }
+  return keys;
+}
+
+function reactPrefixAnalysis(
+  config: NormalizedMFConfig,
+  packageName: "react" | "react-dom",
+  deepImports: string[],
+): { sharedKeys: Set<string>; observed: string[]; uncovered: string[] } | undefined {
+  const sharedKeys = sharedKeysForPackage(config.shared, packageName);
+  if (!sharedKeys.has(packageName)) return undefined;
+  const observed = [
+    ...new Set(deepImports.filter((specifier) => specifier.startsWith(`${packageName}/`))),
+  ].sort();
+  const uncovered = observed.filter(
+    (specifier) => !sharedKeys.has(`${packageName}/`) && !sharedKeys.has(specifier),
+  );
+  return observed.length > 0 ? { sharedKeys, observed, uncovered } : undefined;
+}
+
+function bridgeOwnsReactDomPrefixContract(context: RuleContext): boolean {
+  if (!isReactBridgeProject(context.facts)) return false;
+  const entry = reactBridgeEntryMajor(context.facts);
+  return entry === 18 || entry === 19;
+}
+
 const SSR_FRAMEWORK_DEPS = ["nuxt", "nitropack", "@nuxt/kit", "@nuxt/schema"] as const;
 
 function detectNitroSignal(facts: ProjectFacts): boolean {
@@ -622,6 +774,50 @@ export const builtInRules: DoctorRule[] = [
             entry: remote.entry,
           }),
         );
+  }),
+  createRule("config/observability-plugin-recommended", "info", (context) => {
+    const config = mf(context);
+    if (!config || !hasFederatedSurface(config)) return;
+
+    const declared = context.facts.dependencies.declared;
+    const installed = context.facts.dependencies.installed;
+    const supportedVersions = supportedMfVersions(declared, installed);
+    if (supportedVersions.length === 0) return;
+
+    const specifiers = context.facts.imports.specifiers;
+    const deepImports = context.facts.imports.deepImports ?? [];
+    // A bounded or failed source scan cannot prove that a runtime entry is
+    // absent. Explicit runtimePlugins are still exact, but source imports may
+    // live in files that were not collected.
+    if (sourceEvidenceIncomplete(context.facts)) return;
+    const hasPackage = hasDeclaredObservabilityPackage(declared, installed);
+    const recommendWithoutPackage =
+      optionBoolean(context.options, "recommendWithoutPackage") === true;
+    // The default nudge is opt-in to avoid recommending a runtime reporting
+    // product to every MF build. Production overlays can widen it safely.
+    if (!hasPackage && !recommendWithoutPackage) return;
+    if (hasObservabilityRuntimeRegistration(config.runtimePlugins, specifiers, deepImports)) return;
+
+    const packageVersions = [declared[OBSERVABILITY_PACKAGE], installed[OBSERVABILITY_PACKAGE]]
+      .filter((version): version is string => typeof version === "string")
+      .sort();
+    report(
+      context,
+      hasPackage
+        ? "The Observability Plugin package is present but no runtime registration was found."
+        : "Module Federation is supported by the Observability Plugin, but the plugin is not configured.",
+      {
+        supportedVersions,
+        observabilityPackage: packageVersions,
+        runtimePlugins: config.runtimePlugins ?? [],
+        runtimeImports: [...new Set([...specifiers, ...deepImports])]
+          .filter((specifier) => isObservabilitySourceSpecifier(specifier))
+          .sort(),
+      },
+      hasPackage
+        ? `Register "${OBSERVABILITY_PACKAGE}" (or its runtime entry) in runtimePlugins / runtime plugins. A "/build" import is build-only and does not satisfy this check.`
+        : `Add "${OBSERVABILITY_PACKAGE}" and register its runtime entry when runtime correlation is part of this environment, or turn this rule off / baseline the finding if it is intentionally not used.`,
+    );
   }),
   createRule("config/library-remote-type-mismatch", "warning", (context) => {
     const config = mf(context);
@@ -1717,7 +1913,8 @@ export const builtInRules: DoctorRule[] = [
         });
   }),
   createRule("shared/deep-import-bypass", "warning", (context) => {
-    const shared = mf(context)?.shared ?? {};
+    const config = mf(context);
+    const shared = config?.shared ?? {};
     const sharedKeys = new Set(Object.keys(shared));
     const allowlist = deepImportAllowlist(context);
     const deepImports = context.facts.imports.deepImports ?? [];
@@ -1730,6 +1927,18 @@ export const builtInRules: DoctorRule[] = [
       const root = specifier.startsWith("@")
         ? specifier.split("/").slice(0, 2).join("/")
         : (specifier.split("/")[0] ?? specifier);
+      // React subpaths have a focused recommendation with the correct
+      // info-level severity. Bridge React DOM v18/v19 has its dedicated error
+      // rule. Keep the generic warning only when neither focused rule applies
+      // (for example a custom package or a non-gap React import).
+      const reactPackage = root === "react" || root === "react-dom" ? root : undefined;
+      if (
+        reactPackage &&
+        config &&
+        (reactPrefixAnalysis(config, reactPackage, deepImports) ||
+          (reactPackage === "react-dom" && bridgeOwnsReactDomPrefixContract(context)))
+      )
+        continue;
       // Bypass only when the root package is shared but the subpath is not.
       if (!sharedKeys.has(root)) continue;
       const list = byPackage.get(root) ?? [];
@@ -1751,6 +1960,37 @@ export const builtInRules: DoctorRule[] = [
           importDepth: context.facts.imports.depth ?? context.sharedPolicy?.importDepth,
         },
         `Replace subpath imports with root imports, or add the exact subpaths to shared (for example "${specifiers[0]}").`,
+      );
+    }
+  }),
+  createRule("shared/prefix-share-recommended", "info", (context) => {
+    // Bridge has a focused error for the React DOM contract; the package-level
+    // loop below suppresses only that duplicate while retaining React advice.
+    const config = mf(context);
+    if (!config) return;
+
+    const deepImports = context.facts.imports.deepImports ?? [];
+    const deepImportFiles = context.facts.imports.deepImportFiles ?? {};
+    for (const packageName of ["react", "react-dom"] as const) {
+      const analysis = reactPrefixAnalysis(config, packageName, deepImports);
+      if (!analysis || analysis.uncovered.length === 0) continue;
+      // Bridge owns the error-level react-dom prefix contract. React itself
+      // still uses this advisory because Bridge has no equivalent rule for
+      // arbitrary React deep imports.
+      if (packageName === "react-dom" && bridgeOwnsReactDomPrefixContract(context)) continue;
+
+      const prefixKey = `${packageName}/`;
+      report(
+        context,
+        `Deep imports from "${packageName}" are not covered by a prefix share key.`,
+        {
+          package: packageName,
+          specifiers: analysis.uncovered,
+          files: (deepImportFiles[packageName] ?? []).slice(0, 5),
+          fileCount: (deepImportFiles[packageName] ?? []).length,
+          sharedKeys: [...analysis.sharedKeys].sort(),
+        },
+        `Add "${prefixKey}" to shared (or add the exact observed subpaths), or set rules["shared/prefix-share-recommended"] to "off" when the deep imports are intentional.`,
       );
     }
   }),

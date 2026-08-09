@@ -611,6 +611,14 @@ describe("built-in rules", () => {
         }),
     ],
     [
+      "config/observability-plugin-recommended",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
+        facts.dependencies.declared["@module-federation/enhanced"] = "2.8.0";
+        facts.dependencies.declared["@module-federation/observability-plugin"] = "2.8.0";
+      },
+    ],
+    [
       "config/remote-localhost-in-production",
       (facts: ProjectFacts) => {
         facts.bundler.mode = "ci";
@@ -1208,6 +1216,16 @@ describe("built-in rules", () => {
         facts.imports.packages = ["lodash"];
         facts.imports.deepImports = ["lodash/cloneDeep"];
         facts.imports.deepImportFiles = { lodash: ["src/Widget.ts"] };
+      },
+    ],
+    [
+      "shared/prefix-share-recommended",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.shared = {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+        };
+        facts.imports.deepImports = ["react/jsx-runtime"];
+        facts.imports.deepImportFiles = { react: ["src/Widget.ts"] };
       },
     ],
     [

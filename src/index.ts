@@ -202,6 +202,7 @@ export type {
   DoctorFinding,
   DoctorOptions,
   DoctorPolicyPack,
+  DoctorProfile,
   DoctorPresetName,
   DoctorPrintLog,
   DoctorReport,

@@ -33,6 +33,8 @@ Local `rules` win over pack and preset maps
 export default {
   rules: {
     "config/remote-manifest-recommended": "off",
+    "config/observability-plugin-recommended": "info",
+    "shared/prefix-share-recommended": "off",
     "shared/singleton-risk": "warning", // was elevated / pack default
   },
 };
@@ -112,10 +114,28 @@ export default {
 };
 ```
 
+The same overlays can be selected directly with `profile`:
+
+```ts
+export default {
+  profile: "demo", // local showcase; CI resolves this to production for safety
+  rules: {
+    // Local rules still win over the profile.
+    "shared/prefix-share-recommended": "off",
+  },
+};
+```
+
 See [Policy packs and named presets](./policy-packs.md) for `recommended` /
 `strict`, `demo` / `production`, shareable packs, and precedence. The `demo`
-pack is safe for local showcases: it only hides the two known local noise
-shapes in development. It does not hide non-localhost findings or CI findings.
+pack is safe for local showcases: it softens only bounded local-development
+recommendations. It does not hide non-localhost findings or CI findings.
+
+The enable-this rules are independently suppressible: use
+`config/observability-plugin-recommended` when runtime reports are not part of
+the environment, and use `shared/prefix-share-recommended` when exact subpath
+sharing is intentional. A baseline keeps either recommendation visible as
+`suppressed: true` while allowing CI to continue.
 
 ## Fingerprint baselines
 

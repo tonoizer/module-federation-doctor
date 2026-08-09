@@ -701,6 +701,9 @@ export interface BaselineOptions {
 /** Built-in named severity presets and recommendation profile overlays. */
 export type DoctorPresetName = "recommended" | "strict" | "demo" | "production";
 
+/** Explicit environment profile shortcut for recommendation policy overlays. */
+export type DoctorProfile = "demo" | "production";
+
 /**
  * Shared-dependency governance knobs for packs and local config (MFDOCTOR-122).
  * Lists extend built-in defaults; they do not replace them.
@@ -782,6 +785,11 @@ export interface DoctorOptions {
    */
   transformImport?: Array<string | { libraryName: string }>;
   mode?: "development" | "ci";
+  /**
+   * Apply the built-in environment overlay after `extends` and before local
+   * `rules`. In CI, `profile: "demo"` resolves to the production overlay.
+   */
+  profile?: DoctorProfile;
   root?: string;
   /** Default Observability export path for `mfdoctor runtime` when no trace arg is given.
    * When set on `check` / adapter options, also merges shared/remote hints into import facts. */

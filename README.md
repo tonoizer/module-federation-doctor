@@ -211,7 +211,10 @@ Share org governance with built-in profiles (`recommended`, `strict`, `demo`,
 `production`) and package-level policy packs via `extends`. `recommended`
 matches the catalog defaults, `strict` raises most advisory severities for CI,
 `demo` quiets selected local-demo nudges, and `production` raises selected
-enable-this recommendations. Profiles only adjust existing rule severities;
+enable-this recommendations. Use `profile: "demo"` or `profile: "production"`
+as a top-level shortcut when the overlay should follow `extends`; local
+`rules` still win, and a demo profile resolves to the production overlay in CI.
+Profiles only adjust recommendation severities and bounded rule options;
 correctness findings stay on. Packs can ship severity maps plus custom
 `defineRule` plugins. See [policy packs](./apps/docs/docs/policy-packs.md).
 
@@ -278,5 +281,13 @@ footer (`Score: N/100`) and top-3 copy-paste agent prompts. Use `--no-score` /
 `--diagnostics-dir` for handoff dumps. For Module Federation concepts, use
 `.agents/skills/mf`. Upstream evidence for rule work lives in
 [docs/sources](apps/docs/docs/sources.md).
+
+## Contribution
+
+New contributors are welcome. Please read the [Contributing Guide](./CONTRIBUTING.md).
+
+## Code of Conduct
+
+Please follow the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 MIT © 2026 tonoizer and contributors.

@@ -5,7 +5,13 @@ import { resolveAnalysisBudgets } from "./analysis-budgets.js";
 import { resolvePolicy } from "./policy.js";
 import { mergeSharedPolicy, serializeSharedPolicy } from "./shared-policy.js";
 import { coerceFederationInstanceInputs } from "./federation-instance.js";
-import type { DoctorOptions, DoctorPrintLog, ResolvedDoctorOptions } from "./types.js";
+import type {
+  DoctorExtendEntry,
+  DoctorOptions,
+  DoctorPrintLog,
+  DoctorProfile,
+  ResolvedDoctorOptions,
+} from "./types.js";
 
 export const DEFAULT_INCLUDE = ["src/**/*.{ts,tsx,js,jsx,mts,mjs}"];
 export const DEFAULT_EXCLUDE = [
@@ -88,8 +94,8 @@ export function isCiEnvironment(env: NodeJS.ProcessEnv = process.env): boolean {
  *
  * Severity precedence (later wins):
  * 1. Built-in rule `defaultSeverity`
- * 2. Preset maps from `extends`
- * 3. Pack maps from `extends`
+ * 2. Preset / pack maps from `extends`
+ * 3. The top-level `profile` overlay (when configured)
  * 4. Local `rules` on DoctorOptions (config file)
  * 5. CLI / adapter flags merged onto DoctorOptions before this call
  */
@@ -100,7 +106,19 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   // - mode omitted → detect from CI / provider env vars
   const ci = options.mode === "ci" || (options.mode === undefined && isCiEnvironment());
   const root = path.resolve(options.root ?? process.cwd());
-  const policy = await resolvePolicy(options.extends, root);
+  const explicitExtends: DoctorExtendEntry[] =
+    options.extends === undefined
+      ? []
+      : Array.isArray(options.extends)
+        ? [...options.extends]
+        : [options.extends];
+  // A top-level profile is a convenience overlay, not a parallel policy
+  // system. Appending it preserves the existing left-to-right extends
+  // contract while keeping local `rules` as the final override layer.
+  const effectiveProfile: DoctorProfile | undefined =
+    options.profile === "demo" && ci ? "production" : options.profile;
+  if (effectiveProfile) explicitExtends.push(effectiveProfile);
+  const policy = await resolvePolicy(explicitExtends, root);
   // Local / CLI `rules` override pack and preset maps.
   const rules = { ...policy.rules, ...options.rules };
   const sharedPolicy = serializeSharedPolicy(
