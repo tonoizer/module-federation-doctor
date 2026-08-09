@@ -29,7 +29,7 @@ import type {
   UnresolvedDynamicImport,
 } from "./types.js";
 import { analyzeLocalRuntimePlugin } from "./runtime-plugin-contract.js";
-import { normalizePath, relativePath } from "./utils.js";
+import { normalizePath, relativePath, stableStringify } from "./utils.js";
 import { detectViteLifecycle } from "./vite-lifecycle.js";
 import { AnalysisBudgetTracker } from "./analysis-budgets.js";
 import { mapBounded } from "./async-map.js";
@@ -1758,9 +1758,13 @@ export interface BuildDiagnostics {
 }
 
 function buildOutputOrderKey(output: BuildOutputInput): string {
-  const emittedAssets = output.emittedAssets.slice().sort();
-  const federationInstanceIds = output.federationInstanceIds?.slice().sort();
-  return `${output.adapter}:${output.compilerName ?? ""}:${output.compilationName ?? ""}:${output.hash ?? ""}:${output.outputRoot ?? ""}:${emittedAssets.join(",")}:${federationInstanceIds?.join(",") ?? ""}:${output.sourceHook}:${JSON.stringify(output.modernContext ?? {})}`;
+  return (
+    stableStringify({
+      ...output,
+      emittedAssets: output.emittedAssets.slice().sort(),
+      federationInstanceIds: output.federationInstanceIds?.slice().sort(),
+    }) ?? ""
+  );
 }
 
 function orderBuildOutputs(outputs: BuildOutputInput[]): BuildOutputInput[] {

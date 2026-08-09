@@ -572,6 +572,64 @@ describe("artifact collection", () => {
     ).toEqual(originalArrays);
   });
 
+  it("orders outputs by complete metadata and projects the same primary build", async () => {
+    const root = await fixture({});
+    const outputs = [
+      viteOutput({
+        target: "server",
+        targetKind: "node",
+        buildWrite: false,
+        effectiveMode: "production",
+        engine: "rolldown",
+        flavor: "rolldown-vite",
+        emittedAssets: ["shared.js"],
+        sourceHook: "same-hook",
+      }),
+      viteOutput({
+        target: "browser",
+        targetKind: "web",
+        buildWrite: true,
+        effectiveMode: "development",
+        engine: "rollup",
+        flavor: "vite",
+        emittedAssets: ["shared.js"],
+        sourceHook: "same-hook",
+      }),
+    ];
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    await addBuildFacts(facts, [], root, undefined, outputs);
+
+    expect(
+      facts.builds?.map((build) => ({
+        target: build.target,
+        targetKind: build.targetKind,
+        buildWrite: build.emittedAssets.length > 0,
+        effectiveMode: build.effectiveMode,
+        engine: build.engine,
+        flavor: build.flavor,
+      })),
+    ).toEqual([
+      {
+        target: "server",
+        targetKind: "node",
+        buildWrite: false,
+        effectiveMode: "production",
+        engine: "rolldown",
+        flavor: "rolldown-vite",
+      },
+      {
+        target: "browser",
+        targetKind: "web",
+        buildWrite: true,
+        effectiveMode: "development",
+        engine: "rollup",
+        flavor: "vite",
+      },
+    ]);
+    expect(facts.artifacts.emittedAssets).toEqual(["shared.js"]);
+  });
+
   it("uses the current output root for bare manifest budget assets", async () => {
     const root = await fixture({
       "out/a/mf-manifest.json": JSON.stringify({
