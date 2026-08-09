@@ -8,9 +8,20 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 async function readProcessStartIdentity(pid) {
-  if (process.platform === "win32") return null;
+  if (!Number.isInteger(pid) || pid <= 0) return null;
   try {
-    const { stdout } = await execFileAsync("ps", ["-p", String(pid), "-o", "lstart="], {
+    const command = process.platform === "win32" ? "powershell.exe" : "ps";
+    const args =
+      process.platform === "win32"
+        ? [
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            `(Get-Process -Id ${String(pid)}).StartTime.ToUniversalTime().Ticks`,
+          ]
+        : ["-p", String(pid), "-o", "lstart="];
+    const { stdout } = await execFileAsync(command, args, {
       encoding: "utf8",
       timeout: 1_000,
     });

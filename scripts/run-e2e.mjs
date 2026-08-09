@@ -18,9 +18,20 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 async function readProcessStartIdentity(pid) {
-  if (process.platform === "win32") return null;
+  if (!Number.isInteger(pid) || pid <= 0) return null;
   try {
-    const { stdout } = await execFileAsync("ps", ["-p", String(pid), "-o", "lstart="], {
+    const command = process.platform === "win32" ? "powershell.exe" : "ps";
+    const args =
+      process.platform === "win32"
+        ? [
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            `(Get-Process -Id ${String(pid)}).StartTime.ToUniversalTime().Ticks`,
+          ]
+        : ["-p", String(pid), "-o", "lstart="];
+    const { stdout } = await execFileAsync(command, args, {
       encoding: "utf8",
       timeout: 1_000,
     });
@@ -108,7 +119,12 @@ async function readRegisteredServerGroups(registryPath = activeServerRegistryPat
   return groups;
 }
 
-async function terminateRegisteredServer({ group, pid, startedAt }, force) {
+async function terminateRegisteredServer(
+  { group, pid, startedAt },
+  force,
+  requireOwnership = false,
+) {
+  if (requireOwnership && !startedAt) return;
   if (startedAt) {
     const currentStartIdentity = await readProcessStartIdentity(pid);
     if (currentStartIdentity && currentStartIdentity !== startedAt) return;
@@ -138,13 +154,14 @@ async function terminateRegisteredServer({ group, pid, startedAt }, force) {
 async function cleanupRegisteredServerGroups(
   force = false,
   registryPath = activeServerRegistryPath,
+  requireOwnership = false,
 ) {
   if (!registryPath) return;
 
   if (process.platform === "win32") {
     await Promise.all(
       (await readRegisteredServerGroups(registryPath)).map((server) =>
-        terminateRegisteredServer(server, true),
+        terminateRegisteredServer(server, true, requireOwnership),
       ),
     );
     return;
@@ -159,7 +176,7 @@ async function cleanupRegisteredServerGroups(
     for (const server of liveServers) {
       if (contactedGroups.has(server.group)) continue;
       contactedGroups.add(server.group);
-      await terminateRegisteredServer(server, force);
+      await terminateRegisteredServer(server, force, requireOwnership);
     }
 
     if (force || liveServers.length === 0 || Date.now() >= waitUntil) break;
@@ -170,7 +187,9 @@ async function cleanupRegisteredServerGroups(
   const remainingServers = (await readRegisteredServerGroups(registryPath)).filter((server) =>
     processGroupExists(server.group),
   );
-  await Promise.all(remainingServers.map((server) => terminateRegisteredServer(server, true)));
+  await Promise.all(
+    remainingServers.map((server) => terminateRegisteredServer(server, true, requireOwnership)),
+  );
 }
 
 function processExists(pid) {
@@ -221,7 +240,7 @@ async function cleanupStaleServerRegistries() {
     }
 
     const registryPath = path.join(os.tmpdir(), entry.name);
-    await cleanupRegisteredServerGroups(false, registryPath);
+    await cleanupRegisteredServerGroups(false, registryPath, true);
     await fs.rm(registryPath, { force: true, recursive: true });
   }
 }
