@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { compareCodePoint } from "./utils.js";
 
 export const IDENTITY_SCHEMA_VERSION = 1 as const;
 export type IdentitySchemaVersion = typeof IDENTITY_SCHEMA_VERSION;
@@ -233,35 +234,75 @@ const PROCESS_SESSION_VALUE = /^(?:process|session|tab|pid|sid)(?:[-_:]|$)/i;
 const UNSAFE_NAME =
   /(?:cwd|workspaceRoot|accessToken|authorizationHeader|secret|token|password|cookie|privateKey|signedUrl)/i;
 const DIGEST = /^(?:sha256:)?[a-f0-9]{64}$/;
-const DIMENSION_KEYS: Record<IdentityKind, readonly string[]> = {
-  organization: ["organizationId"],
-  application: ["organizationId", "applicationId"],
-  container: ["organizationId", "applicationId", "containerName"],
-  "adapter-target": [
-    "organizationId",
-    "applicationId",
-    "containerName",
-    "adapter",
-    "bundler",
-    "bundlerVersion",
-    "target",
-    "mode",
-    "buildEnvironment",
-  ],
-  "build-lineage": [
-    "organizationId",
-    "applicationId",
-    "adapterTargetKey",
-    "lane",
-    "target",
-    "environment",
-  ],
-  build: ["buildLineageKey", "buildId"],
-  artifact: ["buildKey", "artifactKind", "digest"],
-  environment: ["organizationId", "environment"],
-  deployment: ["environmentKey", "deploymentId", "artifactSetDigest", "artifactKeys"],
-  "runtime-realm": ["deploymentKey", "realm", "realmId"],
-  "runtime-instance": ["realmKey", "runtimeInstanceId", "runtimePackage", "runtimeVersion"],
+const DIMENSION_METADATA: Record<
+  IdentityKind,
+  { allowed: readonly string[]; required: readonly string[] }
+> = {
+  organization: { allowed: ["organizationId"], required: ["organizationId"] },
+  application: {
+    allowed: ["organizationId", "applicationId"],
+    required: ["organizationId", "applicationId"],
+  },
+  container: {
+    allowed: ["organizationId", "applicationId", "containerName"],
+    required: ["organizationId", "applicationId", "containerName"],
+  },
+  "adapter-target": {
+    allowed: [
+      "organizationId",
+      "applicationId",
+      "containerName",
+      "adapter",
+      "bundler",
+      "bundlerVersion",
+      "target",
+      "mode",
+      "buildEnvironment",
+    ],
+    required: ["organizationId", "applicationId", "containerName", "adapter", "bundler", "target"],
+  },
+  "build-lineage": {
+    allowed: [
+      "organizationId",
+      "applicationId",
+      "adapterTargetKey",
+      "lane",
+      "target",
+      "environment",
+    ],
+    required: [
+      "organizationId",
+      "applicationId",
+      "adapterTargetKey",
+      "lane",
+      "target",
+      "environment",
+    ],
+  },
+  build: {
+    allowed: ["buildLineageKey", "buildId"],
+    required: ["buildLineageKey", "buildId"],
+  },
+  artifact: {
+    allowed: ["buildKey", "artifactKind", "digest"],
+    required: ["buildKey", "artifactKind", "digest"],
+  },
+  environment: {
+    allowed: ["organizationId", "environment"],
+    required: ["organizationId", "environment"],
+  },
+  deployment: {
+    allowed: ["environmentKey", "deploymentId", "artifactSetDigest", "artifactKeys"],
+    required: ["environmentKey", "deploymentId", "artifactSetDigest", "artifactKeys"],
+  },
+  "runtime-realm": {
+    allowed: ["deploymentKey", "realm", "realmId"],
+    required: ["deploymentKey", "realm", "realmId"],
+  },
+  "runtime-instance": {
+    allowed: ["realmKey", "runtimeInstanceId", "runtimePackage", "runtimeVersion"],
+    required: ["realmKey", "runtimeInstanceId", "runtimePackage", "runtimeVersion"],
+  },
 };
 const TARGETS = new Set<IdentityTarget>(["browser", "ssr", "worker", "mobile", "node", "unknown"]);
 const REALMS = new Set<IdentityRealm>([
@@ -294,10 +335,6 @@ export class IdentityValidationError extends Error {
 function bytes(value: string): number {
   return Buffer.byteLength(value, "utf8");
 }
-function compareCodePoint(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
-}
-
 function validateSafeValue(value: string, label: string): void {
   if (value.length === 0) throw new IdentityValidationError(`${label} cannot be empty.`);
   if (ABSOLUTE_PATH.test(value) || URL_VALUE.test(value) || SENSITIVE_QUERY.test(value))
@@ -320,7 +357,8 @@ function validateDimensions<K extends IdentityKind>(
   dimensions: IdentityDimensionsByKind[K],
 ): void {
   const entries = Object.entries(dimensions);
-  const allowed = new Set(DIMENSION_KEYS[kind]);
+  const metadata = DIMENSION_METADATA[kind];
+  const allowed = new Set(metadata.allowed);
   if (entries.length === 0)
     throw new IdentityValidationError(`${kind} dimensions cannot be empty.`);
   if (entries.length > MAX_DIMENSIONS)
@@ -355,45 +393,11 @@ function validateDimensions<K extends IdentityKind>(
   }
   if (total > MAX_DIMENSION_BYTES)
     throw new IdentityValidationError("Identity dimensions exceed maxBytes (4096).");
-  for (const required of requiredDimensions(kind)) {
+  for (const required of metadata.required) {
     if (!(required in dimensions) || dimensions[required as keyof typeof dimensions] === undefined)
       throw new IdentityValidationError(`${kind} requires dimension ${required}.`);
   }
   validateReferenceDimensions(kind, dimensions);
-}
-
-function requiredDimensions(kind: IdentityKind): readonly string[] {
-  switch (kind) {
-    case "organization":
-      return ["organizationId"];
-    case "application":
-      return ["organizationId", "applicationId"];
-    case "container":
-      return ["organizationId", "applicationId", "containerName"];
-    case "adapter-target":
-      return ["organizationId", "applicationId", "containerName", "adapter", "bundler", "target"];
-    case "build-lineage":
-      return [
-        "organizationId",
-        "applicationId",
-        "adapterTargetKey",
-        "lane",
-        "target",
-        "environment",
-      ];
-    case "build":
-      return ["buildLineageKey", "buildId"];
-    case "artifact":
-      return ["buildKey", "artifactKind", "digest"];
-    case "environment":
-      return ["organizationId", "environment"];
-    case "deployment":
-      return ["environmentKey", "deploymentId", "artifactSetDigest", "artifactKeys"];
-    case "runtime-realm":
-      return ["deploymentKey", "realm", "realmId"];
-    case "runtime-instance":
-      return ["realmKey", "runtimeInstanceId", "runtimePackage", "runtimeVersion"];
-  }
 }
 
 function validateKey(value: string, name: string, expectedKind?: IdentityKind): void {

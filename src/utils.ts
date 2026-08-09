@@ -11,6 +11,11 @@ export function normalizePath(value: string): string {
   return value.replaceAll("\\", "/").replace(/^\.\/+/, "");
 }
 
+/** Compare strings by their UTF-16 code units, independently of the host locale. */
+export function compareCodePoint(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 export function relativePath(root: string, value: string): string {
   const result = normalizePath(path.relative(root, value));
   return result.startsWith("../") ? "[external]/" + path.basename(value) : result || ".";
@@ -21,7 +26,7 @@ export function stableValue(value: unknown): unknown {
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>)
-        .sort(([a], [b]) => a.localeCompare(b))
+        .sort(([a], [b]) => compareCodePoint(a, b))
         .map(([key, item]) => [key, stableValue(item)]),
     );
   }
@@ -100,11 +105,11 @@ export function sortFindings(findings: DoctorFinding[]): DoctorFinding[] {
   const rank = { error: 0, warning: 1, info: 2 };
   return [...new Map(findings.map((item) => [item.fingerprint, item])).values()].sort(
     (a, b) =>
-      a.project.localeCompare(b.project) ||
+      compareCodePoint(a.project, b.project) ||
       rank[a.severity] - rank[b.severity] ||
-      a.ruleId.localeCompare(b.ruleId) ||
-      (a.location?.path ?? "").localeCompare(b.location?.path ?? "") ||
-      a.fingerprint.localeCompare(b.fingerprint),
+      compareCodePoint(a.ruleId, b.ruleId) ||
+      compareCodePoint(a.location?.path ?? "", b.location?.path ?? "") ||
+      compareCodePoint(a.fingerprint, b.fingerprint),
   );
 }
 

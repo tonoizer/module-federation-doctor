@@ -38,7 +38,14 @@ import type {
   Severity,
 } from "./types.js";
 import { FINDING_DETAILS_SCHEMAS } from "./finding-details.js";
-import { deepFreeze, fingerprint, redact, relativePath, sortFindings } from "./utils.js";
+import {
+  compareCodePoint,
+  deepFreeze,
+  fingerprint,
+  redact,
+  relativePath,
+  sortFindings,
+} from "./utils.js";
 import { writeFederationReports, writeReports } from "./reporters.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
 import type { AnalysisBudgetReport } from "./analysis-budgets.js";
@@ -364,9 +371,9 @@ function federationProjectGroups(projects: ProjectFacts[]): ProjectFacts[][] {
     groups.set(key, [...(groups.get(key) ?? []), project]);
   }
   return [...groups.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
+    .sort(([left], [right]) => compareCodePoint(left, right))
     .map(([, group]) =>
-      group.sort((left, right) => left.project.name.localeCompare(right.project.name)),
+      group.sort((left, right) => compareCodePoint(left.project.name, right.project.name)),
     );
 }
 
@@ -392,7 +399,7 @@ export async function analyzeFederation(
     workspaceDiagnostics?: WorkspaceProjectDiagnostic[];
   } = {},
 ): Promise<FederationAnalysisResult> {
-  const orderedFiles = files.slice().sort();
+  const orderedFiles = files.slice().sort(compareCodePoint);
   const projectRoots = orderedFiles.map(workspaceProjectRoot);
   const workspaceRoot = workspaceRootForProjects(projectRoots);
   const loadedProjects = (
@@ -409,7 +416,7 @@ export async function analyzeFederation(
       });
       return { file, project };
     })
-  ).sort((a, b) => a.project.project.name.localeCompare(b.project.project.name));
+  ).sort((a, b) => compareCodePoint(a.project.project.name, b.project.project.name));
   const projects = loadedProjects.map(({ project }) => project);
   const findings: DoctorFinding[] = [];
   const incompleteProjects = loadedProjects
@@ -418,7 +425,7 @@ export async function analyzeFederation(
       project: project.project.name,
       analysis: project.analysis!,
     }))
-    .sort((left, right) => left.project.localeCompare(right.project));
+    .sort((left, right) => compareCodePoint(left.project, right.project));
   const projectGroupKey = (project: ProjectFacts): string =>
     project.project.federationGroup ?? "\0ungrouped";
   const diagnosticGroups = new Set<string>();
@@ -449,7 +456,8 @@ export async function analyzeFederation(
       message: diagnostic.message,
     }))
     .sort((left, right) =>
-      `${left.kind}:${left.files.join(",")}:${left.message}`.localeCompare(
+      compareCodePoint(
+        `${left.kind}:${left.files.join(",")}:${left.message}`,
         `${right.kind}:${right.files.join(",")}:${right.message}`,
       ),
     );
@@ -484,7 +492,7 @@ export async function analyzeFederation(
   if (workspaceDiagnostics.length > 0) {
     pushWorkspacePartialFinding(
       findings,
-      "Doctor found stale, duplicate, conflicting, or invalid workspace project facts.",
+      "Doctor found workspace diagnostics; analysis is incomplete.",
       { workspaceDiagnostics },
       { missing: [], workspaceDiagnostics },
     );
@@ -535,7 +543,8 @@ export async function analyzeFederation(
                 return instance;
               })
               .sort((left, right) =>
-                `${left.project}:${left.federationInstanceId ?? ""}`.localeCompare(
+                compareCodePoint(
+                  `${left.project}:${left.federationInstanceId ?? ""}`,
                   `${right.project}:${right.federationInstanceId ?? ""}`,
                 ),
               ),
@@ -560,7 +569,7 @@ export async function analyzeFederation(
         {
           strategies: Object.fromEntries(
             [...strategyOwners.entries()]
-              .sort(([a], [b]) => a.localeCompare(b))
+              .sort(([a], [b]) => compareCodePoint(a, b))
               .map(([strategy, owners]) => [strategy, [...owners].sort()]),
           ),
         },
@@ -739,7 +748,7 @@ export async function analyzeFederation(
       }
 
       for (const [pkg, usedByMfs] of [...usedByPkg.entries()].sort(([a], [b]) =>
-        a.localeCompare(b),
+        compareCodePoint(a, b),
       )) {
         if (!groupEvidenceIncomplete) {
           if (usedByMfs.size < 2) continue;
@@ -765,7 +774,7 @@ export async function analyzeFederation(
 
       if (!groupEvidenceIncomplete)
         for (const [pkg, sharedByMfs] of [...sharedByPkg.entries()].sort(([a], [b]) =>
-          a.localeCompare(b),
+          compareCodePoint(a, b),
         )) {
           if (alwaysShared.has(pkg)) continue;
           if (sharedByMfs.size !== 1) continue;
@@ -805,7 +814,7 @@ export async function analyzeFederation(
   const ui = buildUiPayload(projects, report);
   const formats = options.formats ?? [];
   if (options.outputDirectory && formats.length > 0)
-    await writeFederationReports(projects, report, options.outputDirectory, formats, {
+    await writeFederationReports(report, options.outputDirectory, formats, {
       ...(options.quiet !== undefined ? { quiet: options.quiet } : {}),
       ...(options.printLog !== undefined ? { printLog: options.printLog } : {}),
       ...(options.score !== undefined ? { score: options.score } : {}),

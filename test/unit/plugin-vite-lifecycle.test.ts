@@ -619,6 +619,54 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
     expect(project.builds[0]).toMatchObject({ target: "node22", targetKind: "node" });
   });
 
+  it("joins Nuxt's root-relative client output to the SSR close cycle", async () => {
+    const root = await makeRoot({ vite: "8.1.5", nuxt: "4.0.0" });
+    const clientRoot = path.join(root, ".nuxt/dist/client");
+    const serverRoot = path.join(root, ".nuxt/dist/server");
+    await fs.mkdir(clientRoot, { recursive: true });
+    await fs.mkdir(serverRoot, { recursive: true });
+    await fs.writeFile(path.join(clientRoot, "remoteEntry.js"), "export {};\n");
+    await fs.writeFile(path.join(serverRoot, "remoteEntry.ssr.js"), "export {};\n");
+
+    const raw = viteDoctor.raw(
+      {
+        ...doctorOptions(root),
+        output: { formats: ["json"] },
+        rules: {
+          ...doctorOptions(root).rules,
+          "artifact/remote-entry-missing": "error",
+        },
+      },
+      { framework: "vite", versions: { unplugin: "3.3.0" } } as never,
+    );
+    const plugin = (Array.isArray(raw) ? raw[0]! : raw) as VitePluginHooks;
+    plugin.configResolved?.({
+      root,
+      mode: "production",
+      build: { outDir: ".nuxt/dist/server", write: true, ssr: true },
+      ssr: { target: "node" },
+    });
+    await plugin.writeBundle!.call({}, { dir: serverRoot }, { "remoteEntry.ssr.js": {} });
+    await plugin.closeBundle!.call({});
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as { builds: Array<{ outputRoot?: string; target?: string; targetKind?: string }> };
+    const report = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/report.json"), "utf8"),
+    ) as { findings: Array<{ ruleId: string }> };
+
+    expect(project.builds.map((build) => build.outputRoot)).toEqual([
+      ".nuxt/dist/client",
+      ".nuxt/dist/server",
+    ]);
+    expect(project.builds.map((build) => build.targetKind)).toEqual(["web", "node"]);
+    expect(project.builds.map((build) => build.target)).toEqual([undefined, "node"]);
+    expect(
+      report.findings.some((finding) => finding.ruleId === "artifact/remote-entry-missing"),
+    ).toBe(false);
+  });
+
   it("joins Nitro's public client output to the server close cycle", async () => {
     const root = await makeRoot({ vite: "8.1.5", nitro: "3.0.0" });
     await fs.mkdir(path.join(root, ".output/public/assets"), { recursive: true });

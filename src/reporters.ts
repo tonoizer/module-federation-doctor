@@ -195,6 +195,22 @@ function sarif(report: DoctorReport): Record<string, unknown> {
   };
 }
 
+async function writeReportFormats(
+  report: DoctorReport,
+  directory: string,
+  formats: OutputFormat[],
+  terminal: TerminalReportOptions,
+): Promise<void> {
+  if (formats.includes("json"))
+    await fs.writeFile(path.join(directory, "report.json"), stableStringify(report, 2) + "\n");
+  if (formats.includes("sarif"))
+    await fs.writeFile(
+      path.join(directory, "results.sarif"),
+      stableStringify(sarif(report), 2) + "\n",
+    );
+  if (formats.includes("terminal")) writeTerminal(report, terminal);
+}
+
 export async function writeReports(
   facts: ProjectFacts,
   report: DoctorReport,
@@ -232,30 +248,15 @@ export async function writeReports(
     path.join(directory, "project.json"),
     stableStringify(persistedFacts, 2) + "\n",
   );
-  if (formats.includes("json"))
-    await fs.writeFile(path.join(directory, "report.json"), stableStringify(report, 2) + "\n");
-  if (formats.includes("sarif"))
-    await fs.writeFile(
-      path.join(directory, "results.sarif"),
-      stableStringify(sarif(report), 2) + "\n",
-    );
-  if (formats.includes("terminal")) writeTerminal(report, terminal);
+  await writeReportFormats(report, directory, formats, terminal);
 }
 
 export async function writeFederationReports(
-  _projects: ProjectFacts[],
   report: DoctorReport,
   directory: string,
   formats: OutputFormat[],
   terminal: TerminalReportOptions = {},
 ): Promise<void> {
   await fs.mkdir(directory, { recursive: true });
-  if (formats.includes("json"))
-    await fs.writeFile(path.join(directory, "report.json"), stableStringify(report, 2) + "\n");
-  if (formats.includes("sarif"))
-    await fs.writeFile(
-      path.join(directory, "results.sarif"),
-      stableStringify(sarif(report), 2) + "\n",
-    );
-  if (formats.includes("terminal")) writeTerminal(report, terminal);
+  await writeReportFormats(report, directory, formats, terminal);
 }

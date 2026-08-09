@@ -16,21 +16,19 @@ stay as rules, not showcases.
 
 ## Config
 
-| Setup                    | Command                                                                                     | Finding                                           |
-| ------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Expose key without `./`  | `node dist/cli.js check examples/showcase/config/expose-key-invalid --ci`                   | `config/expose-key-invalid` (error)               |
-| Missing expose path      | `node dist/cli.js check examples/showcase/config/expose-path-missing --ci`                  | `config/expose-path-missing` (error)              |
-| Invalid remote entry     | `node dist/cli.js check examples/showcase/config/remote-entry-invalid --ci`                 | `config/remote-entry-invalid` (error)             |
-| Invalid filename         | `node dist/cli.js check examples/showcase/config/filename-invalid --ci`                     | `config/filename-invalid` (error)                 |
-| Undeclared share scope   | `node dist/cli.js check examples/showcase/config/share-scope-undeclared --ci`               | `config/share-scope-undeclared` (error)           |
-| Insecure remote HTTP     | `node dist/cli.js check examples/showcase/config/remote-http-insecure --ci`                 | `config/remote-http-insecure` (warning)           |
-| Local implementation     | `node dist/cli.js check examples/showcase/config/implementation-local --ci`                 | no findings (heuristic does not fire)             |
-| Suspicious impl muted    | `node dist/cli.js check examples/showcase/config/implementation-suspicious-suppressed --ci` | no findings (`"off"`)                             |
-| Localhost remotes in CI  | `node dist/cli.js check examples/showcase/config/remote-localhost-in-production --ci`       | `config/remote-localhost-in-production` (warning) |
-| Alias prefix collision   | `node dist/cli.js check examples/showcase/config/remote-alias-prefix-collision --ci`        | `config/remote-alias-prefix-collision` (error)    |
-| Nested producer DTS      | `node dist/cli.js check examples/showcase/config/nested-producer-dts-extract --ci`          | no finding (needs exposed-to-remote evidence)     |
-| DTS outputDir mismatch   | `node dist/cli.js check examples/showcase/config/dts-output-dir-mismatch --ci`              | `config/dts-output-dir-mismatch` (warning)        |
-| Remote type URLs missing | `node dist/cli.js check examples/showcase/config/remote-type-urls-missing --ci`             | no finding (default DTS URL is inferred)          |
+| Setup                   | Command                                                                                     | Finding                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Expose key without `./` | `node dist/cli.js check examples/showcase/config/expose-key-invalid --ci`                   | `config/expose-key-invalid` (error)               |
+| Missing expose path     | `node dist/cli.js check examples/showcase/config/expose-path-missing --ci`                  | `config/expose-path-missing` (error)              |
+| Invalid remote entry    | `node dist/cli.js check examples/showcase/config/remote-entry-invalid --ci`                 | `config/remote-entry-invalid` (error)             |
+| Invalid filename        | `node dist/cli.js check examples/showcase/config/filename-invalid --ci`                     | `config/filename-invalid` (error)                 |
+| Undeclared share scope  | `node dist/cli.js check examples/showcase/config/share-scope-undeclared --ci`               | `config/share-scope-undeclared` (error)           |
+| Insecure remote HTTP    | `node dist/cli.js check examples/showcase/config/remote-http-insecure --ci`                 | `config/remote-http-insecure` (warning)           |
+| Local implementation    | `node dist/cli.js check examples/showcase/config/implementation-local --ci`                 | no findings (heuristic does not fire)             |
+| Suspicious impl muted   | `node dist/cli.js check examples/showcase/config/implementation-suspicious-suppressed --ci` | no findings (`"off"`)                             |
+| Localhost remotes in CI | `node dist/cli.js check examples/showcase/config/remote-localhost-in-production --ci`       | `config/remote-localhost-in-production` (warning) |
+| Alias prefix collision  | `node dist/cli.js check examples/showcase/config/remote-alias-prefix-collision --ci`        | `config/remote-alias-prefix-collision` (error)    |
+| DTS outputDir mismatch  | `node dist/cli.js check examples/showcase/config/dts-output-dir-mismatch --ci`              | `config/dts-output-dir-mismatch` (warning)        |
 
 ## Shared
 

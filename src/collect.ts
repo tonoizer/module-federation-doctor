@@ -29,7 +29,7 @@ import type {
   UnresolvedDynamicImport,
 } from "./types.js";
 import { analyzeLocalRuntimePlugin } from "./runtime-plugin-contract.js";
-import { normalizePath, relativePath } from "./utils.js";
+import { compareCodePoint, normalizePath, relativePath, stableStringify } from "./utils.js";
 import { detectViteLifecycle } from "./vite-lifecycle.js";
 import { AnalysisBudgetTracker } from "./analysis-budgets.js";
 import { mapBounded } from "./async-map.js";
@@ -75,7 +75,7 @@ export async function installedVersions(
 ): Promise<Record<string, string>> {
   const installed: Record<string, string> = {};
   const resolver = createRequire(path.join(root, "package.json"));
-  for (const name of Object.keys(dependencies).sort()) {
+  for (const name of Object.keys(dependencies).sort(compareCodePoint)) {
     try {
       const entry = resolver.resolve(name, { paths: [root] });
       const packageFile = await findPackageFile(entry, root);
@@ -147,15 +147,17 @@ function emptyImportScan(): RawImportScan {
 
 function snapshotImportScan(scan: RawImportScan): SourceScanSnapshot {
   return {
-    specifierDynamic: [...scan.specifierDynamic.entries()].sort(([a], [b]) => a.localeCompare(b)),
-    reexportOnly: [...scan.reexportOnly].sort(),
+    specifierDynamic: [...scan.specifierDynamic.entries()].sort(([a], [b]) =>
+      compareCodePoint(a, b),
+    ),
+    reexportOnly: [...scan.reexportOnly].sort(compareCodePoint),
     specifierFiles: [...scan.specifierFiles.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([specifier, files]) => [specifier, [...files].sort()]),
-    remoteSpecifiers: [...scan.remoteSpecifiers].sort(),
+      .sort(([a], [b]) => compareCodePoint(a, b))
+      .map(([specifier, files]) => [specifier, [...files].sort(compareCodePoint)]),
+    remoteSpecifiers: [...scan.remoteSpecifiers].sort(compareCodePoint),
     unresolvedDynamic: scan.unresolvedDynamic
       .slice()
-      .sort((a, b) => `${a.file}:${a.api}`.localeCompare(`${b.file}:${b.api}`)),
+      .sort((a, b) => compareCodePoint(`${a.file}:${a.api}`, `${b.file}:${b.api}`)),
   };
 }
 
@@ -454,8 +456,10 @@ async function scanProjectImports(
   scan.sourceFiles = parsed.map(({ file }) => file);
   for (const item of parsed) mergeImportScan(scan, item.scan);
   scan.budget = tracker.report(scan.sourceReadFailures.length > 0 ? "unknown" : "complete");
-  scan.unresolvedDynamic.sort((a, b) => a.file.localeCompare(b.file) || a.api.localeCompare(b.api));
-  scan.sourceReadFailures = [...new Set(scan.sourceReadFailures)].sort();
+  scan.unresolvedDynamic.sort(
+    (a, b) => compareCodePoint(a.file, b.file) || compareCodePoint(a.api, b.api),
+  );
+  scan.sourceReadFailures = [...new Set(scan.sourceReadFailures)].sort(compareCodePoint);
   return scan;
 }
 
@@ -476,7 +480,7 @@ function finalizeImports(input: {
   const includeReexports = input.depth === "local-graph";
   const specifiers = [...input.scan.specifierDynamic.keys()]
     .filter((specifier) => includeReexports || !input.scan.reexportOnly.has(specifier))
-    .sort();
+    .sort(compareCodePoint);
 
   for (const specifier of input.scan.remoteSpecifiers) {
     const name = packageName(specifier);
@@ -521,25 +525,25 @@ function finalizeImports(input: {
     ...new Map(
       input.scan.unresolvedDynamic.map((item) => [`${item.api}:${item.file}`, item] as const),
     ).values(),
-  ].sort((a, b) => a.file.localeCompare(b.file) || a.api.localeCompare(b.api));
+  ].sort((a, b) => compareCodePoint(a.file, b.file) || compareCodePoint(a.api, b.api));
 
   return {
-    sourceFiles: [...input.scan.sourceFiles].sort(),
+    sourceFiles: [...input.scan.sourceFiles].sort(compareCodePoint),
     specifiers,
-    packages: [...packages].sort(),
-    dynamicPackages: [...dynamicPackages].sort(),
-    remotes: [...remotes].sort(),
+    packages: [...packages].sort(compareCodePoint),
+    dynamicPackages: [...dynamicPackages].sort(compareCodePoint),
+    remotes: [...remotes].sort(compareCodePoint),
     unresolvedDynamic,
     ...(input.scan.sourceReadFailures.length > 0
-      ? { sourceReadFailures: [...new Set(input.scan.sourceReadFailures)].sort() }
+      ? { sourceReadFailures: [...new Set(input.scan.sourceReadFailures)].sort(compareCodePoint) }
       : {}),
-    evidenceSources: [...input.evidenceSources].sort(),
+    evidenceSources: [...input.evidenceSources].sort(compareCodePoint),
     depth: input.depth,
-    deepImports: [...deepImports].sort(),
+    deepImports: [...deepImports].sort(compareCodePoint),
     deepImportFiles: Object.fromEntries(
       [...deepImportFiles.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([pkg, files]) => [pkg, [...files].sort()] as const),
+        .sort(([a], [b]) => compareCodePoint(a, b))
+        .map(([pkg, files]) => [pkg, [...files].sort(compareCodePoint)] as const),
     ),
   };
 }
@@ -573,8 +577,8 @@ async function runtimeTraceHints(
       sawTrace = true;
     }
     return {
-      packages: [...packages].sort(),
-      remotes: [...remotes].sort(),
+      packages: [...packages].sort(compareCodePoint),
+      remotes: [...remotes].sort(compareCodePoint),
       used: sawTrace,
     };
   } catch {
@@ -601,10 +605,10 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
       const record = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
       const key = String(record.path ?? record.key ?? record.name ?? "");
       const assets = assetStrings(record.assets);
-      return { key, assets: assets.sort() };
+      return { key, assets: assets.sort(compareCodePoint) };
     })
     .filter((item) => item.key)
-    .sort((a, b) => a.key.localeCompare(b.key));
+    .sort((a, b) => compareCodePoint(a.key, b.key));
   const rawShared = Array.isArray(data.shared) ? data.shared : [];
   const rawRemotes = Array.isArray(data.remotes) ? data.remotes : [];
   const manifest: NonNullable<ArtifactFacts["manifest"]> = {
@@ -623,7 +627,7 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
             : ({ name: item } as Record<string, unknown>);
         const normalized: NonNullable<ArtifactFacts["manifest"]>["shared"][number] = {
           name: String(shared.name ?? ""),
-          assets: assetStrings(shared.assets).sort(),
+          assets: assetStrings(shared.assets).sort(compareCodePoint),
         };
         if (typeof shared.version === "string") normalized.version = shared.version;
         if (typeof shared.requiredVersion === "string")
@@ -632,7 +636,7 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
         return normalized;
       })
       .filter((item) => item.name)
-      .sort((a, b) => a.name.localeCompare(b.name)),
+      .sort((a, b) => compareCodePoint(a.name, b.name)),
     remotes: [
       ...new Map(
         rawRemotes
@@ -648,7 +652,7 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
                 typeof remote.shareScope === "string"
                   ? [remote.shareScope]
                   : Array.isArray(remote.shareScope)
-                    ? remote.shareScope.map(String).sort()
+                    ? remote.shareScope.map(String).sort(compareCodePoint)
                     : ["default"],
             };
             if (typeof remote.alias === "string") normalized.alias = remote.alias;
@@ -659,7 +663,7 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
           .filter((item) => item.name)
           .map((item) => [`${item.name}\0${item.alias ?? ""}\0${item.entry ?? ""}`, item] as const),
       ).values(),
-    ].sort((a, b) => a.name.localeCompare(b.name)),
+    ].sort((a, b) => compareCodePoint(a.name, b.name)),
   };
   const metadata =
     data.metaData && typeof data.metaData === "object"
@@ -702,45 +706,27 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
   return manifest;
 }
 
-async function detectFromManifest(
-  root: string,
+function detectFromManifest(
   artifact: ArtifactFacts["manifest"],
-): Promise<ReturnType<typeof normalizeModuleFederation>> {
+): ReturnType<typeof normalizeModuleFederation> {
   if (!artifact?.valid) return undefined;
-  try {
-    const data = (await readJson(path.join(root, artifact.path))) as Record<string, unknown>;
-    const name =
-      typeof data.name === "string" ? data.name : typeof data.id === "string" ? data.id : undefined;
-    const shared = Array.isArray(data.shared)
-      ? data.shared
-          .map((item) =>
-            typeof item === "string"
-              ? item
-              : String((item as Record<string, unknown> | undefined)?.name ?? ""),
-          )
-          .filter(Boolean)
-      : [];
-    const remotes = Object.fromEntries(
-      (Array.isArray(data.remotes) ? data.remotes : [])
-        .map((item) => {
-          const remote = item as Record<string, unknown>;
-          const remoteName = String(remote.alias ?? remote.name ?? "");
-          const entry = String(remote.entry ?? "");
-          return [remoteName, entry] as const;
-        })
-        .filter(([remoteName, entry]) => remoteName && entry),
-    );
-    return normalizeModuleFederation(
-      {
-        ...(name ? { name } : {}),
-        shared,
-        remotes,
-      },
-      { bundler: "unknown" },
-    );
-  } catch {
-    return undefined;
-  }
+  const remotes = Object.fromEntries(
+    (artifact.remotes ?? [])
+      .map((remote) => {
+        const remoteName = remote.alias ?? remote.name;
+        const entry = remote.entry ?? "";
+        return [remoteName, entry] as const;
+      })
+      .filter(([remoteName, entry]) => remoteName && entry),
+  );
+  return normalizeModuleFederation(
+    {
+      ...((artifact.name ?? artifact.id) ? { name: artifact.name ?? artifact.id } : {}),
+      shared: artifact.shared.map((item) => item.name).filter(Boolean),
+      remotes,
+    },
+    { bundler: "unknown" },
+  );
 }
 
 function manifestAssetNames(manifest: NonNullable<ArtifactFacts["manifest"]>): string[] {
@@ -776,7 +762,7 @@ export async function attachAssetSizes(
     : root;
   const sizes: Record<string, number> = {};
 
-  const orderedNames = [...names].sort((a, b) => a.localeCompare(b));
+  const orderedNames = [...names].sort(compareCodePoint);
   const resolved = await mapBounded(orderedNames, async (name) => {
     const normalizedName = normalizePath(name);
     const basename = path.basename(normalizedName);
@@ -1032,7 +1018,7 @@ async function collectArtifacts(
     }
   }
   records.sort((left, right) =>
-    `${left.kind}:${left.path}`.localeCompare(`${right.kind}:${right.path}`),
+    compareCodePoint(`${left.kind}:${left.path}`, `${right.kind}:${right.path}`),
   );
   // With bounded build roots, several nested manifests are valid evidence for
   // different compilations. Do not project an arbitrary first file into the
@@ -1236,7 +1222,7 @@ function artifactFactsForInstance(
     ...(manifest ? { manifest } : {}),
     ...(stats ? { stats } : {}),
     ...(selectedRecords.length > 0 ? { records: selectedRecords } : { records: [] }),
-    emittedAssets: emittedAssets.sort(),
+    emittedAssets: emittedAssets.sort(compareCodePoint),
     ...(assetSizes && Object.keys(assetSizes).length > 0 ? { assetSizes } : {}),
   };
 }
@@ -1301,7 +1287,7 @@ function rawScanForInstance(
     if (scan.reexportOnly.has(specifier)) reexportOnly.add(specifier);
   }
   const scopedScan: RawImportScan = {
-    sourceFiles: [...sourceFiles].sort(),
+    sourceFiles: [...sourceFiles].sort(compareCodePoint),
     specifierDynamic,
     reexportOnly,
     specifierFiles,
@@ -1356,10 +1342,10 @@ function importsForInstance(
     specifiers: source.specifiers,
     packages: source.packages,
     dynamicPackages: source.dynamicPackages,
-    remotes: [...remotes].sort(),
+    remotes: [...remotes].sort(compareCodePoint),
     unresolvedDynamic: source.unresolvedDynamic,
     ...(source.sourceReadFailures ? { sourceReadFailures: source.sourceReadFailures } : {}),
-    evidenceSources: [...sourceEvidence].sort(),
+    evidenceSources: [...sourceEvidence].sort(compareCodePoint),
     depth: imports.depth ?? "direct",
     deepImports: source.deepImports ?? [],
     deepImportFiles: source.deepImportFiles ?? {},
@@ -1473,7 +1459,7 @@ function buildInstanceCandidates(
     });
     return artifactMatch || assetMatch;
   });
-  return matches.map((instance) => instance.id).sort();
+  return matches.map((instance) => instance.id).sort(compareCodePoint);
 }
 
 function attachFederationInstanceBuilds(facts: ProjectFacts): void {
@@ -1590,14 +1576,12 @@ export async function collectProjectFacts(
     const normalized = normalizeModuleFederation(descriptor.config, { bundler: options.bundler });
     return normalized ? [{ descriptor, normalized }] : [];
   });
-  const normalizedMf =
-    normalizedInstances[0]?.normalized ??
-    (await detectFromManifest(options.root, artifacts.manifest));
+  const normalizedMf = normalizedInstances[0]?.normalized ?? detectFromManifest(artifacts.manifest);
   for (const { normalized } of normalizedInstances)
     await sanitizeNormalizedModuleFederation(options.root, normalized, scan);
   if (normalizedMf && normalizedInstances.length === 0)
     await sanitizeNormalizedModuleFederation(options.root, normalizedMf, scan);
-  scan.sourceFiles.sort();
+  scan.sourceFiles.sort(compareCodePoint);
 
   const remoteAliases = new Set(
     normalizedInstances.flatMap(({ normalized }) =>
@@ -1705,7 +1689,9 @@ export async function collectProjectFacts(
       installedVersions: true,
     },
     dependencies: {
-      declared: Object.fromEntries(Object.entries(declared).sort(([a], [b]) => a.localeCompare(b))),
+      declared: Object.fromEntries(
+        Object.entries(declared).sort(([a], [b]) => compareCodePoint(a, b)),
+      ),
       installed,
     },
     imports,
@@ -1777,6 +1763,247 @@ export interface BuildDiagnostics {
   outputPublicPathKind?: OutputPublicPathKind;
 }
 
+function buildOutputOrderKey(output: BuildOutputInput): string {
+  const emittedAssets = output.emittedAssets.slice().sort();
+  const federationInstanceIds = output.federationInstanceIds?.slice().sort();
+  const primary = `${output.adapter}:${output.compilerName ?? ""}:${output.compilationName ?? ""}:${output.hash ?? ""}:${output.outputRoot ?? ""}:${emittedAssets.join(",")}:${federationInstanceIds?.join(",") ?? ""}:${output.sourceHook}:${stableStringify(output.modernContext ?? {}) ?? ""}`;
+  // Keep the established primary precedence while making otherwise identical
+  // outputs deterministic across all metadata fields.
+  const tieBreaker =
+    stableStringify({
+      ...output,
+      emittedAssets,
+      federationInstanceIds,
+    }) ?? "";
+  return `${primary}\u0000${tieBreaker}`;
+}
+
+function compareDeterministicStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function orderBuildOutputs(outputs: BuildOutputInput[]): BuildOutputInput[] {
+  return outputs
+    .slice()
+    .sort((left, right) =>
+      compareDeterministicStrings(buildOutputOrderKey(left), buildOutputOrderKey(right)),
+    );
+}
+
+function orderBuildRecords(builds: BuildRecord[]): BuildRecord[] {
+  return builds;
+}
+
+function outputArtifacts(
+  facts: ProjectFacts,
+  output: BuildOutputInput,
+  outputRoot: string | undefined,
+  buildId: string,
+): ArtifactRecord[] {
+  const artifactRecords: ArtifactRecord[] = [];
+  for (const record of facts.artifacts.records ?? []) {
+    const belongsToOutput = (() => {
+      if (!outputRoot || output.buildWrite === false) return false;
+      if (
+        outputRoot !== "." &&
+        record.path !== outputRoot &&
+        !record.path.startsWith(`${outputRoot}/`)
+      )
+        return false;
+      const relativeArtifact =
+        outputRoot === "." ? record.path : record.path.slice(`${outputRoot}/`.length);
+      return output.emittedAssets.some((asset) => normalizePath(asset) === relativeArtifact);
+    })();
+    if (belongsToOutput)
+      artifactRecords.push(Object.assign({}, record, { source: "emitted" as const, buildId }));
+  }
+  return artifactRecords;
+}
+
+function outputCapabilities(
+  output: BuildOutputInput,
+  artifactRecords: ArtifactRecord[],
+): BuildRecord["capabilities"] {
+  const outputRootCapability = output.outputRoot
+    ? {
+        state: "exact" as const,
+        reason: "Resolved output root was public.",
+        source: output.sourceHook,
+      }
+    : {
+        state: "unavailable" as const,
+        reason: "The adapter did not expose an output root.",
+        source: output.sourceHook,
+      };
+  const emittedCapability =
+    output.buildWrite === false
+      ? {
+          state: "not-applicable" as const,
+          reason: "Build writing was disabled; no files were written.",
+          source: output.sourceHook,
+        }
+      : output.emittedAssetsSource === "output-root-scan" &&
+          !output.emittedAssetsComplete &&
+          output.emittedAssets.length > 0
+        ? {
+            state: "partial" as const,
+            reason:
+              "Asset names came from a bounded output-root scan after an empty public bundle.",
+            source: "closeBundle",
+          }
+        : output.emittedAssetsSource === "output-root-scan" && output.emittedAssetsComplete
+          ? {
+              state: "exact" as const,
+              reason: "Asset names came from a complete bounded output-root scan.",
+              source: output.sourceHook,
+            }
+          : output.emittedAssets.length > 0
+            ? {
+                state: "exact" as const,
+                reason: "Asset names came from the public bundle.",
+                source: output.sourceHook,
+              }
+            : {
+                state: "partial" as const,
+                reason: "The public bundle contained no asset names.",
+                source: output.sourceHook,
+              };
+  const artifactCapability =
+    output.buildWrite === false
+      ? {
+          state: "not-applicable" as const,
+          reason: "Artifacts cannot be emitted when writing is disabled.",
+          source: output.sourceHook,
+        }
+      : {
+          state: artifactRecords.length > 0 ? ("exact" as const) : ("partial" as const),
+          reason:
+            artifactRecords.length > 0
+              ? "Artifacts matched inside this output root."
+              : "No configured artifact was found in this output.",
+          source: output.sourceHook,
+        };
+  const modeCapability = output.effectiveMode
+    ? {
+        state: "exact" as const,
+        reason: "Effective mode came from public resolved config.",
+        source: output.sourceHook,
+      }
+    : {
+        state: "unavailable" as const,
+        reason: "The adapter did not expose an effective build mode.",
+        source: output.sourceHook,
+      };
+  const targetCapability =
+    output.target || output.targetKind
+      ? {
+          state: "exact" as const,
+          reason: "Target came from public config.",
+          source: output.sourceHook,
+        }
+      : {
+          state: "unavailable" as const,
+          reason: "The adapter did not expose a target.",
+          source: output.sourceHook,
+        };
+  return {
+    outputRoot: outputRootCapability,
+    emittedAssets: emittedCapability,
+    artifacts: artifactCapability,
+    effectiveMode: modeCapability,
+    target: targetCapability,
+  };
+}
+
+function buildRecordForOutput(
+  facts: ProjectFacts,
+  output: BuildOutputInput,
+  root: string,
+  index: number,
+): BuildRecord {
+  const id = `${output.adapter}-build-${index + 1}`;
+  const outputRoot = output.outputRoot
+    ? relativePath(root, path.resolve(root, output.outputRoot))
+    : undefined;
+  const emittedAssets = (output.buildWrite === false ? [] : output.emittedAssets)
+    .map((asset) =>
+      outputRoot ? normalizePath(path.posix.join(outputRoot, asset)) : normalizePath(asset),
+    )
+    .sort(compareCodePoint);
+  const artifactRecords = outputArtifacts(facts, output, outputRoot, id);
+  const build: BuildRecord = {
+    id,
+    adapter: output.adapter,
+    bundler: output.bundler,
+    emittedAssets,
+    artifacts: artifactRecords,
+    capabilities: outputCapabilities(output, artifactRecords),
+    sourceHook: output.sourceHook,
+  };
+  if (output.federationInstanceIds) {
+    build.federationInstanceIds = [...new Set(output.federationInstanceIds)].sort(compareCodePoint);
+  } else if (facts.federationInstances) {
+    const inferred = buildInstanceCandidates(
+      build,
+      facts.federationInstances,
+      facts.artifacts.records ?? [],
+    );
+    build.federationInstanceIds =
+      inferred.length > 0
+        ? inferred
+        : facts.federationInstances.map((instance) => instance.id).sort(compareCodePoint);
+  }
+  if (output.compilerName) build.compilerName = output.compilerName;
+  if (output.compilationName) build.compilationName = output.compilationName;
+  if (output.hash) build.hash = output.hash;
+  if (output.flavor) build.flavor = output.flavor;
+  if (output.engine) build.engine = output.engine;
+  if (outputRoot) build.outputRoot = outputRoot;
+  if (output.effectiveMode) build.effectiveMode = output.effectiveMode;
+  if (output.target) build.target = output.target;
+  if (output.targetKind) build.targetKind = output.targetKind;
+  if (output.modernContext) build.modernContext = output.modernContext;
+  return build;
+}
+
+function projectLegacyBuildFacts(facts: ProjectFacts, builds: BuildRecord[]): void {
+  if (builds.length === 0) return;
+  // Compatibility view: deterministic primary-build projection.
+  const projectedAssets = [...new Set(builds.flatMap((build) => build.emittedAssets))].sort(
+    compareCodePoint,
+  );
+  if (projectedAssets.length > 0) facts.artifacts.emittedAssets = projectedAssets;
+  facts.capabilities.emittedAssets =
+    builds.length > 0 &&
+    builds.every((build) => build.capabilities.emittedAssets.state === "exact");
+  const currentRecords = builds.flatMap((build) => build.artifacts);
+  const firstCurrent = (kind: ArtifactKind) => {
+    const records = currentRecords
+      .filter((record) => record.kind === kind)
+      .sort((left, right) => compareCodePoint(left.path, right.path));
+    // Prefer malformed current evidence so a valid artifact from another
+    // output cannot hide a broken artifact from this build cycle.
+    return records.find((record) => !record.valid) ?? records[0];
+  };
+  const currentManifestRecord = firstCurrent("manifest");
+  const currentStatsRecord = firstCurrent("stats");
+  if (currentManifestRecord) {
+    if (currentManifestRecord.manifest) facts.artifacts.manifest = currentManifestRecord.manifest;
+    else delete facts.artifacts.manifest;
+  }
+  if (currentStatsRecord) {
+    if (currentStatsRecord.stats) facts.artifacts.stats = currentStatsRecord.stats;
+    else delete facts.artifacts.stats;
+  }
+  // A multi-environment build can legitimately contain one manifest/stats
+  // pair per output root. `collectArtifacts` keeps the singular legacy
+  // projection empty until build records link those files to an emitted
+  // output. Once that linkage is known, publish the capability as present so
+  // a valid Nitro/Nuxt client artifact is not reported as partial analysis.
+  facts.capabilities.manifest = facts.artifacts.manifest !== undefined;
+  facts.capabilities.stats = facts.artifacts.stats !== undefined;
+}
+
 export async function addBuildFacts(
   facts: ProjectFacts,
   assets: string[],
@@ -1784,203 +2011,23 @@ export async function addBuildFacts(
   diagnostics?: BuildDiagnostics,
   outputs?: BuildOutputInput[],
 ): Promise<ProjectFacts> {
-  facts.artifacts.emittedAssets = assets
-    .map((item) => relativePath(root, path.resolve(root, item)))
-    .sort();
-  facts.capabilities.emittedAssets = true;
+  if (assets.length > 0) {
+    facts.artifacts.emittedAssets = assets
+      .map((item) => relativePath(root, path.resolve(root, item)))
+      .sort();
+  }
+  facts.capabilities.emittedAssets = assets.length > 0;
   if (diagnostics?.moduleFederationPluginCount !== undefined)
     facts.bundler.moduleFederationPluginCount = diagnostics.moduleFederationPluginCount;
   if (diagnostics?.outputPublicPathKind)
     facts.bundler.outputPublicPathKind = diagnostics.outputPublicPathKind;
   if (outputs) {
-    const orderedOutputs = outputs
-      .slice()
-      .sort((left, right) =>
-        `${left.adapter}:${left.compilerName ?? ""}:${left.compilationName ?? ""}:${left.hash ?? ""}:${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.federationInstanceIds?.join(",") ?? ""}:${left.sourceHook}:${JSON.stringify(left.modernContext ?? {})}`.localeCompare(
-          `${right.adapter}:${right.compilerName ?? ""}:${right.compilationName ?? ""}:${right.hash ?? ""}:${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.federationInstanceIds?.join(",") ?? ""}:${right.sourceHook}:${JSON.stringify(right.modernContext ?? {})}`,
-        ),
-      );
-    const builds: BuildRecord[] = orderedOutputs.map((output, index) => {
-      const id = `${output.adapter}-build-${index + 1}`;
-      const outputRoot = output.outputRoot
-        ? relativePath(root, path.resolve(root, output.outputRoot))
-        : undefined;
-      const emittedAssets = (output.buildWrite === false ? [] : output.emittedAssets)
-        .map((asset) =>
-          outputRoot ? normalizePath(path.posix.join(outputRoot, asset)) : normalizePath(asset),
-        )
-        .sort();
-      const artifactRecords: ArtifactRecord[] = [];
-      for (const record of facts.artifacts.records ?? []) {
-        const belongsToOutput = (() => {
-          if (!outputRoot || output.buildWrite === false) return false;
-          if (
-            outputRoot !== "." &&
-            record.path !== outputRoot &&
-            !record.path.startsWith(`${outputRoot}/`)
-          )
-            return false;
-          const relativeArtifact =
-            outputRoot === "." ? record.path : record.path.slice(`${outputRoot}/`.length);
-          return output.emittedAssets.some((asset) => normalizePath(asset) === relativeArtifact);
-        })();
-        if (belongsToOutput)
-          artifactRecords.push(
-            Object.assign({}, record, { source: "emitted" as const, buildId: id }),
-          );
-      }
-      const outputRootCapability = output.outputRoot
-        ? {
-            state: "exact" as const,
-            reason: "Resolved output root was public.",
-            source: output.sourceHook,
-          }
-        : {
-            state: "unavailable" as const,
-            reason: "The adapter did not expose an output root.",
-            source: output.sourceHook,
-          };
-      const emittedCapability =
-        output.buildWrite === false
-          ? {
-              state: "not-applicable" as const,
-              reason: "Build writing was disabled; no files were written.",
-              source: output.sourceHook,
-            }
-          : output.emittedAssetsSource === "output-root-scan" &&
-              !output.emittedAssetsComplete &&
-              output.emittedAssets.length > 0
-            ? {
-                state: "partial" as const,
-                reason:
-                  "Asset names came from a bounded output-root scan after an empty public bundle.",
-                source: "closeBundle",
-              }
-            : output.emittedAssetsSource === "output-root-scan" && output.emittedAssetsComplete
-              ? {
-                  state: "exact" as const,
-                  reason: "Asset names came from a complete bounded output-root scan.",
-                  source: output.sourceHook,
-                }
-              : output.emittedAssets.length > 0
-                ? {
-                    state: "exact" as const,
-                    reason: "Asset names came from the public bundle.",
-                    source: output.sourceHook,
-                  }
-                : {
-                    state: "partial" as const,
-                    reason: "The public bundle contained no asset names.",
-                    source: output.sourceHook,
-                  };
-      const artifactCapability =
-        output.buildWrite === false
-          ? {
-              state: "not-applicable" as const,
-              reason: "Artifacts cannot be emitted when writing is disabled.",
-              source: output.sourceHook,
-            }
-          : {
-              state: artifactRecords.length > 0 ? ("exact" as const) : ("partial" as const),
-              reason:
-                artifactRecords.length > 0
-                  ? "Artifacts matched inside this output root."
-                  : "No configured artifact was found in this output.",
-              source: output.sourceHook,
-            };
-      const modeCapability = output.effectiveMode
-        ? {
-            state: "exact" as const,
-            reason: "Effective mode came from public resolved config.",
-            source: output.sourceHook,
-          }
-        : {
-            state: "unavailable" as const,
-            reason: "The adapter did not expose an effective build mode.",
-            source: output.sourceHook,
-          };
-      const targetCapability =
-        output.target || output.targetKind
-          ? {
-              state: "exact" as const,
-              reason: "Target came from public config.",
-              source: output.sourceHook,
-            }
-          : {
-              state: "unavailable" as const,
-              reason: "The adapter did not expose a target.",
-              source: output.sourceHook,
-            };
-      const build: BuildRecord = {
-        id,
-        adapter: output.adapter,
-        bundler: output.bundler,
-        emittedAssets,
-        artifacts: artifactRecords,
-        capabilities: {
-          outputRoot: outputRootCapability,
-          emittedAssets: emittedCapability,
-          artifacts: artifactCapability,
-          effectiveMode: modeCapability,
-          target: targetCapability,
-        },
-        sourceHook: output.sourceHook,
-      };
-      if (output.federationInstanceIds) {
-        build.federationInstanceIds = [...new Set(output.federationInstanceIds)].sort();
-      } else if (facts.federationInstances) {
-        const inferred = buildInstanceCandidates(
-          build,
-          facts.federationInstances,
-          facts.artifacts.records ?? [],
-        );
-        build.federationInstanceIds =
-          inferred.length > 0
-            ? inferred
-            : facts.federationInstances.map((instance) => instance.id).sort();
-      }
-      if (output.compilerName) build.compilerName = output.compilerName;
-      if (output.compilationName) build.compilationName = output.compilationName;
-      if (output.hash) build.hash = output.hash;
-      if (output.flavor) build.flavor = output.flavor;
-      if (output.engine) build.engine = output.engine;
-      if (outputRoot) build.outputRoot = outputRoot;
-      if (output.effectiveMode) build.effectiveMode = output.effectiveMode;
-      if (output.target) build.target = output.target;
-      if (output.targetKind) build.targetKind = output.targetKind;
-      if (output.modernContext) build.modernContext = output.modernContext;
-      return build;
-    });
-    facts.builds = builds.sort((a, b) => a.id.localeCompare(b.id));
-    // Compatibility view: deterministic primary-build projection.
-    facts.artifacts.emittedAssets = [
-      ...new Set(builds.flatMap((build) => build.emittedAssets)),
-    ].sort();
-    facts.capabilities.emittedAssets =
-      builds.length > 0 &&
-      builds.every((build) => build.capabilities.emittedAssets.state === "exact");
-    const currentRecords = builds.flatMap((build) => build.artifacts);
-    const firstCurrent = (kind: ArtifactKind) => {
-      const records = currentRecords
-        .filter((record) => record.kind === kind)
-        .sort((left, right) => left.path.localeCompare(right.path));
-      // Prefer malformed current evidence so a valid artifact from another
-      // output cannot hide a broken artifact from this build cycle.
-      return records.find((record) => !record.valid) ?? records[0];
-    };
-    const currentManifest = firstCurrent("manifest")?.manifest;
-    const currentStats = firstCurrent("stats")?.stats;
-    if (currentManifest) facts.artifacts.manifest = currentManifest;
-    else delete facts.artifacts.manifest;
-    if (currentStats) facts.artifacts.stats = currentStats;
-    else delete facts.artifacts.stats;
-    // A multi-environment build can legitimately contain one manifest/stats
-    // pair per output root. `collectArtifacts` keeps the singular legacy
-    // projection empty until build records link those files to an emitted
-    // output. Once that linkage is known, publish the capability as present so
-    // a valid Nitro/Nuxt client artifact is not reported as partial analysis.
-    facts.capabilities.manifest = facts.artifacts.manifest !== undefined;
-    facts.capabilities.stats = facts.artifacts.stats !== undefined;
+    const orderedOutputs = orderBuildOutputs(outputs);
+    const builds = orderBuildRecords(
+      orderedOutputs.map((output, index) => buildRecordForOutput(facts, output, root, index)),
+    );
+    facts.builds = builds;
+    projectLegacyBuildFacts(facts, builds);
   }
   const recordedOutputRoots = facts.builds
     ?.filter((build) => build.capabilities.emittedAssets.state !== "not-applicable")

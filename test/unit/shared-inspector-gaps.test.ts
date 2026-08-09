@@ -441,43 +441,6 @@ describe("federation host-gaps and ghost-shares", () => {
   });
 });
 
-describe("DTS rule evidence", () => {
-  it("does not warn for a normal direct remoteEntry.js with default DTS inference", async () => {
-    const facts = projectFacts("consumer", {}, []);
-    facts.moduleFederation!.dts = { enabled: true, options: {} };
-    facts.moduleFederation!.remotes = {
-      shop: {
-        name: "shop",
-        entry: "https://example.test/remoteEntry.js",
-        shareScope: ["default"],
-      },
-    };
-    const rule = builtInRules.find((item) => item.meta.id === "config/remote-type-urls-missing")!;
-    const findings: unknown[] = [];
-    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
-    expect(findings).toHaveLength(0);
-  });
-
-  it("does not warn about nested DTS extraction without exposed-to-remote evidence", async () => {
-    const facts = projectFacts("nested", {}, []);
-    facts.moduleFederation!.dts = { enabled: true, options: {} };
-    facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
-    facts.moduleFederation!.remotes = {
-      shop: {
-        name: "shop",
-        entry: "https://example.test/mf-manifest.json",
-        shareScope: ["default"],
-      },
-    };
-    const rule = builtInRules.find(
-      (item) => item.meta.id === "config/nested-producer-dts-extract",
-    )!;
-    const findings: unknown[] = [];
-    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
-    expect(findings).toHaveLength(0);
-  });
-});
-
 describe("shared policy resolveOptions", () => {
   it("merges pack and local sharedPolicy knobs", async () => {
     const resolved = await resolveOptions({

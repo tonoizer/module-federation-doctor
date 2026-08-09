@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { AnalysisBudgetTracker } from "./analysis-budgets.js";
 import { EvidenceBudgetExceededError, reserveEvidenceBudget } from "./evidence-budget.js";
+import { compareCodePoint } from "./utils.js";
 
 /** Values that can be safely persisted in an evidence document. */
 export type EvidenceValue =
@@ -408,10 +409,10 @@ export function redactEvidenceValue(value: EvidenceValue, options?: EvidenceLimi
         groups.set(safeKey, group);
       }
       for (const [safeKey, group] of [...groups.entries()].sort(([left], [right]) =>
-        left.localeCompare(right),
+        compareCodePoint(left, right),
       )) {
         const values = group
-          .sort(([left], [right]) => left.localeCompare(right))
+          .sort(([left], [right]) => compareCodePoint(left, right))
           .map(([, child]) => child);
         if (values.length === 1) {
           pending.push({ input: values[0] ?? null, output: record, key: safeKey });
@@ -434,13 +435,16 @@ export function redactEvidenceValue(value: EvidenceValue, options?: EvidenceLimi
   return redacted;
 }
 
-function canonicalizeValue(value: EvidenceValue): EvidenceValue {
-  if (Array.isArray(value)) return value.map(canonicalizeValue);
+const VOLATILE_KEY = /^(?:timestamp|time|createdAt|updatedAt|sessionId|traceId)$/i;
+
+function canonicalizeValue(value: EvidenceValue, omitVolatileKeys = false): EvidenceValue {
+  if (Array.isArray(value)) return value.map((item) => canonicalizeValue(item, omitVolatileKeys));
   if (!isRecord(value)) return value;
   return Object.fromEntries(
     Object.keys(value)
-      .sort()
-      .map((key) => [key, canonicalizeValue(value[key] ?? null)]),
+      .filter((key) => !omitVolatileKeys || !VOLATILE_KEY.test(key))
+      .sort(compareCodePoint)
+      .map((key) => [key, canonicalizeValue(value[key] ?? null, omitVolatileKeys)]),
   );
 }
 
@@ -455,21 +459,8 @@ export function canonicalizeEvidenceValue(
 
 function stableJson(value: EvidenceValue, options?: EvidenceLimits): string {
   const redacted = redactEvidenceValue(value, options);
-  const canonical = canonicalizeEvidenceIdValue(redacted);
+  const canonical = canonicalizeValue(redacted, true);
   return JSON.stringify(canonical);
-}
-
-const VOLATILE_KEY = /^(?:timestamp|time|createdAt|updatedAt|sessionId|traceId)$/i;
-
-function canonicalizeEvidenceIdValue(value: EvidenceValue): EvidenceValue {
-  if (Array.isArray(value)) return value.map((item) => canonicalizeEvidenceIdValue(item));
-  if (!isRecord(value)) return value;
-  return Object.fromEntries(
-    Object.keys(value)
-      .filter((key) => !VOLATILE_KEY.test(key))
-      .sort()
-      .map((key) => [key, canonicalizeEvidenceIdValue(value[key] ?? null)]),
-  );
 }
 
 /** Create a deterministic `<prefix>:<sha256 first 16 hex chars>` ID. */
@@ -489,7 +480,9 @@ function recordJson(value: Record<string, unknown>): string {
 }
 
 function compareRecords<T extends { id: string }>(left: T, right: T): number {
-  return left.id.localeCompare(right.id) || recordJson(left).localeCompare(recordJson(right));
+  return (
+    compareCodePoint(left.id, right.id) || compareCodePoint(recordJson(left), recordJson(right))
+  );
 }
 
 function assertUniqueIds(
@@ -608,12 +601,12 @@ export function normalizeEvidenceGraph(
       const normalized = Object.assign({}, assertion);
       if (assertion.provenance.parentEvidenceIds) {
         normalized.provenance = Object.assign({}, assertion.provenance, {
-          parentEvidenceIds: assertion.provenance.parentEvidenceIds.slice().sort(),
+          parentEvidenceIds: assertion.provenance.parentEvidenceIds.slice().sort(compareCodePoint),
         });
       }
       if (assertion.completeness.missing) {
         normalized.completeness = Object.assign({}, assertion.completeness, {
-          missing: assertion.completeness.missing.slice().sort(),
+          missing: assertion.completeness.missing.slice().sort(compareCodePoint),
         });
       }
       return normalized;
@@ -621,11 +614,11 @@ export function normalizeEvidenceGraph(
     edges: sortSet(canonical.edges),
     evaluations: sortSet(canonical.evaluations).map((evaluation) => {
       const normalized = Object.assign({}, evaluation, {
-        evidenceIds: evaluation.evidenceIds.slice().sort(),
+        evidenceIds: evaluation.evidenceIds.slice().sort(compareCodePoint),
       });
       if (evaluation.completeness.missing) {
         normalized.completeness = Object.assign({}, evaluation.completeness, {
-          missing: evaluation.completeness.missing.slice().sort(),
+          missing: evaluation.completeness.missing.slice().sort(compareCodePoint),
         });
       }
       return normalized;

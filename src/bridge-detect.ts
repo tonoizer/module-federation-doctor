@@ -1,4 +1,3 @@
-import { isShareKeyUsed } from "./shared-policy.js";
 import type { NormalizedMFConfig, NormalizedShared, ProjectFacts } from "./types.js";
 
 export const BRIDGE_REACT_PKG = "@module-federation/bridge-react";
@@ -156,16 +155,6 @@ export function hasReactDomPrefixShare(
   if (!shared) return false;
   // Only the Bridge-documented share keys — not e.g. `react-dom/server`.
   return Object.keys(shared).some((key) => key === "react-dom/" || key === "react-dom/client");
-}
-
-/** Whether scanned imports would satisfy a trailing-slash `react-dom/` share key. */
-export function reactDomShareAppearsUsed(facts: ProjectFacts): boolean {
-  return isShareKeyUsed("react-dom/", {
-    packages: facts.imports.packages,
-    dynamicPackages: facts.imports.dynamicPackages,
-    specifiers: facts.imports.specifiers,
-    deepImports: facts.imports.deepImports,
-  });
 }
 
 export function bridgeOptions(config: NormalizedMFConfig | undefined): BridgeOptions | undefined {

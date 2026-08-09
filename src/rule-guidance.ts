@@ -77,13 +77,6 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Rename aliases so none is a prefix of another remote name or alias.",
     sources: ["https://module-federation.io/configure/remotes.html", core],
   },
-  "config/nested-producer-dts-extract": {
-    category: "reliability",
-    impact:
-      "A producer can omit remote types only when an exposed module actually re-exports a configured remote and the remote types are not extracted.",
-    fix: "Enable `dts.generateTypes.extractRemoteTypes` when an exposed module reaches a remote through a local import or re-export.",
-    sources: ["https://module-federation.io/configure/dts.html"],
-  },
   "config/dts-output-dir-mismatch": {
     category: "reliability",
     impact:
@@ -92,16 +85,6 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     sources: [
       "https://module-federation.io/configure/dts.html",
       "https://module-federation.io/configure/filename.html",
-    ],
-  },
-  "config/remote-type-urls-missing": {
-    category: "tooling",
-    impact:
-      "Doctor reports this only when it can prove that a direct remote entry's inferred type location cannot match known producer output. Normal `remoteEntry.js` entries infer `@mf-types.zip` by default.",
-    fix: "Keep the default inferred type location when producer output follows Module Federation defaults. Use `dts.consumeTypes.remoteTypeUrls` only for runtime-only or custom type locations.",
-    sources: [
-      "https://module-federation.io/configure/dts.html",
-      "https://module-federation.io/configure/remotes.html",
     ],
   },
   "artifact/public-path-non-string-manifest": {

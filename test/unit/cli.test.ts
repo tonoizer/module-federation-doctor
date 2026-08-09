@@ -351,6 +351,42 @@ describe("CLI arguments", () => {
     }
   });
 
+  it("writes a federation report when workspace discovery only has diagnostics", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-cli-workspace-diagnostic-"));
+    roots.push(root);
+    const file = path.join(root, "apps", "broken", ".mf", "doctor", "project.json");
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(
+      file,
+      '{"project":{"name":"broken","federationGroup":"selected"},"padding":"' +
+        "x".repeat(20 * 1024),
+    );
+
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      await expect(
+        main(["workspace", ".", "--group", "selected", "--format", "json"]),
+      ).resolves.toBe(2);
+    } finally {
+      process.chdir(previous);
+    }
+
+    const report = JSON.parse(
+      await fs.readFile(path.join(root, ".mf", "doctor", "report.json"), "utf8"),
+    ) as { findings: Array<{ ruleId?: string; details?: { workspaceDiagnostics?: unknown[] } }> };
+    expect(report.findings).toContainEqual(
+      expect.objectContaining({
+        ruleId: "doctor/partial-analysis",
+        details: expect.objectContaining({
+          workspaceDiagnostics: expect.arrayContaining([
+            expect.objectContaining({ kind: "invalid" }),
+          ]),
+        }),
+      }),
+    );
+  });
+
   it("loads a TypeScript config and returns exit 0 for a clean check", async () => {
     const root = await temporaryProject(
       'export default { output: { formats: [] }, rules: { "doctor/partial-analysis": "off" } };',

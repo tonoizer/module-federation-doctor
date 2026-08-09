@@ -1695,13 +1695,7 @@ describe("built-in rules", () => {
 
   it("has a behavior fixture for every local rule", () => {
     expect(behaviorCases.map(([id]) => id).sort()).toEqual(
-      builtInRules
-        .map((rule) => rule.meta.id)
-        .filter(
-          (id) =>
-            id !== "config/nested-producer-dts-extract" && id !== "config/remote-type-urls-missing",
-        )
-        .sort(),
+      builtInRules.map((rule) => rule.meta.id).sort(),
     );
   });
 

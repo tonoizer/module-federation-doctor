@@ -111,6 +111,41 @@ describe("artifact collection", () => {
     expect(second.artifacts.stats!.data!.assets).toEqual(["first.js"]);
   });
 
+  it("normalizes module federation config from the parsed manifest once", async () => {
+    const manifest = JSON.stringify({
+      id: "manifest-id",
+      name: "manifest-name",
+      metaData: {},
+      exposes: [],
+      shared: ["react", { name: "react-dom" }],
+      remotes: [
+        { name: "catalog", alias: "catalogAlias", entry: "https://example.test/catalog.js" },
+        { federationContainerName: "checkoutContainer", entry: "https://example.test/checkout.js" },
+      ],
+    });
+    const root = await fixture({ "dist/mf-manifest.json": manifest });
+    const originalReadFile = fs.readFile;
+    const reads: string[] = [];
+    vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+      reads.push(String(file));
+      return originalReadFile(file, options);
+    });
+
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    expect(facts.moduleFederation).toMatchObject({
+      name: "manifest-name",
+      shared: { react: expect.anything(), "react-dom": expect.anything() },
+      remotes: {
+        catalogAlias: { entry: "https://example.test/catalog.js" },
+        checkoutContainer: { entry: "https://example.test/checkout.js" },
+      },
+    });
+    expect(reads.filter((file) => file === path.join(root, "dist/mf-manifest.json"))).toHaveLength(
+      1,
+    );
+  });
+
   it("bounds artifact parsing and reports omitted records as partial", async () => {
     const root = await fixture({
       "dist/a/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
@@ -308,6 +343,56 @@ describe("artifact collection", () => {
     expect(facts.artifacts.emittedAssets).toEqual(["dist/remoteEntry.js"]);
   });
 
+  it("preserves legacy artifacts when structured build outputs are empty", async () => {
+    const root = await fixture({
+      "dist/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+      "dist/mf-stats.json": JSON.stringify({ assets: ["remoteEntry.js"] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    await addBuildFacts(facts, ["dist/remoteEntry.js"], root, undefined, []);
+
+    expect(facts.artifacts.emittedAssets).toEqual(["dist/remoteEntry.js"]);
+    expect(facts.capabilities.emittedAssets).toBe(true);
+    expect(facts.artifacts.manifest).toMatchObject({ path: "dist/mf-manifest.json" });
+    expect(facts.artifacts.stats).toMatchObject({ path: "dist/mf-stats.json" });
+    expect(facts.capabilities).toMatchObject({ manifest: true, stats: true });
+  });
+
+  it("does not claim emitted assets when empty output evidence is reported", async () => {
+    const root = await fixture({
+      "dist/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+      "dist/mf-stats.json": JSON.stringify({ assets: ["remoteEntry.js"] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    await addBuildFacts(facts, [], root, undefined, []);
+
+    expect(facts.artifacts.emittedAssets).toEqual([]);
+    expect(facts.capabilities.emittedAssets).toBe(false);
+    expect(facts.artifacts.manifest).toMatchObject({ path: "dist/mf-manifest.json" });
+    expect(facts.artifacts.stats).toMatchObject({ path: "dist/mf-stats.json" });
+  });
+
+  it("preserves legacy projections when current outputs emit no assets or artifacts", async () => {
+    const root = await fixture({
+      "dist/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+      "dist/mf-stats.json": JSON.stringify({ assets: ["remoteEntry.js"] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+    await addBuildFacts(facts, ["dist/remoteEntry.js"], root);
+
+    await addBuildFacts(facts, [], root, undefined, [
+      viteOutput({ outputRoot: "out", emittedAssets: [], sourceHook: "closeBundle" }),
+    ]);
+
+    expect(facts.artifacts.emittedAssets).toEqual(["dist/remoteEntry.js"]);
+    expect(facts.capabilities.emittedAssets).toBe(false);
+    expect(facts.artifacts.manifest).toMatchObject({ path: "dist/mf-manifest.json" });
+    expect(facts.artifacts.stats).toMatchObject({ path: "dist/mf-stats.json" });
+    expect(facts.capabilities).toMatchObject({ manifest: true, stats: true });
+  });
+
   it("collects exact artifacts from a bounded node_modules output root", async () => {
     const outputRoot = "node_modules/.cache/framework/dist";
     const root = await fixture({
@@ -485,6 +570,158 @@ describe("artifact collection", () => {
       "dist/other/mf-manifest.json",
     ]);
     expect(facts.artifacts.manifest?.valid).toBe(false);
+  });
+
+  it("canonicalizes set-like output arrays before ordering builds", async () => {
+    const root = await fixture({
+      "out/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+    const outputs = [
+      viteOutput({
+        emittedAssets: ["remoteEntry.js", "mf-manifest.json"],
+        federationInstanceIds: ["zeta", "alpha"],
+        sourceHook: "first",
+      }),
+      viteOutput({
+        emittedAssets: ["mf-manifest.json", "remoteEntry.js"],
+        federationInstanceIds: ["alpha", "zeta"],
+        sourceHook: "second",
+      }),
+    ];
+    const originalArrays = outputs.map((output) => ({
+      emittedAssets: output.emittedAssets.slice(),
+      federationInstanceIds: output.federationInstanceIds?.slice(),
+    }));
+
+    await addBuildFacts(facts, ["out/mf-manifest.json"], root, undefined, outputs);
+
+    expect(facts.builds?.map((build) => build.sourceHook)).toEqual(["first", "second"]);
+    expect(facts.artifacts.emittedAssets).toEqual(["mf-manifest.json", "remoteEntry.js"]);
+    expect(
+      outputs.map((output) => ({
+        emittedAssets: output.emittedAssets,
+        federationInstanceIds: output.federationInstanceIds,
+      })),
+    ).toEqual(originalArrays);
+  });
+
+  it("orders outputs by complete metadata and projects the same primary build", async () => {
+    const root = await fixture({});
+    const outputs = [
+      viteOutput({
+        target: "server",
+        targetKind: "node",
+        buildWrite: false,
+        effectiveMode: "production",
+        engine: "rolldown",
+        flavor: "rolldown-vite",
+        emittedAssets: ["shared.js"],
+        sourceHook: "same-hook",
+      }),
+      viteOutput({
+        target: "browser",
+        targetKind: "web",
+        buildWrite: true,
+        effectiveMode: "development",
+        engine: "rollup",
+        flavor: "vite",
+        emittedAssets: ["shared.js"],
+        sourceHook: "same-hook",
+      }),
+    ];
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    await addBuildFacts(facts, [], root, undefined, outputs);
+
+    expect(
+      facts.builds?.map((build) => ({
+        target: build.target,
+        targetKind: build.targetKind,
+        buildWrite: build.emittedAssets.length > 0,
+        effectiveMode: build.effectiveMode,
+        engine: build.engine,
+        flavor: build.flavor,
+      })),
+    ).toEqual([
+      {
+        target: "server",
+        targetKind: "node",
+        buildWrite: false,
+        effectiveMode: "production",
+        engine: "rolldown",
+        flavor: "rolldown-vite",
+      },
+      {
+        target: "browser",
+        targetKind: "web",
+        buildWrite: true,
+        effectiveMode: "development",
+        engine: "rollup",
+        flavor: "vite",
+      },
+    ]);
+    expect(facts.artifacts.emittedAssets).toEqual(["shared.js"]);
+  });
+
+  it("keeps canonical numeric build ordering and legacy projection stable", async () => {
+    const root = await fixture({});
+    const outputs = Array.from({ length: 10 }, (_, index) => {
+      const outputNumber = 10 - index;
+      return viteOutput({
+        outputRoot: `out/${String(outputNumber).padStart(2, "0")}`,
+        emittedAssets: [`remote-${String(outputNumber).padStart(2, "0")}.js`],
+        sourceHook: `hook-${String(outputNumber).padStart(2, "0")}`,
+      });
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    await addBuildFacts(facts, [], root, undefined, outputs);
+
+    expect(facts.builds?.map((build) => build.id)).toEqual([
+      "vite-build-1",
+      "vite-build-2",
+      "vite-build-3",
+      "vite-build-4",
+      "vite-build-5",
+      "vite-build-6",
+      "vite-build-7",
+      "vite-build-8",
+      "vite-build-9",
+      "vite-build-10",
+    ]);
+    expect(facts.builds?.map((build) => build.sourceHook)).toEqual(
+      Array.from({ length: 10 }, (_, index) => `hook-${String(index + 1).padStart(2, "0")}`),
+    );
+    expect(facts.artifacts.emittedAssets).toEqual(
+      Array.from(
+        { length: 10 },
+        (_, index) =>
+          `out/${String(index + 1).padStart(2, "0")}/remote-${String(index + 1).padStart(2, "0")}.js`,
+      ).sort(),
+    );
+  });
+
+  it("orders canonical build keys independently of the host locale", async () => {
+    const root = await fixture({});
+    const outputs = [
+      viteOutput({
+        outputRoot: "out/z",
+        emittedAssets: ["z.js"],
+        sourceHook: "z-hook",
+      }),
+      viteOutput({
+        outputRoot: "out/ä",
+        emittedAssets: ["a-with-diaeresis.js"],
+        sourceHook: "a-with-diaeresis-hook",
+      }),
+    ];
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    await addBuildFacts(facts, [], root, undefined, outputs);
+
+    expect(facts.builds?.map((build) => build.outputRoot)).toEqual(["out/z", "out/ä"]);
+    expect(facts.builds?.map((build) => build.id)).toEqual(["vite-build-1", "vite-build-2"]);
   });
 
   it("uses the current output root for bare manifest budget assets", async () => {
