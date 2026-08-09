@@ -169,6 +169,3 @@ assert.ok(
   "green cross-app gate did not report a clean result",
 );
 process.stdout.write("ok cross-app green gate\n");
-
-process.stdout.write("FULL_E2E_GATE_OK\n");
-process.stdout.write("GIGA_SMOKE_OK\n");

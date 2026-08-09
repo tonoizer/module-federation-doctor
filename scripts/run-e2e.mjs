@@ -17,21 +17,29 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
+async function runPowerShell(script) {
+  for (const command of ["powershell.exe", "pwsh.exe", "powershell"]) {
+    try {
+      const { stdout } = await execFileAsync(
+        command,
+        ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script],
+        { encoding: "utf8", timeout: 1_000 },
+      );
+      return stdout.trim() || null;
+    } catch {
+      // Try the next PowerShell executable name when available.
+    }
+  }
+  return null;
+}
+
 async function readProcessStartIdentity(pid) {
   if (!Number.isInteger(pid) || pid <= 0) return null;
+  if (process.platform === "win32")
+    return runPowerShell(`(Get-Process -Id ${String(pid)}).StartTime.ToUniversalTime().Ticks`);
+
   try {
-    const command = process.platform === "win32" ? "powershell.exe" : "ps";
-    const args =
-      process.platform === "win32"
-        ? [
-            "-NoLogo",
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            `(Get-Process -Id ${String(pid)}).StartTime.ToUniversalTime().Ticks`,
-          ]
-        : ["-p", String(pid), "-o", "lstart="];
-    const { stdout } = await execFileAsync(command, args, {
+    const { stdout } = await execFileAsync("ps", ["-p", String(pid), "-o", "lstart="], {
       encoding: "utf8",
       timeout: 1_000,
     });
@@ -39,6 +47,35 @@ async function readProcessStartIdentity(pid) {
   } catch {
     return null;
   }
+}
+
+async function readProcessCommand(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return null;
+  if (process.platform === "win32")
+    return runPowerShell(
+      `(Get-CimInstance Win32_Process -Filter 'ProcessId = ${String(pid)}').CommandLine`,
+    );
+
+  try {
+    const { stdout } = await execFileAsync("ps", ["-p", String(pid), "-o", "command="], {
+      encoding: "utf8",
+      timeout: 1_000,
+    });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+async function hasOwnedServerIdentity({ pid, startedAt }) {
+  if (startedAt) {
+    const currentStartIdentity = await readProcessStartIdentity(pid);
+    if (!currentStartIdentity || currentStartIdentity !== startedAt) return false;
+    const command = await readProcessCommand(pid);
+    return Boolean(command?.includes("run-e2e-server.mjs"));
+  }
+  const command = await readProcessCommand(pid);
+  return Boolean(command?.includes("run-e2e-server.mjs"));
 }
 
 const processStartIdentity = await readProcessStartIdentity(process.pid);
@@ -124,12 +161,7 @@ async function terminateRegisteredServer(
   force,
   requireOwnership = false,
 ) {
-  if (requireOwnership && !startedAt) return;
-  if (startedAt) {
-    const currentStartIdentity = await readProcessStartIdentity(pid);
-    if (currentStartIdentity && currentStartIdentity !== startedAt) return;
-    if (!currentStartIdentity && processExists(pid)) return;
-  }
+  if (requireOwnership && !(await hasOwnedServerIdentity({ pid, startedAt }))) return;
 
   if (process.platform === "win32") {
     return new Promise((resolve) => {
@@ -218,7 +250,12 @@ async function cleanupStaleServerRegistries() {
   }
 
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+    if (
+      !entry.isDirectory() ||
+      !entry.name.startsWith(SERVER_REGISTRY_PREFIX) ||
+      !entry.name.endsWith(".servers")
+    )
+      continue;
     let ownerPid = registryOwnerPid(entry.name);
     let ownerStartIdentity;
     try {
@@ -240,6 +277,14 @@ async function cleanupStaleServerRegistries() {
     }
 
     const registryPath = path.join(os.tmpdir(), entry.name);
+    const liveServers = (await readRegisteredServerGroups(registryPath)).filter((server) =>
+      processGroupExists(server.group),
+    );
+    const ownership = await Promise.all(liveServers.map(hasOwnedServerIdentity));
+    if (ownership.some((owned) => !owned)) {
+      process.stderr.write(`E2E stale server registry retained: ${entry.name}\n`);
+      continue;
+    }
     await cleanupRegisteredServerGroups(false, registryPath, true);
     await fs.rm(registryPath, { force: true, recursive: true });
   }
@@ -314,6 +359,7 @@ async function reclaimStaleLock(lockPath) {
 
   let ownerPid;
   let ownerStartIdentity;
+  let ownerKind;
   try {
     const contents = (await fs.readFile(lockPath, "utf8")).trim();
     try {
@@ -321,6 +367,7 @@ async function reclaimStaleLock(lockPath) {
       ownerPid = Number(owner.pid);
       ownerStartIdentity =
         typeof owner.startedAt === "string" && owner.startedAt ? owner.startedAt : undefined;
+      ownerKind = typeof owner.kind === "string" ? owner.kind : undefined;
     } catch {
       ownerPid = Number(contents);
     }
@@ -332,7 +379,12 @@ async function reclaimStaleLock(lockPath) {
     if (processExists(ownerPid)) {
       if (!ownerStartIdentity) return false;
       const currentStartIdentity = await readProcessStartIdentity(ownerPid);
-      if (!currentStartIdentity || currentStartIdentity === ownerStartIdentity) return false;
+      if (!currentStartIdentity) return false;
+      if (currentStartIdentity === ownerStartIdentity) {
+        if (ownerKind !== "run-e2e") return false;
+        const command = await readProcessCommand(ownerPid);
+        if (!command || command.includes("run-e2e.mjs")) return false;
+      }
     }
   }
 
@@ -352,7 +404,11 @@ async function tryAcquireLock(lockPath) {
     try {
       handle = await fs.open(lockPath, "wx");
       await handle.writeFile(
-        `${JSON.stringify({ pid: process.pid, startedAt: processStartIdentity })}\n`,
+        `${JSON.stringify({
+          kind: "run-e2e",
+          pid: process.pid,
+          startedAt: processStartIdentity,
+        })}\n`,
       );
       return async () => {
         await handle.close();
@@ -578,6 +634,8 @@ try {
         }
         throw error;
       }
+      process.stdout.write("FULL_E2E_GATE_OK\n");
+      process.stdout.write("GIGA_SMOKE_OK\n");
       break;
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
