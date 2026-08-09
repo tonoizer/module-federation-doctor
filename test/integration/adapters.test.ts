@@ -186,6 +186,8 @@ describe("adapter cases", () => {
     expect(stdout).toContain("ok examples/showcase/federation/version-conflict");
     expect(stdout).not.toContain("examples/showcase/config/name-required");
     expect(stdout).not.toContain("examples/showcase/name-required");
+    expect(stdout).not.toContain("nested-producer-dts-extract");
+    expect(stdout).not.toContain("remote-type-urls-missing");
   }, 60_000);
 });
 
