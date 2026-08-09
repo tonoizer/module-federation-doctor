@@ -3,7 +3,9 @@ import http from "node:http";
 import path from "node:path";
 
 const root = path.resolve(process.argv[2] ?? "dist");
-const port = Number(process.argv[3] ?? 4173);
+const basePort = Number(process.argv[3] ?? 4173);
+const portOffset = Number(process.env.MFDOCTOR_E2E_PORT_OFFSET ?? 0);
+const port = basePort + portOffset;
 const types = {
   ".css": "text/css",
   ".html": "text/html",

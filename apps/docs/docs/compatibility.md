@@ -51,7 +51,7 @@ changing a row's status.
 
 Nuxt 3 / Nuxt 4 use the first-class adapter `@module-federation/doctor/nuxt`.
 It hooks the public `vite:extendConfig` API and is covered by the adapter
-contract test plus pinned Nuxt provenance in the Giga Smoke gate. A full Nuxt
+contract test plus pinned Nuxt provenance in the full E2E gate. A full Nuxt
 application build remains dependent on the upstream package-resolution issue
 tracked in [nuxt/nuxt#36009](https://github.com/nuxt/nuxt/issues/36009).
 
@@ -139,14 +139,13 @@ Reds that **do not** block other cells:
 
 ## CI map
 
-| Workflow                      | What it proves                                                                                 |
-| ----------------------------- | ---------------------------------------------------------------------------------------------- |
-| `compatibility.yml`           | Per-bundler build+Doctor on Node 22 + 24; report surfaces                                      |
-| `doctor.yml`                  | Mixed + nested federation builds + workspace gates + SARIF upload                              |
-| `integration.yml` / `e2e.yml` | Adapter tests and Playwright mixed-federation path                                             |
-| `package.yml`                 | Pack/consume smoke on Node 22 + 24 (includes Webpack)                                          |
-| `quality.yml`                 | fmt, lint, types, unit tests, `docs:build`                                                     |
-| `giga-smoke.yml`              | Pinned local green/red/nested/compatibility builds + cross-app gate + Playwright runtime smoke |
+| Workflow                      | What it proves                                                          |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| `compatibility.yml`           | Per-bundler build+Doctor on Node 22 + 24; report surfaces               |
+| `doctor.yml`                  | Mixed + nested federation builds + workspace gates + SARIF upload       |
+| `integration.yml` / `e2e.yml` | Adapter tests plus the full matrix and Playwright mixed-federation path |
+| `package.yml`                 | Pack/consume smoke on Node 22 + 24 (includes Webpack)                   |
+| `quality.yml`                 | fmt, lint, types, unit tests, `docs:build`                              |
 
 ## mf-toolkit shapes
 

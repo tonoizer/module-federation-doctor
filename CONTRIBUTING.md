@@ -16,7 +16,7 @@ Please read the [Code of Conduct](./CODE_OF_CONDUCT.md) first.
 The repository requires Node `>=22.12.0` and pnpm `11.17.0`.
 
 ```bash
-corepack enable
+npm install --global pnpm@11.17.0
 pnpm install --frozen-lockfile
 ```
 

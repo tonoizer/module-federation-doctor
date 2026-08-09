@@ -47,7 +47,7 @@ jobs:
             dir: examples/compatibility/modern
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
+      - run: npm install --global pnpm@11.17.0
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: ${{ matrix.node }}
@@ -85,7 +85,7 @@ jobs:
         node: [22, 24]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
+      - run: npm install --global pnpm@11.17.0
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: ${{ matrix.node }}

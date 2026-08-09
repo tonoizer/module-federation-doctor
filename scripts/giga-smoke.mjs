@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
- * One-command production/build/runtime contract gate for the local MF matrix.
+ * Full local E2E/build/runtime contract gate for the local MF matrix.
+ *
+ * The filename is retained as a compatibility path for existing automation;
+ * the user-facing entry point is `pnpm test:e2e`.
  *
  * The upstream repositories are represented by small, reviewed fixtures in
  * this repository. The provenance and compatibility files record which
@@ -16,8 +19,8 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const provenancePath = path.join(root, "fixtures/upstream-compatibility.json");
 const provenance = JSON.parse(fs.readFileSync(provenancePath, "utf8"));
-const packageManager = process.platform === "win32" ? "corepack.cmd" : "corepack";
-const packageManagerArgs = ["pnpm"];
+const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const packageManagerArgs = [];
 
 function run(label, command, args, extraEnv = {}) {
   const result = spawnSync(command, args, {
@@ -159,4 +162,5 @@ assert.ok(
 );
 process.stdout.write("ok cross-app green gate\n");
 
+process.stdout.write("FULL_E2E_GATE_OK\n");
 process.stdout.write("GIGA_SMOKE_OK\n");

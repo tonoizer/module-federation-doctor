@@ -45,9 +45,9 @@ for (const cell of matrix.unitContracts) {
   assert.equal(cell.status, "validated", `${cell.id}: unit contract is not validated`);
 }
 
-const packageManager = process.platform === "win32" ? "corepack.cmd" : "corepack";
+const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 for (const test of new Set(matrix.unitContracts.map((cell) => cell.test))) {
-  const result = spawnSync(packageManager, ["pnpm", "exec", "vitest", "run", test], {
+  const result = spawnSync(packageManager, ["exec", "vitest", "run", test], {
     cwd: root,
     encoding: "utf8",
     shell: process.platform === "win32",

@@ -9,14 +9,14 @@ permissions:
   contents: read
 
 jobs:
-  mixed-federation:
+  full-e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     container:
       image: mcr.microsoft.com/playwright:v1.61.1-noble
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - run: corepack enable && corepack prepare pnpm@11.17.0 --activate
+      - run: npm install --global pnpm@11.17.0
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
@@ -28,6 +28,8 @@ jobs:
         with:
           name: playwright-failures
           path: |
+            examples/**/.mf/doctor
+            .mf/doctor
             test-results
             playwright-report
           retention-days: 7

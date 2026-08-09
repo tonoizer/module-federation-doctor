@@ -11,6 +11,7 @@ tags such as `1.2.3` (never `v1.2.3`).
 4. Run the full local gate:
 
    ```bash
+   npm install --global pnpm@11.17.0
    pnpm install --frozen-lockfile
    pnpm check
    pnpm release:dry-run

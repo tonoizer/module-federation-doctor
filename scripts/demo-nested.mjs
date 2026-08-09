@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(root, "dist/cli.js");
-const packageManager = process.platform === "win32" ? "corepack.cmd" : "corepack";
-const packageManagerArgs = ["pnpm"];
+const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const packageManagerArgs = [];
 
 function run(command, args) {
   const result = spawnSync(command, args, {

@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { waitForFederationServers } from "./helpers/federation-servers";
+import {
+  FEDERATION_SERVERS,
+  ISSUE_FEDERATION_SERVERS,
+  waitForFederationServers,
+} from "./helpers/federation-servers";
 
 test.describe("mixed-federation green path", () => {
   test.beforeEach(async ({ request }) => {
@@ -16,16 +20,16 @@ test.describe("mixed-federation green path", () => {
     await page.goto("/");
     await expect(
       page.getByTestId("remote-loading"),
-      "host (http://127.0.0.1:5173) remotes did not finish loading",
+      `host (${FEDERATION_SERVERS[2].entryUrl}) remotes did not finish loading`,
     ).toBeHidden({ timeout: 15_000 });
 
     await expect(
       page.getByTestId("rspack-remote"),
-      "rspack remote (http://127.0.0.1:3001/remoteEntry.js) did not render",
+      `rspack remote (${FEDERATION_SERVERS[0].entryUrl}) did not render`,
     ).toContainText("Direct Rspack remote");
     await expect(
       page.getByTestId("rsbuild-remote"),
-      "rsbuild remote (http://127.0.0.1:3002/remoteEntry.js) did not render",
+      `rsbuild remote (${FEDERATION_SERVERS[1].entryUrl}) did not render`,
     ).toContainText("Rsbuild remote");
 
     expect(errors, "browser console errors while loading remotes").toEqual([]);
@@ -40,16 +44,14 @@ test.describe("mixed-federation intentional findings path", () => {
       if (message.type() === "error") browserErrors.push(`console: ${message.text()}`);
     });
 
-    for (const url of [
-      "http://127.0.0.1:3011/remoteEntry.js",
-      "http://127.0.0.1:3012/remoteEntry.js",
-      "http://127.0.0.1:5183/",
-    ]) {
-      const response = await request.get(url);
-      expect(response.ok(), `${url} did not serve during negative runtime smoke`).toBe(true);
+    for (const server of ISSUE_FEDERATION_SERVERS) {
+      const response = await request.get(server.entryUrl);
+      expect(response.ok(), `${server.entryUrl} did not serve during negative runtime smoke`).toBe(
+        true,
+      );
     }
 
-    await page.goto("http://127.0.0.1:5183/");
+    await page.goto(ISSUE_FEDERATION_SERVERS[2].url);
     await expect
       .poll(() => browserErrors.join(" | "), {
         timeout: 15_000,

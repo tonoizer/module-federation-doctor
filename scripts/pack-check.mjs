@@ -7,8 +7,8 @@ import { pathToFileURL } from "node:url";
 
 const root = process.cwd();
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-pack-"));
-const packageManager = process.platform === "win32" ? "corepack.cmd" : "corepack";
-const packageManagerArgs = ["pnpm"];
+const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const packageManagerArgs = [];
 const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 
 function run(command, args, cwd = temporary) {
@@ -182,7 +182,7 @@ assert.equal(rspackChain[0][0], "module-federation-doctor");
 `,
   );
   const consumerPnpmArgs = [...packageManagerArgs, "--dir", consumer];
-  // Keep Corepack's project lookup anchored at the Doctor workspace. A temp
+  // Keep pnpm's project lookup anchored at the Doctor workspace. A temp
   // consumer can otherwise inherit an unrelated parent packageManager field
   // (for example yarn in a user's home package.json).
   run(packageManager, [...consumerPnpmArgs, "install", "--ignore-scripts"], root);

@@ -2,24 +2,39 @@
 
 Playwright drives both the healthy [`examples/mixed-federation`](../../examples/mixed-federation)
 green path and the intentional [`examples/mixed-federation-issues`](../../examples/mixed-federation-issues)
-red path. The latter proves that the known-bad host/remotes still boot and serve their
-runtime entrypoints; the expected Doctor findings are asserted by `scripts/giga-smoke.mjs`.
+red path. The full E2E gate also builds the nested and compatibility matrices,
+checks cross-app behavior, and verifies the expected Doctor findings before the
+browser run.
 
 ## Run locally
 
 ```bash
+pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-`pnpm test:e2e` builds the repo and mixed-federation examples, then runs Playwright.
-Playwright starts the six preview servers defined in `playwright.config.ts`.
+`pnpm test:e2e` builds the package and the full local federation matrix, then runs
+Playwright. It prints the selected six-port range, automatically moves to a free
+range when another local app or SSH tunnel owns the defaults, and starts the six
+preview servers defined in `playwright.config.ts`. The browser installation is a
+one-time setup per machine.
 
-For the complete local gate, including nested, compatibility, standalone, CLI,
-cross-app, and runtime checks, run:
+For a focused Playwright rerun, use the same `MFDOCTOR_E2E_PORT_OFFSET` that the
+build used. Direct Playwright runs do not choose a port range or rebuild the
+examples:
+
+```bash
+MFDOCTOR_E2E_PORT_OFFSET=100 pnpm exec playwright test
+```
+
+For compatibility with older automation, the former command remains available as
+an alias:
 
 ```bash
 pnpm test:giga
 ```
+
+It runs the same full E2E gate; there is no separate Giga test suite anymore.
 
 ## Flake triage
 
@@ -30,10 +45,12 @@ availability. When a run fails:
    (for example `rspack remote (http://127.0.0.1:3001/remoteEntry.js)`).
 2. **Check `test-results/` and `playwright-report/`** — traces, screenshots, and
    video are retained on failure (`trace: retain-on-failure`).
-3. **Confirm which webServer failed** — `playwright.config.ts` starts three
-   servers (`rspack-remote`, `rsbuild-remote`, `host-vite`). A timeout on
-   `webServer.url` means that preview process never became ready. Startup logs
-   are prefixed with `[mfdoctor-e2e:<name>]`.
+3. **Confirm which webServer failed** — `playwright.config.ts` starts six
+   servers: three healthy (`rspack-remote`, `rsbuild-remote`, `host-vite`) and
+   three intentional-issues servers (`issues-rspack-remote`,
+   `issues-rsbuild-remote`, `issues-host-vite`). A timeout on `webServer.url`
+   means that preview process never became ready. Startup logs are prefixed
+   with `[mfdoctor-e2e:<name>]`.
 4. **Inspect CI artifacts** — the `playwright-failures` artifact uploads
    `test-results/` and `playwright-report/` from `.github/workflows/e2e.yml`.
 5. **Retry behavior** — CI runs with `retries: 2` to absorb short-lived boot
@@ -41,8 +58,9 @@ availability. When a run fails:
 
 ### Manual server checks
 
-With preview servers running (or after a failed run leaves them up locally).
-Probes use `127.0.0.1` (not `localhost`) to match the IPv4 bind used in CI:
+With preview servers running, use the ports printed by `pnpm test:e2e`. The
+defaults below apply only when the runner reports offset `0`. Probes use
+`127.0.0.1` (not `localhost`) to match the IPv4 bind used in CI:
 
 ```bash
 curl -fsS http://127.0.0.1:3001/remoteEntry.js | head
@@ -54,7 +72,9 @@ curl -fsS http://127.0.0.1:5173/
 
 - **Remote entry 404** — example not built; run `pnpm test:examples` or full
   `pnpm test:e2e` so builds run first.
-- **Port already in use** — stop stale preview processes on 3001, 3002, or 5173.
+- **Port already in use** — the full runner automatically selects another range;
+  if you supplied `MFDOCTOR_E2E_PORT_OFFSET` manually, clear it or choose a free
+  offset.
 - **`localhost` vs `127.0.0.1`** — preview servers bind IPv4 loopback; probing
   `localhost` can fail in CI when it resolves to `::1`.
 - **Slow CI cold start** — webServer timeout is 120s; readiness polling in

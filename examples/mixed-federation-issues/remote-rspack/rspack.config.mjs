@@ -1,6 +1,8 @@
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
 import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
 
+const portOffset = Number(process.env.MFDOCTOR_E2E_PORT_OFFSET ?? 0);
+
 const mfOptions = {
   name: "rspack_remote_issues",
   manifest: true,
@@ -19,7 +21,7 @@ export default {
   entry: "./src/index.ts",
   output: { publicPath: "auto", uniqueName: "rspack_remote_issues", clean: true },
   devServer: {
-    port: 3011,
+    port: 3011 + portOffset,
     headers: { "Access-Control-Allow-Origin": "*" },
   },
   module: {
