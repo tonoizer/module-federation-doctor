@@ -8,7 +8,7 @@ const federationWebServers = [
   },
   {
     name: "rsbuild-remote",
-    command: "corepack pnpm --dir examples/mixed-federation/remote-rsbuild preview",
+    command: "corepack pnpm --dir examples/mixed-federation/remote-rsbuild preview --strictPort",
     url: "http://127.0.0.1:3002/remoteEntry.js",
   },
   {
@@ -26,7 +26,8 @@ const issueWebServers = [
   },
   {
     name: "issues-rsbuild-remote",
-    command: "corepack pnpm --dir examples/mixed-federation-issues/remote-rsbuild preview",
+    command:
+      "corepack pnpm --dir examples/mixed-federation-issues/remote-rsbuild preview --strictPort",
     url: "http://127.0.0.1:3012/remoteEntry.js",
   },
   {
@@ -36,7 +37,17 @@ const issueWebServers = [
   },
 ] as const;
 
-const allFederationWebServers = [...federationWebServers, ...issueWebServers];
+const multiInstanceWebServer = {
+  name: "multi-instance-webpack",
+  command: "node scripts/serve-dist.mjs examples/compatibility/webpack 3003",
+  url: "http://127.0.0.1:3003/",
+} as const;
+
+const allFederationWebServers = [
+  ...federationWebServers,
+  ...issueWebServers,
+  multiInstanceWebServer,
+];
 
 export default defineConfig({
   testDir: "test/e2e",
