@@ -19,10 +19,42 @@ const MAX_OFFSET = 20_000;
 const LOCK_PREFIX = path.join(os.tmpdir(), "mfdoctor-e2e");
 const LOCK_INIT_GRACE_MS = 30_000;
 const MAX_GATE_ATTEMPTS = 3;
+const PROCESS_GROUP_WAIT_MS = 5_000;
+const PROCESS_GROUP_POLL_MS = 50;
 let activeChild;
 let interruptedSignal;
+let interruptCount = 0;
 
-function terminateActiveChild(signal) {
+function processGroupExists(pid) {
+  try {
+    process.kill(-pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "EPERM";
+  }
+}
+
+async function waitForProcessGroupExit(pid) {
+  if (process.platform === "win32") return;
+
+  const waitUntil = Date.now() + PROCESS_GROUP_WAIT_MS;
+  while (processGroupExists(pid) && Date.now() < waitUntil) {
+    await new Promise((resolve) => setTimeout(resolve, PROCESS_GROUP_POLL_MS));
+  }
+  if (!processGroupExists(pid)) return;
+
+  try {
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    return;
+  }
+  const forceWaitUntil = Date.now() + PROCESS_GROUP_WAIT_MS;
+  while (processGroupExists(pid) && Date.now() < forceWaitUntil) {
+    await new Promise((resolve) => setTimeout(resolve, PROCESS_GROUP_POLL_MS));
+  }
+}
+
+function terminateActiveChild(signal, force = false) {
   const child = activeChild;
   if (!child?.pid) return;
 
@@ -36,7 +68,7 @@ function terminateActiveChild(signal) {
   }
 
   try {
-    process.kill(-child.pid, signal);
+    process.kill(-child.pid, force ? "SIGKILL" : signal);
   } catch {
     try {
       child.kill(signal);
@@ -47,10 +79,11 @@ function terminateActiveChild(signal) {
 }
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.once(signal, () => {
-    interruptedSignal = signal;
+  process.on(signal, () => {
+    interruptCount += 1;
+    interruptedSignal ??= signal;
     process.exitCode = signal === "SIGINT" ? 130 : 143;
-    terminateActiveChild(signal);
+    terminateActiveChild(signal, interruptCount > 1);
   });
 }
 
@@ -206,7 +239,8 @@ async function run(label, command, args, env, { captureOutput = false } = {}) {
       error.output = output();
       finish(error);
     });
-    child.once("close", (code, signal) => {
+    child.once("close", async (code, signal) => {
+      await waitForProcessGroupExit(child.pid);
       if (interruptedSignal) {
         const error = new Error(`E2E run interrupted by ${interruptedSignal}`);
         error.output = output();
