@@ -7,17 +7,18 @@
  * generated remote URLs always agree with the preview servers.
  */
 import fs from "node:fs/promises";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const root = await fs.realpath(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."));
 const BASE_PORTS = [3001, 3002, 3003, 5173, 3011, 3012, 5183];
 const MAX_OFFSET = 20_000;
-const LOCK_PREFIX = path.join(os.tmpdir(), "mfdoctor-e2e");
+const PORT_LOCK_PREFIX = path.join(os.tmpdir(), "mfdoctor-e2e-port");
+const SERVER_REGISTRY_PREFIX = "mfdoctor-e2e-";
 const WORKSPACE_LOCK_PATH = path.join(
   os.tmpdir(),
   `mfdoctor-e2e-workspace-${createHash("sha256").update(root).digest("hex")}.lock`,
@@ -62,12 +63,12 @@ async function waitForProcessGroupExit(pid) {
   }
 }
 
-async function readRegisteredServerGroups() {
-  if (!activeServerRegistryPath) return [];
+async function readRegisteredServerGroups(registryPath = activeServerRegistryPath) {
+  if (!registryPath) return [];
 
   let entries;
   try {
-    entries = await fs.readdir(activeServerRegistryPath);
+    entries = await fs.readdir(registryPath);
   } catch (error) {
     if (error?.code === "ENOENT") return [];
     throw error;
@@ -76,9 +77,7 @@ async function readRegisteredServerGroups() {
   const groups = [];
   for (const entry of entries) {
     try {
-      const record = JSON.parse(
-        await fs.readFile(path.join(activeServerRegistryPath, entry), "utf8"),
-      );
+      const record = JSON.parse(await fs.readFile(path.join(registryPath, entry), "utf8"));
       const pid = Number(record.pid);
       const group = Number(record.group);
       if (Number.isInteger(pid) && pid > 0 && Number.isInteger(group) && group > 0)
@@ -111,12 +110,17 @@ function terminateRegisteredServer({ group, pid }, force) {
   return Promise.resolve();
 }
 
-async function cleanupRegisteredServerGroups(force = false) {
-  if (!activeServerRegistryPath) return;
+async function cleanupRegisteredServerGroups(
+  force = false,
+  registryPath = activeServerRegistryPath,
+) {
+  if (!registryPath) return;
 
   if (process.platform === "win32") {
     await Promise.all(
-      (await readRegisteredServerGroups()).map((server) => terminateRegisteredServer(server, true)),
+      (await readRegisteredServerGroups(registryPath)).map((server) =>
+        terminateRegisteredServer(server, true),
+      ),
     );
     return;
   }
@@ -124,7 +128,7 @@ async function cleanupRegisteredServerGroups(force = false) {
   const contactedGroups = new Set();
   const waitUntil = Date.now() + PROCESS_GROUP_WAIT_MS;
   while (true) {
-    const liveServers = (await readRegisteredServerGroups()).filter((server) =>
+    const liveServers = (await readRegisteredServerGroups(registryPath)).filter((server) =>
       processGroupExists(server.group),
     );
     for (const server of liveServers) {
@@ -138,10 +142,46 @@ async function cleanupRegisteredServerGroups(force = false) {
   }
 
   if (force) return;
-  const remainingServers = (await readRegisteredServerGroups()).filter((server) =>
+  const remainingServers = (await readRegisteredServerGroups(registryPath)).filter((server) =>
     processGroupExists(server.group),
   );
   await Promise.all(remainingServers.map((server) => terminateRegisteredServer(server, true)));
+}
+
+function processExists(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "EPERM";
+  }
+}
+
+function registryOwnerPid(name) {
+  const match = new RegExp(`^${SERVER_REGISTRY_PREFIX}(\\d+)-.*\\.servers$`).exec(name);
+  if (!match) return null;
+  const pid = Number(match[1]);
+  return Number.isInteger(pid) && pid > 0 ? pid : null;
+}
+
+async function cleanupStaleServerRegistries() {
+  let entries;
+  try {
+    entries = await fs.readdir(os.tmpdir(), { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return;
+    throw error;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const ownerPid = registryOwnerPid(entry.name);
+    if (!ownerPid || processExists(ownerPid)) continue;
+
+    const registryPath = path.join(os.tmpdir(), entry.name);
+    await cleanupRegisteredServerGroups(false, registryPath);
+    await fs.rm(registryPath, { force: true, recursive: true });
+  }
 }
 
 function scheduleServerCleanup(force = false) {
@@ -261,8 +301,28 @@ async function tryAcquireLock(lockPath) {
   return null;
 }
 
-async function tryAcquireOffsetLock(offset) {
-  return tryAcquireLock(`${LOCK_PREFIX}-${offset}.lock`);
+function portLockPath(port) {
+  return `${PORT_LOCK_PREFIX}-${port}.lock`;
+}
+
+async function tryAcquirePortLocks(offset) {
+  const ports = BASE_PORTS.map((port) => port + offset).sort((a, b) => a - b);
+  const releases = [];
+
+  for (const port of ports) {
+    const release = await tryAcquireLock(portLockPath(port));
+    if (release) {
+      releases.push(release);
+      continue;
+    }
+
+    await Promise.all(releases.toReversed().map((releasePort) => releasePort()));
+    return null;
+  }
+
+  return async () => {
+    await Promise.all(releases.toReversed().map((releasePort) => releasePort()));
+  };
 }
 
 async function acquireWorkspaceLock() {
@@ -291,7 +351,7 @@ async function portsAvailable(offset) {
 
 async function chooseOffset() {
   const claimOffset = async (offset) => {
-    const release = await tryAcquireOffsetLock(offset);
+    const release = await tryAcquirePortLocks(offset);
     if (!release) return null;
     if (await portsAvailable(offset)) return release;
     await release();
@@ -390,12 +450,13 @@ const forwardedArgs = process.argv[2] === "--" ? process.argv.slice(3) : process
 const playwrightArgs = ["exec", "playwright", "test", ...forwardedArgs];
 let releaseWorkspace;
 try {
+  await cleanupStaleServerRegistries();
   releaseWorkspace = await acquireWorkspaceLock();
   for (let attempt = 0; attempt < MAX_GATE_ATTEMPTS; attempt += 1) {
     const { offset, release } = await chooseOffset();
     const serverRegistryPath = path.join(
       os.tmpdir(),
-      `mfdoctor-e2e-${process.pid}-${offset}.servers`,
+      `${SERVER_REGISTRY_PREFIX}${process.pid}-${offset}-${randomUUID()}.servers`,
     );
     try {
       await fs.rm(serverRegistryPath, { force: true, recursive: true });
