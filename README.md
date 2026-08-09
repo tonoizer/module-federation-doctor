@@ -251,6 +251,7 @@ consumer notes; terminal / JSON / SARIF on CI).
 ```bash
 npm install --global pnpm@11.17.0
 pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
 pnpm check
 pnpm release:dry-run
 ```

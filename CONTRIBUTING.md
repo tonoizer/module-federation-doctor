@@ -18,6 +18,7 @@ The repository requires Node `>=22.12.0` and pnpm `11.17.0`.
 ```bash
 npm install --global pnpm@11.17.0
 pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
 ```
 
 ## Testing

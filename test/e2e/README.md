@@ -24,7 +24,8 @@ build used. Direct Playwright runs do not choose a port range or rebuild the
 examples:
 
 ```bash
-MFDOCTOR_E2E_PORT_OFFSET=100 pnpm exec playwright test
+E2E_OFFSET=0 # replace 0 with the offset printed by pnpm test:e2e
+MFDOCTOR_E2E_PORT_OFFSET="$E2E_OFFSET" pnpm exec playwright test
 ```
 
 For compatibility with older automation, the former command remains available as

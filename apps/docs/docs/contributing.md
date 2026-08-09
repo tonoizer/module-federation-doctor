@@ -7,6 +7,7 @@ and adapters. Run `pnpm changeset` for a public package change.
 ```bash
 npm install --global pnpm@11.17.0
 pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
 ```
 
 For mixed-federation Playwright flake triage, see

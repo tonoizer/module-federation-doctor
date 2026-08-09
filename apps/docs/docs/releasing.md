@@ -13,6 +13,7 @@ tags such as `1.2.3` (never `v1.2.3`).
    ```bash
    npm install --global pnpm@11.17.0
    pnpm install --frozen-lockfile
+   pnpm exec playwright install chromium
    pnpm check
    pnpm release:dry-run
    ```

@@ -10,7 +10,7 @@ import fs from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -19,12 +19,38 @@ const MAX_OFFSET = 20_000;
 const LOCK_PREFIX = path.join(os.tmpdir(), "mfdoctor-e2e");
 const LOCK_INIT_GRACE_MS = 30_000;
 const MAX_GATE_ATTEMPTS = 3;
+let activeChild;
 let interruptedSignal;
+
+function terminateActiveChild(signal) {
+  const child = activeChild;
+  if (!child?.pid) return;
+
+  if (process.platform === "win32") {
+    const killer = spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    killer.unref();
+    return;
+  }
+
+  try {
+    process.kill(-child.pid, signal);
+  } catch {
+    try {
+      child.kill(signal);
+    } catch {
+      // The child may have exited between the signal and cleanup.
+    }
+  }
+}
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.once(signal, () => {
     interruptedSignal = signal;
     process.exitCode = signal === "SIGINT" ? 130 : 143;
+    terminateActiveChild(signal);
   });
 }
 
@@ -137,31 +163,66 @@ async function chooseOffset() {
   throw new Error(`Could not find six free E2E ports within offset range 0-${MAX_OFFSET}`);
 }
 
-function run(label, command, args, env, { captureOutput = false } = {}) {
+async function run(label, command, args, env, { captureOutput = false } = {}) {
   assertNotInterrupted();
   process.stdout.write(`\n▶ ${label}\n`);
-  const result = spawnSync(command, args, {
-    cwd: root,
-    stdio: captureOutput ? ["inherit", "pipe", "pipe"] : "inherit",
-    shell: process.platform === "win32" && command.endsWith(".cmd"),
-    env,
-    ...(captureOutput ? { encoding: "utf8" } : {}),
+  await new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: root,
+      stdio: captureOutput ? ["inherit", "pipe", "pipe"] : "inherit",
+      shell: process.platform === "win32" && command.endsWith(".cmd"),
+      detached: process.platform !== "win32",
+      env,
+      windowsHide: process.platform === "win32",
+    });
+    activeChild = child;
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+
+    const output = () => `${stdout}${stderr}`;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      if (activeChild === child) activeChild = undefined;
+      if (error) reject(error);
+      else resolve();
+    };
+
+    if (captureOutput) {
+      child.stdout.setEncoding("utf8");
+      child.stderr.setEncoding("utf8");
+      child.stdout.on("data", (chunk) => {
+        stdout += chunk;
+        process.stdout.write(chunk);
+      });
+      child.stderr.on("data", (chunk) => {
+        stderr += chunk;
+        process.stderr.write(chunk);
+      });
+    }
+
+    child.once("error", (error) => {
+      error.output = output();
+      finish(error);
+    });
+    child.once("close", (code, signal) => {
+      if (interruptedSignal) {
+        const error = new Error(`E2E run interrupted by ${interruptedSignal}`);
+        error.output = output();
+        finish(error);
+        return;
+      }
+      if (code !== 0) {
+        const detail = signal ? `signal ${signal}` : `exit code ${code ?? 1}`;
+        const error = new Error(`${label} failed with ${detail}`);
+        error.output = output();
+        finish(error);
+        return;
+      }
+      finish();
+    });
   });
-  const output = captureOutput ? `${result.stdout ?? ""}${result.stderr ?? ""}` : "";
-  if (captureOutput) {
-    process.stdout.write(result.stdout ?? "");
-    process.stderr.write(result.stderr ?? "");
-  }
-  if (result.error) {
-    result.error.output = output;
-    throw result.error;
-  }
-  assertNotInterrupted();
-  if (result.status !== 0) {
-    const error = new Error(`${label} failed with exit code ${result.status ?? 1}`);
-    error.output = output;
-    throw error;
-  }
 }
 
 function isPortConflict(error) {
@@ -169,6 +230,8 @@ function isPortConflict(error) {
 }
 
 const requestedOffset = process.env.MFDOCTOR_E2E_PORT_OFFSET;
+const forwardedArgs = process.argv[2] === "--" ? process.argv.slice(3) : process.argv.slice(2);
+const playwrightArgs = ["exec", "playwright", "test", ...forwardedArgs];
 for (let attempt = 0; attempt < MAX_GATE_ATTEMPTS; attempt += 1) {
   const { offset, release } = await chooseOffset();
   try {
@@ -181,8 +244,8 @@ for (let attempt = 0; attempt < MAX_GATE_ATTEMPTS; attempt += 1) {
     process.stdout.write(
       `Using E2E port offset ${offset}: ${BASE_PORTS.map((port) => port + offset).join(", ")}\n`,
     );
-    run("build package", pnpm, ["build"], environment);
-    run(
+    await run("build package", pnpm, ["build"], environment);
+    await run(
       "run federation matrix and cross-app gate",
       process.execPath,
       ["scripts/giga-smoke.mjs"],
@@ -198,7 +261,7 @@ for (let attempt = 0; attempt < MAX_GATE_ATTEMPTS; attempt += 1) {
     assertNotInterrupted();
 
     try {
-      run("run Playwright runtime smoke", pnpm, ["exec", "playwright", "test"], environment, {
+      await run("run Playwright runtime smoke", pnpm, playwrightArgs, environment, {
         captureOutput: true,
       });
     } catch (error) {
