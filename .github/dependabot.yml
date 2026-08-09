@@ -1,0 +1,11 @@
+version: 2
+
+updates:
+  # Keep the update scope at the workspace root so Dependabot can read
+  # pnpm-workspace.yaml and update the central pnpm-lock.yaml consistently.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Keep security updates enabled while suppressing normal version updates.
+    open-pull-requests-limit: 0
