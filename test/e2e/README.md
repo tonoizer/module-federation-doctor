@@ -17,6 +17,8 @@ pnpm test:e2e
 `pnpm test:e2e` builds the repo, mixed-federation examples, and the multi-instance Webpack
 fixture, then runs Playwright. Playwright starts the seven preview servers defined in
 `playwright.config.ts`.
+The recommendation-profile suite also runs the built CLI and real Vite adapter builds
+against temporary projects to verify demo, production, CI, runtime-plugin, and exact-subpath-share behavior.
 
 For the complete local gate, including nested, compatibility, standalone, CLI,
 cross-app, and runtime checks, run:
