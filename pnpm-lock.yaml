@@ -622,8 +622,6 @@ importers:
 
   examples/showcase/config/implementation-suspicious-suppressed: {}
 
-  examples/showcase/config/nested-producer-dts-extract: {}
-
   examples/showcase/config/remote-alias-prefix-collision: {}
 
   examples/showcase/config/remote-entry-invalid: {}
@@ -631,8 +629,6 @@ importers:
   examples/showcase/config/remote-http-insecure: {}
 
   examples/showcase/config/remote-localhost-in-production: {}
-
-  examples/showcase/config/remote-type-urls-missing: {}
 
   examples/showcase/config/share-scope-undeclared: {}
 

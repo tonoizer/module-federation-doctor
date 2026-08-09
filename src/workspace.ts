@@ -65,12 +65,60 @@ interface ProjectEnvelope {
   };
 }
 
+const GROUP_PROBE_MAX_BYTES = 16 * 1024;
+
+interface GroupProbeResult {
+  file: string;
+  contents?: string;
+  complete: boolean;
+  group?: string;
+}
+
+function projectObjectFromPrefix(contents: string): ProjectEnvelope | undefined {
+  const projectKey = /"project"\s*:\s*\{/.exec(contents);
+  if (!projectKey || projectKey.index === undefined) return undefined;
+  const objectStart = contents.indexOf("{", projectKey.index);
+  if (objectStart < 0) return undefined;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = objectStart; index < contents.length; index += 1) {
+    const character = contents[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      continue;
+    }
+    if (character === "{") depth += 1;
+    else if (character === "}" && --depth === 0) {
+      try {
+        const project = JSON.parse(contents.slice(objectStart, index + 1)) as unknown;
+        return project && typeof project === "object" && !Array.isArray(project)
+          ? { project: project as ProjectEnvelope["project"] }
+          : undefined;
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
+function groupFromProjectEnvelope(envelope: ProjectEnvelope | undefined): string | undefined {
+  const group = envelope?.project?.federationGroup;
+  return typeof group === "string" && group.trim().length > 0 ? group.trim() : undefined;
+}
+
 function federationGroupFromContents(contents: string | undefined): string | undefined {
   if (!contents) return undefined;
   try {
     const value = JSON.parse(contents) as ProjectEnvelope;
-    const group = value.project?.federationGroup;
-    return typeof group === "string" && group.trim().length > 0 ? group.trim() : undefined;
+    return groupFromProjectEnvelope(value);
   } catch {
     return undefined;
   }
@@ -80,6 +128,90 @@ interface WorkspaceReadResult {
   envelope?: ProjectEnvelope | undefined;
   contents?: string | undefined;
   withinBudget: boolean;
+}
+
+async function readGroupProbe(
+  file: string,
+  maxBytes: number,
+): Promise<{ contents?: string; complete: boolean }> {
+  if (maxBytes <= 0) return { contents: "", complete: true };
+  let handle: Awaited<ReturnType<typeof fs.open>> | undefined;
+  try {
+    handle = await fs.open(file, "r");
+    const buffer = Buffer.alloc(maxBytes);
+    const { bytesRead } = await handle.read(buffer, 0, maxBytes, 0);
+    const complete = bytesRead < maxBytes;
+    return {
+      contents: buffer.toString("utf8", 0, Math.min(bytesRead, GROUP_PROBE_MAX_BYTES)),
+      complete,
+    };
+  } catch {
+    return { complete: false };
+  } finally {
+    await handle?.close().catch(() => undefined);
+  }
+}
+
+async function probeWorkspaceGroups(
+  files: string[],
+  sizes: number[],
+  tracker: AnalysisBudgetTracker,
+  selectedGroup: string,
+): Promise<{
+  scopedFiles: string[];
+  scopedContents: Map<string, string | undefined>;
+  groups: Set<string>;
+  ungrouped: number;
+}> {
+  const probeBytes = sizes.reduce(
+    (total, size) =>
+      Math.min(
+        Number.MAX_SAFE_INTEGER,
+        total + Math.min(Math.max(0, size) + 1, GROUP_PROBE_MAX_BYTES + 1),
+      ),
+    0,
+  );
+  // Group selection is a scope preflight, so unrelated projects must not
+  // consume the selected group's analysis budget. It still gets its own
+  // stat-backed tracker and a fixed per-file read bound.
+  const probeTracker = new AnalysisBudgetTracker(
+    resolveAnalysisBudgets({
+      maxFiles: files.length,
+      maxSerializedBytes: probeBytes,
+      maxWallTimeMs: Number.MAX_SAFE_INTEGER,
+    }),
+  );
+  const candidates: Array<{ file: string; bytes: number }> = [];
+  for (const [index, file] of files.entries()) {
+    if (!tracker.checkWallTime()) break;
+    const size = Math.max(0, sizes[index] ?? 0);
+    const bytes = Math.min(size + 1, GROUP_PROBE_MAX_BYTES + 1);
+    if (probeTracker.reserve({ files: 1, serializedBytes: bytes }))
+      candidates.push({ file, bytes });
+  }
+  const probed = await mapBounded(
+    candidates,
+    async ({ file, bytes }): Promise<GroupProbeResult> => {
+      if (!tracker.checkWallTime()) return { file, complete: false };
+      const result = await readGroupProbe(file, bytes);
+      const group = result.complete
+        ? federationGroupFromContents(result.contents)
+        : groupFromProjectEnvelope(projectObjectFromPrefix(result.contents ?? ""));
+      return { file, ...result, ...(group ? { group } : {}) };
+    },
+  );
+  const scopedFiles: string[] = [];
+  const scopedContents = new Map<string, string | undefined>();
+  const groups = new Set<string>();
+  let ungrouped = 0;
+  for (const item of probed) {
+    if (item.group) groups.add(item.group);
+    else if (item.contents !== undefined) ungrouped += 1;
+    if (item.group !== selectedGroup) continue;
+    scopedFiles.push(item.file);
+    if (item.complete) scopedContents.set(item.file, item.contents);
+  }
+  return { scopedFiles, scopedContents, groups, ungrouped };
 }
 
 async function readProjectEnvelope(
@@ -250,31 +382,35 @@ export async function discoverWorkspaceProjectsWithBudget(
   // the selected group's file/byte budget. The selected files are still fully
   // budgeted below; invalid/unreadable envelopes are left out of an explicit
   // group selection because their group cannot be established safely.
-  const scopedContents = new Map<string, string | undefined>();
+  let scopedContents = new Map<string, string | undefined>();
   const observedGroups = new Set<string>();
   let observedUngrouped = 0;
   let scopedFiles = orderedFiles;
+  let preflightSizes: Map<string, number> | undefined;
   if (options.group !== undefined) {
-    const probed = await mapBounded(orderedFiles, async (file) => ({
-      file,
-      contents: await fs.readFile(file, "utf8").catch(() => undefined),
-    }));
-    for (const { file, contents } of probed) {
-      const group = federationGroupFromContents(contents);
-      if (group) observedGroups.add(group);
-      else if (contents !== undefined) observedUngrouped += 1;
-      if (group !== options.group) continue;
-      scopedContents.set(file, contents);
-    }
-    scopedFiles = [...scopedContents.keys()].sort((left, right) => left.localeCompare(right));
+    const allSizes = await mapBounded(orderedFiles, (file) =>
+      fs
+        .stat(file)
+        .then((item) => item.size)
+        .catch(() => 0),
+    );
+    const probe = await probeWorkspaceGroups(orderedFiles, allSizes, tracker, options.group);
+    scopedFiles = probe.scopedFiles.sort((left, right) => left.localeCompare(right));
+    scopedContents = probe.scopedContents;
+    for (const group of probe.groups) observedGroups.add(group);
+    observedUngrouped = probe.ungrouped;
+    preflightSizes = new Map(orderedFiles.map((file, index) => [file, allSizes[index] ?? 0]));
   }
   const selected: Array<{ file: string; reservedBytes: number }> = [];
-  const sizes = await mapBounded(scopedFiles, (file) =>
-    fs
-      .stat(file)
-      .then((item) => item.size)
-      .catch(() => 0),
-  );
+  const sizes =
+    preflightSizes !== undefined
+      ? scopedFiles.map((file) => preflightSizes!.get(file) ?? 0)
+      : await mapBounded(scopedFiles, (file) =>
+          fs
+            .stat(file)
+            .then((item) => item.size)
+            .catch(() => 0),
+        );
   for (const [index, file] of scopedFiles.entries()) {
     const size = sizes[index] ?? 0;
     if (tracker.reserve({ files: 1, serializedBytes: size }))
