@@ -38,7 +38,14 @@ import type {
   Severity,
 } from "./types.js";
 import { FINDING_DETAILS_SCHEMAS } from "./finding-details.js";
-import { deepFreeze, fingerprint, redact, relativePath, sortFindings } from "./utils.js";
+import {
+  compareCodePoint,
+  deepFreeze,
+  fingerprint,
+  redact,
+  relativePath,
+  sortFindings,
+} from "./utils.js";
 import { writeFederationReports, writeReports } from "./reporters.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
 import type { AnalysisBudgetReport } from "./analysis-budgets.js";
@@ -364,9 +371,9 @@ function federationProjectGroups(projects: ProjectFacts[]): ProjectFacts[][] {
     groups.set(key, [...(groups.get(key) ?? []), project]);
   }
   return [...groups.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
+    .sort(([left], [right]) => compareCodePoint(left, right))
     .map(([, group]) =>
-      group.sort((left, right) => left.project.name.localeCompare(right.project.name)),
+      group.sort((left, right) => compareCodePoint(left.project.name, right.project.name)),
     );
 }
 
@@ -409,7 +416,7 @@ export async function analyzeFederation(
       });
       return { file, project };
     })
-  ).sort((a, b) => a.project.project.name.localeCompare(b.project.project.name));
+  ).sort((a, b) => compareCodePoint(a.project.project.name, b.project.project.name));
   const projects = loadedProjects.map(({ project }) => project);
   const findings: DoctorFinding[] = [];
   const incompleteProjects = loadedProjects
@@ -418,7 +425,7 @@ export async function analyzeFederation(
       project: project.project.name,
       analysis: project.analysis!,
     }))
-    .sort((left, right) => left.project.localeCompare(right.project));
+    .sort((left, right) => compareCodePoint(left.project, right.project));
   const projectGroupKey = (project: ProjectFacts): string =>
     project.project.federationGroup ?? "\0ungrouped";
   const diagnosticGroups = new Set<string>();
@@ -449,7 +456,8 @@ export async function analyzeFederation(
       message: diagnostic.message,
     }))
     .sort((left, right) =>
-      `${left.kind}:${left.files.join(",")}:${left.message}`.localeCompare(
+      compareCodePoint(
+        `${left.kind}:${left.files.join(",")}:${left.message}`,
         `${right.kind}:${right.files.join(",")}:${right.message}`,
       ),
     );
