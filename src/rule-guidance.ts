@@ -118,6 +118,13 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Point consumers at `mf-manifest.json` when those capabilities are wanted.",
     sources: ["https://module-federation.io/configure/remotes.html", manifest],
   },
+  "config/observability-plugin-recommended": {
+    category: "tooling",
+    impact:
+      "Module Federation 2.5+ projects can opt into runtime health correlation, but a declared Observability Plugin is ineffective until its runtime entry is registered. The default nudge requires the package to be present; the production profile can recommend it for every supported federated surface.",
+    fix: "Add `@module-federation/observability-plugin` and register its browser/runtime entry through `runtimePlugins` or the runtime `plugins` option. The build-only `/build` entry does not provide runtime reporting. Use `off` or a fingerprint baseline when this environment intentionally does not collect runtime reports.",
+    sources: ["https://module-federation.io/plugin/plugins/observability-plugin", runtimePlugins],
+  },
   "config/library-remote-type-mismatch": {
     category: "correctness",
     impact:
@@ -519,8 +526,15 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     category: "performance",
     impact:
       "Subpath imports bypass Module Federation shared-scope negotiation when only the root package is declared in `shared`, so each microfrontend may bundle its own copy.",
-    fix: 'Prefer root imports (for example `import { cloneDeep } from "lodash"`), or add the exact subpath keys to `shared`. Suppress intentional cases with `rules["shared/deep-import-bypass"]` or `deepImportAllowlist`.',
+    fix: 'Prefer root imports (for example `import { cloneDeep } from "lodash"`), or add the exact subpath keys to `shared`. For React and React DOM subpaths, use `shared/prefix-share-recommended`. Suppress intentional cases with `rules["shared/deep-import-bypass"]` or `deepImportAllowlist`.',
     sources: [shared],
+  },
+  "shared/prefix-share-recommended": {
+    category: "performance",
+    impact:
+      "Observed `react/...` or `react-dom/...` imports are not covered by the root shared key, so framework subpaths can bypass shared-scope negotiation and create duplicate renderer/runtime modules. Bridge projects use the focused `bridge/react-dom-prefix-missing` contract instead of this nudge.",
+    fix: 'Add `"react/"` / `"react-dom/"` to `shared`, or add only the exact observed subpaths. Turn `rules["shared/prefix-share-recommended"]` off or baseline the fingerprint when the import boundary is intentional.',
+    sources: [shared, "https://module-federation.io/guide/bridge/react-bridge"],
   },
   "artifact/public-path-suspicious": {
     category: "correctness",

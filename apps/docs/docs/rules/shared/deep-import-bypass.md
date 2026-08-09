@@ -9,7 +9,7 @@ Subpath imports bypass Module Federation shared-scope negotiation when only the 
 
 ## How to fix it
 
-Prefer root imports (for example `import { cloneDeep } from "lodash"`), or add the exact subpath keys to `shared`. Suppress intentional cases with `rules["shared/deep-import-bypass"]` or `deepImportAllowlist`.
+Prefer root imports (for example `import { cloneDeep } from "lodash"`), or add the exact subpath keys to `shared`. For React and React DOM subpaths, use `shared/prefix-share-recommended`. Suppress intentional cases with `rules["shared/deep-import-bypass"]` or `deepImportAllowlist`.
 
 Suppress or retarget with `rules["shared/deep-import-bypass"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 

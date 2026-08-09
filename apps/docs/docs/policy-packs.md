@@ -45,23 +45,43 @@ export default {
 };
 ```
 
+For an application-level shortcut, use the top-level `profile` option:
+
+```ts
+export default {
+  profile: "demo", // or "production"
+  extends: ["recommended"],
+};
+```
+
+`profile` is appended after `extends` and before local `rules`. The effective
+order is `default < extends (left to right) < profile < local rules`. When
+`profile: "demo"` is used in CI, Doctor resolves the safer `production` overlay
+instead of hiding demo-only recommendations. The resolved overlay is visible
+in `appliedPolicies`.
+
 The `demo` overlay softens local-only demo noise: bare / loopback `remoteEntry`
 recommendations and version-first offline-remotes are hidden only in
 development runs. A deployed or non-localhost remote stays visible, and CI
-stays loud even when `demo` is present. It also hides the manifest and
-implicit Bridge-router nudges only during local development, while keeping
-them visible in CI, and softens disabled DTS to `info`. The `production`
-overlay makes manifest, disabled DTS, implicit Bridge-router, and version-first
-offline-remote nudges `warning`. These overlays only change existing recommendation
-severities; they do not change default runs or correctness rules. Use
-`rules: { "<rule-id>": "off" }` or a baseline when a production team
+stays loud even when `demo` is present. It also hides manifest and implicit
+Bridge-router nudges only during local development, while keeping them visible
+in CI, and softens disabled DTS to `info`. The `production` overlay makes
+manifest, disabled DTS, implicit Bridge-router, and version-first offline-
+remote nudges `warning`; it also elevates the Observability and prefix-share
+recommendations. These overlays only change recommendation severities and
+bounded rule options; they do not change default runs or correctness rules.
+Use `rules: { "<rule-id>": "off" }` or a baseline when a production team
 intentionally accepts a recommendation.
 
 The manifest and DTS checks only recommend an enablement when MF config shows a
 federated surface and the option is explicitly disabled. They are advisory in
 the default profile: `demo` hides manifest guidance and keeps DTS at `info`,
 while `production` raises both to `warning`. A local `rules` entry wins over
-either profile, including `"off"`.
+either profile, including `"off"`. The Observability nudge is conservative by
+default: it requires a supported MF 2.5+ package and an installed or declared
+`@module-federation/observability-plugin`; production can opt into the wider
+recommendation. The prefix-share nudge uses observed `react/...` and
+`react-dom/...` imports and remains independently suppressible.
 
 ## Shareable packs
 
