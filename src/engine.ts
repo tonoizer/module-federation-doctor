@@ -399,7 +399,7 @@ export async function analyzeFederation(
     workspaceDiagnostics?: WorkspaceProjectDiagnostic[];
   } = {},
 ): Promise<FederationAnalysisResult> {
-  const orderedFiles = files.slice().sort();
+  const orderedFiles = files.slice().sort(compareCodePoint);
   const projectRoots = orderedFiles.map(workspaceProjectRoot);
   const workspaceRoot = workspaceRootForProjects(projectRoots);
   const loadedProjects = (

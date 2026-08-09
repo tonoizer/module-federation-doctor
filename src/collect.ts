@@ -75,7 +75,7 @@ export async function installedVersions(
 ): Promise<Record<string, string>> {
   const installed: Record<string, string> = {};
   const resolver = createRequire(path.join(root, "package.json"));
-  for (const name of Object.keys(dependencies).sort()) {
+  for (const name of Object.keys(dependencies).sort(compareCodePoint)) {
     try {
       const entry = resolver.resolve(name, { paths: [root] });
       const packageFile = await findPackageFile(entry, root);
@@ -147,15 +147,17 @@ function emptyImportScan(): RawImportScan {
 
 function snapshotImportScan(scan: RawImportScan): SourceScanSnapshot {
   return {
-    specifierDynamic: [...scan.specifierDynamic.entries()].sort(([a], [b]) => a.localeCompare(b)),
-    reexportOnly: [...scan.reexportOnly].sort(),
+    specifierDynamic: [...scan.specifierDynamic.entries()].sort(([a], [b]) =>
+      compareCodePoint(a, b),
+    ),
+    reexportOnly: [...scan.reexportOnly].sort(compareCodePoint),
     specifierFiles: [...scan.specifierFiles.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([specifier, files]) => [specifier, [...files].sort()]),
-    remoteSpecifiers: [...scan.remoteSpecifiers].sort(),
+      .sort(([a], [b]) => compareCodePoint(a, b))
+      .map(([specifier, files]) => [specifier, [...files].sort(compareCodePoint)]),
+    remoteSpecifiers: [...scan.remoteSpecifiers].sort(compareCodePoint),
     unresolvedDynamic: scan.unresolvedDynamic
       .slice()
-      .sort((a, b) => `${a.file}:${a.api}`.localeCompare(`${b.file}:${b.api}`)),
+      .sort((a, b) => compareCodePoint(`${a.file}:${a.api}`, `${b.file}:${b.api}`)),
   };
 }
 
@@ -454,8 +456,10 @@ async function scanProjectImports(
   scan.sourceFiles = parsed.map(({ file }) => file);
   for (const item of parsed) mergeImportScan(scan, item.scan);
   scan.budget = tracker.report(scan.sourceReadFailures.length > 0 ? "unknown" : "complete");
-  scan.unresolvedDynamic.sort((a, b) => a.file.localeCompare(b.file) || a.api.localeCompare(b.api));
-  scan.sourceReadFailures = [...new Set(scan.sourceReadFailures)].sort();
+  scan.unresolvedDynamic.sort(
+    (a, b) => compareCodePoint(a.file, b.file) || compareCodePoint(a.api, b.api),
+  );
+  scan.sourceReadFailures = [...new Set(scan.sourceReadFailures)].sort(compareCodePoint);
   return scan;
 }
 
@@ -476,7 +480,7 @@ function finalizeImports(input: {
   const includeReexports = input.depth === "local-graph";
   const specifiers = [...input.scan.specifierDynamic.keys()]
     .filter((specifier) => includeReexports || !input.scan.reexportOnly.has(specifier))
-    .sort();
+    .sort(compareCodePoint);
 
   for (const specifier of input.scan.remoteSpecifiers) {
     const name = packageName(specifier);
@@ -521,25 +525,25 @@ function finalizeImports(input: {
     ...new Map(
       input.scan.unresolvedDynamic.map((item) => [`${item.api}:${item.file}`, item] as const),
     ).values(),
-  ].sort((a, b) => a.file.localeCompare(b.file) || a.api.localeCompare(b.api));
+  ].sort((a, b) => compareCodePoint(a.file, b.file) || compareCodePoint(a.api, b.api));
 
   return {
-    sourceFiles: [...input.scan.sourceFiles].sort(),
+    sourceFiles: [...input.scan.sourceFiles].sort(compareCodePoint),
     specifiers,
-    packages: [...packages].sort(),
-    dynamicPackages: [...dynamicPackages].sort(),
-    remotes: [...remotes].sort(),
+    packages: [...packages].sort(compareCodePoint),
+    dynamicPackages: [...dynamicPackages].sort(compareCodePoint),
+    remotes: [...remotes].sort(compareCodePoint),
     unresolvedDynamic,
     ...(input.scan.sourceReadFailures.length > 0
-      ? { sourceReadFailures: [...new Set(input.scan.sourceReadFailures)].sort() }
+      ? { sourceReadFailures: [...new Set(input.scan.sourceReadFailures)].sort(compareCodePoint) }
       : {}),
-    evidenceSources: [...input.evidenceSources].sort(),
+    evidenceSources: [...input.evidenceSources].sort(compareCodePoint),
     depth: input.depth,
-    deepImports: [...deepImports].sort(),
+    deepImports: [...deepImports].sort(compareCodePoint),
     deepImportFiles: Object.fromEntries(
       [...deepImportFiles.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([pkg, files]) => [pkg, [...files].sort()] as const),
+        .sort(([a], [b]) => compareCodePoint(a, b))
+        .map(([pkg, files]) => [pkg, [...files].sort(compareCodePoint)] as const),
     ),
   };
 }
@@ -573,8 +577,8 @@ async function runtimeTraceHints(
       sawTrace = true;
     }
     return {
-      packages: [...packages].sort(),
-      remotes: [...remotes].sort(),
+      packages: [...packages].sort(compareCodePoint),
+      remotes: [...remotes].sort(compareCodePoint),
       used: sawTrace,
     };
   } catch {
@@ -601,10 +605,10 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
       const record = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
       const key = String(record.path ?? record.key ?? record.name ?? "");
       const assets = assetStrings(record.assets);
-      return { key, assets: assets.sort() };
+      return { key, assets: assets.sort(compareCodePoint) };
     })
     .filter((item) => item.key)
-    .sort((a, b) => a.key.localeCompare(b.key));
+    .sort((a, b) => compareCodePoint(a.key, b.key));
   const rawShared = Array.isArray(data.shared) ? data.shared : [];
   const rawRemotes = Array.isArray(data.remotes) ? data.remotes : [];
   const manifest: NonNullable<ArtifactFacts["manifest"]> = {
@@ -623,7 +627,7 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
             : ({ name: item } as Record<string, unknown>);
         const normalized: NonNullable<ArtifactFacts["manifest"]>["shared"][number] = {
           name: String(shared.name ?? ""),
-          assets: assetStrings(shared.assets).sort(),
+          assets: assetStrings(shared.assets).sort(compareCodePoint),
         };
         if (typeof shared.version === "string") normalized.version = shared.version;
         if (typeof shared.requiredVersion === "string")
@@ -632,7 +636,7 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
         return normalized;
       })
       .filter((item) => item.name)
-      .sort((a, b) => a.name.localeCompare(b.name)),
+      .sort((a, b) => compareCodePoint(a.name, b.name)),
     remotes: [
       ...new Map(
         rawRemotes
@@ -648,7 +652,7 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
                 typeof remote.shareScope === "string"
                   ? [remote.shareScope]
                   : Array.isArray(remote.shareScope)
-                    ? remote.shareScope.map(String).sort()
+                    ? remote.shareScope.map(String).sort(compareCodePoint)
                     : ["default"],
             };
             if (typeof remote.alias === "string") normalized.alias = remote.alias;
@@ -659,7 +663,7 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
           .filter((item) => item.name)
           .map((item) => [`${item.name}\0${item.alias ?? ""}\0${item.entry ?? ""}`, item] as const),
       ).values(),
-    ].sort((a, b) => a.name.localeCompare(b.name)),
+    ].sort((a, b) => compareCodePoint(a.name, b.name)),
   };
   const metadata =
     data.metaData && typeof data.metaData === "object"
@@ -758,7 +762,7 @@ export async function attachAssetSizes(
     : root;
   const sizes: Record<string, number> = {};
 
-  const orderedNames = [...names].sort((a, b) => a.localeCompare(b));
+  const orderedNames = [...names].sort(compareCodePoint);
   const resolved = await mapBounded(orderedNames, async (name) => {
     const normalizedName = normalizePath(name);
     const basename = path.basename(normalizedName);
@@ -1014,7 +1018,7 @@ async function collectArtifacts(
     }
   }
   records.sort((left, right) =>
-    `${left.kind}:${left.path}`.localeCompare(`${right.kind}:${right.path}`),
+    compareCodePoint(`${left.kind}:${left.path}`, `${right.kind}:${right.path}`),
   );
   // With bounded build roots, several nested manifests are valid evidence for
   // different compilations. Do not project an arbitrary first file into the
@@ -1218,7 +1222,7 @@ function artifactFactsForInstance(
     ...(manifest ? { manifest } : {}),
     ...(stats ? { stats } : {}),
     ...(selectedRecords.length > 0 ? { records: selectedRecords } : { records: [] }),
-    emittedAssets: emittedAssets.sort(),
+    emittedAssets: emittedAssets.sort(compareCodePoint),
     ...(assetSizes && Object.keys(assetSizes).length > 0 ? { assetSizes } : {}),
   };
 }
@@ -1283,7 +1287,7 @@ function rawScanForInstance(
     if (scan.reexportOnly.has(specifier)) reexportOnly.add(specifier);
   }
   const scopedScan: RawImportScan = {
-    sourceFiles: [...sourceFiles].sort(),
+    sourceFiles: [...sourceFiles].sort(compareCodePoint),
     specifierDynamic,
     reexportOnly,
     specifierFiles,
@@ -1338,10 +1342,10 @@ function importsForInstance(
     specifiers: source.specifiers,
     packages: source.packages,
     dynamicPackages: source.dynamicPackages,
-    remotes: [...remotes].sort(),
+    remotes: [...remotes].sort(compareCodePoint),
     unresolvedDynamic: source.unresolvedDynamic,
     ...(source.sourceReadFailures ? { sourceReadFailures: source.sourceReadFailures } : {}),
-    evidenceSources: [...sourceEvidence].sort(),
+    evidenceSources: [...sourceEvidence].sort(compareCodePoint),
     depth: imports.depth ?? "direct",
     deepImports: source.deepImports ?? [],
     deepImportFiles: source.deepImportFiles ?? {},
@@ -1455,7 +1459,7 @@ function buildInstanceCandidates(
     });
     return artifactMatch || assetMatch;
   });
-  return matches.map((instance) => instance.id).sort();
+  return matches.map((instance) => instance.id).sort(compareCodePoint);
 }
 
 function attachFederationInstanceBuilds(facts: ProjectFacts): void {
@@ -1577,7 +1581,7 @@ export async function collectProjectFacts(
     await sanitizeNormalizedModuleFederation(options.root, normalized, scan);
   if (normalizedMf && normalizedInstances.length === 0)
     await sanitizeNormalizedModuleFederation(options.root, normalizedMf, scan);
-  scan.sourceFiles.sort();
+  scan.sourceFiles.sort(compareCodePoint);
 
   const remoteAliases = new Set(
     normalizedInstances.flatMap(({ normalized }) =>
@@ -1685,7 +1689,9 @@ export async function collectProjectFacts(
       installedVersions: true,
     },
     dependencies: {
-      declared: Object.fromEntries(Object.entries(declared).sort(([a], [b]) => a.localeCompare(b))),
+      declared: Object.fromEntries(
+        Object.entries(declared).sort(([a], [b]) => compareCodePoint(a, b)),
+      ),
       installed,
     },
     imports,
@@ -1923,7 +1929,7 @@ function buildRecordForOutput(
     .map((asset) =>
       outputRoot ? normalizePath(path.posix.join(outputRoot, asset)) : normalizePath(asset),
     )
-    .sort();
+    .sort(compareCodePoint);
   const artifactRecords = outputArtifacts(facts, output, outputRoot, id);
   const build: BuildRecord = {
     id,
@@ -1935,7 +1941,7 @@ function buildRecordForOutput(
     sourceHook: output.sourceHook,
   };
   if (output.federationInstanceIds) {
-    build.federationInstanceIds = [...new Set(output.federationInstanceIds)].sort();
+    build.federationInstanceIds = [...new Set(output.federationInstanceIds)].sort(compareCodePoint);
   } else if (facts.federationInstances) {
     const inferred = buildInstanceCandidates(
       build,
@@ -1945,7 +1951,7 @@ function buildRecordForOutput(
     build.federationInstanceIds =
       inferred.length > 0
         ? inferred
-        : facts.federationInstances.map((instance) => instance.id).sort();
+        : facts.federationInstances.map((instance) => instance.id).sort(compareCodePoint);
   }
   if (output.compilerName) build.compilerName = output.compilerName;
   if (output.compilationName) build.compilationName = output.compilationName;
@@ -1963,7 +1969,9 @@ function buildRecordForOutput(
 function projectLegacyBuildFacts(facts: ProjectFacts, builds: BuildRecord[]): void {
   if (builds.length === 0) return;
   // Compatibility view: deterministic primary-build projection.
-  const projectedAssets = [...new Set(builds.flatMap((build) => build.emittedAssets))].sort();
+  const projectedAssets = [...new Set(builds.flatMap((build) => build.emittedAssets))].sort(
+    compareCodePoint,
+  );
   if (projectedAssets.length > 0) facts.artifacts.emittedAssets = projectedAssets;
   facts.capabilities.emittedAssets =
     builds.length > 0 &&

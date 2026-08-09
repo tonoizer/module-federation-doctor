@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { compareCodePoint } from "./utils.js";
 
 export const IDENTITY_SCHEMA_VERSION = 1 as const;
 export type IdentitySchemaVersion = typeof IDENTITY_SCHEMA_VERSION;
@@ -334,10 +335,6 @@ export class IdentityValidationError extends Error {
 function bytes(value: string): number {
   return Buffer.byteLength(value, "utf8");
 }
-function compareCodePoint(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
-}
-
 function validateSafeValue(value: string, label: string): void {
   if (value.length === 0) throw new IdentityValidationError(`${label} cannot be empty.`);
   if (ABSOLUTE_PATH.test(value) || URL_VALUE.test(value) || SENSITIVE_QUERY.test(value))
