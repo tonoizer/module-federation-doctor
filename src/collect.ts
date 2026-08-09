@@ -1758,13 +1758,18 @@ export interface BuildDiagnostics {
 }
 
 function buildOutputOrderKey(output: BuildOutputInput): string {
-  return (
+  const emittedAssets = output.emittedAssets.slice().sort();
+  const federationInstanceIds = output.federationInstanceIds?.slice().sort();
+  const primary = `${output.adapter}:${output.compilerName ?? ""}:${output.compilationName ?? ""}:${output.hash ?? ""}:${output.outputRoot ?? ""}:${emittedAssets.join(",")}:${federationInstanceIds?.join(",") ?? ""}:${output.sourceHook}:${stableStringify(output.modernContext ?? {}) ?? ""}`;
+  // Keep the established primary precedence while making otherwise identical
+  // outputs deterministic across all metadata fields.
+  const tieBreaker =
     stableStringify({
       ...output,
-      emittedAssets: output.emittedAssets.slice().sort(),
-      federationInstanceIds: output.federationInstanceIds?.slice().sort(),
-    }) ?? ""
-  );
+      emittedAssets,
+      federationInstanceIds,
+    }) ?? "";
+  return `${primary}\u0000${tieBreaker}`;
 }
 
 function orderBuildOutputs(outputs: BuildOutputInput[]): BuildOutputInput[] {
@@ -1989,10 +1994,12 @@ export async function addBuildFacts(
   diagnostics?: BuildDiagnostics,
   outputs?: BuildOutputInput[],
 ): Promise<ProjectFacts> {
-  facts.artifacts.emittedAssets = assets
-    .map((item) => relativePath(root, path.resolve(root, item)))
-    .sort();
-  facts.capabilities.emittedAssets = true;
+  if (assets.length > 0) {
+    facts.artifacts.emittedAssets = assets
+      .map((item) => relativePath(root, path.resolve(root, item)))
+      .sort();
+  }
+  facts.capabilities.emittedAssets = assets.length > 0;
   if (diagnostics?.moduleFederationPluginCount !== undefined)
     facts.bundler.moduleFederationPluginCount = diagnostics.moduleFederationPluginCount;
   if (diagnostics?.outputPublicPathKind)

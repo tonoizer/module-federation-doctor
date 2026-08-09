@@ -359,6 +359,21 @@ describe("artifact collection", () => {
     expect(facts.capabilities).toMatchObject({ manifest: true, stats: true });
   });
 
+  it("does not claim emitted assets when empty output evidence is reported", async () => {
+    const root = await fixture({
+      "dist/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+      "dist/mf-stats.json": JSON.stringify({ assets: ["remoteEntry.js"] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    await addBuildFacts(facts, [], root, undefined, []);
+
+    expect(facts.artifacts.emittedAssets).toEqual([]);
+    expect(facts.capabilities.emittedAssets).toBe(false);
+    expect(facts.artifacts.manifest).toMatchObject({ path: "dist/mf-manifest.json" });
+    expect(facts.artifacts.stats).toMatchObject({ path: "dist/mf-stats.json" });
+  });
+
   it("collects exact artifacts from a bounded node_modules output root", async () => {
     const outputRoot = "node_modules/.cache/framework/dist";
     const root = await fixture({
