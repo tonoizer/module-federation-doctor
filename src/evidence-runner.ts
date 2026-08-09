@@ -36,6 +36,7 @@ const COMPLETENESS: Record<EvidenceCompleteness, number> = {
 function graphPredicateFor(predicate: string): string {
   if (predicate === "config.declared") return "project.moduleFederation";
   if (predicate === "source.scan") return "project.imports";
+  if (predicate === "imports.sourceScan") return "imports.sourceScan";
   if (predicate === "moduleFederation") return "project.moduleFederation";
   if (predicate === "runtimePluginContracts") return "project.runtimePluginContracts";
   const root = predicate.split(".")[0];

@@ -302,6 +302,20 @@ describe("public evidence reader", () => {
     ).toMatchObject({ status: "complete" });
   });
 
+  it("keeps project.imports complete while marking sourceScan unknown on read failures", () => {
+    const input = structuredClone(projectFixture) as typeof projectFixture & {
+      imports: { sourceReadFailures?: string[] };
+    };
+    input.imports.sourceReadFailures = ["src/unreadable.ts"];
+    const result = readEvidenceDocument(input);
+    expect(
+      result.graph.assertions.find((item) => item.predicate === "project.imports")?.completeness,
+    ).toMatchObject({ status: "complete" });
+    expect(
+      result.graph.assertions.find((item) => item.predicate === "imports.sourceScan")?.completeness,
+    ).toMatchObject({ status: "unknown" });
+  });
+
   it("preserves an empty report and makes boundary values schema-valid", () => {
     const empty = readEvidenceDocument({
       schemaVersion: 1,

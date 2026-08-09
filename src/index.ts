@@ -379,7 +379,12 @@ export type {
   EvidenceRuleScope,
   EvidenceQuery,
 } from "./rule-contract.js";
-export { ruleInventory, ruleInventoryIds } from "./rule-inventory.js";
+export {
+  MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
+  MIGRATED_GROUP1_CONFIG_RULE_IDS,
+  ruleInventory,
+  ruleInventoryIds,
+} from "./rule-inventory.js";
 export type {
   RuleInventoryEntry,
   RuleMigrationGroup,
