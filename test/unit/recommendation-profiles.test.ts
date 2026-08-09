@@ -137,6 +137,77 @@ describe("issue #133 recommendation nudges", () => {
     ).toHaveLength(0);
   });
 
+  it("does not recommend for an unsupported prerelease exact version", async () => {
+    const facts = baseFacts();
+    facts.dependencies.declared["@module-federation/enhanced"] = "2.6.0-beta.1";
+    expect(
+      await run("config/observability-plugin-recommended", facts, {
+        recommendWithoutPackage: true,
+      }),
+    ).toHaveLength(0);
+  });
+
+  it.each([
+    ">=2.6.0-beta.1 <2.6.0",
+    "2.6.0-beta.1 - 2.6.0-beta.1",
+    ">=2.6.0-0 <2.6.0",
+    ">=2.6.0-beta.1 <2.6.0 || 2.4.9",
+  ])("does not recommend for a range without a stable supported version: %s", async (version) => {
+    const facts = baseFacts();
+    facts.dependencies.declared["@module-federation/enhanced"] = version;
+    expect(
+      await run("config/observability-plugin-recommended", facts, {
+        recommendWithoutPackage: true,
+      }),
+    ).toHaveLength(0);
+  });
+
+  it.each([">=2.6.0-beta.1 <2.7.0", ">2.5.0 <2.6.0", ">=2.5.0-0 <2.6.0"])(
+    "accepts a range that includes a stable supported version: %s",
+    async (version) => {
+      const facts = baseFacts();
+      facts.dependencies.declared["@module-federation/enhanced"] = version;
+      expect(
+        await run("config/observability-plugin-recommended", facts, {
+          recommendWithoutPackage: true,
+        }),
+      ).toHaveLength(1);
+    },
+  );
+
+  it.each(["x", "X", "workspace:x", "*", "workspace:*"])(
+    "does not treat %s dependency ranges as supported MF versions",
+    async (version) => {
+      const facts = baseFacts();
+      facts.dependencies.declared["@module-federation/enhanced"] = version;
+      expect(
+        await run("config/observability-plugin-recommended", facts, {
+          recommendWithoutPackage: true,
+        }),
+      ).toHaveLength(0);
+    },
+  );
+
+  it("prefers an exact installed version over a declared wildcard", async () => {
+    const supportedFacts = baseFacts();
+    supportedFacts.dependencies.declared["@module-federation/enhanced"] = "*";
+    supportedFacts.dependencies.installed["@module-federation/enhanced"] = "2.5.0";
+    expect(
+      await run("config/observability-plugin-recommended", supportedFacts, {
+        recommendWithoutPackage: true,
+      }),
+    ).toHaveLength(1);
+
+    const unsupportedFacts = baseFacts();
+    unsupportedFacts.dependencies.declared["@module-federation/enhanced"] = "*";
+    unsupportedFacts.dependencies.installed["@module-federation/enhanced"] = "2.4.9";
+    expect(
+      await run("config/observability-plugin-recommended", unsupportedFacts, {
+        recommendWithoutPackage: true,
+      }),
+    ).toHaveLength(0);
+  });
+
   it("keeps default recommendation infos out of the CI error gate", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-issue-133-"));
     try {
@@ -218,6 +289,49 @@ describe("issue #133 recommendation nudges", () => {
         expect.objectContaining({ ruleId: "shared/prefix-share-recommended", severity: "warning" }),
       );
       expect(production.exitCode).toBe(0);
+
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({
+          name: "recommendation-fixture",
+          dependencies: {
+            react: "19.0.0",
+            "@module-federation/enhanced": "x",
+          },
+        }),
+      );
+      await fs.mkdir(path.join(root, "node_modules/@module-federation/enhanced"), {
+        recursive: true,
+      });
+      await fs.writeFile(
+        path.join(root, "node_modules/@module-federation/enhanced/package.json"),
+        JSON.stringify({ name: "@module-federation/enhanced", version: "x", main: "index.js" }),
+      );
+      await fs.writeFile(path.join(root, "node_modules/@module-federation/enhanced/index.js"), "");
+      const wildcardProduction = await analyze({
+        root,
+        bundler: "vite",
+        mode: "ci",
+        profile: "production",
+        output: { formats: [] },
+        moduleFederation: {
+          name: "host",
+          exposes: { "./App": "src/App.ts" },
+          shared: { react: { singleton: true } },
+        },
+        rules: {
+          "config/plugin-package-mismatch": "off",
+          "doctor/partial-analysis": "off",
+          "artifact/types-missing": "off",
+          "artifact/types-metadata-missing": "off",
+          "artifact/remote-entry-missing": "off",
+          "shared/unused": "off",
+        },
+      });
+      expect(wildcardProduction.report.findings).not.toContainEqual(
+        expect.objectContaining({ ruleId: "config/observability-plugin-recommended" }),
+      );
+      expect(wildcardProduction.exitCode).toBe(0);
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }
