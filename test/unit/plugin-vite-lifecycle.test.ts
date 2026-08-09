@@ -651,7 +651,7 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
 
     const project = JSON.parse(
       await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
-    ) as { builds: Array<{ outputRoot?: string; targetKind?: string }> };
+    ) as { builds: Array<{ outputRoot?: string; target?: string; targetKind?: string }> };
     const report = JSON.parse(
       await fs.readFile(path.join(root, ".mf/doctor/report.json"), "utf8"),
     ) as { findings: Array<{ ruleId: string }> };
@@ -661,6 +661,7 @@ describe("vite adapter Rolldown / Vite Plus lifecycle", () => {
       ".nuxt/dist/server",
     ]);
     expect(project.builds.map((build) => build.targetKind)).toEqual(["web", "node"]);
+    expect(project.builds.map((build) => build.target)).toEqual([undefined, "node"]);
     expect(
       report.findings.some((finding) => finding.ruleId === "artifact/remote-entry-missing"),
     ).toBe(false);

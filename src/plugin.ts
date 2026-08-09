@@ -640,6 +640,10 @@ async function includeNuxtClientOutput(
   return includeSiblingOutput(root, incoming, {
     findServer: (output) => output.targetKind === "node" && output.buildWrite !== false,
     resolveClientRoot: nuxtClientOutputRoot,
+    cloneServer: (server) => {
+      const { target: _serverTarget, ...clientBase } = server;
+      return clientBase;
+    },
   });
 }
 
