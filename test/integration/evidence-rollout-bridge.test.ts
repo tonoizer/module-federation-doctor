@@ -11,6 +11,7 @@ import {
 } from "../../src/evidence-rollout.js";
 import { defineRule } from "../../src/rules.js";
 import { compareV1Outputs } from "../../src/evidence-parity.js";
+import { MIGRATED_GROUP1_CONFIG_RULE_IDS } from "../../src/rule-inventory.js";
 
 const roots: string[] = [];
 const greenGates = Object.fromEntries(RELEASE_GATES.map((gate) => [gate, true]));
@@ -58,7 +59,8 @@ describe("evidence-aware rule rollout bridge", () => {
     const compat = await analyze(options(root, compatRollout()));
 
     expect(compareV1Outputs(legacy.report, shadow.report).equal).toBe(true);
-    expect(compareV1Outputs(legacy.report, compat.report).equal).toBe(true);
+    const parity = compareV1Outputs(legacy.report, compat.report);
+    expect(parity.equal).toBe(true);
     expect(shadow.evidence).toMatchObject({ rollout: { scope: "rules", mode: "shadow" } });
     expect(shadow.evidence?.evaluations).toEqual(
       expect.arrayContaining([
@@ -72,6 +74,39 @@ describe("evidence-aware rule rollout bridge", () => {
     expect(
       compat.report.findings.filter((finding) => finding.ruleId === "config/name-required"),
     ).toHaveLength(1);
+  });
+
+  it("routes every Group 1 core-config rule through the bridge with V1 parity", async () => {
+    const root = await fixture("group1-config-rollout-bridge");
+    const base = {
+      root,
+      bundler: "webpack" as const,
+      mode: "ci" as const,
+      moduleFederation: {
+        name: "",
+        filename: "../remoteEntry.txt",
+        exposes: { bad: "./src/missing" },
+        remotes: { app: "remote" },
+        shared: { react: { singleton: true } },
+        shareScope: ["default"],
+        getPublicPath: "not a function",
+        implementation: "mystery-runtime",
+        remoteType: "script",
+        library: { type: "module" },
+        dts: { enabled: true, generateTypes: { outputDir: "types" } },
+        runtimePlugins: ["./missing-plugin.ts"],
+        experiments: { provideExternalRuntime: true },
+      },
+      output: { formats: [] as never[] },
+    };
+    const legacy = await analyze(base);
+    const compat = await analyze({ ...base, evidenceRollout: compatRollout() });
+    const evaluatedIds = new Set(
+      compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id),
+    );
+    expect(evaluatedIds).toEqual(new Set(MIGRATED_GROUP1_CONFIG_RULE_IDS));
+    const parity = compareV1Outputs(legacy.report, compat.report);
+    expect(parity.equal).toBe(true);
   });
 
   it("records disabled migrated rules in execution metadata without producing findings", async () => {
@@ -316,8 +351,12 @@ describe("evidence-aware rule rollout bridge", () => {
     delete incomplete.canonicalConfig;
     const migrated = await runMigratedEvidenceRules(incomplete, {});
 
-    expect(migrated.graph.evaluations).toHaveLength(1);
-    expect(migrated.graph.evaluations[0]).toMatchObject({
+    expect(migrated.graph.evaluations).toHaveLength(MIGRATED_GROUP1_CONFIG_RULE_IDS.length);
+    expect(
+      migrated.graph.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/name-required",
+      ),
+    ).toMatchObject({
       outcome: "unknown",
       reasonCode: "prerequisite-missing",
       confidence: "unknown",
@@ -428,12 +467,15 @@ describe("evidence-aware rule rollout bridge", () => {
       result.report.findings.filter((finding) => finding.ruleId === "config/name-required"),
     ).toHaveLength(1);
     expect(result.exitCode).toBe(1);
-    expect(result.evidence?.execution).toEqual([
-      expect.objectContaining({
-        state: "engine-error",
-        rule: { id: "config/name-required", version: "1" },
-      }),
-    ]);
+    expect(result.evidence?.execution).toHaveLength(MIGRATED_GROUP1_CONFIG_RULE_IDS.length);
+    expect(result.evidence?.execution).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          state: "engine-error",
+          rule: { id: "config/name-required", version: "1" },
+        }),
+      ]),
+    );
   });
 
   it("honors MFDOCTOR_EVIDENCE_LEGACY as an emergency rollback", async () => {

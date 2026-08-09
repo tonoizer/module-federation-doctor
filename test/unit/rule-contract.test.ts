@@ -4,12 +4,37 @@ import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "../../src/rul
 import { ruleGuidance } from "../../src/rule-guidance.js";
 import { capConfidence, stableEvaluationId, weakestConfidence } from "../../src/rule-contract.js";
 import type { RuleEvaluationResult } from "../../src/rule-contract.js";
-import { ruleInventory, ruleInventoryIds } from "../../src/rule-inventory.js";
+import {
+  MIGRATED_GROUP1_CONFIG_RULE_IDS,
+  ruleInventory,
+  ruleInventoryIds,
+} from "../../src/rule-inventory.js";
 import { runEvidenceAwareRules } from "../../src/rule-contract.js";
 import type { EvidenceGraphV2 } from "../../src/evidence.js";
 import { AnalysisBudgetTracker, resolveAnalysisBudgets } from "../../src/analysis-budgets.js";
 
 describe("evidence-aware rule contract", () => {
+  const makeAssertion = (predicate: string, id: string) => ({
+    id,
+    subject: "project:shop",
+    predicate,
+    value: true,
+    layer:
+      predicate === "project.moduleFederation" || predicate === "project.scope"
+        ? ("declared" as const)
+        : ("effective" as const),
+    scope: { adapter: "vite", bundler: { name: "vite" }, target: "web" as const },
+    provenance: {
+      collector: { name: "test", version: "1" },
+      inputKind: "test",
+      source: "test",
+      sourceSchemaVersion: "1",
+      parentEvidenceIds: [],
+    },
+    confidence: { level: "exact" as const, reason: "exact" },
+    completeness: { status: "complete" as const, reason: "complete" },
+  });
+
   function graph(overrides: Partial<EvidenceGraphV2> = {}): EvidenceGraphV2 {
     return {
       protocol: {
@@ -266,6 +291,60 @@ describe("evidence-aware rule contract", () => {
     expect(result.evaluations[0]?.confidence).toBe("low");
   });
 
+  it("maps migrated config.declared and source.scan prereqs to emitted graph predicates only", async () => {
+    const configRule = ruleInventory.find((entry) => entry.id === "config/expose-key-invalid");
+    const sourceRule = ruleInventory.find((entry) => entry.id === "config/runtime-plugin-missing");
+    expect(configRule).toBeDefined();
+    expect(sourceRule).toBeDefined();
+    const configMeta = {
+      ...meta,
+      id: configRule!.id,
+      prerequisites: configRule!.prerequisites,
+    };
+    const sourceMeta = {
+      ...meta,
+      id: sourceRule!.id,
+      prerequisites: sourceRule!.prerequisites,
+    };
+
+    const passed = await runEvidenceAwareRules({
+      graph: graph({
+        assertions: [
+          makeAssertion("project.scope", "assertion:scope"),
+          makeAssertion("project.moduleFederation", "assertion:config"),
+          makeAssertion("project.imports", "assertion:imports"),
+        ],
+      }),
+      rules: [
+        { meta: configMeta, evaluate: () => ({ outcome: "pass" as const, reason: "ok" }) },
+        { meta: sourceMeta, evaluate: () => ({ outcome: "pass" as const, reason: "ok" }) },
+      ],
+    });
+    expect(passed.evaluations.map((item) => item.outcome)).toEqual(["pass", "pass"]);
+
+    const unrelatedConfig = await runEvidenceAwareRules({
+      graph: graph({
+        assertions: [makeAssertion("project.config", "assertion:wrong")],
+      }),
+      rules: [{ meta: configMeta, evaluate: () => ({ outcome: "pass" as const, reason: "ok" }) }],
+    });
+    expect(unrelatedConfig.evaluations[0]).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "prerequisite-missing",
+    });
+
+    const unrelatedSource = await runEvidenceAwareRules({
+      graph: graph({
+        assertions: [makeAssertion("project.source", "assertion:wrong-source")],
+      }),
+      rules: [{ meta: sourceMeta, evaluate: () => ({ outcome: "pass" as const, reason: "ok" }) }],
+    });
+    expect(unrelatedSource.evaluations[0]).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "prerequisite-missing",
+    });
+  });
+
   it("caps confidence, preserves stable IDs, and turns rule exceptions into engine errors", async () => {
     const assertion = {
       id: "assertion:exact",
@@ -425,10 +504,13 @@ describe("evidence-aware rule contract", () => {
     expect(ruleInventory.find((entry) => entry.id === "config/name-required")?.status).toBe(
       "migrated",
     );
+    const migratedIds = new Set(MIGRATED_GROUP1_CONFIG_RULE_IDS);
     expect(
-      ruleInventory
-        .filter((entry) => entry.id !== "config/name-required")
-        .every((entry) => entry.status === "legacy"),
+      ruleInventory.every((entry) =>
+        migratedIds.has(entry.id as (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number])
+          ? entry.status === "migrated"
+          : entry.status === "legacy",
+      ),
     ).toBe(true);
     for (const entry of ruleInventory) {
       expect(entry.version).not.toBe("");

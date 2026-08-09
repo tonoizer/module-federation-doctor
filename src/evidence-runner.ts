@@ -33,13 +33,28 @@ const COMPLETENESS: Record<EvidenceCompleteness, number> = {
   complete: 3,
 };
 
+function graphPredicateFor(predicate: string): string {
+  if (predicate === "config.declared") return "project.moduleFederation";
+  if (predicate === "source.scan") return "project.imports";
+  if (predicate === "moduleFederation") return "project.moduleFederation";
+  if (predicate === "runtimePluginContracts") return "project.runtimePluginContracts";
+  const root = predicate.split(".")[0];
+  if (["bundler", "capabilities", "dependencies", "imports", "artifacts", "builds"].includes(root!))
+    return `project.${root}`;
+  return predicate;
+}
+
+function predicateMatches(assertion: EvidenceAssertion, predicate: string): boolean {
+  return assertion.predicate === predicate || assertion.predicate === graphPredicateFor(predicate);
+}
+
 function selectorMatches(
   assertion: EvidenceAssertion,
   selector: EvidenceSelector,
   subjects: ReadonlyMap<string, EvidenceSubject>,
 ): boolean {
   return (
-    assertion.predicate === selector.predicate &&
+    predicateMatches(assertion, selector.predicate) &&
     (selector.layer === undefined || assertion.layer === selector.layer) &&
     (selector.subjectKind === undefined ||
       subjects.get(assertion.subject)?.kind === selector.subjectKind) &&
@@ -78,8 +93,8 @@ function requirementState(
   completeness: EvidenceCompleteness;
 } {
   if ("predicate" in requirement) {
-    const candidates = query.assertions.filter(
-      (assertion) => assertion.predicate === requirement.predicate,
+    const candidates = query.assertions.filter((assertion) =>
+      predicateMatches(assertion, requirement.predicate),
     );
     const matches = query.find(requirement);
     if (matches.length > 0) {
@@ -409,6 +424,13 @@ export async function runEvidenceAwareRules(
           scope: deepFreeze(scope),
           evidenceIds: Object.freeze(prerequisite.ids.slice()),
           evidence: query,
+          ...(input.facts ? { facts: deepFreeze(structuredClone(input.facts)) } : {}),
+          options: deepFreeze(Object.freeze(input.ruleOptions?.[rule.meta.id] ?? {})),
+          ...(input.root ? { root: input.root } : {}),
+          ...(input.sharedPolicy ? { sharedPolicy: input.sharedPolicy } : {}),
+          ...(input.recognizeMfToolkit !== undefined
+            ? { recognizeMfToolkit: input.recognizeMfToolkit }
+            : {}),
         });
         const decision = await rule.evaluate(context);
         if (input.analysisBudget && !input.analysisBudget.checkWallTime()) {
@@ -427,6 +449,7 @@ export async function runEvidenceAwareRules(
           evidenceIds: prerequisite.ids,
           confidence: confidence as Exclude<typeof confidence, "unknown">,
           completeness: "complete",
+          ...(decision.findings ? { findings: decision.findings } : {}),
         } as RuleEvaluationResult);
       } catch (error) {
         if (input.analysisBudget && !input.analysisBudget.checkWallTime()) {

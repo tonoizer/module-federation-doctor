@@ -310,6 +310,13 @@ async function runAnalysis(
             resolved.rules,
             bridgeBudget,
             scope.build,
+            {
+              root: resolved.root,
+              sharedPolicy: resolved.sharedPolicy,
+              ...(resolved.recognizeMfToolkit !== undefined
+                ? { recognizeMfToolkit: resolved.recognizeMfToolkit }
+                : {}),
+            },
           );
           migratedRuns.push({ facts: scope.facts, run });
           const needsLegacyFallback =

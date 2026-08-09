@@ -4,6 +4,7 @@ import {
   type EvidenceConfidence,
   type EvidenceLayer,
   type EvidenceSubjectKind,
+  type EvidenceValue,
 } from "./evidence.js";
 import type { AnalysisBudgetReport, AnalysisBudgetTracker } from "./analysis-budgets.js";
 
@@ -83,12 +84,14 @@ export type RulePassResult = RuleConclusiveEvaluationBase & {
   outcome: "pass";
   reasonCode: "rule-result";
   reason: string;
+  findings?: EvidenceRuleFinding[];
 };
 
 export type RuleFailResult = RuleConclusiveEvaluationBase & {
   outcome: "fail";
   reasonCode: "rule-result";
   reason: string;
+  findings?: EvidenceRuleFinding[];
 };
 
 export type RuleUnknownResult = RuleNonConclusiveEvaluationBase & {
@@ -185,8 +188,10 @@ export function capConfidence(
 }
 
 export type EvidenceRuleDecision =
-  | { outcome: "pass" | "fail"; reason: string }
-  | Pick<RulePassResult | RuleFailResult, "outcome" | "reason">;
+  | { outcome: "pass" | "fail"; reason: string; findings?: EvidenceRuleFinding[] }
+  | (Pick<RulePassResult | RuleFailResult, "outcome" | "reason"> & {
+      findings?: EvidenceRuleFinding[];
+    });
 
 export interface EvidenceRuleScope {
   adapter?: string;
@@ -205,6 +210,22 @@ export interface EvidenceRuleContext {
   readonly scope: Readonly<EvidenceRuleScope>;
   readonly evidenceIds: readonly string[];
   readonly evidence: EvidenceQuery;
+  readonly facts?: Readonly<import("./types.js").ProjectFacts>;
+  /** Rule-setting options and non-persisted bridge context. */
+  readonly options: Readonly<Record<string, unknown>>;
+  readonly root?: string;
+  readonly sharedPolicy?: Readonly<Record<string, unknown>>;
+  readonly recognizeMfToolkit?: boolean;
+}
+
+/** Finding payload carried by a conclusive evaluation for V1 projection. */
+export interface EvidenceRuleFinding {
+  message: string;
+  evidence: Record<string, EvidenceValue>;
+  suggestion?: string;
+  location?: { path: string; line?: number; column?: number };
+  detailsSchema?: string;
+  details?: Record<string, EvidenceValue>;
 }
 
 export interface EvidenceAwareRule {
@@ -221,9 +242,16 @@ export interface EvidenceQuery {
 export interface EvidenceRuleRunnerInput {
   graph: import("./evidence.js").EvidenceGraphV2;
   rules: readonly EvidenceAwareRule[];
+  facts?: Readonly<import("./types.js").ProjectFacts>;
   subjects?: readonly string[];
   scope?: EvidenceRuleScope;
   analysisBudget?: AnalysisBudgetTracker;
+  /** Per-rule options copied from the V1 rule setting; never part of evidence identity. */
+  ruleOptions?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+  /** Non-persisted context needed by source-backed compatibility checks. */
+  root?: string;
+  sharedPolicy?: Readonly<Record<string, unknown>>;
+  recognizeMfToolkit?: boolean;
 }
 
 export interface EvidenceRuleRunnerOutput {
