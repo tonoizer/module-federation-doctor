@@ -563,6 +563,49 @@ describe("evidence-aware rule rollout bridge", () => {
     }
   });
 
+  it("keeps absence-sensitive config rules unknown under partial source evidence", async () => {
+    const root = await fixture("config-partial-source", {
+      "src/index.ts": "export const ok = true;\n",
+      "src/unreadable.ts": "export const hidden = true;\n",
+    });
+    const unreadable = path.join(root, "src/unreadable.ts");
+    const originalReadFile = fs.readFile;
+    const readFileSpy = await import("vitest").then(({ vi }) =>
+      vi.spyOn(fs, "readFile").mockImplementation(async (file, readOptions) => {
+        if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
+        return originalReadFile(file, readOptions);
+      }),
+    );
+    try {
+      const analyzeOptions = {
+        root,
+        bundler: "rspack" as const,
+        mode: "ci" as const,
+        moduleFederation: {
+          name: "remote",
+          exposes: { "./Missing": "./src/Missing" },
+        },
+        output: { formats: [] as never[] },
+        rules: quietRules,
+      };
+      const legacy = await analyze(analyzeOptions);
+      const compat = await analyze({ ...analyzeOptions, evidenceRollout: compatRollout() });
+
+      expect(legacy.facts.imports.sourceReadFailures).toContain("src/unreadable.ts");
+      expect(
+        legacy.report.findings.some((finding) => finding.ruleId === "config/expose-path-missing"),
+      ).toBe(false);
+      expect(
+        compat.report.findings.some((finding) => finding.ruleId === "config/expose-path-missing"),
+      ).toBe(false);
+      expect(
+        compat.evidence?.evaluations.find((item) => item.rule.id === "config/expose-path-missing"),
+      ).toMatchObject({ outcome: "unknown" });
+    } finally {
+      readFileSpy.mockRestore();
+    }
+  });
+
   it("keeps bridge SSR applicability deterministic for adapter and target scope", async () => {
     const root = await fixture("bridge-scope", {
       "src/index.tsx": 'import "@module-federation/bridge-react/v19";\n',

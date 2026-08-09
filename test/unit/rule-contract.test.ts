@@ -315,6 +315,7 @@ describe("evidence-aware rule contract", () => {
           makeAssertion("project.scope", "assertion:scope"),
           makeAssertion("project.moduleFederation", "assertion:config"),
           makeAssertion("project.imports", "assertion:imports"),
+          makeAssertion("imports.sourceScan", "assertion:source-scan"),
         ],
       }),
       rules: [
@@ -323,6 +324,25 @@ describe("evidence-aware rule contract", () => {
       ],
     });
     expect(passed.evaluations.map((item) => item.outcome)).toEqual(["pass", "pass"]);
+
+    const incompleteSourceScan = await runEvidenceAwareRules({
+      graph: graph({
+        assertions: [
+          makeAssertion("project.scope", "assertion:scope"),
+          makeAssertion("project.moduleFederation", "assertion:config"),
+          makeAssertion("project.imports", "assertion:imports"),
+          {
+            ...makeAssertion("imports.sourceScan", "assertion:source-scan"),
+            completeness: { status: "unknown" as const, reason: "read failures" },
+          },
+        ],
+      }),
+      rules: [{ meta: sourceMeta, evaluate: () => ({ outcome: "pass" as const, reason: "ok" }) }],
+    });
+    expect(incompleteSourceScan.evaluations[0]).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "prerequisite-missing",
+    });
 
     const unrelatedConfig = await runEvidenceAwareRules({
       graph: graph({
@@ -618,6 +638,7 @@ describe("evidence-aware rule contract", () => {
       "imports.unresolvedDynamic": "context.facts.imports.unresolvedDynamic",
       "imports.deepImports": "context.facts.imports.deepImports",
       "imports.deepImportFiles": "context.facts.imports.deepImportFiles",
+      "imports.sourceScan": "sourceEvidenceIncomplete(context.facts)",
       "dependencies.declared": "context.facts.dependencies.declared",
       "dependencies.installed": "context.facts.dependencies.installed",
       "artifacts.manifest": "context.facts.artifacts.manifest",
