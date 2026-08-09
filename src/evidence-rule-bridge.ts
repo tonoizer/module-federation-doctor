@@ -11,6 +11,7 @@ import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
+  MIGRATED_GROUP3_RULE_IDS,
   ruleInventory,
 } from "./rule-inventory.js";
 import {
@@ -41,12 +42,14 @@ type LegacyFindingInput = Omit<
 export type MigratedEvidenceRuleId =
   | (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number]
   | (typeof MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS)[number]
-  | (typeof MIGRATED_GROUP2_RULE_IDS)[number];
+  | (typeof MIGRATED_GROUP2_RULE_IDS)[number]
+  | (typeof MIGRATED_GROUP3_RULE_IDS)[number];
 
 const MIGRATED_EVIDENCE_RULE_IDS = [
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   ...MIGRATED_GROUP2_RULE_IDS,
+  ...MIGRATED_GROUP3_RULE_IDS,
 ] as const;
 
 function inventoryEntry(id: string) {

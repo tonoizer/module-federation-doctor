@@ -8,6 +8,7 @@ import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
+  MIGRATED_GROUP3_RULE_IDS,
   ruleInventory,
   ruleInventoryIds,
 } from "../../src/rule-inventory.js";
@@ -582,6 +583,7 @@ describe("evidence-aware rule contract", () => {
       ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
       ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
       ...MIGRATED_GROUP2_RULE_IDS,
+      ...MIGRATED_GROUP3_RULE_IDS,
     ]);
     expect(
       ruleInventory.every((entry) =>
@@ -611,6 +613,10 @@ describe("evidence-aware rule contract", () => {
     expect(
       ruleInventory.find((entry) => entry.id === "config/plugin-package-mismatch")?.group,
     ).toBe(3);
+    expect(ruleInventory.find((entry) => entry.id === "shared/unused")?.status).toBe("migrated");
+    expect(ruleInventory.find((entry) => entry.id === "shared/unused")?.evidenceReads).toContain(
+      "imports.sourceScan",
+    );
     expect(ruleInventory.find((entry) => entry.id === "performance/asset-budget")?.group).toBe(2);
     expect(ruleInventory.find((entry) => entry.id === "shared/singleton-mismatch")?.group).toBe(4);
     expect(

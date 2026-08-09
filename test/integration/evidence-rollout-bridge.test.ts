@@ -15,6 +15,7 @@ import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
+  MIGRATED_GROUP3_RULE_IDS,
 } from "../../src/rule-inventory.js";
 
 const roots: string[] = [];
@@ -86,16 +87,39 @@ const EXPECTED_GROUP2_RULE_IDS = [
   "artifact/types-missing",
 ] as const;
 
+const EXPECTED_GROUP3_RULE_IDS = [
+  "security/get-public-path-dynamic-code",
+  "shared/version-unsatisfied",
+  "config/plugin-package-mismatch",
+  "shared/singleton-risk",
+  "shared/eager-without-singleton",
+  "shared/unused",
+  "shared/candidate",
+  "shared/react-host-missing",
+  "shared/deep-import-bypass",
+  "shared/prefix-share-recommended",
+] as const;
+
 const migratedRuleCount =
   MIGRATED_GROUP1_CONFIG_RULE_IDS.length +
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS.length +
-  EXPECTED_GROUP2_RULE_IDS.length;
+  EXPECTED_GROUP2_RULE_IDS.length +
+  EXPECTED_GROUP3_RULE_IDS.length;
 
 const migratedRuleIds = new Set([
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   ...EXPECTED_GROUP2_RULE_IDS,
+  ...EXPECTED_GROUP3_RULE_IDS,
 ]);
+
+const CONFIDENCE_RANK: Record<string, number> = {
+  unknown: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  exact: 4,
+};
 
 const quietRules = {
   "artifact/remote-entry-missing": "off",
@@ -186,6 +210,211 @@ describe("evidence-aware rule rollout bridge", () => {
       migratedRuleIds,
     );
     expect(compat.evidence?.evaluations).toHaveLength(migratedRuleCount);
+  });
+
+  it("routes the exact Group 3 migration tuple through the bridge", async () => {
+    const root = await fixture("group3-migration-rollout-bridge");
+    const compat = await analyze(options(root, compatRollout()));
+
+    expect(MIGRATED_GROUP3_RULE_IDS).toEqual(EXPECTED_GROUP3_RULE_IDS);
+    expect(new Set(compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id))).toEqual(
+      migratedRuleIds,
+    );
+    expect(compat.evidence?.evaluations).toHaveLength(migratedRuleCount);
+  });
+
+  it("routes Group 3 heuristic rules through the bridge with V1 parity", async () => {
+    const root = await fixture("group3-heuristics-rollout-bridge", {
+      "src/index.ts": [
+        'import { create } from "zustand";',
+        'import lodash from "lodash";',
+        "export const useStore = create(() => ({}));",
+        "",
+      ].join("\n"),
+      "src/deep.ts": 'import "react-dom/client";\n',
+    });
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "group3-heuristics-rollout-bridge",
+        dependencies: {
+          vite: "6.1.0",
+          zustand: "^5.0.0",
+          lodash: "^4.17.0",
+          react: "19.1.1",
+          "react-dom": "19.1.1",
+        },
+      }),
+    );
+    const analyzeOptions = {
+      root,
+      bundler: "vite" as const,
+      mode: "ci" as const,
+      moduleFederation: {
+        name: "host",
+        getPublicPath: "function () { return '/cdn/'; }",
+        remotes: { shop: "shop@https://example.test/mf-manifest.json" },
+        shared: {
+          zustand: { singleton: false },
+          lodash: { singleton: false, eager: true },
+          react: { singleton: true, requiredVersion: "^18" },
+          "react-dom": { singleton: true },
+        },
+      },
+      output: { formats: [] as never[] },
+      rules: {
+        ...quietRules,
+        "artifact/manifest-disabled": "off" as const,
+        "config/get-public-path-unused": "off" as const,
+        "vite/remotes-prefer-module": "off" as const,
+        "config/plugin-package-mismatch": "warning" as const,
+        "shared/candidate": "info" as const,
+        "shared/singleton-risk": "warning" as const,
+        "shared/eager-without-singleton": "warning" as const,
+        "shared/unused": "warning" as const,
+        "shared/version-unsatisfied": "error" as const,
+        "shared/deep-import-bypass": "warning" as const,
+        "shared/prefix-share-recommended": "info" as const,
+        "security/get-public-path-dynamic-code": "warning" as const,
+        "shared/react-host-missing": "off" as const,
+      },
+    };
+    const legacy = await analyze(analyzeOptions);
+    const compat = await analyze({ ...analyzeOptions, evidenceRollout: compatRollout() });
+
+    const parity = compareV1Outputs(legacy.report, compat.report);
+    expect(parity.equal).toBe(true);
+    for (const id of [
+      "security/get-public-path-dynamic-code",
+      "shared/version-unsatisfied",
+      "shared/eager-without-singleton",
+    ] as const) {
+      expect(
+        compat.evidence?.evaluations.find((evaluation) => evaluation.rule.id === id),
+      ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    }
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "shared/singleton-risk",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    expect(
+      compat.evidence?.evaluations.find((evaluation) => evaluation.rule.id === "shared/candidate"),
+    ).toMatchObject({ outcome: "pass", completeness: "complete" });
+  });
+
+  it("keeps absence-sensitive Group 3 shared rules unknown under partial source evidence", async () => {
+    const root = await fixture("group3-partial-source", {
+      "src/index.ts": "export const ok = true;\n",
+      "src/unreadable.ts": "export const hidden = true;\n",
+    });
+    const unreadable = path.join(root, "src/unreadable.ts");
+    const originalReadFile = fs.readFile;
+    const readFileSpy = await import("vitest").then(({ vi }) =>
+      vi.spyOn(fs, "readFile").mockImplementation(async (file, readOptions) => {
+        if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
+        return originalReadFile(file, readOptions);
+      }),
+    );
+    try {
+      const analyzeOptions = {
+        root,
+        bundler: "rspack" as const,
+        mode: "ci" as const,
+        moduleFederation: {
+          name: "remote",
+          shared: { lodash: { singleton: false } },
+        },
+        output: { formats: [] as never[] },
+        rules: {
+          ...quietRules,
+          "shared/unused": "warning" as const,
+        },
+      };
+      const legacy = await analyze(analyzeOptions);
+      const compat = await analyze({ ...analyzeOptions, evidenceRollout: compatRollout() });
+
+      expect(legacy.facts.imports.sourceReadFailures).toContain("src/unreadable.ts");
+      expect(legacy.report.findings.some((finding) => finding.ruleId === "shared/unused")).toBe(
+        false,
+      );
+      expect(compat.report.findings.some((finding) => finding.ruleId === "shared/unused")).toBe(
+        false,
+      );
+      expect(
+        compat.evidence?.evaluations.find((item) => item.rule.id === "shared/unused"),
+      ).toMatchObject({ outcome: "unknown" });
+    } finally {
+      readFileSpy.mockRestore();
+    }
+  });
+
+  it("caps Group 3 heuristic rule confidence at inventory ceilings", async () => {
+    const root = await fixture("group3-confidence-rollout-bridge", {
+      "src/index.ts": 'import "react-dom/client";\n',
+    });
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "group3-confidence-rollout-bridge",
+        dependencies: {
+          vite: "6.1.0",
+          react: "19.1.1",
+          "react-dom": "19.1.1",
+        },
+      }),
+    );
+    const compat = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      moduleFederation: {
+        name: "host",
+        getPublicPath: "function () { return '/cdn/'; }",
+        shared: {
+          react: { singleton: true, requiredVersion: "^18" },
+          "react-dom": { singleton: true },
+        },
+      },
+      evidenceRollout: compatRollout(),
+      output: { formats: [] },
+      rules: {
+        "doctor/partial-analysis": "off" as const,
+        "config/name-required": "off" as const,
+        "config/plugin-package-mismatch": "warning" as const,
+        "security/get-public-path-dynamic-code": "warning" as const,
+        "shared/version-unsatisfied": "error" as const,
+        "shared/singleton-risk": "warning" as const,
+        "shared/eager-without-singleton": "warning" as const,
+        "shared/unused": "warning" as const,
+        "shared/candidate": "info" as const,
+        "shared/react-host-missing": "warning" as const,
+        "shared/deep-import-bypass": "warning" as const,
+        "shared/prefix-share-recommended": "info" as const,
+      },
+    });
+    const ceilings: Record<string, string> = {
+      "security/get-public-path-dynamic-code": "low",
+      "shared/version-unsatisfied": "medium",
+      "config/plugin-package-mismatch": "medium",
+      "shared/singleton-risk": "low",
+      "shared/eager-without-singleton": "low",
+      "shared/unused": "low",
+      "shared/candidate": "low",
+      "shared/react-host-missing": "medium",
+      "shared/deep-import-bypass": "low",
+      "shared/prefix-share-recommended": "high",
+    };
+    for (const [id, ceiling] of Object.entries(ceilings)) {
+      const evaluation = compat.evidence?.evaluations.find((item) => item.rule.id === id);
+      expect(evaluation).toBeDefined();
+      if (evaluation?.outcome === "unknown") continue;
+      const rank = CONFIDENCE_RANK[evaluation!.confidence];
+      const ceilingRank = CONFIDENCE_RANK[ceiling];
+      expect(rank).toBeDefined();
+      expect(ceilingRank).toBeDefined();
+      expect(rank!).toBeLessThanOrEqual(ceilingRank!);
+    }
   });
 
   it("routes every Group 1 bridge, SSR, and runtime-plugin rule through the bridge with V1 parity", async () => {
