@@ -803,6 +803,66 @@ describe("evidence-aware rule rollout bridge", () => {
     expect(
       compat.report.findings.filter((finding) => finding.ruleId === "artifact/manifest-disabled"),
     ).toHaveLength(1);
+
+    const migrated = await runMigratedEvidenceRules(compat.facts, {});
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "artifacts.manifestExplicitlyDisabled",
+      ),
+    ).toMatchObject({ completeness: { status: "complete" } });
+    expect(
+      migrated.graph.assertions.find((assertion) => assertion.predicate === "artifacts.manifest"),
+    ).toBeUndefined();
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "artifacts.manifestValidity",
+      ),
+    ).toBeUndefined();
+    for (const id of [
+      "artifact/expose-missing",
+      "artifact/manifest-invalid",
+      "artifact/manifest-name-mismatch",
+      "artifact/manifest-remote-entry-missing",
+      "artifact/manifest-expose-assets-empty",
+      "artifact/manifest-shared-version-mismatch",
+      "artifact/public-path-suspicious",
+      "artifact/types-metadata-missing",
+      "artifact/types-missing",
+      "performance/asset-budget",
+    ]) {
+      expect(
+        migrated.output.evaluations.find((evaluation) => evaluation.rule.id === id),
+      ).toMatchObject({ outcome: "unknown" });
+    }
+  });
+
+  it("keeps webpack explicit manifest: false conclusive only for manifest-disabled", async () => {
+    const root = await fixture("group2-explicit-manifest-disabled-rollout-bridge");
+    const compat = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      moduleFederation: {
+        name: "host",
+        manifest: false,
+        exposes: { "./Widget": "./src/index.ts" },
+      },
+      evidenceRollout: compatRollout(),
+      output: { formats: [] },
+      rules: quietRules,
+    });
+
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "artifact/manifest-disabled",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    const migrated = await runMigratedEvidenceRules(compat.facts, {});
+    for (const id of ["artifact/expose-missing", "artifact/manifest-invalid"]) {
+      expect(
+        migrated.output.evaluations.find((evaluation) => evaluation.rule.id === id),
+      ).toMatchObject({ outcome: "unknown" });
+    }
   });
 
   it("keeps malformed manifest content unknown but preserves the invalid-manifest finding", async () => {

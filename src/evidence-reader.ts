@@ -1054,17 +1054,7 @@ export function migrateProjectFacts(
     field: ArtifactEvidenceField,
   ): { value: EvidenceValue; completeness: EvidenceCompletenessInfo } | undefined => {
     const present = Object.prototype.hasOwnProperty.call(input.artifacts, field);
-    if (!present) {
-      if (field === "manifest" && manifestWasExplicitlyDisabled(input))
-        return {
-          value: { present: false, reason: "explicitly-disabled" },
-          completeness: completeness(
-            "complete",
-            "Manifest generation is explicitly disabled; absence of a manifest is confirmed.",
-          ),
-        };
-      return undefined;
-    }
+    if (!present) return undefined;
     const raw = input.artifacts[field];
     if (raw === undefined) return undefined;
     const capability = artifactCapabilities[field];
@@ -1133,15 +1123,23 @@ export function migrateProjectFacts(
         ),
       };
     }
-    if (manifestWasExplicitlyDisabled(input))
-      return {
-        value: { present: false, valid: false, reason: "explicitly-disabled" },
-        completeness: completeness(
-          "complete",
-          "Manifest generation is explicitly disabled; manifest validity is not applicable.",
-        ),
-      };
     return undefined;
+  };
+
+  const manifestExplicitlyDisabledEvidence = ():
+    | {
+        value: EvidenceValue;
+        completeness: EvidenceCompletenessInfo;
+      }
+    | undefined => {
+    if (!manifestWasExplicitlyDisabled(input)) return undefined;
+    return {
+      value: { disabled: true, reason: "explicitly-disabled" },
+      completeness: completeness(
+        "complete",
+        "Manifest generation is explicitly disabled; absence of a manifest is confirmed.",
+      ),
+    };
   };
 
   const artifactPath =
@@ -1177,6 +1175,20 @@ export function migrateProjectFacts(
         scope,
         "v1-project-facts",
         manifestValidity.completeness,
+        undefined,
+        limits,
+      ),
+    );
+  const manifestExplicitlyDisabled = manifestExplicitlyDisabledEvidence();
+  if (manifestExplicitlyDisabled)
+    graph.assertions.push(
+      assertion(
+        artifactSubject,
+        "artifacts.manifestExplicitlyDisabled",
+        manifestExplicitlyDisabled.value,
+        scope,
+        "v1-project-facts",
+        manifestExplicitlyDisabled.completeness,
         undefined,
         limits,
       ),

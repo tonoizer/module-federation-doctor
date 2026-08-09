@@ -621,6 +621,7 @@ describe("evidence-aware rule contract", () => {
       "dependencies.declared": "context.facts.dependencies.declared",
       "dependencies.installed": "context.facts.dependencies.installed",
       "artifacts.manifest": "context.facts.artifacts.manifest",
+      "artifacts.manifestExplicitlyDisabled": "manifestExplicitlyDisabled(context)",
       "artifacts.manifestValidity": "context.facts.artifacts.manifest",
       "artifacts.emittedAssets": "context.facts.artifacts.emittedAssets",
       "artifacts.assetSizes": "context.facts.artifacts.assetSizes",

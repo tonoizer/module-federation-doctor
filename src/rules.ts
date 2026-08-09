@@ -1566,8 +1566,13 @@ export const builtInRules: DoctorRule[] = [
     const config = mf(context);
     if (isLocalDemo(context)) return;
     // Prefer emit evidence over normalized defaults (Enhanced omits → still emits).
-    if (context.facts.capabilities.manifest || context.facts.artifacts.manifest) return;
-    if (config && !config.manifest?.enabled && hasFederatedSurface(config))
+    if (
+      !manifestExplicitlyDisabled(context) ||
+      context.facts.capabilities.manifest ||
+      context.facts.artifacts.manifest
+    )
+      return;
+    if (config && hasFederatedSurface(config))
       report(
         context,
         "Manifest generation is disabled for a Module Federation surface.",

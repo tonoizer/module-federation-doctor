@@ -1243,7 +1243,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "project.scope",
     "moduleFederation",
     "capabilities.manifest",
-    "artifacts.manifest",
+    "artifacts.manifestExplicitlyDisabled",
   ],
   "artifact/manifest-expose-assets-empty": [
     "project.scope",
