@@ -543,7 +543,8 @@ export async function analyzeFederation(
                 return instance;
               })
               .sort((left, right) =>
-                `${left.project}:${left.federationInstanceId ?? ""}`.localeCompare(
+                compareCodePoint(
+                  `${left.project}:${left.federationInstanceId ?? ""}`,
                   `${right.project}:${right.federationInstanceId ?? ""}`,
                 ),
               ),
@@ -568,7 +569,7 @@ export async function analyzeFederation(
         {
           strategies: Object.fromEntries(
             [...strategyOwners.entries()]
-              .sort(([a], [b]) => a.localeCompare(b))
+              .sort(([a], [b]) => compareCodePoint(a, b))
               .map(([strategy, owners]) => [strategy, [...owners].sort()]),
           ),
         },
@@ -747,7 +748,7 @@ export async function analyzeFederation(
       }
 
       for (const [pkg, usedByMfs] of [...usedByPkg.entries()].sort(([a], [b]) =>
-        a.localeCompare(b),
+        compareCodePoint(a, b),
       )) {
         if (!groupEvidenceIncomplete) {
           if (usedByMfs.size < 2) continue;
@@ -773,7 +774,7 @@ export async function analyzeFederation(
 
       if (!groupEvidenceIncomplete)
         for (const [pkg, sharedByMfs] of [...sharedByPkg.entries()].sort(([a], [b]) =>
-          a.localeCompare(b),
+          compareCodePoint(a, b),
         )) {
           if (alwaysShared.has(pkg)) continue;
           if (sharedByMfs.size !== 1) continue;

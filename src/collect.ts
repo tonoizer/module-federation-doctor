@@ -29,7 +29,7 @@ import type {
   UnresolvedDynamicImport,
 } from "./types.js";
 import { analyzeLocalRuntimePlugin } from "./runtime-plugin-contract.js";
-import { normalizePath, relativePath, stableStringify } from "./utils.js";
+import { compareCodePoint, normalizePath, relativePath, stableStringify } from "./utils.js";
 import { detectViteLifecycle } from "./vite-lifecycle.js";
 import { AnalysisBudgetTracker } from "./analysis-budgets.js";
 import { mapBounded } from "./async-map.js";
@@ -1972,7 +1972,7 @@ function projectLegacyBuildFacts(facts: ProjectFacts, builds: BuildRecord[]): vo
   const firstCurrent = (kind: ArtifactKind) => {
     const records = currentRecords
       .filter((record) => record.kind === kind)
-      .sort((left, right) => left.path.localeCompare(right.path));
+      .sort((left, right) => compareCodePoint(left.path, right.path));
     // Prefer malformed current evidence so a valid artifact from another
     // output cannot hide a broken artifact from this build cycle.
     return records.find((record) => !record.valid) ?? records[0];
