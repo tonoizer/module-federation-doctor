@@ -59,6 +59,7 @@
       "required": ["adapter", "bundler", "target"],
       "properties": {
         "adapter": { "type": "string", "minLength": 1 },
+        "adapterVersion": { "type": "string" },
         "bundler": {
           "type": "object",
           "required": ["name"],
@@ -68,7 +69,12 @@
           },
           "additionalProperties": false
         },
-        "target": { "enum": ["web", "node", "browser", "ssr", "unknown"] }
+        "target": { "enum": ["web", "node", "browser", "ssr", "unknown"] },
+        "buildMode": { "type": "string" },
+        "projectRole": { "type": "string" },
+        "buildId": { "type": "string" },
+        "compilationId": { "type": "string" },
+        "federationInstanceId": { "type": "string" }
       },
       "additionalProperties": false
     },
@@ -78,6 +84,8 @@
         "project": { "type": "string" },
         "workspace": { "type": "string" },
         "buildId": { "type": "string" },
+        "compilationId": { "type": "string" },
+        "federationInstanceId": { "type": "string" },
         "artifactDigest": { "type": "string" },
         "deploymentId": { "type": "string" },
         "releaseId": { "type": "string" },
@@ -201,6 +209,10 @@
         "outcome": { "enum": ["pass", "fail", "unknown", "not-applicable"] },
         "evidenceIds": { "type": "array", "items": { "type": "string" } },
         "reason": { "type": "string", "minLength": 1 },
+        "reasonCode": { "type": "string", "minLength": 1 },
+        "confidence": { "enum": ["exact", "high", "medium", "low", "unknown"] },
+        "missingRequirements": { "type": "array", "items": { "$ref": "#/$defs/value" } },
+        "scope": { "$ref": "#/$defs/scope" },
         "completeness": { "$ref": "#/$defs/completeness" }
       },
       "additionalProperties": false

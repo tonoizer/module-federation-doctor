@@ -11,6 +11,15 @@ import {
 } from "./baseline.js";
 import { addBuildFacts, collectProjectFacts, type BuildDiagnostics } from "./collect.js";
 import { resolveOptions } from "./config.js";
+import { compareV1Outputs } from "./evidence-parity.js";
+import {
+  migratedEvidenceRules,
+  migratedEvidenceRuleIds,
+  projectMigratedFailures,
+  runMigratedEvidenceRules,
+  type MigratedEvidenceRun,
+} from "./evidence-rule-bridge.js";
+import { createEvidenceRolloutController } from "./evidence-rollout.js";
 import { writeDiagnosticsDump } from "./agent-prompt.js";
 import { computeHealthScore } from "./health-score.js";
 import { builtInRules, federationRuleMeta } from "./rules.js";
@@ -24,6 +33,7 @@ import {
 import type { WorkspaceProjectDiagnostic } from "./workspace.js";
 import type {
   AnalysisResult,
+  BuildRecord,
   DoctorFinding,
   DoctorOptions,
   DoctorReport,
@@ -48,8 +58,9 @@ import {
 } from "./utils.js";
 import { writeFederationReports, writeReports } from "./reporters.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
-import type { AnalysisBudgetReport } from "./analysis-budgets.js";
+import { AnalysisBudgetTracker, type AnalysisBudgetReport } from "./analysis-budgets.js";
 import { mapBounded } from "./async-map.js";
+import type { RuleExecutionState } from "./rule-contract.js";
 
 export function isAnalysisIncomplete(analysis: AnalysisBudgetReport | undefined): boolean {
   return Boolean(analysis && (analysis.status !== "complete" || analysis.exceeded.length > 0));
@@ -160,6 +171,50 @@ function ruleFacts(facts: ProjectFacts): ProjectFacts[] {
     : [facts];
 }
 
+function migratedEvidenceScopes(
+  facts: ProjectFacts,
+): Array<{ facts: ProjectFacts; build?: BuildRecord }> {
+  return ruleFacts(facts).flatMap((scopedFacts) =>
+    scopedFacts.builds?.length
+      ? scopedFacts.builds.map((build) => ({ facts: scopedFacts, build }))
+      : [{ facts: scopedFacts }],
+  );
+}
+
+function bridgeEngineErrors(
+  settings: Readonly<Record<string, RuleSetting>>,
+  error: unknown,
+  root: string,
+): RuleExecutionState[] {
+  const message = redact(error instanceof Error ? error.message : String(error), root) as string;
+  return migratedEvidenceRules
+    .filter((rule) => settings[rule.meta.id] !== "off")
+    .map((rule) => ({
+      state: "engine-error" as const,
+      rule: { id: rule.meta.id, version: rule.meta.version },
+      reason: "Evidence bridge failed before rule evaluation.",
+      error: message,
+    }));
+}
+
+async function legacyMigratedFallback(
+  facts: ProjectFacts,
+  settings: Readonly<Record<string, RuleSetting>>,
+  root: string,
+  sharedPolicy: ResolvedDoctorOptions["sharedPolicy"],
+  recognizeMfToolkit: boolean | undefined,
+): Promise<DoctorFinding[]> {
+  return (
+    await Promise.all(
+      builtInRules
+        .filter((rule) => migratedEvidenceRuleIds.has(rule.meta.id))
+        .map((rule) =>
+          runRule(rule, facts, settings[rule.meta.id], root, sharedPolicy, recognizeMfToolkit),
+        ),
+    )
+  ).flat();
+}
+
 function reportFor(facts: ProjectFacts, findings: DoctorFinding[]): DoctorReport {
   const summary = summarizeFindings(findings);
   const health = computeHealthScore(findings);
@@ -213,23 +268,101 @@ async function runAnalysis(
     const facts = await collectProjectFacts(resolved, boundedRoots);
     if (emittedAssets)
       await addBuildFacts(facts, emittedAssets, resolved.root, diagnostics, buildOutputs);
-    const rawFindings = sortFindings(
-      (
-        await Promise.all(
-          ruleFacts(facts).flatMap((scopedFacts) =>
-            [...builtInRules, ...resolved.extends].map((rule) =>
-              runRule(
-                rule,
-                scopedFacts,
-                resolved.rules[rule.meta.id],
+    const rolloutDefaults = createEvidenceRolloutController();
+    const rollout = rolloutDefaults.emergencyLegacy
+      ? rolloutDefaults
+      : (options.evidenceRollout ?? rolloutDefaults);
+    const rolloutMode = rollout.modeFor("rules");
+    const scopedFacts = ruleFacts(facts);
+    const legacyBuiltIns =
+      rolloutMode === "v2-compat"
+        ? builtInRules.filter((rule) => !migratedEvidenceRuleIds.has(rule.meta.id))
+        : builtInRules;
+    let legacyFindings = (
+      await Promise.all(
+        scopedFacts.flatMap((factsForRules) =>
+          [...legacyBuiltIns, ...resolved.extends].map((rule) =>
+            runRule(
+              rule,
+              factsForRules,
+              resolved.rules[rule.meta.id],
+              resolved.root,
+              resolved.sharedPolicy,
+              resolved.recognizeMfToolkit,
+            ),
+          ),
+        ),
+      )
+    ).flat();
+    const migratedRuns: Array<{ facts: ProjectFacts; run: MigratedEvidenceRun }> = [];
+    const migratedProjectionRuns: Array<{
+      facts: ProjectFacts;
+      run: MigratedEvidenceRun;
+    }> = [];
+    const migratedExecutionErrors: RuleExecutionState[] = [];
+    const bridgeBudget =
+      rolloutMode === "legacy" ? undefined : new AnalysisBudgetTracker(resolved.analysisBudgets);
+    if (rolloutMode !== "legacy") {
+      for (const scope of migratedEvidenceScopes(facts)) {
+        try {
+          const run = await runMigratedEvidenceRules(
+            scope.facts,
+            resolved.rules,
+            bridgeBudget,
+            scope.build,
+          );
+          migratedRuns.push({ facts: scope.facts, run });
+          const needsLegacyFallback =
+            run.output.execution.some((state) => state.state === "engine-error") ||
+            isAnalysisIncomplete(run.output.analysis);
+          if (rolloutMode === "v2-compat" && needsLegacyFallback) {
+            legacyFindings = legacyFindings.concat(
+              await legacyMigratedFallback(
+                scope.facts,
+                resolved.rules,
                 resolved.root,
                 resolved.sharedPolicy,
                 resolved.recognizeMfToolkit,
               ),
-            ),
-          ),
-        )
-      ).flat(),
+            );
+          } else migratedProjectionRuns.push({ facts: scope.facts, run });
+        } catch (error) {
+          // A migrated graph is additive. A malformed or budget-clipped bridge
+          // must not discard the complete legacy V1 result.
+          migratedExecutionErrors.push(...bridgeEngineErrors(resolved.rules, error, resolved.root));
+          if (rolloutMode === "v2-compat") {
+            legacyFindings = legacyFindings.concat(
+              await legacyMigratedFallback(
+                scope.facts,
+                resolved.rules,
+                resolved.root,
+                resolved.sharedPolicy,
+                resolved.recognizeMfToolkit,
+              ),
+            );
+          }
+        }
+      }
+    }
+    const migratedFindings = sortFindings(
+      migratedProjectionRuns.flatMap(({ facts: factsForEvidence, run }) =>
+        projectMigratedFailures(
+          run.output.evaluations,
+          factsForEvidence,
+          resolved.rules,
+          resolved.root,
+        ),
+      ),
+    );
+    const parity =
+      rolloutMode === "shadow"
+        ? compareV1Outputs(
+            legacyFindings.filter((finding) => migratedEvidenceRuleIds.has(finding.ruleId)),
+            migratedFindings,
+          )
+        : undefined;
+    const rawFindings = sortFindings(
+      rolloutMode === "v2-compat" ? [...legacyFindings, ...migratedFindings] : legacyFindings,
     );
     const { findings, failOnSuppressed } = await withBaseline(rawFindings, resolved.baseline);
     // Write the full report before any caller decides to fail the build.
@@ -251,6 +384,15 @@ async function runAnalysis(
         : policyFails(findings, resolved.failOn, failOnSuppressed)
           ? 1
           : 0,
+      evidence: {
+        rollout: { scope: "rules", mode: rolloutMode },
+        evaluations: migratedRuns.flatMap(({ run }) => run.output.evaluations),
+        execution: [
+          ...migratedRuns.flatMap(({ run }) => run.output.execution),
+          ...migratedExecutionErrors,
+        ],
+        ...(parity ? { parity } : {}),
+      },
     };
   } catch (error) {
     if (resolved.output.formats.includes("terminal"))
