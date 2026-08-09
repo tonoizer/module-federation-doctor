@@ -338,9 +338,9 @@ function isSupportedMfVersion(version: string): boolean {
     const normalized = normalizeDependencyRange(version);
     if (!normalized || normalized === "*" || normalized.toLowerCase() === "latest") return false;
     const exact = semver.valid(normalized);
-    if (exact) return semver.gte(exact, OBSERVABILITY_SUPPORT_FLOOR);
+    if (exact) return semver.satisfies(exact, OBSERVABILITY_SUPPORT_RANGE);
     const range = semver.validRange(normalized);
-    return range !== null && semver.intersects(range, OBSERVABILITY_SUPPORT_RANGE);
+    return range !== null && range !== "*" && semver.intersects(range, OBSERVABILITY_SUPPORT_RANGE);
   } catch {
     return false;
   }
