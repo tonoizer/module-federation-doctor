@@ -76,13 +76,18 @@ vendored in-tree):
   emits the artifacts Doctor can read. Failures that looked like “missing
   manifest/stats” were usually Vite opt-in gaps or Enhanced default-emit
   normalization — addressed in #116 / #119 / #125.
-- **Modern.js core demos** (`modern-ssr-*`, `modern-data-fetch-*`) often fail
-  **before** Doctor runs because `@module-federation/bridge-react/size-limited-cache`
-  is missing on the soaked core branch (upstream packaging / dist drift). That
-  is **not** a Doctor Modern adapter crash. In-repo
+- **Modern.js core demos** (`modern-ssr-*`, `modern-data-fetch-*`) failed
+  **before** Doctor ran in the 2026-08-01 soak because
+  `@module-federation/bridge-react/size-limited-cache` was missing on the soaked
+  core branch (upstream packaging / dist drift). The package export was added
+  by [Core PR #4897](https://github.com/module-federation/core/pull/4897) and is
+  present in `@module-federation/bridge-react@2.8.2`, but the corresponding
+  core-demo re-soak remains unverified. It was **not** a Doctor Modern adapter
+  crash. In-repo
   [`examples/compatibility/modern`](https://github.com/tonoizer/module-federation-doctor/tree/main/examples/compatibility/modern)
-  smoke stays green. Track re-soak in
-  [#130](https://github.com/tonoizer/module-federation-doctor/issues/130).
+  smoke stays green; a full `@modern-js/app-tools` core-demo re-soak is still
+  external evidence and is not covered by this partial cell. Track the final
+  verification in [#130](https://github.com/tonoizer/module-federation-doctor/issues/130).
 
 ## Quiet soak / demo config
 
