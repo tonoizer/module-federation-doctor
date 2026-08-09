@@ -135,6 +135,118 @@ describe("workspace discovery", () => {
     }
   });
 
+  it("selects a group when the root project object exceeds the bounded probe", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-large-project-"));
+    try {
+      const file = path.join(root, ".mf", "doctor", "project.json");
+      const contents = JSON.stringify({
+        project: {
+          name: "large-project",
+          federationGroup: "selected",
+          padding: "x".repeat(20 * 1024),
+        },
+      });
+      expect(Buffer.byteLength(contents, "utf8")).toBeGreaterThan(16 * 1024);
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, contents);
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        group: "selected",
+      });
+
+      expect(discovery.files).toEqual([file]);
+      expect(discovery.groups).toEqual(["selected"]);
+      expect(discovery.diagnostics).toEqual([]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores string and nested project lookalikes before the root project", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-root-project-"));
+    try {
+      const file = path.join(root, ".mf", "doctor", "project.json");
+      const contents = JSON.stringify({
+        metadata: {
+          text: '"project": {"federationGroup": "string-fake"}',
+          nested: { project: { federationGroup: "nested-fake" } },
+        },
+        project: {
+          name: "real-project",
+          federationGroup: "selected",
+          padding: "x".repeat(20 * 1024),
+        },
+      });
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, contents);
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        group: "selected",
+      });
+
+      expect(discovery.files).toEqual([file]);
+      expect(discovery.groups).toEqual(["selected"]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reports project files skipped by the aggregate group probe cap", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-probe-cap-"));
+    try {
+      const padding = "x".repeat(20 * 1024);
+      for (let index = 0; index < 520; index += 1) {
+        const appName = "app-" + String(index).padStart(3, "0");
+        const file = path.join(root, "apps", appName, ".mf", "doctor", "project.json");
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.writeFile(
+          file,
+          JSON.stringify({
+            project: {
+              name: appName,
+              federationGroup: "unrelated",
+              padding,
+            },
+          }),
+        );
+      }
+      const selectedFile = path.join(root, "apps", "zz-selected", ".mf", "doctor", "project.json");
+      await fs.mkdir(path.dirname(selectedFile), { recursive: true });
+      await fs.writeFile(
+        selectedFile,
+        JSON.stringify({
+          project: {
+            name: "selected",
+            federationGroup: "selected",
+            padding,
+          },
+        }),
+      );
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        group: "selected",
+      });
+
+      expect(discovery.files).toEqual([]);
+      expect(discovery.budget.usage.files).toBe(0);
+      expect(discovery.budget.usage.serializedBytes).toBe(0);
+      expect(discovery.diagnostics).toHaveLength(1);
+      expect(discovery.diagnostics[0]).toMatchObject({
+        kind: "probe",
+        files: expect.arrayContaining([selectedFile]),
+        message: expect.stringContaining("aggregate cap"),
+      });
+      expect(discovery.diagnostics[0]?.files).toEqual(
+        discovery.diagnostics[0]?.files.slice().sort(),
+      );
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("returns an empty list when nothing matches", async () => {
     const files = await discoverWorkspaceProjects({
       cwd: repository,

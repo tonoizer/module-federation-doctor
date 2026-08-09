@@ -48,7 +48,12 @@ export interface WorkspaceProjectDiscovery {
   diagnostics: WorkspaceProjectDiagnostic[];
 }
 
-export type WorkspaceProjectDiagnosticKind = "stale" | "duplicate" | "conflict" | "invalid";
+export type WorkspaceProjectDiagnosticKind =
+  | "stale"
+  | "duplicate"
+  | "conflict"
+  | "invalid"
+  | "probe";
 
 export interface WorkspaceProjectDiagnostic {
   kind: WorkspaceProjectDiagnosticKind;
@@ -66,6 +71,9 @@ interface ProjectEnvelope {
 }
 
 const GROUP_PROBE_MAX_BYTES = 16 * 1024;
+// Keep group selection preflight independent from analysis budgets while
+// bounding its total disk read to 8 MiB (up to 512 full-size prefixes).
+const GROUP_PROBE_MAX_TOTAL_BYTES = 8 * 1024 * 1024;
 
 interface GroupProbeResult {
   file: string;
@@ -74,15 +82,61 @@ interface GroupProbeResult {
   group?: string;
 }
 
-function projectObjectFromPrefix(contents: string): ProjectEnvelope | undefined {
-  const projectKey = /"project"\s*:\s*\{/.exec(contents);
-  if (!projectKey || projectKey.index === undefined) return undefined;
-  const objectStart = contents.indexOf("{", projectKey.index);
-  if (objectStart < 0) return undefined;
-  let depth = 0;
+function skipJsonWhitespace(contents: string, start: number): number {
+  let index = start;
+  while (/\s/.test(contents[index] ?? "")) index += 1;
+  return index;
+}
+
+interface JsonStringResult {
+  value: string;
+  end: number;
+}
+
+function readJsonString(contents: string, start: number): JsonStringResult | undefined {
+  if (contents[start] !== '"') return undefined;
+  let escaped = false;
+  for (let index = start + 1; index < contents.length; index += 1) {
+    const character = contents[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (character !== '"') continue;
+    try {
+      const value = JSON.parse(contents.slice(start, index + 1)) as unknown;
+      return typeof value === "string" ? { value, end: index + 1 } : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+function skipJsonValue(contents: string, start: number): number | undefined {
+  const valueStart = skipJsonWhitespace(contents, start);
+  const first = contents[valueStart];
+  if (first === '"') return readJsonString(contents, valueStart)?.end;
+  if (first !== "{" && first !== "[") {
+    let end = valueStart;
+    while (end < contents.length && !/[\s,}\]]/.test(contents[end]!)) end += 1;
+    if (end === valueStart) return undefined;
+    try {
+      JSON.parse(contents.slice(valueStart, end));
+      return end;
+    } catch {
+      return undefined;
+    }
+  }
+
+  const stack = [first];
   let inString = false;
   let escaped = false;
-  for (let index = objectStart; index < contents.length; index += 1) {
+  for (let index = valueStart + 1; index < contents.length; index += 1) {
     const character = contents[index];
     if (inString) {
       if (escaped) escaped = false;
@@ -94,19 +148,95 @@ function projectObjectFromPrefix(contents: string): ProjectEnvelope | undefined 
       inString = true;
       continue;
     }
-    if (character === "{") depth += 1;
-    else if (character === "}" && --depth === 0) {
-      try {
-        const project = JSON.parse(contents.slice(objectStart, index + 1)) as unknown;
-        return project && typeof project === "object" && !Array.isArray(project)
-          ? { project: project as NonNullable<ProjectEnvelope["project"]> }
-          : undefined;
-      } catch {
-        return undefined;
-      }
+    if (character === "{" || character === "[") {
+      stack.push(character);
+      continue;
     }
+    if (character !== "}" && character !== "]") continue;
+    const expected = character === "}" ? "{" : "[";
+    if (stack.at(-1) !== expected) return undefined;
+    stack.pop();
+    if (stack.length === 0) return index + 1;
   }
   return undefined;
+}
+
+interface ProjectObjectPrefixResult {
+  complete: boolean;
+  end?: number;
+  group?: string;
+}
+
+function groupFromProjectObjectPrefix(
+  contents: string,
+  objectStart: number,
+): ProjectObjectPrefixResult {
+  let index = objectStart + 1;
+  while (true) {
+    index = skipJsonWhitespace(contents, index);
+    if (index >= contents.length) return { complete: false };
+    if (contents[index] === "}") return { complete: true, end: index + 1 };
+
+    const key = readJsonString(contents, index);
+    if (!key) return { complete: false };
+    index = skipJsonWhitespace(contents, key.end);
+    if (contents[index] !== ":") return { complete: false };
+    const valueStart = skipJsonWhitespace(contents, index + 1);
+    if (key.value === "federationGroup" && contents[valueStart] === '"') {
+      const value = readJsonString(contents, valueStart);
+      if (!value) return { complete: false };
+      const group = value.value.trim();
+      if (group.length > 0) return { complete: false, group };
+      index = value.end;
+    } else {
+      const valueEnd = skipJsonValue(contents, valueStart);
+      if (valueEnd === undefined) return { complete: false };
+      index = valueEnd;
+    }
+
+    index = skipJsonWhitespace(contents, index);
+    if (contents[index] === ",") {
+      index += 1;
+      continue;
+    }
+    if (contents[index] === "}") return { complete: true, end: index + 1 };
+    return { complete: false };
+  }
+}
+
+function federationGroupFromPrefix(contents: string | undefined): string | undefined {
+  if (!contents) return undefined;
+  let index = skipJsonWhitespace(contents, 0);
+  if (contents[index] !== "{") return undefined;
+  index += 1;
+
+  while (true) {
+    index = skipJsonWhitespace(contents, index);
+    if (index >= contents.length || contents[index] === "}") return undefined;
+    const key = readJsonString(contents, index);
+    if (!key) return undefined;
+    index = skipJsonWhitespace(contents, key.end);
+    if (contents[index] !== ":") return undefined;
+    const valueStart = skipJsonWhitespace(contents, index + 1);
+
+    if (key.value === "project" && contents[valueStart] === "{") {
+      const project = groupFromProjectObjectPrefix(contents, valueStart);
+      if (project.group) return project.group;
+      if (!project.complete) return undefined;
+      index = project.end!;
+    } else {
+      const valueEnd = skipJsonValue(contents, valueStart);
+      if (valueEnd === undefined) return undefined;
+      index = valueEnd;
+    }
+
+    index = skipJsonWhitespace(contents, index);
+    if (contents[index] === ",") {
+      index += 1;
+      continue;
+    }
+    return undefined;
+  }
 }
 
 function groupFromProjectEnvelope(envelope: ProjectEnvelope | undefined): string | undefined {
@@ -155,48 +285,40 @@ async function readGroupProbe(
 async function probeWorkspaceGroups(
   files: string[],
   sizes: number[],
-  tracker: AnalysisBudgetTracker,
   selectedGroup: string,
 ): Promise<{
   scopedFiles: string[];
   scopedContents: Map<string, string | undefined>;
   groups: Set<string>;
   ungrouped: number;
+  diagnostics: WorkspaceProjectDiagnostic[];
 }> {
-  const probeBytes = sizes.reduce(
-    (total, size) =>
-      Math.min(
-        Number.MAX_SAFE_INTEGER,
-        total + Math.min(Math.max(0, size) + 1, GROUP_PROBE_MAX_BYTES + 1),
-      ),
-    0,
-  );
   // Group selection is a scope preflight, so unrelated projects must not
-  // consume the selected group's analysis budget. It still gets its own
-  // stat-backed tracker and a fixed per-file read bound.
+  // consume the selected group's analysis budget. The aggregate cap is
+  // deliberately deterministic: files are already sorted by the caller.
   const probeTracker = new AnalysisBudgetTracker(
     resolveAnalysisBudgets({
       maxFiles: files.length,
-      maxSerializedBytes: probeBytes,
+      maxSerializedBytes: GROUP_PROBE_MAX_TOTAL_BYTES,
       maxWallTimeMs: Number.MAX_SAFE_INTEGER,
     }),
   );
   const candidates: Array<{ file: string; bytes: number }> = [];
+  const skippedFiles: string[] = [];
   for (const [index, file] of files.entries()) {
-    if (!tracker.checkWallTime()) break;
     const size = Math.max(0, sizes[index] ?? 0);
     const bytes = Math.min(size + 1, GROUP_PROBE_MAX_BYTES + 1);
     if (probeTracker.reserve({ files: 1, serializedBytes: bytes }))
       candidates.push({ file, bytes });
+    else skippedFiles.push(file);
   }
   const probed = await mapBounded(
     candidates,
     async ({ file, bytes }): Promise<GroupProbeResult> => {
-      if (!tracker.checkWallTime()) return { file, complete: false };
       const result = await readGroupProbe(file, bytes);
       const group = result.complete
         ? federationGroupFromContents(result.contents)
-        : groupFromProjectEnvelope(projectObjectFromPrefix(result.contents ?? ""));
+        : federationGroupFromPrefix(result.contents);
       return { file, ...result, ...(group ? { group } : {}) };
     },
   );
@@ -211,7 +333,27 @@ async function probeWorkspaceGroups(
     scopedFiles.push(item.file);
     if (item.complete) scopedContents.set(item.file, item.contents);
   }
-  return { scopedFiles, scopedContents, groups, ungrouped };
+  return {
+    scopedFiles,
+    scopedContents,
+    groups,
+    ungrouped,
+    diagnostics:
+      skippedFiles.length > 0
+        ? [
+            {
+              kind: "probe",
+              files: skippedFiles,
+              message:
+                "Group pre-probe reached its " +
+                GROUP_PROBE_MAX_TOTAL_BYTES +
+                "-byte aggregate cap; " +
+                skippedFiles.length +
+                " project files were not inspected for federationGroup.",
+            } satisfies WorkspaceProjectDiagnostic,
+          ]
+        : [],
+  };
 }
 
 async function readProjectEnvelope(
@@ -360,7 +502,7 @@ export async function discoverWorkspaceProjectsWithBudget(
   options: DiscoverWorkspaceProjectsOptions = {},
 ): Promise<WorkspaceProjectDiscovery> {
   const cwd = path.resolve(options.cwd ?? process.cwd());
-  const tracker = new AnalysisBudgetTracker(resolveAnalysisBudgets(options.analysisBudgets));
+  const analysisBudgets = resolveAnalysisBudgets(options.analysisBudgets);
   const roots = (options.roots?.length ? options.roots : ["."]).map((root) =>
     path.resolve(cwd, root),
   );
@@ -387,6 +529,7 @@ export async function discoverWorkspaceProjectsWithBudget(
   let observedUngrouped = 0;
   let scopedFiles = orderedFiles;
   let preflightSizes: Map<string, number> | undefined;
+  let probeDiagnostics: WorkspaceProjectDiagnostic[] = [];
   if (options.group !== undefined) {
     const allSizes = await mapBounded(orderedFiles, (file) =>
       fs
@@ -394,13 +537,15 @@ export async function discoverWorkspaceProjectsWithBudget(
         .then((item) => item.size)
         .catch(() => 0),
     );
-    const probe = await probeWorkspaceGroups(orderedFiles, allSizes, tracker, options.group);
+    const probe = await probeWorkspaceGroups(orderedFiles, allSizes, options.group);
     scopedFiles = probe.scopedFiles.sort((left, right) => left.localeCompare(right));
     scopedContents = probe.scopedContents;
     for (const group of probe.groups) observedGroups.add(group);
     observedUngrouped = probe.ungrouped;
+    probeDiagnostics = probe.diagnostics;
     preflightSizes = new Map(orderedFiles.map((file, index) => [file, allSizes[index] ?? 0]));
   }
+  const tracker = new AnalysisBudgetTracker(analysisBudgets);
   const selected: Array<{ file: string; reservedBytes: number }> = [];
   const sizes =
     preflightSizes !== undefined
@@ -467,7 +612,10 @@ export async function discoverWorkspaceProjectsWithBudget(
     ungrouped,
     ...(options.group ? { selectedGroup: options.group } : {}),
     budget: budget.exceeded.length > 0 ? { ...budget, status: "unknown" } : budget,
-    diagnostics: budget.exceeded.length > 0 ? [] : inspected.diagnostics,
+    diagnostics: [
+      ...probeDiagnostics,
+      ...(budget.exceeded.length > 0 ? [] : inspected.diagnostics),
+    ],
   };
 }
 
