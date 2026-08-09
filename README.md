@@ -289,6 +289,16 @@ footer (`Score: N/100`) and top-3 copy-paste agent prompts. Use `--no-score` /
 
 New contributors are welcome. Please read the [Contributing Guide](./CONTRIBUTING.md).
 
+## Inspiration
+
+The initial idea was inspired by [Rsdoctor](https://rsdoctor.rs/):
+
+> “Something like RS Doctor, but just for Module Federation.”
+
+That same idea shaped Module Federation Doctor into a diagnostics tool focused
+on the configuration, sharing, runtime, manifest, and output problems unique to
+Module Federation projects. Thanks to the Rsdoctor team for the inspiration.
+
 ## Code of Conduct
 
 Please follow the [Code of Conduct](./CODE_OF_CONDUCT.md).
