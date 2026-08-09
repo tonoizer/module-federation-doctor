@@ -1,11 +1,17 @@
 version: 2
 
 updates:
-  # Keep the update scope at the workspace root so Dependabot can read
-  # pnpm-workspace.yaml and update the central pnpm-lock.yaml consistently.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
-    # Keep security updates enabled while suppressing normal version updates.
-    open-pull-requests-limit: 0
+    # Keep routine updates enabled for the root package and apps. Dependabot's
+    # default limit of five open version PRs is sufficient here.
+    #
+    # The examples and fixtures are compatibility/E2E contracts (including
+    # intentional Vite 5 cells), not ordinary application dependencies. Skip
+    # their manifests entirely so those pinned contracts do not create routine
+    # update PRs; re-enable a path deliberately when its contract changes.
+    exclude-paths:
+      - "examples/**"
+      - "fixtures/**"
