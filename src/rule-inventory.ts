@@ -181,9 +181,30 @@ export const MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS = [
   "runtime-plugins/create-script-without-link",
 ] as const;
 
-const MIGRATED_GROUP1_RULE_IDS: ReadonlySet<string> = new Set([
+export const MIGRATED_GROUP2_RULE_IDS = [
+  "config/duplicate-plugin-registration",
+  "artifact/public-path-non-string-manifest",
+  "config/external-runtime-conflict",
+  "performance/asset-budget",
+  "artifact/manifest-assets-disabled",
+  "artifact/manifest-disabled",
+  "artifact/dts-disabled",
+  "artifact/manifest-invalid",
+  "artifact/manifest-name-mismatch",
+  "artifact/manifest-remote-entry-missing",
+  "artifact/manifest-expose-assets-empty",
+  "artifact/manifest-shared-version-mismatch",
+  "artifact/types-metadata-missing",
+  "artifact/remote-entry-missing",
+  "artifact/expose-missing",
+  "artifact/public-path-suspicious",
+  "artifact/types-missing",
+] as const;
+
+const MIGRATED_RULE_IDS: ReadonlySet<string> = new Set([
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
+  ...MIGRATED_GROUP2_RULE_IDS,
 ]);
 
 type RulePlan = {
@@ -720,7 +741,7 @@ const plans: Record<string, RulePlan> = {
   "artifact/manifest-invalid": plan(
     2,
     "error",
-    "artifact.manifest",
+    "artifact.manifest.validity",
     "artifact",
     "artifact",
     "exact",
@@ -1230,7 +1251,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "artifacts.manifest",
     "bundler.name",
   ],
-  "artifact/manifest-invalid": ["project.scope", "artifacts.manifest"],
+  "artifact/manifest-invalid": ["project.scope", "artifacts.manifestValidity"],
   "artifact/manifest-name-mismatch": ["project.scope", "moduleFederation", "artifacts.manifest"],
   "artifact/manifest-remote-entry-missing": [
     "project.scope",
@@ -1610,9 +1631,9 @@ export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
     confidenceCeiling: spec.confidenceCeiling,
     defaultSeverity: spec.severity,
     group: spec.group,
-    status: MIGRATED_GROUP1_RULE_IDS.has(id) ? "migrated" : "legacy",
+    status: MIGRATED_RULE_IDS.has(id) ? "migrated" : "legacy",
     evidenceReads,
-    migrationNote: MIGRATED_GROUP1_RULE_IDS.has(id)
+    migrationNote: MIGRATED_RULE_IDS.has(id)
       ? `Planned group ${spec.group}; ${spec.confidenceReason} Wired through the staged evidence-aware rollout bridge; legacy remains the default.`
       : `Planned group ${spec.group}; ${spec.confidenceReason} Current v1 behavior remains unchanged until migration.`,
   };

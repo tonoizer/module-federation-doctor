@@ -509,6 +509,27 @@ function fieldCompleteness(
   return completeness("complete", "Field is present and its v1 capability was not false.");
 }
 
+function manifestWasExplicitlyDisabled(input: ProjectFacts): boolean {
+  if (input.capabilities.manifest || input.moduleFederation?.manifest?.enabled !== false)
+    return false;
+
+  // A collected canonical declaration distinguishes an explicit `manifest: false`
+  // from a bundler default (notably Vite's default-off manifest behavior).
+  const canonicalConfig = input.federationInstanceId
+    ? input.federationInstances?.find((instance) => instance.id === input.federationInstanceId)
+        ?.canonicalConfig
+    : input.canonicalConfig;
+  const declaredManifest = canonicalConfig?.declared.fields.find(
+    (field) => field.key === "manifest",
+  );
+  if (declaredManifest)
+    return declaredManifest.value.state === "known" && declaredManifest.value.value === false;
+
+  // Enhanced bundlers default manifests on, so a normalized false value in a
+  // legacy/persisted facts document is enough to establish explicit disablement.
+  return ["webpack", "rspack", "rsbuild", "modern"].includes(input.bundler.name);
+}
+
 function nonEmpty(value: string, fallback: string): string {
   return value || fallback;
 }
@@ -792,8 +813,9 @@ function assertion(
     subject: subject.id,
     predicate,
     value,
-    layer:
-      predicate === "project.moduleFederation" || predicate === "project.scope"
+    layer: predicate.startsWith("artifacts.")
+      ? "artifact"
+      : predicate === "project.moduleFederation" || predicate === "project.scope"
         ? "declared"
         : "effective",
     scope: { ...scope, bundler: { ...scope.bundler } },
@@ -814,7 +836,27 @@ export function migrateProjectFacts(
 ): EvidenceGraphV2 {
   const tracker = trackerFor(options);
   if (tracker) reserveBeforeCopy(input, tracker, options, "project-facts", 1);
-  const value = jsonValue(input, "/", options, new WeakSet<object>(), tracker) as JsonRecord;
+  // canonicalConfig is an in-memory declaration bridge, not part of the
+  // persisted project-facts schema. Keep it on `input` for evidence derivation
+  // but validate the schema-shaped projection without that private metadata.
+  const persistedArtifacts = (artifacts: ProjectFacts["artifacts"]): ProjectFacts["artifacts"] => {
+    const { records: _records, ...withoutRecords } = artifacts;
+    return withoutRecords;
+  };
+  const valueInput = {
+    ...input,
+    artifacts: persistedArtifacts(input.artifacts),
+  };
+  delete valueInput.canonicalConfig;
+  if (valueInput.federationInstances)
+    valueInput.federationInstances = valueInput.federationInstances.map((instance) => {
+      const { canonicalConfig: _canonicalConfig, artifacts, ...persistedInstance } = instance;
+      return {
+        ...persistedInstance,
+        artifacts: persistedArtifacts(artifacts),
+      };
+    });
+  const value = jsonValue(valueInput, "/", options, new WeakSet<object>(), tracker) as JsonRecord;
   if (tracker) {
     markEvidenceBudgetDimension(value, tracker, "evidenceNodes");
     markEvidenceBudgetDimension(value, tracker, "serializedBytes");
@@ -845,23 +887,12 @@ export function migrateProjectFacts(
   };
   const graph = baseGraph(scope, { project }, "v1-project-facts");
   graph.subjects.push(subject);
-  graph.assertions.push(
-    assertion(
-      subject,
-      "project.scope",
-      {
-        name: project,
-        root: input.project.root,
-        bundler: input.bundler.name,
-        ...(input.federationInstanceId ? { federationInstanceId: input.federationInstanceId } : {}),
-      },
-      scope,
-      "v1-project-facts",
-      completeness("complete", "Project identity and bundler scope are present."),
-      "scope",
-      limits,
-    ),
-  );
+  const scopeValue: EvidenceValue = {
+    name: project,
+    root: input.project.root,
+    bundler: input.bundler.name,
+    ...(input.federationInstanceId ? { federationInstanceId: input.federationInstanceId } : {}),
+  };
   const fields = [
     "project",
     "bundler",
@@ -874,15 +905,41 @@ export function migrateProjectFacts(
     "runtimePluginContracts",
     "builds",
   ] as const;
+  const fieldEvidence = new Map<
+    (typeof fields)[number],
+    { value: EvidenceValue; completeness: EvidenceCompletenessInfo }
+  >();
+  const bundlerFieldEvidence = new Map<
+    string,
+    { value: EvidenceValue; completeness: EvidenceCompletenessInfo }
+  >();
+  graph.assertions.push(
+    assertion(
+      subject,
+      "project.scope",
+      scopeValue,
+      scope,
+      "v1-project-facts",
+      completeness("complete", "Project identity and bundler scope are present."),
+      "scope",
+      limits,
+    ),
+  );
   for (const field of fields) {
     const present = Object.prototype.hasOwnProperty.call(input, field);
     if (!present) continue;
     const completenessInfo = fieldCompleteness(value, field, present);
+    const fieldValue = value[field] as EvidenceValue | undefined;
+    if (fieldValue === undefined) continue;
+    fieldEvidence.set(field, {
+      value: structuredClone(fieldValue),
+      completeness: structuredClone(completenessInfo),
+    });
     graph.assertions.push(
       assertion(
         subject,
         `project.${field}`,
-        jsonValue(input[field], `/` + field, options, new WeakSet<object>(), tracker),
+        structuredClone(fieldValue),
         scope,
         "v1-project-facts",
         completenessInfo,
@@ -914,6 +971,260 @@ export function migrateProjectFacts(
         ),
       );
     }
+  }
+
+  const bundlerValue = value.bundler;
+  if (isRecord(bundlerValue)) {
+    const bundlerCompleteness = fieldCompleteness(value, "bundler", true);
+    for (const [field, fieldValue] of Object.entries(bundlerValue)) {
+      const evidence = {
+        value: structuredClone(fieldValue as EvidenceValue),
+        completeness: structuredClone(bundlerCompleteness),
+      };
+      bundlerFieldEvidence.set(field, evidence);
+      graph.assertions.push(
+        assertion(
+          subject,
+          `project.bundler.${field}`,
+          evidence.value,
+          scope,
+          "v1-project-facts",
+          evidence.completeness,
+          undefined,
+          limits,
+        ),
+      );
+    }
+  }
+
+  const appendProjectEvidence = (target: EvidenceSubject): void => {
+    graph.assertions.push(
+      assertion(
+        target,
+        "project.scope",
+        structuredClone(scopeValue),
+        scope,
+        "v1-project-facts",
+        completeness("complete", "Project identity and bundler scope are present."),
+        "scope",
+        limits,
+      ),
+    );
+    for (const field of fields) {
+      const evidence = fieldEvidence.get(field);
+      if (!evidence) continue;
+      graph.assertions.push(
+        assertion(
+          target,
+          `project.${field}`,
+          structuredClone(evidence.value),
+          scope,
+          "v1-project-facts",
+          structuredClone(evidence.completeness),
+          undefined,
+          limits,
+        ),
+      );
+    }
+    for (const [field, evidence] of bundlerFieldEvidence) {
+      graph.assertions.push(
+        assertion(
+          target,
+          `project.bundler.${field}`,
+          structuredClone(evidence.value),
+          scope,
+          "v1-project-facts",
+          structuredClone(evidence.completeness),
+          undefined,
+          limits,
+        ),
+      );
+    }
+  };
+
+  type ArtifactEvidenceField = "manifest" | "stats" | "emittedAssets" | "assetSizes";
+  const artifactCapabilities: Partial<
+    Record<ArtifactEvidenceField, keyof typeof input.capabilities>
+  > = {
+    manifest: "manifest",
+    stats: "stats",
+    emittedAssets: "emittedAssets",
+  };
+  const artifactEvidence = (
+    field: ArtifactEvidenceField,
+  ): { value: EvidenceValue; completeness: EvidenceCompletenessInfo } | undefined => {
+    const present = Object.prototype.hasOwnProperty.call(input.artifacts, field);
+    if (!present) {
+      if (field === "manifest" && manifestWasExplicitlyDisabled(input))
+        return {
+          value: { present: false, reason: "explicitly-disabled" },
+          completeness: completeness(
+            "complete",
+            "Manifest generation is explicitly disabled; absence of a manifest is confirmed.",
+          ),
+        };
+      return undefined;
+    }
+    const raw = input.artifacts[field];
+    if (raw === undefined) return undefined;
+    const capability = artifactCapabilities[field];
+    if (capability && input.capabilities[capability] === false)
+      return {
+        value: jsonValue(raw, `/artifacts/${field}`, options, new WeakSet<object>(), tracker),
+        completeness: completeness(
+          "not-collected",
+          `The v1 capability ${capability} was false; artifact field ${field} is not claimed as collected.`,
+          [`artifacts.${field}`],
+        ),
+      };
+    const rawValid = isRecord(raw) ? (raw as JsonRecord).valid : undefined;
+    if ((field === "manifest" || field === "stats") && rawValid === false)
+      return {
+        value: jsonValue(raw, `/artifacts/${field}`, options, new WeakSet<object>(), tracker),
+        completeness: completeness(
+          "unknown",
+          `Artifact field ${field} was collected but is malformed; dependent rules cannot judge it.`,
+          [`artifacts.${field}`],
+        ),
+      };
+    if (field === "assetSizes" && input.capabilities.emittedAssets === false)
+      return {
+        value: jsonValue(raw, `/artifacts/${field}`, options, new WeakSet<object>(), tracker),
+        completeness: completeness(
+          "partial",
+          "Emitted-asset collection was partial or unavailable; asset sizes may be incomplete.",
+          ["artifacts.emittedAssets"],
+        ),
+      };
+    return {
+      value: jsonValue(raw, `/artifacts/${field}`, options, new WeakSet<object>(), tracker),
+      completeness: completeness("complete", `Artifact field ${field} is present in the v1 facts.`),
+    };
+  };
+
+  const manifestValidityEvidence = ():
+    | {
+        value: EvidenceValue;
+        completeness: EvidenceCompletenessInfo;
+      }
+    | undefined => {
+    const manifest = input.artifacts.manifest;
+    if (manifest !== undefined) {
+      if (input.capabilities.manifest === false)
+        return {
+          value: jsonValue(
+            manifest,
+            "/artifacts/manifest",
+            options,
+            new WeakSet<object>(),
+            tracker,
+          ),
+          completeness: completeness(
+            "not-collected",
+            "The v1 manifest capability was false; manifest validity is not claimed as collected.",
+            ["artifacts.manifestValidity"],
+          ),
+        };
+      return {
+        value: { valid: manifest.valid, path: manifest.path },
+        completeness: completeness(
+          "complete",
+          "Manifest validity was explicitly collected from the v1 artifact record.",
+        ),
+      };
+    }
+    if (manifestWasExplicitlyDisabled(input))
+      return {
+        value: { present: false, valid: false, reason: "explicitly-disabled" },
+        completeness: completeness(
+          "complete",
+          "Manifest generation is explicitly disabled; manifest validity is not applicable.",
+        ),
+      };
+    return undefined;
+  };
+
+  const artifactPath =
+    input.artifacts.manifest?.path ?? input.artifacts.stats?.path ?? `${project}:artifacts`;
+  const artifactSubject: EvidenceSubject = {
+    id: stableEvidenceId(
+      "subject.artifact",
+      {
+        project,
+        root: input.project.root,
+        path: artifactPath,
+        ...(input.builds?.length === 1 ? { buildId: input.builds[0]!.id } : {}),
+        ...(input.federationInstanceId ? { federationInstanceId: input.federationInstanceId } : {}),
+      },
+      limits,
+    ),
+    kind: "artifact",
+    name: artifactPath,
+    attributes: {
+      project,
+      ...(input.builds?.length === 1 ? { buildId: input.builds[0]!.id } : {}),
+    },
+  };
+  graph.subjects.push(artifactSubject);
+  appendProjectEvidence(artifactSubject);
+  const manifestValidity = manifestValidityEvidence();
+  if (manifestValidity)
+    graph.assertions.push(
+      assertion(
+        artifactSubject,
+        "artifacts.manifestValidity",
+        manifestValidity.value,
+        scope,
+        "v1-project-facts",
+        manifestValidity.completeness,
+        undefined,
+        limits,
+      ),
+    );
+  for (const field of ["manifest", "stats", "emittedAssets", "assetSizes"] as const) {
+    const evidence = artifactEvidence(field);
+    if (!evidence) continue;
+    graph.assertions.push(
+      assertion(
+        artifactSubject,
+        `artifacts.${field}`,
+        evidence.value,
+        scope,
+        "v1-project-facts",
+        evidence.completeness,
+        undefined,
+        limits,
+      ),
+    );
+  }
+
+  const buildRecords = input.builds?.length ? input.builds : [undefined];
+  for (const build of buildRecords) {
+    const buildId = build?.id ?? "unknown";
+    const buildSubject: EvidenceSubject = {
+      id: stableEvidenceId(
+        "subject.build",
+        {
+          project,
+          buildId,
+          ...(build?.compilationName ? { compilationId: build.compilationName } : {}),
+          ...(build?.outputRoot ? { outputRoot: build.outputRoot } : {}),
+          ...(input.federationInstanceId
+            ? { federationInstanceId: input.federationInstanceId }
+            : {}),
+        },
+        limits,
+      ),
+      kind: "build",
+      name: buildId,
+      attributes: {
+        project,
+        ...(build?.compilationName ? { compilationId: build.compilationName } : {}),
+        ...(build?.outputRoot ? { outputRoot: build.outputRoot } : {}),
+      },
+    };
+    graph.subjects.push(buildSubject);
+    appendProjectEvidence(buildSubject);
   }
   const requiredFields = [
     "project",
