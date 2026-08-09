@@ -27,7 +27,7 @@ Related: [capabilities](./capabilities.md) ·
 | Rspack               | **supported** | `@module-federation/doctor/rspack`  | `compatibility` workflow → `remote-rspack` build + Doctor  | Direct `@module-federation/enhanced/rspack` (first-class)                                                    |
 | Rsbuild              | **supported** | `@module-federation/doctor/rsbuild` | `compatibility` workflow → `remote-rsbuild` build + Doctor | `@module-federation/rsbuild-plugin`                                                                          |
 | Webpack              | **supported** | `@module-federation/doctor/webpack` | `compatibility` workflow → `webpack-smoke` build + Doctor  | `@module-federation/enhanced/webpack` (#10 shipped)                                                          |
-| Modern.js            | **partial**   | `@module-federation/doctor/modern`  | `compatibility` workflow → `modern-smoke` (Rspack stub)    | Adapter API + Rspack-under-the-hood smoke; not full `@modern-js/app-tools` until a real Modern.js cell (#12) |
+| Modern.js            | **partial**   | `@module-federation/doctor/modern`  | `compatibility` workflow → `modern-smoke` (Rspack stub)    | Adapter API + Rspack-under-the-hood smoke; the prior Core export blocker is fixed in [#4897](https://github.com/module-federation/core/pull/4897), but this is not full `@modern-js/app-tools` evidence yet (#130) |
 
 ## Variant coverage
 
