@@ -72,13 +72,17 @@ interface ProjectEnvelope {
 
 const GROUP_PROBE_MAX_BYTES = 16 * 1024;
 // Keep group selection preflight independent from analysis budgets while
-// bounding its total disk read to 8 MiB (up to 512 full-size prefixes).
+// bounding its total disk read to 8 MiB. Probes start with a 16 KiB prefix and
+// may continue in deterministic, ordered chunks when the group is later.
 const GROUP_PROBE_MAX_TOTAL_BYTES = 8 * 1024 * 1024;
+
+type GroupProbeStatus = "found" | "absent" | "unknown";
 
 interface GroupProbeResult {
   file: string;
   contents?: string;
   complete: boolean;
+  status: GroupProbeStatus;
   group?: string;
 }
 
@@ -204,29 +208,33 @@ function groupFromProjectObjectPrefix(
   }
 }
 
-function federationGroupFromPrefix(contents: string | undefined): string | undefined {
-  if (!contents) return undefined;
+function federationGroupFromPrefix(contents: string | undefined): {
+  status: GroupProbeStatus;
+  group?: string;
+} {
+  if (!contents) return { status: "unknown" };
   let index = skipJsonWhitespace(contents, 0);
-  if (contents[index] !== "{") return undefined;
+  if (contents[index] !== "{") return { status: "unknown" };
   index += 1;
 
   while (true) {
     index = skipJsonWhitespace(contents, index);
-    if (index >= contents.length || contents[index] === "}") return undefined;
+    if (index >= contents.length) return { status: "unknown" };
+    if (contents[index] === "}") return { status: "absent" };
     const key = readJsonString(contents, index);
-    if (!key) return undefined;
+    if (!key) return { status: "unknown" };
     index = skipJsonWhitespace(contents, key.end);
-    if (contents[index] !== ":") return undefined;
+    if (contents[index] !== ":") return { status: "unknown" };
     const valueStart = skipJsonWhitespace(contents, index + 1);
 
     if (key.value === "project" && contents[valueStart] === "{") {
       const project = groupFromProjectObjectPrefix(contents, valueStart);
-      if (project.group) return project.group;
-      if (!project.complete) return undefined;
+      if (project.group) return { status: "found", group: project.group };
+      if (!project.complete) return { status: "unknown" };
       index = project.end!;
     } else {
       const valueEnd = skipJsonValue(contents, valueStart);
-      if (valueEnd === undefined) return undefined;
+      if (valueEnd === undefined) return { status: "unknown" };
       index = valueEnd;
     }
 
@@ -235,7 +243,8 @@ function federationGroupFromPrefix(contents: string | undefined): string | undef
       index += 1;
       continue;
     }
-    return undefined;
+    if (contents[index] === "}") return { status: "absent" };
+    return { status: "unknown" };
   }
 }
 
@@ -262,18 +271,23 @@ interface WorkspaceReadResult {
 
 async function readGroupProbe(
   file: string,
-  maxBytes: number,
-): Promise<{ contents?: string; complete: boolean }> {
-  if (maxBytes <= 0) return { contents: "", complete: true };
+  offset: number,
+  contentLimit: number,
+  fileSize: number,
+): Promise<{ chunk?: Buffer; complete: boolean }> {
+  const safeOffset = Math.max(0, offset);
+  const safeContentLimit = Math.max(safeOffset, contentLimit);
+  const safeFileSize = Math.max(0, fileSize);
+  const maxBytes = Math.max(0, Math.min(safeContentLimit + 1, safeFileSize + 1) - safeOffset);
+  if (maxBytes <= 0) return { chunk: Buffer.alloc(0), complete: true };
   let handle: Awaited<ReturnType<typeof fs.open>> | undefined;
   try {
     handle = await fs.open(file, "r");
     const buffer = Buffer.alloc(maxBytes);
-    const { bytesRead } = await handle.read(buffer, 0, maxBytes, 0);
-    const complete = bytesRead < maxBytes;
+    const { bytesRead } = await handle.read(buffer, 0, maxBytes, safeOffset);
     return {
-      contents: buffer.toString("utf8", 0, Math.min(bytesRead, GROUP_PROBE_MAX_BYTES)),
-      complete,
+      chunk: buffer.subarray(0, bytesRead),
+      complete: bytesRead < maxBytes,
     };
   } catch {
     return { complete: false };
@@ -303,53 +317,110 @@ async function probeWorkspaceGroups(
       maxWallTimeMs: Number.MAX_SAFE_INTEGER,
     }),
   );
-  const candidates: Array<{ file: string; bytes: number }> = [];
+  const probed: GroupProbeResult[] = [];
   const skippedFiles: string[] = [];
+  const unknownFiles: string[] = [];
+  let aggregateCapReached = false;
   for (const [index, file] of files.entries()) {
     const size = Math.max(0, sizes[index] ?? 0);
-    const bytes = Math.min(size + 1, GROUP_PROBE_MAX_BYTES + 1);
-    if (probeTracker.reserve({ files: 1, serializedBytes: bytes }))
-      candidates.push({ file, bytes });
-    else skippedFiles.push(file);
+    const initialContentLimit = Math.min(size, GROUP_PROBE_MAX_BYTES);
+    let reservedBytes = Math.min(size + 1, GROUP_PROBE_MAX_BYTES + 1);
+    if (!probeTracker.reserve({ files: 1, serializedBytes: reservedBytes })) {
+      skippedFiles.push(file);
+      aggregateCapReached = true;
+      continue;
+    }
+
+    let contentLimit = initialContentLimit;
+    let offset = 0;
+    let complete = false;
+    let classification: { status: GroupProbeStatus; group?: string } = {
+      status: "unknown",
+    };
+    let readSucceeded = false;
+    const chunks: Buffer[] = [];
+    while (true) {
+      const result = await readGroupProbe(file, offset, contentLimit, size);
+      if (result.chunk === undefined) break;
+      readSucceeded = true;
+      const contentBytes = Math.max(0, contentLimit - offset);
+      const appendedBytes = Math.min(result.chunk.length, contentBytes);
+      chunks.push(result.chunk.subarray(0, appendedBytes));
+      offset += appendedBytes;
+      complete = result.complete;
+      const contents = Buffer.concat(chunks).toString("utf8");
+      classification = complete
+        ? (() => {
+            try {
+              const value = JSON.parse(contents) as ProjectEnvelope;
+              const group = groupFromProjectEnvelope(value);
+              return group ? { status: "found" as const, group } : { status: "absent" as const };
+            } catch {
+              return { status: "unknown" as const };
+            }
+          })()
+        : federationGroupFromPrefix(contents);
+      if (classification.status !== "unknown" || complete) break;
+      if (contentLimit >= size) break;
+
+      const nextContentLimit = Math.min(
+        size,
+        Math.max(contentLimit * 2, contentLimit + GROUP_PROBE_MAX_BYTES),
+      );
+      const nextReservedBytes = Math.min(size + 1, nextContentLimit + 1);
+      const additionalBytes = nextReservedBytes - reservedBytes;
+      if (additionalBytes <= 0 || !probeTracker.reserve({ serializedBytes: additionalBytes })) {
+        aggregateCapReached = true;
+        break;
+      }
+      reservedBytes = nextReservedBytes;
+      contentLimit = nextContentLimit;
+    }
+
+    const contents = readSucceeded ? Buffer.concat(chunks).toString("utf8") : undefined;
+    if (classification.status === "unknown") unknownFiles.push(file);
+    probed.push({
+      file,
+      ...(contents !== undefined ? { contents } : {}),
+      complete,
+      status: classification.status,
+      ...(classification.group ? { group: classification.group } : {}),
+    });
   }
-  const probed = await mapBounded(
-    candidates,
-    async ({ file, bytes }): Promise<GroupProbeResult> => {
-      const result = await readGroupProbe(file, bytes);
-      const group = result.complete
-        ? federationGroupFromContents(result.contents)
-        : federationGroupFromPrefix(result.contents);
-      return { file, ...result, ...(group ? { group } : {}) };
-    },
-  );
   const scopedFiles: string[] = [];
   const scopedContents = new Map<string, string | undefined>();
   const groups = new Set<string>();
   let ungrouped = 0;
   for (const item of probed) {
     if (item.group) groups.add(item.group);
-    else if (item.contents !== undefined) ungrouped += 1;
+    else if (item.status === "absent") ungrouped += 1;
     if (item.group !== selectedGroup) continue;
     scopedFiles.push(item.file);
     if (item.complete) scopedContents.set(item.file, item.contents);
   }
+  const unresolvedFiles = [...new Set([...unknownFiles, ...skippedFiles])].sort((left, right) =>
+    left.localeCompare(right),
+  );
   return {
     scopedFiles,
     scopedContents,
     groups,
     ungrouped,
     diagnostics:
-      skippedFiles.length > 0
+      unresolvedFiles.length > 0
         ? [
             {
               kind: "probe",
-              files: skippedFiles,
-              message:
-                "Group pre-probe reached its " +
-                GROUP_PROBE_MAX_TOTAL_BYTES +
-                "-byte aggregate cap; " +
-                skippedFiles.length +
-                " project files were not inspected for federationGroup.",
+              files: unresolvedFiles,
+              message: aggregateCapReached
+                ? "Group pre-probe could not determine federationGroup for " +
+                  unresolvedFiles.length +
+                  " project files before reaching its " +
+                  GROUP_PROBE_MAX_TOTAL_BYTES +
+                  "-byte aggregate cap; group selection is unknown."
+                : "Group pre-probe could not determine federationGroup for " +
+                  unresolvedFiles.length +
+                  " project files; group selection is unknown.",
             } satisfies WorkspaceProjectDiagnostic,
           ]
         : [],

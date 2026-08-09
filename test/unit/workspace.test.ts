@@ -193,6 +193,43 @@ describe("workspace discovery", () => {
     }
   });
 
+  it("continues the bounded probe past large padding before federationGroup", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-padding-"));
+    try {
+      const cases = [
+        ["string", "x".repeat(20 * 1024)],
+        ["object", { nested: "x".repeat(20 * 1024) }],
+      ] as const;
+      const files: string[] = [];
+      for (const [kind, padding] of cases) {
+        const file = path.join(root, "apps", kind, ".mf", "doctor", "project.json");
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.writeFile(
+          file,
+          JSON.stringify({
+            project: {
+              name: `padded-${kind}`,
+              padding,
+              federationGroup: "selected",
+            },
+          }),
+        );
+        files.push(file);
+      }
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        group: "selected",
+      });
+
+      expect(discovery.files).toEqual(files.slice().sort());
+      expect(discovery.groups).toEqual(["selected"]);
+      expect(discovery.diagnostics).toEqual([]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("reports project files skipped by the aggregate group probe cap", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-probe-cap-"));
     try {
@@ -706,7 +743,7 @@ describe("workspace discovery", () => {
     }
   });
 
-  it("reports stale and conflicting project facts without changing discovery files", async () => {
+  it("reports workspace diagnostics without changing discovery files", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-"));
     try {
       for (const app of ["apps/one", "apps/two"]) {
@@ -740,15 +777,24 @@ describe("workspace discovery", () => {
             files: ["apps/invalid/.mf/doctor/project.json"],
             message: "Invalid project facts: apps/invalid/.mf/doctor/project.json",
           },
+          {
+            kind: "probe",
+            files: ["apps/unknown/.mf/doctor/project.json"],
+            message:
+              "Group pre-probe could not determine federationGroup for 1 project file before reaching its 8388608-byte aggregate cap; group selection is unknown.",
+          },
         ],
       });
       expect(result.exitCode).toBe(2);
       const finding = result.findings.find((item) => item.ruleId === "doctor/partial-analysis");
+      expect(finding?.message).toBe("Doctor found workspace diagnostics; analysis is incomplete.");
+      expect(finding?.message).not.toMatch(/stale|duplicate|conflicting|invalid/i);
       expect(finding?.detailsSchema).toBe("doctor.partial-analysis.v1");
       expect(finding?.details).toMatchObject({
         missing: [],
         workspaceDiagnostics: expect.arrayContaining([
           expect.objectContaining({ kind: "invalid" }),
+          expect.objectContaining({ kind: "probe" }),
         ]),
       });
     } finally {

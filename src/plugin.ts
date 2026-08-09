@@ -548,8 +548,8 @@ async function safeOutputRoot(
 function nuxtClientOutputRoot(outputRoot: string | undefined): string | undefined {
   if (!outputRoot) return undefined;
   const normalized = normalizePath(outputRoot);
-  const suffix = "/.nuxt/dist/server";
-  if (!normalized.endsWith(suffix)) return undefined;
+  const suffix = ".nuxt/dist/server";
+  if (normalized !== suffix && !normalized.endsWith(`/${suffix}`)) return undefined;
   return `${normalized.slice(0, -"/server".length)}/client`;
 }
 

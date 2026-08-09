@@ -484,7 +484,7 @@ export async function analyzeFederation(
   if (workspaceDiagnostics.length > 0) {
     pushWorkspacePartialFinding(
       findings,
-      "Doctor found stale, duplicate, conflicting, or invalid workspace project facts.",
+      "Doctor found workspace diagnostics; analysis is incomplete.",
       { workspaceDiagnostics },
       { missing: [], workspaceDiagnostics },
     );
