@@ -1774,7 +1774,7 @@ function orderBuildOutputs(outputs: BuildOutputInput[]): BuildOutputInput[] {
 }
 
 function orderBuildRecords(builds: BuildRecord[]): BuildRecord[] {
-  return builds.sort((left, right) => left.id.localeCompare(right.id));
+  return builds;
 }
 
 function outputArtifacts(

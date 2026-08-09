@@ -630,6 +630,44 @@ describe("artifact collection", () => {
     expect(facts.artifacts.emittedAssets).toEqual(["shared.js"]);
   });
 
+  it("keeps canonical numeric build ordering and legacy projection stable", async () => {
+    const root = await fixture({});
+    const outputs = Array.from({ length: 10 }, (_, index) => {
+      const outputNumber = 10 - index;
+      return viteOutput({
+        outputRoot: `out/${String(outputNumber).padStart(2, "0")}`,
+        emittedAssets: [`remote-${String(outputNumber).padStart(2, "0")}.js`],
+        sourceHook: `hook-${String(outputNumber).padStart(2, "0")}`,
+      });
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    await addBuildFacts(facts, [], root, undefined, outputs);
+
+    expect(facts.builds?.map((build) => build.id)).toEqual([
+      "vite-build-1",
+      "vite-build-2",
+      "vite-build-3",
+      "vite-build-4",
+      "vite-build-5",
+      "vite-build-6",
+      "vite-build-7",
+      "vite-build-8",
+      "vite-build-9",
+      "vite-build-10",
+    ]);
+    expect(facts.builds?.map((build) => build.sourceHook)).toEqual(
+      Array.from({ length: 10 }, (_, index) => `hook-${String(index + 1).padStart(2, "0")}`),
+    );
+    expect(facts.artifacts.emittedAssets).toEqual(
+      Array.from(
+        { length: 10 },
+        (_, index) =>
+          `out/${String(index + 1).padStart(2, "0")}/remote-${String(index + 1).padStart(2, "0")}.js`,
+      ).sort(),
+    );
+  });
+
   it("uses the current output root for bare manifest budget assets", async () => {
     const root = await fixture({
       "out/a/mf-manifest.json": JSON.stringify({
