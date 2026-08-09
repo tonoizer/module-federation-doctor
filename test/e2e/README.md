@@ -4,9 +4,11 @@ Playwright drives the healthy [`examples/mixed-federation`](../../examples/mixed
 green path and the intentional [`examples/mixed-federation-issues`](../../examples/mixed-federation-issues)
 red path. The latter proves that the known-bad host/remotes still boot and serve their
 runtime entrypoints; the expected Doctor findings are asserted by `scripts/giga-smoke.mjs`.
-It also loads the production-built [`examples/compatibility/webpack`](../../examples/compatibility/webpack)
-fixture in a browser and executes two independent Webpack federation containers from the
-same compilation.
+It also runs a compatibility matrix. Webpack and Vite each emit two independent federation
+containers from one production configuration. Rspack and Rsbuild remain covered by dedicated
+single-instance adapter cells because their current federation plugins enforce one plugin per
+compiler/configuration. The healthy mixed-federation path combines a Vite host with Rspack and
+Rsbuild remotes.
 
 ## Run locally
 
@@ -14,8 +16,8 @@ same compilation.
 pnpm test:e2e
 ```
 
-`pnpm test:e2e` builds the repo, mixed-federation examples, and the multi-instance Webpack
-fixture, then runs Playwright. Playwright starts the seven preview servers defined in
+`pnpm test:e2e` builds the repo, mixed-federation examples, and the four compatibility matrix
+fixtures, then runs Playwright. Playwright starts the ten preview servers defined in
 `playwright.config.ts`.
 The recommendation-profile suite also runs the built CLI and real Vite adapter builds
 against temporary projects to verify demo, production, CI, runtime-plugin, and exact-subpath-share behavior.
@@ -55,13 +57,16 @@ curl -fsS http://127.0.0.1:3001/remoteEntry.js | head
 curl -fsS http://127.0.0.1:3002/remoteEntry.js | head
 curl -fsS http://127.0.0.1:5173/
 curl -fsS http://127.0.0.1:3003/
+curl -fsS http://127.0.0.1:3004/dist/first/firstRemoteEntry.js | head
+curl -fsS http://127.0.0.1:3005/dist/firstRemoteEntry.js | head
+curl -fsS http://127.0.0.1:3006/dist/firstRemoteEntry.js | head
 ```
 
 ### Common causes
 
 - **Remote entry 404** — example not built; run `pnpm test:examples` or full
   `pnpm test:e2e` so builds run first.
-- **Port already in use** — stop stale preview processes on 3001, 3002, 3003, or 5173.
+- **Port already in use** — stop stale preview processes on 3001, 3002, 3003, 3004, 3005, 3006, 5173, or 5183.
 - **`localhost` vs `127.0.0.1`** — preview servers bind IPv4 loopback; probing
   `localhost` can fail in CI when it resolves to `::1`.
 - **Slow CI cold start** — webServer timeout is 120s; readiness polling in

@@ -54,7 +54,136 @@
       "bundler": "webpack",
       "package": "@mfdoctor-example/webpack-smoke",
       "expectedErrors": 0,
-      "coverage": ["Webpack", "CommonJS adapter", "production"]
+      "coverage": [
+        "Webpack",
+        "CommonJS adapter",
+        "two federation plugin instances",
+        "per-instance artifact ownership",
+        "production"
+      ],
+      "runtime": {
+        "label": "Webpack",
+        "port": 3003,
+        "entryKind": "global",
+        "instances": [
+          {
+            "name": "checkout",
+            "identity": "webpack_smoke_checkout",
+            "container": "webpack_smoke_checkout",
+            "entry": "/dist/checkout/checkoutRemoteEntry.js",
+            "fileName": "checkout/checkoutRemoteEntry.js",
+            "expose": "./Widget",
+            "expectedValue": "webpack-smoke-widget",
+            "artifactFiles": ["checkout/mf-manifest.json", "checkout/mf-stats.json"]
+          },
+          {
+            "name": "catalog",
+            "identity": "webpack_smoke_catalog",
+            "container": "webpack_smoke_catalog",
+            "entry": "/dist/catalog/catalogRemoteEntry.js",
+            "fileName": "catalog/catalogRemoteEntry.js",
+            "expose": "./Catalog",
+            "expectedValue": "webpack-smoke-catalog",
+            "artifactFiles": ["catalog/mf-manifest.json", "catalog/mf-stats.json"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "vite-multi-instance",
+      "fixture": "examples/compatibility/vite-multi-instance",
+      "bundler": "vite",
+      "package": "@mfdoctor-example/vite-multi-instance",
+      "expectedErrors": 0,
+      "coverage": [
+        "Vite 5",
+        "ESM config",
+        "two federation plugin instances",
+        "per-instance manifest and stats ownership",
+        "production"
+      ],
+      "runtime": {
+        "label": "Vite",
+        "port": 3004,
+        "entryKind": "module",
+        "instances": [
+          {
+            "name": "first",
+            "identity": "vite_multi_first",
+            "entry": "/dist/first/firstRemoteEntry.js",
+            "fileName": "first/firstRemoteEntry.js",
+            "expose": "./First",
+            "expectedValue": "vite-multi-first",
+            "artifactFiles": ["first/mf-manifest.json", "first/mf-stats.json"]
+          },
+          {
+            "name": "second",
+            "identity": "vite_multi_second",
+            "entry": "/dist/second/secondRemoteEntry.js",
+            "fileName": "second/secondRemoteEntry.js",
+            "expose": "./Second",
+            "expectedValue": "vite-multi-second",
+            "artifactFiles": ["second/mf-manifest.json", "second/mf-stats.json"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "rspack-adapter",
+      "fixture": "examples/compatibility/rspack-adapter",
+      "bundler": "rspack",
+      "package": "@mfdoctor-example/rspack-adapter",
+      "expectedErrors": 0,
+      "coverage": [
+        "Rspack",
+        "Enhanced",
+        "single-instance adapter",
+        "manifest",
+        "stats",
+        "production"
+      ],
+      "runtime": {
+        "label": "Rspack adapter",
+        "port": 3005,
+        "entryKind": "global",
+        "instances": [
+          {
+            "name": "adapter",
+            "identity": "rspack_adapter",
+            "container": "rspack_adapter",
+            "entry": "/dist/firstRemoteEntry.js",
+            "fileName": "firstRemoteEntry.js",
+            "expose": "./First",
+            "expectedValue": "rspack-adapter-first",
+            "artifactFiles": ["mf-manifest.json", "mf-stats.json"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "rsbuild-adapter",
+      "fixture": "examples/compatibility/rsbuild-adapter",
+      "bundler": "rsbuild",
+      "package": "@mfdoctor-example/rsbuild-adapter",
+      "expectedErrors": 0,
+      "coverage": ["Rsbuild", "single-instance adapter", "manifest", "stats", "production"],
+      "runtime": {
+        "label": "Rsbuild adapter",
+        "port": 3006,
+        "entryKind": "global",
+        "instances": [
+          {
+            "name": "adapter",
+            "identity": "rsbuild_adapter",
+            "container": "rsbuild_adapter",
+            "entry": "/dist/firstRemoteEntry.js",
+            "fileName": "firstRemoteEntry.js",
+            "expose": "./First",
+            "expectedValue": "rsbuild-adapter-first",
+            "artifactFiles": ["mf-manifest.json", "mf-stats.json"]
+          }
+        ]
+      }
     },
     {
       "id": "modern",
