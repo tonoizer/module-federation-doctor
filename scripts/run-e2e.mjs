@@ -332,11 +332,13 @@ function terminateActiveChild(signal, force = false) {
   }
 }
 
-for (const signal of ["SIGINT", "SIGTERM"]) {
+const interruptSignals =
+  process.platform === "win32" ? ["SIGINT", "SIGTERM"] : ["SIGINT", "SIGTERM", "SIGHUP"];
+for (const signal of interruptSignals) {
   process.on(signal, () => {
     interruptCount += 1;
     interruptedSignal ??= signal;
-    process.exitCode = signal === "SIGINT" ? 130 : 143;
+    process.exitCode = signal === "SIGINT" ? 130 : signal === "SIGHUP" ? 129 : 143;
     terminateActiveChild(signal, interruptCount > 1);
     scheduleServerCleanup(interruptCount > 1);
   });
@@ -569,7 +571,9 @@ async function run(label, command, args, env, { captureOutput = false } = {}) {
 }
 
 function isPortConflict(error) {
-  return /EADDRINUSE|address already in use|port .* in use/i.test(error?.output ?? "");
+  return /EADDRINUSE|address already in use|is already used|port .* in use/i.test(
+    error?.output ?? "",
+  );
 }
 
 const requestedOffset = process.env.MFDOCTOR_E2E_PORT_OFFSET;
@@ -604,6 +608,12 @@ try {
         `Using E2E port offset ${offset}: ${BASE_PORTS.map((port) => port + offset).join(", ")}\n`,
       );
       await run("build package", pnpm, ["build"], environment);
+      await run(
+        "clean E2E Doctor artifacts",
+        process.execPath,
+        ["scripts/clean-e2e-artifacts.mjs"],
+        environment,
+      );
       await run(
         "run federation matrix and cross-app gate",
         process.execPath,
