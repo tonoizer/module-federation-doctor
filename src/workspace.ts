@@ -177,33 +177,37 @@ function groupFromProjectObjectPrefix(
   contents: string,
   objectStart: number,
 ): ProjectObjectPrefixResult {
+  const incomplete = (): ProjectObjectPrefixResult => ({
+    complete: false,
+    ...(group ? { group } : {}),
+  });
   let index = objectStart + 1;
   let group: string | undefined;
   while (true) {
     index = skipJsonWhitespace(contents, index);
-    if (index >= contents.length) return { complete: false };
+    if (index >= contents.length) return incomplete();
     if (contents[index] === "}") return { complete: true, end: index + 1 };
 
     const key = readJsonString(contents, index);
-    if (!key) return { complete: false };
+    if (!key) return incomplete();
     index = skipJsonWhitespace(contents, key.end);
-    if (contents[index] !== ":") return { complete: false };
+    if (contents[index] !== ":") return incomplete();
     const valueStart = skipJsonWhitespace(contents, index + 1);
     if (key.value === "federationGroup") {
       if (contents[valueStart] === '"') {
         const value = readJsonString(contents, valueStart);
-        if (!value) return { complete: false };
+        if (!value) return incomplete();
         group = value.value.trim() || undefined;
         index = value.end;
       } else {
         const valueEnd = skipJsonValue(contents, valueStart);
-        if (valueEnd === undefined) return { complete: false };
+        if (valueEnd === undefined) return incomplete();
         group = undefined;
         index = valueEnd;
       }
     } else {
       const valueEnd = skipJsonValue(contents, valueStart);
-      if (valueEnd === undefined) return { complete: false };
+      if (valueEnd === undefined) return incomplete();
       index = valueEnd;
     }
 
@@ -215,7 +219,7 @@ function groupFromProjectObjectPrefix(
     if (contents[index] === "}") {
       return { complete: true, end: index + 1, ...(group ? { group } : {}) };
     }
-    return { complete: false };
+    return incomplete();
   }
 }
 
@@ -227,10 +231,14 @@ function federationGroupFromPrefix(contents: string | undefined): {
   let index = skipJsonWhitespace(contents, 0);
   if (contents[index] !== "{") return { status: "unknown" };
   index += 1;
+  let provisionalGroup: string | undefined;
 
   while (true) {
     index = skipJsonWhitespace(contents, index);
-    if (index >= contents.length) return { status: "unknown" };
+    if (index >= contents.length)
+      return provisionalGroup
+        ? { status: "found", group: provisionalGroup }
+        : { status: "unknown" };
     if (contents[index] === "}") return { status: "absent" };
     const key = readJsonString(contents, index);
     if (!key) return { status: "unknown" };
@@ -240,12 +248,17 @@ function federationGroupFromPrefix(contents: string | undefined): {
 
     if (key.value === "project" && contents[valueStart] === "{") {
       const project = groupFromProjectObjectPrefix(contents, valueStart);
-      if (!project.complete) return { status: "unknown" };
-      if (project.group) return { status: "found", group: project.group };
+      if (!project.complete) {
+        return project.group ? { status: "found", group: project.group } : { status: "unknown" };
+      }
+      if (project.group) provisionalGroup = project.group;
       index = project.end!;
     } else {
       const valueEnd = skipJsonValue(contents, valueStart);
-      if (valueEnd === undefined) return { status: "unknown" };
+      if (valueEnd === undefined)
+        return provisionalGroup
+          ? { status: "found", group: provisionalGroup }
+          : { status: "unknown" };
       index = valueEnd;
     }
 
@@ -255,7 +268,7 @@ function federationGroupFromPrefix(contents: string | undefined): {
       continue;
     }
     if (contents[index] === "}") return { status: "absent" };
-    return { status: "unknown" };
+    return provisionalGroup ? { status: "found", group: provisionalGroup } : { status: "unknown" };
   }
 }
 

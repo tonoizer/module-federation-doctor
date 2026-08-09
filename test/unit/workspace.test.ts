@@ -231,6 +231,56 @@ describe("workspace discovery", () => {
     }
   });
 
+  it("provisionally selects an early group when a huge trailing value exceeds the probe cap", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-trailing-"));
+    try {
+      const file = path.join(root, ".mf", "doctor", "project.json");
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(
+        file,
+        JSON.stringify({
+          project: { name: "trailing-value", federationGroup: "selected" },
+          trailing: "x".repeat(9 * 1024 * 1024),
+        }),
+      );
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        group: "selected",
+      });
+
+      expect(discovery.files).toEqual([file]);
+      expect(discovery.groups).toEqual(["selected"]);
+      expect(discovery.diagnostics).toEqual([]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps last-key-wins for a later parseable federationGroup", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-last-key-"));
+    try {
+      const file = path.join(root, ".mf", "doctor", "project.json");
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(
+        file,
+        '{"project":{"name":"last-key","federationGroup":"selected","federationGroup":"other"}}',
+      );
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        group: "selected",
+      });
+
+      expect(discovery.files).toEqual([]);
+      expect(discovery.groups).toEqual(["other"]);
+      expect(discovery.ungrouped).toBe(0);
+      expect(discovery.diagnostics).toEqual([]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
   it.each([
     ["an empty string", '""'],
     ["a non-string value", "false"],
