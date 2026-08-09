@@ -186,8 +186,10 @@ describe("evidence-aware rule rollout bridge", () => {
       },
       output: { formats: [] as never[] },
     };
-    const legacy = await analyze(base);
-    const compat = await analyze({ ...base, evidenceRollout: compatRollout() });
+    const legacy = await analyzeBuild(base, [], { moduleFederationPluginCount: 0 });
+    const compat = await analyzeBuild({ ...base, evidenceRollout: compatRollout() }, [], {
+      moduleFederationPluginCount: 0,
+    });
     const evaluatedIds = new Set(
       compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id),
     );
@@ -227,18 +229,19 @@ describe("evidence-aware rule rollout bridge", () => {
     const root = await fixture("group3-heuristics-rollout-bridge", {
       "src/index.ts": [
         'import { create } from "zustand";',
-        'import lodash from "lodash";',
+        'import debounce from "lodash/debounce";',
+        'import React from "react";',
+        'import "react-dom/client";',
+        "void debounce;",
         "export const useStore = create(() => ({}));",
         "",
       ].join("\n"),
-      "src/deep.ts": 'import "react-dom/client";\n',
     });
     await fs.writeFile(
       path.join(root, "package.json"),
       JSON.stringify({
         name: "group3-heuristics-rollout-bridge",
         dependencies: {
-          vite: "6.1.0",
           zustand: "^5.0.0",
           lodash: "^4.17.0",
           react: "19.1.1",
@@ -257,7 +260,7 @@ describe("evidence-aware rule rollout bridge", () => {
         shared: {
           zustand: { singleton: false },
           lodash: { singleton: false, eager: true },
-          react: { singleton: true, requiredVersion: "^18" },
+          axios: { singleton: false },
           "react-dom": { singleton: true },
         },
       },
@@ -276,7 +279,7 @@ describe("evidence-aware rule rollout bridge", () => {
         "shared/deep-import-bypass": "warning" as const,
         "shared/prefix-share-recommended": "info" as const,
         "security/get-public-path-dynamic-code": "warning" as const,
-        "shared/react-host-missing": "off" as const,
+        "shared/react-host-missing": "warning" as const,
       },
     };
     const legacy = await analyze(analyzeOptions);
@@ -284,23 +287,121 @@ describe("evidence-aware rule rollout bridge", () => {
 
     const parity = compareV1Outputs(legacy.report, compat.report);
     expect(parity.equal).toBe(true);
-    for (const id of [
-      "security/get-public-path-dynamic-code",
-      "shared/version-unsatisfied",
-      "shared/eager-without-singleton",
-    ] as const) {
-      expect(
-        compat.evidence?.evaluations.find((evaluation) => evaluation.rule.id === id),
-      ).toMatchObject({ outcome: "fail", completeness: "complete" });
+
+    const expectedOutcomes = {
+      "security/get-public-path-dynamic-code": "fail",
+      "config/plugin-package-mismatch": "fail",
+      "shared/singleton-risk": "fail",
+      "shared/eager-without-singleton": "fail",
+      "shared/unused": "fail",
+      "shared/candidate": "pass",
+      "shared/react-host-missing": "fail",
+      "shared/deep-import-bypass": "fail",
+      "shared/prefix-share-recommended": "fail",
+    } as const;
+    for (const [id, outcome] of Object.entries(expectedOutcomes)) {
+      const evaluation = compat.evidence?.evaluations.find((candidate) => candidate.rule.id === id);
+      expect(evaluation, id).toMatchObject({ outcome, completeness: "complete" });
     }
+
+    const versionFacts = structuredClone(compat.facts);
+    versionFacts.dependencies.installed = {
+      ...versionFacts.dependencies.installed,
+      zustand: "5.0.0",
+    };
+    versionFacts.moduleFederation!.shared!.zustand!.requiredVersion = "^4.0.0";
+    const versionRun = await runMigratedEvidenceRules(versionFacts, analyzeOptions.rules);
     expect(
-      compat.evidence?.evaluations.find(
-        (evaluation) => evaluation.rule.id === "shared/singleton-risk",
+      versionRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "shared/version-unsatisfied",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+  });
+
+  it("keeps plugin-package-mismatch unknown on webpack without plugin registration evidence", async () => {
+    const root = await fixture("group3-webpack-plugin-count-rollout-bridge");
+    const baseline = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      moduleFederation: { name: "host" },
+      output: { formats: [] },
+      rules: quietRules,
+    });
+    expect(baseline.facts.bundler.moduleFederationPluginCount).toBeUndefined();
+
+    const missingCount = structuredClone(baseline.facts);
+    delete missingCount.bundler.moduleFederationPluginCount;
+    const migrated = await runMigratedEvidenceRules(missingCount, {
+      "config/plugin-package-mismatch": "warning",
+    });
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toMatchObject({
+      value: 0,
+      completeness: { status: "not-collected" },
+    });
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/plugin-package-mismatch",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "prerequisite-missing" });
+
+    const viteRoot = await fixture("group3-vite-plugin-package-rollout-bridge");
+    const viteLegacy = await analyze(options(viteRoot, createEvidenceRolloutController()));
+    const viteCompat = await analyze(options(viteRoot, compatRollout()));
+    expect(compareV1Outputs(viteLegacy.report, viteCompat.report).equal).toBe(true);
+    expect(
+      viteCompat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/plugin-package-mismatch",
       ),
     ).toMatchObject({ outcome: "fail", completeness: "complete" });
     expect(
-      compat.evidence?.evaluations.find((evaluation) => evaluation.rule.id === "shared/candidate"),
-    ).toMatchObject({ outcome: "pass", completeness: "complete" });
+      viteCompat.report.findings.some(
+        (finding) => finding.ruleId === "config/plugin-package-mismatch",
+      ),
+    ).toBe(true);
+  });
+
+  it("ledgers shared/unused as unknown when unresolved dynamic evidence is inconclusive", async () => {
+    const root = await fixture("group3-unresolved-unused-rollout-bridge");
+    await fs.mkdir(path.join(root, "src"), { recursive: true });
+    await fs.copyFile(
+      path.resolve("fixtures/dynamic-imports/unresolved-load-share.ts"),
+      path.join(root, "src/app.ts"),
+    );
+    const analyzeOptions = {
+      root,
+      bundler: "vite" as const,
+      mode: "development" as const,
+      output: { formats: [] as never[] },
+      rules: {
+        ...quietRules,
+        "doctor/partial-analysis": "warning" as const,
+        "shared/unused": "warning" as const,
+      },
+      moduleFederation: {
+        name: "dyn_partial",
+        shared: { lodash: { singleton: false } },
+      },
+    };
+    const legacy = await analyze(analyzeOptions);
+    const compat = await analyze({ ...analyzeOptions, evidenceRollout: compatRollout() });
+
+    expect(legacy.report.findings.some((finding) => finding.ruleId === "shared/unused")).toBe(
+      false,
+    );
+    expect(compat.report.findings.some((finding) => finding.ruleId === "shared/unused")).toBe(
+      false,
+    );
+    expect(
+      compat.evidence?.evaluations.find((item) => item.rule.id === "shared/unused"),
+    ).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "evidence-inconclusive",
+    });
   });
 
   it("keeps absence-sensitive Group 3 shared rules unknown under partial source evidence", async () => {

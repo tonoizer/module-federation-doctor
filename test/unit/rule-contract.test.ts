@@ -294,6 +294,28 @@ describe("evidence-aware rule contract", () => {
     expect(result.evaluations[0]?.confidence).toBe("low");
   });
 
+  it("accepts inconclusive rule decisions as unknown evaluations", async () => {
+    const rule = {
+      meta,
+      evaluate: () => ({
+        outcome: "unknown" as const,
+        reason: "Heuristic evidence cannot establish certainty.",
+        reasonCode: "evidence-inconclusive" as const,
+      }),
+    };
+    const result = await runEvidenceAwareRules({
+      graph: graph({
+        assertions: [makeAssertion("config.declared", "assertion:config")],
+      }),
+      rules: [rule],
+    });
+    expect(result.evaluations[0]).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "evidence-inconclusive",
+      completeness: "complete",
+    });
+  });
+
   it("maps migrated config.declared and source.scan prereqs to emitted graph predicates only", async () => {
     const configRule = ruleInventory.find((entry) => entry.id === "config/expose-key-invalid");
     const sourceRule = ruleInventory.find((entry) => entry.id === "config/runtime-plugin-missing");
@@ -614,6 +636,9 @@ describe("evidence-aware rule contract", () => {
       ruleInventory.find((entry) => entry.id === "config/plugin-package-mismatch")?.group,
     ).toBe(3);
     expect(ruleInventory.find((entry) => entry.id === "shared/unused")?.status).toBe("migrated");
+    expect(
+      ruleInventory.find((entry) => entry.id === "config/plugin-package-mismatch")?.evidenceReads,
+    ).toContain("bundler.moduleFederationPluginCount");
     expect(ruleInventory.find((entry) => entry.id === "shared/unused")?.evidenceReads).toContain(
       "imports.sourceScan",
     );

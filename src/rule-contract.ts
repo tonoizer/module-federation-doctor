@@ -101,7 +101,8 @@ export type RuleUnknownResult = RuleNonConclusiveEvaluationBase & {
     | "prerequisite-incomplete"
     | "prerequisite-below-confidence"
     | "unsupported"
-    | "applicability-unknown";
+    | "applicability-unknown"
+    | "evidence-inconclusive";
   reason: string;
   missingRequirements: EvidenceRequirement[];
 };
@@ -189,6 +190,7 @@ export function capConfidence(
 
 export type EvidenceRuleDecision =
   | { outcome: "pass" | "fail"; reason: string; findings?: EvidenceRuleFinding[] }
+  | { outcome: "unknown"; reason: string; reasonCode?: "evidence-inconclusive" }
   | (Pick<RulePassResult | RuleFailResult, "outcome" | "reason"> & {
       findings?: EvidenceRuleFinding[];
     });
