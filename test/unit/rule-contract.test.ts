@@ -231,6 +231,10 @@ describe("evidence-aware rule contract", () => {
     ]);
     expect([...ruleInventoryIds].sort()).toEqual(runtimeIds);
     expect(new Set(ruleInventoryIds).size).toBe(ruleInventoryIds.length);
+    expect(ruleInventoryIds).not.toContain("config/nested-producer-dts-extract");
+    expect(ruleInventoryIds).not.toContain("config/remote-type-urls-missing");
+    expect(runtimeIds).not.toContain("config/nested-producer-dts-extract");
+    expect(runtimeIds).not.toContain("config/remote-type-urls-missing");
     expect(ruleInventory.every((entry) => entry.status === "legacy")).toBe(true);
     for (const entry of ruleInventory) {
       expect(entry.version).not.toBe("");

@@ -595,6 +595,37 @@ async function hasNitroProjectSignal(root: string): Promise<boolean> {
   }
 }
 
+type SiblingOutputRecoveryOptions = {
+  findServer: (output: BuildOutputInput) => boolean;
+  resolveClientRoot: (outputRoot: string | undefined) => string | undefined;
+  cloneServer?: (server: BuildOutputInput) => BuildOutputInput;
+};
+
+async function includeSiblingOutput(
+  root: string,
+  incoming: BuildOutputInput[],
+  options: SiblingOutputRecoveryOptions,
+): Promise<BuildOutputInput[]> {
+  const server = incoming.find(options.findServer);
+  const clientRoot = options.resolveClientRoot(server?.outputRoot);
+  if (!server || !clientRoot || incoming.some((output) => output.outputRoot === clientRoot))
+    return incoming;
+  const emittedAssets = await listBoundedOutputAssets(root, clientRoot);
+  if (emittedAssets.length === 0) return incoming;
+  return [
+    ...incoming,
+    {
+      ...(options.cloneServer?.(server) ?? server),
+      outputRoot: clientRoot,
+      emittedAssets,
+      emittedAssetsSource: "output-root-scan",
+      emittedAssetsComplete: true,
+      sourceHook: "closeBundle",
+      targetKind: "web",
+    },
+  ];
+}
+
 /**
  * Nuxt can run its client and SSR Vite builds in separate processes. In that
  * case an in-memory output registry cannot carry the client manifest/stats to
@@ -606,26 +637,10 @@ async function includeNuxtClientOutput(
   root: string,
   incoming: BuildOutputInput[],
 ): Promise<BuildOutputInput[]> {
-  const server = incoming.find(
-    (output) => output.targetKind === "node" && output.buildWrite !== false,
-  );
-  const clientRoot = nuxtClientOutputRoot(server?.outputRoot);
-  if (!server || !clientRoot || incoming.some((output) => output.outputRoot === clientRoot))
-    return incoming;
-  const emittedAssets = await listBoundedOutputAssets(root, clientRoot);
-  if (emittedAssets.length === 0) return incoming;
-  return [
-    ...incoming,
-    {
-      ...server,
-      outputRoot: clientRoot,
-      emittedAssets,
-      emittedAssetsSource: "output-root-scan",
-      emittedAssetsComplete: true,
-      sourceHook: "closeBundle",
-      targetKind: "web",
-    },
-  ];
+  return includeSiblingOutput(root, incoming, {
+    findServer: (output) => output.targetKind === "node" && output.buildWrite !== false,
+    resolveClientRoot: nuxtClientOutputRoot,
+  });
 }
 
 /**
@@ -641,27 +656,15 @@ async function includeNitroClientOutput(
   incoming: BuildOutputInput[],
 ): Promise<BuildOutputInput[]> {
   if (!(await hasNitroProjectSignal(root))) return incoming;
-  const server = incoming.find(
-    (output) => output.buildWrite !== false && nitroClientOutputRoot(output.outputRoot),
-  );
-  const clientRoot = nitroClientOutputRoot(server?.outputRoot);
-  if (!server || !clientRoot || incoming.some((output) => output.outputRoot === clientRoot))
-    return incoming;
-  const emittedAssets = await listBoundedOutputAssets(root, clientRoot);
-  if (emittedAssets.length === 0) return incoming;
-  const { target: _serverTarget, ...clientBase } = server;
-  return [
-    ...incoming,
-    {
-      ...clientBase,
-      outputRoot: clientRoot,
-      emittedAssets,
-      emittedAssetsSource: "output-root-scan",
-      emittedAssetsComplete: true,
-      sourceHook: "closeBundle",
-      targetKind: "web",
+  return includeSiblingOutput(root, incoming, {
+    findServer: (output) =>
+      output.buildWrite !== false && !!nitroClientOutputRoot(output.outputRoot),
+    resolveClientRoot: nitroClientOutputRoot,
+    cloneServer: (server) => {
+      const { target: _serverTarget, ...clientBase } = server;
+      return clientBase;
     },
-  ];
+  });
 }
 
 /**

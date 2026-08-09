@@ -25,9 +25,7 @@ failure—such as a missing `name`—stay in the catalog but are not demoed here
 | `config/implementation-suspicious-suppressed` | _(none)_                                | `rules["config/implementation-suspicious"] = "off"` |
 | `config/remote-localhost-in-production`       | `config/remote-localhost-in-production` | warning (CI mode)                                   |
 | `config/remote-alias-prefix-collision`        | `config/remote-alias-prefix-collision`  | error                                               |
-| `config/nested-producer-dts-extract`          | _(none)_                                | needs exposed-to-remote evidence                    |
 | `config/dts-output-dir-mismatch`              | `config/dts-output-dir-mismatch`        | warning                                             |
-| `config/remote-type-urls-missing`             | _(none)_                                | default `@mf-types.zip` URL is inferred             |
 
 ## Shared
 

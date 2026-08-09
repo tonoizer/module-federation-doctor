@@ -48,7 +48,6 @@ export default defineConfig({
         "reliability/version-first-offline-remotes": "off",
         // Local preview remotes are intentional for this example.
         "config/remote-localhost-in-production": "off",
-        "config/remote-type-urls-missing": "off",
         // MF vite may inject chunk groups; this demo is not testing that dialect.
         "vite/manual-chunks-conflict": "off",
       },

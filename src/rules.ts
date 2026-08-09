@@ -81,6 +81,16 @@ function createRule(
   });
 }
 
+function viteDefaultVarRemotes(remotes: NormalizedMFConfig["remotes"]) {
+  return Object.entries(remotes)
+    .filter(([, remote]) => !remote.type || remote.type === "var")
+    .map(([name, remote]) => ({
+      name,
+      type: remote.type ?? "var",
+      entry: remote.entry,
+    }));
+}
+
 function manifestAssetPath(manifestPath: string, asset: string): string {
   const normalizedAsset = asset.replaceAll("\\", "/").replace(/^\.\//, "");
   const manifestDir = path.posix.dirname(manifestPath);
@@ -805,12 +815,6 @@ export const builtInRules: DoctorRule[] = [
       );
     }
   }),
-  createRule("config/nested-producer-dts-extract", "warning", (_context) => {
-    // A config with exposes and remotes is not enough evidence. The warning is
-    // deferred until the collector can prove an exposed module re-exports a
-    // configured remote through its local import graph.
-    return;
-  }),
   createRule("config/dts-output-dir-mismatch", "warning", (context) => {
     const config = mf(context);
     if (!config || config.dts?.enabled === false) return;
@@ -832,12 +836,6 @@ export const builtInRules: DoctorRule[] = [
       { filename, filenameDir, outputDir: normalizedOutput },
       "Align `filename` nesting with `dts.generateTypes.outputDir` so type archives resolve next to the container.",
     );
-  }),
-  createRule("config/remote-type-urls-missing", "warning", (_context) => {
-    // The default producer output is inferred from a direct remoteEntry.js
-    // (`@mf-types.zip`). Without producer artifacts or an explicit mismatch,
-    // Doctor has no proof that the inferred URL is wrong, so stay silent.
-    return;
   }),
   createRule("artifact/public-path-non-string-manifest", "warning", (context) => {
     const config = mf(context);
@@ -1342,13 +1340,7 @@ export const builtInRules: DoctorRule[] = [
 
     // Vite string remotes / omitted type default to `var`. Explicit types such as
     // `module` or `global` are intentional and stay quiet.
-    const defaultVarRemotes = Object.entries(remotes)
-      .filter(([, remote]) => !remote.type || remote.type === "var")
-      .map(([name, remote]) => ({
-        name,
-        type: remote.type ?? "var",
-        entry: remote.entry,
-      }));
+    const defaultVarRemotes = viteDefaultVarRemotes(remotes);
     if (defaultVarRemotes.length === 0) return;
 
     report(
@@ -1369,13 +1361,7 @@ export const builtInRules: DoctorRule[] = [
     const remotes = config?.remotes ?? {};
     if (Object.keys(remotes).length === 0) return;
 
-    const defaultVarRemotes = Object.entries(remotes)
-      .filter(([, remote]) => !remote.type || remote.type === "var")
-      .map(([name, remote]) => ({
-        name,
-        type: remote.type ?? "var",
-        entry: remote.entry,
-      }));
+    const defaultVarRemotes = viteDefaultVarRemotes(remotes);
     if (defaultVarRemotes.length === 0) return;
 
     report(

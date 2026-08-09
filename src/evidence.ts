@@ -434,13 +434,16 @@ export function redactEvidenceValue(value: EvidenceValue, options?: EvidenceLimi
   return redacted;
 }
 
-function canonicalizeValue(value: EvidenceValue): EvidenceValue {
-  if (Array.isArray(value)) return value.map(canonicalizeValue);
+const VOLATILE_KEY = /^(?:timestamp|time|createdAt|updatedAt|sessionId|traceId)$/i;
+
+function canonicalizeValue(value: EvidenceValue, omitVolatileKeys = false): EvidenceValue {
+  if (Array.isArray(value)) return value.map((item) => canonicalizeValue(item, omitVolatileKeys));
   if (!isRecord(value)) return value;
   return Object.fromEntries(
     Object.keys(value)
+      .filter((key) => !omitVolatileKeys || !VOLATILE_KEY.test(key))
       .sort()
-      .map((key) => [key, canonicalizeValue(value[key] ?? null)]),
+      .map((key) => [key, canonicalizeValue(value[key] ?? null, omitVolatileKeys)]),
   );
 }
 
@@ -455,21 +458,8 @@ export function canonicalizeEvidenceValue(
 
 function stableJson(value: EvidenceValue, options?: EvidenceLimits): string {
   const redacted = redactEvidenceValue(value, options);
-  const canonical = canonicalizeEvidenceIdValue(redacted);
+  const canonical = canonicalizeValue(redacted, true);
   return JSON.stringify(canonical);
-}
-
-const VOLATILE_KEY = /^(?:timestamp|time|createdAt|updatedAt|sessionId|traceId)$/i;
-
-function canonicalizeEvidenceIdValue(value: EvidenceValue): EvidenceValue {
-  if (Array.isArray(value)) return value.map((item) => canonicalizeEvidenceIdValue(item));
-  if (!isRecord(value)) return value;
-  return Object.fromEntries(
-    Object.keys(value)
-      .filter((key) => !VOLATILE_KEY.test(key))
-      .sort()
-      .map((key) => [key, canonicalizeEvidenceIdValue(value[key] ?? null)]),
-  );
 }
 
 /** Create a deterministic `<prefix>:<sha256 first 16 hex chars>` ID. */

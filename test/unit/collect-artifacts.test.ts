@@ -111,6 +111,41 @@ describe("artifact collection", () => {
     expect(second.artifacts.stats!.data!.assets).toEqual(["first.js"]);
   });
 
+  it("normalizes module federation config from the parsed manifest once", async () => {
+    const manifest = JSON.stringify({
+      id: "manifest-id",
+      name: "manifest-name",
+      metaData: {},
+      exposes: [],
+      shared: ["react", { name: "react-dom" }],
+      remotes: [
+        { name: "catalog", alias: "catalogAlias", entry: "https://example.test/catalog.js" },
+        { federationContainerName: "checkoutContainer", entry: "https://example.test/checkout.js" },
+      ],
+    });
+    const root = await fixture({ "dist/mf-manifest.json": manifest });
+    const originalReadFile = fs.readFile;
+    const reads: string[] = [];
+    vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
+      reads.push(String(file));
+      return originalReadFile(file, options);
+    });
+
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    expect(facts.moduleFederation).toMatchObject({
+      name: "manifest-name",
+      shared: { react: expect.anything(), "react-dom": expect.anything() },
+      remotes: {
+        catalogAlias: { entry: "https://example.test/catalog.js" },
+        checkoutContainer: { entry: "https://example.test/checkout.js" },
+      },
+    });
+    expect(reads.filter((file) => file === path.join(root, "dist/mf-manifest.json"))).toHaveLength(
+      1,
+    );
+  });
+
   it("bounds artifact parsing and reports omitted records as partial", async () => {
     const root = await fixture({
       "dist/a/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),

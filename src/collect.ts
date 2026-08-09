@@ -702,45 +702,27 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
   return manifest;
 }
 
-async function detectFromManifest(
-  root: string,
+function detectFromManifest(
   artifact: ArtifactFacts["manifest"],
-): Promise<ReturnType<typeof normalizeModuleFederation>> {
+): ReturnType<typeof normalizeModuleFederation> {
   if (!artifact?.valid) return undefined;
-  try {
-    const data = (await readJson(path.join(root, artifact.path))) as Record<string, unknown>;
-    const name =
-      typeof data.name === "string" ? data.name : typeof data.id === "string" ? data.id : undefined;
-    const shared = Array.isArray(data.shared)
-      ? data.shared
-          .map((item) =>
-            typeof item === "string"
-              ? item
-              : String((item as Record<string, unknown> | undefined)?.name ?? ""),
-          )
-          .filter(Boolean)
-      : [];
-    const remotes = Object.fromEntries(
-      (Array.isArray(data.remotes) ? data.remotes : [])
-        .map((item) => {
-          const remote = item as Record<string, unknown>;
-          const remoteName = String(remote.alias ?? remote.name ?? "");
-          const entry = String(remote.entry ?? "");
-          return [remoteName, entry] as const;
-        })
-        .filter(([remoteName, entry]) => remoteName && entry),
-    );
-    return normalizeModuleFederation(
-      {
-        ...(name ? { name } : {}),
-        shared,
-        remotes,
-      },
-      { bundler: "unknown" },
-    );
-  } catch {
-    return undefined;
-  }
+  const remotes = Object.fromEntries(
+    (artifact.remotes ?? [])
+      .map((remote) => {
+        const remoteName = remote.alias ?? remote.name;
+        const entry = remote.entry ?? "";
+        return [remoteName, entry] as const;
+      })
+      .filter(([remoteName, entry]) => remoteName && entry),
+  );
+  return normalizeModuleFederation(
+    {
+      ...((artifact.name ?? artifact.id) ? { name: artifact.name ?? artifact.id } : {}),
+      shared: artifact.shared.map((item) => item.name).filter(Boolean),
+      remotes,
+    },
+    { bundler: "unknown" },
+  );
 }
 
 function manifestAssetNames(manifest: NonNullable<ArtifactFacts["manifest"]>): string[] {
@@ -1590,9 +1572,7 @@ export async function collectProjectFacts(
     const normalized = normalizeModuleFederation(descriptor.config, { bundler: options.bundler });
     return normalized ? [{ descriptor, normalized }] : [];
   });
-  const normalizedMf =
-    normalizedInstances[0]?.normalized ??
-    (await detectFromManifest(options.root, artifacts.manifest));
+  const normalizedMf = normalizedInstances[0]?.normalized ?? detectFromManifest(artifacts.manifest);
   for (const { normalized } of normalizedInstances)
     await sanitizeNormalizedModuleFederation(options.root, normalized, scan);
   if (normalizedMf && normalizedInstances.length === 0)

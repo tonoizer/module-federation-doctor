@@ -8,7 +8,6 @@ export default {
     "artifact/remote-entry-missing": "off",
     "config/remote-manifest-recommended": "off",
     "reliability/version-first-offline-remotes": "off",
-    "config/remote-type-urls-missing": "off",
   },
   moduleFederation: {
     name: "nested_producer_dts_extract",

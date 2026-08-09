@@ -62,18 +62,8 @@ const cases = [
     expectedExit: 1,
   },
   {
-    dir: "examples/showcase/config/nested-producer-dts-extract",
-    expectNoFindings: true,
-    expectedExit: 0,
-  },
-  {
     dir: "examples/showcase/config/dts-output-dir-mismatch",
     ruleId: "config/dts-output-dir-mismatch",
-    expectedExit: 0,
-  },
-  {
-    dir: "examples/showcase/config/remote-type-urls-missing",
-    expectNoFindings: true,
     expectedExit: 0,
   },
   {

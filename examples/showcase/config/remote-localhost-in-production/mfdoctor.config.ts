@@ -8,7 +8,6 @@ export default {
     "config/plugin-package-mismatch": "off",
     "artifact/remote-entry-missing": "off",
     "config/remote-manifest-recommended": "off",
-    "config/remote-type-urls-missing": "off",
     "reliability/version-first-offline-remotes": "off",
   },
   moduleFederation: {
