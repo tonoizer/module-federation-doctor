@@ -14,7 +14,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const BASE_PORTS = [3001, 3002, 5173, 3011, 3012, 5183];
+const BASE_PORTS = [3001, 3002, 3003, 5173, 3011, 3012, 5183];
 const MAX_OFFSET = 20_000;
 const LOCK_PREFIX = path.join(os.tmpdir(), "mfdoctor-e2e");
 const LOCK_INIT_GRACE_MS = 30_000;
@@ -24,6 +24,8 @@ const PROCESS_GROUP_POLL_MS = 50;
 let activeChild;
 let interruptedSignal;
 let interruptCount = 0;
+let activeServerRegistryPath;
+const serverCleanupPromises = new Set();
 
 function processGroupExists(pid) {
   try {
@@ -52,6 +54,106 @@ async function waitForProcessGroupExit(pid) {
   while (processGroupExists(pid) && Date.now() < forceWaitUntil) {
     await new Promise((resolve) => setTimeout(resolve, PROCESS_GROUP_POLL_MS));
   }
+}
+
+async function readRegisteredServerGroups() {
+  if (!activeServerRegistryPath) return [];
+
+  let entries;
+  try {
+    entries = await fs.readdir(activeServerRegistryPath);
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+
+  const groups = [];
+  for (const entry of entries) {
+    try {
+      const record = JSON.parse(
+        await fs.readFile(path.join(activeServerRegistryPath, entry), "utf8"),
+      );
+      const pid = Number(record.pid);
+      const group = Number(record.group);
+      if (Number.isInteger(pid) && pid > 0 && Number.isInteger(group) && group > 0)
+        groups.push({ group, pid });
+    } catch {
+      // A server may be writing its registry record while this snapshot is read.
+    }
+  }
+  return groups;
+}
+
+function terminateRegisteredServer({ group, pid }, force) {
+  if (process.platform === "win32") {
+    return new Promise((resolve) => {
+      const killer = spawn("taskkill", ["/pid", String(pid), "/t", "/f"], {
+        stdio: "ignore",
+        windowsHide: true,
+      });
+      killer.once("error", resolve);
+      killer.once("close", resolve);
+    });
+  }
+
+  if (!processGroupExists(group)) return Promise.resolve();
+  try {
+    process.kill(-group, force ? "SIGKILL" : "SIGTERM");
+  } catch {
+    // The group may have exited between the liveness check and the signal.
+  }
+  return Promise.resolve();
+}
+
+async function cleanupRegisteredServerGroups(force = false) {
+  if (!activeServerRegistryPath) return;
+
+  if (process.platform === "win32") {
+    await Promise.all(
+      (await readRegisteredServerGroups()).map((server) => terminateRegisteredServer(server, true)),
+    );
+    return;
+  }
+
+  const contactedGroups = new Set();
+  const waitUntil = Date.now() + PROCESS_GROUP_WAIT_MS;
+  while (true) {
+    const liveServers = (await readRegisteredServerGroups()).filter((server) =>
+      processGroupExists(server.group),
+    );
+    for (const server of liveServers) {
+      if (contactedGroups.has(server.group)) continue;
+      contactedGroups.add(server.group);
+      await terminateRegisteredServer(server, force);
+    }
+
+    if (force || liveServers.length === 0 || Date.now() >= waitUntil) break;
+    await new Promise((resolve) => setTimeout(resolve, PROCESS_GROUP_POLL_MS));
+  }
+
+  if (force) return;
+  const remainingServers = (await readRegisteredServerGroups()).filter((server) =>
+    processGroupExists(server.group),
+  );
+  await Promise.all(remainingServers.map((server) => terminateRegisteredServer(server, true)));
+}
+
+function scheduleServerCleanup(force = false) {
+  if (!activeServerRegistryPath) return;
+  const cleanup = cleanupRegisteredServerGroups(force).catch((error) => {
+    process.stderr.write(
+      `E2E server cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+  });
+  serverCleanupPromises.add(cleanup);
+  cleanup.then(
+    () => serverCleanupPromises.delete(cleanup),
+    () => serverCleanupPromises.delete(cleanup),
+  );
+}
+
+async function waitForScheduledServerCleanup() {
+  while (serverCleanupPromises.size > 0) await Promise.all(serverCleanupPromises);
 }
 
 function terminateActiveChild(signal, force = false) {
@@ -84,6 +186,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     interruptedSignal ??= signal;
     process.exitCode = signal === "SIGINT" ? 130 : 143;
     terminateActiveChild(signal, interruptCount > 1);
+    scheduleServerCleanup(interruptCount > 1);
   });
 }
 
@@ -193,7 +296,7 @@ async function chooseOffset() {
     const release = await claimOffset(offset);
     if (release) return { offset, release };
   }
-  throw new Error(`Could not find six free E2E ports within offset range 0-${MAX_OFFSET}`);
+  throw new Error(`Could not find seven free E2E ports within offset range 0-${MAX_OFFSET}`);
 }
 
 async function run(label, command, args, env, { captureOutput = false } = {}) {
@@ -241,6 +344,8 @@ async function run(label, command, args, env, { captureOutput = false } = {}) {
     });
     child.once("close", async (code, signal) => {
       await waitForProcessGroupExit(child.pid);
+      scheduleServerCleanup();
+      await waitForScheduledServerCleanup();
       if (interruptedSignal) {
         const error = new Error(`E2E run interrupted by ${interruptedSignal}`);
         error.output = output();
@@ -268,10 +373,18 @@ const forwardedArgs = process.argv[2] === "--" ? process.argv.slice(3) : process
 const playwrightArgs = ["exec", "playwright", "test", ...forwardedArgs];
 for (let attempt = 0; attempt < MAX_GATE_ATTEMPTS; attempt += 1) {
   const { offset, release } = await chooseOffset();
+  const serverRegistryPath = path.join(
+    os.tmpdir(),
+    `mfdoctor-e2e-${process.pid}-${offset}.servers`,
+  );
   try {
+    await fs.rm(serverRegistryPath, { force: true, recursive: true });
+    await fs.mkdir(serverRegistryPath, { recursive: true });
+    activeServerRegistryPath = serverRegistryPath;
     const environment = {
       ...process.env,
       MFDOCTOR_E2E_PORT_OFFSET: String(offset),
+      MFDOCTOR_E2E_SERVER_REGISTRY: serverRegistryPath,
     };
     const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 
@@ -315,6 +428,13 @@ for (let attempt = 0; attempt < MAX_GATE_ATTEMPTS; attempt += 1) {
     if (!interruptedSignal) process.exitCode = 1;
     break;
   } finally {
-    await release();
+    try {
+      scheduleServerCleanup();
+      await waitForScheduledServerCleanup();
+      await fs.rm(serverRegistryPath, { force: true, recursive: true });
+      activeServerRegistryPath = undefined;
+    } finally {
+      await release();
+    }
   }
 }

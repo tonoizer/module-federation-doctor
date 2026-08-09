@@ -8,6 +8,7 @@ if (!Number.isInteger(portOffset) || portOffset < 0 || portOffset > 20_000)
 const e2ePort = (basePort: number) => basePort + portOffset;
 const e2eUrl = (basePort: number, pathname = "") =>
   `http://127.0.0.1:${e2ePort(basePort)}${pathname}`;
+const wrapServerCommand = (command: string) => `node scripts/run-e2e-server.mjs -- ${command}`;
 
 const federationWebServers = [
   {
@@ -17,7 +18,7 @@ const federationWebServers = [
   },
   {
     name: "rsbuild-remote",
-    command: `${pnpmCommand} --dir examples/mixed-federation/remote-rsbuild preview`,
+    command: `${pnpmCommand} --dir examples/mixed-federation/remote-rsbuild preview --strictPort`,
     url: e2eUrl(3002, "/remoteEntry.js"),
   },
   {
@@ -35,7 +36,7 @@ const issueWebServers = [
   },
   {
     name: "issues-rsbuild-remote",
-    command: `${pnpmCommand} --dir examples/mixed-federation-issues/remote-rsbuild preview`,
+    command: `${pnpmCommand} --dir examples/mixed-federation-issues/remote-rsbuild preview --strictPort`,
     url: e2eUrl(3012, "/remoteEntry.js"),
   },
   {
@@ -45,7 +46,17 @@ const issueWebServers = [
   },
 ] as const;
 
-const allFederationWebServers = [...federationWebServers, ...issueWebServers];
+const multiInstanceWebServer = {
+  name: "multi-instance-webpack",
+  command: "node scripts/serve-dist.mjs examples/compatibility/webpack 3003",
+  url: e2eUrl(3003),
+} as const;
+
+const allFederationWebServers = [
+  ...federationWebServers,
+  ...issueWebServers,
+  multiInstanceWebServer,
+];
 
 export default defineConfig({
   testDir: "test/e2e",
@@ -63,7 +74,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: allFederationWebServers.map((server) => ({
     // Prefix so Playwright webServer failure logs name the process.
-    command: `echo "[mfdoctor-e2e:${server.name}] starting" && ${server.command}`,
+    command: `echo "[mfdoctor-e2e:${server.name}] starting" && ${wrapServerCommand(server.command)}`,
     url: server.url,
     // run-e2e.mjs allocates a free range; never reuse an unrelated local process.
     reuseExistingServer: false,
