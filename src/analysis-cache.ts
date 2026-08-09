@@ -25,7 +25,7 @@ export const DEFAULT_ANALYSIS_CACHE_OPTIONS: Required<AnalysisCacheOptions> = Ob
 /** Bump when the cached projection shape or its interpretation changes. */
 export const ANALYSIS_CACHE_SCHEMA_VERSION = 1;
 /** Bump when source/artifact collection semantics change. */
-export const ANALYSIS_COLLECTOR_REVISION = "source-artifact-collector-v2";
+export const ANALYSIS_COLLECTOR_REVISION = "source-artifact-collector-v3";
 
 function assertBound(name: string, value: unknown): asserts value is number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
@@ -111,6 +111,7 @@ export function createAnalysisCacheIdentity(
     | "bundlerVersion"
     | "mode"
     | "moduleFederation"
+    | "moduleFederationInstances"
     | "sharedPolicy"
     | "viteLifecycle"
     | "viteConfigFacts"
@@ -128,6 +129,7 @@ export function createAnalysisCacheIdentity(
     version: options.bundlerVersion ?? "unknown",
     mode: options.mode,
     moduleFederation: options.moduleFederation ?? null,
+    moduleFederationInstances: options.moduleFederationInstances ?? null,
     sharedPolicy: options.sharedPolicy,
     viteLifecycle: options.viteLifecycle ?? null,
     viteConfigFacts: options.viteConfigFacts ?? null,

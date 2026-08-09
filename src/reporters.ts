@@ -206,13 +206,25 @@ export async function writeReports(
   const persistedFacts =
     facts.schemaVersion === 1
       ? (() => {
-          const { canonicalConfig: _canonicalConfig, analysis, ...legacyFacts } = facts;
+          const { canonicalConfig: _rootCanonicalConfig, analysis, ...legacyFacts } = facts;
           return {
             ...legacyFacts,
             ...(analysis && (analysis.status !== "complete" || analysis.exceeded.length > 0)
               ? { analysis }
               : {}),
             artifacts: { ...facts.artifacts, records: undefined },
+            ...(facts.federationInstances
+              ? {
+                  federationInstances: facts.federationInstances.map((instance) => {
+                    const { canonicalConfig: _instanceCanonicalConfig, ...persistedInstance } =
+                      instance;
+                    return {
+                      ...persistedInstance,
+                      artifacts: { ...instance.artifacts, records: undefined },
+                    };
+                  }),
+                }
+              : {}),
           };
         })()
       : facts;

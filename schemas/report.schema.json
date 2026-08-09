@@ -65,6 +65,10 @@
           "severity": { "enum": ["info", "warning", "error"] },
           "message": { "type": "string" },
           "project": { "type": "string" },
+          "federationInstanceId": {
+            "type": "string",
+            "pattern": "^mfid:v1:federation-instance:[a-f0-9]{24}$"
+          },
           "location": {
             "type": "object",
             "required": ["path"],

@@ -17,7 +17,8 @@ import {
   type RuntimeCaptureEnvelope,
   type RuntimeCaptureIdentity,
 } from "../../src/capture.js";
-import type { ProjectFacts } from "../../src/types.js";
+import type { FederationInstanceFacts, ProjectFacts } from "../../src/types.js";
+import { normalizeModuleFederation } from "../../src/normalize.js";
 
 const roots: string[] = [];
 const fixtureRoot = path.resolve("fixtures/runtime-traces");
@@ -252,6 +253,63 @@ describe("runtime trace import", () => {
 
     expect(trace).toMatchObject({ traceId: "ambiguous", hostName: "host" });
     expect(findings.some((finding) => finding.project === "runtime")).toBe(true);
+  });
+
+  it("correlates runtime failures against the affected nested federation instance", () => {
+    const clientId = "mfid:v1:federation-instance:111111111111111111111111";
+    const ssrId = "mfid:v1:federation-instance:222222222222222222222222";
+    const host = baseProject({
+      name: "host",
+      moduleFederation: normalizeModuleFederation(
+        { name: "host-client", exposes: {}, remotes: {}, shared: {} },
+        { bundler: "vite" },
+      )!,
+    });
+    const instance = (id: string, name: string): FederationInstanceFacts => ({
+      id,
+      pluginName: "ModuleFederationPlugin",
+      configDigest: `sha256:${"a".repeat(64)}`,
+      registrationGroup: `sha256:${"b".repeat(64)}`,
+      moduleFederation: normalizeModuleFederation(
+        { name, exposes: {}, remotes: {}, shared: {} },
+        { bundler: "vite" },
+      )!,
+      capabilities: host.capabilities,
+      imports: host.imports,
+      artifacts: host.artifacts,
+    });
+    const scopedHost: ProjectFacts = {
+      ...host,
+      bundler: {
+        ...host.bundler,
+        federationInstances: [
+          {
+            id: clientId,
+            pluginName: "ModuleFederationPlugin",
+            configDigest: `sha256:${"a".repeat(64)}`,
+            registrationGroup: `sha256:${"b".repeat(64)}`,
+          },
+          {
+            id: ssrId,
+            pluginName: "ModuleFederationPlugin",
+            configDigest: `sha256:${"c".repeat(64)}`,
+            registrationGroup: `sha256:${"d".repeat(64)}`,
+          },
+        ],
+      },
+      federationInstances: [instance(clientId, "host-client"), instance(ssrId, "host-ssr")],
+    };
+    const [trace] = parseRuntimeTraces({
+      hostName: "host-ssr",
+      remote: { name: "checkout" },
+      ownerHint: "host",
+      summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+    });
+
+    const finding = correlateRuntime([trace!], [scopedHost]).find(
+      (item) => item.ruleId === "runtime/remote-load-failed",
+    );
+    expect(finding).toMatchObject({ project: "host", federationInstanceId: ssrId });
   });
 
   it("redacts secrets and collapses private URLs while parsing", async () => {

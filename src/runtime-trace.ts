@@ -979,6 +979,36 @@ export async function loadRuntimeTraceFile(filePath: string): Promise<RuntimeTra
   }
 }
 
+function runtimeScopedProjects(projects: ProjectFacts[]): ProjectFacts[] {
+  return projects.flatMap((project) => {
+    if (project.federationInstanceId || !project.federationInstances?.length) return [project];
+    return project.federationInstances.map((instance) => ({
+      ...project,
+      moduleFederation: instance.moduleFederation,
+      capabilities: instance.capabilities,
+      imports: instance.imports,
+      artifacts: instance.artifacts,
+      ...(instance.canonicalConfig ? { canonicalConfig: instance.canonicalConfig } : {}),
+      ...(instance.runtimePluginContracts
+        ? { runtimePluginContracts: instance.runtimePluginContracts }
+        : {}),
+      ...(instance.builds ? { builds: instance.builds } : {}),
+      federationInstanceId: instance.id,
+    }));
+  });
+}
+
+function uniqueFederationInstanceId(projects: ProjectFacts[]): string | undefined {
+  const ids = [
+    ...new Set(
+      projects
+        .map((project) => project.federationInstanceId)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ];
+  return ids.length === 1 ? ids[0] : undefined;
+}
+
 function remoteKeys(project: ProjectFacts): string[] {
   const remotes = project.moduleFederation?.remotes ?? {};
   return Object.entries(remotes).flatMap(([alias, remote]) =>
@@ -1062,12 +1092,14 @@ function runtimeFinding(
   message: string,
   evidence: Record<string, unknown>,
   suggestion?: string,
+  federationInstanceId?: string,
 ): DoctorFinding {
   const base = {
     schemaVersion: 1 as const,
     ruleId,
     severity,
     project,
+    ...(federationInstanceId ? { federationInstanceId } : {}),
     message,
     evidence: redact(evidence) as Record<string, unknown>,
     documentation: `/rules/${ruleId}`,
@@ -1090,9 +1122,10 @@ function sharedVersionMismatch(
 
 export function correlateRuntime(
   traces: RuntimeTraceReport[],
-  projects: ProjectFacts[],
+  projectFacts: ProjectFacts[],
 ): DoctorFinding[] {
   const findings: DoctorFinding[] = [];
+  const projects = runtimeScopedProjects(projectFacts);
 
   for (const trace of traces) {
     const remoteName = trace.remote?.name ?? trace.remote?.alias;
@@ -1156,6 +1189,16 @@ export function correlateRuntime(
               : !remoteName && hostProject
                 ? hostProject.project.name
                 : "runtime";
+    const attributedProjects = ownerEvidenceProject
+      ? [ownerEvidenceProject]
+      : projectName !== "runtime"
+        ? producerProject
+          ? [producerProject]
+          : hostProject
+            ? [hostProject]
+            : []
+        : [];
+    const findingInstanceId = uniqueFederationInstanceId(attributedProjects);
     const roleCandidates = {
       host: hostProject ? [hostProject.project.name] : [],
       producer: producerProject ? [producerProject.project.name] : [],
@@ -1245,6 +1288,7 @@ export function correlateRuntime(
             identity: identityEvidence,
           },
           "Re-run mfdoctor check/federation for every host and remote, or fix the remote name in the trace source.",
+          findingInstanceId,
         ),
       );
     }
@@ -1282,6 +1326,7 @@ export function correlateRuntime(
               projects: matches.map((project) => project.project.name).sort(),
             },
             "Compare the redacted entry URL and manifest metadata with the producer build output.",
+            findingInstanceId,
           ),
         );
       }
@@ -1311,6 +1356,7 @@ export function correlateRuntime(
             projects: hosts.map((project) => project.project.name).sort(),
           },
           "Verify async startup, external runtime provider order, and runtime plugins against Doctor project facts.",
+          uniqueFederationInstanceId(hosts),
         ),
       );
     }
@@ -1412,6 +1458,7 @@ export function correlateRuntime(
               identity: { ...identityEvidence, ...sharedIdentity },
             },
             "Align shared versions, singleton/import settings, and providers across hosts and remotes.",
+            uniqueFederationInstanceId(providerCandidates.length === 1 ? providerCandidates : []),
           ),
         );
       }
@@ -1457,6 +1504,7 @@ export function correlateRuntime(
                 : {}),
           },
           "Use the stable RUNTIME code with the matched build facts; do not infer browser behavior from static analysis alone.",
+          findingInstanceId,
         ),
       );
     }

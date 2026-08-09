@@ -1,4 +1,4 @@
-import type { ProjectFacts } from "./types.js";
+import type { FederationInstanceFacts, NormalizedMFConfig, ProjectFacts } from "./types.js";
 
 export interface FederationDtsFacts {
   enabled: boolean;
@@ -15,6 +15,8 @@ export interface FederationProjectNode {
   projectName: string;
   federationGroup?: string;
   federationName?: string;
+  instanceId?: string;
+  instance?: FederationInstanceFacts;
   shareStrategy: "version-first" | "loaded-first";
   asyncStartup: boolean;
   exposes: string[];
@@ -27,6 +29,7 @@ export interface FederationRemoteEdge {
   fromId: string;
   fromProject: string;
   fromFederationName: string;
+  fromInstanceId?: string;
   alias: string;
   remoteName: string;
   entry: string;
@@ -34,6 +37,7 @@ export interface FederationRemoteEdge {
   targetId?: string;
   targetProject?: string;
   targetFederationName?: string;
+  targetInstanceId?: string;
   matched: boolean;
 }
 
@@ -51,8 +55,10 @@ export interface FederationCycleGroup {
   riskEdges: FederationRemoteEdge[];
 }
 
-function dtsFacts(project: ProjectFacts): FederationDtsFacts {
-  const config = project.moduleFederation;
+function dtsFacts(
+  config: NormalizedMFConfig | undefined,
+  artifacts: ProjectFacts["artifacts"],
+): FederationDtsFacts {
   const dtsOptions = config?.dts?.options ?? {};
   const generateTypes: Record<string, unknown> =
     dtsOptions.generateTypes && typeof dtsOptions.generateTypes === "object"
@@ -62,7 +68,7 @@ function dtsFacts(project: ProjectFacts): FederationDtsFacts {
     dtsOptions.consumeTypes && typeof dtsOptions.consumeTypes === "object"
       ? (dtsOptions.consumeTypes as Record<string, unknown>)
       : dtsOptions;
-  const emittedTypeAssets = project.artifacts.emittedAssets
+  const emittedTypeAssets = artifacts.emittedAssets
     .filter((asset) => /(?:\.d\.(?:ts|mts)|@mf-types\.zip)$/.test(asset))
     .sort();
   return {
@@ -77,10 +83,11 @@ function dtsFacts(project: ProjectFacts): FederationDtsFacts {
   };
 }
 
-function projectId(project: ProjectFacts): string {
-  return (
-    project.project.identityKey ?? `${project.moduleFederation?.name ?? ""}:${project.project.name}`
-  );
+function projectId(project: ProjectFacts, instanceId?: string): string {
+  const base =
+    project.project.identityKey ??
+    `${project.moduleFederation?.name ?? ""}:${project.project.name}`;
+  return instanceId ? `${base}:instance:${instanceId}` : base;
 }
 
 function sortNodes(nodes: FederationProjectNode[]): FederationProjectNode[] {
@@ -93,20 +100,32 @@ function sortNodes(nodes: FederationProjectNode[]): FederationProjectNode[] {
 /** Build the one shared owner of federation names, projects, remotes, and DTS facts. */
 export function buildFederationModel(projects: ProjectFacts[]): FederationModel {
   const nodes = sortNodes(
-    projects.map((project) => ({
-      id: projectId(project),
-      project,
-      projectName: project.project.name,
-      ...(project.project.federationGroup
-        ? { federationGroup: project.project.federationGroup }
-        : {}),
-      ...(project.moduleFederation?.name ? { federationName: project.moduleFederation.name } : {}),
-      shareStrategy: project.moduleFederation?.shareStrategy ?? "version-first",
-      asyncStartup: project.moduleFederation?.experiments?.asyncStartup ?? false,
-      exposes: Object.keys(project.moduleFederation?.exposes ?? {}).sort(),
-      remotes: [],
-      dts: dtsFacts(project),
-    })),
+    projects.flatMap((project) => {
+      const scopes = project.federationInstances?.length
+        ? project.federationInstances
+        : [undefined];
+      return scopes.map((instance) => {
+        const config = instance?.moduleFederation ?? project.moduleFederation;
+        const artifacts = instance?.artifacts ?? project.artifacts;
+        const node: FederationProjectNode = {
+          id: projectId(project, instance?.id),
+          project,
+          projectName: project.project.name,
+          shareStrategy: config?.shareStrategy ?? "version-first",
+          asyncStartup: config?.experiments?.asyncStartup ?? false,
+          exposes: Object.keys(config?.exposes ?? {}).sort(),
+          remotes: [],
+          dts: dtsFacts(config, artifacts),
+        };
+        if (project.project.federationGroup) node.federationGroup = project.project.federationGroup;
+        if (instance?.id) {
+          node.instanceId = instance.id;
+          node.instance = instance;
+        }
+        if (config?.name) node.federationName = config.name;
+        return node;
+      });
+    }),
   );
   const federationNames = new Map<string, FederationProjectNode[]>();
   for (const node of nodes) {
@@ -120,8 +139,9 @@ export function buildFederationModel(projects: ProjectFacts[]): FederationModel 
   const remoteEdges: FederationRemoteEdge[] = [];
   for (const node of nodes) {
     if (!node.federationName) continue;
-    const remotes = Object.entries(node.project.moduleFederation?.remotes ?? {}).sort(
-      ([left], [right]) => left.localeCompare(right),
+    const config = node.instance?.moduleFederation ?? node.project.moduleFederation;
+    const remotes = Object.entries(config?.remotes ?? {}).sort(([left], [right]) =>
+      left.localeCompare(right),
     );
     for (const [alias, remote] of remotes) {
       const owners = (federationNames.get(remote.name) ?? []).filter(
@@ -133,6 +153,7 @@ export function buildFederationModel(projects: ProjectFacts[]): FederationModel 
         fromId: node.id,
         fromProject: node.projectName,
         fromFederationName: node.federationName,
+        ...(node.instanceId ? { fromInstanceId: node.instanceId } : {}),
         alias,
         remoteName: remote.name,
         entry: remote.entry,
@@ -142,6 +163,7 @@ export function buildFederationModel(projects: ProjectFacts[]): FederationModel 
               targetId: target.id,
               targetProject: target.projectName,
               targetFederationName: target.federationName,
+              ...(target.instanceId ? { targetInstanceId: target.instanceId } : {}),
             }
           : {}),
         matched: Boolean(target),

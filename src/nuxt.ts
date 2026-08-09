@@ -1,5 +1,10 @@
 import { federationDoctor } from "./vite.js";
-import type { DoctorOptions, ModuleFederationConfigLike } from "./types.js";
+import { coerceFederationInstanceInputs } from "./federation-instance.js";
+import type {
+  DoctorOptions,
+  ModuleFederationConfigLike,
+  ModuleFederationInstanceInput,
+} from "./types.js";
 
 /** Options accepted by the Nuxt module adapter. */
 export type NuxtDoctorOptions = Omit<DoctorOptions, "bundler">;
@@ -47,6 +52,17 @@ function normalizeNuxtFederationConfig(
   };
 }
 
+function normalizeNuxtFederationInstances(
+  inputs: DoctorOptions["moduleFederationInstances"],
+): ModuleFederationInstanceInput[] | undefined {
+  if (inputs === undefined) return undefined;
+  return coerceFederationInstanceInputs(inputs).map((input) =>
+    Object.assign({}, input, {
+      config: normalizeNuxtFederationConfig(input.config) ?? input.config,
+    }),
+  );
+}
+
 /**
  * Create the first-class Nuxt adapter.
  *
@@ -62,10 +78,14 @@ export function createNuxtDoctorModule(defaults: NuxtDoctorOptions = {}): NuxtMo
     const moduleFederation = normalizeNuxtFederationConfig(
       resolved.moduleFederation ?? nuxt.options?.moduleFederation?.config,
     );
+    const moduleFederationInstances = normalizeNuxtFederationInstances(
+      resolved.moduleFederationInstances,
+    );
     const doctorOptions: DoctorOptions = {
       ...resolved,
       root,
       ...(moduleFederation ? { moduleFederation } : {}),
+      ...(moduleFederationInstances !== undefined ? { moduleFederationInstances } : {}),
     };
 
     nuxt.hook("vite:extendConfig", (config) => {

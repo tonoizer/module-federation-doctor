@@ -145,6 +145,7 @@ function mf(context: RuleContext): NormalizedMFConfig | undefined {
 function sourceEvidenceIncomplete(facts: ProjectFacts): boolean {
   const analysis = facts.analysis;
   return (
+    facts.imports.sourceScope === "partial" ||
     (facts.imports.sourceReadFailures?.length ?? 0) > 0 ||
     (analysis?.exceeded.length ?? 0) > 0 ||
     (analysis !== undefined && analysis.status !== "complete")
@@ -642,6 +643,38 @@ export const builtInRules: DoctorRule[] = [
     }
   }),
   createRule("config/duplicate-plugin-registration", "error", (context) => {
+    const registrations = context.facts.bundler.federationInstances;
+    if (registrations?.length) {
+      const groups = new Map<string, typeof registrations>();
+      for (const registration of registrations)
+        groups.set(registration.registrationGroup, [
+          ...(groups.get(registration.registrationGroup) ?? []),
+          registration,
+        ]);
+      for (const group of groups.values()) {
+        if (group.length <= 1) continue;
+        const affected = group.slice().sort((left, right) => left.id.localeCompare(right.id));
+        // One finding per duplicate registration group keeps the actionable
+        // signal stable while the evidence names every affected instance.
+        if (
+          context.facts.federationInstanceId &&
+          affected[0]?.id !== context.facts.federationInstanceId
+        )
+          continue;
+        report(
+          context,
+          `Module Federation plugin "${affected[0]?.pluginName ?? "ModuleFederationPlugin"}" is registered ${group.length} times with the same configuration.`,
+          {
+            moduleFederationPluginCount: registrations.length,
+            federationInstanceIds: affected.map((registration) => registration.id),
+            registrationGroup: affected[0]?.registrationGroup,
+            configDigest: affected[0]?.configDigest,
+          },
+          "Keep one registration for this federation configuration, or give independently configured federation instances distinct plugin configurations.",
+        );
+      }
+      return;
+    }
     const count = context.facts.bundler.moduleFederationPluginCount;
     if (count === undefined || count <= 1) return;
     report(

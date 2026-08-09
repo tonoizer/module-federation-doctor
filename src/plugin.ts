@@ -9,6 +9,8 @@ import type {
   BuildOutputInput,
   BundlerName,
   DoctorOptions,
+  ModuleFederationConfigLike,
+  ModuleFederationInstanceInput,
   ModernContextFacts,
   OutputPublicPathKind,
 } from "./types.js";
@@ -65,10 +67,91 @@ export type CompilerLike = {
 const MF_PLUGIN_NAMES = new Set(["ModuleFederationPlugin", "RspackModuleFederationPlugin"]);
 
 function moduleFederationPluginName(plugin: object): string | undefined {
-  const named = (plugin as { name?: unknown }).name;
-  if (typeof named === "string" && named.length > 0) return named;
-  const ctorName = (plugin as { constructor?: { name?: unknown } }).constructor?.name;
-  return typeof ctorName === "string" && ctorName.length > 0 ? ctorName : undefined;
+  try {
+    const named = (plugin as { name?: unknown }).name;
+    if (typeof named === "string" && named.length > 0) return named;
+    const ctorName = (plugin as { constructor?: { name?: unknown } }).constructor?.name;
+    return typeof ctorName === "string" && ctorName.length > 0 ? ctorName : undefined;
+  } catch {
+    // Treat hostile or not-yet-initialized plugin accessors as opaque. A
+    // diagnostics pass must remain conservative and never break the build.
+    return undefined;
+  }
+}
+
+function publicPluginConfig(plugin: object): ModuleFederationConfigLike | undefined {
+  // Enhanced Webpack/Rspack exposes the constructor input as `_options`.
+  // Keep this as the final fallback after the documented public properties so
+  // instance detection works across native and enhanced plugin versions.
+  for (const key of ["options", "config", "moduleFederation", "_options"] as const) {
+    try {
+      const value = (plugin as Record<string, unknown>)[key];
+      if (value && typeof value === "object" && !Array.isArray(value))
+        return value as ModuleFederationConfigLike;
+    } catch {
+      // A plugin may expose an accessor that is unavailable during config
+      // inspection. Keep the aggregate count and use conservative legacy
+      // duplicate detection when the public config cannot be read.
+    }
+  }
+  return undefined;
+}
+
+/** Read observable per-plugin configs across native and enhanced adapters. */
+export function collectModuleFederationPluginInstances(
+  plugins: unknown[] | undefined,
+): ModuleFederationInstanceInput[] {
+  if (!Array.isArray(plugins)) return [];
+  return plugins.flatMap((plugin) => {
+    if (!plugin || typeof plugin !== "object") return [];
+    const name = moduleFederationPluginName(plugin);
+    if (!name || !MF_PLUGIN_NAMES.has(name)) return [];
+    const config = publicPluginConfig(plugin);
+    return config ? [{ config, pluginName: name }] : [];
+  });
+}
+
+/**
+ * Read Vite-family federation plugin instances from the public resolved
+ * plugin list. Vite integrations use a family-specific plugin name rather
+ * than webpack's constructor name, so the adapter only accepts names that
+ * explicitly contain `federation` and have a readable public config.
+ */
+export function collectViteModuleFederationPluginInstances(
+  plugins: unknown[] | undefined,
+): ModuleFederationInstanceInput[] {
+  if (!Array.isArray(plugins)) return [];
+  return plugins.flatMap((plugin) => {
+    if (!plugin || typeof plugin !== "object") return [];
+    const name = moduleFederationPluginName(plugin);
+    if (!name || !/federation/i.test(name) || /doctor/i.test(name)) return [];
+    const config = publicPluginConfig(plugin);
+    return config ? [{ config, pluginName: name }] : [];
+  });
+}
+
+/**
+ * Keep an explicit Doctor config authoritative over the Vite plugin's
+ * resolved defaults (for example `remoteEntry-[hash]`). Additional plugin
+ * instances still retain their independently discovered configuration.
+ */
+export function resolveViteFederationInstances(
+  detected: ModuleFederationInstanceInput[],
+  explicitConfig?: ModuleFederationConfigLike,
+): ModuleFederationInstanceInput[] {
+  if (!explicitConfig || detected.length === 0) return detected;
+
+  const explicitName = typeof explicitConfig.name === "string" ? explicitConfig.name : undefined;
+  const matchingIndex = explicitName
+    ? detected.findIndex((instance) => instance.config.name === explicitName)
+    : -1;
+  const replacementIndex =
+    matchingIndex >= 0 || detected.length === 1 ? Math.max(matchingIndex, 0) : -1;
+  if (replacementIndex < 0) return detected;
+
+  return detected.map((instance, index) =>
+    index === replacementIndex ? { ...instance, config: explicitConfig } : instance,
+  );
 }
 
 /** Count public Module Federation plugin instances on the compiler (core singleton check). */
@@ -96,6 +179,9 @@ function collectCompilerDiagnostics(compiler: CompilerLike): BuildDiagnostics {
   const diagnostics: BuildDiagnostics = {};
   const count = countModuleFederationPlugins(compiler);
   if (compiler.options?.plugins) diagnostics.moduleFederationPluginCount = count;
+  const instances = collectModuleFederationPluginInstances(compiler.options?.plugins);
+  if (instances.length > 0 && instances.length === count)
+    diagnostics.moduleFederationInstances = instances;
   if (compiler.options?.output && "publicPath" in compiler.options.output)
     diagnostics.outputPublicPathKind = classifyOutputPublicPath(compiler.options.output.publicPath);
   return diagnostics;
@@ -349,6 +435,7 @@ type ViteResolvedConfigLike = {
   ssr?: { target?: string };
   resolve?: { alias?: unknown };
   server?: { origin?: string; port?: number };
+  plugins?: unknown[];
 };
 
 type ViteChunkingFacts = Pick<
@@ -714,6 +801,12 @@ function createViteFamilyHooks(configured: DoctorOptions) {
     configResolved(config: ViteResolvedConfigLike) {
       resolvedConfig = config;
       if (!configured.root && config.root) configured.root = config.root;
+      const federationInstances = collectViteModuleFederationPluginInstances(config.plugins);
+      if (federationInstances.length > 0 && configured.moduleFederationInstances === undefined)
+        configured.moduleFederationInstances = resolveViteFederationInstances(
+          federationInstances,
+          configured.moduleFederation,
+        );
       const facts = extractViteConfigFacts(config);
       if (userChunkingFacts) {
         if (userChunkingFacts.manualChunks) facts.manualChunks = true;

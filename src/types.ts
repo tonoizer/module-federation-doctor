@@ -60,6 +60,12 @@ export interface BundlerFacts {
    */
   moduleFederationPluginCount?: number;
   /**
+   * Stable registration identities when the adapter could read each plugin's
+   * public configuration. When absent, only the legacy aggregate count is
+   * known and duplicate registration remains conservative.
+   */
+  federationInstances?: FederationInstanceRef[];
+  /**
    * Classification of bundler `output.publicPath` from the compiler (webpack/rspack).
    * Absent when Doctor did not observe compiler output options.
    */
@@ -191,6 +197,16 @@ export interface NormalizedMFConfig {
   };
 }
 
+/** Stable compiler-registration identity for one Module Federation plugin. */
+export interface FederationInstanceRef {
+  id: string;
+  pluginName: string;
+  /** SHA-256 digest of the canonical declared plugin configuration. */
+  configDigest: string;
+  /** Shared identity for registrations with the same plugin/config pair. */
+  registrationGroup: string;
+}
+
 export interface DependencyFacts {
   declared: Record<string, string>;
   installed: Record<string, string>;
@@ -215,6 +231,8 @@ export interface UnresolvedDynamicImport {
 
 /** How far the import collector walks local modules (MFDOCTOR-122). */
 export type ImportDepth = "direct" | "local-graph";
+/** Attribution confidence for source-derived evidence in a facts snapshot. */
+export type ImportSourceScope = "project" | "instance" | "partial";
 
 export interface ImportFacts {
   sourceFiles: string[];
@@ -239,6 +257,8 @@ export interface ImportFacts {
   unresolvedDynamic: UnresolvedDynamicImport[];
   /** Workspace-relative source files that could not be read during collection. */
   sourceReadFailures?: string[];
+  /** Whether source-derived fields are project-wide, instance-scoped, or conservative partial evidence. */
+  sourceScope?: ImportSourceScope;
   /** Evidence channels that contributed to packages/remotes. */
   evidenceSources: ImportEvidenceSource[];
   /**
@@ -292,6 +312,8 @@ interface ArtifactRecordBase {
   /** Stable run-local build link when the artifact came from a build hook. */
   buildId?: string;
   configuredName?: string;
+  /** Instance attribution when an emitted artifact can be matched exactly. */
+  federationInstanceId?: string;
 }
 
 export type ArtifactManifestRecord = ArtifactRecordBase & {
@@ -359,6 +381,8 @@ export interface BuildRecord {
   engine?: ViteLifecycleEngine;
   /** Safe project-relative output root. */
   outputRoot?: string;
+  /** Federation instance scopes represented by this compiler output. */
+  federationInstanceIds?: string[];
   emittedAssets: string[];
   artifacts: ArtifactRecord[];
   effectiveMode?: string;
@@ -387,6 +411,8 @@ export interface BuildOutputInput {
   compilationName?: string;
   hash?: string;
   outputRoot?: string;
+  /** Optional adapter-provided instance scopes for this output. */
+  federationInstanceIds?: string[];
   /** Asset names relative to `outputRoot` when that root is known. */
   emittedAssets: string[];
   /**
@@ -441,6 +467,13 @@ export interface ProjectFacts {
   bundler: BundlerFacts;
   capabilities: AnalysisCapabilities;
   moduleFederation?: NormalizedMFConfig;
+  /**
+   * Instance-scoped facts. The legacy top-level fields remain the deterministic
+   * first-instance compatibility projection for v1 consumers.
+   */
+  federationInstances?: FederationInstanceFacts[];
+  /** Active scope used while evaluating instance-aware rules; not persisted. */
+  federationInstanceId?: string;
   /** In-memory declared config bridge; omitted from legacy persisted v1 facts. */
   canonicalConfig?: CanonicalMFConfigV1;
   dependencies: DependencyFacts;
@@ -460,6 +493,8 @@ export interface DoctorFinding {
   severity: Severity;
   message: string;
   project: string;
+  /** Identifies the affected federation instance when the finding is scoped. */
+  federationInstanceId?: string;
   location?: SourceLocation;
   evidence: Record<string, unknown>;
   suggestion?: string;
@@ -615,6 +650,27 @@ export interface ModuleFederationConfigLike {
   };
 }
 
+/** Explicit adapter/config input for one independently analyzed MF instance. */
+export interface ModuleFederationInstanceInput {
+  config: ModuleFederationConfigLike;
+  pluginName?: string;
+}
+
+export interface FederationInstanceFacts {
+  id: string;
+  pluginName: string;
+  configDigest: string;
+  registrationGroup: string;
+  moduleFederation: NormalizedMFConfig;
+  capabilities: AnalysisCapabilities;
+  /** In-memory lossless declared view for this instance. */
+  canonicalConfig?: CanonicalMFConfigV1;
+  imports: ImportFacts;
+  runtimePluginContracts?: RuntimePluginContractFinding[];
+  artifacts: ArtifactFacts;
+  builds?: BuildRecord[];
+}
+
 export interface BaselineEntry {
   fingerprint: string;
   ruleId?: string;
@@ -702,6 +758,8 @@ export interface DoctorOptions {
   /** Optional bounded parsed-input cache explicitly shared by one process. */
   analysisCache?: AnalysisContentCache;
   moduleFederation?: ModuleFederationConfigLike;
+  /** Multiple independently configured MF plugins in one compiler/config. */
+  moduleFederationInstances?: Array<ModuleFederationInstanceInput | ModuleFederationConfigLike>;
   /** Explicit workspace scope for federation-wide comparisons. */
   federationGroup?: string;
   bundler?: BundlerName;
@@ -806,6 +864,7 @@ export interface ResolvedDoctorOptions {
   /** Optional bounded parsed-input cache explicitly shared by one process. */
   analysisCache?: AnalysisContentCache;
   moduleFederation?: ModuleFederationConfigLike;
+  moduleFederationInstances?: ModuleFederationInstanceInput[];
   /** Explicit workspace scope for federation-wide comparisons. */
   federationGroup?: string;
   bundler: BundlerName;
