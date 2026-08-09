@@ -702,6 +702,28 @@ describe("artifact collection", () => {
     );
   });
 
+  it("orders canonical build keys independently of the host locale", async () => {
+    const root = await fixture({});
+    const outputs = [
+      viteOutput({
+        outputRoot: "out/z",
+        emittedAssets: ["z.js"],
+        sourceHook: "z-hook",
+      }),
+      viteOutput({
+        outputRoot: "out/ä",
+        emittedAssets: ["a-with-diaeresis.js"],
+        sourceHook: "a-with-diaeresis-hook",
+      }),
+    ];
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    await addBuildFacts(facts, [], root, undefined, outputs);
+
+    expect(facts.builds?.map((build) => build.outputRoot)).toEqual(["out/z", "out/ä"]);
+    expect(facts.builds?.map((build) => build.id)).toEqual(["vite-build-1", "vite-build-2"]);
+  });
+
   it("uses the current output root for bare manifest budget assets", async () => {
     const root = await fixture({
       "out/a/mf-manifest.json": JSON.stringify({
