@@ -488,7 +488,7 @@ async function inspectWorkspaceProjects(
         file: file.file,
         contents: read.contents,
         identity: undefined,
-        included: true,
+        included: false,
         diagnostics: [
           {
             kind: "invalid",

@@ -230,6 +230,51 @@ describe("workspace discovery", () => {
     }
   });
 
+  it("excludes malformed project files selected by a group probe", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-invalid-"));
+    try {
+      const file = path.join(root, ".mf", "doctor", "project.json");
+      const contents =
+        '{"project":{"name":"malformed","federationGroup":"selected","padding":"' +
+        "x".repeat(20 * 1024) +
+        '",}';
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, contents);
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        group: "selected",
+      });
+
+      expect(discovery.files).toEqual([]);
+      expect(discovery.diagnostics).toEqual([
+        {
+          kind: "invalid",
+          files: [".mf/doctor/project.json"],
+          message: "Invalid project facts: .mf/doctor/project.json",
+        },
+      ]);
+
+      const result = await analyzeFederation(discovery.files, {
+        workspaceDiagnostics: discovery.diagnostics,
+      });
+
+      expect(result.exitCode).toBe(2);
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({
+          ruleId: "doctor/partial-analysis",
+          details: expect.objectContaining({
+            workspaceDiagnostics: expect.arrayContaining([
+              expect.objectContaining({ kind: "invalid" }),
+            ]),
+          }),
+        }),
+      );
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("reports project files skipped by the aggregate group probe cap", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-probe-cap-"));
     try {
