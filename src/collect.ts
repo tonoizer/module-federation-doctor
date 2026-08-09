@@ -1957,9 +1957,8 @@ function buildRecordForOutput(
 function projectLegacyBuildFacts(facts: ProjectFacts, builds: BuildRecord[]): void {
   if (builds.length === 0) return;
   // Compatibility view: deterministic primary-build projection.
-  facts.artifacts.emittedAssets = [
-    ...new Set(builds.flatMap((build) => build.emittedAssets)),
-  ].sort();
+  const projectedAssets = [...new Set(builds.flatMap((build) => build.emittedAssets))].sort();
+  if (projectedAssets.length > 0) facts.artifacts.emittedAssets = projectedAssets;
   facts.capabilities.emittedAssets =
     builds.length > 0 &&
     builds.every((build) => build.capabilities.emittedAssets.state === "exact");
@@ -1972,12 +1971,16 @@ function projectLegacyBuildFacts(facts: ProjectFacts, builds: BuildRecord[]): vo
     // output cannot hide a broken artifact from this build cycle.
     return records.find((record) => !record.valid) ?? records[0];
   };
-  const currentManifest = firstCurrent("manifest")?.manifest;
-  const currentStats = firstCurrent("stats")?.stats;
-  if (currentManifest) facts.artifacts.manifest = currentManifest;
-  else delete facts.artifacts.manifest;
-  if (currentStats) facts.artifacts.stats = currentStats;
-  else delete facts.artifacts.stats;
+  const currentManifestRecord = firstCurrent("manifest");
+  const currentStatsRecord = firstCurrent("stats");
+  if (currentManifestRecord) {
+    if (currentManifestRecord.manifest) facts.artifacts.manifest = currentManifestRecord.manifest;
+    else delete facts.artifacts.manifest;
+  }
+  if (currentStatsRecord) {
+    if (currentStatsRecord.stats) facts.artifacts.stats = currentStatsRecord.stats;
+    else delete facts.artifacts.stats;
+  }
   // A multi-environment build can legitimately contain one manifest/stats
   // pair per output root. `collectArtifacts` keeps the singular legacy
   // projection empty until build records link those files to an emitted
