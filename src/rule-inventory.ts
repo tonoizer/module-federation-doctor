@@ -173,7 +173,7 @@ const plans: Record<string, RulePlan> = {
   "config/name-required": plan(
     1,
     "error",
-    "config.declared",
+    "project.moduleFederation",
     "declared",
     "project",
     "high",
@@ -1330,7 +1330,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
   "config/get-public-path-unused": ["project.scope", "moduleFederation"],
   "config/implementation-suspicious": ["project.scope", "moduleFederation"],
   "config/library-remote-type-mismatch": ["project.scope", "moduleFederation"],
-  "config/name-required": ["project.scope", "moduleFederation"],
+  "config/name-required": ["project.scope", "project.moduleFederation"],
   "config/plugin-package-mismatch": [
     "project.scope",
     "bundler.name",
@@ -1528,9 +1528,12 @@ export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
     confidenceCeiling: spec.confidenceCeiling,
     defaultSeverity: spec.severity,
     group: spec.group,
-    status: "legacy",
+    status: id === "config/name-required" ? "migrated" : "legacy",
     evidenceReads,
-    migrationNote: `Planned group ${spec.group}; ${spec.confidenceReason} Current v1 behavior remains unchanged until migration.`,
+    migrationNote:
+      id === "config/name-required"
+        ? `Planned group ${spec.group}; ${spec.confidenceReason} Wired through the staged evidence-aware rollout bridge; legacy remains the default.`
+        : `Planned group ${spec.group}; ${spec.confidenceReason} Current v1 behavior remains unchanged until migration.`,
   };
 });
 

@@ -765,7 +765,10 @@ function assertion(
     subject: subject.id,
     predicate,
     value,
-    layer: predicate === "project.moduleFederation" ? "declared" : "effective",
+    layer:
+      predicate === "project.moduleFederation" || predicate === "project.scope"
+        ? "declared"
+        : "effective",
     scope: { ...scope, bundler: { ...scope.bundler } },
     provenance: {
       collector: { name: "@module-federation/doctor", version: "1" },
@@ -801,12 +804,37 @@ export function migrateProjectFacts(
     target: "unknown" as const,
   };
   const subject: EvidenceSubject = {
-    id: stableEvidenceId("subject.project", { name: project, root: input.project.root }, limits),
+    id: stableEvidenceId(
+      "subject.project",
+      {
+        name: project,
+        root: input.project.root,
+        ...(input.federationInstanceId ? { federationInstanceId: input.federationInstanceId } : {}),
+      },
+      limits,
+    ),
     kind: "project",
     name: project,
   };
   const graph = baseGraph(scope, { project }, "v1-project-facts");
   graph.subjects.push(subject);
+  graph.assertions.push(
+    assertion(
+      subject,
+      "project.scope",
+      {
+        name: project,
+        root: input.project.root,
+        bundler: input.bundler.name,
+        ...(input.federationInstanceId ? { federationInstanceId: input.federationInstanceId } : {}),
+      },
+      scope,
+      "v1-project-facts",
+      completeness("complete", "Project identity and bundler scope are present."),
+      "scope",
+      limits,
+    ),
+  );
   const fields = [
     "project",
     "bundler",

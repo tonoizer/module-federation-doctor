@@ -38,14 +38,22 @@ export interface EvidenceProtocolIdentity {
 
 export interface EvidenceScope {
   adapter: string;
+  adapterVersion?: string;
   bundler: { name: string; version?: string };
   target: "web" | "node" | "browser" | "ssr" | "unknown";
+  buildMode?: string;
+  projectRole?: string;
+  buildId?: string;
+  compilationId?: string;
+  federationInstanceId?: string;
 }
 
 export interface EvidenceIdentity {
   project?: string;
   workspace?: string;
   buildId?: string;
+  compilationId?: string;
+  federationInstanceId?: string;
   artifactDigest?: string;
   deploymentId?: string;
   releaseId?: string;
@@ -114,6 +122,11 @@ export interface EvidenceRuleEvaluation {
   /** Set-like assertion IDs. Order is ignored during graph normalization. */
   evidenceIds: string[];
   reason: string;
+  /** Additive runner metadata; omitted by older evidence documents. */
+  reasonCode?: string;
+  confidence?: EvidenceConfidence;
+  missingRequirements?: EvidenceValue[];
+  scope?: EvidenceScope;
   completeness: EvidenceCompletenessInfo;
 }
 
@@ -312,6 +325,8 @@ const SCHEMA_DEFINED_KEYS = new Set([
   "rule",
   "outcome",
   "evidenceIds",
+  "reasonCode",
+  "missingRequirements",
   "from",
   "to",
 ]);

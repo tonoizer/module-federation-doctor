@@ -5,6 +5,9 @@ import type {
 } from "./analysis-budgets.js";
 import type { CanonicalMFConfigV1 } from "./canonical-config.js";
 import type { AnalysisContentCache } from "./analysis-cache.js";
+import type { ParityComparison } from "./evidence-parity.js";
+import type { EvidenceRolloutController, RolloutMode } from "./evidence-rollout.js";
+import type { RuleEvaluationResult, RuleExecutionState } from "./rule-contract.js";
 
 export type BundlerName = "vite" | "rspack" | "rsbuild" | "webpack" | "modern" | "unknown";
 export type Severity = "info" | "warning" | "error";
@@ -755,6 +758,8 @@ export type HealthScoreLabel = "Great" | "OK" | "Needs work";
 
 export interface DoctorOptions {
   analysisBudgets?: AnalysisBudgetOptions;
+  /** @internal Evidence rollout injection for staged rule migration; no CLI equivalent. */
+  evidenceRollout?: EvidenceRolloutController;
   /** Optional bounded parsed-input cache explicitly shared by one process. */
   analysisCache?: AnalysisContentCache;
   moduleFederation?: ModuleFederationConfigLike;
@@ -1065,10 +1070,19 @@ export interface DoctorReport {
   findings: DoctorFinding[];
 }
 
+export interface EvidenceAnalysisMetadata {
+  rollout: { scope: "rules"; mode: RolloutMode };
+  evaluations: RuleEvaluationResult[];
+  execution: RuleExecutionState[];
+  parity?: ParityComparison;
+}
+
 export interface AnalysisResult {
   facts: ProjectFacts;
   report: DoctorReport;
   exitCode: 0 | 1 | 2;
+  /** Additive v2/debug metadata; never written into the V1 report contract. */
+  evidence?: EvidenceAnalysisMetadata;
 }
 
 export type UiGraphNodeKind = "project" | "remote" | "shared" | "expose" | "runtime";

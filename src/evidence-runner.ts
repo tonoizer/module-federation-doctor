@@ -23,6 +23,7 @@ import {
   type RuleEvaluationResult,
 } from "./rule-contract.js";
 import { deepFreeze } from "./utils.js";
+import semver from "semver";
 
 const CONFIDENCE: Record<string, number> = { unknown: 0, low: 1, medium: 2, high: 3, exact: 4 };
 const COMPLETENESS: Record<EvidenceCompleteness, number> = {
@@ -147,7 +148,7 @@ function applicability(
       Array<{ name: string; version?: string }> | string[] | undefined,
     ]
   > = [
-    [scope.adapter, undefined, rule.meta.applicability.adapters],
+    [scope.adapter, scope.adapterVersion, rule.meta.applicability.adapters],
     [scope.bundler?.name, scope.bundler?.version, rule.meta.applicability.bundlers],
     [scope.target, undefined, rule.meta.applicability.targets],
     [scope.buildMode, undefined, rule.meta.applicability.buildModes],
@@ -164,12 +165,42 @@ function applicability(
       (item) => (typeof item === "string" ? item : item.name) === value,
     );
     if (matching.length === 0) return "no";
-    const versioned = matching.find(
-      (item) => typeof item !== "string" && item.version !== undefined,
+    const versioned = matching.filter(
+      (item): item is { name: string; version: string } =>
+        typeof item !== "string" && item.version !== undefined,
     );
-    const versionConstraint = typeof versioned === "string" ? undefined : versioned?.version;
-    if (versionConstraint !== undefined && !known(version)) uncertain = true;
-    else if (versionConstraint !== undefined && versionConstraint !== version) return "no";
+    // An unversioned entry is an unconditional match for this name. Otherwise
+    // all versioned entries participate: any satisfied range is sufficient.
+    if (versioned.length === 0) continue;
+    if (matching.some((item) => typeof item === "string" || item.version === undefined)) continue;
+    if (!known(version)) {
+      uncertain = true;
+      continue;
+    }
+    const actualVersion = semver.valid(version);
+    if (!actualVersion) {
+      uncertain = true;
+      continue;
+    }
+    let invalidRange = false;
+    let satisfied = false;
+    for (const candidate of versioned) {
+      const range = semver.validRange(candidate.version);
+      if (!range) {
+        invalidRange = true;
+        continue;
+      }
+      if (semver.satisfies(actualVersion, range)) {
+        satisfied = true;
+        break;
+      }
+    }
+    if (satisfied) continue;
+    if (invalidRange) {
+      uncertain = true;
+      continue;
+    }
+    return "no";
   }
   return uncertain ? "unknown" : "yes";
 }
@@ -185,7 +216,11 @@ function evaluationBase(
       ruleId: rule.meta.id,
       ruleVersion: rule.meta.version,
       subjectId: subject.id,
-      scope: { ...graph.identity, project: graph.identity.project ?? subject.id },
+      scope: {
+        ...graph.identity,
+        project: graph.identity.project ?? subject.id,
+        ...scope,
+      },
     }),
     rule: { id: rule.meta.id, version: rule.meta.version },
     subject: subject.id,
@@ -207,6 +242,7 @@ function safeFallbackScope(input: EvidenceRuleRunnerInput): EvidenceRuleScope {
   const override = input.scope;
   return {
     adapter: safeEnum(override?.adapter ?? graphScope.adapter, SAFE_ADAPTERS),
+    ...(override?.adapterVersion ? { adapterVersion: "unknown" } : {}),
     bundler: {
       name: safeEnum(override?.bundler?.name ?? graphScope.bundler.name, SAFE_BUNDLERS),
     },

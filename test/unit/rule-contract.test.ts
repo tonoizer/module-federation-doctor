@@ -55,6 +55,187 @@ describe("evidence-aware rule contract", () => {
     expect(Object.isFrozen(result.evaluations)).toBe(false);
   });
 
+  it("applies semver ranges to scoped bundler applicability", async () => {
+    const rule = {
+      meta: {
+        ...meta,
+        applicability: {
+          adapters: [{ name: "vite" }],
+          bundlers: [{ name: "vite", version: ">=6.0.0" }],
+        },
+      },
+      evaluate: () => ({ outcome: "pass" as const, reason: "supported" }),
+    };
+    const assertion = {
+      id: "assertion:exact",
+      subject: "project:shop",
+      predicate: "config.declared",
+      value: true,
+      layer: "declared" as const,
+      scope: {
+        adapter: "vite",
+        bundler: { name: "vite", version: "6.1.0" },
+        target: "web" as const,
+      },
+      provenance: {
+        collector: { name: "test", version: "1" },
+        inputKind: "test",
+        source: "test",
+        sourceSchemaVersion: "1",
+      },
+      confidence: { level: "exact" as const, reason: "exact" },
+      completeness: { status: "complete" as const, reason: "complete" },
+    };
+    const result = await runEvidenceAwareRules({
+      graph: graph({
+        scope: { adapter: "vite", bundler: { name: "vite", version: "6.1.0" }, target: "web" },
+        assertions: [assertion],
+      }),
+      rules: [rule],
+    });
+    expect(result.evaluations[0]).toMatchObject({ outcome: "pass" });
+
+    const unsupported = await runEvidenceAwareRules({
+      graph: graph({
+        scope: { adapter: "vite", bundler: { name: "vite", version: "5.9.0" }, target: "web" },
+        assertions: [assertion],
+      }),
+      rules: [rule],
+    });
+    expect(unsupported.evaluations[0]).toMatchObject({
+      outcome: "not-applicable",
+      reasonCode: "not-applicable",
+    });
+  });
+
+  it("applies semver ranges to adapter versions with honest unknown handling", async () => {
+    const rule = {
+      meta: {
+        ...meta,
+        applicability: {
+          adapters: [{ name: "vite", version: ">=6.0.0" }],
+          bundlers: [{ name: "vite" }],
+        },
+      },
+      evaluate: () => ({ outcome: "pass" as const, reason: "supported" }),
+    };
+    const assertion = {
+      id: "assertion:adapter-version",
+      subject: "project:shop",
+      predicate: "config.declared",
+      value: true,
+      layer: "declared" as const,
+      scope: {
+        adapter: "vite",
+        bundler: { name: "vite", version: "6.1.0" },
+        target: "web" as const,
+      },
+      provenance: {
+        collector: { name: "test", version: "1" },
+        inputKind: "test",
+        source: "test",
+        sourceSchemaVersion: "1",
+      },
+      confidence: { level: "exact" as const, reason: "exact" },
+      completeness: { status: "complete" as const, reason: "complete" },
+    };
+    const run = (adapterVersion: string | undefined, candidateRule = rule) =>
+      runEvidenceAwareRules({
+        graph: graph({ assertions: [assertion] }),
+        rules: [candidateRule],
+        scope: {
+          adapter: "vite",
+          ...(adapterVersion !== undefined ? { adapterVersion } : {}),
+        },
+      });
+
+    const satisfies = await run("6.1.0");
+    expect(satisfies.evaluations[0]).toMatchObject({
+      outcome: "pass",
+      scope: { adapter: "vite", adapterVersion: "6.1.0" },
+    });
+
+    const rejects = await run("5.9.0");
+    expect(rejects.evaluations[0]).toMatchObject({
+      outcome: "not-applicable",
+      reasonCode: "not-applicable",
+    });
+
+    const unknown = await run(undefined);
+    expect(unknown.evaluations[0]).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "applicability-unknown",
+    });
+
+    const invalidActual = await run("not-a-version");
+    expect(invalidActual.evaluations[0]).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "applicability-unknown",
+    });
+
+    const invalidConstraint = await run("6.1.0", {
+      ...rule,
+      meta: {
+        ...rule.meta,
+        applicability: {
+          adapters: [{ name: "vite", version: "not-a-range" }],
+          bundlers: [{ name: "vite" }],
+        },
+      },
+    });
+    expect(invalidConstraint.evaluations[0]).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "applicability-unknown",
+    });
+  });
+
+  it("uses some semantics across multiple versioned entries with the same name", async () => {
+    const rule = {
+      meta: {
+        ...meta,
+        applicability: {
+          adapters: [
+            { name: "vite", version: ">=7.0.0" },
+            { name: "vite", version: "6.x" },
+          ],
+          bundlers: [
+            { name: "vite", version: ">=7.0.0" },
+            { name: "vite", version: "6.x" },
+          ],
+        },
+        prerequisites: { allOf: [] },
+      },
+      evaluate: () => ({ outcome: "pass" as const, reason: "supported" }),
+    };
+    const run = (adapterVersion: string, bundlerVersion: string) =>
+      runEvidenceAwareRules({
+        graph: graph({
+          scope: {
+            adapter: "vite",
+            bundler: { name: "vite", version: bundlerVersion },
+            target: "web",
+          },
+        }),
+        rules: [rule],
+        scope: {
+          adapter: "vite",
+          adapterVersion,
+          bundler: { name: "vite", version: bundlerVersion },
+        },
+      });
+
+    expect((await run("6.5.0", "6.5.0")).evaluations[0]).toMatchObject({
+      outcome: "pass",
+    });
+    expect((await run("7.1.0", "7.1.0")).evaluations[0]).toMatchObject({
+      outcome: "pass",
+    });
+    expect((await run("5.9.0", "5.9.0")).evaluations[0]).toMatchObject({
+      outcome: "not-applicable",
+      reasonCode: "not-applicable",
+    });
+  });
+
   it("makes missing, partial, and weak prerequisites unknown", async () => {
     const rule = { meta, evaluate: () => ({ outcome: "pass" as const, reason: "ok" }) };
     const partial = {
@@ -124,7 +305,13 @@ describe("evidence-aware rule contract", () => {
         ruleId: "test/rule",
         ruleVersion: "1",
         subjectId: "project:shop",
-        scope: { project: "shop", buildId: "build-1" },
+        scope: {
+          project: "shop",
+          buildId: "build-1",
+          adapter: "vite",
+          bundler: { name: "vite", version: "6" },
+          target: "web",
+        },
       }),
     );
     expect(result.execution[0]).toMatchObject({ state: "engine-error", error: "boom" });
@@ -235,7 +422,14 @@ describe("evidence-aware rule contract", () => {
     expect(ruleInventoryIds).not.toContain("config/remote-type-urls-missing");
     expect(runtimeIds).not.toContain("config/nested-producer-dts-extract");
     expect(runtimeIds).not.toContain("config/remote-type-urls-missing");
-    expect(ruleInventory.every((entry) => entry.status === "legacy")).toBe(true);
+    expect(ruleInventory.find((entry) => entry.id === "config/name-required")?.status).toBe(
+      "migrated",
+    );
+    expect(
+      ruleInventory
+        .filter((entry) => entry.id !== "config/name-required")
+        .every((entry) => entry.status === "legacy"),
+    ).toBe(true);
     for (const entry of ruleInventory) {
       expect(entry.version).not.toBe("");
       expect(entry.owner.name).not.toBe("");
@@ -288,6 +482,7 @@ describe("evidence-aware rule contract", () => {
       capabilities: "context.facts.capabilities",
       "capabilities.manifest": "context.facts.capabilities.manifest",
       "capabilities.emittedAssets": "context.facts.capabilities.emittedAssets",
+      "project.moduleFederation": "mf(context)",
     };
     for (const entry of ruleInventory.filter(
       (item) =>
@@ -432,6 +627,46 @@ describe("evidence-aware rule contract", () => {
         scope: { project: "shop", buildId: "build-1" },
       }),
     ).not.toBe(left);
+    expect(
+      stableEvaluationId({
+        ruleId: "config/name-required",
+        ruleVersion: "1",
+        subjectId: "project:shop",
+        scope: { project: "shop", adapter: "vite", bundler: { name: "vite" } },
+      }),
+    ).not.toBe(
+      stableEvaluationId({
+        ruleId: "config/name-required",
+        ruleVersion: "1",
+        subjectId: "project:shop",
+        scope: { project: "shop", adapter: "webpack", bundler: { name: "webpack" } },
+      }),
+    );
+    expect(
+      stableEvaluationId({
+        ruleId: "config/name-required",
+        ruleVersion: "1",
+        subjectId: "project:shop",
+        scope: {
+          project: "shop",
+          adapter: "vite",
+          adapterVersion: "6.1.0",
+          bundler: { name: "webpack", version: "5.99.0" },
+        },
+      }),
+    ).not.toBe(
+      stableEvaluationId({
+        ruleId: "config/name-required",
+        ruleVersion: "1",
+        subjectId: "project:shop",
+        scope: {
+          project: "shop",
+          adapter: "vite",
+          adapterVersion: "6.2.0",
+          bundler: { name: "webpack", version: "5.99.0" },
+        },
+      }),
+    );
     expect(
       stableEvaluationId({
         ruleId: "config/name-required",
