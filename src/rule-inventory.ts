@@ -127,6 +127,32 @@ const ids = [
   "ssr/node-runtime-plugin-missing",
 ] as const;
 
+/** Group 1 core-configuration rules promoted by the staged V1 rollout. */
+export const MIGRATED_GROUP1_CONFIG_RULE_IDS = [
+  "config/name-required",
+  "config/expose-key-invalid",
+  "config/expose-path-missing",
+  "config/remote-entry-invalid",
+  "config/filename-invalid",
+  "config/remote-http-insecure",
+  "config/remote-localhost-in-production",
+  "config/remote-alias-prefix-collision",
+  "config/dts-output-dir-mismatch",
+  "config/remote-manifest-recommended",
+  "config/observability-plugin-recommended",
+  "config/library-remote-type-mismatch",
+  "config/share-scope-undeclared",
+  "config/runtime-plugin-missing",
+  "config/get-public-path-invalid",
+  "config/get-public-path-unused",
+  "config/implementation-suspicious",
+  "config/external-runtime-with-exposes",
+  "config/remote-capability-disabled",
+  "config/shared-capability-disabled",
+  "config/eager-tree-shaking-conflict",
+  "config/tree-shaking-server-calc-injection",
+] as const;
+
 type RulePlan = {
   group: RuleMigrationGroup;
   severity: "error" | "warning" | "info";
@@ -1477,16 +1503,33 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
 };
 
 function selectorFor(path: string, spec: RulePlan): EvidenceRequirement {
+  const predicate =
+    path === "config.declared"
+      ? "project.moduleFederation"
+      : path === "source.scan"
+        ? "project.imports"
+        : path;
   const layer =
-    path === "runtime.trace" ? "runtime" : path === "federation.graph" ? "declared" : spec.layer;
+    predicate === "runtime.trace"
+      ? "runtime"
+      : predicate === "project.imports"
+        ? "effective"
+        : predicate === "federation.graph" ||
+            predicate === "project.scope" ||
+            predicate === "moduleFederation" ||
+            predicate === "project.moduleFederation"
+          ? "declared"
+          : predicate.startsWith("artifacts.")
+            ? "artifact"
+            : "effective";
   const subjectKind =
-    path === "runtime.trace"
+    predicate === "runtime.trace"
       ? "runtime-instance"
-      : path.startsWith("artifacts.")
+      : predicate.startsWith("artifacts.")
         ? "artifact"
         : spec.subjectKind;
   return {
-    predicate: path,
+    predicate,
     layer,
     subjectKind,
     minimumConfidence: spec.confidenceCeiling,
@@ -1528,12 +1571,17 @@ export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
     confidenceCeiling: spec.confidenceCeiling,
     defaultSeverity: spec.severity,
     group: spec.group,
-    status: id === "config/name-required" ? "migrated" : "legacy",
+    status: MIGRATED_GROUP1_CONFIG_RULE_IDS.includes(
+      id as (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number],
+    )
+      ? "migrated"
+      : "legacy",
     evidenceReads,
-    migrationNote:
-      id === "config/name-required"
-        ? `Planned group ${spec.group}; ${spec.confidenceReason} Wired through the staged evidence-aware rollout bridge; legacy remains the default.`
-        : `Planned group ${spec.group}; ${spec.confidenceReason} Current v1 behavior remains unchanged until migration.`,
+    migrationNote: MIGRATED_GROUP1_CONFIG_RULE_IDS.includes(
+      id as (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number],
+    )
+      ? `Planned group ${spec.group}; ${spec.confidenceReason} Wired through the staged evidence-aware rollout bridge; legacy remains the default.`
+      : `Planned group ${spec.group}; ${spec.confidenceReason} Current v1 behavior remains unchanged until migration.`,
   };
 });
 

@@ -6,51 +6,106 @@ import type {
   EvidenceValue,
 } from "./evidence.js";
 import { migrateProjectFacts } from "./evidence-reader.js";
+import { builtInRules } from "./rules.js";
+import { MIGRATED_GROUP1_CONFIG_RULE_IDS, ruleInventory } from "./rule-inventory.js";
 import {
   runEvidenceAwareRules,
   type EvidenceAwareRule,
+  type EvidenceRuleContext,
+  type EvidenceRuleFinding,
   type EvidenceRuleRunnerOutput,
   type EvidenceRuleScope,
   type RuleEvaluationResult,
   type RuleExecutionState,
 } from "./rule-contract.js";
-import { ruleInventory } from "./rule-inventory.js";
-import type { BuildRecord, DoctorFinding, ProjectFacts, RuleSetting, Severity } from "./types.js";
+import type {
+  BuildRecord,
+  DoctorFinding,
+  ProjectFacts,
+  RuleContext,
+  RuleSetting,
+  Severity,
+} from "./types.js";
 import { fingerprint, redact } from "./utils.js";
 
-const NAME_REQUIRED_RULE_ID = "config/name-required";
-const NAME_REQUIRED_V1_SUGGESTION = "Set `name`.";
-const nameRequiredInventoryEntry = ruleInventory.find(
-  (entry) => entry.id === NAME_REQUIRED_RULE_ID,
-);
-if (!nameRequiredInventoryEntry)
-  throw new Error(`Missing evidence-aware inventory entry for ${NAME_REQUIRED_RULE_ID}`);
+type LegacyFindingInput = Omit<
+  DoctorFinding,
+  "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint"
+>;
 
-function isRecord(value: EvidenceValue | undefined): value is { [key: string]: EvidenceValue } {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function inventoryEntry(id: string) {
+  const entry = ruleInventory.find((item) => item.id === id);
+  if (!entry) throw new Error(`Missing evidence-aware inventory entry for ${id}`);
+  return entry;
 }
 
-/** The first built-in rollout slice. Keep this list intentionally small until parity gates pass. */
-export const migratedEvidenceRules: readonly EvidenceAwareRule[] = [
-  {
-    meta: nameRequiredInventoryEntry,
-    evaluate(context) {
-      const config = context.evidence.find({
-        predicate: "project.moduleFederation",
-        layer: "declared",
-        subjectKind: "project",
-        minimumConfidence: "high",
-        minimumCompleteness: "complete",
-      })[0]?.value;
-      if (!isRecord(config))
-        throw new Error("Declared Module Federation config evidence is invalid.");
-      const name = config.name;
-      return typeof name === "string" && name.trim().length > 0
-        ? { outcome: "pass" as const, reason: "Module Federation config has a non-empty name." }
-        : { outcome: "fail" as const, reason: "Module Federation config needs a non-empty name." };
+function toEvidenceValue(value: unknown): EvidenceValue {
+  return value as EvidenceValue;
+}
+
+function toEvidenceFinding(value: LegacyFindingInput): EvidenceRuleFinding {
+  return {
+    message: value.message,
+    evidence: Object.fromEntries(
+      Object.entries(value.evidence ?? {}).map(([key, item]) => [key, toEvidenceValue(item)]),
+    ),
+    ...(value.suggestion ? { suggestion: value.suggestion } : {}),
+    ...(value.location ? { location: value.location } : {}),
+    ...(value.detailsSchema ? { detailsSchema: value.detailsSchema } : {}),
+    ...(value.details
+      ? { details: toEvidenceValue(value.details) as Record<string, EvidenceValue> }
+      : {}),
+  };
+}
+
+/**
+ * Run the existing V1 check behind the evidence contract. The common runner
+ * owns applicability, prerequisites, confidence, unknown results, identities,
+ * and execution metadata; the check remains the compatibility oracle until
+ * the rule gets a dedicated evidence-native evaluator in a later slice.
+ */
+function legacyEvidenceRule(
+  id: (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number],
+): EvidenceAwareRule {
+  const legacy = builtInRules.find((rule) => rule.meta.id === id);
+  if (!legacy) throw new Error(`Missing built-in rule implementation for ${id}`);
+  return {
+    meta: inventoryEntry(id),
+    async evaluate(context: EvidenceRuleContext) {
+      if (!context.facts) throw new Error(`Project facts are missing for migrated rule ${id}`);
+      const findings: EvidenceRuleFinding[] = [];
+      const report = (value: LegacyFindingInput): void => {
+        findings.push(toEvidenceFinding(value));
+      };
+      const legacyContext: RuleContext = {
+        facts: structuredClone(context.facts),
+        options: structuredClone(context.options),
+        ...(context.root ? { root: context.root } : {}),
+        ...(context.sharedPolicy
+          ? {
+              sharedPolicy: context.sharedPolicy as NonNullable<RuleContext["sharedPolicy"]>,
+            }
+          : {}),
+        ...(context.recognizeMfToolkit !== undefined
+          ? { recognizeMfToolkit: context.recognizeMfToolkit }
+          : {}),
+        report,
+      };
+      const returned = await legacy.check(legacyContext);
+      if (Array.isArray(returned))
+        for (const finding of returned) findings.push(toEvidenceFinding(finding));
+      return findings.length > 0
+        ? { outcome: "fail" as const, reason: findings[0]!.message, findings }
+        : {
+            outcome: "pass" as const,
+            reason: `Evidence prerequisites passed for ${id}; the V1 compatibility check found no issue.`,
+          };
     },
-  },
-];
+  };
+}
+
+export const migratedEvidenceRules: readonly EvidenceAwareRule[] =
+  MIGRATED_GROUP1_CONFIG_RULE_IDS.map(legacyEvidenceRule);
 
 export const migratedEvidenceRuleIds: ReadonlySet<string> = new Set(
   migratedEvidenceRules.map((rule) => rule.meta.id),
@@ -242,8 +297,6 @@ function graphEvaluationFor(
 
 function factsForEvidence(facts: ProjectFacts): ProjectFacts {
   const copy = structuredClone(facts);
-  // These are in-memory additive bridges and are intentionally absent from the
-  // persisted v1 project schema consumed by migrateProjectFacts.
   delete copy.canonicalConfig;
   delete copy.artifacts.records;
   if (copy.federationInstances) {
@@ -259,17 +312,35 @@ function factsForEvidence(facts: ProjectFacts): ProjectFacts {
   return copy;
 }
 
+export interface EvidenceBridgeContext {
+  root?: string;
+  sharedPolicy?: Readonly<Record<string, unknown>>;
+  recognizeMfToolkit?: boolean;
+}
+
 export interface MigratedEvidenceRun {
   graph: EvidenceGraphV2;
   output: EvidenceRuleRunnerOutput;
 }
 
-/** Build the v2 view from collected facts and run only the migrated slice. */
+function ruleOptionsFor(
+  settings: Readonly<Record<string, RuleSetting>>,
+): Readonly<Record<string, Readonly<Record<string, unknown>>>> {
+  return Object.fromEntries(
+    migratedEvidenceRules.map((rule) => {
+      const setting = settings[rule.meta.id];
+      return [rule.meta.id, Array.isArray(setting) ? setting[1] : {}];
+    }),
+  );
+}
+
+/** Build the v2 view from collected facts and run the migrated slice. */
 export async function runMigratedEvidenceRules(
   facts: ProjectFacts,
   settings: Readonly<Record<string, RuleSetting>>,
   analysisBudget?: AnalysisBudgetTracker,
   selectedBuild?: BuildRecord,
+  bridgeContext?: EvidenceBridgeContext,
 ): Promise<MigratedEvidenceRun> {
   const scopedFacts = selectedBuild ? factsForBuild(facts, selectedBuild) : facts;
   const graph = migrateProjectFacts(
@@ -289,7 +360,14 @@ export async function runMigratedEvidenceRules(
   const output = await runEvidenceAwareRules({
     graph,
     rules,
+    facts: scopedFacts,
     scope,
+    ruleOptions: ruleOptionsFor(settings),
+    ...(bridgeContext?.root ? { root: bridgeContext.root } : {}),
+    ...(bridgeContext?.sharedPolicy ? { sharedPolicy: bridgeContext.sharedPolicy } : {}),
+    ...(bridgeContext?.recognizeMfToolkit !== undefined
+      ? { recognizeMfToolkit: bridgeContext.recognizeMfToolkit }
+      : {}),
     ...(analysisBudget ? { analysisBudget } : {}),
   });
   graph.evaluations = output.evaluations
@@ -304,7 +382,7 @@ function severityFor(setting: RuleSetting | undefined, fallback: Severity): Seve
   return setting ?? fallback;
 }
 
-/** Project only conclusive v2 failures into the existing V1 finding shape. */
+/** Project conclusive v2 failures into the existing V1 finding shape. */
 export function projectMigratedFailures(
   evaluations: readonly RuleEvaluationResult[],
   facts: ProjectFacts,
@@ -319,22 +397,40 @@ export function projectMigratedFailures(
     if (!rule) continue;
     const severity = severityFor(settings[evaluation.rule.id], rule.meta.defaultSeverity);
     if (!severity) continue;
-    const base = {
-      schemaVersion: 1 as const,
-      ruleId: evaluation.rule.id,
-      severity,
-      message: redact(evaluation.reason, root) as string,
-      project: facts.project.name,
-      ...(facts.federationInstanceId ? { federationInstanceId: facts.federationInstanceId } : {}),
-      evidence: {} as Record<string, unknown>,
-      documentation: rule.meta.remediation.documentation,
-      ...(rule.meta.id === NAME_REQUIRED_RULE_ID
-        ? { suggestion: redact(NAME_REQUIRED_V1_SUGGESTION, root) as string }
-        : rule.meta.remediation.fix
-          ? { suggestion: redact(rule.meta.remediation.fix, root) as string }
-          : {}),
+    const fallbackFinding: EvidenceRuleFinding = {
+      message: evaluation.reason,
+      evidence: {},
+      ...(rule.meta.remediation.fix ? { suggestion: rule.meta.remediation.fix } : {}),
     };
-    findings.push({ ...base, fingerprint: fingerprint(base) });
+    const projected: EvidenceRuleFinding[] = evaluation.findings ?? [fallbackFinding];
+    for (const finding of projected) {
+      const location = finding.location
+        ? {
+            ...finding.location,
+            path: redact(finding.location.path, root) as string,
+          }
+        : undefined;
+      const base = {
+        schemaVersion: 1 as const,
+        ruleId: evaluation.rule.id,
+        severity,
+        message: redact(finding.message, root) as string,
+        project: facts.project.name,
+        ...(facts.federationInstanceId ? { federationInstanceId: facts.federationInstanceId } : {}),
+        evidence: redact(finding.evidence, root) as Record<string, unknown>,
+        documentation: rule.meta.remediation.documentation,
+        ...(location ? { location } : {}),
+        ...(finding.suggestion ? { suggestion: redact(finding.suggestion, root) as string } : {}),
+      };
+      findings.push({
+        ...base,
+        fingerprint: fingerprint(base),
+        ...(finding.detailsSchema ? { detailsSchema: finding.detailsSchema } : {}),
+        ...(finding.details
+          ? { details: redact(finding.details, root) as Record<string, unknown> }
+          : {}),
+      });
+    }
   }
   return findings;
 }
