@@ -239,7 +239,8 @@ function federationGroupFromPrefix(contents: string | undefined): {
       return provisionalGroup
         ? { status: "found", group: provisionalGroup }
         : { status: "unknown" };
-    if (contents[index] === "}") return { status: "absent" };
+    if (contents[index] === "}")
+      return provisionalGroup ? { status: "found", group: provisionalGroup } : { status: "absent" };
     const key = readJsonString(contents, index);
     if (!key) return { status: "unknown" };
     index = skipJsonWhitespace(contents, key.end);
@@ -267,7 +268,8 @@ function federationGroupFromPrefix(contents: string | undefined): {
       index += 1;
       continue;
     }
-    if (contents[index] === "}") return { status: "absent" };
+    if (contents[index] === "}")
+      return provisionalGroup ? { status: "found", group: provisionalGroup } : { status: "absent" };
     return provisionalGroup ? { status: "found", group: provisionalGroup } : { status: "unknown" };
   }
 }

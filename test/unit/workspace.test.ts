@@ -231,6 +231,29 @@ describe("workspace discovery", () => {
     }
   });
 
+  it("selects a group when an oversized envelope ends with the project property", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-project-last-"));
+    try {
+      const file = path.join(root, ".mf", "doctor", "project.json");
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(
+        file,
+        JSON.stringify({
+          metadata: "x".repeat(20 * 1024),
+          project: { name: "project-last", federationGroup: "selected" },
+        }),
+      );
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({ cwd: root, group: "selected" });
+
+      expect(discovery.files).toEqual([file]);
+      expect(discovery.groups).toEqual(["selected"]);
+      expect(discovery.diagnostics).toEqual([]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("provisionally selects an early group when a huge trailing value exceeds the probe cap", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-trailing-"));
     try {
