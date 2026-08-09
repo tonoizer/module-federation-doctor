@@ -4,7 +4,7 @@ Playwright drives the healthy [`examples/mixed-federation`](../../examples/mixed
 green path and the intentional [`examples/mixed-federation-issues`](../../examples/mixed-federation-issues)
 red path. The full E2E gate also builds the nested and compatibility matrices,
 checks cross-app behavior, and verifies the expected Doctor findings before the
-It also loads the production-built [`examples/compatibility/webpack`](../../examples/compatibility/webpack)
+browser run. It also loads the production-built [`examples/compatibility/webpack`](../../examples/compatibility/webpack)
 fixture in a browser and executes two independent Webpack federation containers from the
 same compilation.
 
@@ -20,6 +20,8 @@ multi-instance Webpack fixture, then runs Playwright. It prints the selected sev
 range, automatically moves to a free range when another local app or SSH tunnel owns the
 defaults, and starts the seven servers defined in `playwright.config.ts`. The browser
 installation is a one-time setup per machine.
+The recommendation-profile suite also runs the built CLI and real Vite adapter builds
+against temporary projects to verify demo, production, CI, runtime-plugin, and exact-subpath-share behavior.
 
 For a focused Playwright rerun, use the same `MFDOCTOR_E2E_PORT_OFFSET` that the
 build used. Direct Playwright runs do not choose a port range or rebuild the

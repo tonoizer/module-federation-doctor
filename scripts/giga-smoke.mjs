@@ -84,7 +84,14 @@ for (const dir of [
   "examples/mixed-federation/remote-rspack",
   "examples/mixed-federation/remote-rsbuild",
 ]) {
-  assertReport(dir, { errors: 0, forbiddenRules: ["doctor/partial-analysis"] });
+  assertReport(dir, {
+    errors: 0,
+    forbiddenRules: [
+      "doctor/partial-analysis",
+      "config/observability-plugin-recommended",
+      "shared/prefix-share-recommended",
+    ],
+  });
 }
 
 runRequired("production build: intentional findings", packageManager, [
@@ -97,6 +104,7 @@ assertReport("examples/mixed-federation-issues/host-vite", {
   expectedRules: [
     "config/remote-manifest-recommended",
     "reliability/version-first-offline-remotes",
+    "shared/prefix-share-recommended",
   ],
 });
 assertReport("examples/mixed-federation-issues/remote-rspack", {
