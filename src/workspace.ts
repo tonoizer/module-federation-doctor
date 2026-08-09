@@ -99,7 +99,7 @@ function projectObjectFromPrefix(contents: string): ProjectEnvelope | undefined 
       try {
         const project = JSON.parse(contents.slice(objectStart, index + 1)) as unknown;
         return project && typeof project === "object" && !Array.isArray(project)
-          ? { project: project as ProjectEnvelope["project"] }
+          ? { project: project as NonNullable<ProjectEnvelope["project"]> }
           : undefined;
       } catch {
         return undefined;
