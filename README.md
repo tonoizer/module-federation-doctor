@@ -295,8 +295,15 @@ The initial idea was inspired by [Rsdoctor](https://rsdoctor.rs/):
 
 > “Something like RS Doctor, but just for Module Federation.”
 
-That same idea shaped Module Federation Doctor into a diagnostics tool focused
-on the configuration, sharing, runtime, manifest, and output problems unique to
+Getting something useful out of Module Federation can be tricky during initial
+setup: the important details are spread across configuration, shared
+dependencies, runtime behavior, manifests, and build output. The goal here was
+to bring that kind of focused diagnostic experience to Module Federation.
+Presets and targeted scans make the nitty-gritty visible early, without
+requiring users to dive deeply into federation or bundler internals first.
+
+That idea shaped Module Federation Doctor into a diagnostics tool focused on
+the configuration, sharing, runtime, manifest, and output problems unique to
 Module Federation projects. Thanks to the Rsdoctor team for the inspiration.
 
 ## Code of Conduct
