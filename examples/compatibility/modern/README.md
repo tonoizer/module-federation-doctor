@@ -8,7 +8,7 @@ pulling `@modern-js/app-tools`.
 
 This is **adapter API + Rspack-under-the-hood** evidence — enough for a
 **partial** matrix cell, not a full **supported** claim until a real
-`@modern-js/app-tools` build lands in CI (#12).
+`@modern-js/app-tools` build lands in CI (#130).
 
 **Not** a replacement for `@module-federation/doctor/rspack` — bare Rspack apps
 keep using that entry. See `modern.config.mjs` for the real Modern.js config
