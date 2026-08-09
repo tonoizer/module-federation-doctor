@@ -449,6 +449,33 @@ function projectFieldCapability(field: string): string | undefined {
   }[field];
 }
 
+function sourceScanCompleteness(input: ProjectFacts): EvidenceCompletenessInfo {
+  const analysis = input.analysis;
+  const sourceReadFailures = input.imports.sourceReadFailures ?? [];
+  if (sourceReadFailures.length > 0) {
+    return completeness(
+      "unknown",
+      "Some source files could not be read; absence-based source rules cannot claim certainty.",
+      sourceReadFailures.map((file) => `imports.sourceReadFailures:${file}`),
+    );
+  }
+  if (
+    input.imports.sourceScope === "partial" ||
+    (analysis?.exceeded.length ?? 0) > 0 ||
+    (analysis !== undefined && analysis.status !== "complete")
+  ) {
+    return completeness(
+      analysis?.status === "unknown" ? "unknown" : "partial",
+      "Source scan was partial or budget-limited; absence-based source rules cannot claim certainty.",
+      [
+        ...(input.imports.sourceScope === "partial" ? ["imports.sourceScope:partial"] : []),
+        ...(analysis?.exceeded.length ? analysis.exceeded.map((item) => `analysis:${item}`) : []),
+      ],
+    );
+  }
+  return completeness("complete", "Source scan completed without read failures.");
+}
+
 function fieldCompleteness(
   input: JsonRecord,
   field: string,
@@ -850,6 +877,7 @@ export function migrateProjectFacts(
   for (const field of fields) {
     const present = Object.prototype.hasOwnProperty.call(input, field);
     if (!present) continue;
+    const completenessInfo = fieldCompleteness(value, field, present);
     graph.assertions.push(
       assertion(
         subject,
@@ -857,11 +885,35 @@ export function migrateProjectFacts(
         jsonValue(input[field], `/` + field, options, new WeakSet<object>(), tracker),
         scope,
         "v1-project-facts",
-        fieldCompleteness(value, field, present),
+        completenessInfo,
         undefined,
         limits,
       ),
     );
+    if (field === "imports") {
+      graph.assertions.push(
+        assertion(
+          subject,
+          "imports.sourceScan",
+          jsonValue(
+            {
+              sourceScope: input.imports.sourceScope ?? "complete",
+              sourceReadFailures: input.imports.sourceReadFailures ?? [],
+              ...(input.analysis ? { analysis: input.analysis } : {}),
+            },
+            "/imports/sourceScan",
+            options,
+            new WeakSet<object>(),
+            tracker,
+          ),
+          scope,
+          "v1-project-facts",
+          sourceScanCompleteness(input),
+          undefined,
+          limits,
+        ),
+      );
+    }
   }
   const requiredFields = [
     "project",

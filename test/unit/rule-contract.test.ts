@@ -5,6 +5,7 @@ import { ruleGuidance } from "../../src/rule-guidance.js";
 import { capConfidence, stableEvaluationId, weakestConfidence } from "../../src/rule-contract.js";
 import type { RuleEvaluationResult } from "../../src/rule-contract.js";
 import {
+  MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ruleInventory,
   ruleInventoryIds,
@@ -504,14 +505,21 @@ describe("evidence-aware rule contract", () => {
     expect(ruleInventory.find((entry) => entry.id === "config/name-required")?.status).toBe(
       "migrated",
     );
-    const migratedIds = new Set(MIGRATED_GROUP1_CONFIG_RULE_IDS);
+    const migratedIds: ReadonlySet<string> = new Set([
+      ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
+      ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
+    ]);
     expect(
       ruleInventory.every((entry) =>
-        migratedIds.has(entry.id as (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number])
-          ? entry.status === "migrated"
-          : entry.status === "legacy",
+        migratedIds.has(entry.id) ? entry.status === "migrated" : entry.status === "legacy",
       ),
     ).toBe(true);
+    expect(
+      ruleInventory
+        .filter((entry) => entry.status === "migrated")
+        .map((entry) => entry.id)
+        .sort(),
+    ).toEqual([...migratedIds].sort());
     for (const entry of ruleInventory) {
       expect(entry.version).not.toBe("");
       expect(entry.owner.name).not.toBe("");

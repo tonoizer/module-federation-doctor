@@ -7,7 +7,11 @@ import type {
 } from "./evidence.js";
 import { migrateProjectFacts } from "./evidence-reader.js";
 import { builtInRules } from "./rules.js";
-import { MIGRATED_GROUP1_CONFIG_RULE_IDS, ruleInventory } from "./rule-inventory.js";
+import {
+  MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
+  MIGRATED_GROUP1_CONFIG_RULE_IDS,
+  ruleInventory,
+} from "./rule-inventory.js";
 import {
   runEvidenceAwareRules,
   type EvidenceAwareRule,
@@ -32,6 +36,15 @@ type LegacyFindingInput = Omit<
   DoctorFinding,
   "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint"
 >;
+
+export type MigratedEvidenceRuleId =
+  | (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number]
+  | (typeof MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS)[number];
+
+const MIGRATED_EVIDENCE_RULE_IDS = [
+  ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
+  ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
+] as const;
 
 function inventoryEntry(id: string) {
   const entry = ruleInventory.find((item) => item.id === id);
@@ -64,9 +77,7 @@ function toEvidenceFinding(value: LegacyFindingInput): EvidenceRuleFinding {
  * and execution metadata; the check remains the compatibility oracle until
  * the rule gets a dedicated evidence-native evaluator in a later slice.
  */
-function legacyEvidenceRule(
-  id: (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number],
-): EvidenceAwareRule {
+function legacyEvidenceRule(id: MigratedEvidenceRuleId): EvidenceAwareRule {
   const legacy = builtInRules.find((rule) => rule.meta.id === id);
   if (!legacy) throw new Error(`Missing built-in rule implementation for ${id}`);
   return {
@@ -105,7 +116,7 @@ function legacyEvidenceRule(
 }
 
 export const migratedEvidenceRules: readonly EvidenceAwareRule[] =
-  MIGRATED_GROUP1_CONFIG_RULE_IDS.map(legacyEvidenceRule);
+  MIGRATED_EVIDENCE_RULE_IDS.map(legacyEvidenceRule);
 
 export const migratedEvidenceRuleIds: ReadonlySet<string> = new Set(
   migratedEvidenceRules.map((rule) => rule.meta.id),

@@ -11,7 +11,10 @@ import {
 } from "../../src/evidence-rollout.js";
 import { defineRule } from "../../src/rules.js";
 import { compareV1Outputs } from "../../src/evidence-parity.js";
-import { MIGRATED_GROUP1_CONFIG_RULE_IDS } from "../../src/rule-inventory.js";
+import {
+  MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
+  MIGRATED_GROUP1_CONFIG_RULE_IDS,
+} from "../../src/rule-inventory.js";
 
 const roots: string[] = [];
 const greenGates = Object.fromEntries(RELEASE_GATES.map((gate) => [gate, true]));
@@ -20,15 +23,20 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
 });
 
-async function fixture(name = "rollout-bridge") {
+async function fixture(
+  name = "rollout-bridge",
+  files: Record<string, string> = { "src/index.ts": "export default 1;\n" },
+) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-rollout-"));
   roots.push(root);
   await fs.writeFile(
     path.join(root, "package.json"),
     JSON.stringify({ name, dependencies: { vite: "6.1.0" } }),
   );
-  await fs.mkdir(path.join(root, "src"));
-  await fs.writeFile(path.join(root, "src/index.ts"), "export default 1;\n");
+  for (const [file, content] of Object.entries(files)) {
+    await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true });
+    await fs.writeFile(path.join(root, file), content);
+  }
   return root;
 }
 
@@ -50,6 +58,33 @@ function options(root: string, evidenceRollout: ReturnType<typeof shadowRollout>
     output: { formats: [] as never[] },
   };
 }
+
+function bridgeReportIds(report: { findings: Array<{ ruleId: string }> }) {
+  return report.findings
+    .filter((finding) => finding.ruleId.startsWith("bridge/"))
+    .map((finding) => finding.ruleId);
+}
+
+const migratedRuleCount =
+  MIGRATED_GROUP1_CONFIG_RULE_IDS.length +
+  MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS.length;
+
+const quietRules = {
+  "artifact/remote-entry-missing": "off",
+  "artifact/types-missing": "off",
+  "config/plugin-package-mismatch": "off",
+  "config/runtime-plugin-missing": "off",
+  "doctor/partial-analysis": "off",
+  "reliability/version-first-offline-remotes": "off",
+  "shared/candidate": "off",
+  "shared/deep-import-bypass": "off",
+  "shared/eager-without-singleton": "off",
+  "shared/prefix-share-recommended": "off",
+  "shared/react-host-missing": "off",
+  "shared/singleton-risk": "off",
+  "shared/unused": "off",
+  "shared/version-unsatisfied": "off",
+} as const;
 
 describe("evidence-aware rule rollout bridge", () => {
   it("keeps legacy output byte-compatible in shadow and v2-compat modes", async () => {
@@ -104,9 +139,446 @@ describe("evidence-aware rule rollout bridge", () => {
     const evaluatedIds = new Set(
       compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id),
     );
-    expect(evaluatedIds).toEqual(new Set(MIGRATED_GROUP1_CONFIG_RULE_IDS));
+    const migratedIds = new Set([
+      ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
+      ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
+    ]);
+    expect(evaluatedIds).toEqual(migratedIds);
+    expect(
+      new Set(
+        [...evaluatedIds].filter((id) => MIGRATED_GROUP1_CONFIG_RULE_IDS.includes(id as never)),
+      ),
+    ).toEqual(new Set(MIGRATED_GROUP1_CONFIG_RULE_IDS));
     const parity = compareV1Outputs(legacy.report, compat.report);
     expect(parity.equal).toBe(true);
+  });
+
+  it("routes every Group 1 bridge, SSR, and runtime-plugin rule through the bridge with V1 parity", async () => {
+    const cases = [
+      {
+        name: "bridge-react-prefer",
+        expectedIds: [
+          "bridge/react-version-entry-prefer",
+          "bridge/lazy-plugin-unregistered",
+          "bridge/router-implicit-enable",
+          "bridge/ssr-instanceid-hydration",
+          "bridge/export-app-missing",
+          "ssr/node-library-dts",
+          "ssr/node-runtime-plugin-missing",
+        ] as const,
+        root: await fixture("bridge-react-prefer", {
+          "src/index.tsx": 'import "@module-federation/bridge-react";\n',
+        }),
+        options: {
+          bundler: "rspack" as const,
+          mode: "ci" as const,
+          target: "node" as const,
+          moduleFederation: {
+            name: "host",
+            target: "node" as const,
+            exposes: { "./Widget": "./src/index.tsx" },
+            shared: {
+              react: { singleton: true },
+              "react-dom/": { singleton: true },
+            },
+          },
+        },
+        packageJson: {
+          name: "bridge-react-prefer",
+          dependencies: {
+            react: "19.1.1",
+            "react-dom": "19.1.1",
+            "@module-federation/bridge-react": "0.2.0",
+          },
+        },
+      },
+      {
+        name: "bridge-react-conflict",
+        expectedIds: [
+          "bridge/react-dom-prefix-missing",
+          "bridge/react-version-entry-mismatch",
+          "bridge/disable-alias-deprecated",
+        ] as const,
+        root: await fixture("bridge-react-conflict", {
+          "src/index.tsx": 'import "@module-federation/bridge-react/v18";\n',
+        }),
+        options: {
+          bundler: "rspack" as const,
+          mode: "ci" as const,
+          moduleFederation: {
+            name: "host",
+            bridge: { enableBridgeRouter: true, disableAlias: true },
+            runtimePlugins: ["@module-federation/bridge-react/plugin"],
+            shared: {
+              react: { singleton: true },
+              "react-router-dom": { singleton: true },
+              "@tanstack/react-router": { singleton: true },
+            },
+          },
+        },
+        packageJson: {
+          name: "bridge-react-conflict",
+          dependencies: {
+            react: "19.1.1",
+            "react-dom": "19.1.1",
+            "react-router-dom": "6.0.0",
+            "@tanstack/react-router": "1.0.0",
+            "@module-federation/bridge-react": "0.2.0",
+          },
+        },
+      },
+      {
+        name: "bridge-react-provider",
+        expectedIds: ["bridge/missing-fallback-loading"] as const,
+        root: await fixture("bridge-react-provider", {
+          "src/index.tsx": [
+            'import { createRemoteAppComponent } from "@module-federation/bridge-react/v19";',
+            "export const Remote = createRemoteAppComponent({",
+            "  loader: async () => ({ default: () => null }),",
+            "});",
+            "",
+          ].join("\n"),
+        }),
+        options: {
+          bundler: "rspack" as const,
+          mode: "ci" as const,
+          moduleFederation: {
+            name: "host",
+            bridge: { enableBridgeRouter: true },
+            runtimePlugins: ["@module-federation/bridge-react/plugin"],
+            shared: {
+              react: { singleton: true },
+              "react-dom/": { singleton: true },
+            },
+          },
+        },
+        packageJson: {
+          name: "bridge-react-provider",
+          dependencies: {
+            react: "19.1.1",
+            "react-dom": "19.1.1",
+            "@module-federation/bridge-react": "0.2.0",
+          },
+        },
+      },
+      {
+        name: "bridge-react-manual",
+        expectedIds: ["bridge/consumer-api-manual"] as const,
+        root: await fixture("bridge-react-manual", {
+          "src/index.tsx": [
+            'import { loadRemote } from "@module-federation/runtime";',
+            'loadRemote("shop/App");',
+            "",
+          ].join("\n"),
+        }),
+        options: {
+          bundler: "rspack" as const,
+          mode: "ci" as const,
+          moduleFederation: {
+            name: "host",
+            bridge: { enableBridgeRouter: true },
+            runtimePlugins: ["@module-federation/bridge-react/plugin"],
+            remotes: {
+              shop: {
+                name: "shop",
+                entry: "https://example.test/mf-manifest.json",
+                shareScope: "default",
+              },
+            },
+            shared: {
+              react: { singleton: true },
+              "react-dom/": { singleton: true },
+            },
+          },
+        },
+        packageJson: {
+          name: "bridge-react-manual",
+          dependencies: {
+            react: "19.1.1",
+            "react-dom": "19.1.1",
+            "@module-federation/bridge-react": "0.2.0",
+            "@module-federation/runtime": "0.0.0",
+          },
+        },
+      },
+      {
+        name: "bridge-vue",
+        expectedIds: [
+          "bridge/vue-share-missing",
+          "bridge/vue-ssr-fresh-context",
+          "bridge/vue-server-entry",
+          "bridge/vue-consumer-manual",
+          "ssr/node-remote-manifest",
+          "ssr/node-runtime-plugin-missing",
+        ] as const,
+        root: await fixture("bridge-vue", {
+          "src/index.ts": [
+            'import "@module-federation/bridge-vue3";',
+            'import { loadRemote } from "@module-federation/runtime";',
+            'loadRemote("shop/App");',
+            "",
+          ].join("\n"),
+        }),
+        options: {
+          bundler: "rspack" as const,
+          mode: "ci" as const,
+          moduleFederation: {
+            name: "host",
+            target: "node" as const,
+            remotes: {
+              shop: {
+                name: "shop",
+                entry: "https://example.test/mf-manifest.json",
+                shareScope: "default",
+              },
+            },
+          },
+        },
+        packageJson: {
+          name: "bridge-vue",
+          dependencies: {
+            vue: "3.5.0",
+            "@module-federation/bridge-vue3": "0.2.0",
+            "@module-federation/runtime": "0.0.0",
+          },
+        },
+      },
+      {
+        name: "bridge-ssr",
+        expectedIds: ["ssr/node-remote-manifest", "ssr/node-runtime-plugin-missing"] as const,
+        root: await fixture("bridge-ssr"),
+        options: {
+          bundler: "rspack" as const,
+          mode: "ci" as const,
+          moduleFederation: {
+            name: "host",
+            target: "node" as const,
+            remotes: {
+              shop: {
+                name: "shop",
+                entry: "https://example.test/mf-manifest.json",
+                shareScope: "default",
+              },
+            },
+            library: { type: "module" },
+            dts: { enabled: true },
+          },
+        },
+        packageJson: {
+          name: "bridge-ssr",
+          dependencies: {},
+        },
+      },
+      {
+        name: "runtime-plugins",
+        expectedIds: [
+          "runtime-plugins/invalid-factory",
+          "runtime-plugins/create-script-cors-parity",
+          "runtime-plugins/create-script-without-link",
+        ] as const,
+        root: await fixture("runtime-plugins", {
+          "src/bad-plugin.ts": "export default null;\n",
+          "src/cors-plugin.ts": [
+            "export default function plugin() {",
+            "  return {",
+            '    name: "cors",',
+            "    createScript({ url }) {",
+            '      const script = document.createElement("script");',
+            '      script.crossOrigin = "anonymous";',
+            "      script.src = url;",
+            "      return script;",
+            "    },",
+            "  };",
+            "}",
+            "",
+          ].join("\n"),
+          "src/heuristic-plugin.ts": [
+            "export default function plugin() {",
+            "  return {",
+            '    name: "heuristic",',
+            "    createScript({ url }) {",
+            '      const script = document.createElement("script");',
+            "      script.src = url;",
+            "      return script;",
+            "    },",
+            "  };",
+            "}",
+            "",
+          ].join("\n"),
+        }),
+        options: {
+          bundler: "vite" as const,
+          mode: "ci" as const,
+          moduleFederation: {
+            name: "host",
+            runtimePlugins: [
+              "./src/bad-plugin.ts",
+              "./src/cors-plugin.ts",
+              "./src/heuristic-plugin.ts",
+            ],
+          },
+        },
+        packageJson: {
+          name: "runtime-plugins",
+          dependencies: { vite: "6.1.0" },
+        },
+      },
+    ];
+
+    for (const entry of cases) {
+      await fs.writeFile(path.join(entry.root, "package.json"), JSON.stringify(entry.packageJson));
+      const legacy = await analyze({
+        root: entry.root,
+        ...entry.options,
+        output: { formats: [] as never[] },
+        rules: quietRules,
+      });
+      const compat = await analyze({
+        root: entry.root,
+        ...entry.options,
+        evidenceRollout: compatRollout(),
+        output: { formats: [] as never[] },
+        rules: quietRules,
+      });
+      const findingIds = new Set(compat.report.findings.map((finding) => finding.ruleId));
+      expect(new Set(bridgeReportIds(compat.report))).toEqual(
+        new Set(entry.expectedIds.filter((id) => id.startsWith("bridge/"))),
+      );
+      expect(findingIds).toEqual(new Set(entry.expectedIds));
+      expect(compareV1Outputs(legacy.report, compat.report).equal).toBe(true);
+      const evaluatedIds = new Set(
+        compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id),
+      );
+      for (const id of entry.expectedIds) expect(evaluatedIds.has(id)).toBe(true);
+    }
+  });
+
+  it("keeps readable bridge violations under partial source evidence", async () => {
+    const root = await fixture("bridge-partial-source", {
+      "src/index.tsx": [
+        'import "@module-federation/bridge-react";',
+        'import { createRemoteAppComponent } from "@module-federation/bridge-react/v19";',
+        "",
+        "export const Remote = createRemoteAppComponent({",
+        "  loader: async () => ({ default: () => null }),",
+        "});",
+        "",
+      ].join("\n"),
+      "src/unreadable.tsx": "export const hidden = true;\n",
+    });
+    const unreadable = path.join(root, "src/unreadable.tsx");
+    const originalReadFile = fs.readFile;
+    const readFileSpy = await import("vitest").then(({ vi }) =>
+      vi.spyOn(fs, "readFile").mockImplementation(async (file, readOptions) => {
+        if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
+        return originalReadFile(file, readOptions);
+      }),
+    );
+    try {
+      const analyzeOptions = {
+        root,
+        bundler: "rspack" as const,
+        mode: "ci" as const,
+        moduleFederation: {
+          name: "host",
+          bridge: { enableBridgeRouter: true },
+          runtimePlugins: ["@module-federation/bridge-react/plugin"],
+          remotes: {
+            shop: {
+              name: "shop",
+              entry: "https://example.test/mf-manifest.json",
+              shareScope: "default",
+            },
+          },
+          shared: {
+            react: { singleton: true },
+            "react-dom/": { singleton: true },
+          },
+        },
+        output: { formats: [] as never[] },
+        rules: quietRules,
+      };
+      const legacy = await analyze(analyzeOptions);
+      const shadow = await analyze({ ...analyzeOptions, evidenceRollout: shadowRollout() });
+      const compat = await analyze({ ...analyzeOptions, evidenceRollout: compatRollout() });
+
+      expect(legacy.facts.imports.sourceReadFailures).toContain("src/unreadable.tsx");
+      expect(compareV1Outputs(legacy.report, shadow.report).equal).toBe(true);
+      expect(compareV1Outputs(legacy.report, compat.report).equal).toBe(true);
+      expect(
+        legacy.report.findings.some(
+          (finding) => finding.ruleId === "bridge/missing-fallback-loading",
+        ),
+      ).toBe(true);
+      expect(
+        compat.report.findings.some(
+          (finding) => finding.ruleId === "bridge/missing-fallback-loading",
+        ),
+      ).toBe(true);
+      expect(
+        compat.evidence?.evaluations.find(
+          (item) => item.rule.id === "bridge/missing-fallback-loading",
+        ),
+      ).toMatchObject({ outcome: "fail" });
+      expect(
+        compat.evidence?.evaluations.find((item) => item.rule.id === "bridge/consumer-api-manual"),
+      ).toMatchObject({ outcome: "unknown" });
+    } finally {
+      readFileSpy.mockRestore();
+    }
+  });
+
+  it("keeps bridge SSR applicability deterministic for adapter and target scope", async () => {
+    const root = await fixture("bridge-scope", {
+      "src/index.tsx": 'import "@module-federation/bridge-react/v19";\n',
+    });
+    const run = () =>
+      analyzeBuild(
+        {
+          root,
+          bundler: "webpack",
+          mode: "ci",
+          moduleFederation: {
+            name: "host",
+            target: "node",
+            shared: {
+              react: { singleton: true },
+              "react-dom/": { singleton: true },
+            },
+          },
+          evidenceRollout: compatRollout(),
+          output: { formats: [] },
+        },
+        ["dist/server/remoteEntry.js"],
+        undefined,
+        [
+          {
+            adapter: "webpack",
+            bundler: "webpack",
+            compilerName: "webpack",
+            compilationName: "server",
+            outputRoot: "dist/server",
+            emittedAssets: ["remoteEntry.js"],
+            effectiveMode: "production",
+            targetKind: "node",
+            sourceHook: "afterEmit",
+          },
+        ],
+      );
+
+    const first = await run();
+    const second = await run();
+    const firstEvaluation = first.evidence?.evaluations.find(
+      (evaluation) => evaluation.rule.id === "bridge/ssr-server-entry-leak",
+    );
+    const secondEvaluation = second.evidence?.evaluations.find(
+      (evaluation) => evaluation.rule.id === "bridge/ssr-server-entry-leak",
+    );
+    expect(firstEvaluation).toMatchObject({
+      outcome: "fail",
+      scope: { adapter: "webpack", target: "node", buildMode: "production" },
+    });
+    expect(firstEvaluation?.id).toBe(secondEvaluation?.id);
   });
 
   it("records disabled migrated rules in execution metadata without producing findings", async () => {
@@ -351,7 +823,7 @@ describe("evidence-aware rule rollout bridge", () => {
     delete incomplete.canonicalConfig;
     const migrated = await runMigratedEvidenceRules(incomplete, {});
 
-    expect(migrated.graph.evaluations).toHaveLength(MIGRATED_GROUP1_CONFIG_RULE_IDS.length);
+    expect(migrated.graph.evaluations).toHaveLength(migratedRuleCount);
     expect(
       migrated.graph.evaluations.find(
         (evaluation) => evaluation.rule.id === "config/name-required",
@@ -467,7 +939,7 @@ describe("evidence-aware rule rollout bridge", () => {
       result.report.findings.filter((finding) => finding.ruleId === "config/name-required"),
     ).toHaveLength(1);
     expect(result.exitCode).toBe(1);
-    expect(result.evidence?.execution).toHaveLength(MIGRATED_GROUP1_CONFIG_RULE_IDS.length);
+    expect(result.evidence?.execution).toHaveLength(migratedRuleCount);
     expect(result.evidence?.execution).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

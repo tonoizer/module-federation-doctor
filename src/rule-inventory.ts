@@ -153,6 +153,39 @@ export const MIGRATED_GROUP1_CONFIG_RULE_IDS = [
   "config/tree-shaking-server-calc-injection",
 ] as const;
 
+/** Group 1 Bridge, SSR, and runtime-plugin rules promoted by the staged V1 rollout. */
+export const MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS = [
+  "bridge/react-version-entry-prefer",
+  "bridge/react-dom-prefix-missing",
+  "bridge/lazy-plugin-unregistered",
+  "bridge/router-implicit-enable",
+  "bridge/router-shared-conflict",
+  "bridge/react-version-entry-mismatch",
+  "bridge/provider-shape-invalid",
+  "bridge/ssr-server-entry-leak",
+  "bridge/missing-fallback-loading",
+  "bridge/consumer-api-manual",
+  "bridge/export-app-missing",
+  "bridge/ssr-instanceid-hydration",
+  "bridge/tanstack-router-conflict",
+  "bridge/disable-alias-deprecated",
+  "bridge/vue-share-missing",
+  "bridge/vue-ssr-fresh-context",
+  "bridge/vue-server-entry",
+  "bridge/vue-consumer-manual",
+  "ssr/node-remote-manifest",
+  "ssr/node-runtime-plugin-missing",
+  "ssr/node-library-dts",
+  "runtime-plugins/invalid-factory",
+  "runtime-plugins/create-script-cors-parity",
+  "runtime-plugins/create-script-without-link",
+] as const;
+
+const MIGRATED_GROUP1_RULE_IDS: ReadonlySet<string> = new Set([
+  ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
+  ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
+]);
+
 type RulePlan = {
   group: RuleMigrationGroup;
   severity: "error" | "warning" | "info";
@@ -1290,6 +1323,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "dependencies.declared",
     "imports.packages",
     "imports.specifiers",
+    "imports.sourceScan",
   ],
   "bridge/export-app-missing": ["project.scope", "moduleFederation", "dependencies.declared"],
   "bridge/ssr-instanceid-hydration": [
@@ -1325,6 +1359,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "dependencies.declared",
     "imports.packages",
     "imports.sourceFiles",
+    "imports.sourceScan",
   ],
   "bridge/vue-server-entry": [
     "project.scope",
@@ -1332,6 +1367,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "dependencies.declared",
     "imports.packages",
     "imports.specifiers",
+    "imports.sourceScan",
   ],
   "bridge/vue-consumer-manual": [
     "project.scope",
@@ -1339,6 +1375,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "dependencies.declared",
     "imports.packages",
     "imports.sourceFiles",
+    "imports.sourceScan",
   ],
   "config/dts-output-dir-mismatch": ["project.scope", "moduleFederation"],
   "config/duplicate-plugin-registration": [
@@ -1508,7 +1545,9 @@ function selectorFor(path: string, spec: RulePlan): EvidenceRequirement {
       ? "project.moduleFederation"
       : path === "source.scan"
         ? "project.imports"
-        : path;
+        : path === "imports.sourceScan"
+          ? "imports.sourceScan"
+          : path;
   const layer =
     predicate === "runtime.trace"
       ? "runtime"
@@ -1571,15 +1610,9 @@ export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
     confidenceCeiling: spec.confidenceCeiling,
     defaultSeverity: spec.severity,
     group: spec.group,
-    status: MIGRATED_GROUP1_CONFIG_RULE_IDS.includes(
-      id as (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number],
-    )
-      ? "migrated"
-      : "legacy",
+    status: MIGRATED_GROUP1_RULE_IDS.has(id) ? "migrated" : "legacy",
     evidenceReads,
-    migrationNote: MIGRATED_GROUP1_CONFIG_RULE_IDS.includes(
-      id as (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number],
-    )
+    migrationNote: MIGRATED_GROUP1_RULE_IDS.has(id)
       ? `Planned group ${spec.group}; ${spec.confidenceReason} Wired through the staged evidence-aware rollout bridge; legacy remains the default.`
       : `Planned group ${spec.group}; ${spec.confidenceReason} Current v1 behavior remains unchanged until migration.`,
   };
