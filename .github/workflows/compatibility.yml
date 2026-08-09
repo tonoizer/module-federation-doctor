@@ -13,9 +13,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  matrix:
+    name: Compatibility matrix
+    runs-on: ubuntu-latest
+    outputs:
+      bundlers: ${{ steps.matrix.outputs.bundlers }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - id: matrix
+        run: |
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require("node:fs");
+          const matrix = JSON.parse(fs.readFileSync("fixtures/compatibility-matrix.json", "utf8"));
+          const bundlers = matrix.localCi.map((cell) => ({
+            id: cell.id,
+            filter: cell.package,
+            dir: cell.fixture,
+          }));
+          process.stdout.write(`bundlers=${JSON.stringify(bundlers)}\n`);
+          NODE
+
   # High-value cells: real build + Doctor path per supported bundler on
   # engines floor (Node 22) and current line (Node 24).
   bundler:
+    needs: matrix
     name: ${{ matrix.bundler.id }} / Node ${{ matrix.node }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -23,28 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         node: [22, 24]
-        bundler:
-          - id: vite
-            filter: "@mfdoctor-example/host-vite"
-            dir: examples/mixed-federation/host-vite
-          - id: vite-cjs-v5
-            filter: "@mfdoctor-example/vite-cjs-v5"
-            dir: examples/compatibility/vite-cjs
-          - id: vite-nitro-react
-            filter: "@mfdoctor-example/vite-nitro-react"
-            dir: examples/compatibility/vite-nitro-react
-          - id: rspack
-            filter: "@mfdoctor-example/remote-rspack"
-            dir: examples/mixed-federation/remote-rspack
-          - id: rsbuild
-            filter: "@mfdoctor-example/remote-rsbuild"
-            dir: examples/mixed-federation/remote-rsbuild
-          - id: webpack
-            filter: "@mfdoctor-example/webpack-smoke"
-            dir: examples/compatibility/webpack
-          - id: modern
-            filter: "@mfdoctor-example/modern-smoke"
-            dir: examples/compatibility/modern
+        bundler: ${{ fromJSON(needs.matrix.outputs.bundlers) }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - run: corepack enable && corepack prepare pnpm@11.17.0 --activate

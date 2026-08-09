@@ -1,88 +1,10 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <title>Module Federation Doctor multi-instance E2E</title>
+    <meta charset="UTF-8" />
+    <title>Webpack multi-instance compatibility fixture</title>
   </head>
   <body>
-    <main data-testid="multi-instance-runtime" data-status="pending">
-      <h1>Webpack multi-instance runtime</h1>
-      <p data-testid="multi-instance-checkout" data-status="pending">pending</p>
-      <p data-testid="multi-instance-catalog" data-status="pending">pending</p>
-      <p data-testid="multi-instance-ready" data-status="pending">pending</p>
-    </main>
-    <script>
-      const instances = [
-        {
-          container: "webpack_smoke_checkout",
-          entry: "/dist/checkoutRemoteEntry.js",
-          expose: "./Widget",
-          output: "multi-instance-checkout",
-        },
-        {
-          container: "webpack_smoke_catalog",
-          entry: "/dist/catalogRemoteEntry.js",
-          expose: "./Catalog",
-          output: "multi-instance-catalog",
-        },
-      ];
-
-      const root = document.querySelector('[data-testid="multi-instance-runtime"]');
-      const ready = document.querySelector('[data-testid="multi-instance-ready"]');
-
-      const loadScript = (src) =>
-        new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = src;
-          script.onload = resolve;
-          script.onerror = () => reject(new Error(`Failed to load ${src}`));
-          document.head.appendChild(script);
-        });
-
-      const loadInstance = async (instance) => {
-        await loadScript(instance.entry);
-
-        const container = window[instance.container];
-        if (
-          !container ||
-          typeof container.get !== "function" ||
-          typeof container.init !== "function"
-        ) {
-          throw new Error(`Missing Module Federation container ${instance.container}`);
-        }
-
-        const shareScope = window.__webpack_share_scopes__?.default ?? {};
-        await container.init(shareScope);
-        const factory = await container.get(instance.expose);
-        const exposedModule = factory();
-        const value =
-          typeof exposedModule.default === "function"
-            ? exposedModule.default()
-            : (exposedModule.default ?? exposedModule);
-        const output = document.querySelector(`[data-testid="${instance.output}"]`);
-        output.dataset.status = "passed";
-        output.dataset.container = instance.container;
-        output.textContent = String(value);
-
-        return { container: instance.container, value: String(value) };
-      };
-
-      (async () => {
-        try {
-          const results = [];
-          for (const instance of instances) results.push(await loadInstance(instance));
-          ready.dataset.status = "passed";
-          ready.textContent = results
-            .map(({ container, value }) => `${container}:${value}`)
-            .join(",");
-          root.dataset.status = "passed";
-        } catch (error) {
-          root.dataset.status = "failed";
-          ready.dataset.status = "failed";
-          ready.textContent = error instanceof Error ? error.message : String(error);
-          console.error(error);
-        }
-      })();
-    </script>
+    <main>Webpack multi-instance compatibility fixture</main>
   </body>
 </html>

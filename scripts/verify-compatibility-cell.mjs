@@ -23,6 +23,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const matrixPath = path.join(root, "fixtures/compatibility-matrix.json");
 const matrix = JSON.parse(await fs.readFile(matrixPath, "utf8"));
 const matrixCell = matrix.localCi.find((cell) => cell.id === cellId);
+assert.ok(matrixCell, `unknown compatibility-matrix cell: ${cellId}`);
 const bundlerId = matrixCell?.bundler ?? cellId;
 
 const doctorDir = path.resolve(exampleDir, ".mf/doctor");
@@ -55,6 +56,11 @@ assert.ok(report.summary, "report.summary required");
 assert.equal(typeof report.summary.errors, "number");
 assert.equal(typeof report.summary.warnings, "number");
 assert.ok(Array.isArray(report.findings), "report.findings must be an array");
+assert.equal(
+  report.summary.errors,
+  matrixCell.expectedErrors,
+  `${cellId}: expected error budget changed`,
+);
 
 assert.equal(sarif.version, "2.1.0");
 assert.ok(Array.isArray(sarif.runs) && sarif.runs.length > 0, "SARIF runs required");
@@ -72,6 +78,61 @@ if (terminalLog) {
 }
 
 const capabilities = project.capabilities ?? {};
+
+function projectInstances(value) {
+  if (Array.isArray(value.federationInstances)) return value.federationInstances;
+  return value.moduleFederation ? [value] : [];
+}
+
+function ownsAsset(assets, expected) {
+  return assets.some((asset) => asset === expected || asset.endsWith(`/${expected}`));
+}
+
+function assertRuntimeContract(cell, value) {
+  if (!cell.runtime) return;
+
+  const instances = projectInstances(value);
+  assert.equal(
+    instances.length,
+    cell.runtime.instances.length,
+    `${cell.id}: runtime instance count changed`,
+  );
+  const identities = instances.map((instance) => instance.moduleFederation?.name);
+  assert.equal(
+    new Set(identities).size,
+    identities.length,
+    `${cell.id}: duplicate instance identity`,
+  );
+
+  for (const expected of cell.runtime.instances) {
+    const instance = instances.find(
+      (candidate) => candidate.moduleFederation?.name === expected.identity,
+    );
+    assert.ok(instance, `${cell.id}: missing runtime instance ${expected.identity}`);
+    const assets = Array.isArray(instance.artifacts?.emittedAssets)
+      ? instance.artifacts.emittedAssets.map(String)
+      : [];
+    assert.ok(ownsAsset(assets, expected.fileName), `${cell.id}: missing ${expected.fileName}`);
+    const manifestIdentity = instance.artifacts?.manifest?.name ?? instance.artifacts?.manifest?.id;
+    assert.equal(manifestIdentity, expected.identity, `${cell.id}: manifest identity changed`);
+    if (expected.artifactFiles?.some((file) => file.endsWith("mf-stats.json"))) {
+      const statsIdentity =
+        instance.artifacts?.stats?.data?.name ?? instance.artifacts?.stats?.data?.id;
+      assert.equal(statsIdentity, expected.identity, `${cell.id}: stats identity changed`);
+    }
+    for (const artifactFile of expected.artifactFiles ?? [])
+      assert.ok(ownsAsset(assets, artifactFile), `${cell.id}: missing ${artifactFile}`);
+
+    for (const other of cell.runtime.instances) {
+      if (other === expected) continue;
+      assert.ok(!ownsAsset(assets, other.fileName), `${cell.id}: cross-owned ${other.fileName}`);
+      for (const artifactFile of other.artifactFiles ?? [])
+        assert.ok(!ownsAsset(assets, artifactFile), `${cell.id}: cross-owned ${artifactFile}`);
+    }
+  }
+}
+
+assertRuntimeContract(matrixCell, project);
 process.stdout.write(
   [
     `compatibility-cell ok cell=${cellId} bundler=${bundlerId} project=${project.project.name}`,

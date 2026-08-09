@@ -1,0 +1,36 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
+import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+
+const root = path.dirname(fileURLToPath(import.meta.url));
+
+const firstOptions = {
+  name: "rspack_adapter",
+  manifest: true,
+  filename: "firstRemoteEntry.js",
+  exposes: { "./First": "./src/First.js" },
+  shared: {},
+};
+
+export default {
+  mode: "production",
+  context: root,
+  entry: "./src/index.js",
+  output: {
+    path: path.join(root, "dist"),
+    publicPath: "auto",
+    uniqueName: "rspack_adapter",
+    clean: true,
+  },
+  plugins: [
+    new ModuleFederationPlugin(firstOptions),
+    moduleFederationDoctorPlugin({
+      moduleFederation: firstOptions,
+      rules: {
+        "artifact/types-missing": "off",
+        "artifact/dts-disabled": "off",
+      },
+    }),
+  ],
+};

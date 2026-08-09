@@ -2,9 +2,7 @@ import type { APIRequestContext } from "@playwright/test";
 
 export type FederationServer = {
   name: string;
-  /** HTTP readiness probe URL (server root — not a downloadable asset). */
-  url: string;
-  /** Human-facing entry URL used in failure messages. */
+  /** HTTP readiness probe and human-facing entry URL. */
   entryUrl: string;
 };
 
@@ -16,17 +14,14 @@ export type FederationServer = {
 export const FEDERATION_SERVERS: FederationServer[] = [
   {
     name: "rspack remote",
-    url: "http://127.0.0.1:3001/",
     entryUrl: "http://127.0.0.1:3001/remoteEntry.js",
   },
   {
     name: "rsbuild remote",
-    url: "http://127.0.0.1:3002/",
     entryUrl: "http://127.0.0.1:3002/remoteEntry.js",
   },
   {
     name: "host (vite)",
-    url: "http://127.0.0.1:5173/",
     entryUrl: "http://127.0.0.1:5173/",
   },
 ];
@@ -47,8 +42,8 @@ export async function waitForFederationServers(
       try {
         // Probe via Playwright's request client (same stack as webServer), not
         // global fetch — Node fetch to `localhost` can miss IPv4-only binds in CI.
-        const response = await request.get(server.url);
-        if (response.status() >= 500) {
+        const response = await request.get(server.entryUrl);
+        if (response.status() !== 200) {
           lastFailures.push(`${server.name} (${server.entryUrl}): HTTP ${response.status()}`);
         }
       } catch (error) {
