@@ -1,9 +1,12 @@
 # End-to-end tests
 
-Playwright drives both the healthy [`examples/mixed-federation`](../../examples/mixed-federation)
+Playwright drives the healthy [`examples/mixed-federation`](../../examples/mixed-federation)
 green path and the intentional [`examples/mixed-federation-issues`](../../examples/mixed-federation-issues)
 red path. The latter proves that the known-bad host/remotes still boot and serve their
 runtime entrypoints; the expected Doctor findings are asserted by `scripts/giga-smoke.mjs`.
+It also loads the production-built [`examples/compatibility/webpack`](../../examples/compatibility/webpack)
+fixture in a browser and executes two independent Webpack federation containers from the
+same compilation.
 
 ## Run locally
 
@@ -11,8 +14,9 @@ runtime entrypoints; the expected Doctor findings are asserted by `scripts/giga-
 pnpm test:e2e
 ```
 
-`pnpm test:e2e` builds the repo and mixed-federation examples, then runs Playwright.
-Playwright starts the six preview servers defined in `playwright.config.ts`.
+`pnpm test:e2e` builds the repo, mixed-federation examples, and the multi-instance Webpack
+fixture, then runs Playwright. Playwright starts the seven preview servers defined in
+`playwright.config.ts`.
 
 For the complete local gate, including nested, compatibility, standalone, CLI,
 cross-app, and runtime checks, run:
@@ -30,8 +34,8 @@ availability. When a run fails:
    (for example `rspack remote (http://127.0.0.1:3001/remoteEntry.js)`).
 2. **Check `test-results/` and `playwright-report/`** — traces, screenshots, and
    video are retained on failure (`trace: retain-on-failure`).
-3. **Confirm which webServer failed** — `playwright.config.ts` starts three
-   servers (`rspack-remote`, `rsbuild-remote`, `host-vite`). A timeout on
+3. **Confirm which webServer failed** — `playwright.config.ts` starts the healthy,
+   intentional-findings, and multi-instance servers. A timeout on
    `webServer.url` means that preview process never became ready. Startup logs
    are prefixed with `[mfdoctor-e2e:<name>]`.
 4. **Inspect CI artifacts** — the `playwright-failures` artifact uploads
@@ -48,13 +52,14 @@ Probes use `127.0.0.1` (not `localhost`) to match the IPv4 bind used in CI:
 curl -fsS http://127.0.0.1:3001/remoteEntry.js | head
 curl -fsS http://127.0.0.1:3002/remoteEntry.js | head
 curl -fsS http://127.0.0.1:5173/
+curl -fsS http://127.0.0.1:3003/
 ```
 
 ### Common causes
 
 - **Remote entry 404** — example not built; run `pnpm test:examples` or full
   `pnpm test:e2e` so builds run first.
-- **Port already in use** — stop stale preview processes on 3001, 3002, or 5173.
+- **Port already in use** — stop stale preview processes on 3001, 3002, 3003, or 5173.
 - **`localhost` vs `127.0.0.1`** — preview servers bind IPv4 loopback; probing
   `localhost` can fail in CI when it resolves to `::1`.
 - **Slow CI cold start** — webServer timeout is 120s; readiness polling in

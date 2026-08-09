@@ -191,7 +191,7 @@
     "test": "corepack pnpm test:unit && corepack pnpm test:integration && corepack pnpm test:e2e",
     "test:unit": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
-    "test:e2e": "corepack pnpm build && corepack pnpm test:examples && corepack pnpm --filter './examples/mixed-federation-issues/**' build && corepack pnpm exec playwright test",
+    "test:e2e": "corepack pnpm build && corepack pnpm test:examples && corepack pnpm --filter './examples/mixed-federation-issues/**' build && corepack pnpm --filter @mfdoctor-example/webpack-smoke build && corepack pnpm exec playwright test",
     "test:giga": "corepack pnpm build && node scripts/giga-smoke.mjs && corepack pnpm exec playwright test",
     "test:examples": "corepack pnpm --filter './examples/mixed-federation/**' build",
     "test:nested": "corepack pnpm --filter './examples/nested-federation/**' build && node dist/cli.js workspace examples/nested-federation --format terminal,json",
