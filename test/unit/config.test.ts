@@ -142,4 +142,33 @@ describe("resolveOptions", () => {
       failOn: "error",
     });
   });
+
+  it("resolves top-level profiles after extends and before local rules", async () => {
+    stubLocalEnv();
+    const resolved = await resolveOptions({
+      root: "fixture",
+      mode: "development",
+      extends: ["demo"],
+      profile: "production",
+      rules: { "shared/prefix-share-recommended": "off" },
+    });
+
+    expect(resolved.appliedPolicies).toEqual(["demo", "production"]);
+    expect(resolved.rules["config/remote-manifest-recommended"]).toBe("warning");
+    expect(resolved.rules["config/observability-plugin-recommended"]).toEqual([
+      "warning",
+      { recommendWithoutPackage: true },
+    ]);
+    expect(resolved.rules["shared/prefix-share-recommended"]).toBe("off");
+  });
+
+  it("maps a demo profile to production in CI and keeps the CI gate", async () => {
+    stubLocalEnv();
+    const resolved = await resolveOptions({ root: "fixture", mode: "ci", profile: "demo" });
+
+    expect(resolved.appliedPolicies).toEqual(["production"]);
+    expect(resolved.mode).toBe("ci");
+    expect(resolved.failOn).toBe("error");
+    expect(resolved.rules["shared/prefix-share-recommended"]).toBe("warning");
+  });
 });

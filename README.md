@@ -189,7 +189,10 @@ Share org governance with built-in profiles (`recommended`, `strict`, `demo`,
 `production`) and package-level policy packs via `extends`. `recommended`
 matches the catalog defaults, `strict` raises most advisory severities for CI,
 `demo` quiets selected local-demo nudges, and `production` raises selected
-enable-this recommendations. Profiles only adjust existing rule severities;
+enable-this recommendations. Use `profile: "demo"` or `profile: "production"`
+as a top-level shortcut when the overlay should follow `extends`; local
+`rules` still win, and a demo profile resolves to the production overlay in CI.
+Profiles only adjust recommendation severities and bounded rule options;
 correctness findings stay on. Packs can ship severity maps plus custom
 `defineRule` plugins. See [policy packs](./apps/docs/docs/policy-packs.md).
 
