@@ -5,11 +5,19 @@ import { ModuleFederationDoctorPlugin } from "@module-federation/doctor/webpack"
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
-const mfOptions = {
-  name: "webpack_smoke",
+const checkoutOptions = {
+  name: "webpack_smoke_checkout",
   manifest: true,
-  filename: "remoteEntry.js",
+  filename: "checkoutRemoteEntry.js",
   exposes: { "./Widget": "./src/Widget.js" },
+  shared: {},
+};
+
+const catalogOptions = {
+  name: "webpack_smoke_catalog",
+  manifest: true,
+  filename: "catalogRemoteEntry.js",
+  exposes: { "./Catalog": "./src/Catalog.js" },
   shared: {},
 };
 
@@ -24,7 +32,8 @@ export default {
     clean: true,
   },
   plugins: [
-    new ModuleFederationPlugin(mfOptions),
-    ModuleFederationDoctorPlugin({ moduleFederation: mfOptions }),
+    new ModuleFederationPlugin(checkoutOptions),
+    new ModuleFederationPlugin(catalogOptions),
+    ModuleFederationDoctorPlugin({ moduleFederation: checkoutOptions }),
   ],
 };

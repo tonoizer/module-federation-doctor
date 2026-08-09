@@ -139,6 +139,14 @@ export {
 } from "./runtime-trace.js";
 export { buildUiPayload } from "./ui-graph.js";
 export {
+  coerceFederationInstanceInputs,
+  describeFederationInstances,
+  duplicateFederationInstanceGroups,
+  federationConfigDigest,
+  federationInstanceRefs,
+} from "./federation-instance.js";
+export type { FederationInstanceDescriptor } from "./federation-instance.js";
+export {
   EVIDENCE_LEGACY_ENV,
   RELEASE_GATES,
   ROLLOUT_SCOPES,
@@ -200,12 +208,16 @@ export type {
   DoctorRule,
   DoctorSharedPolicy,
   DoctorUiPayload,
+  FederationInstanceFacts,
+  FederationInstanceRef,
   FederationAnalysisResult,
   HealthScoreLabel,
   ImportDepth,
   ImportEvidenceSource,
+  ImportSourceScope,
   ImportFacts,
   ModuleFederationConfigLike,
+  ModuleFederationInstanceInput,
   UnresolvedDynamicApi,
   UnresolvedDynamicImport,
   NormalizedMFConfig,

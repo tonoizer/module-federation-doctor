@@ -44,6 +44,28 @@ Keep the official Nuxt Module Federation module in `modules` as well. The
 Doctor module observes both client and SSR Vite builds without owning the
 federation plugin or duplicating its configuration.
 
+**Multiple Module Federation instances**
+
+When one compiler/config intentionally contains more than one independently
+configured federation graph, pass the instances explicitly when the bundler
+does not expose their public options:
+
+```ts
+federationDoctor({
+  moduleFederationInstances: [
+    { pluginName: "ModuleFederationPlugin", config: checkoutMfOptions },
+    { pluginName: "ModuleFederationPlugin", config: catalogMfOptions },
+  ],
+});
+```
+
+Webpack, Rspack, and Vite-family adapters also read public plugin configs when
+available. Doctor derives stable per-instance IDs, keeps manifests/stats/build
+outputs and shared-version evidence scoped, and reports identical duplicate
+registrations separately. Workspace and UI federation graphs include the
+instance scope in every affected edge and node; Nuxt client/SSR outputs are
+aggregated deterministically.
+
 **Rspack** (direct `@rspack/core` — first-class; not replaced by Modern.js)
 
 ```ts

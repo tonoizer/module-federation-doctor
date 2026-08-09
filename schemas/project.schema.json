@@ -76,6 +76,20 @@
           "type": "integer",
           "minimum": 0
         },
+        "federationInstances": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "pluginName", "configDigest", "registrationGroup"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^mfid:v1:federation-instance:[a-f0-9]{24}$" },
+              "pluginName": { "type": "string", "minLength": 1 },
+              "configDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+              "registrationGroup": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+            },
+            "additionalProperties": false
+          }
+        },
         "outputPublicPathKind": {
           "enum": ["string", "non-string", "auto", "unknown"]
         },
@@ -101,6 +115,39 @@
     },
     "moduleFederation": {
       "type": "object"
+    },
+    "federationInstances": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "pluginName",
+          "configDigest",
+          "registrationGroup",
+          "moduleFederation",
+          "capabilities",
+          "imports",
+          "artifacts"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^mfid:v1:federation-instance:[a-f0-9]{24}$" },
+          "pluginName": { "type": "string", "minLength": 1 },
+          "configDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+          "registrationGroup": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+          "moduleFederation": { "type": "object" },
+          "capabilities": { "$ref": "#/$defs/capabilities" },
+          "imports": { "type": "object" },
+          "runtimePluginContracts": { "type": "array" },
+          "artifacts": { "type": "object" },
+          "builds": { "type": "array" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "federationInstanceId": {
+      "type": "string",
+      "pattern": "^mfid:v1:federation-instance:[a-f0-9]{24}$"
     },
     "analysis": {
       "$ref": "#/$defs/analysisBudget"
@@ -155,6 +202,9 @@
         },
         "sourceReadFailures": {
           "$ref": "#/$defs/stringArray"
+        },
+        "sourceScope": {
+          "enum": ["project", "instance", "partial"]
         },
         "evidenceSources": {
           "type": "array",
@@ -239,6 +289,9 @@
           },
           "outputRoot": {
             "type": "string"
+          },
+          "federationInstanceIds": {
+            "$ref": "#/$defs/stringArray"
           },
           "emittedAssets": {
             "$ref": "#/$defs/stringArray"

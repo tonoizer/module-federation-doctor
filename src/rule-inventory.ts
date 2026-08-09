@@ -1315,7 +1315,11 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "imports.sourceFiles",
   ],
   "config/dts-output-dir-mismatch": ["project.scope", "moduleFederation"],
-  "config/duplicate-plugin-registration": ["project.scope", "bundler.moduleFederationPluginCount"],
+  "config/duplicate-plugin-registration": [
+    "project.scope",
+    "bundler.moduleFederationPluginCount",
+    "bundler.federationInstances",
+  ],
   "config/eager-tree-shaking-conflict": ["project.scope", "moduleFederation"],
   "config/expose-key-invalid": ["project.scope", "moduleFederation"],
   "config/expose-path-missing": ["project.scope", "moduleFederation", "imports.sourceFiles"],

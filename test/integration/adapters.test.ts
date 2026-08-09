@@ -123,6 +123,45 @@ describe("adapter cases", () => {
     ).resolves.toBeUndefined();
   }, 120_000);
 
+  it("keeps two Webpack federation plugin instances separate in a production build", async () => {
+    const repository = path.resolve(import.meta.dirname, "../..");
+    const packageRoot = path.join(repository, "examples/compatibility/webpack");
+    const baseEnvironment: NodeJS.ProcessEnv = { ...process.env, CI: "", NODE_ENV: "production" };
+    delete baseEnvironment.VITEST;
+    delete baseEnvironment.VITEST_WORKER_ID;
+
+    await execFileAsync(
+      pnpmCommand,
+      [...pnpmArgs, "--filter", "@mfdoctor-example/webpack-smoke", "build"],
+      {
+        ...pnpmExecOptions,
+        cwd: repository,
+        env: baseEnvironment,
+      },
+    );
+
+    const facts = JSON.parse(
+      await fs.readFile(path.join(packageRoot, ".mf/doctor/project.json"), "utf8"),
+    ) as {
+      federationInstances?: Array<{
+        id: string;
+        moduleFederation?: { name?: string };
+        artifacts?: { emittedAssets?: string[] };
+      }>;
+    };
+    const instances = facts.federationInstances ?? [];
+    expect(instances).toHaveLength(2);
+    expect(new Set(instances.map((instance) => instance.id)).size).toBe(2);
+    expect(instances.map((instance) => instance.moduleFederation?.name)).toEqual([
+      "webpack_smoke_checkout",
+      "webpack_smoke_catalog",
+    ]);
+    expect(instances[0]?.artifacts?.emittedAssets).toContain("dist/checkoutRemoteEntry.js");
+    expect(instances[0]?.artifacts?.emittedAssets).not.toContain("dist/catalogRemoteEntry.js");
+    expect(instances[1]?.artifacts?.emittedAssets).toContain("dist/catalogRemoteEntry.js");
+    expect(instances[1]?.artifacts?.emittedAssets).not.toContain("dist/checkoutRemoteEntry.js");
+  }, 120_000);
+
   it("demos intentional showcase findings through the CLI", async () => {
     const repository = path.resolve(import.meta.dirname, "../..");
     await execFileAsync(pnpmCommand, [...pnpmArgs, "build"], {

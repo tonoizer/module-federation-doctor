@@ -4,6 +4,7 @@ import { resolveBaselineOptions } from "./baseline.js";
 import { resolveAnalysisBudgets } from "./analysis-budgets.js";
 import { resolvePolicy } from "./policy.js";
 import { mergeSharedPolicy, serializeSharedPolicy } from "./shared-policy.js";
+import { coerceFederationInstanceInputs } from "./federation-instance.js";
 import type { DoctorOptions, DoctorPrintLog, ResolvedDoctorOptions } from "./types.js";
 
 export const DEFAULT_INCLUDE = ["src/**/*.{ts,tsx,js,jsx,mts,mjs}"];
@@ -152,6 +153,10 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   const baseline = resolveBaselineOptions(options.baseline, root);
   if (baseline) resolved.baseline = baseline;
   if (options.moduleFederation !== undefined) resolved.moduleFederation = options.moduleFederation;
+  if (options.moduleFederationInstances !== undefined)
+    resolved.moduleFederationInstances = coerceFederationInstanceInputs(
+      options.moduleFederationInstances,
+    );
   if (options.federationGroup?.trim()) resolved.federationGroup = options.federationGroup.trim();
   if (options.bundlerVersion !== undefined) resolved.bundlerVersion = options.bundlerVersion;
   if (options.viteLifecycle !== undefined) resolved.viteLifecycle = options.viteLifecycle;

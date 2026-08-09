@@ -79,6 +79,7 @@ export function looksLikeUrl(value: string): boolean {
 export function fingerprint(input: {
   ruleId: string;
   project: string;
+  federationInstanceId?: string;
   location?: SourceLocation;
   evidence: Record<string, unknown>;
 }): string {
@@ -87,6 +88,7 @@ export function fingerprint(input: {
       stableStringify({
         ruleId: input.ruleId,
         project: input.project,
+        ...(input.federationInstanceId ? { federationInstanceId: input.federationInstanceId } : {}),
         location: input.location,
         evidence: input.evidence,
       }),

@@ -22,10 +22,20 @@ function worstSeverity(left: Severity | undefined, right: Severity): Severity {
   return rank[left] >= rank[right] ? left : right;
 }
 
+function findingScopeKey(project: string, instanceId?: string): string {
+  return `${project}\0${instanceId ?? ""}`;
+}
+
 function findingsByProject(findings: DoctorFinding[]): Map<string, Severity> {
   const map = new Map<string, Severity>();
   for (const finding of findings)
-    map.set(finding.project, worstSeverity(map.get(finding.project), finding.severity));
+    map.set(
+      findingScopeKey(finding.project, finding.federationInstanceId),
+      worstSeverity(
+        map.get(findingScopeKey(finding.project, finding.federationInstanceId)),
+        finding.severity,
+      ),
+    );
   return map;
 }
 
@@ -34,36 +44,58 @@ function findingsByPackage(findings: DoctorFinding[]): Map<string, Severity> {
   for (const finding of findings) {
     const packageName = finding.evidence.package;
     if (typeof packageName === "string")
-      map.set(packageName, worstSeverity(map.get(packageName), finding.severity));
+      map.set(
+        findingScopeKey(packageName, finding.federationInstanceId),
+        worstSeverity(
+          map.get(findingScopeKey(packageName, finding.federationInstanceId)),
+          finding.severity,
+        ),
+      );
   }
   return map;
+}
+
+function scopedSeverity(
+  map: Map<string, Severity>,
+  name: string,
+  instanceId?: string,
+): Severity | undefined {
+  return map.get(findingScopeKey(name, instanceId)) ?? map.get(findingScopeKey(name));
 }
 
 function encodedGroup(group: string | undefined): string | undefined {
   return group ? encodeURIComponent(group) : undefined;
 }
 
-function projectNodeId(project: ProjectFacts): string {
+function projectNodeId(project: ProjectFacts, instanceId?: string): string {
   const group = encodedGroup(project.project.federationGroup);
-  return group
+  const base = group
     ? `project:group:${group}:${project.project.name}`
     : `project:${project.project.name}`;
+  return instanceId ? `${base}:instance:${instanceId}` : base;
 }
 
-function remoteNodeId(consumer: string, remoteName: string, group?: string): string {
+function remoteNodeId(
+  consumer: string,
+  remoteName: string,
+  group?: string,
+  instanceId?: string,
+): string {
   const scope = encodedGroup(group);
-  return scope
+  const base = scope
     ? `remote:group:${scope}:${consumer}:${remoteName}`
     : `remote:${consumer}:${remoteName}`;
+  return instanceId ? `${base}:instance:${instanceId}` : base;
 }
 
-function sharedNodeId(packageName: string, group?: string): string {
+function sharedNodeId(packageName: string, group?: string, instanceId?: string): string {
   const scope = encodedGroup(group);
-  return scope ? `shared:group:${scope}:${packageName}` : `shared:${packageName}`;
+  const base = scope ? `shared:group:${scope}:${packageName}` : `shared:${packageName}`;
+  return instanceId ? `${base}:instance:${instanceId}` : base;
 }
 
-function exposeNodeId(project: ProjectFacts, exposeKey: string): string {
-  return `expose:${projectNodeId(project)}:${exposeKey}`;
+function exposeNodeId(project: ProjectFacts, exposeKey: string, instanceId?: string): string {
+  return `expose:${projectNodeId(project, instanceId)}:${exposeKey}`;
 }
 
 function runtimeNodeId(group?: string): string {
@@ -105,32 +137,30 @@ function addEdge(edges: Map<string, UiGraphEdge>, edge: UiGraphEdge): void {
   if (!edges.has(edge.id)) edges.set(edge.id, edge);
 }
 
-function buildRemotesGraph(
-  projects: ProjectFacts[],
-  findings: DoctorFinding[],
-  federation: FederationModel,
-): UiGraph {
+function buildRemotesGraph(findings: DoctorFinding[], federation: FederationModel): UiGraph {
   const nodes = new Map<string, UiGraphNode>();
   const edges = new Map<string, UiGraphEdge>();
   const projectSeverity = findingsByProject(findings);
-  for (const project of projects) {
+  for (const node of federation.projects) {
+    const project = node.project;
+    const config = node.instance?.moduleFederation ?? project.moduleFederation;
+    const scopedProjectId = projectNodeId(project, node.instanceId);
     addNode(
       nodes,
       withSeverity(
         {
-          id: projectNodeId(project),
-          label: project.moduleFederation?.name
-            ? `${project.project.name} (${project.moduleFederation.name})`
-            : project.project.name,
+          id: scopedProjectId,
+          label: config?.name ? `${project.project.name} (${config.name})` : project.project.name,
           kind: "project" as const,
           project: project.project.name,
           meta: {
             bundler: project.bundler.name,
-            exposes: Object.keys(project.moduleFederation?.exposes ?? {}).length,
-            remotes: Object.keys(project.moduleFederation?.remotes ?? {}).length,
+            exposes: Object.keys(config?.exposes ?? {}).length,
+            remotes: Object.keys(config?.remotes ?? {}).length,
+            ...(node.instanceId ? { federationInstanceId: node.instanceId } : {}),
           },
         },
-        projectSeverity.get(project.project.name),
+        scopedSeverity(projectSeverity, project.project.name, node.instanceId),
       ),
     );
   }
@@ -140,8 +170,13 @@ function buildRemotesGraph(
     const sourceNode = projectsById.get(edge.fromId);
     const targetNode = edge.targetId ? projectsById.get(edge.targetId) : undefined;
     const targetId = targetNode
-      ? projectNodeId(targetNode.project)
-      : remoteNodeId(edge.fromProject, edge.remoteName, sourceNode?.federationGroup);
+      ? projectNodeId(targetNode.project, targetNode.instanceId)
+      : remoteNodeId(
+          edge.fromProject,
+          edge.remoteName,
+          sourceNode?.federationGroup,
+          edge.fromInstanceId,
+        );
     if (!targetNode)
       addNode(nodes, {
         id: targetId,
@@ -151,9 +186,12 @@ function buildRemotesGraph(
           entry: edge.entry,
           shareScope: edge.shareScope,
           alias: edge.alias,
+          ...(edge.fromInstanceId ? { federationInstanceId: edge.fromInstanceId } : {}),
         },
       });
-    const source = sourceNode ? projectNodeId(sourceNode.project) : `project:${edge.fromProject}`;
+    const source = sourceNode
+      ? projectNodeId(sourceNode.project, sourceNode.instanceId)
+      : `project:${edge.fromProject}`;
     addEdge(edges, {
       id: `${source}->${targetId}`,
       source,
@@ -168,38 +206,42 @@ function buildRemotesGraph(
   };
 }
 
-function buildSharedGraph(projects: ProjectFacts[], findings: DoctorFinding[]): UiGraph {
+function buildSharedGraph(findings: DoctorFinding[], federation: FederationModel): UiGraph {
   const nodes = new Map<string, UiGraphNode>();
   const edges = new Map<string, UiGraphEdge>();
   const packageSeverity = findingsByPackage(findings);
   const projectSeverity = findingsByProject(findings);
 
-  for (const project of projects) {
+  for (const node of federation.projects) {
+    const project = node.project;
+    const config = node.instance?.moduleFederation ?? project.moduleFederation;
+    const projectId = projectNodeId(project, node.instanceId);
     addNode(
       nodes,
       withSeverity(
         {
-          id: projectNodeId(project),
+          id: projectId,
           label: project.project.name,
           kind: "project" as const,
           project: project.project.name,
+          ...(node.instanceId ? { meta: { federationInstanceId: node.instanceId } } : {}),
         },
-        projectSeverity.get(project.project.name),
+        scopedSeverity(projectSeverity, project.project.name, node.instanceId),
       ),
     );
-    for (const shared of Object.values(project.moduleFederation?.shared ?? {})) {
-      const id = sharedNodeId(shared.package, project.project.federationGroup);
+    for (const shared of Object.values(config?.shared ?? {})) {
+      const id = sharedNodeId(shared.package, project.project.federationGroup, node.instanceId);
       const previous = nodes.get(id);
       const previousVersions = previous?.meta?.versions as Record<string, string> | undefined;
       const versions = previousVersions
         ? {
             ...previousVersions,
-            [project.project.name]:
+            [node.instanceId ? `${project.project.name}#${node.instanceId}` : project.project.name]:
               project.dependencies.installed[shared.package] ??
               String(shared.requiredVersion ?? shared.version ?? "*"),
           }
         : {
-            [project.project.name]:
+            [node.instanceId ? `${project.project.name}#${node.instanceId}` : project.project.name]:
               project.dependencies.installed[shared.package] ??
               String(shared.requiredVersion ?? shared.version ?? "*"),
           };
@@ -210,21 +252,25 @@ function buildSharedGraph(projects: ProjectFacts[], findings: DoctorFinding[]): 
             id,
             label: shared.package,
             kind: "shared" as const,
-            meta: { singleton: shared.singleton, versions },
+            meta: {
+              singleton: shared.singleton,
+              versions,
+              ...(node.instanceId ? { federationInstanceId: node.instanceId } : {}),
+            },
           },
-          packageSeverity.get(shared.package),
+          scopedSeverity(packageSeverity, shared.package, node.instanceId),
         ),
       );
       addEdge(
         edges,
         withSeverity(
           {
-            id: `${projectNodeId(project)}->${id}`,
-            source: projectNodeId(project),
+            id: `${projectId}->${id}`,
+            source: projectId,
             target: id,
             label: shared.singleton ? "singleton" : "shared",
           },
-          packageSeverity.get(shared.package),
+          scopedSeverity(packageSeverity, shared.package, node.instanceId),
         ),
       );
     }
@@ -236,46 +282,47 @@ function buildSharedGraph(projects: ProjectFacts[], findings: DoctorFinding[]): 
   };
 }
 
-function buildOrchestrationGraph(
-  projects: ProjectFacts[],
-  findings: DoctorFinding[],
-  federation: FederationModel,
-): UiGraph {
+function buildOrchestrationGraph(findings: DoctorFinding[], federation: FederationModel): UiGraph {
   const nodes = new Map<string, UiGraphNode>();
   const edges = new Map<string, UiGraphEdge>();
   const projectSeverity = findingsByProject(findings);
-  for (const project of projects) {
+  for (const node of federation.projects) {
+    const project = node.project;
+    const config = node.instance?.moduleFederation ?? project.moduleFederation;
+    const scopedProjectId = projectNodeId(project, node.instanceId);
     addNode(
       nodes,
       withSeverity(
         {
-          id: projectNodeId(project),
+          id: scopedProjectId,
           label: project.project.name,
           kind: "project" as const,
           project: project.project.name,
           meta: {
-            externalRuntime: Boolean(project.moduleFederation?.experiments?.externalRuntime),
-            provideExternalRuntime: Boolean(
-              project.moduleFederation?.experiments?.provideExternalRuntime,
-            ),
+            externalRuntime: Boolean(config?.experiments?.externalRuntime),
+            provideExternalRuntime: Boolean(config?.experiments?.provideExternalRuntime),
+            ...(node.instanceId ? { federationInstanceId: node.instanceId } : {}),
           },
         },
-        projectSeverity.get(project.project.name),
+        scopedSeverity(projectSeverity, project.project.name, node.instanceId),
       ),
     );
 
-    for (const [key, filePath] of Object.entries(project.moduleFederation?.exposes ?? {})) {
-      const id = exposeNodeId(project, key);
+    for (const [key, filePath] of Object.entries(config?.exposes ?? {})) {
+      const id = exposeNodeId(project, key, node.instanceId);
       addNode(nodes, {
         id,
         label: key,
         kind: "expose",
         project: project.project.name,
-        meta: { path: filePath },
+        meta: {
+          path: filePath,
+          ...(node.instanceId ? { federationInstanceId: node.instanceId } : {}),
+        },
       });
       addEdge(edges, {
-        id: `${projectNodeId(project)}->${id}`,
-        source: projectNodeId(project),
+        id: `${scopedProjectId}->${id}`,
+        source: scopedProjectId,
         target: id,
         label: "exposes",
       });
@@ -287,28 +334,34 @@ function buildOrchestrationGraph(
     const providerNode = edge.targetId ? projectsById.get(edge.targetId) : undefined;
     const sourceNode = projectsById.get(edge.fromId);
     if (!providerNode || !sourceNode) continue;
-    for (const key of Object.keys(providerNode.project.moduleFederation?.exposes ?? {})) {
+    const providerConfig =
+      providerNode.instance?.moduleFederation ?? providerNode.project.moduleFederation;
+    for (const key of Object.keys(providerConfig?.exposes ?? {})) {
       addEdge(edges, {
-        id: `${projectNodeId(sourceNode.project)}->${exposeNodeId(providerNode.project, key)}`,
-        source: projectNodeId(sourceNode.project),
-        target: exposeNodeId(providerNode.project, key),
+        id: `${projectNodeId(sourceNode.project, sourceNode.instanceId)}->${exposeNodeId(providerNode.project, key, providerNode.instanceId)}`,
+        source: projectNodeId(sourceNode.project, sourceNode.instanceId),
+        target: exposeNodeId(providerNode.project, key, providerNode.instanceId),
         label: `consumes ${edge.remoteName}`,
       });
     }
   }
 
-  const projectsByGroup = new Map<string, ProjectFacts[]>();
-  for (const project of projects) {
-    const key = project.project.federationGroup ?? "\0ungrouped";
-    projectsByGroup.set(key, [...(projectsByGroup.get(key) ?? []), project]);
+  const nodesByGroup = new Map<string, typeof federation.projects>();
+  for (const node of federation.projects) {
+    const key = node.project.project.federationGroup ?? "\0ungrouped";
+    nodesByGroup.set(key, [...(nodesByGroup.get(key) ?? []), node]);
   }
-  for (const groupProjects of projectsByGroup.values()) {
-    const group = groupProjects[0]?.project.federationGroup;
-    const providers = groupProjects.filter(
-      (project) => project.moduleFederation?.experiments?.provideExternalRuntime,
+  for (const groupNodes of nodesByGroup.values()) {
+    const group = groupNodes[0]?.federationGroup;
+    const providers = groupNodes.filter(
+      (node) =>
+        (node.instance?.moduleFederation ?? node.project.moduleFederation)?.experiments
+          ?.provideExternalRuntime,
     );
-    const consumers = groupProjects.filter(
-      (project) => project.moduleFederation?.experiments?.externalRuntime,
+    const consumers = groupNodes.filter(
+      (node) =>
+        (node.instance?.moduleFederation ?? node.project.moduleFederation)?.experiments
+          ?.externalRuntime,
     );
     if (providers.length === 0 && consumers.length === 0) continue;
     const runtimeId = runtimeNodeId(group);
@@ -326,16 +379,16 @@ function buildOrchestrationGraph(
     );
     for (const provider of providers)
       addEdge(edges, {
-        id: `${projectNodeId(provider)}->${runtimeId}`,
-        source: projectNodeId(provider),
+        id: `${projectNodeId(provider.project, provider.instanceId)}->${runtimeId}`,
+        source: projectNodeId(provider.project, provider.instanceId),
         target: runtimeId,
         label: "provides",
       });
     for (const consumer of consumers)
       addEdge(edges, {
-        id: `${runtimeId}->${projectNodeId(consumer)}`,
+        id: `${runtimeId}->${projectNodeId(consumer.project, consumer.instanceId)}`,
         source: runtimeId,
-        target: projectNodeId(consumer),
+        target: projectNodeId(consumer.project, consumer.instanceId),
         label: "consumes",
       });
   }
@@ -360,13 +413,10 @@ export function buildUiPayload(projects: ProjectFacts[], report: DoctorReport): 
     report,
     projects,
     graphs: {
-      remotes:
-        projects.length === 0 ? emptyGraph() : buildRemotesGraph(projects, findings, federation),
-      shared: projects.length === 0 ? emptyGraph() : buildSharedGraph(projects, findings),
+      remotes: projects.length === 0 ? emptyGraph() : buildRemotesGraph(findings, federation),
+      shared: projects.length === 0 ? emptyGraph() : buildSharedGraph(findings, federation),
       orchestration:
-        projects.length === 0
-          ? emptyGraph()
-          : buildOrchestrationGraph(projects, findings, federation),
+        projects.length === 0 ? emptyGraph() : buildOrchestrationGraph(findings, federation),
     },
   };
 }

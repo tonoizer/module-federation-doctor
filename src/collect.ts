@@ -5,6 +5,7 @@ import fg from "fast-glob";
 import { parseSync, visitorKeys } from "oxc-parser";
 import { packageName, normalizeModuleFederation } from "./normalize.js";
 import { readCanonicalModuleFederationConfig } from "./canonical-config.js";
+import { describeFederationInstances, federationInstanceRefs } from "./federation-instance.js";
 import { isDeepImportSpecifier } from "./shared-policy.js";
 import type {
   ArtifactKind,
@@ -16,10 +17,13 @@ import type {
   BuildOutputInput,
   ImportDepth,
   ImportEvidenceSource,
+  ImportSourceScope,
   ImportFacts,
+  FederationInstanceFacts,
   OutputPublicPathKind,
   ProjectFacts,
   ResolvedDoctorOptions,
+  NormalizedMFConfig,
   RuntimePluginContractFinding,
   UnresolvedDynamicApi,
   UnresolvedDynamicImport,
@@ -1080,6 +1084,471 @@ async function collectRuntimePluginContracts(
   return findings;
 }
 
+type FederationArtifactConfig = {
+  name?: unknown;
+  filename?: unknown;
+};
+
+function literalRemoteEntryNames(config: FederationArtifactConfig): string[] {
+  const filename = config.filename;
+  if (typeof filename !== "string" || filename.length === 0 || filename.includes("[")) return [];
+  return [normalizePath(filename).replace(/^\.\//, "")];
+}
+
+function artifactRemoteEntryNames(record: ArtifactRecord): string[] {
+  if (record.kind !== "manifest" || !record.manifest.remoteEntry) return [];
+  const entry = record.manifest.remoteEntry;
+  const name = normalizePath(entry.name).replace(/^\.\//, "");
+  const directory = normalizePath(entry.path ?? "")
+    .replace(/^\.\//, "")
+    .replace(/\/$/, "");
+  const manifestDirectory = path.posix.dirname(normalizePath(record.path));
+  return [
+    normalizePath(
+      path.posix.normalize(path.posix.join(manifestDirectory, directory, name)),
+    ).replace(/^\.\//, ""),
+  ];
+}
+
+function artifactStem(value: string): string {
+  return path.posix
+    .basename(normalizePath(value))
+    .replace(/\.[^.]+$/, "")
+    .replace(/(?:[-_.](?:manifest|stats)|(?:manifest|stats))$/i, "");
+}
+
+function recordMatchesInstance(
+  record: ArtifactRecord,
+  config: FederationArtifactConfig,
+  allRecords: ArtifactRecord[] = [],
+): boolean {
+  const configuredName = typeof config.name === "string" ? config.name : undefined;
+  if (
+    record.kind === "manifest" &&
+    configuredName &&
+    (record.manifest.name === configuredName || record.manifest.id === configuredName)
+  )
+    return true;
+  if (record.kind === "stats") {
+    const directory = path.posix.dirname(normalizePath(record.path));
+    const siblingManifests = allRecords.filter(
+      (candidate) =>
+        candidate.kind === "manifest" &&
+        path.posix.dirname(normalizePath(candidate.path)) === directory,
+    );
+    const matchingManifests = siblingManifests.filter((candidate) =>
+      recordMatchesInstance(candidate, config, allRecords),
+    );
+    if (matchingManifests.length === 1) {
+      const onlySibling = siblingManifests.length === 1;
+      const sharesStem = artifactStem(record.path) === artifactStem(matchingManifests[0]!.path);
+      if (onlySibling || sharesStem) return true;
+    }
+  }
+  const expectedEntries = literalRemoteEntryNames(config);
+  const recordEntries = artifactRemoteEntryNames(record);
+  return [...expectedEntries, ...recordEntries].some((expected) => {
+    const normalizedRecord = normalizePath(record.path).replace(/^\.\//, "");
+    return normalizedRecord === expected || normalizedRecord.endsWith(`/${expected}`);
+  });
+}
+
+function artifactFactsForInstance(
+  artifacts: ArtifactFacts,
+  config: FederationArtifactConfig,
+  instanceCount: number,
+  instanceId?: string,
+  allInstances?: Array<{ id: string; config: FederationArtifactConfig }>,
+): ArtifactFacts {
+  const records = artifacts.records ?? [];
+  const selectedRecords =
+    instanceCount <= 1
+      ? records.slice()
+      : records.filter((record) => {
+          const candidates = (allInstances ?? [])
+            .filter((instance) => recordMatchesInstance(record, instance.config, records))
+            .map((instance) => instance.id);
+          return candidates.length === 1
+            ? candidates[0] === instanceId
+            : candidates.length === 0 && recordMatchesInstance(record, config, records);
+        });
+  const selectedPaths = new Set(
+    selectedRecords.map((record) => normalizePath(record.path).replace(/^\.\//, "")),
+  );
+  const expectedEntries = literalRemoteEntryNames(config);
+  const manifestEntries = selectedRecords.flatMap(artifactRemoteEntryNames);
+  const selectedDirectories = selectedRecords.map((record) =>
+    path.posix.dirname(normalizePath(record.path).replace(/^\.\//, "")),
+  );
+  const pathMatches = (asset: string, expected: string): boolean => {
+    const normalized = normalizePath(asset).replace(/^\.\//, "");
+    const candidate = normalizePath(expected).replace(/^\.\//, "");
+    return normalized === candidate || normalized.endsWith(`/${candidate}`);
+  };
+  const literalEntryIsUnambiguous = (asset: string): boolean => {
+    const matches = (allInstances ?? []).filter((instance) =>
+      literalRemoteEntryNames(instance.config).some((expected) => pathMatches(asset, expected)),
+    );
+    return matches.length <= 1;
+  };
+  const emittedAssets =
+    instanceCount <= 1
+      ? artifacts.emittedAssets.slice()
+      : artifacts.emittedAssets.filter((asset) => {
+          const normalized = normalizePath(asset).replace(/^\.\//, "");
+          return (
+            selectedPaths.has(normalized) ||
+            manifestEntries.some((expected) => pathMatches(normalized, expected)) ||
+            (expectedEntries.some((expected) => pathMatches(normalized, expected)) &&
+              literalEntryIsUnambiguous(normalized) &&
+              (selectedDirectories.length === 0 ||
+                selectedDirectories.some(
+                  (directory) =>
+                    directory === "." ||
+                    normalized === directory ||
+                    normalized.startsWith(`${directory}/`),
+                )))
+          );
+        });
+  const manifest = selectedRecords.find((record) => record.kind === "manifest")?.manifest;
+  const stats = selectedRecords.find((record) => record.kind === "stats")?.stats;
+  const selectedAssetPaths = new Set([
+    ...emittedAssets,
+    ...selectedRecords.map((record) => record.path),
+  ]);
+  const assetSizes = artifacts.assetSizes
+    ? Object.fromEntries(
+        Object.entries(artifacts.assetSizes).filter(([asset]) => {
+          const normalized = normalizePath(asset);
+          return selectedAssetPaths.has(asset) || selectedAssetPaths.has(normalized);
+        }),
+      )
+    : undefined;
+  return {
+    ...(manifest ? { manifest } : {}),
+    ...(stats ? { stats } : {}),
+    ...(selectedRecords.length > 0 ? { records: selectedRecords } : { records: [] }),
+    emittedAssets: emittedAssets.sort(),
+    ...(assetSizes && Object.keys(assetSizes).length > 0 ? { assetSizes } : {}),
+  };
+}
+
+function localSourcePath(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length === 0) return undefined;
+  const normalized = normalizePath(value).replace(/^\.\//, "");
+  if (
+    !normalized ||
+    normalized.startsWith("/") ||
+    /^[A-Za-z]:/.test(normalized) ||
+    normalized.startsWith("[external]/") ||
+    normalized.includes("://")
+  )
+    return undefined;
+  return normalized;
+}
+
+function instanceRemoteNames(config: NormalizedMFConfig): Set<string> {
+  const names = new Set<string>();
+  for (const [alias, remote] of Object.entries(config.remotes)) {
+    names.add(alias);
+    names.add(remote.name);
+    if (remote.alias) names.add(remote.alias);
+  }
+  return names;
+}
+
+function rawScanForInstance(
+  scan: RawImportScan,
+  config: NormalizedMFConfig,
+): { scan: RawImportScan; sourceScope: ImportSourceScope } {
+  const availableFiles = new Set(scan.sourceFiles);
+  const sourceFiles = new Set<string>();
+  const addFile = (file: string): void => {
+    if (availableFiles.has(file)) sourceFiles.add(file);
+  };
+  for (const file of Object.values(config.exposes)) {
+    const local = localSourcePath(file);
+    if (local) addFile(local);
+  }
+  for (const plugin of config.runtimePlugins ?? []) {
+    const local = localSourcePath(plugin);
+    if (local) addFile(local);
+  }
+  const remoteNames = instanceRemoteNames(config);
+  const sharedNames = new Set(Object.keys(config.shared));
+  for (const [specifier, files] of scan.specifierFiles) {
+    const packageRoot = packageName(specifier);
+    if (!remoteNames.has(packageRoot) && !sharedNames.has(packageRoot)) continue;
+    for (const file of files) addFile(file);
+  }
+
+  const specifierFiles = new Map<string, Set<string>>();
+  const specifierDynamic = new Map<string, boolean>();
+  const reexportOnly = new Set<string>();
+  for (const [specifier, files] of scan.specifierFiles) {
+    const selected = new Set([...files].filter((file) => sourceFiles.has(file)));
+    if (selected.size === 0) continue;
+    specifierFiles.set(specifier, selected);
+    specifierDynamic.set(specifier, scan.specifierDynamic.get(specifier) === true);
+    if (scan.reexportOnly.has(specifier)) reexportOnly.add(specifier);
+  }
+  const scopedScan: RawImportScan = {
+    sourceFiles: [...sourceFiles].sort(),
+    specifierDynamic,
+    reexportOnly,
+    specifierFiles,
+    remoteSpecifiers: new Set(
+      [...scan.remoteSpecifiers].filter((specifier) => specifierFiles.has(specifier)),
+    ),
+    unresolvedDynamic: scan.unresolvedDynamic.filter((item) => sourceFiles.has(item.file)),
+    sourceReadFailures: scan.sourceReadFailures.filter((file) => sourceFiles.has(file)),
+    ...(scan.budget ? { budget: scan.budget } : {}),
+  };
+  const hasFederatedSurface =
+    Object.keys(config.exposes).length > 0 ||
+    Object.keys(config.remotes).length > 0 ||
+    Object.keys(config.shared).length > 0;
+  return {
+    scan: scopedScan,
+    sourceScope:
+      scan.budget?.status !== "complete" || scan.budget?.exceeded.length
+        ? "partial"
+        : hasFederatedSurface && sourceFiles.size === 0
+          ? "partial"
+          : "instance",
+  };
+}
+
+function importsForInstance(
+  imports: ImportFacts,
+  scan: RawImportScan,
+  config: NormalizedMFConfig,
+  multipleInstances: boolean,
+): ImportFacts {
+  if (!multipleInstances) return imports;
+  const remoteAliases = instanceRemoteNames(config);
+  const scoped = rawScanForInstance(scan, config);
+  const sourceEvidence = new Set<ImportEvidenceSource>();
+  if (scoped.scan.sourceFiles.length > 0) sourceEvidence.add("source");
+  if (imports.evidenceSources.includes("manifest")) sourceEvidence.add("manifest");
+  const source = finalizeImports({
+    scan: scoped.scan,
+    remoteAliases,
+    manifestRemotes: [],
+    runtimePackages: [],
+    runtimeRemotes: [],
+    evidenceSources: sourceEvidence,
+    depth: imports.depth ?? "direct",
+  });
+  const remotes = new Set(source.remotes);
+  for (const remote of imports.remotes) if (remoteAliases.has(remote)) remotes.add(remote);
+  return {
+    ...imports,
+    sourceFiles: source.sourceFiles,
+    specifiers: source.specifiers,
+    packages: source.packages,
+    dynamicPackages: source.dynamicPackages,
+    remotes: [...remotes].sort(),
+    unresolvedDynamic: source.unresolvedDynamic,
+    ...(source.sourceReadFailures ? { sourceReadFailures: source.sourceReadFailures } : {}),
+    evidenceSources: [...sourceEvidence].sort(),
+    depth: imports.depth ?? "direct",
+    deepImports: source.deepImports ?? [],
+    deepImportFiles: source.deepImportFiles ?? {},
+    sourceScope: scoped.sourceScope,
+  };
+}
+
+async function sanitizeNormalizedModuleFederation(
+  root: string,
+  normalized: import("./types.js").NormalizedMFConfig,
+  scan: RawImportScan,
+): Promise<void> {
+  for (const [key, target] of Object.entries(normalized.exposes)) {
+    const safeTarget = safeConfigSpecifier(root, target);
+    try {
+      await fs.access(path.resolve(root, target));
+      if (!scan.budget?.exceeded.length && !scan.sourceFiles.includes(normalizePath(safeTarget)))
+        scan.sourceFiles.push(normalizePath(safeTarget));
+    } catch {
+      // Missing expose paths are reported from this collected absence.
+    }
+    normalized.exposes[key] = safeTarget;
+  }
+  if (normalized.runtimePlugins)
+    normalized.runtimePlugins = normalized.runtimePlugins.map((plugin) =>
+      safeConfigSpecifier(root, plugin),
+    );
+  if (normalized.implementation)
+    normalized.implementation = safeConfigSpecifier(root, normalized.implementation);
+  if (normalized.treeShaking?.directory)
+    normalized.treeShaking.directory = safeConfigSpecifier(root, normalized.treeShaking.directory);
+  if (normalized.vite?.virtualModuleDir)
+    normalized.vite.virtualModuleDir = safeConfigSpecifier(root, normalized.vite.virtualModuleDir);
+}
+
+function instanceArtifactCandidates(
+  record: ArtifactRecord,
+  instances: FederationInstanceFacts[],
+  records: ArtifactRecord[] = [],
+): string[] {
+  return instances
+    .filter((instance) => recordMatchesInstance(record, instance.moduleFederation, records))
+    .map((instance) => instance.id);
+}
+
+function instanceBuildAssets(
+  build: BuildRecord,
+  instance: FederationInstanceFacts,
+  instances: FederationInstanceFacts[],
+  records: ArtifactRecord[],
+): string[] {
+  if (instances.length <= 1) return build.emittedAssets.slice();
+  const assignedPaths = new Set(
+    records
+      .filter((record) => instanceArtifactCandidates(record, instances, records).length === 1)
+      .filter((record) => instanceArtifactCandidates(record, instances, records)[0] === instance.id)
+      .map((record) => record.path),
+  );
+  const expectedEntries = literalRemoteEntryNames(instance.moduleFederation);
+  const manifestEntries = (instance.artifacts.records ?? []).flatMap(artifactRemoteEntryNames);
+  const selectedDirectories = (instance.artifacts.records ?? []).map((record) =>
+    path.posix.dirname(normalizePath(record.path).replace(/^\.\//, "")),
+  );
+  const explicitlyScopedToInstance =
+    build.federationInstanceIds?.length === 1 && build.federationInstanceIds[0] === instance.id;
+  return build.emittedAssets.filter((asset) => {
+    const normalized = normalizePath(asset);
+    const pathMatches = (expected: string): boolean => {
+      const candidate = normalizePath(expected).replace(/^\.\//, "");
+      return normalized === candidate || normalized.endsWith(`/${candidate}`);
+    };
+    return (
+      assignedPaths.has(normalized) ||
+      manifestEntries.some(pathMatches) ||
+      (expectedEntries.some(pathMatches) &&
+        (explicitlyScopedToInstance ||
+          selectedDirectories.some(
+            (directory) =>
+              directory === "." ||
+              normalized === directory ||
+              normalized.startsWith(`${directory}/`),
+          )))
+    );
+  });
+}
+
+function buildInstanceCandidates(
+  build: BuildRecord,
+  instances: FederationInstanceFacts[],
+  records: ArtifactRecord[],
+): string[] {
+  if (instances.length <= 1) return instances.map((instance) => instance.id);
+  const matches = instances.filter((instance) => {
+    const artifactMatch = build.artifacts.some((record) => {
+      const candidates = instanceArtifactCandidates(record, instances, records);
+      return candidates.length === 1 && candidates[0] === instance.id;
+    });
+    const expectedEntries = literalRemoteEntryNames(instance.moduleFederation);
+    const manifestEntries = records
+      .filter((record) => {
+        const candidates = instanceArtifactCandidates(record, instances, records);
+        return candidates.length === 1 && candidates[0] === instance.id;
+      })
+      .flatMap(artifactRemoteEntryNames);
+    const assetMatch = build.emittedAssets.some((asset) => {
+      const normalized = normalizePath(asset).replace(/^\.\//, "");
+      return [...expectedEntries, ...manifestEntries].some((expected) => {
+        const candidate = normalizePath(expected).replace(/^\.\//, "");
+        return normalized === candidate || normalized.endsWith(`/${candidate}`);
+      });
+    });
+    return artifactMatch || assetMatch;
+  });
+  return matches.map((instance) => instance.id).sort();
+}
+
+function attachFederationInstanceBuilds(facts: ProjectFacts): void {
+  const instances = facts.federationInstances;
+  if (!instances?.length || !facts.builds?.length) return;
+  const records = facts.artifacts.records ?? [];
+  for (const instance of instances) {
+    const collectedArtifacts = artifactFactsForInstance(
+      facts.artifacts,
+      instance.moduleFederation,
+      instances.length,
+      instance.id,
+      instances.map((item) => ({ id: item.id, config: item.moduleFederation })),
+    );
+    const builds = facts.builds
+      .filter(
+        (build) =>
+          !build.federationInstanceIds || build.federationInstanceIds.includes(instance.id),
+      )
+      .map((build) => {
+        const artifacts = build.artifacts.flatMap((record) => {
+          const candidates = instanceArtifactCandidates(record, instances, records);
+          if (instances.length <= 1 || (candidates.length === 1 && candidates[0] === instance.id))
+            return [
+              record.federationInstanceId
+                ? record
+                : Object.assign({}, record, { federationInstanceId: instance.id }),
+            ];
+          return [];
+        });
+        return Object.assign({}, build, {
+          federationInstanceIds: [instance.id],
+          emittedAssets: instanceBuildAssets(build, instance, instances, records),
+          artifacts,
+        });
+      });
+    const currentRecords = builds.flatMap((build) => build.artifacts);
+    const recordsForInstance = (
+      currentRecords.length > 0 ? currentRecords : (instance.artifacts.records ?? [])
+    ).map((record) =>
+      record.federationInstanceId
+        ? record
+        : Object.assign({}, record, { federationInstanceId: instance.id }),
+    );
+    const emittedAssets = [
+      ...new Set([
+        ...instance.artifacts.emittedAssets,
+        ...collectedArtifacts.emittedAssets,
+        ...builds.flatMap((build) => build.emittedAssets),
+      ]),
+    ].sort();
+    const assetSizes = facts.artifacts.assetSizes
+      ? Object.fromEntries(
+          Object.entries(facts.artifacts.assetSizes).filter(([asset]) =>
+            emittedAssets.includes(normalizePath(asset)),
+          ),
+        )
+      : undefined;
+    const manifest =
+      recordsForInstance.find((record) => record.kind === "manifest")?.manifest ??
+      instance.artifacts.manifest;
+    const stats =
+      recordsForInstance.find((record) => record.kind === "stats")?.stats ??
+      instance.artifacts.stats;
+    instance.builds = builds;
+    instance.artifacts = {
+      ...(manifest ? { manifest } : {}),
+      ...(stats ? { stats } : {}),
+      records: recordsForInstance,
+      emittedAssets,
+      ...(assetSizes && Object.keys(assetSizes).length > 0 ? { assetSizes } : {}),
+    };
+    instance.capabilities = {
+      ...instance.capabilities,
+      emittedAssets:
+        builds.length > 0 &&
+        builds.every((build) => build.capabilities.emittedAssets.state === "exact"),
+      manifest: manifest !== undefined,
+      stats: stats !== undefined,
+    };
+  }
+}
+
 export async function collectProjectFacts(
   options: ResolvedDoctorOptions,
   boundedRoots?: string[],
@@ -1090,6 +1559,14 @@ export async function collectProjectFacts(
     ...packageJson.devDependencies,
     ...packageJson.dependencies,
   };
+  const instanceInputs =
+    options.moduleFederationInstances && options.moduleFederationInstances.length > 0
+      ? options.moduleFederationInstances
+      : options.moduleFederation
+        ? [{ config: options.moduleFederation }]
+        : [];
+  const descriptors = describeFederationInstances(instanceInputs);
+  const instanceScoped = options.moduleFederationInstances !== undefined || descriptors.length > 1;
   const tracker = new AnalysisBudgetTracker(options.analysisBudgets);
   const scan = await scanProjectImports(options, tracker);
   const cacheIdentity = createAnalysisCacheIdentity(options);
@@ -1101,42 +1578,24 @@ export async function collectProjectFacts(
     options.analysisCache,
     cacheIdentity,
   );
+  const normalizedInstances = descriptors.flatMap((descriptor) => {
+    const normalized = normalizeModuleFederation(descriptor.config, { bundler: options.bundler });
+    return normalized ? [{ descriptor, normalized }] : [];
+  });
   const normalizedMf =
-    normalizeModuleFederation(options.moduleFederation, { bundler: options.bundler }) ??
+    normalizedInstances[0]?.normalized ??
     (await detectFromManifest(options.root, artifacts.manifest));
-  for (const [key, target] of Object.entries(normalizedMf?.exposes ?? {})) {
-    const safeTarget = safeConfigSpecifier(options.root, target);
-    try {
-      await fs.access(path.resolve(options.root, target));
-      const safeNormalized = normalizePath(safeTarget);
-      if (!scan.budget?.exceeded.length && !scan.sourceFiles.includes(safeNormalized))
-        scan.sourceFiles.push(safeNormalized);
-    } catch {
-      // Missing expose paths are reported from this collected absence.
-    }
-    normalizedMf!.exposes[key] = safeTarget;
-  }
-  if (normalizedMf?.runtimePlugins)
-    normalizedMf.runtimePlugins = normalizedMf.runtimePlugins.map((plugin) =>
-      safeConfigSpecifier(options.root, plugin),
-    );
-  if (normalizedMf?.implementation)
-    normalizedMf.implementation = safeConfigSpecifier(options.root, normalizedMf.implementation);
-  if (normalizedMf?.treeShaking?.directory)
-    normalizedMf.treeShaking.directory = safeConfigSpecifier(
-      options.root,
-      normalizedMf.treeShaking.directory,
-    );
-  if (normalizedMf?.vite?.virtualModuleDir)
-    normalizedMf.vite.virtualModuleDir = safeConfigSpecifier(
-      options.root,
-      normalizedMf.vite.virtualModuleDir,
-    );
+  for (const { normalized } of normalizedInstances)
+    await sanitizeNormalizedModuleFederation(options.root, normalized, scan);
+  if (normalizedMf && normalizedInstances.length === 0)
+    await sanitizeNormalizedModuleFederation(options.root, normalizedMf, scan);
   scan.sourceFiles.sort();
 
   const remoteAliases = new Set(
-    Object.entries(normalizedMf?.remotes ?? {}).flatMap(([alias, remote]) =>
-      [alias, remote.name, remote.alias].filter((value): value is string => Boolean(value)),
+    normalizedInstances.flatMap(({ normalized }) =>
+      Object.entries(normalized.remotes).flatMap(([alias, remote]) =>
+        [alias, remote.name, remote.alias].filter((value): value is string => Boolean(value)),
+      ),
     ),
   );
   const manifestRemotes = (artifacts.manifest?.remotes ?? [])
@@ -1176,19 +1635,35 @@ export async function collectProjectFacts(
   const bundlerVersion = bundlerPackage
     ? (options.bundlerVersion ?? installed[bundlerPackage])
     : options.bundlerVersion;
-  const canonicalConfig = options.moduleFederation
-    ? readCanonicalModuleFederationConfig(options.moduleFederation, {
-        adapter: {
-          name: options.bundler,
-          version: bundlerVersion ?? "unknown",
-          packId: "unknown",
-        },
-        bundler: {
-          name: options.bundler,
-          version: bundlerVersion ?? "unknown",
-        },
-      })
-    : undefined;
+  const canonicalContext = {
+    adapter: {
+      name: options.bundler,
+      version: bundlerVersion ?? "unknown",
+      packId: "unknown",
+    },
+    bundler: {
+      name: options.bundler,
+      version: bundlerVersion ?? "unknown",
+    },
+  };
+  const canonicalInstances = normalizedInstances.map(({ descriptor }) => ({
+    descriptor,
+    canonical: readCanonicalModuleFederationConfig(descriptor.config, canonicalContext),
+  }));
+  const canonicalConfig =
+    canonicalInstances[0]?.canonical ??
+    (options.moduleFederation
+      ? readCanonicalModuleFederationConfig(options.moduleFederation, canonicalContext)
+      : undefined);
+  const instanceImports = new Map(
+    normalizedInstances.map(({ descriptor, normalized }) => [
+      descriptor.id,
+      importsForInstance(imports, scan, normalized, normalizedInstances.length > 1),
+    ]),
+  );
+  const instanceCanonical = new Map(
+    canonicalInstances.map(({ descriptor, canonical }) => [descriptor.id, canonical]),
+  );
   const lifecycle =
     options.bundler === "vite"
       ? (options.viteLifecycle ?? (await detectViteLifecycle(options.root)))
@@ -1204,6 +1679,9 @@ export async function collectProjectFacts(
       name: options.bundler,
       mode: options.mode,
       ...(bundlerVersion ? { version: bundlerVersion } : {}),
+      ...(instanceScoped && descriptors.length > 0
+        ? { federationInstances: federationInstanceRefs(descriptors) }
+        : {}),
       ...(lifecycle ? { lifecycle } : {}),
       ...(options.viteConfigFacts ? { viteConfig: options.viteConfigFacts } : {}),
       ...(options.transformImportLibraries
@@ -1211,7 +1689,7 @@ export async function collectProjectFacts(
         : {}),
     },
     capabilities: {
-      config: options.moduleFederation !== undefined,
+      config: options.moduleFederation !== undefined || descriptors.length > 0,
       sourceImports: true,
       manifest: artifacts.manifest !== undefined,
       stats: artifacts.stats !== undefined,
@@ -1228,6 +1706,37 @@ export async function collectProjectFacts(
     analysis: tracker.report(scan.sourceReadFailures.length > 0 ? "unknown" : "complete"),
   };
   if (normalizedMf) facts.moduleFederation = normalizedMf;
+  if (instanceScoped && normalizedInstances.length > 0) {
+    facts.federationInstances = normalizedInstances.map(({ descriptor, normalized }) => {
+      const instanceArtifacts = artifactFactsForInstance(
+        artifacts,
+        descriptor.config,
+        normalizedInstances.length,
+        descriptor.id,
+        descriptors.map((item) => ({ id: item.id, config: item.config })),
+      );
+      const instanceCanonicalConfig = instanceCanonical.get(descriptor.id);
+      const instance: FederationInstanceFacts = {
+        id: descriptor.id,
+        pluginName: descriptor.pluginName,
+        configDigest: descriptor.configDigest,
+        registrationGroup: descriptor.registrationGroup,
+        moduleFederation: normalized,
+        capabilities: {
+          config: true,
+          manifest: instanceArtifacts.manifest !== undefined,
+          stats: instanceArtifacts.stats !== undefined,
+          sourceImports: true,
+          emittedAssets: false,
+          installedVersions: true,
+        },
+        imports: instanceImports.get(descriptor.id) ?? imports,
+        artifacts: instanceArtifacts,
+      };
+      if (instanceCanonicalConfig !== undefined) instance.canonicalConfig = instanceCanonicalConfig;
+      return instance;
+    });
+  }
   if (tracker.checkWallTime()) {
     const runtimePluginContracts = await collectRuntimePluginContracts(
       options.root,
@@ -1235,6 +1744,17 @@ export async function collectProjectFacts(
       imports.sourceFiles,
     );
     if (runtimePluginContracts.length > 0) facts.runtimePluginContracts = runtimePluginContracts;
+    if (facts.federationInstances) {
+      for (const instance of facts.federationInstances) {
+        if (!tracker.checkWallTime()) break;
+        const contracts = await collectRuntimePluginContracts(
+          options.root,
+          instance.moduleFederation.runtimePlugins,
+          instance.imports.sourceFiles,
+        );
+        if (contracts.length > 0) instance.runtimePluginContracts = contracts;
+      }
+    }
     if (tracker.checkWallTime()) await attachAssetSizes(facts, options.root);
   }
   // Plugin and asset-size collection can consume the remaining wall-time
@@ -1245,6 +1765,7 @@ export async function collectProjectFacts(
 
 export interface BuildDiagnostics {
   moduleFederationPluginCount?: number;
+  moduleFederationInstances?: import("./types.js").ModuleFederationInstanceInput[];
   outputPublicPathKind?: OutputPublicPathKind;
 }
 
@@ -1267,8 +1788,8 @@ export async function addBuildFacts(
     const orderedOutputs = outputs
       .slice()
       .sort((left, right) =>
-        `${left.adapter}:${left.compilerName ?? ""}:${left.compilationName ?? ""}:${left.hash ?? ""}:${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.sourceHook}:${JSON.stringify(left.modernContext ?? {})}`.localeCompare(
-          `${right.adapter}:${right.compilerName ?? ""}:${right.compilationName ?? ""}:${right.hash ?? ""}:${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.sourceHook}:${JSON.stringify(right.modernContext ?? {})}`,
+        `${left.adapter}:${left.compilerName ?? ""}:${left.compilationName ?? ""}:${left.hash ?? ""}:${left.outputRoot ?? ""}:${left.emittedAssets.join(",")}:${left.federationInstanceIds?.join(",") ?? ""}:${left.sourceHook}:${JSON.stringify(left.modernContext ?? {})}`.localeCompare(
+          `${right.adapter}:${right.compilerName ?? ""}:${right.compilationName ?? ""}:${right.hash ?? ""}:${right.outputRoot ?? ""}:${right.emittedAssets.join(",")}:${right.federationInstanceIds?.join(",") ?? ""}:${right.sourceHook}:${JSON.stringify(right.modernContext ?? {})}`,
         ),
       );
     const builds: BuildRecord[] = orderedOutputs.map((output, index) => {
@@ -1397,6 +1918,19 @@ export async function addBuildFacts(
         },
         sourceHook: output.sourceHook,
       };
+      if (output.federationInstanceIds) {
+        build.federationInstanceIds = [...new Set(output.federationInstanceIds)].sort();
+      } else if (facts.federationInstances) {
+        const inferred = buildInstanceCandidates(
+          build,
+          facts.federationInstances,
+          facts.artifacts.records ?? [],
+        );
+        build.federationInstanceIds =
+          inferred.length > 0
+            ? inferred
+            : facts.federationInstances.map((instance) => instance.id).sort();
+      }
       if (output.compilerName) build.compilerName = output.compilerName;
       if (output.compilationName) build.compilationName = output.compilationName;
       if (output.hash) build.hash = output.hash;
@@ -1445,5 +1979,6 @@ export async function addBuildFacts(
     .map((build) => build.outputRoot)
     .filter((value): value is string => Boolean(value));
   await attachAssetSizes(facts, root, recordedOutputRoots);
+  attachFederationInstanceBuilds(facts);
   return facts;
 }
