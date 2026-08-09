@@ -522,6 +522,40 @@ describe("artifact collection", () => {
     expect(facts.artifacts.manifest?.valid).toBe(false);
   });
 
+  it("canonicalizes set-like output arrays before ordering builds", async () => {
+    const root = await fixture({
+      "out/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+    const outputs = [
+      viteOutput({
+        emittedAssets: ["remoteEntry.js", "mf-manifest.json"],
+        federationInstanceIds: ["zeta", "alpha"],
+        sourceHook: "first",
+      }),
+      viteOutput({
+        emittedAssets: ["mf-manifest.json", "remoteEntry.js"],
+        federationInstanceIds: ["alpha", "zeta"],
+        sourceHook: "second",
+      }),
+    ];
+    const originalArrays = outputs.map((output) => ({
+      emittedAssets: output.emittedAssets.slice(),
+      federationInstanceIds: output.federationInstanceIds?.slice(),
+    }));
+
+    await addBuildFacts(facts, ["out/mf-manifest.json"], root, undefined, outputs);
+
+    expect(facts.builds?.map((build) => build.sourceHook)).toEqual(["first", "second"]);
+    expect(facts.artifacts.emittedAssets).toEqual(["mf-manifest.json", "remoteEntry.js"]);
+    expect(
+      outputs.map((output) => ({
+        emittedAssets: output.emittedAssets,
+        federationInstanceIds: output.federationInstanceIds,
+      })),
+    ).toEqual(originalArrays);
+  });
+
   it("uses the current output root for bare manifest budget assets", async () => {
     const root = await fixture({
       "out/a/mf-manifest.json": JSON.stringify({

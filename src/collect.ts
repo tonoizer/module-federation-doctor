@@ -1758,7 +1758,9 @@ export interface BuildDiagnostics {
 }
 
 function buildOutputOrderKey(output: BuildOutputInput): string {
-  return `${output.adapter}:${output.compilerName ?? ""}:${output.compilationName ?? ""}:${output.hash ?? ""}:${output.outputRoot ?? ""}:${output.emittedAssets.join(",")}:${output.federationInstanceIds?.join(",") ?? ""}:${output.sourceHook}:${JSON.stringify(output.modernContext ?? {})}`;
+  const emittedAssets = output.emittedAssets.slice().sort();
+  const federationInstanceIds = output.federationInstanceIds?.slice().sort();
+  return `${output.adapter}:${output.compilerName ?? ""}:${output.compilationName ?? ""}:${output.hash ?? ""}:${output.outputRoot ?? ""}:${emittedAssets.join(",")}:${federationInstanceIds?.join(",") ?? ""}:${output.sourceHook}:${JSON.stringify(output.modernContext ?? {})}`;
 }
 
 function orderBuildOutputs(outputs: BuildOutputInput[]): BuildOutputInput[] {
