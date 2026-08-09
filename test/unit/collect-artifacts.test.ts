@@ -343,6 +343,22 @@ describe("artifact collection", () => {
     expect(facts.artifacts.emittedAssets).toEqual(["dist/remoteEntry.js"]);
   });
 
+  it("preserves legacy artifacts when structured build outputs are empty", async () => {
+    const root = await fixture({
+      "dist/mf-manifest.json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),
+      "dist/mf-stats.json": JSON.stringify({ assets: ["remoteEntry.js"] }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+
+    await addBuildFacts(facts, ["dist/remoteEntry.js"], root, undefined, []);
+
+    expect(facts.artifacts.emittedAssets).toEqual(["dist/remoteEntry.js"]);
+    expect(facts.capabilities.emittedAssets).toBe(true);
+    expect(facts.artifacts.manifest).toMatchObject({ path: "dist/mf-manifest.json" });
+    expect(facts.artifacts.stats).toMatchObject({ path: "dist/mf-stats.json" });
+    expect(facts.capabilities).toMatchObject({ manifest: true, stats: true });
+  });
+
   it("collects exact artifacts from a bounded node_modules output root", async () => {
     const outputRoot = "node_modules/.cache/framework/dist";
     const root = await fixture({

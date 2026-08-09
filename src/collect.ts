@@ -1946,6 +1946,7 @@ function buildRecordForOutput(
 }
 
 function projectLegacyBuildFacts(facts: ProjectFacts, builds: BuildRecord[]): void {
+  if (builds.length === 0) return;
   // Compatibility view: deterministic primary-build projection.
   facts.artifacts.emittedAssets = [
     ...new Set(builds.flatMap((build) => build.emittedAssets)),
