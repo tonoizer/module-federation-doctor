@@ -7,6 +7,7 @@
  * generated remote URLs always agree with the preview servers.
  */
 import fs from "node:fs/promises";
+import { createHash } from "node:crypto";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -17,7 +18,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BASE_PORTS = [3001, 3002, 3003, 5173, 3011, 3012, 5183];
 const MAX_OFFSET = 20_000;
 const LOCK_PREFIX = path.join(os.tmpdir(), "mfdoctor-e2e");
+const WORKSPACE_LOCK_PATH = path.join(
+  os.tmpdir(),
+  `mfdoctor-e2e-workspace-${createHash("sha256").update(root).digest("hex")}.lock`,
+);
 const LOCK_INIT_GRACE_MS = 30_000;
+const WORKSPACE_LOCK_POLL_MS = 250;
 const MAX_GATE_ATTEMPTS = 3;
 const PROCESS_GROUP_WAIT_MS = 5_000;
 const PROCESS_GROUP_POLL_MS = 50;
@@ -194,7 +200,7 @@ function assertNotInterrupted() {
   if (interruptedSignal) throw new Error(`E2E run interrupted by ${interruptedSignal}`);
 }
 
-async function reclaimStaleOffsetLock(lockPath) {
+async function reclaimStaleLock(lockPath) {
   let stat;
   try {
     stat = await fs.stat(lockPath);
@@ -231,9 +237,7 @@ async function reclaimStaleOffsetLock(lockPath) {
   return true;
 }
 
-async function tryAcquireOffsetLock(offset) {
-  const lockPath = `${LOCK_PREFIX}-${offset}.lock`;
-
+async function tryAcquireLock(lockPath) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     let handle;
     try {
@@ -249,12 +253,25 @@ async function tryAcquireOffsetLock(offset) {
         if (handle) await fs.rm(lockPath, { force: true });
         throw error;
       }
-      if (await reclaimStaleOffsetLock(lockPath)) continue;
+      if (await reclaimStaleLock(lockPath)) continue;
       return null;
     }
   }
 
   return null;
+}
+
+async function tryAcquireOffsetLock(offset) {
+  return tryAcquireLock(`${LOCK_PREFIX}-${offset}.lock`);
+}
+
+async function acquireWorkspaceLock() {
+  while (true) {
+    assertNotInterrupted();
+    const release = await tryAcquireLock(WORKSPACE_LOCK_PATH);
+    if (release) return release;
+    await new Promise((resolve) => setTimeout(resolve, WORKSPACE_LOCK_POLL_MS));
+  }
 }
 
 function canListen(port) {
@@ -371,70 +388,79 @@ function isPortConflict(error) {
 const requestedOffset = process.env.MFDOCTOR_E2E_PORT_OFFSET;
 const forwardedArgs = process.argv[2] === "--" ? process.argv.slice(3) : process.argv.slice(2);
 const playwrightArgs = ["exec", "playwright", "test", ...forwardedArgs];
-for (let attempt = 0; attempt < MAX_GATE_ATTEMPTS; attempt += 1) {
-  const { offset, release } = await chooseOffset();
-  const serverRegistryPath = path.join(
-    os.tmpdir(),
-    `mfdoctor-e2e-${process.pid}-${offset}.servers`,
-  );
-  try {
-    await fs.rm(serverRegistryPath, { force: true, recursive: true });
-    await fs.mkdir(serverRegistryPath, { recursive: true });
-    activeServerRegistryPath = serverRegistryPath;
-    const environment = {
-      ...process.env,
-      MFDOCTOR_E2E_PORT_OFFSET: String(offset),
-      MFDOCTOR_E2E_SERVER_REGISTRY: serverRegistryPath,
-    };
-    const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-
-    process.stdout.write(
-      `Using E2E port offset ${offset}: ${BASE_PORTS.map((port) => port + offset).join(", ")}\n`,
+let releaseWorkspace;
+try {
+  releaseWorkspace = await acquireWorkspaceLock();
+  for (let attempt = 0; attempt < MAX_GATE_ATTEMPTS; attempt += 1) {
+    const { offset, release } = await chooseOffset();
+    const serverRegistryPath = path.join(
+      os.tmpdir(),
+      `mfdoctor-e2e-${process.pid}-${offset}.servers`,
     );
-    await run("build package", pnpm, ["build"], environment);
-    await run(
-      "run federation matrix and cross-app gate",
-      process.execPath,
-      ["scripts/giga-smoke.mjs"],
-      environment,
-    );
-
-    if (!(await portsAvailable(offset))) {
-      if (requestedOffset !== undefined || attempt === MAX_GATE_ATTEMPTS - 1)
-        throw new Error(`E2E port range ${offset} became busy before Playwright started`);
-      process.stderr.write("E2E port range became busy; retrying with another range\n");
-      continue;
-    }
-    assertNotInterrupted();
-
     try {
-      await run("run Playwright runtime smoke", pnpm, playwrightArgs, environment, {
-        captureOutput: true,
-      });
-    } catch (error) {
-      if (
-        requestedOffset === undefined &&
-        attempt < MAX_GATE_ATTEMPTS - 1 &&
-        isPortConflict(error)
-      ) {
-        process.stderr.write("Playwright hit a port conflict; retrying with another range\n");
+      await fs.rm(serverRegistryPath, { force: true, recursive: true });
+      await fs.mkdir(serverRegistryPath, { recursive: true });
+      activeServerRegistryPath = serverRegistryPath;
+      const environment = {
+        ...process.env,
+        MFDOCTOR_E2E_PORT_OFFSET: String(offset),
+        MFDOCTOR_E2E_SERVER_REGISTRY: serverRegistryPath,
+      };
+      const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+
+      process.stdout.write(
+        `Using E2E port offset ${offset}: ${BASE_PORTS.map((port) => port + offset).join(", ")}\n`,
+      );
+      await run("build package", pnpm, ["build"], environment);
+      await run(
+        "run federation matrix and cross-app gate",
+        process.execPath,
+        ["scripts/giga-smoke.mjs"],
+        environment,
+      );
+
+      if (!(await portsAvailable(offset))) {
+        if (requestedOffset !== undefined || attempt === MAX_GATE_ATTEMPTS - 1)
+          throw new Error(`E2E port range ${offset} became busy before Playwright started`);
+        process.stderr.write("E2E port range became busy; retrying with another range\n");
         continue;
       }
-      throw error;
-    }
-    break;
-  } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    if (!interruptedSignal) process.exitCode = 1;
-    break;
-  } finally {
-    try {
-      scheduleServerCleanup();
-      await waitForScheduledServerCleanup();
-      await fs.rm(serverRegistryPath, { force: true, recursive: true });
-      activeServerRegistryPath = undefined;
+      assertNotInterrupted();
+
+      try {
+        await run("run Playwright runtime smoke", pnpm, playwrightArgs, environment, {
+          captureOutput: true,
+        });
+      } catch (error) {
+        if (
+          requestedOffset === undefined &&
+          attempt < MAX_GATE_ATTEMPTS - 1 &&
+          isPortConflict(error)
+        ) {
+          process.stderr.write("Playwright hit a port conflict; retrying with another range\n");
+          continue;
+        }
+        throw error;
+      }
+      break;
+    } catch (error) {
+      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+      if (!interruptedSignal) process.exitCode = 1;
+      break;
     } finally {
-      await release();
+      try {
+        scheduleServerCleanup();
+        await waitForScheduledServerCleanup();
+        await fs.rm(serverRegistryPath, { force: true, recursive: true });
+        activeServerRegistryPath = undefined;
+      } finally {
+        await release();
+      }
     }
   }
+} catch (error) {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  if (!interruptedSignal) process.exitCode = 1;
+} finally {
+  await releaseWorkspace?.();
 }

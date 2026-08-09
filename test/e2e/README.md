@@ -20,6 +20,8 @@ multi-instance Webpack fixture, then runs Playwright. It prints the selected sev
 range, automatically moves to a free range when another local app or SSH tunnel owns the
 defaults, and starts the seven servers defined in `playwright.config.ts`. The browser
 installation is a one-time setup per machine.
+Because package and example builds share outputs within one checkout, the runner
+serializes full gates for that checkout; separate worktrees can still run independently.
 The recommendation-profile suite also runs the built CLI and real Vite adapter builds
 against temporary projects to verify demo, production, CI, runtime-plugin, and exact-subpath-share behavior.
 
