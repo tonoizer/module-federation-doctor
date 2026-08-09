@@ -1,8 +1,24 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
+
+async function readProcessStartIdentity(pid) {
+  if (process.platform === "win32") return null;
+  try {
+    const { stdout } = await execFileAsync("ps", ["-p", String(pid), "-o", "lstart="], {
+      encoding: "utf8",
+      timeout: 1_000,
+    });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
 
 const separator = process.argv.indexOf("--");
 const command = process.argv[separator + 1];
@@ -16,10 +32,15 @@ if (separator < 0 || !command) {
 
 const registryPath = process.env.MFDOCTOR_E2E_SERVER_REGISTRY;
 if (registryPath) {
+  const processStartIdentity = await readProcessStartIdentity(process.pid);
   await fs.mkdir(registryPath, { recursive: true });
   await fs.writeFile(
     path.join(registryPath, `${process.pid}.json`),
-    `${JSON.stringify({ group: process.ppid, pid: process.pid })}\n`,
+    `${JSON.stringify({
+      group: process.ppid,
+      pid: process.pid,
+      startedAt: processStartIdentity,
+    })}\n`,
   );
 }
 

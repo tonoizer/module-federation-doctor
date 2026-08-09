@@ -11,9 +11,26 @@ import { createHash, randomUUID } from "node:crypto";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
+const execFileAsync = promisify(execFile);
+
+async function readProcessStartIdentity(pid) {
+  if (process.platform === "win32") return null;
+  try {
+    const { stdout } = await execFileAsync("ps", ["-p", String(pid), "-o", "lstart="], {
+      encoding: "utf8",
+      timeout: 1_000,
+    });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+const processStartIdentity = await readProcessStartIdentity(process.pid);
 const root = await fs.realpath(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."));
 const BASE_PORTS = [3001, 3002, 3003, 5173, 3011, 3012, 5183];
 const MAX_OFFSET = 20_000;
@@ -80,8 +97,10 @@ async function readRegisteredServerGroups(registryPath = activeServerRegistryPat
       const record = JSON.parse(await fs.readFile(path.join(registryPath, entry), "utf8"));
       const pid = Number(record.pid);
       const group = Number(record.group);
+      const startedAt =
+        typeof record.startedAt === "string" && record.startedAt ? record.startedAt : undefined;
       if (Number.isInteger(pid) && pid > 0 && Number.isInteger(group) && group > 0)
-        groups.push({ group, pid });
+        groups.push({ group, pid, startedAt });
     } catch {
       // A server may be writing its registry record while this snapshot is read.
     }
@@ -89,7 +108,13 @@ async function readRegisteredServerGroups(registryPath = activeServerRegistryPat
   return groups;
 }
 
-function terminateRegisteredServer({ group, pid }, force) {
+async function terminateRegisteredServer({ group, pid, startedAt }, force) {
+  if (startedAt) {
+    const currentStartIdentity = await readProcessStartIdentity(pid);
+    if (currentStartIdentity && currentStartIdentity !== startedAt) return;
+    if (!currentStartIdentity && processExists(pid)) return;
+  }
+
   if (process.platform === "win32") {
     return new Promise((resolve) => {
       const killer = spawn("taskkill", ["/pid", String(pid), "/t", "/f"], {
@@ -175,8 +200,25 @@ async function cleanupStaleServerRegistries() {
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    const ownerPid = registryOwnerPid(entry.name);
-    if (!ownerPid || processExists(ownerPid)) continue;
+    let ownerPid = registryOwnerPid(entry.name);
+    let ownerStartIdentity;
+    try {
+      const owner = JSON.parse(
+        await fs.readFile(path.join(os.tmpdir(), entry.name, ".owner.json"), "utf8"),
+      );
+      const recordedPid = Number(owner.pid);
+      if (Number.isInteger(recordedPid) && recordedPid > 0) ownerPid = recordedPid;
+      ownerStartIdentity =
+        typeof owner.startedAt === "string" && owner.startedAt ? owner.startedAt : undefined;
+    } catch {
+      // Registries from older runner versions only encode the owner PID in the directory name.
+    }
+    if (!ownerPid) continue;
+    if (processExists(ownerPid)) {
+      if (!ownerStartIdentity) continue;
+      const currentStartIdentity = await readProcessStartIdentity(ownerPid);
+      if (!currentStartIdentity || currentStartIdentity === ownerStartIdentity) continue;
+    }
 
     const registryPath = path.join(os.tmpdir(), entry.name);
     await cleanupRegisteredServerGroups(false, registryPath);
@@ -252,18 +294,26 @@ async function reclaimStaleLock(lockPath) {
   if (Date.now() - stat.mtimeMs < LOCK_INIT_GRACE_MS) return false;
 
   let ownerPid;
+  let ownerStartIdentity;
   try {
-    ownerPid = Number((await fs.readFile(lockPath, "utf8")).trim());
+    const contents = (await fs.readFile(lockPath, "utf8")).trim();
+    try {
+      const owner = JSON.parse(contents);
+      ownerPid = Number(owner.pid);
+      ownerStartIdentity =
+        typeof owner.startedAt === "string" && owner.startedAt ? owner.startedAt : undefined;
+    } catch {
+      ownerPid = Number(contents);
+    }
   } catch {
     ownerPid = Number.NaN;
   }
 
   if (Number.isInteger(ownerPid) && ownerPid > 0) {
-    try {
-      process.kill(ownerPid, 0);
-      return false;
-    } catch (error) {
-      if (error?.code !== "ESRCH") return false;
+    if (processExists(ownerPid)) {
+      if (!ownerStartIdentity) return false;
+      const currentStartIdentity = await readProcessStartIdentity(ownerPid);
+      if (!currentStartIdentity || currentStartIdentity === ownerStartIdentity) return false;
     }
   }
 
@@ -282,7 +332,9 @@ async function tryAcquireLock(lockPath) {
     let handle;
     try {
       handle = await fs.open(lockPath, "wx");
-      await handle.writeFile(`${process.pid}\n`);
+      await handle.writeFile(
+        `${JSON.stringify({ pid: process.pid, startedAt: processStartIdentity })}\n`,
+      );
       return async () => {
         await handle.close();
         await fs.rm(lockPath, { force: true });
@@ -461,6 +513,10 @@ try {
     try {
       await fs.rm(serverRegistryPath, { force: true, recursive: true });
       await fs.mkdir(serverRegistryPath, { recursive: true });
+      await fs.writeFile(
+        path.join(serverRegistryPath, ".owner.json"),
+        `${JSON.stringify({ pid: process.pid, startedAt: processStartIdentity })}\n`,
+      );
       activeServerRegistryPath = serverRegistryPath;
       const environment = {
         ...process.env,
