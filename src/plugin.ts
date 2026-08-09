@@ -130,6 +130,30 @@ export function collectViteModuleFederationPluginInstances(
   });
 }
 
+/**
+ * Keep an explicit Doctor config authoritative over the Vite plugin's
+ * resolved defaults (for example `remoteEntry-[hash]`). Additional plugin
+ * instances still retain their independently discovered configuration.
+ */
+export function resolveViteFederationInstances(
+  detected: ModuleFederationInstanceInput[],
+  explicitConfig?: ModuleFederationConfigLike,
+): ModuleFederationInstanceInput[] {
+  if (!explicitConfig || detected.length === 0) return detected;
+
+  const explicitName = typeof explicitConfig.name === "string" ? explicitConfig.name : undefined;
+  const matchingIndex = explicitName
+    ? detected.findIndex((instance) => instance.config.name === explicitName)
+    : -1;
+  const replacementIndex =
+    matchingIndex >= 0 || detected.length === 1 ? Math.max(matchingIndex, 0) : -1;
+  if (replacementIndex < 0) return detected;
+
+  return detected.map((instance, index) =>
+    index === replacementIndex ? { ...instance, config: explicitConfig } : instance,
+  );
+}
+
 /** Count public Module Federation plugin instances on the compiler (core singleton check). */
 export function countModuleFederationPlugins(compiler: {
   options?: { plugins?: unknown[] };
@@ -778,8 +802,11 @@ function createViteFamilyHooks(configured: DoctorOptions) {
       resolvedConfig = config;
       if (!configured.root && config.root) configured.root = config.root;
       const federationInstances = collectViteModuleFederationPluginInstances(config.plugins);
-      if (federationInstances.length > 0)
-        configured.moduleFederationInstances = federationInstances;
+      if (federationInstances.length > 0 && configured.moduleFederationInstances === undefined)
+        configured.moduleFederationInstances = resolveViteFederationInstances(
+          federationInstances,
+          configured.moduleFederation,
+        );
       const facts = extractViteConfigFacts(config);
       if (userChunkingFacts) {
         if (userChunkingFacts.manualChunks) facts.manualChunks = true;

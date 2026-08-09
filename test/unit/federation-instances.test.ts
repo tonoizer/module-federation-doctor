@@ -13,6 +13,7 @@ import { normalizeModuleFederation } from "../../src/normalize.js";
 import {
   collectModuleFederationPluginInstances,
   collectViteModuleFederationPluginInstances,
+  resolveViteFederationInstances,
 } from "../../src/plugin.js";
 import { writeReports } from "../../src/reporters.js";
 import { buildUiPayload, reportFromFindings } from "../../src/ui-graph.js";
@@ -561,6 +562,19 @@ describe("multiple Module Federation instances", () => {
         { name: "ModuleFederationPlugin", _options: instanceConfig("enhanced", "enhanced.js") },
       ]),
     ).toMatchObject([{ config: { name: "enhanced" } }]);
+  });
+
+  it("keeps explicit Vite Doctor config ahead of resolved plugin defaults", () => {
+    const explicit = instanceConfig("vite", "remoteEntry.js");
+    const detected = [
+      {
+        config: { ...explicit, filename: "remoteEntry-[hash]" },
+        pluginName: "module-federation",
+      },
+    ];
+    expect(resolveViteFederationInstances(detected, explicit)).toEqual([
+      { config: explicit, pluginName: "module-federation" },
+    ]);
   });
 
   it("keeps throwing plugin accessors from breaking instance detection", () => {
