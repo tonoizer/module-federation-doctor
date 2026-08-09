@@ -10,6 +10,7 @@ import {
 } from "./analysis-budgets.js";
 import { workspaceRootForProjects } from "./monorepo-identity.js";
 import { mapBounded } from "./async-map.js";
+import { compareCodePoint } from "./utils.js";
 
 /** Default discovery for Doctor project facts under each app. */
 export const DEFAULT_WORKSPACE_PROJECT_GLOBS = ["**/.mf/doctor/project.json"] as const;
@@ -465,9 +466,7 @@ async function probeWorkspaceGroups(
     scopedFiles.push(item.file);
     if (item.complete) scopedContents.set(item.file, item.contents);
   }
-  const unresolvedFiles = [...new Set([...unknownFiles, ...skippedFiles])].sort((left, right) =>
-    left.localeCompare(right),
-  );
+  const unresolvedFiles = [...new Set([...unknownFiles, ...skippedFiles])].sort(compareCodePoint);
   return {
     scopedFiles,
     scopedContents,
@@ -611,7 +610,7 @@ async function inspectWorkspaceProjects(
   }
   for (const [identity, matches] of identities) {
     if (matches.length < 2) continue;
-    const sorted = matches.slice().sort();
+    const sorted = matches.slice().sort(compareCodePoint);
     diagnostics.push({
       kind: "duplicate",
       files: sorted.map((file) => path.relative(workspaceRoot, file) || "."),
@@ -631,7 +630,8 @@ async function inspectWorkspaceProjects(
       .filter((item): item is NonNullable<typeof item> => !!item && item.included)
       .map((item) => item.file),
     diagnostics: diagnostics.sort((left, right) =>
-      `${left.kind}:${left.files.join(",")}`.localeCompare(
+      compareCodePoint(
+        `${left.kind}:${left.files.join(",")}`,
         `${right.kind}:${right.files.join(",")}`,
       ),
     ),
@@ -662,7 +662,7 @@ export async function discoverWorkspaceProjectsWithBudget(
     });
     for (const file of matches) files.add(path.normalize(file));
   }
-  const orderedFiles = [...files].sort((left, right) => left.localeCompare(right));
+  const orderedFiles = [...files].sort(compareCodePoint);
   // A selected group is a scope boundary, not a post-processing filter. Probe
   // the tiny project envelopes first so unrelated fixture groups cannot spend
   // the selected group's file/byte budget. The selected files are still fully
@@ -691,7 +691,7 @@ export async function discoverWorkspaceProjectsWithBudget(
       analysisBudgets.maxWallTimeMs,
       groupPreflightStartedAt,
     );
-    scopedFiles = probe.scopedFiles.sort((left, right) => left.localeCompare(right));
+    scopedFiles = probe.scopedFiles.sort(compareCodePoint);
     scopedContents = probe.scopedContents;
     for (const group of probe.groups) observedGroups.add(group);
     observedUngrouped = probe.ungrouped;
@@ -747,7 +747,7 @@ export async function discoverWorkspaceProjectsWithBudget(
     options.group,
   );
   const budget = tracker.report();
-  const selectedFiles = inspected.files.sort((left, right) => left.localeCompare(right));
+  const selectedFiles = inspected.files.sort(compareCodePoint);
   const groups = new Set<string>(observedGroups);
   let ungrouped = observedUngrouped;
   for (const selectedFile of prepared) {
@@ -764,7 +764,7 @@ export async function discoverWorkspaceProjectsWithBudget(
   }
   return {
     files: selectedFiles,
-    groups: [...groups].sort((left, right) => left.localeCompare(right)),
+    groups: [...groups].sort(compareCodePoint),
     ungrouped,
     ...(options.group ? { selectedGroup: options.group } : {}),
     budget: budget.exceeded.length > 0 ? { ...budget, status: "unknown" } : budget,
