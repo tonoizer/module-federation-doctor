@@ -333,6 +333,24 @@ function normalizeDependencyRange(version: string): string {
   return version.trim().replace(/^workspace:/, "");
 }
 
+function hasStableSupportedVersion(range: string): boolean {
+  const parsed = new semver.Range(range);
+  const candidates = new Set<string>([OBSERVABILITY_SUPPORT_FLOOR]);
+
+  for (const comparators of parsed.set) {
+    const minimum = semver.minVersion(comparators.map((comparator) => comparator.value).join(" "));
+    if (!minimum) continue;
+    candidates.add(`${minimum.major}.${minimum.minor}.${minimum.patch}`);
+  }
+
+  return [...candidates].some(
+    (candidate) =>
+      semver.prerelease(candidate) === null &&
+      semver.satisfies(candidate, range) &&
+      semver.satisfies(candidate, OBSERVABILITY_SUPPORT_RANGE),
+  );
+}
+
 function isSupportedMfVersion(version: string): boolean {
   try {
     const normalized = normalizeDependencyRange(version);
@@ -340,7 +358,12 @@ function isSupportedMfVersion(version: string): boolean {
     const exact = semver.valid(normalized);
     if (exact) return semver.satisfies(exact, OBSERVABILITY_SUPPORT_RANGE);
     const range = semver.validRange(normalized);
-    return range !== null && range !== "*" && semver.intersects(range, OBSERVABILITY_SUPPORT_RANGE);
+    return (
+      range !== null &&
+      range !== "*" &&
+      semver.intersects(range, OBSERVABILITY_SUPPORT_RANGE) &&
+      hasStableSupportedVersion(range)
+    );
   } catch {
     return false;
   }
