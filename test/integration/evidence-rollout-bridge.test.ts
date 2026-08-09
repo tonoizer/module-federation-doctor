@@ -14,6 +14,7 @@ import { compareV1Outputs } from "../../src/evidence-parity.js";
 import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
+  MIGRATED_GROUP2_RULE_IDS,
 } from "../../src/rule-inventory.js";
 
 const roots: string[] = [];
@@ -65,9 +66,36 @@ function bridgeReportIds(report: { findings: Array<{ ruleId: string }> }) {
     .map((finding) => finding.ruleId);
 }
 
+const EXPECTED_GROUP2_RULE_IDS = [
+  "config/duplicate-plugin-registration",
+  "artifact/public-path-non-string-manifest",
+  "config/external-runtime-conflict",
+  "performance/asset-budget",
+  "artifact/manifest-assets-disabled",
+  "artifact/manifest-disabled",
+  "artifact/dts-disabled",
+  "artifact/manifest-invalid",
+  "artifact/manifest-name-mismatch",
+  "artifact/manifest-remote-entry-missing",
+  "artifact/manifest-expose-assets-empty",
+  "artifact/manifest-shared-version-mismatch",
+  "artifact/types-metadata-missing",
+  "artifact/remote-entry-missing",
+  "artifact/expose-missing",
+  "artifact/public-path-suspicious",
+  "artifact/types-missing",
+] as const;
+
 const migratedRuleCount =
   MIGRATED_GROUP1_CONFIG_RULE_IDS.length +
-  MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS.length;
+  MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS.length +
+  EXPECTED_GROUP2_RULE_IDS.length;
+
+const migratedRuleIds = new Set([
+  ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
+  ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
+  ...EXPECTED_GROUP2_RULE_IDS,
+]);
 
 const quietRules = {
   "artifact/remote-entry-missing": "off",
@@ -139,11 +167,7 @@ describe("evidence-aware rule rollout bridge", () => {
     const evaluatedIds = new Set(
       compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id),
     );
-    const migratedIds = new Set([
-      ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
-      ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
-    ]);
-    expect(evaluatedIds).toEqual(migratedIds);
+    expect(evaluatedIds).toEqual(migratedRuleIds);
     expect(
       new Set(
         [...evaluatedIds].filter((id) => MIGRATED_GROUP1_CONFIG_RULE_IDS.includes(id as never)),
@@ -151,6 +175,17 @@ describe("evidence-aware rule rollout bridge", () => {
     ).toEqual(new Set(MIGRATED_GROUP1_CONFIG_RULE_IDS));
     const parity = compareV1Outputs(legacy.report, compat.report);
     expect(parity.equal).toBe(true);
+  });
+
+  it("routes the exact Group 2 migration tuple through the bridge", async () => {
+    const root = await fixture("group2-migration-rollout-bridge");
+    const compat = await analyze(options(root, compatRollout()));
+
+    expect(MIGRATED_GROUP2_RULE_IDS).toEqual(EXPECTED_GROUP2_RULE_IDS);
+    expect(new Set(compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id))).toEqual(
+      migratedRuleIds,
+    );
+    expect(compat.evidence?.evaluations).toHaveLength(migratedRuleCount);
   });
 
   it("routes every Group 1 bridge, SSR, and runtime-plugin rule through the bridge with V1 parity", async () => {
@@ -626,6 +661,359 @@ describe("evidence-aware rule rollout bridge", () => {
     });
   });
 
+  it("retains build and artifact scope for Group 2 artifact rules", async () => {
+    const root = await fixture("group2-scope-rollout-bridge", {
+      "src/index.ts": "export default 1;\n",
+    });
+    const result = await analyzeBuild(
+      {
+        root,
+        bundler: "webpack",
+        mode: "ci",
+        moduleFederation: {
+          name: "host",
+          exposes: { "./Widget": "./src/index.ts" },
+          remotes: { shop: "shop@https://example.test/mf-manifest.json" },
+          shared: {
+            react: { singleton: true },
+          },
+        },
+        evidenceRollout: shadowRollout(),
+        output: { formats: [] },
+      },
+      ["dist/client/remoteEntry.js"],
+      undefined,
+      [
+        {
+          adapter: "webpack",
+          bundler: "webpack",
+          compilerName: "webpack",
+          compilationName: "client",
+          outputRoot: "dist/client",
+          emittedAssets: ["remoteEntry.js"],
+          effectiveMode: "production",
+          targetKind: "web",
+          sourceHook: "afterEmit",
+        },
+      ],
+    );
+    const selectedBuild = result.facts.builds?.[0];
+    expect(selectedBuild).toBeDefined();
+    const run = await runMigratedEvidenceRules(result.facts, {}, undefined, selectedBuild);
+    expect(run.graph.scope).toMatchObject({
+      buildId: selectedBuild?.id,
+      compilationId: selectedBuild?.compilationName,
+      buildMode: "production",
+      target: "web",
+    });
+    expect(
+      run.graph.assertions.every((assertion) => assertion.scope.buildId === selectedBuild?.id),
+    ).toBe(true);
+    expect(run.graph.assertions.some((assertion) => assertion.predicate === "project.builds")).toBe(
+      true,
+    );
+  });
+
+  it("keeps missing and partial Group 2 artifact evidence unknown", async () => {
+    const root = await fixture("group2-partial-artifact-rollout-bridge", {
+      "src/index.ts": "export default 1;\n",
+    });
+    const result = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      moduleFederation: {
+        name: "host",
+        exposes: { "./Widget": "./src/index.ts" },
+        remotes: { shop: "shop@https://example.test/mf-manifest.json" },
+        shared: {
+          react: { singleton: true },
+        },
+      },
+      evidenceRollout: shadowRollout(),
+      output: { formats: [] },
+    });
+
+    const partial = structuredClone(result.facts);
+    partial.artifacts.manifest = {
+      path: "dist/mf-manifest.json",
+      valid: true,
+      name: "host",
+      remoteEntry: { name: "remoteEntry.js", path: "" },
+      exposes: [],
+      shared: [],
+    };
+    partial.capabilities.manifest = true;
+    partial.artifacts.assetSizes = { "remoteEntry.js": 1_000_000 };
+    partial.artifacts.emittedAssets = [];
+    partial.capabilities.emittedAssets = false;
+    const partialRun = await runMigratedEvidenceRules(partial, {});
+    for (const id of [
+      "artifact/manifest-remote-entry-missing",
+      "artifact/remote-entry-missing",
+      "artifact/types-missing",
+      "performance/asset-budget",
+    ]) {
+      expect(
+        partialRun.output.evaluations.find((evaluation) => evaluation.rule.id === id),
+      ).toMatchObject({ outcome: "unknown" });
+    }
+    expect(
+      partialRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "performance/asset-budget",
+      ),
+    ).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "prerequisite-incomplete",
+      completeness: "partial",
+    });
+
+    const missing = structuredClone(result.facts);
+    delete missing.artifacts.manifest;
+    missing.capabilities.manifest = false;
+    const missingRun = await runMigratedEvidenceRules(missing, {});
+    for (const id of ["artifact/expose-missing", "artifact/manifest-invalid"]) {
+      expect(
+        missingRun.output.evaluations.find((evaluation) => evaluation.rule.id === id),
+      ).toMatchObject({ outcome: "unknown" });
+    }
+  });
+
+  it("keeps an explicitly disabled manifest actionable without a manifest artifact", async () => {
+    const root = await fixture("group2-explicit-manifest-disabled-rollout-bridge");
+    const compat = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      moduleFederation: {
+        name: "host",
+        manifest: false,
+        exposes: { "./Widget": "./src/index.ts" },
+      },
+      evidenceRollout: compatRollout(),
+      output: { formats: [] },
+      rules: quietRules,
+    });
+
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "artifact/manifest-disabled",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    expect(
+      compat.report.findings.filter((finding) => finding.ruleId === "artifact/manifest-disabled"),
+    ).toHaveLength(1);
+
+    const migrated = await runMigratedEvidenceRules(compat.facts, {});
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "artifacts.manifestExplicitlyDisabled",
+      ),
+    ).toMatchObject({ completeness: { status: "complete" } });
+    expect(
+      migrated.graph.assertions.find((assertion) => assertion.predicate === "artifacts.manifest"),
+    ).toBeUndefined();
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "artifacts.manifestValidity",
+      ),
+    ).toBeUndefined();
+    for (const id of [
+      "artifact/expose-missing",
+      "artifact/manifest-invalid",
+      "artifact/manifest-name-mismatch",
+      "artifact/manifest-remote-entry-missing",
+      "artifact/manifest-expose-assets-empty",
+      "artifact/manifest-shared-version-mismatch",
+      "artifact/public-path-suspicious",
+      "artifact/types-metadata-missing",
+      "artifact/types-missing",
+      "performance/asset-budget",
+    ]) {
+      expect(
+        migrated.output.evaluations.find((evaluation) => evaluation.rule.id === id),
+      ).toMatchObject({ outcome: "unknown" });
+    }
+  });
+
+  it("keeps webpack explicit manifest: false conclusive only for manifest-disabled", async () => {
+    const root = await fixture("group2-explicit-manifest-disabled-rollout-bridge");
+    const compat = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      moduleFederation: {
+        name: "host",
+        manifest: false,
+        exposes: { "./Widget": "./src/index.ts" },
+      },
+      evidenceRollout: compatRollout(),
+      output: { formats: [] },
+      rules: quietRules,
+    });
+
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "artifact/manifest-disabled",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    const migrated = await runMigratedEvidenceRules(compat.facts, {});
+    for (const id of ["artifact/expose-missing", "artifact/manifest-invalid"]) {
+      expect(
+        migrated.output.evaluations.find((evaluation) => evaluation.rule.id === id),
+      ).toMatchObject({ outcome: "unknown" });
+    }
+  });
+
+  it("keeps malformed manifest content unknown but preserves the invalid-manifest finding", async () => {
+    const root = await fixture("group2-malformed-manifest-rollout-bridge");
+    await fs.mkdir(path.join(root, "dist"), { recursive: true });
+    await fs.copyFile(
+      path.resolve("fixtures/manifests/malformed.json"),
+      path.join(root, "dist/mf-manifest.json"),
+    );
+    const compat = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      evidenceRollout: compatRollout(),
+      output: { formats: [] },
+      rules: { "doctor/partial-analysis": "off" },
+    });
+
+    const migrated = await runMigratedEvidenceRules(compat.facts, {});
+    const evaluation = migrated.output.evaluations.find(
+      (item) => item.rule.id === "artifact/manifest-invalid",
+    );
+    expect(evaluation).toMatchObject({ outcome: "fail", completeness: "complete" });
+    expect(
+      compat.report.findings.some((finding) => finding.ruleId === "artifact/manifest-invalid"),
+    ).toBe(true);
+    const manifest = migrated.graph.assertions.find(
+      (assertion) => assertion.predicate === "artifacts.manifest",
+    );
+    expect(manifest).toMatchObject({ completeness: { status: "unknown" } });
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "artifacts.manifestValidity",
+      ),
+    ).toMatchObject({ completeness: { status: "complete" }, value: { valid: false } });
+  });
+
+  it("keeps bundler field prerequisites independent from the aggregate", async () => {
+    const root = await fixture("group2-bundler-fields-rollout-bridge");
+    const baseline = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      moduleFederation: {
+        name: "host",
+        manifest: true,
+        exposes: { "./Widget": "./src/index.ts" },
+      },
+      output: { formats: [] },
+    });
+    const completeFacts = structuredClone(baseline.facts);
+    completeFacts.bundler.moduleFederationPluginCount = 2;
+    completeFacts.bundler.federationInstances = [];
+    completeFacts.bundler.outputPublicPathKind = "non-string";
+    const completeRun = await runMigratedEvidenceRules(completeFacts, {});
+    expect(
+      completeRun.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toMatchObject({ value: 2, completeness: { status: "complete" } });
+    expect(
+      completeRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/duplicate-plugin-registration",
+      ),
+    ).toMatchObject({ outcome: "fail" });
+    expect(
+      completeRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "artifact/public-path-non-string-manifest",
+      ),
+    ).toMatchObject({ outcome: "fail" });
+
+    const missingPluginCount = structuredClone(completeFacts);
+    delete missingPluginCount.bundler.moduleFederationPluginCount;
+    const missingCountRun = await runMigratedEvidenceRules(missingPluginCount, {});
+    expect(
+      missingCountRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/duplicate-plugin-registration",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "prerequisite-missing" });
+
+    const missingPublicPath = structuredClone(completeFacts);
+    delete missingPublicPath.bundler.outputPublicPathKind;
+    const missingPublicPathRun = await runMigratedEvidenceRules(missingPublicPath, {});
+    expect(
+      missingPublicPathRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "artifact/public-path-non-string-manifest",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "prerequisite-missing" });
+  });
+
+  it("projects a complete Group 2 artifact failure through the V1 compatibility report", async () => {
+    const root = await fixture("group2-complete-artifact-rollout-bridge");
+    await fs.mkdir(path.join(root, "dist"), { recursive: true });
+    await fs.writeFile(
+      path.join(root, "dist/mf-manifest.json"),
+      JSON.stringify({
+        id: "host",
+        name: "host",
+        metaData: { remoteEntry: { name: "missing.js", path: "" } },
+        exposes: [],
+        shared: [],
+      }),
+    );
+    await fs.writeFile(path.join(root, "dist/other.js"), "export {};");
+
+    const result = await analyzeBuild(
+      {
+        ...options(root, compatRollout()),
+        bundler: "webpack",
+        moduleFederation: {
+          name: "host",
+          exposes: { "./Widget": "./src/index.ts" },
+        },
+        rules: {
+          ...quietRules,
+          "artifact/manifest-remote-entry-missing": "error",
+        },
+      },
+      ["dist/mf-manifest.json", "dist/other.js"],
+      undefined,
+      [
+        {
+          adapter: "webpack",
+          bundler: "webpack",
+          compilerName: "webpack",
+          compilationName: "client",
+          outputRoot: "dist",
+          emittedAssets: ["mf-manifest.json", "other.js"],
+          effectiveMode: "production",
+          targetKind: "web",
+          sourceHook: "afterEmit",
+        },
+      ],
+    );
+
+    expect(
+      result.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "artifact/manifest-remote-entry-missing",
+      ),
+    ).toMatchObject({
+      outcome: "fail",
+      scope: { buildId: "webpack-build-1", compilationId: "client" },
+      completeness: "complete",
+    });
+    expect(
+      result.report.findings.filter(
+        (finding) => finding.ruleId === "artifact/manifest-remote-entry-missing",
+      ),
+    ).toHaveLength(1);
+  });
+
   it("evaluates the migrated rule through analyzeBuild with deterministic build scope", async () => {
     const root = await fixture("webpack-rollout-bridge");
     const run = () =>
@@ -919,6 +1307,7 @@ describe("evidence-aware rule rollout bridge", () => {
         }),
       ]);
       expect(JSON.stringify(federationInstances)).not.toContain(other.moduleFederation.name);
+      expect(JSON.stringify(federationInstances)).not.toContain("canonicalConfig");
       expect(run.graph.identity.federationInstanceId).toBe(selected.id);
       expect(
         run.graph.assertions.every(

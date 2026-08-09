@@ -7,6 +7,7 @@ import type { RuleEvaluationResult } from "../../src/rule-contract.js";
 import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
+  MIGRATED_GROUP2_RULE_IDS,
   ruleInventory,
   ruleInventoryIds,
 } from "../../src/rule-inventory.js";
@@ -346,6 +347,58 @@ describe("evidence-aware rule contract", () => {
     });
   });
 
+  it("does not narrow subjects for anyOf requirements with an unconstrained branch", async () => {
+    const assertionFor = (subject: string, predicate: string) => ({
+      id: `${predicate}:${subject}`,
+      subject,
+      predicate,
+      value: true,
+      layer: "effective" as const,
+      scope: { adapter: "vite", bundler: { name: "vite" }, target: "web" as const },
+      provenance: {
+        collector: { name: "test", version: "1" },
+        inputKind: "test",
+        source: "test",
+        sourceSchemaVersion: "1",
+        parentEvidenceIds: [],
+      },
+      confidence: { level: "exact" as const, reason: "exact" },
+      completeness: { status: "complete" as const, reason: "complete" },
+    });
+    const rule = {
+      meta: {
+        ...meta,
+        id: "test/any-of-subject-scope",
+        prerequisites: {
+          anyOf: [
+            { predicate: "typed", subjectKind: "artifact" as const },
+            { predicate: "unconstrained" },
+          ],
+        },
+      },
+      evaluate: () => ({ outcome: "pass" as const, reason: "evidence is available" }),
+    };
+    const result = await runEvidenceAwareRules({
+      graph: graph({
+        subjects: [
+          { id: "project:shop", kind: "project", name: "shop" },
+          { id: "artifact:manifest", kind: "artifact", name: "manifest" },
+        ],
+        assertions: [
+          assertionFor("project:shop", "unconstrained"),
+          assertionFor("artifact:manifest", "typed"),
+        ],
+      }),
+      rules: [rule],
+    });
+
+    expect(result.evaluations.map((evaluation) => evaluation.subject).sort()).toEqual([
+      "artifact:manifest",
+      "project:shop",
+    ]);
+    expect(result.evaluations.every((evaluation) => evaluation.outcome === "pass")).toBe(true);
+  });
+
   it("caps confidence, preserves stable IDs, and turns rule exceptions into engine errors", async () => {
     const assertion = {
       id: "assertion:exact",
@@ -508,6 +561,7 @@ describe("evidence-aware rule contract", () => {
     const migratedIds: ReadonlySet<string> = new Set([
       ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
       ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
+      ...MIGRATED_GROUP2_RULE_IDS,
     ]);
     expect(
       ruleInventory.every((entry) =>
@@ -567,6 +621,8 @@ describe("evidence-aware rule contract", () => {
       "dependencies.declared": "context.facts.dependencies.declared",
       "dependencies.installed": "context.facts.dependencies.installed",
       "artifacts.manifest": "context.facts.artifacts.manifest",
+      "artifacts.manifestExplicitlyDisabled": "manifestExplicitlyDisabled(context)",
+      "artifacts.manifestValidity": "context.facts.artifacts.manifest",
       "artifacts.emittedAssets": "context.facts.artifacts.emittedAssets",
       "artifacts.assetSizes": "context.facts.artifacts.assetSizes",
       capabilities: "context.facts.capabilities",

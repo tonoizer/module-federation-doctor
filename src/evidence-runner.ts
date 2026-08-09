@@ -39,6 +39,8 @@ function graphPredicateFor(predicate: string): string {
   if (predicate === "imports.sourceScan") return "imports.sourceScan";
   if (predicate === "moduleFederation") return "project.moduleFederation";
   if (predicate === "runtimePluginContracts") return "project.runtimePluginContracts";
+  if (predicate.startsWith("bundler."))
+    return `project.bundler.${predicate.slice("bundler.".length)}`;
   const root = predicate.split(".")[0];
   if (["bundler", "capabilities", "dependencies", "imports", "artifacts", "builds"].includes(root!))
     return `project.${root}`;
@@ -81,6 +83,61 @@ function queryFor(graph: EvidenceGraphV2, subjectId?: string): EvidenceQuery {
     },
   };
   return deepFreeze(view);
+}
+
+interface SubjectKindConstraint {
+  /** True when the requirement can be satisfied without a subject-kind constraint. */
+  unconstrained: boolean;
+  /** Subject kinds that can satisfy the constrained branches. */
+  kinds: Set<EvidenceSubject["kind"]>;
+}
+
+function subjectKindConstraintForRequirement(
+  requirement: EvidenceRequirement,
+): SubjectKindConstraint {
+  if ("predicate" in requirement) {
+    return requirement.subjectKind
+      ? { unconstrained: false, kinds: new Set([requirement.subjectKind]) }
+      : { unconstrained: true, kinds: new Set() };
+  }
+
+  if ("allOf" in requirement) {
+    let constraint: SubjectKindConstraint = { unconstrained: true, kinds: new Set() };
+    for (const child of requirement.allOf) {
+      const childConstraint = subjectKindConstraintForRequirement(child);
+      // An unconstrained allOf branch imposes no restriction; the other
+      // branches still determine the possible subject kinds.
+      if (childConstraint.unconstrained) continue;
+      if (constraint.unconstrained) {
+        constraint = {
+          unconstrained: false,
+          kinds: new Set(childConstraint.kinds),
+        };
+        continue;
+      }
+      constraint = {
+        unconstrained: false,
+        kinds: new Set([...constraint.kinds].filter((kind) => childConstraint.kinds.has(kind))),
+      };
+    }
+    return constraint;
+  }
+
+  const kinds = new Set<EvidenceSubject["kind"]>();
+  for (const child of requirement.anyOf) {
+    const childConstraint = subjectKindConstraintForRequirement(child);
+    // One unconstrained anyOf branch makes every subject kind eligible.
+    if (childConstraint.unconstrained) return { unconstrained: true, kinds: new Set() };
+    for (const kind of childConstraint.kinds) kinds.add(kind);
+  }
+  return { unconstrained: false, kinds };
+}
+
+function subjectKindForRule(rule: EvidenceAwareRule): EvidenceSubject["kind"] | undefined {
+  const constraint = subjectKindConstraintForRequirement(rule.meta.prerequisites);
+  return !constraint.unconstrained && constraint.kinds.size === 1
+    ? [...constraint.kinds][0]
+    : undefined;
 }
 
 function requirementState(
@@ -343,8 +400,12 @@ export async function runEvidenceAwareRules(
   const evaluations: RuleEvaluationResult[] = [];
   const execution: RuleExecutionState[] = [];
   const seen = new Set<string>();
-  for (const rule of input.rules)
-    for (const subject of subjects) {
+  for (const rule of input.rules) {
+    const subjectKind = subjectKindForRule(rule);
+    const ruleSubjects = subjectKind
+      ? subjects.filter((subject) => subject.kind === subjectKind)
+      : subjects;
+    for (const subject of ruleSubjects) {
       const base = evaluationBase(rule, subject, graph, scope);
       if (input.analysisBudget && !input.analysisBudget.checkWallTime()) {
         evaluations.push(
@@ -467,6 +528,7 @@ export async function runEvidenceAwareRules(
         });
       }
     }
+  }
   return {
     evaluations,
     execution,

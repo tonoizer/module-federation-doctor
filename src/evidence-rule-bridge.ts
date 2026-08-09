@@ -10,6 +10,7 @@ import { builtInRules } from "./rules.js";
 import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
+  MIGRATED_GROUP2_RULE_IDS,
   ruleInventory,
 } from "./rule-inventory.js";
 import {
@@ -39,11 +40,13 @@ type LegacyFindingInput = Omit<
 
 export type MigratedEvidenceRuleId =
   | (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number]
-  | (typeof MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS)[number];
+  | (typeof MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS)[number]
+  | (typeof MIGRATED_GROUP2_RULE_IDS)[number];
 
 const MIGRATED_EVIDENCE_RULE_IDS = [
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
+  ...MIGRATED_GROUP2_RULE_IDS,
 ] as const;
 
 function inventoryEntry(id: string) {
@@ -308,14 +311,16 @@ function graphEvaluationFor(
 
 function factsForEvidence(facts: ProjectFacts): ProjectFacts {
   const copy = structuredClone(facts);
-  delete copy.canonicalConfig;
+  // Keep the non-persisted declaration bridge available while deriving
+  // evidence. The migration uses it only to distinguish an explicit
+  // `manifest: false` from a bundler default; it is not emitted as a graph
+  // assertion or passed through to persisted v1 facts.
   delete copy.artifacts.records;
   if (copy.federationInstances) {
     const instances = copy.federationInstanceId
       ? copy.federationInstances.filter((instance) => instance.id === copy.federationInstanceId)
       : copy.federationInstances;
     copy.federationInstances = instances.map((instance) => {
-      delete instance.canonicalConfig;
       delete instance.artifacts.records;
       return instance;
     });

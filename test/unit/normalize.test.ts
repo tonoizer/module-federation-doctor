@@ -121,13 +121,16 @@ describe("artifact/manifest-disabled evidence", () => {
     expect(await runRule(facts)).toHaveLength(0);
   });
 
-  it.each(["omitted", "false"] as const)(
-    "fires for Vite %s manifest without emit",
-    async (form) => {
-      const facts = base();
-      facts.bundler.name = "vite";
-      if (form === "omitted") delete facts.moduleFederation!.manifest;
-      expect(await runRule(facts)).not.toHaveLength(0);
-    },
-  );
+  it("does not fire for Vite omitted manifest without emit", async () => {
+    const facts = base();
+    facts.bundler.name = "vite";
+    delete facts.moduleFederation!.manifest;
+    expect(await runRule(facts)).toHaveLength(0);
+  });
+
+  it("fires for Vite false manifest without emit", async () => {
+    const facts = base();
+    facts.bundler.name = "vite";
+    expect(await runRule(facts)).not.toHaveLength(0);
+  });
 });
