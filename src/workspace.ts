@@ -240,8 +240,8 @@ function federationGroupFromPrefix(contents: string | undefined): {
 
     if (key.value === "project" && contents[valueStart] === "{") {
       const project = groupFromProjectObjectPrefix(contents, valueStart);
-      if (project.group) return { status: "found", group: project.group };
       if (!project.complete) return { status: "unknown" };
+      if (project.group) return { status: "found", group: project.group };
       index = project.end!;
     } else {
       const valueEnd = skipJsonValue(contents, valueStart);

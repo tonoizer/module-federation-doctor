@@ -231,31 +231,39 @@ describe("workspace discovery", () => {
     }
   });
 
-  it("matches JSON last-key-wins semantics for duplicate federationGroup keys", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-duplicate-"));
-    try {
-      const file = path.join(root, "apps", "duplicate", ".mf", "doctor", "project.json");
-      const contents =
-        '{"project":{"name":"duplicate","federationGroup":"selected","padding":"' +
-        "x".repeat(12 * 1024) +
-        '","federationGroup":""}}' +
-        " ".repeat(20 * 1024);
-      await fs.mkdir(path.dirname(file), { recursive: true });
-      await fs.writeFile(file, contents);
+  it.each([
+    ["an empty string", '""'],
+    ["a non-string value", "false"],
+  ])(
+    "matches JSON last-key-wins semantics when the later federationGroup is %s",
+    async (_label, laterValue) => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-duplicate-"));
+      try {
+        const file = path.join(root, "apps", "duplicate", ".mf", "doctor", "project.json");
+        const contents =
+          '{"project":{"name":"duplicate","federationGroup":"selected","padding":"' +
+          "x".repeat(12 * 1024) +
+          '","federationGroup":' +
+          laterValue +
+          "}}" +
+          " ".repeat(20 * 1024);
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.writeFile(file, contents);
 
-      const discovery = await discoverWorkspaceProjectsWithBudget({
-        cwd: root,
-        group: "selected",
-      });
+        const discovery = await discoverWorkspaceProjectsWithBudget({
+          cwd: root,
+          group: "selected",
+        });
 
-      expect(discovery.files).toEqual([]);
-      expect(discovery.groups).toEqual([]);
-      expect(discovery.ungrouped).toBe(1);
-      expect(discovery.diagnostics).toEqual([]);
-    } finally {
-      await fs.rm(root, { recursive: true, force: true });
-    }
-  });
+        expect(discovery.files).toEqual([]);
+        expect(discovery.groups).toEqual([]);
+        expect(discovery.ungrouped).toBe(1);
+        expect(discovery.diagnostics).toEqual([]);
+      } finally {
+        await fs.rm(root, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("excludes malformed project files selected by a group probe", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-invalid-"));
