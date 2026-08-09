@@ -230,14 +230,40 @@ describe("workspace discovery", () => {
     }
   });
 
+  it("matches JSON last-key-wins semantics for duplicate federationGroup keys", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-duplicate-"));
+    try {
+      const file = path.join(root, "apps", "duplicate", ".mf", "doctor", "project.json");
+      const contents =
+        '{"project":{"name":"duplicate","federationGroup":"selected","padding":"' +
+        "x".repeat(12 * 1024) +
+        '","federationGroup":""}}' +
+        " ".repeat(20 * 1024);
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, contents);
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        group: "selected",
+      });
+
+      expect(discovery.files).toEqual([]);
+      expect(discovery.groups).toEqual([]);
+      expect(discovery.ungrouped).toBe(1);
+      expect(discovery.diagnostics).toEqual([]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("excludes malformed project files selected by a group probe", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-invalid-"));
     try {
       const file = path.join(root, ".mf", "doctor", "project.json");
       const contents =
-        '{"project":{"name":"malformed","federationGroup":"selected","padding":"' +
+        '{"project":{"name":"malformed","federationGroup":"selected"},"padding":"' +
         "x".repeat(20 * 1024) +
-        '",}';
+        '"';
       await fs.mkdir(path.dirname(file), { recursive: true });
       await fs.writeFile(file, contents);
 
@@ -324,6 +350,42 @@ describe("workspace discovery", () => {
       expect(discovery.diagnostics[0]?.files).toEqual(
         discovery.diagnostics[0]?.files.slice().sort(),
       );
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reports all files as unresolved when group preflight reaches its wall-time budget", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-probe-time-"));
+    try {
+      const files: string[] = [];
+      for (const group of ["first", "second"]) {
+        const file = path.join(root, "apps", group, ".mf", "doctor", "project.json");
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.writeFile(
+          file,
+          JSON.stringify({ project: { name: group, federationGroup: "selected" } }),
+        );
+        files.push(file);
+      }
+
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root,
+        group: "selected",
+        analysisBudgets: { maxWallTimeMs: 0 },
+      });
+
+      expect(discovery.files).toEqual([]);
+      expect(discovery.budget.status).toBe("unknown");
+      expect(discovery.budget.exceeded).toEqual([{ kind: "wallTimeMs", limit: 0 }]);
+      expect(discovery.diagnostics).toEqual([
+        {
+          kind: "probe",
+          files: files.slice().sort(),
+          message: expect.stringContaining("wall-time limit"),
+        },
+      ]);
+      expect(discovery.diagnostics[0]?.message).not.toContain("aggregate cap");
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }

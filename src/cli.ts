@@ -19,7 +19,7 @@ import {
   resolveDiagnosticsDir,
   writeDiagnosticsDump,
 } from "./agent-prompt.js";
-import { analyze, analyzeFederation } from "./engine.js";
+import { analyze, analyzeFederation, isAnalysisIncomplete } from "./engine.js";
 import {
   EvidenceReaderError,
   readEvidenceFile,
@@ -480,7 +480,7 @@ async function runFederationAnalysis(
   analysis?: import("./analysis-budgets.js").AnalysisBudgetReport,
   workspaceDiagnostics?: import("./workspace.js").WorkspaceProjectDiagnostic[],
 ): Promise<number> {
-  if (files.length === 0) {
+  if (files.length === 0 && !workspaceDiagnostics?.length && !isAnalysisIncomplete(analysis)) {
     process.stderr.write("No project reports matched.\n");
     return 2;
   }

@@ -176,6 +176,7 @@ function groupFromProjectObjectPrefix(
   objectStart: number,
 ): ProjectObjectPrefixResult {
   let index = objectStart + 1;
+  let group: string | undefined;
   while (true) {
     index = skipJsonWhitespace(contents, index);
     if (index >= contents.length) return { complete: false };
@@ -186,12 +187,18 @@ function groupFromProjectObjectPrefix(
     index = skipJsonWhitespace(contents, key.end);
     if (contents[index] !== ":") return { complete: false };
     const valueStart = skipJsonWhitespace(contents, index + 1);
-    if (key.value === "federationGroup" && contents[valueStart] === '"') {
-      const value = readJsonString(contents, valueStart);
-      if (!value) return { complete: false };
-      const group = value.value.trim();
-      if (group.length > 0) return { complete: false, group };
-      index = value.end;
+    if (key.value === "federationGroup") {
+      if (contents[valueStart] === '"') {
+        const value = readJsonString(contents, valueStart);
+        if (!value) return { complete: false };
+        group = value.value.trim() || undefined;
+        index = value.end;
+      } else {
+        const valueEnd = skipJsonValue(contents, valueStart);
+        if (valueEnd === undefined) return { complete: false };
+        group = undefined;
+        index = valueEnd;
+      }
     } else {
       const valueEnd = skipJsonValue(contents, valueStart);
       if (valueEnd === undefined) return { complete: false };
@@ -203,7 +210,9 @@ function groupFromProjectObjectPrefix(
       index += 1;
       continue;
     }
-    if (contents[index] === "}") return { complete: true, end: index + 1 };
+    if (contents[index] === "}") {
+      return { complete: true, end: index + 1, ...(group ? { group } : {}) };
+    }
     return { complete: false };
   }
 }
@@ -300,6 +309,7 @@ async function probeWorkspaceGroups(
   files: string[],
   sizes: number[],
   selectedGroup: string,
+  maxWallTimeMs: number,
 ): Promise<{
   scopedFiles: string[];
   scopedContents: Map<string, string | undefined>;
@@ -314,19 +324,30 @@ async function probeWorkspaceGroups(
     resolveAnalysisBudgets({
       maxFiles: files.length,
       maxSerializedBytes: GROUP_PROBE_MAX_TOTAL_BYTES,
-      maxWallTimeMs: Number.MAX_SAFE_INTEGER,
+      maxWallTimeMs,
     }),
   );
   const probed: GroupProbeResult[] = [];
   const skippedFiles: string[] = [];
   const unknownFiles: string[] = [];
   let aggregateCapReached = false;
+  let timeCutoffReached = false;
   for (const [index, file] of files.entries()) {
+    if (!probeTracker.checkWallTime()) {
+      timeCutoffReached = true;
+      skippedFiles.push(...files.slice(index));
+      break;
+    }
     const size = Math.max(0, sizes[index] ?? 0);
     const initialContentLimit = Math.min(size, GROUP_PROBE_MAX_BYTES);
     let reservedBytes = Math.min(size + 1, GROUP_PROBE_MAX_BYTES + 1);
     if (!probeTracker.reserve({ files: 1, serializedBytes: reservedBytes })) {
       skippedFiles.push(file);
+      if (!probeTracker.checkWallTime()) {
+        timeCutoffReached = true;
+        skippedFiles.push(...files.slice(index + 1));
+        break;
+      }
       aggregateCapReached = true;
       continue;
     }
@@ -339,9 +360,21 @@ async function probeWorkspaceGroups(
     };
     let readSucceeded = false;
     const chunks: Buffer[] = [];
+    let stopAfterCurrent = false;
     while (true) {
+      if (!probeTracker.checkWallTime()) {
+        timeCutoffReached = true;
+        skippedFiles.push(...files.slice(index + 1));
+        break;
+      }
       const result = await readGroupProbe(file, offset, contentLimit, size);
       if (result.chunk === undefined) break;
+      if (!probeTracker.checkWallTime()) {
+        timeCutoffReached = true;
+        skippedFiles.push(...files.slice(index + 1));
+        stopAfterCurrent = true;
+        break;
+      }
       readSucceeded = true;
       const contentBytes = Math.max(0, contentLimit - offset);
       const appendedBytes = Math.min(result.chunk.length, contentBytes);
@@ -360,6 +393,14 @@ async function probeWorkspaceGroups(
             }
           })()
         : federationGroupFromPrefix(contents);
+      if (!probeTracker.checkWallTime()) {
+        timeCutoffReached = true;
+        skippedFiles.push(...files.slice(index + 1));
+        classification = { status: "unknown" };
+        complete = false;
+        stopAfterCurrent = true;
+        break;
+      }
       if (classification.status !== "unknown" || complete) break;
       if (contentLimit >= size) break;
 
@@ -369,8 +410,13 @@ async function probeWorkspaceGroups(
       );
       const nextReservedBytes = Math.min(size + 1, nextContentLimit + 1);
       const additionalBytes = nextReservedBytes - reservedBytes;
-      if (additionalBytes <= 0 || !probeTracker.reserve({ serializedBytes: additionalBytes })) {
-        aggregateCapReached = true;
+      if (additionalBytes <= 0) break;
+      if (!probeTracker.reserve({ serializedBytes: additionalBytes })) {
+        if (!probeTracker.checkWallTime()) {
+          timeCutoffReached = true;
+          skippedFiles.push(...files.slice(index + 1));
+          stopAfterCurrent = true;
+        } else aggregateCapReached = true;
         break;
       }
       reservedBytes = nextReservedBytes;
@@ -386,6 +432,7 @@ async function probeWorkspaceGroups(
       status: classification.status,
       ...(classification.group ? { group: classification.group } : {}),
     });
+    if (stopAfterCurrent || timeCutoffReached) break;
   }
   const scopedFiles: string[] = [];
   const scopedContents = new Map<string, string | undefined>();
@@ -412,15 +459,21 @@ async function probeWorkspaceGroups(
             {
               kind: "probe",
               files: unresolvedFiles,
-              message: aggregateCapReached
+              message: timeCutoffReached
                 ? "Group pre-probe could not determine federationGroup for " +
                   unresolvedFiles.length +
                   " project files before reaching its " +
-                  GROUP_PROBE_MAX_TOTAL_BYTES +
-                  "-byte aggregate cap; group selection is unknown."
-                : "Group pre-probe could not determine federationGroup for " +
-                  unresolvedFiles.length +
-                  " project files; group selection is unknown.",
+                  maxWallTimeMs +
+                  "-ms wall-time limit; group selection is unknown."
+                : aggregateCapReached
+                  ? "Group pre-probe could not determine federationGroup for " +
+                    unresolvedFiles.length +
+                    " project files before reaching its " +
+                    GROUP_PROBE_MAX_TOTAL_BYTES +
+                    "-byte aggregate cap; group selection is unknown."
+                  : "Group pre-probe could not determine federationGroup for " +
+                    unresolvedFiles.length +
+                    " project files; group selection is unknown.",
             } satisfies WorkspaceProjectDiagnostic,
           ]
         : [],
@@ -608,7 +661,12 @@ export async function discoverWorkspaceProjectsWithBudget(
         .then((item) => item.size)
         .catch(() => 0),
     );
-    const probe = await probeWorkspaceGroups(orderedFiles, allSizes, options.group);
+    const probe = await probeWorkspaceGroups(
+      orderedFiles,
+      allSizes,
+      options.group,
+      analysisBudgets.maxWallTimeMs,
+    );
     scopedFiles = probe.scopedFiles.sort((left, right) => left.localeCompare(right));
     scopedContents = probe.scopedContents;
     for (const group of probe.groups) observedGroups.add(group);
