@@ -2,8 +2,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { analyze, analyzeBuild } from "../../src/engine.js";
+import { analyze, analyzeBuild, analyzeFederation } from "../../src/engine.js";
 import { evidenceRuleScopeFor, runMigratedEvidenceRules } from "../../src/evidence-rule-bridge.js";
+import {
+  runMigratedFederationRules,
+  migratedFederationEvidenceRuleIds,
+} from "../../src/evidence-federation-bridge.js";
 import {
   EVIDENCE_LEGACY_ENV,
   RELEASE_GATES,
@@ -16,7 +20,9 @@ import {
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
   MIGRATED_GROUP3_RULE_IDS,
+  MIGRATED_GROUP4_RULE_IDS,
 } from "../../src/rule-inventory.js";
+import type { ProjectFacts } from "../../src/types.js";
 
 const roots: string[] = [];
 const greenGates = Object.fromEntries(RELEASE_GATES.map((gate) => [gate, true]));
@@ -100,6 +106,19 @@ const EXPECTED_GROUP3_RULE_IDS = [
   "shared/prefix-share-recommended",
 ] as const;
 
+const EXPECTED_GROUP4_RULE_IDS = [
+  "federation/name-conflict",
+  "federation/version-conflict",
+  "federation/share-scope-mismatch",
+  "federation/share-strategy-mismatch",
+  "federation/circular-remote-graph",
+  "federation/missing-provider",
+  "federation/host-gaps",
+  "federation/ghost-shares",
+  "shared/singleton-mismatch",
+  "federation/external-runtime-provider-missing",
+] as const;
+
 const migratedRuleCount =
   MIGRATED_GROUP1_CONFIG_RULE_IDS.length +
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS.length +
@@ -112,6 +131,58 @@ const migratedRuleIds = new Set([
   ...EXPECTED_GROUP2_RULE_IDS,
   ...EXPECTED_GROUP3_RULE_IDS,
 ]);
+
+function federationShadowRollout() {
+  return createEvidenceRolloutController({ scopes: { "federation-workspace": "shadow" } });
+}
+
+function federationCompatRollout() {
+  return federationShadowRollout().promoteToCompat("federation-workspace", greenGates);
+}
+
+function federationProjectFacts(
+  name: string,
+  shared: Record<string, Record<string, unknown>>,
+  packages: string[],
+  overrides: Partial<ProjectFacts> = {},
+): ProjectFacts {
+  return {
+    schemaVersion: 1,
+    project: { name, root: "." },
+    bundler: { name: "vite", mode: "ci" },
+    capabilities: {
+      config: true,
+      sourceImports: true,
+      manifest: false,
+      stats: false,
+      emittedAssets: false,
+      installedVersions: true,
+    },
+    moduleFederation: {
+      name,
+      exposes: {},
+      remotes: {},
+      shared: shared as unknown as NonNullable<ProjectFacts["moduleFederation"]>["shared"],
+    },
+    dependencies: {
+      declared: Object.fromEntries(packages.map((pkg) => [pkg, "*"])),
+      installed: {},
+    },
+    imports: {
+      sourceFiles: [],
+      specifiers: packages,
+      packages,
+      dynamicPackages: [],
+      remotes: [],
+      unresolvedDynamic: [],
+      evidenceSources: ["source"],
+      sourceScope: "project" as const,
+      sourceReadFailures: [],
+    },
+    artifacts: { emittedAssets: [] },
+    ...overrides,
+  };
+}
 
 const CONFIDENCE_RANK: Record<string, number> = {
   unknown: 0,
@@ -223,6 +294,264 @@ describe("evidence-aware rule rollout bridge", () => {
       migratedRuleIds,
     );
     expect(compat.evidence?.evaluations).toHaveLength(migratedRuleCount);
+  });
+
+  it("routes the exact Group 4 federation tuple through the federation-workspace bridge", async () => {
+    expect(MIGRATED_GROUP4_RULE_IDS).toEqual(EXPECTED_GROUP4_RULE_IDS);
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-group4-rollout-"));
+    roots.push(root);
+    const host = federationProjectFacts("host", { react: { singleton: true } }, [
+      "react",
+      "lodash",
+    ]);
+    const remote = federationProjectFacts("remote", {}, ["react", "lodash"]);
+    host.moduleFederation!.name = "shop";
+    remote.moduleFederation!.name = "catalog";
+    host.moduleFederation!.shareStrategy = "version-first";
+    remote.moduleFederation!.shareStrategy = "loaded-first";
+    const files = [path.join(root, "host.json"), path.join(root, "remote.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(host));
+    await fs.writeFile(files[1]!, JSON.stringify(remote));
+    const compat = await analyzeFederation(files, { evidenceRollout: federationCompatRollout() });
+    expect(new Set(compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id))).toEqual(
+      new Set(EXPECTED_GROUP4_RULE_IDS),
+    );
+    expect(compat.evidence?.evaluations).toHaveLength(EXPECTED_GROUP4_RULE_IDS.length);
+    expect(compat.evidence).toMatchObject({
+      rollout: { scope: "federation-workspace", mode: "v2-compat" },
+    });
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "federation/share-strategy-mismatch",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+  });
+
+  it("keeps federation workspace output byte-compatible in shadow mode", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-group4-shadow-rollout-"));
+    roots.push(root);
+    const host = federationProjectFacts("host", { react: { singleton: true } }, ["react"]);
+    const remote = federationProjectFacts("remote", { react: { singleton: false } }, ["react"]);
+    host.moduleFederation!.name = "shop";
+    remote.moduleFederation!.name = "catalog";
+    host.moduleFederation!.shareStrategy = "version-first";
+    remote.moduleFederation!.shareStrategy = "loaded-first";
+    const files = [path.join(root, "host.json"), path.join(root, "remote.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(host));
+    await fs.writeFile(files[1]!, JSON.stringify(remote));
+    const legacy = await analyzeFederation(files);
+    const shadow = await analyzeFederation(files, { evidenceRollout: federationShadowRollout() });
+    expect(compareV1Outputs(legacy.report, shadow.report).equal).toBe(true);
+    expect(shadow.evidence?.parity?.equal).toBe(true);
+    expect(
+      shadow.evidence?.evaluations.some(
+        (evaluation) => evaluation.rule.id === "federation/share-strategy-mismatch",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps absence-sensitive Group 4 rules unknown when one sibling has partial source evidence", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-group4-partial-source-"));
+    roots.push(root);
+    const complete = federationProjectFacts("complete", {}, ["lodash"]);
+    const partial = federationProjectFacts("partial", {}, ["lodash"], {
+      imports: {
+        sourceFiles: [],
+        specifiers: ["lodash"],
+        packages: ["lodash"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+        sourceScope: "partial" as const,
+        sourceReadFailures: [],
+      },
+    });
+    const files = [path.join(root, "complete.json"), path.join(root, "partial.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(complete));
+    await fs.writeFile(files[1]!, JSON.stringify(partial));
+    const legacy = await analyzeFederation(files);
+    const compat = await analyzeFederation(files, { evidenceRollout: federationCompatRollout() });
+    expect(
+      legacy.report.findings.some((finding) => finding.ruleId === "federation/host-gaps"),
+    ).toBe(false);
+    expect(
+      compat.report.findings.some((finding) => finding.ruleId === "federation/host-gaps"),
+    ).toBe(false);
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "federation/host-gaps",
+      ),
+    ).toMatchObject({ outcome: "unknown" });
+    const migrated = await runMigratedFederationRules(
+      {
+        projects: [complete, partial],
+        groupKey: "\0ungrouped",
+        groupEvidenceIncomplete: true,
+        alwaysShared: new Set(),
+      },
+      { "federation/host-gaps": "warning" },
+    );
+    const sourceAssertions = migrated.graph.assertions.filter(
+      (assertion) => assertion.predicate === "imports.sourceScan",
+    );
+    expect(sourceAssertions.some((assertion) => assertion.completeness.status === "partial")).toBe(
+      true,
+    );
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "federation/host-gaps",
+      ),
+    ).toMatchObject({ outcome: "unknown" });
+    expect(migratedFederationEvidenceRuleIds.has("federation/host-gaps")).toBe(true);
+  });
+
+  it("projects ghost-shares and missing-provider failures in v2-compat with complete evidence", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-group4-absence-complete-"));
+    roots.push(root);
+    const ghostHost = federationProjectFacts(
+      "ghost-host",
+      {
+        lodash: {
+          package: "lodash",
+          singleton: false,
+          eager: false,
+          shareScope: ["default"],
+        },
+      },
+      [],
+    );
+    const ghostRemote = federationProjectFacts("ghost-remote", {}, []);
+    const missingHost = federationProjectFacts("missing-host", {}, ["react"]);
+    const missingRemote = federationProjectFacts(
+      "missing-remote",
+      {
+        react: {
+          package: "react",
+          import: false,
+          singleton: true,
+          eager: false,
+          shareScope: ["default"],
+        },
+      },
+      ["react"],
+    );
+    const ghostFiles = [path.join(root, "ghost-host.json"), path.join(root, "ghost-remote.json")];
+    const missingFiles = [
+      path.join(root, "missing-host.json"),
+      path.join(root, "missing-remote.json"),
+    ];
+    await fs.writeFile(ghostFiles[0]!, JSON.stringify(ghostHost));
+    await fs.writeFile(ghostFiles[1]!, JSON.stringify(ghostRemote));
+    await fs.writeFile(missingFiles[0]!, JSON.stringify(missingHost));
+    await fs.writeFile(missingFiles[1]!, JSON.stringify(missingRemote));
+
+    for (const [files, ruleId] of [
+      [ghostFiles, "federation/ghost-shares"],
+      [missingFiles, "federation/missing-provider"],
+    ] as const) {
+      const legacy = await analyzeFederation(files);
+      const compat = await analyzeFederation(files, { evidenceRollout: federationCompatRollout() });
+      expect(legacy.report.findings.some((finding) => finding.ruleId === ruleId)).toBe(true);
+      expect(compat.report.findings.some((finding) => finding.ruleId === ruleId)).toBe(true);
+      expect(
+        compat.evidence?.evaluations.find((evaluation) => evaluation.rule.id === ruleId),
+      ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    }
+  });
+
+  it("keeps absence-sensitive Group 4 rules unknown when workspace diagnostics mark evidence incomplete", async () => {
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "mfdoctor-group4-diagnostics-incomplete-"),
+    );
+    roots.push(root);
+    const host = federationProjectFacts(
+      "host",
+      {
+        lodash: {
+          package: "lodash",
+          singleton: false,
+          eager: false,
+          shareScope: ["default"],
+        },
+      },
+      [],
+    );
+    const remote = federationProjectFacts("remote", {}, []);
+    const files = [path.join(root, "host.json"), path.join(root, "remote.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(host));
+    await fs.writeFile(files[1]!, JSON.stringify(remote));
+    const legacy = await analyzeFederation(files, {
+      workspaceDiagnostics: [
+        {
+          kind: "invalid",
+          files: [files[0]!],
+          message: "Invalid project facts: host.json",
+        },
+      ],
+    });
+    const compat = await analyzeFederation(files, {
+      evidenceRollout: federationCompatRollout(),
+      workspaceDiagnostics: [
+        {
+          kind: "invalid",
+          files: [files[0]!],
+          message: "Invalid project facts: host.json",
+        },
+      ],
+    });
+    expect(
+      legacy.report.findings.some((finding) => finding.ruleId === "federation/ghost-shares"),
+    ).toBe(false);
+    expect(
+      compat.report.findings.some((finding) => finding.ruleId === "federation/ghost-shares"),
+    ).toBe(false);
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "federation/ghost-shares",
+      ),
+    ).toMatchObject({ outcome: "unknown" });
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "federation/missing-provider",
+      ),
+    ).toMatchObject({ outcome: "unknown" });
+  });
+
+  it("keeps mixed federation and non-federation siblings in parity between legacy and v2-compat", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-group4-mixed-siblings-"));
+    roots.push(root);
+    const host = federationProjectFacts(
+      "host",
+      {
+        lodash: {
+          package: "lodash",
+          singleton: false,
+          eager: false,
+          shareScope: ["default"],
+        },
+      },
+      [],
+    );
+    const remote = federationProjectFacts("remote", {}, []);
+    const library = federationProjectFacts("shared-lib", {}, []);
+    delete library.moduleFederation;
+    const files = [
+      path.join(root, "host.json"),
+      path.join(root, "remote.json"),
+      path.join(root, "shared-lib.json"),
+    ];
+    await fs.writeFile(files[0]!, JSON.stringify(host));
+    await fs.writeFile(files[1]!, JSON.stringify(remote));
+    await fs.writeFile(files[2]!, JSON.stringify(library));
+    const legacy = await analyzeFederation(files);
+    const compat = await analyzeFederation(files, { evidenceRollout: federationCompatRollout() });
+    expect(compareV1Outputs(legacy.report, compat.report).equal).toBe(true);
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "federation/ghost-shares",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
   });
 
   it("routes Group 3 heuristic rules through the bridge with V1 parity", async () => {

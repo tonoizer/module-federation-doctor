@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import semver from "semver";
 import {
   applyBaseline,
   loadBaseline,
@@ -13,6 +12,12 @@ import { addBuildFacts, collectProjectFacts, type BuildDiagnostics } from "./col
 import { resolveOptions } from "./config.js";
 import { compareV1Outputs } from "./evidence-parity.js";
 import {
+  migratedFederationEvidenceRuleIds,
+  projectMigratedFederationFailures,
+  runMigratedFederationRules,
+  type MigratedFederationEvidenceRun,
+} from "./evidence-federation-bridge.js";
+import {
   migratedEvidenceRules,
   migratedEvidenceRuleIds,
   projectMigratedFailures,
@@ -20,11 +25,14 @@ import {
   type MigratedEvidenceRun,
 } from "./evidence-rule-bridge.js";
 import { createEvidenceRolloutController } from "./evidence-rollout.js";
+import {
+  evaluateFederationWorkspaceOracle,
+  type FederationOracleFinding,
+} from "./federation-workspace-oracle.js";
 import { writeDiagnosticsDump } from "./agent-prompt.js";
 import { computeHealthScore } from "./health-score.js";
 import { builtInRules, federationRuleMeta } from "./rules.js";
 import { DEFAULT_ALWAYS_SHARED } from "./shared-policy.js";
-import { buildFederationModel, findFederationCycleGroups } from "./federation-model.js";
 import {
   createWorkspaceApplicationIdentity,
   workspaceProjectRoot,
@@ -38,6 +46,7 @@ import type {
   DoctorOptions,
   DoctorReport,
   DoctorRule,
+  EvidenceAnalysisMetadata,
   FederationAnalysisResult,
   FederationInstanceFacts,
   OutputFormat,
@@ -58,7 +67,11 @@ import {
 } from "./utils.js";
 import { writeFederationReports, writeReports } from "./reporters.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
-import { AnalysisBudgetTracker, type AnalysisBudgetReport } from "./analysis-budgets.js";
+import {
+  AnalysisBudgetTracker,
+  resolveAnalysisBudgets,
+  type AnalysisBudgetReport,
+} from "./analysis-budgets.js";
 import { mapBounded } from "./async-map.js";
 import type { RuleExecutionState } from "./rule-contract.js";
 
@@ -455,6 +468,61 @@ function pushFederationFinding(
   });
 }
 
+function pushOracleFederationFindings(
+  findings: DoctorFinding[],
+  rules: Record<string, RuleSetting> | undefined,
+  oracleFindings: readonly FederationOracleFinding[],
+): void {
+  for (const finding of oracleFindings) {
+    pushFederationFinding(
+      findings,
+      rules,
+      finding.ruleId as (typeof federationRuleMeta)[number]["id"],
+      finding.project,
+      finding.message,
+      finding.evidence,
+      finding.detailsSchema
+        ? { detailsSchema: finding.detailsSchema, details: finding.details ?? {} }
+        : undefined,
+    );
+  }
+}
+
+function legacyFederationFindingsForGroup(
+  projectGroup: ProjectFacts[],
+  groupEvidenceIncomplete: boolean,
+  rules: Record<string, RuleSetting> | undefined,
+  alwaysShared: ReadonlySet<string>,
+): DoctorFinding[] {
+  const findings: DoctorFinding[] = [];
+  pushOracleFederationFindings(
+    findings,
+    rules,
+    evaluateFederationWorkspaceOracle({
+      projectGroup,
+      groupEvidenceIncomplete,
+      alwaysShared,
+    }),
+  );
+  return findings;
+}
+
+function federationBridgeEngineErrors(
+  settings: Readonly<Record<string, RuleSetting>>,
+  error: unknown,
+  root: string,
+): RuleExecutionState[] {
+  const message = redact(error instanceof Error ? error.message : String(error), root) as string;
+  return [...migratedFederationEvidenceRuleIds]
+    .filter((id) => settings[id] !== "off")
+    .map((id) => ({
+      state: "engine-error" as const,
+      rule: { id, version: "1" },
+      reason: "Federation evidence bridge failed before rule evaluation.",
+      error: message,
+    }));
+}
+
 function aggregateWorkspaceSourceReadFailures(
   entries: Array<{ file: string; project: ProjectFacts }>,
   workspaceRoot: string,
@@ -546,6 +614,8 @@ export async function analyzeFederation(
     alwaysShared?: string[];
     analysis?: AnalysisBudgetReport;
     workspaceDiagnostics?: WorkspaceProjectDiagnostic[];
+    /** @internal Evidence rollout injection for staged federation rule migration. */
+    evidenceRollout?: import("./evidence-rollout.js").EvidenceRolloutController;
   } = {},
 ): Promise<FederationAnalysisResult> {
   const orderedFiles = files.slice().sort(compareCodePoint);
@@ -651,8 +721,21 @@ export async function analyzeFederation(
     sourceReadFailures.length > 0 ||
     isAnalysisIncomplete(options.analysis) ||
     workspaceDiagnostics.length > 0;
-  const rules = options.rules;
+  const rules = options.rules ?? {};
   const alwaysShared = new Set<string>([...DEFAULT_ALWAYS_SHARED, ...(options.alwaysShared ?? [])]);
+  const rolloutDefaults = createEvidenceRolloutController();
+  const rollout = rolloutDefaults.emergencyLegacy
+    ? rolloutDefaults
+    : (options.evidenceRollout ?? rolloutDefaults);
+  const rolloutMode = rollout.modeFor("federation-workspace");
+  const root = path.resolve(options.root ?? process.cwd());
+  const bridgeBudget =
+    rolloutMode === "legacy" ? undefined : new AnalysisBudgetTracker(resolveAnalysisBudgets({}));
+  const migratedRuns: MigratedFederationEvidenceRun[] = [];
+  const migratedProjectionRuns: MigratedFederationEvidenceRun[] = [];
+  const migratedExecutionErrors: RuleExecutionState[] = [];
+  let legacyFederationFindings: DoctorFinding[] = [];
+
   for (const projectGroup of federationProjectGroups(projects)) {
     const groupKey = projectGroupKey(projectGroup[0]!);
     const groupEvidenceIncomplete =
@@ -665,295 +748,79 @@ export async function analyzeFederation(
           hasPackageCapableUnresolvedDynamic(project) ||
           (project.imports?.sourceReadFailures?.length ?? 0) > 0,
       );
-    const federation = buildFederationModel(projectGroup);
-    const federationNodes = federation.projects;
-    const nodeConfig = (node: (typeof federationNodes)[number]) =>
-      node.instance?.moduleFederation ?? node.project.moduleFederation;
-    const nodeScope = (node: (typeof federationNodes)[number]): string =>
-      node.instanceId ? `${node.projectName}#${node.instanceId}` : node.projectName;
-    for (const [name, owners] of federation.federationNames)
-      if (owners.length > 1)
-        pushFederationFinding(
-          findings,
+
+    if (rolloutMode === "legacy" || rolloutMode === "shadow") {
+      legacyFederationFindings = legacyFederationFindings.concat(
+        legacyFederationFindingsForGroup(
+          projectGroup,
+          groupEvidenceIncomplete,
           rules,
-          "federation/name-conflict",
-          owners[0]?.projectName ?? "federation",
-          `Module Federation name "${name}" is used by more than one federation scope.`,
-          {
-            name,
-            projects: [...new Set(owners.map((owner) => owner.projectName))].sort(),
-            instances: owners
-              .map((owner) => {
-                const instance = { project: owner.projectName } as {
-                  project: string;
-                  federationInstanceId?: string;
-                };
-                if (owner.instanceId) instance.federationInstanceId = owner.instanceId;
-                return instance;
-              })
-              .sort((left, right) =>
-                compareCodePoint(
-                  `${left.project}:${left.federationInstanceId ?? ""}`,
-                  `${right.project}:${right.federationInstanceId ?? ""}`,
-                ),
-              ),
-          },
-        );
-
-    const strategyOwners = new Map<string, string[]>();
-    for (const node of federation.projects) {
-      if (!nodeConfig(node)) continue;
-      strategyOwners.set(node.shareStrategy, [
-        ...(strategyOwners.get(node.shareStrategy) ?? []),
-        nodeScope(node),
-      ]);
-    }
-    if (strategyOwners.size > 1)
-      pushFederationFinding(
-        findings,
-        rules,
-        "federation/share-strategy-mismatch",
-        [...strategyOwners.values()][0]?.[0] ?? "federation",
-        "Federation projects disagree on `shareStrategy`.",
-        {
-          strategies: Object.fromEntries(
-            [...strategyOwners.entries()]
-              .sort(([a], [b]) => compareCodePoint(a, b))
-              .map(([strategy, owners]) => [strategy, [...owners].sort()]),
-          ),
-        },
-      );
-
-    for (const cycle of findFederationCycleGroups(federation)) {
-      if (cycle.riskEdges.length === 0) continue;
-      const first = cycle.members[0];
-      if (!first) continue;
-      pushFederationFinding(
-        findings,
-        rules,
-        "federation/circular-remote-graph",
-        first.projectName,
-        `Remote graph has a cycle with eager \`version-first\` startup risk: ${cycle.members
-          .map((member) => member.federationName ?? member.projectName)
-          .join(" -> ")}.`,
-        {
-          projects: cycle.members.map((member) => member.projectName),
-          members: cycle.members.map((member) => ({
-            project: member.projectName,
-            ...(member.instanceId ? { federationInstanceId: member.instanceId } : {}),
-            federationName: member.federationName,
-            shareStrategy: member.shareStrategy,
-            asyncStartup: member.asyncStartup,
-          })),
-          edges: cycle.edges.map((edge) => ({
-            from: edge.fromFederationName,
-            to: edge.targetFederationName,
-            project: edge.fromProject,
-            ...(edge.fromInstanceId ? { fromInstanceId: edge.fromInstanceId } : {}),
-            ...(edge.targetInstanceId ? { targetInstanceId: edge.targetInstanceId } : {}),
-            remote: edge.remoteName,
-            alias: edge.alias,
-            entry: edge.entry,
-          })),
-          riskMembers: cycle.riskMembers.map((member) => {
-            const riskMember = {
-              project: member.projectName,
-              federationName: member.federationName,
-              shareStrategy: member.shareStrategy,
-              asyncStartup: member.asyncStartup,
-            } as {
-              project: string;
-              federationInstanceId?: string;
-              federationName?: string;
-              shareStrategy: string;
-              asyncStartup: boolean;
-            };
-            if (member.instanceId) riskMember.federationInstanceId = member.instanceId;
-            return riskMember;
-          }),
-        },
+          alwaysShared,
+        ),
       );
     }
 
-    const externalRuntimeConsumers = federationNodes.filter(
-      (node) => nodeConfig(node)?.experiments?.externalRuntime,
-    );
-    const runtimeProviders = federationNodes.filter(
-      (node) => nodeConfig(node)?.experiments?.provideExternalRuntime,
-    );
-    if (
-      !groupEvidenceIncomplete &&
-      externalRuntimeConsumers.length > 0 &&
-      runtimeProviders.length === 0
-    )
-      pushFederationFinding(
-        findings,
-        rules,
-        "federation/external-runtime-provider-missing",
-        externalRuntimeConsumers[0]?.projectName ?? "federation",
-        "Projects externalize the Module Federation runtime, but no project provides it.",
-        {
-          consumers: externalRuntimeConsumers.map(nodeScope).sort(),
-        },
-      );
-
-    const packages = new Set(
-      federationNodes.flatMap((node) => Object.keys(nodeConfig(node)?.shared ?? {})),
-    );
-    for (const name of [...packages].sort()) {
-      const entries = federationNodes
-        .map((node) => ({ node, shared: nodeConfig(node)?.shared[name] }))
-        .filter((entry) => entry.shared);
-      const scopes = new Set(
-        entries.map((entry) => JSON.stringify(entry.shared?.shareScope ?? ["default"])),
-      );
-      if (scopes.size > 1)
-        pushFederationFinding(
-          findings,
-          rules,
-          "federation/share-scope-mismatch",
-          entries[0]?.node.projectName ?? "federation",
-          `"${name}" uses different share scopes.`,
+    if (rolloutMode !== "legacy") {
+      try {
+        const run = await runMigratedFederationRules(
           {
-            package: name,
-            scopes: [...scopes].sort().map((scope) => JSON.parse(scope)),
-            instances: entries.map((entry) => nodeScope(entry.node)).sort(),
+            projects: projectGroup,
+            groupKey,
+            ...(options.analysis ? { workspaceAnalysis: options.analysis } : {}),
+            groupEvidenceIncomplete,
+            alwaysShared,
           },
-        );
-      const singleton = new Set(entries.map((entry) => entry.shared?.singleton));
-      if (singleton.size > 1)
-        pushFederationFinding(
-          findings,
           rules,
-          "shared/singleton-mismatch",
-          entries[0]?.node.projectName ?? "federation",
-          `"${name}" has inconsistent singleton settings.`,
-          { package: name, instances: entries.map((entry) => nodeScope(entry.node)).sort() },
-          {
-            detailsSchema: FINDING_DETAILS_SCHEMAS.SHARED_SINGLETON,
-            details: { package: name, kind: "mismatch" },
-          },
+          bridgeBudget,
         );
-      const versions = entries
-        .map((entry) => ({
-          project: nodeScope(entry.node),
-          ...(entry.node.instanceId ? { federationInstanceId: entry.node.instanceId } : {}),
-          version: entry.node.project.dependencies.installed[name],
-          range: entry.shared?.requiredVersion,
-        }))
-        .filter((entry) => entry.version);
-      if (
-        versions.some((left) =>
-          versions.some(
-            (right) =>
-              left.version &&
-              typeof right.range === "string" &&
-              semver.valid(left.version) &&
-              semver.validRange(right.range) &&
-              !semver.satisfies(left.version, right.range),
-          ),
-        )
-      )
-        pushFederationFinding(
-          findings,
-          rules,
-          "federation/version-conflict",
-          versions[0]?.project ?? "federation",
-          `"${name}" versions do not satisfy all consumer ranges.`,
-          { package: name, versions },
-        );
-      const consumersWithoutFallback = entries.filter((entry) => entry.shared?.import === false);
-      const providers = entries.filter((entry) => entry.shared?.import !== false);
-      if (!groupEvidenceIncomplete && consumersWithoutFallback.length > 0 && providers.length === 0)
-        pushFederationFinding(
-          findings,
-          rules,
-          "federation/missing-provider",
-          entries[0]?.node.projectName ?? "federation",
-          `"${name}" has no provider or local fallback.`,
-          {
-            package: name,
-            consumers: consumersWithoutFallback.map((entry) => nodeScope(entry.node)).sort(),
-          },
-        );
-    }
-
-    // Cross-project usage vs shared declarations (MFDOCTOR-122 / shared-inspector).
-    if (federationNodes.length > 1) {
-      const sharedByPkg = new Map<string, Set<string>>();
-      const usedByPkg = new Map<string, Set<string>>();
-      for (const node of federationNodes) {
-        const mfName = nodeScope(node);
-        const config = nodeConfig(node);
-        const imports = node.instance?.imports ?? node.project.imports;
-        for (const pkg of Object.keys(config?.shared ?? {})) {
-          if (!sharedByPkg.has(pkg)) sharedByPkg.set(pkg, new Set());
-          sharedByPkg.get(pkg)!.add(mfName);
-        }
-        for (const pkg of imports?.packages ?? []) {
-          if (!usedByPkg.has(pkg)) usedByPkg.set(pkg, new Set());
-          usedByPkg.get(pkg)!.add(mfName);
-        }
-      }
-
-      for (const [pkg, usedByMfs] of [...usedByPkg.entries()].sort(([a], [b]) =>
-        compareCodePoint(a, b),
-      )) {
-        if (!groupEvidenceIncomplete) {
-          if (usedByMfs.size < 2) continue;
-          if (alwaysShared.has(pkg)) continue;
-          const sharedByMfs = sharedByPkg.get(pkg);
-          if (sharedByMfs && sharedByMfs.size > 0) continue;
-          // Workspace protocol deps are monorepo source links, not federation share gaps.
-          const isWorkspacePackage = projectGroup.some((project) => {
-            const range = project.dependencies?.declared?.[pkg];
-            return typeof range === "string" && range.startsWith("workspace:");
-          });
-          if (isWorkspacePackage) continue;
-          pushFederationFinding(
-            findings,
-            rules,
-            "federation/host-gaps",
-            [...usedByMfs].sort()[0] ?? "federation",
-            `"${pkg}" is imported by ${usedByMfs.size} federation scopes but is not in any shared config.`,
-            { package: pkg, missingIn: [...usedByMfs].sort() },
+        migratedRuns.push(run);
+        const needsLegacyFallback =
+          run.output.execution.some((state) => state.state === "engine-error") ||
+          isAnalysisIncomplete(run.output.analysis);
+        if (rolloutMode === "v2-compat" && needsLegacyFallback) {
+          legacyFederationFindings = legacyFederationFindings.concat(
+            legacyFederationFindingsForGroup(
+              projectGroup,
+              groupEvidenceIncomplete,
+              rules,
+              alwaysShared,
+            ),
+          );
+        } else migratedProjectionRuns.push(run);
+      } catch (error) {
+        migratedExecutionErrors.push(...federationBridgeEngineErrors(rules, error, root));
+        if (rolloutMode === "v2-compat") {
+          legacyFederationFindings = legacyFederationFindings.concat(
+            legacyFederationFindingsForGroup(
+              projectGroup,
+              groupEvidenceIncomplete,
+              rules,
+              alwaysShared,
+            ),
           );
         }
       }
-
-      if (!groupEvidenceIncomplete)
-        for (const [pkg, sharedByMfs] of [...sharedByPkg.entries()].sort(([a], [b]) =>
-          compareCodePoint(a, b),
-        )) {
-          if (alwaysShared.has(pkg)) continue;
-          if (sharedByMfs.size !== 1) continue;
-          const soloMf = [...sharedByMfs][0]!;
-          const usedByMfs = usedByPkg.get(pkg) ?? new Set<string>();
-          const usedUnsharedBy = [...usedByMfs]
-            .filter((mf) => mf !== soloMf && !sharedByPkg.get(pkg)?.has(mf))
-            .sort();
-          const otherMfsUseIt = [...usedByMfs].some((mf) => mf !== soloMf);
-          if (!otherMfsUseIt || usedUnsharedBy.length > 0) {
-            pushFederationFinding(
-              findings,
-              rules,
-              "federation/ghost-shares",
-              soloMf,
-              otherMfsUseIt
-                ? `"${pkg}" is shared only by "${soloMf}" while other projects import it without sharing.`
-                : `"${pkg}" is shared only by "${soloMf}" and unused elsewhere in the federation graph.`,
-              {
-                package: pkg,
-                sharedBy: soloMf,
-                usedUnsharedBy,
-              },
-            );
-          }
-        }
     }
   }
 
-  const root = path.resolve(options.root ?? process.cwd());
+  const migratedFederationFindings = sortFindings(
+    migratedProjectionRuns.flatMap((run) =>
+      projectMigratedFederationFailures(run.output.evaluations, rules, root),
+    ),
+  );
+  const federationParity =
+    rolloutMode === "shadow"
+      ? compareV1Outputs(
+          legacyFederationFindings.filter((finding) =>
+            migratedFederationEvidenceRuleIds.has(finding.ruleId),
+          ),
+          migratedFederationFindings,
+        )
+      : undefined;
+  findings.push(
+    ...(rolloutMode === "v2-compat" ? migratedFederationFindings : legacyFederationFindings),
+  );
+
   const baselineOptions = resolveBaselineOptions(options.baseline, root);
   const { findings: baselined, failOnSuppressed } = await withBaseline(
     sortFindings(findings),
@@ -970,6 +837,18 @@ export async function analyzeFederation(
       ...(options.prompt !== undefined ? { prompt: options.prompt } : {}),
     });
   const failOn = options.failOn ?? "error";
+  const evidence: EvidenceAnalysisMetadata | undefined =
+    rolloutMode === "legacy"
+      ? undefined
+      : {
+          rollout: { scope: "federation-workspace", mode: rolloutMode },
+          evaluations: migratedRuns.flatMap((run) => run.output.evaluations),
+          execution: [
+            ...migratedRuns.flatMap((run) => run.output.execution),
+            ...migratedExecutionErrors,
+          ],
+          ...(federationParity ? { parity: federationParity } : {}),
+        };
   return {
     projects,
     findings: baselined,
@@ -980,5 +859,6 @@ export async function analyzeFederation(
       : policyFails(baselined, failOn, failOnSuppressed)
         ? 1
         : 0,
+    ...(evidence ? { evidence } : {}),
   };
 }

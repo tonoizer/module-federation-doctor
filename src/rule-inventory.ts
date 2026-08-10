@@ -215,11 +215,26 @@ export const MIGRATED_GROUP3_RULE_IDS = [
   "shared/prefix-share-recommended",
 ] as const;
 
+/** Group 4 federation workspace topology rules promoted by the staged V1 rollout. */
+export const MIGRATED_GROUP4_RULE_IDS = [
+  "federation/name-conflict",
+  "federation/version-conflict",
+  "federation/share-scope-mismatch",
+  "federation/share-strategy-mismatch",
+  "federation/circular-remote-graph",
+  "federation/missing-provider",
+  "federation/host-gaps",
+  "federation/ghost-shares",
+  "shared/singleton-mismatch",
+  "federation/external-runtime-provider-missing",
+] as const;
+
 const MIGRATED_RULE_IDS: ReadonlySet<string> = new Set([
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   ...MIGRATED_GROUP2_RULE_IDS,
   ...MIGRATED_GROUP3_RULE_IDS,
+  ...MIGRATED_GROUP4_RULE_IDS,
 ]);
 
 type RulePlan = {
@@ -1482,10 +1497,14 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "imports.unresolvedDynamic",
   ],
   "federation/circular-remote-graph": ["project.scope", "federation.graph"],
-  "federation/external-runtime-provider-missing": ["project.scope", "federation.graph"],
-  "federation/ghost-shares": ["project.scope", "federation.graph"],
-  "federation/host-gaps": ["project.scope", "federation.graph"],
-  "federation/missing-provider": ["project.scope", "federation.graph"],
+  "federation/external-runtime-provider-missing": [
+    "project.scope",
+    "federation.graph",
+    "imports.sourceScan",
+  ],
+  "federation/ghost-shares": ["project.scope", "federation.graph", "imports.sourceScan"],
+  "federation/host-gaps": ["project.scope", "federation.graph", "imports.sourceScan"],
+  "federation/missing-provider": ["project.scope", "federation.graph", "imports.sourceScan"],
   "federation/name-conflict": ["project.scope", "federation.graph"],
   "federation/share-scope-mismatch": ["project.scope", "federation.graph"],
   "federation/share-strategy-mismatch": ["project.scope", "federation.graph"],
@@ -1604,12 +1623,18 @@ function selectorFor(path: string, spec: RulePlan): EvidenceRequirement {
           : predicate.startsWith("artifacts.")
             ? "artifact"
             : "effective";
+  const workspaceLevelPredicate =
+    predicate === "project.scope" ||
+    predicate === "federation.graph" ||
+    predicate === "imports.sourceScan";
   const subjectKind =
     predicate === "runtime.trace"
       ? "runtime-instance"
       : predicate.startsWith("artifacts.")
         ? "artifact"
-        : spec.subjectKind;
+        : workspaceLevelPredicate && spec.subjectKind === "shared-package"
+          ? "project"
+          : spec.subjectKind;
   return {
     predicate,
     layer,

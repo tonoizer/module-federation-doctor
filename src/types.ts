@@ -1071,7 +1071,7 @@ export interface DoctorReport {
 }
 
 export interface EvidenceAnalysisMetadata {
-  rollout: { scope: "rules"; mode: RolloutMode };
+  rollout: { scope: "rules" | "federation-workspace"; mode: RolloutMode };
   evaluations: RuleEvaluationResult[];
   execution: RuleExecutionState[];
   parity?: ParityComparison;
@@ -1126,4 +1126,6 @@ export interface FederationAnalysisResult {
   report: DoctorReport;
   ui: DoctorUiPayload;
   exitCode: 0 | 1 | 2;
+  /** Additive v2/debug metadata; never written into the V1 report contract. */
+  evidence?: EvidenceAnalysisMetadata;
 }

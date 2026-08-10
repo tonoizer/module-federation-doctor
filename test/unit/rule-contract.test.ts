@@ -9,6 +9,7 @@ import {
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
   MIGRATED_GROUP3_RULE_IDS,
+  MIGRATED_GROUP4_RULE_IDS,
   ruleInventory,
   ruleInventoryIds,
 } from "../../src/rule-inventory.js";
@@ -20,6 +21,12 @@ function requirementPredicates(requirement: EvidenceRequirement): string[] {
   if ("predicate" in requirement) return [requirement.predicate];
   if ("allOf" in requirement) return requirement.allOf.flatMap(requirementPredicates);
   return requirement.anyOf.flatMap(requirementPredicates);
+}
+
+function requirementSelectors(requirement: EvidenceRequirement): EvidenceRequirement[] {
+  if ("predicate" in requirement) return [requirement];
+  if ("allOf" in requirement) return requirement.allOf.flatMap(requirementSelectors);
+  return requirement.anyOf.flatMap(requirementSelectors);
 }
 
 describe("evidence-aware rule contract", () => {
@@ -612,6 +619,7 @@ describe("evidence-aware rule contract", () => {
       ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
       ...MIGRATED_GROUP2_RULE_IDS,
       ...MIGRATED_GROUP3_RULE_IDS,
+      ...MIGRATED_GROUP4_RULE_IDS,
     ]);
     expect(
       ruleInventory.every((entry) =>
@@ -664,6 +672,47 @@ describe("evidence-aware rule contract", () => {
     );
     expect(ruleInventory.find((entry) => entry.id === "performance/asset-budget")?.group).toBe(2);
     expect(ruleInventory.find((entry) => entry.id === "shared/singleton-mismatch")?.group).toBe(4);
+    expect(MIGRATED_GROUP4_RULE_IDS).toEqual([
+      "federation/name-conflict",
+      "federation/version-conflict",
+      "federation/share-scope-mismatch",
+      "federation/share-strategy-mismatch",
+      "federation/circular-remote-graph",
+      "federation/missing-provider",
+      "federation/host-gaps",
+      "federation/ghost-shares",
+      "shared/singleton-mismatch",
+      "federation/external-runtime-provider-missing",
+    ]);
+    for (const id of [
+      "federation/missing-provider",
+      "federation/host-gaps",
+      "federation/ghost-shares",
+      "federation/external-runtime-provider-missing",
+    ]) {
+      expect(ruleInventory.find((entry) => entry.id === id)?.evidenceReads).toContain(
+        "imports.sourceScan",
+      );
+    }
+    for (const id of [
+      "federation/missing-provider",
+      "federation/ghost-shares",
+      "federation/version-conflict",
+      "shared/singleton-mismatch",
+    ]) {
+      const entry = ruleInventory.find((item) => item.id === id);
+      expect(entry).toBeTruthy();
+      for (const selector of requirementSelectors(entry!.prerequisites)) {
+        if (!("predicate" in selector)) continue;
+        if (
+          selector.predicate === "project.scope" ||
+          selector.predicate === "federation.graph" ||
+          selector.predicate === "imports.sourceScan"
+        ) {
+          expect(selector.subjectKind, `${id} ${selector.predicate}`).toBe("project");
+        }
+      }
+    }
     expect(
       ruleInventory.find((entry) => entry.id === "performance/asset-budget")?.defaultSeverity,
     ).toBe("warning");
