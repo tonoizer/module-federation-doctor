@@ -664,10 +664,14 @@ describe("evidence-aware rule rollout bridge", () => {
           "runtime/error-correlated": "error",
         },
         root,
+        run.graph.subjects,
       ),
     );
     expect(projected.some((finding) => finding.ruleId === "runtime/remote-load-failed")).toBe(true);
     expect(projected.every((finding) => finding.project !== "runtime")).toBe(true);
+    expect(
+      projected.find((finding) => finding.ruleId === "runtime/remote-load-failed")?.project,
+    ).toBe("checkout");
   });
 
   it("keeps weak runtime attribution unknown in the evidence bridge", async () => {
@@ -718,11 +722,12 @@ describe("evidence-aware rule rollout bridge", () => {
     const run = await runMigratedRuntimeEvidenceRules(hostFacts, [hostFacts], traces, {
       "runtime/remote-load-failed": "error",
     });
+    expect(run.graph.subjects.some((subject) => subject.kind === "runtime-instance")).toBe(false);
     expect(
       run.output.evaluations.find(
         (evaluation) => evaluation.rule.id === "runtime/remote-load-failed",
       ),
-    ).toMatchObject({ outcome: "unknown" });
+    ).toBeUndefined();
     expect(
       run.graph.assertions.some(
         (assertion) => assertion.predicate === "runtime.trace" && assertion.layer === "runtime",

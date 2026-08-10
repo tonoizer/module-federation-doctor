@@ -14,6 +14,8 @@ import {
 import { migrateProjectFacts } from "../../src/evidence-reader.js";
 import { normalizeEvidenceGraph } from "../../src/evidence.js";
 import { runMigratedRuntimeEvidenceRules } from "../../src/evidence-rule-bridge.js";
+import { createEvidenceRolloutController, RELEASE_GATES } from "../../src/evidence-rollout.js";
+import { compareV1Outputs } from "../../src/evidence-parity.js";
 import {
   DEFAULT_RUNTIME_CAPTURE_LIMITS,
   HARD_RUNTIME_CAPTURE_LIMITS,
@@ -1239,5 +1241,141 @@ describe("runtime trace import", () => {
         (evaluation) => evaluation.rule.id === "runtime/remote-load-failed",
       ),
     ).toMatchObject({ outcome: "fail" });
+  });
+
+  it("projects remote-owned failures onto the attributed project, not the primary facts project", async () => {
+    const host = baseProject({
+      name: "host",
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          checkout: {
+            name: "checkout",
+            entry: "https://cdn.example.com/checkout/mf-manifest.json",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+    });
+    const checkout = baseProject({ name: "checkout" });
+    const traces = await loadRuntimeTraceFile(path.join(fixtureRoot, "remote-load-failed.json"));
+    const run = await runMigratedRuntimeEvidenceRules(host, [host, checkout], traces, {
+      "runtime/remote-load-failed": "error",
+    });
+    const { projectMigratedFailures } = await import("../../src/evidence-rule-bridge.js");
+    const projected = projectMigratedFailures(
+      run.output.evaluations,
+      host,
+      { "runtime/remote-load-failed": "error" },
+      ".",
+      run.graph.subjects,
+    );
+    expect(
+      projected.find((finding) => finding.ruleId === "runtime/remote-load-failed")?.project,
+    ).toBe("checkout");
+  });
+
+  it("scopes oracle traces per subject when traceId is absent", async () => {
+    const host = baseProject({
+      name: "host",
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          checkout: {
+            name: "checkout",
+            entry: "https://cdn.example/checkout.js",
+            shareScope: "default",
+          },
+          billing: {
+            name: "billing",
+            entry: "https://cdn.example/billing.js",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+    });
+    const checkout = baseProject({ name: "checkout" });
+    const billing = baseProject({ name: "billing" });
+    const traces = [
+      ...parseRuntimeTraces({
+        remote: { name: "checkout" },
+        diagnosis: { ownerHint: "remote" },
+        summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+      }),
+      ...parseRuntimeTraces({
+        remote: { name: "billing" },
+        diagnosis: { ownerHint: "remote" },
+        summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+      }),
+    ];
+    const run = await runMigratedRuntimeEvidenceRules(host, [host, checkout, billing], traces, {
+      "runtime/remote-load-failed": "error",
+    });
+    const failed = run.output.evaluations.filter(
+      (evaluation) =>
+        evaluation.rule.id === "runtime/remote-load-failed" && evaluation.outcome === "fail",
+    );
+    expect(failed).toHaveLength(2);
+  });
+
+  it("keeps analyzeRuntime shadow parity and avoids Group 5 duplicates in v2-compat", async () => {
+    const greenGates = Object.fromEntries(RELEASE_GATES.map((gate) => [gate, true]));
+    const hostFile = await writeProject(
+      baseProject({
+        name: "host",
+        moduleFederation: {
+          name: "host",
+          exposes: {},
+          remotes: {
+            checkout: {
+              name: "checkout",
+              entry: "https://cdn.example.com/checkout/mf-manifest.json",
+              shareScope: "default",
+            },
+          },
+          shared: {},
+        },
+      }),
+    );
+    const checkoutFile = await writeProject(baseProject({ name: "checkout" }));
+    const tracePath = path.join(fixtureRoot, "remote-load-failed.json");
+    const legacy = await analyzeRuntime({
+      tracePath,
+      projectFiles: [hostFile, checkoutFile],
+      formats: [],
+    });
+    const shadow = await analyzeRuntime({
+      tracePath,
+      projectFiles: [hostFile, checkoutFile],
+      formats: [],
+      evidenceRollout: createEvidenceRolloutController({ scopes: { rules: "shadow" } }),
+    });
+    const compat = await analyzeRuntime({
+      tracePath,
+      projectFiles: [hostFile, checkoutFile],
+      formats: [],
+      evidenceRollout: createEvidenceRolloutController({
+        scopes: { rules: "shadow" },
+      }).promoteToCompat("rules", greenGates),
+    });
+    expect(compareV1Outputs(legacy.findings, shadow.findings).equal).toBe(true);
+    expect(shadow.evidence?.parity?.equal).toBe(true);
+    const group5 = new Set([
+      "runtime/remote-load-failed",
+      "runtime/init-failed",
+      "runtime/shared-mismatch",
+      "runtime/remote-unknown",
+      "runtime/error-correlated",
+    ]);
+    const exactCompat = compat.findings.filter(
+      (finding) => group5.has(finding.ruleId) && finding.project !== "runtime",
+    );
+    const ruleIds = exactCompat.map((finding) => finding.ruleId);
+    expect(new Set(ruleIds).size).toBe(ruleIds.length);
+    expect(compareV1Outputs(legacy.findings, compat.findings).equal).toBe(true);
   });
 });

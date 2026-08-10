@@ -1377,6 +1377,21 @@ function redactTraceEvidenceValue(trace: RuntimeTraceReport): EvidenceValue {
   return redact(JSON.parse(JSON.stringify(trace))) as EvidenceValue;
 }
 
+/** Stable trace key used for runtime-instance subjects and oracle scoping. */
+export function runtimeTraceKey(trace: RuntimeTraceReport, index: number): string {
+  return trace.traceId ?? `trace-${index + 1}`;
+}
+
+/** Scope runtime traces to the subject's trace key; never fall back to all traces. */
+export function tracesForSubject(
+  traces: readonly RuntimeTraceReport[],
+  subject: EvidenceSubject,
+): RuntimeTraceReport[] {
+  const subjectTraceKey =
+    (typeof subject.attributes?.traceId === "string" && subject.attributes.traceId) || subject.name;
+  return traces.filter((trace, index) => runtimeTraceKey(trace, index) === subjectTraceKey);
+}
+
 /** Attach opted-in runtime traces to an evidence graph as runtime-instance subjects. */
 export function attachRuntimeTraceEvidence(
   graph: EvidenceGraphV2,
@@ -1384,18 +1399,15 @@ export function attachRuntimeTraceEvidence(
   projects: readonly ProjectFacts[],
 ): void {
   if (traces.length === 0) return;
-  const projectSubject = graph.subjects.find((subject) => subject.kind === "project");
-  const projectAssertions = projectSubject
-    ? graph.assertions.filter((assertion) => assertion.subject === projectSubject.id)
-    : [];
   const scopedProjects = runtimeScopedProjects([...projects]);
   for (const [index, trace] of traces.entries()) {
     const attribution = classifyRuntimeAttribution(trace, scopedProjects);
-    if (!attribution.scopeProject) continue;
-    const traceKey = trace.traceId ?? `trace-${index + 1}`;
+    if (!attribution.scopeProject || attribution.projectName === "runtime") continue;
+    const traceKey = runtimeTraceKey(trace, index);
+    const scopeProject = attribution.scopeProject;
     const runtimeSubject: EvidenceSubject = {
       id: stableEvidenceId("subject.runtime-instance", {
-        project: attribution.scopeProject.project.name,
+        project: scopeProject.project.name,
         traceKey,
         ...(attribution.federationInstanceId
           ? { federationInstanceId: attribution.federationInstanceId }
@@ -1404,7 +1416,7 @@ export function attachRuntimeTraceEvidence(
       kind: "runtime-instance",
       name: traceKey,
       attributes: {
-        project: attribution.scopeProject.project.name,
+        project: scopeProject.project.name,
         ...(trace.traceId ? { traceId: trace.traceId } : {}),
         ...(attribution.federationInstanceId
           ? { federationInstanceId: attribution.federationInstanceId }
@@ -1412,33 +1424,43 @@ export function attachRuntimeTraceEvidence(
       },
     };
     graph.subjects.push(runtimeSubject);
-    for (const source of projectAssertions) {
-      if (source.predicate !== "project.scope") continue;
-      graph.assertions.push({
-        id: stableEvidenceId("assertion", {
-          subject: runtimeSubject.id,
-          predicate: source.predicate,
-          value: source.value,
-          traceKey,
-        }),
+    const scopeValue: EvidenceValue = {
+      name: scopeProject.project.name,
+      root: scopeProject.project.root,
+      bundler: scopeProject.bundler.name,
+      ...(attribution.federationInstanceId
+        ? { federationInstanceId: attribution.federationInstanceId }
+        : {}),
+    };
+    graph.assertions.push({
+      id: stableEvidenceId("assertion", {
         subject: runtimeSubject.id,
-        predicate: source.predicate,
-        value: structuredClone(source.value),
-        layer: source.layer,
-        scope: structuredClone(source.scope),
-        provenance: structuredClone(source.provenance),
-        confidence: structuredClone(source.confidence),
-        completeness: structuredClone(source.completeness),
-      });
-    }
-    if (attribution.projectName === "runtime") continue;
+        predicate: "project.scope",
+        value: scopeValue,
+        traceKey,
+      }),
+      subject: runtimeSubject.id,
+      predicate: "project.scope",
+      value: scopeValue,
+      layer: "declared",
+      scope: { ...graph.scope, bundler: { ...graph.scope.bundler } },
+      provenance: {
+        collector: { name: "@module-federation/doctor", version: "1" },
+        inputKind: "runtime-trace",
+        source: "runtime-trace",
+        sourceSchemaVersion: "1",
+      },
+      confidence: {
+        level: "high",
+        reason: "Runtime trace attribution scope is derived from the attributed project.",
+      },
+      completeness: completenessInfo(
+        "complete",
+        "Runtime trace project scope is present for this subject.",
+      ),
+    });
     const traceValue = redactTraceEvidenceValue(trace);
-    const confidenceLevel =
-      attribution.confidence === "exact"
-        ? "high"
-        : attribution.confidence === "low"
-          ? "low"
-          : "high";
+    const confidenceLevel = attribution.confidence === "low" ? "low" : "high";
     graph.assertions.push({
       id: stableEvidenceId("assertion", {
         subject: runtimeSubject.id,
@@ -1791,7 +1813,13 @@ export async function analyzeRuntime(options: {
       { root: primary.project.root },
     );
     const migratedFindings = sortFindings(
-      projectMigratedFailures(run.output.evaluations, primary, settings, primary.project.root),
+      projectMigratedFailures(
+        run.output.evaluations,
+        primary,
+        settings,
+        primary.project.root,
+        run.graph.subjects,
+      ),
     );
     const exactAttribution = (item: DoctorFinding) => item.project !== "runtime";
     const parity =
@@ -1805,7 +1833,13 @@ export async function analyzeRuntime(options: {
           )
         : undefined;
     if (rolloutMode === "v2-compat")
-      findings = sortFindings([...legacyFindings, ...migratedFindings]);
+      findings = sortFindings([
+        ...legacyFindings.filter(
+          (finding) =>
+            !migratedRuntimeEvidenceRuleIds.has(finding.ruleId) || !exactAttribution(finding),
+        ),
+        ...migratedFindings,
+      ]);
     evidence = {
       rollout: { scope: "rules", mode: rolloutMode },
       evaluations: run.output.evaluations,

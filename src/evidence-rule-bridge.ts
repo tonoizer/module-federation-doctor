@@ -3,6 +3,7 @@ import type {
   EvidenceGraphV2,
   EvidenceRuleEvaluation,
   EvidenceScope,
+  EvidenceSubject,
   EvidenceValue,
 } from "./evidence.js";
 import { migrateProjectFacts } from "./evidence-reader.js";
@@ -40,6 +41,7 @@ import {
   attachRuntimeTraceEvidence,
   classifyRuntimeAttribution,
   correlateRuntime,
+  tracesForSubject,
 } from "./runtime-trace.js";
 
 type LegacyFindingInput = Omit<
@@ -228,10 +230,7 @@ function runtimeEvidenceRule(id: MigratedRuntimeEvidenceRuleId): EvidenceAwareRu
           reasonCode: "evidence-inconclusive" as const,
         };
       }
-      const subjectTraceId = context.subject.attributes?.traceId;
-      const scopedTraces = subjectTraceId
-        ? traces.filter((trace) => trace.traceId === subjectTraceId)
-        : traces;
+      const scopedTraces = tracesForSubject(traces, context.subject);
       const exactTraces = scopedTraces.filter(
         (trace) => classifyRuntimeAttribution(trace, projects).exactAttribution,
       );
@@ -624,13 +623,41 @@ function severityFor(setting: RuleSetting | undefined, fallback: Severity): Seve
   return setting ?? fallback;
 }
 
+function attributedProjectFor(
+  evaluation: RuleEvaluationResult,
+  facts: ProjectFacts,
+  subjectById?: ReadonlyMap<string, EvidenceSubject>,
+): string {
+  const subject = subjectById?.get(evaluation.subject);
+  if (subject?.kind === "runtime-instance") {
+    const project = subject.attributes?.project;
+    if (typeof project === "string") return project;
+  }
+  return facts.project.name;
+}
+
+function attributedFederationInstanceIdFor(
+  evaluation: RuleEvaluationResult,
+  facts: ProjectFacts,
+  subjectById?: ReadonlyMap<string, EvidenceSubject>,
+): string | undefined {
+  const subject = subjectById?.get(evaluation.subject);
+  const fromSubject = subject?.attributes?.federationInstanceId;
+  if (typeof fromSubject === "string") return fromSubject;
+  return facts.federationInstanceId;
+}
+
 /** Project conclusive v2 failures into the existing V1 finding shape. */
 export function projectMigratedFailures(
   evaluations: readonly RuleEvaluationResult[],
   facts: ProjectFacts,
   settings: Readonly<Record<string, RuleSetting>>,
   root: string,
+  subjects?: readonly EvidenceSubject[],
 ): DoctorFinding[] {
+  const subjectById = subjects
+    ? new Map(subjects.map((subject) => [subject.id, subject]))
+    : undefined;
   const rules = new Map([
     ...migratedEvidenceRules.map((rule) => [rule.meta.id, rule] as const),
     ...migratedRuntimeEvidenceRules.map((rule) => [rule.meta.id, rule] as const),
@@ -648,6 +675,8 @@ export function projectMigratedFailures(
       ...(rule.meta.remediation.fix ? { suggestion: rule.meta.remediation.fix } : {}),
     };
     const projected: EvidenceRuleFinding[] = evaluation.findings ?? [fallbackFinding];
+    const project = attributedProjectFor(evaluation, facts, subjectById);
+    const federationInstanceId = attributedFederationInstanceIdFor(evaluation, facts, subjectById);
     for (const finding of projected) {
       const location = finding.location
         ? {
@@ -660,8 +689,8 @@ export function projectMigratedFailures(
         ruleId: evaluation.rule.id,
         severity,
         message: redact(finding.message, root) as string,
-        project: facts.project.name,
-        ...(facts.federationInstanceId ? { federationInstanceId: facts.federationInstanceId } : {}),
+        project,
+        ...(federationInstanceId ? { federationInstanceId } : {}),
         evidence: redact(finding.evidence, root) as Record<string, unknown>,
         documentation: rule.meta.remediation.documentation,
         ...(location ? { location } : {}),

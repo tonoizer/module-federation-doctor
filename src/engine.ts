@@ -20,6 +20,7 @@ import {
 import {
   migratedEvidenceRules,
   migratedEvidenceRuleIds,
+  migratedRuntimeEvidenceRuleIds,
   projectMigratedFailures,
   runMigratedEvidenceRules,
   runMigratedRuntimeEvidenceRules,
@@ -314,6 +315,7 @@ async function runAnalysis(
       run: MigratedEvidenceRun;
     }> = [];
     const migratedExecutionErrors: RuleExecutionState[] = [];
+    let legacyRuntimeFindings: DoctorFinding[] = [];
     const bridgeBudget =
       rolloutMode === "legacy" ? undefined : new AnalysisBudgetTracker(resolved.analysisBudgets);
     if (rolloutMode !== "legacy") {
@@ -366,12 +368,14 @@ async function runAnalysis(
       }
       if (resolved.runtimeTrace) {
         try {
-          const { loadRuntimeTraceFile } = await import("./runtime-trace.js");
+          const { correlateRuntime, loadRuntimeTraceFile } = await import("./runtime-trace.js");
           const runtimeTraces = await loadRuntimeTraceFile(resolved.runtimeTrace);
           if (runtimeTraces.length > 0) {
+            const runtimeProjects = scopedFacts.length > 0 ? scopedFacts : [facts];
+            legacyRuntimeFindings = correlateRuntime(runtimeTraces, runtimeProjects);
             const run = await runMigratedRuntimeEvidenceRules(
               facts,
-              scopedFacts.length > 0 ? scopedFacts : [facts],
+              runtimeProjects,
               runtimeTraces,
               resolved.rules,
               bridgeBudget,
@@ -398,13 +402,22 @@ async function runAnalysis(
           factsForEvidence,
           resolved.rules,
           resolved.root,
+          run.graph.subjects,
         ),
       ),
     );
+    const exactRuntimeAttribution = (finding: DoctorFinding) => finding.project !== "runtime";
     const parity =
       rolloutMode === "shadow"
         ? compareV1Outputs(
-            legacyFindings.filter((finding) => migratedEvidenceRuleIds.has(finding.ruleId)),
+            [
+              ...legacyFindings.filter((finding) => migratedEvidenceRuleIds.has(finding.ruleId)),
+              ...legacyRuntimeFindings.filter(
+                (finding) =>
+                  migratedRuntimeEvidenceRuleIds.has(finding.ruleId) &&
+                  exactRuntimeAttribution(finding),
+              ),
+            ],
             migratedFindings,
           )
         : undefined;
