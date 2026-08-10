@@ -1697,6 +1697,7 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
     };
   }
   const optionalPluginFacts: Record<string, readonly string[]> = {
+    "doctor/partial-analysis": ["moduleFederation"],
     "vite/host-init-inject-ssr": ["builds"],
     "vite/ssr-nitro-externals": ["builds"],
     "vite/manual-chunks-conflict": ["bundler.viteConfig"],

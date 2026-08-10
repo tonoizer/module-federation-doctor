@@ -1520,6 +1520,42 @@ describe("evidence-aware rule rollout bridge", () => {
     );
   });
 
+  it("keeps doctor/partial-analysis in CLI parity when moduleFederation is absent", async () => {
+    const root = await fixture("group6-partial-analysis-cli-no-mf-rollout-bridge");
+    const analyzeOptions = {
+      root,
+      bundler: "vite" as const,
+      mode: "ci" as const,
+      output: { formats: [] as never[] },
+      rules: {
+        ...quietRules,
+        "doctor/partial-analysis": "warning" as const,
+      },
+    };
+    const legacy = await analyze(analyzeOptions);
+    const shadow = await analyze({ ...analyzeOptions, evidenceRollout: shadowRollout() });
+    const compat = await analyze({ ...analyzeOptions, evidenceRollout: compatRollout() });
+
+    expect(
+      legacy.report.findings.some((finding) => finding.ruleId === "doctor/partial-analysis"),
+    ).toBe(true);
+    expect(compareV1Outputs(legacy.report, shadow.report).equal).toBe(true);
+    expect(shadow.evidence?.parity?.equal).toBe(true);
+    expect(
+      compat.report.findings.some((finding) => finding.ruleId === "doctor/partial-analysis"),
+    ).toBe(true);
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "doctor/partial-analysis",
+      ),
+    ).toMatchObject({ outcome: "fail", confidence: "unknown" });
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "doctor/partial-analysis",
+      )?.reasonCode,
+    ).not.toBe("prerequisite-missing");
+  });
+
   it("routes Group 3 heuristic rules through the bridge with V1 parity", async () => {
     const root = await fixture("group3-heuristics-rollout-bridge", {
       "src/index.ts": [

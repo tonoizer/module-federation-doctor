@@ -641,6 +641,7 @@ describe("evidence-aware rule contract", () => {
       expect(entry.owner.name).not.toBe("");
       const requirements = requirementPredicates(entry.prerequisites);
       const optionalPluginFacts: Record<string, readonly string[]> = {
+        "doctor/partial-analysis": ["moduleFederation"],
         "vite/host-init-inject-ssr": ["builds"],
         "vite/ssr-nitro-externals": ["builds"],
         "vite/manual-chunks-conflict": ["bundler.viteConfig"],
