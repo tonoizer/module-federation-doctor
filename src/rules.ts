@@ -383,6 +383,13 @@ function isLocalDemo(context: RuleContext): boolean {
   return context.options.localDemoOnly === true && context.facts.bundler.mode === "development";
 }
 
+/** True when Doctor analysis mode or a single scoped build reports development. */
+function isDevelopmentBuild(context: RuleContext): boolean {
+  if (context.facts.bundler.mode === "development") return true;
+  const builds = context.facts.builds;
+  return builds?.length === 1 && builds[0]?.effectiveMode === "development";
+}
+
 /** Detect retry / errorLoadRemote recovery plugins from configured paths. */
 function hasRemoteRecoveryPlugin(plugins: string[] | undefined): boolean {
   if (!plugins?.length) return false;
@@ -1469,7 +1476,7 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("vite/remote-hmr-dev", "info", (context) => {
     if (context.facts.bundler.name !== "vite") return;
-    if (context.facts.bundler.mode !== "development") return;
+    if (!isDevelopmentBuild(context)) return;
     const config = mf(context);
     if (!config) return;
     // remoteHmr unknown → skip (do not invent). Explicit false or missing after normalize skip.

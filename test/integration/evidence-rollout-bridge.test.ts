@@ -852,7 +852,7 @@ describe("evidence-aware rule rollout bridge", () => {
     }
   });
 
-  it("uses buildMode instead of analysis mode for vite/remote-hmr-dev", async () => {
+  it("uses build effectiveMode only for vite/remote-hmr-dev", async () => {
     const root = await fixture("group6-build-mode-rollout-bridge");
     const facts = {
       schemaVersion: 1 as const,
@@ -877,6 +877,7 @@ describe("evidence-aware rule rollout bridge", () => {
           },
         },
         shared: {},
+        shareStrategy: "version-first" as const,
         vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [], remoteHmr: false },
       },
       dependencies: { declared: {}, installed: {} },
@@ -893,12 +894,18 @@ describe("evidence-aware rule rollout bridge", () => {
     } satisfies ProjectFacts;
     const withoutBuild = await runMigratedEvidenceRules(facts, {
       "vite/remote-hmr-dev": "info",
+      "config/remote-localhost-in-production": "warning",
     });
     expect(
       withoutBuild.output.evaluations.find(
         (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
       ),
     ).toMatchObject({ outcome: "pass" });
+    expect(
+      withoutBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/remote-localhost-in-production",
+      ),
+    ).toMatchObject({ outcome: "fail" });
 
     const build = {
       id: "vite-build-1",
@@ -919,7 +926,11 @@ describe("evidence-aware rule rollout bridge", () => {
     };
     const withBuild = await runMigratedEvidenceRules(
       facts,
-      { "vite/remote-hmr-dev": "info" },
+      {
+        "vite/remote-hmr-dev": "info",
+        "config/remote-localhost-in-production": "warning",
+        "reliability/version-first-offline-remotes": ["warning", { localDemoOnly: true }],
+      },
       undefined,
       build,
     );
@@ -933,6 +944,97 @@ describe("evidence-aware rule rollout bridge", () => {
         (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
       )?.scope,
     ).toMatchObject({ buildMode: "development" });
+    expect(
+      withBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/remote-localhost-in-production",
+      ),
+    ).toMatchObject({ outcome: "fail" });
+    expect(
+      withBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "reliability/version-first-offline-remotes",
+      ),
+    ).toMatchObject({ outcome: "fail" });
+  });
+
+  it("keeps shadow and v2-compat parity for adapter builds with effectiveMode", async () => {
+    const root = await fixture("group6-effective-mode-parity-rollout-bridge");
+    const base = {
+      root,
+      bundler: "vite" as const,
+      mode: "ci" as const,
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "shop@http://localhost:4174/remoteEntry.js",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+        shareStrategy: "version-first" as const,
+        remoteHmr: false,
+        vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [] },
+      },
+      output: { formats: [] as never[] },
+      rules: {
+        ...quietRules,
+        "artifact/manifest-disabled": "off" as const,
+        "config/remote-manifest-recommended": "off" as const,
+        "vite/remotes-prefer-module": "off" as const,
+        "config/remote-localhost-in-production": "warning" as const,
+        "reliability/version-first-offline-remotes": ["warning", { localDemoOnly: true }] as const,
+        "vite/remote-hmr-dev": "info" as const,
+      },
+    };
+    const buildOutputs = [
+      {
+        adapter: "vite" as const,
+        bundler: "vite" as const,
+        outputRoot: "dist",
+        emittedAssets: [],
+        effectiveMode: "development" as const,
+        sourceHook: "writeBundle" as const,
+      },
+    ];
+    const legacy = await analyzeBuild(base, [], undefined, buildOutputs);
+    const shadow = await analyzeBuild(
+      { ...base, evidenceRollout: shadowRollout() },
+      [],
+      undefined,
+      buildOutputs,
+    );
+    const compat = await analyzeBuild(
+      { ...base, evidenceRollout: compatRollout() },
+      [],
+      undefined,
+      buildOutputs,
+    );
+
+    expect(compareV1Outputs(legacy.report, shadow.report).equal).toBe(true);
+    expect(compareV1Outputs(legacy.report, compat.report).equal).toBe(true);
+    expect(shadow.evidence?.parity?.equal).toBe(true);
+    for (const ruleId of [
+      "config/remote-localhost-in-production",
+      "reliability/version-first-offline-remotes",
+      "vite/remote-hmr-dev",
+    ] as const) {
+      expect(
+        legacy.report.findings.some((finding) => finding.ruleId === ruleId),
+        ruleId,
+      ).toBe(true);
+    }
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
+      ),
+    ).toMatchObject({ outcome: "fail", scope: { buildMode: "development" } });
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/remote-localhost-in-production",
+      ),
+    ).toMatchObject({ outcome: "fail" });
   });
 
   it("projects doctor/partial-analysis while keeping per-rule unknowns separate", async () => {

@@ -95,18 +95,8 @@ function toEvidenceFinding(value: LegacyFindingInput): EvidenceRuleFinding {
 
 function legacyRuleContext(context: EvidenceRuleContext): Omit<RuleContext, "report"> {
   if (!context.facts) throw new Error("Project facts are missing for migrated rule evaluation.");
-  const base = structuredClone(context.facts);
-  const facts: ProjectFacts = context.scope.buildMode
-    ? {
-        ...base,
-        bundler: {
-          ...base.bundler,
-          mode: context.scope.buildMode as ProjectFacts["bundler"]["mode"],
-        },
-      }
-    : base;
   return {
-    facts,
+    facts: structuredClone(context.facts),
     options: structuredClone(context.options),
     ...(context.root ? { root: context.root } : {}),
     ...(context.sharedPolicy

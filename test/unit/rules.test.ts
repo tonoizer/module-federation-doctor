@@ -2858,6 +2858,24 @@ describe("Group 6 evidence bridge", () => {
     };
   }
 
+  const devBuild = {
+    id: "vite-build-1",
+    adapter: "vite" as const,
+    bundler: "vite" as const,
+    outputRoot: "dist",
+    sourceHook: "writeBundle" as const,
+    emittedAssets: [],
+    effectiveMode: "development" as const,
+    artifacts: [],
+    capabilities: {
+      outputRoot: { state: "exact" as const, reason: "test" },
+      emittedAssets: { state: "exact" as const, reason: "test" },
+      artifacts: { state: "unavailable" as const, reason: "test" },
+      effectiveMode: { state: "exact" as const, reason: "test" },
+      target: { state: "exact" as const, reason: "test" },
+    },
+  };
+
   it("returns unknown for absent viteConfig and transformImport facts", async () => {
     const migrated = await runMigrated(viteFacts());
     for (const id of [
@@ -2882,7 +2900,7 @@ describe("Group 6 evidence bridge", () => {
     ).toMatchObject({ outcome: "not-applicable" });
   });
 
-  it("uses buildMode instead of analysis mode for remote-hmr-dev", async () => {
+  it("uses build effectiveMode only for vite/remote-hmr-dev", async () => {
     const facts = viteFacts({
       moduleFederation: {
         name: "host",
@@ -2895,40 +2913,47 @@ describe("Group 6 evidence bridge", () => {
           },
         },
         shared: {},
+        shareStrategy: "version-first",
         vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [], remoteHmr: false },
       },
     });
-    const withoutBuild = await runMigrated(facts, { "vite/remote-hmr-dev": "info" });
+    const withoutBuild = await runMigrated(facts, {
+      "vite/remote-hmr-dev": "info",
+      "config/remote-localhost-in-production": "warning",
+    });
     expect(
       withoutBuild.output.evaluations.find(
         (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
       ),
     ).toMatchObject({ outcome: "pass" });
+    expect(
+      withoutBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/remote-localhost-in-production",
+      ),
+    ).toMatchObject({ outcome: "fail" });
 
     const withBuild = await runMigrated(
       facts,
-      { "vite/remote-hmr-dev": "info" },
       {
-        id: "vite-build-1",
-        adapter: "vite",
-        bundler: "vite",
-        outputRoot: "dist",
-        sourceHook: "writeBundle",
-        emittedAssets: [],
-        effectiveMode: "development",
-        artifacts: [],
-        capabilities: {
-          outputRoot: { state: "exact", reason: "test" },
-          emittedAssets: { state: "exact", reason: "test" },
-          artifacts: { state: "unavailable", reason: "test" },
-          effectiveMode: { state: "exact", reason: "test" },
-          target: { state: "exact", reason: "test" },
-        },
+        "vite/remote-hmr-dev": "info",
+        "config/remote-localhost-in-production": "warning",
+        "reliability/version-first-offline-remotes": ["warning", { localDemoOnly: true }],
       },
+      devBuild,
     );
     expect(
       withBuild.output.evaluations.find(
         (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
+      ),
+    ).toMatchObject({ outcome: "fail" });
+    expect(
+      withBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/remote-localhost-in-production",
+      ),
+    ).toMatchObject({ outcome: "fail" });
+    expect(
+      withBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "reliability/version-first-offline-remotes",
       ),
     ).toMatchObject({ outcome: "fail" });
   });

@@ -619,7 +619,7 @@ const plans: Record<string, RulePlan> = {
     "declared",
     "project",
     "medium",
-    "Declared shareStrategy, remotes, and runtimePlugins are exact; demo soft-path uses build mode.",
+    "Declared shareStrategy, remotes, and runtimePlugins are exact; demo soft-path uses Doctor analysis mode.",
   ),
   "reliability/shared-import-false": plan(
     6,
@@ -735,7 +735,7 @@ const plans: Record<string, RulePlan> = {
     "declared",
     "project",
     "high",
-    "Only fires when remoteHmr is explicitly false in development; unknown skips.",
+    "Only fires when remoteHmr is explicitly false in Doctor development mode or a single scoped build effectiveMode; unknown skips.",
     VITE,
   ),
   "vite/alias-share-bypass": plan(
