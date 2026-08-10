@@ -1622,6 +1622,19 @@ function selectorFor(path: string, spec: RulePlan): EvidenceRequirement {
 function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
   const reads = evidenceReadsByRule[id];
   if (!reads) throw new Error(`Evidence prerequisites are missing for ${id}`);
+  if (id === "config/duplicate-plugin-registration") {
+    return {
+      allOf: [
+        selectorFor("project.scope", spec),
+        {
+          anyOf: [
+            selectorFor("bundler.moduleFederationPluginCount", spec),
+            selectorFor("bundler.federationInstances", spec),
+          ],
+        },
+      ],
+    };
+  }
   return { allOf: reads.map((path) => selectorFor(path, spec)) };
 }
 

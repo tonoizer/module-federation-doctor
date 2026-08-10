@@ -365,7 +365,7 @@ describe("evidence-aware rule rollout bridge", () => {
     ).toBe(true);
   });
 
-  it("keeps duplicate-plugin unknown when plugin count is absent for non-webpack bundlers", async () => {
+  it("keeps duplicate-plugin unknown when registration evidence is absent for non-webpack bundlers", async () => {
     const root = await fixture("group3-vite-duplicate-plugin-rollout-bridge");
     const baseline = await analyze({
       root,
@@ -376,7 +376,7 @@ describe("evidence-aware rule rollout bridge", () => {
       rules: quietRules,
     });
     const facts = structuredClone(baseline.facts);
-    facts.bundler.federationInstances = [];
+    delete facts.bundler.federationInstances;
     delete facts.bundler.moduleFederationPluginCount;
     const migrated = await runMigratedEvidenceRules(facts, {
       "config/duplicate-plugin-registration": "error",
@@ -385,6 +385,11 @@ describe("evidence-aware rule rollout bridge", () => {
     expect(
       migrated.graph.assertions.find(
         (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toBeUndefined();
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.federationInstances",
       ),
     ).toBeUndefined();
     expect(
@@ -408,7 +413,7 @@ describe("evidence-aware rule rollout bridge", () => {
       rules: quietRules,
     });
     const rspackFacts = structuredClone(rspackBaseline.facts);
-    rspackFacts.bundler.federationInstances = [];
+    delete rspackFacts.bundler.federationInstances;
     delete rspackFacts.bundler.moduleFederationPluginCount;
     const rspackMigrated = await runMigratedEvidenceRules(rspackFacts, {
       "config/duplicate-plugin-registration": "error",
@@ -420,6 +425,11 @@ describe("evidence-aware rule rollout bridge", () => {
       ),
     ).toBeUndefined();
     expect(
+      rspackMigrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.federationInstances",
+      ),
+    ).toBeUndefined();
+    expect(
       rspackMigrated.output.evaluations.find(
         (evaluation) => evaluation.rule.id === "config/duplicate-plugin-registration",
       ),
@@ -427,6 +437,73 @@ describe("evidence-aware rule rollout bridge", () => {
     expect(
       rspackMigrated.output.evaluations.find(
         (evaluation) => evaluation.rule.id === "config/plugin-package-mismatch",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+  });
+
+  it("reports duplicate-plugin fail from federation instances when plugin count is absent for non-webpack bundlers", async () => {
+    const duplicateConfig = { name: "host", filename: "remoteEntry.js" };
+    const root = await fixture("group3-vite-duplicate-plugin-rollout-bridge");
+    const baseline = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      moduleFederationInstances: [duplicateConfig, structuredClone(duplicateConfig)],
+      output: { formats: [] },
+      rules: quietRules,
+    });
+    expect(
+      baseline.report.findings.some(
+        (finding) => finding.ruleId === "config/duplicate-plugin-registration",
+      ),
+    ).toBe(true);
+
+    const facts = structuredClone(baseline.facts);
+    delete facts.bundler.moduleFederationPluginCount;
+    expect(facts.bundler.federationInstances?.length).toBeGreaterThan(1);
+    const migrated = await runMigratedEvidenceRules(facts, {
+      "config/duplicate-plugin-registration": "error",
+    });
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toBeUndefined();
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/duplicate-plugin-registration",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+
+    const rspackRoot = await fixture("group3-rspack-duplicate-plugin-rollout-bridge");
+    const rspackBaseline = await analyze({
+      root: rspackRoot,
+      bundler: "rspack",
+      mode: "ci",
+      moduleFederationInstances: [duplicateConfig, structuredClone(duplicateConfig)],
+      output: { formats: [] },
+      rules: quietRules,
+    });
+    expect(
+      rspackBaseline.report.findings.some(
+        (finding) => finding.ruleId === "config/duplicate-plugin-registration",
+      ),
+    ).toBe(true);
+
+    const rspackFacts = structuredClone(rspackBaseline.facts);
+    delete rspackFacts.bundler.moduleFederationPluginCount;
+    expect(rspackFacts.bundler.federationInstances?.length).toBeGreaterThan(1);
+    const rspackMigrated = await runMigratedEvidenceRules(rspackFacts, {
+      "config/duplicate-plugin-registration": "error",
+    });
+    expect(
+      rspackMigrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toBeUndefined();
+    expect(
+      rspackMigrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/duplicate-plugin-registration",
       ),
     ).toMatchObject({ outcome: "fail", completeness: "complete" });
   });
@@ -1354,7 +1431,6 @@ describe("evidence-aware rule rollout bridge", () => {
     });
     const completeFacts = structuredClone(baseline.facts);
     completeFacts.bundler.moduleFederationPluginCount = 2;
-    completeFacts.bundler.federationInstances = [];
     completeFacts.bundler.outputPublicPathKind = "non-string";
     const completeRun = await runMigratedEvidenceRules(completeFacts, {});
     expect(
@@ -1375,6 +1451,7 @@ describe("evidence-aware rule rollout bridge", () => {
 
     const missingPluginCount = structuredClone(completeFacts);
     delete missingPluginCount.bundler.moduleFederationPluginCount;
+    delete missingPluginCount.bundler.federationInstances;
     const missingCountRun = await runMigratedEvidenceRules(missingPluginCount, {});
     expect(
       missingCountRun.output.evaluations.find(
