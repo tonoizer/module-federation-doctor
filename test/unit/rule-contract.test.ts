@@ -23,6 +23,12 @@ function requirementPredicates(requirement: EvidenceRequirement): string[] {
   return requirement.anyOf.flatMap(requirementPredicates);
 }
 
+function requirementSelectors(requirement: EvidenceRequirement): EvidenceRequirement[] {
+  if ("predicate" in requirement) return [requirement];
+  if ("allOf" in requirement) return requirement.allOf.flatMap(requirementSelectors);
+  return requirement.anyOf.flatMap(requirementSelectors);
+}
+
 describe("evidence-aware rule contract", () => {
   const makeAssertion = (predicate: string, id: string) => ({
     id,
@@ -687,6 +693,25 @@ describe("evidence-aware rule contract", () => {
       expect(ruleInventory.find((entry) => entry.id === id)?.evidenceReads).toContain(
         "imports.sourceScan",
       );
+    }
+    for (const id of [
+      "federation/missing-provider",
+      "federation/ghost-shares",
+      "federation/version-conflict",
+      "shared/singleton-mismatch",
+    ]) {
+      const entry = ruleInventory.find((item) => item.id === id);
+      expect(entry).toBeTruthy();
+      for (const selector of requirementSelectors(entry!.prerequisites)) {
+        if (!("predicate" in selector)) continue;
+        if (
+          selector.predicate === "project.scope" ||
+          selector.predicate === "federation.graph" ||
+          selector.predicate === "imports.sourceScan"
+        ) {
+          expect(selector.subjectKind, `${id} ${selector.predicate}`).toBe("project");
+        }
+      }
     }
     expect(
       ruleInventory.find((entry) => entry.id === "performance/asset-budget")?.defaultSeverity,

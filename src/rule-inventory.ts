@@ -1623,13 +1623,16 @@ function selectorFor(path: string, spec: RulePlan): EvidenceRequirement {
           : predicate.startsWith("artifacts.")
             ? "artifact"
             : "effective";
+  const workspaceLevelPredicate =
+    predicate === "project.scope" ||
+    predicate === "federation.graph" ||
+    predicate === "imports.sourceScan";
   const subjectKind =
     predicate === "runtime.trace"
       ? "runtime-instance"
       : predicate.startsWith("artifacts.")
         ? "artifact"
-        : (predicate === "project.scope" || predicate === "federation.graph") &&
-            spec.subjectKind === "shared-package"
+        : workspaceLevelPredicate && spec.subjectKind === "shared-package"
           ? "project"
           : spec.subjectKind;
   return {

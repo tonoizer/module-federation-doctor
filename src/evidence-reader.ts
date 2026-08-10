@@ -1310,8 +1310,12 @@ function weakestCompletenessInfo(...infos: EvidenceCompletenessInfo[]): Evidence
   );
 }
 
+function isFederationCapableProject(project: ProjectFacts): boolean {
+  return Boolean(project.moduleFederation || (project.federationInstances?.length ?? 0) > 0);
+}
+
 function memberGraphCompleteness(project: ProjectFacts): EvidenceCompletenessInfo {
-  if (!project.moduleFederation && !(project.federationInstances?.length ?? 0)) {
+  if (!isFederationCapableProject(project)) {
     return completeness("unknown", "Project module federation config is missing.", [
       "moduleFederation",
     ]);
@@ -1359,9 +1363,19 @@ export function migrateFederationWorkspace(
   };
   graph.subjects.push(workspaceSubject);
 
-  const memberCompleteness = input.projects.map((project) => memberGraphCompleteness(project));
+  const federationProjects = input.projects.filter((project) =>
+    isFederationCapableProject(project),
+  );
+  const memberCompleteness = federationProjects.map((project) => memberGraphCompleteness(project));
   const sourceCompleteness = input.projects.map((project) => sourceScanCompleteness(project));
-  let graphCompleteness = weakestCompletenessInfo(...memberCompleteness);
+  let graphCompleteness =
+    memberCompleteness.length > 0
+      ? weakestCompletenessInfo(...memberCompleteness)
+      : completeness(
+          "unknown",
+          "No federation-capable projects are present in the workspace group.",
+          ["moduleFederation"],
+        );
   if (
     input.workspaceAnalysis &&
     (input.workspaceAnalysis.status !== "complete" || input.workspaceAnalysis.exceeded.length > 0)
@@ -1401,6 +1415,16 @@ export function migrateFederationWorkspace(
         input.workspaceAnalysis.status === "unknown" ? "unknown" : "partial",
         "Workspace analysis was partial or budget-limited.",
         input.workspaceAnalysis.exceeded.map((item) => `analysis:${item}`),
+      ),
+    );
+  }
+  if (input.groupEvidenceIncomplete) {
+    workspaceSourceCompleteness = weakestCompletenessInfo(
+      workspaceSourceCompleteness,
+      completeness(
+        "partial",
+        "Workspace federation evidence is incomplete; absence-based rules cannot claim certainty.",
+        ["groupEvidenceIncomplete"],
       ),
     );
   }
@@ -1537,22 +1561,8 @@ export function migrateFederationWorkspace(
     );
   }
 
-  const packages = new Set(
-    federation.projects.flatMap((node) =>
-      Object.keys((node.instance?.moduleFederation ?? node.project.moduleFederation)?.shared ?? {}),
-    ),
-  );
-  for (const pkg of [...packages].sort()) {
-    graph.subjects.push({
-      id: stableEvidenceId(
-        "subject.shared-package",
-        { package: pkg, workspace: workspaceName },
-        limits,
-      ),
-      kind: "shared-package",
-      name: pkg,
-    });
-  }
+  // Federation workspace rules evaluate against the workspace project subject; shared-package
+  // subjects are not materialized until per-package evaluation is implemented.
 
   return finalizeGraph(graph, options);
 }

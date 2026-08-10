@@ -28,13 +28,6 @@ import { fingerprint, redact } from "./utils.js";
 
 export type MigratedFederationEvidenceRuleId = (typeof MIGRATED_GROUP4_RULE_IDS)[number];
 
-const ABSENCE_SENSITIVE_RULE_IDS = new Set<string>([
-  "federation/missing-provider",
-  "federation/host-gaps",
-  "federation/ghost-shares",
-  "federation/external-runtime-provider-missing",
-]);
-
 function inventoryEntry(id: string) {
   const entry = ruleInventory.find((item) => item.id === id);
   if (!entry) throw new Error(`Missing evidence-aware inventory entry for ${id}`);
@@ -68,15 +61,9 @@ function federationEvidenceRule(id: MigratedFederationEvidenceRuleId): EvidenceA
   return {
     meta: inventoryEntry(id),
     async evaluate(context: EvidenceRuleContext) {
-      const oracleInput = context.options.oracleInput as FederationWorkspaceOracleInput | undefined;
-      if (!oracleInput) {
-        return {
-          outcome: "unknown" as const,
-          reason: "Federation workspace oracle input is missing.",
-          reasonCode: "evidence-inconclusive" as const,
-        };
-      }
-      const findings = evaluateFederationWorkspaceOracle(oracleInput)
+      const oracleFindings =
+        (context.options.oracleFindings as readonly FederationOracleFinding[] | undefined) ?? [];
+      const findings = oracleFindings
         .filter((finding) => finding.ruleId === id)
         .map(toEvidenceFinding);
       return findings.length > 0
@@ -145,13 +132,13 @@ function graphEvaluationFor(
 
 function ruleOptionsFor(
   settings: Readonly<Record<string, RuleSetting>>,
-  oracleInput: FederationWorkspaceOracleInput,
+  oracleFindings: readonly FederationOracleFinding[],
 ): Readonly<Record<string, Readonly<Record<string, unknown>>>> {
   return Object.fromEntries(
     migratedFederationEvidenceRules.map((rule) => {
       const setting = settings[rule.meta.id];
       const options = Array.isArray(setting) ? setting[1] : {};
-      return [rule.meta.id, { ...options, oracleInput }];
+      return [rule.meta.id, { ...options, oracleFindings }];
     }),
   );
 }
@@ -193,6 +180,7 @@ export async function runMigratedFederationRules(
     groupEvidenceIncomplete: input.groupEvidenceIncomplete,
     alwaysShared: input.alwaysShared,
   };
+  const oracleFindings = evaluateFederationWorkspaceOracle(oracleInput);
   const rules = migratedFederationEvidenceRules.filter((rule) => settings[rule.meta.id] !== "off");
   const disabled: RuleExecutionState[] = migratedFederationEvidenceRules
     .filter((rule) => settings[rule.meta.id] === "off")
@@ -206,7 +194,7 @@ export async function runMigratedFederationRules(
     rules,
     subjects: [workspaceSubject.id],
     scope,
-    ruleOptions: ruleOptionsFor(settings, oracleInput),
+    ruleOptions: ruleOptionsFor(settings, oracleFindings),
     ...(analysisBudget ? { analysisBudget } : {}),
   });
   graph.evaluations = output.evaluations
@@ -273,8 +261,4 @@ export function projectMigratedFederationFailures(
     }
   }
   return findings;
-}
-
-export function isAbsenceSensitiveFederationRule(ruleId: string): boolean {
-  return ABSENCE_SENSITIVE_RULE_IDS.has(ruleId);
 }

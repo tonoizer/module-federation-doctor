@@ -406,6 +406,154 @@ describe("evidence-aware rule rollout bridge", () => {
     expect(migratedFederationEvidenceRuleIds.has("federation/host-gaps")).toBe(true);
   });
 
+  it("projects ghost-shares and missing-provider failures in v2-compat with complete evidence", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-group4-absence-complete-"));
+    roots.push(root);
+    const ghostHost = federationProjectFacts(
+      "ghost-host",
+      {
+        lodash: {
+          package: "lodash",
+          singleton: false,
+          eager: false,
+          shareScope: ["default"],
+        },
+      },
+      [],
+    );
+    const ghostRemote = federationProjectFacts("ghost-remote", {}, []);
+    const missingHost = federationProjectFacts("missing-host", {}, ["react"]);
+    const missingRemote = federationProjectFacts(
+      "missing-remote",
+      {
+        react: {
+          package: "react",
+          import: false,
+          singleton: true,
+          eager: false,
+          shareScope: ["default"],
+        },
+      },
+      ["react"],
+    );
+    const ghostFiles = [path.join(root, "ghost-host.json"), path.join(root, "ghost-remote.json")];
+    const missingFiles = [
+      path.join(root, "missing-host.json"),
+      path.join(root, "missing-remote.json"),
+    ];
+    await fs.writeFile(ghostFiles[0]!, JSON.stringify(ghostHost));
+    await fs.writeFile(ghostFiles[1]!, JSON.stringify(ghostRemote));
+    await fs.writeFile(missingFiles[0]!, JSON.stringify(missingHost));
+    await fs.writeFile(missingFiles[1]!, JSON.stringify(missingRemote));
+
+    for (const [files, ruleId] of [
+      [ghostFiles, "federation/ghost-shares"],
+      [missingFiles, "federation/missing-provider"],
+    ] as const) {
+      const legacy = await analyzeFederation(files);
+      const compat = await analyzeFederation(files, { evidenceRollout: federationCompatRollout() });
+      expect(legacy.report.findings.some((finding) => finding.ruleId === ruleId)).toBe(true);
+      expect(compat.report.findings.some((finding) => finding.ruleId === ruleId)).toBe(true);
+      expect(
+        compat.evidence?.evaluations.find((evaluation) => evaluation.rule.id === ruleId),
+      ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    }
+  });
+
+  it("keeps absence-sensitive Group 4 rules unknown when workspace diagnostics mark evidence incomplete", async () => {
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "mfdoctor-group4-diagnostics-incomplete-"),
+    );
+    roots.push(root);
+    const host = federationProjectFacts(
+      "host",
+      {
+        lodash: {
+          package: "lodash",
+          singleton: false,
+          eager: false,
+          shareScope: ["default"],
+        },
+      },
+      [],
+    );
+    const remote = federationProjectFacts("remote", {}, []);
+    const files = [path.join(root, "host.json"), path.join(root, "remote.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(host));
+    await fs.writeFile(files[1]!, JSON.stringify(remote));
+    const legacy = await analyzeFederation(files, {
+      workspaceDiagnostics: [
+        {
+          kind: "invalid",
+          files: [files[0]!],
+          message: "Invalid project facts: host.json",
+        },
+      ],
+    });
+    const compat = await analyzeFederation(files, {
+      evidenceRollout: federationCompatRollout(),
+      workspaceDiagnostics: [
+        {
+          kind: "invalid",
+          files: [files[0]!],
+          message: "Invalid project facts: host.json",
+        },
+      ],
+    });
+    expect(
+      legacy.report.findings.some((finding) => finding.ruleId === "federation/ghost-shares"),
+    ).toBe(false);
+    expect(
+      compat.report.findings.some((finding) => finding.ruleId === "federation/ghost-shares"),
+    ).toBe(false);
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "federation/ghost-shares",
+      ),
+    ).toMatchObject({ outcome: "unknown" });
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "federation/missing-provider",
+      ),
+    ).toMatchObject({ outcome: "unknown" });
+  });
+
+  it("keeps mixed federation and non-federation siblings in parity between legacy and v2-compat", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-group4-mixed-siblings-"));
+    roots.push(root);
+    const host = federationProjectFacts(
+      "host",
+      {
+        lodash: {
+          package: "lodash",
+          singleton: false,
+          eager: false,
+          shareScope: ["default"],
+        },
+      },
+      [],
+    );
+    const remote = federationProjectFacts("remote", {}, []);
+    const library = federationProjectFacts("shared-lib", {}, []);
+    delete library.moduleFederation;
+    const files = [
+      path.join(root, "host.json"),
+      path.join(root, "remote.json"),
+      path.join(root, "shared-lib.json"),
+    ];
+    await fs.writeFile(files[0]!, JSON.stringify(host));
+    await fs.writeFile(files[1]!, JSON.stringify(remote));
+    await fs.writeFile(files[2]!, JSON.stringify(library));
+    const legacy = await analyzeFederation(files);
+    const compat = await analyzeFederation(files, { evidenceRollout: federationCompatRollout() });
+    expect(compareV1Outputs(legacy.report, compat.report).equal).toBe(true);
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "federation/ghost-shares",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+  });
+
   it("routes Group 3 heuristic rules through the bridge with V1 parity", async () => {
     const root = await fixture("group3-heuristics-rollout-bridge", {
       "src/index.ts": [
