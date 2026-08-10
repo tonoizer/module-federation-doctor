@@ -46,6 +46,11 @@
   },
   {
     "type": "file",
+    "name": "evidence-aware-rules",
+    "label": "Evidence-aware rules"
+  },
+  {
+    "type": "file",
     "name": "suppressions",
     "label": "Governance"
   },

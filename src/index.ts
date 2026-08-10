@@ -382,6 +382,7 @@ export type {
   EvidenceQuery,
 } from "./rule-contract.js";
 export {
+  ALL_MIGRATED_RULE_IDS,
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
@@ -389,10 +390,12 @@ export {
   MIGRATED_GROUP4_RULE_IDS,
   MIGRATED_GROUP5_RULE_IDS,
   MIGRATED_GROUP6_RULE_IDS,
+  RULE_COMPATIBILITY_EXCEPTIONS,
   ruleInventory,
   ruleInventoryIds,
 } from "./rule-inventory.js";
 export type {
+  RuleCompatibilityException,
   RuleInventoryEntry,
   RuleMigrationGroup,
   RuleMigrationStatus,

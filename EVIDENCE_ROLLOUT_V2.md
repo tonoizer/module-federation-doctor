@@ -1,8 +1,8 @@
 # Evidence v2 rollout
 
-This file records the first rollout slice for issue #87. It is an internal
-control plane. It does not change the Doctor CLI, report files, SARIF, exit
-codes, fingerprints, baselines, custom rules, or client bundles.
+This file records the rollout control plane for issue #87. It is internal documentation.
+It does not change the Doctor CLI, report files, SARIF, exit codes, fingerprints, baselines,
+custom rules, or client bundles.
 
 ## Modes and scope
 
@@ -18,8 +18,8 @@ explicitly selects another mode. Scopes are independent:
 - `governance`
 
 The supported modes are `legacy`, `shadow`, `v2-compat`, and `v2-preview`.
-Later integration PRs can pass the controller to stage adapters without
-adding unrelated booleans to collectors or commands.
+Integration code passes the controller to stage adapters without adding unrelated
+booleans to collectors or commands.
 
 ## Rollback law
 
@@ -32,9 +32,25 @@ schema, parity, matrix, migration, security, performance, stability, rollback,
 and docs gates are all explicitly green. Promotion returns a new controller;
 the old controller is unchanged.
 
+## V1 rules closeout (#232)
+
+All 108 current built-ins are `migrated` in `src/rule-inventory.ts` and exported
+to `fixtures/rule-inventory/v1.json`. There are no undocumented legacy built-ins.
+
+| Scope                  | Bridge                                          | Parity evidence                                    |
+| ---------------------- | ----------------------------------------------- | -------------------------------------------------- |
+| `rules`                | `src/evidence-rule-bridge.ts` (+ runtime slice) | `test/integration/evidence-rollout-bridge.test.ts` |
+| `federation-workspace` | `src/evidence-federation-bridge.ts`             | `test/integration/evidence-rollout-bridge.test.ts` |
+
+Recorded gate evidence: `fixtures/evidence-rollout/v1-rules-closeout-evidence.json`.
+Author guide: `apps/docs/docs/evidence-aware-rules.md`.
+
+Default output remains `legacy` until #87 promotes scopes after the full release gate
+stack is green. The legacy custom-rule adapter stays available during the documented
+compatibility window.
+
 ## What remains
 
-This slice does not wire the controller into collectors, migration/projection,
-writers, parity comparison, drift ledgers, matrix jobs, or release workflows.
-Those pieces depend on the stage contracts in #80–#86 and should land as
-follow-up PRs in this stack.
+- Promote individual rollout scopes to `v2-compat` by default after #87 records green
+  gates for collectors, writers, and remaining scopes (#84, #86).
+- Post-v1 architecture work tracked in #84 and #86 is out of scope for the #232 closeout.

@@ -8,6 +8,20 @@ import { ruleGuidance } from "./rule-guidance.js";
 export type RuleMigrationGroup = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 export type RuleMigrationStatus = "legacy" | "migrated";
 
+/** Documented compatibility-only built-ins that intentionally stay off the evidence bridge. */
+export interface RuleCompatibilityException {
+  id: string;
+  owner: { name: string; contact?: string };
+  reason: string;
+  scope: string;
+  deprecationPlan: string;
+}
+
+/** Empty by design for V1 closeout — every current built-in is migrated. */
+export const RULE_COMPATIBILITY_EXCEPTIONS = Object.freeze(
+  [] as const satisfies readonly RuleCompatibilityException[],
+);
+
 export interface RuleInventoryEntry extends EvidenceAwareRuleMeta {
   group: RuleMigrationGroup;
   status: RuleMigrationStatus;
@@ -262,7 +276,8 @@ export const MIGRATED_GROUP6_RULE_IDS = [
   "doctor/partial-analysis",
 ] as const;
 
-const MIGRATED_RULE_IDS: ReadonlySet<string> = new Set([
+/** Every built-in promoted through the V1 evidence-aware migration groups 1–6. */
+export const ALL_MIGRATED_RULE_IDS = Object.freeze([
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   ...MIGRATED_GROUP2_RULE_IDS,
@@ -270,7 +285,10 @@ const MIGRATED_RULE_IDS: ReadonlySet<string> = new Set([
   ...MIGRATED_GROUP4_RULE_IDS,
   ...MIGRATED_GROUP5_RULE_IDS,
   ...MIGRATED_GROUP6_RULE_IDS,
-]);
+] as const);
+
+const MIGRATED_RULE_IDS: ReadonlySet<string> = new Set(ALL_MIGRATED_RULE_IDS);
+const COMPATIBILITY_EXCEPTION_IDS = new Set(RULE_COMPATIBILITY_EXCEPTIONS.map((entry) => entry.id));
 
 type RulePlan = {
   group: RuleMigrationGroup;
@@ -1724,7 +1742,22 @@ function applicabilityFor(spec: RulePlan): RuleApplicability {
   };
 }
 
-/** Machine-readable migration ledger. Legacy entries are intentionally not wired into runtime yet. */
+function inventoryStatusFor(id: string): RuleMigrationStatus {
+  if (COMPATIBILITY_EXCEPTION_IDS.has(id)) return "legacy";
+  if (MIGRATED_RULE_IDS.has(id)) return "migrated";
+  throw new Error(`Built-in ${id} is neither migrated nor documented as a compatibility exception`);
+}
+
+function migrationNoteFor(id: string, spec: RulePlan): string {
+  if (COMPATIBILITY_EXCEPTION_IDS.has(id)) {
+    const exception = RULE_COMPATIBILITY_EXCEPTIONS.find((entry) => entry.id === id);
+    if (!exception) throw new Error(`Missing compatibility exception metadata for ${id}`);
+    return `Group ${spec.group}; compatibility-only exception (${exception.reason}). ${exception.deprecationPlan}`;
+  }
+  return `Group ${spec.group}; ${spec.confidenceReason} Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes.`;
+}
+
+/** Machine-readable migration ledger for every current built-in. */
 export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
   const spec = plans[id];
   const guidance = ruleGuidance[id];
@@ -1745,11 +1778,9 @@ export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
     confidenceCeiling: spec.confidenceCeiling,
     defaultSeverity: spec.severity,
     group: spec.group,
-    status: MIGRATED_RULE_IDS.has(id) ? "migrated" : "legacy",
+    status: inventoryStatusFor(id),
     evidenceReads,
-    migrationNote: MIGRATED_RULE_IDS.has(id)
-      ? `Planned group ${spec.group}; ${spec.confidenceReason} Wired through the staged evidence-aware rollout bridge; legacy remains the default.`
-      : `Planned group ${spec.group}; ${spec.confidenceReason} Current v1 behavior remains unchanged until migration.`,
+    migrationNote: migrationNoteFor(id, spec),
   };
 });
 
