@@ -384,6 +384,7 @@ export {
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
   MIGRATED_GROUP3_RULE_IDS,
+  MIGRATED_GROUP4_RULE_IDS,
   ruleInventory,
   ruleInventoryIds,
 } from "./rule-inventory.js";

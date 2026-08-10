@@ -29,6 +29,7 @@ import {
   reserveEvidenceBudget,
 } from "./evidence-budget.js";
 import type { DoctorFinding, DoctorReport, ProjectFacts } from "./types.js";
+import { buildFederationModel } from "./federation-model.js";
 import { fingerprint } from "./utils.js";
 
 export type EvidenceDocumentKind = "project-facts" | "doctor-report" | "evidence-graph";
@@ -815,7 +816,9 @@ function assertion(
     value,
     layer: predicate.startsWith("artifacts.")
       ? "artifact"
-      : predicate === "project.moduleFederation" || predicate === "project.scope"
+      : predicate === "project.moduleFederation" ||
+          predicate === "project.scope" ||
+          predicate === "federation.graph"
         ? "declared"
         : "effective",
     scope: { ...scope, bundler: { ...scope.bundler } },
@@ -1290,6 +1293,267 @@ export function migrateProjectFacts(
         limits,
       ),
     );
+  return finalizeGraph(graph, options);
+}
+
+const COMPLETENESS_RANK: Record<EvidenceCompletenessInfo["status"], number> = {
+  "not-collected": 0,
+  unknown: 1,
+  partial: 2,
+  complete: 3,
+};
+
+function weakestCompletenessInfo(...infos: EvidenceCompletenessInfo[]): EvidenceCompletenessInfo {
+  return infos.reduce(
+    (weak, info) => (COMPLETENESS_RANK[info.status] < COMPLETENESS_RANK[weak.status] ? info : weak),
+    completeness("complete", "Evidence is complete."),
+  );
+}
+
+function memberGraphCompleteness(project: ProjectFacts): EvidenceCompletenessInfo {
+  if (!project.moduleFederation && !(project.federationInstances?.length ?? 0)) {
+    return completeness("unknown", "Project module federation config is missing.", [
+      "moduleFederation",
+    ]);
+  }
+  const analysis = project.analysis;
+  if (analysis && (analysis.status !== "complete" || analysis.exceeded.length > 0)) {
+    return completeness(
+      analysis.status === "unknown" ? "unknown" : "partial",
+      "Project analysis was partial or budget-limited.",
+      analysis.exceeded.map((item) => `analysis:${item}`),
+    );
+  }
+  return completeness("complete", "Declared federation topology is available.");
+}
+
+export interface FederationWorkspaceMigrationInput {
+  projects: readonly ProjectFacts[];
+  groupKey: string;
+  workspaceAnalysis?: AnalysisBudgetReport;
+  groupEvidenceIncomplete: boolean;
+}
+
+/** Build a workspace evidence graph with weakest-complete federation topology across members. */
+export function migrateFederationWorkspace(
+  input: FederationWorkspaceMigrationInput,
+  options: EvidenceReaderOptions = {},
+): EvidenceGraphV2 {
+  const tracker = trackerFor(options);
+  const limits = largeLegacyLimits(
+    jsonValue(input, "/", options, new WeakSet<object>(), tracker) as EvidenceValue,
+    tracker,
+  );
+  const representativeBundler = input.projects[0]?.bundler.name ?? "unknown";
+  const scope = {
+    adapter: representativeBundler,
+    bundler: { name: representativeBundler },
+    target: "unknown" as const,
+  };
+  const workspaceName = input.groupKey === "\0ungrouped" ? "workspace" : input.groupKey;
+  const graph = baseGraph(scope, { workspace: workspaceName }, "v1-federation-workspace");
+  const workspaceSubject: EvidenceSubject = {
+    id: stableEvidenceId("subject.workspace", { name: workspaceName }, limits),
+    kind: "project",
+    name: workspaceName,
+  };
+  graph.subjects.push(workspaceSubject);
+
+  const memberCompleteness = input.projects.map((project) => memberGraphCompleteness(project));
+  const sourceCompleteness = input.projects.map((project) => sourceScanCompleteness(project));
+  let graphCompleteness = weakestCompletenessInfo(...memberCompleteness);
+  if (
+    input.workspaceAnalysis &&
+    (input.workspaceAnalysis.status !== "complete" || input.workspaceAnalysis.exceeded.length > 0)
+  ) {
+    graphCompleteness = weakestCompletenessInfo(
+      graphCompleteness,
+      completeness(
+        input.workspaceAnalysis.status === "unknown" ? "unknown" : "partial",
+        "Workspace analysis was partial or budget-limited.",
+        input.workspaceAnalysis.exceeded.map((item) => `analysis:${item}`),
+      ),
+    );
+  }
+  let workspaceSourceCompleteness = weakestCompletenessInfo(...sourceCompleteness);
+  for (const project of input.projects) {
+    if (
+      (project.imports?.unresolvedDynamic ?? []).some((item) =>
+        ["import", "loadShare", "loadShareSync"].includes(item.api),
+      )
+    ) {
+      workspaceSourceCompleteness = weakestCompletenessInfo(
+        workspaceSourceCompleteness,
+        completeness(
+          "partial",
+          "Unresolved dynamic import or loadShare evidence cannot establish absence certainty.",
+        ),
+      );
+    }
+  }
+  if (
+    input.workspaceAnalysis &&
+    (input.workspaceAnalysis.status !== "complete" || input.workspaceAnalysis.exceeded.length > 0)
+  ) {
+    workspaceSourceCompleteness = weakestCompletenessInfo(
+      workspaceSourceCompleteness,
+      completeness(
+        input.workspaceAnalysis.status === "unknown" ? "unknown" : "partial",
+        "Workspace analysis was partial or budget-limited.",
+        input.workspaceAnalysis.exceeded.map((item) => `analysis:${item}`),
+      ),
+    );
+  }
+
+  const federation = buildFederationModel([...input.projects]);
+  const graphValue = jsonValue(
+    {
+      groupKey: input.groupKey,
+      groupEvidenceIncomplete: input.groupEvidenceIncomplete,
+      projects: federation.projects.map((node) => ({
+        id: node.id,
+        projectName: node.projectName,
+        ...(node.federationName ? { federationName: node.federationName } : {}),
+        ...(node.instanceId ? { instanceId: node.instanceId } : {}),
+        shareStrategy: node.shareStrategy,
+        asyncStartup: node.asyncStartup,
+      })),
+      remoteEdges: federation.remoteEdges.map((edge) => ({
+        id: edge.id,
+        fromProject: edge.fromProject,
+        fromFederationName: edge.fromFederationName,
+        remoteName: edge.remoteName,
+        alias: edge.alias,
+        matched: edge.matched,
+      })),
+      federationNames: [...federation.federationNames.entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([name, owners]) => ({
+          name,
+          owners: owners.map((owner) => ({
+            projectName: owner.projectName,
+            ...(owner.instanceId ? { instanceId: owner.instanceId } : {}),
+          })),
+        })),
+    },
+    "/federation.graph",
+    options,
+    new WeakSet<object>(),
+    tracker,
+  );
+
+  graph.assertions.push(
+    assertion(
+      workspaceSubject,
+      "project.scope",
+      { workspace: workspaceName, projects: input.projects.map((project) => project.project.name) },
+      scope,
+      "v1-federation-workspace",
+      completeness("complete", "Workspace scope is present."),
+      "scope",
+      limits,
+    ),
+    assertion(
+      workspaceSubject,
+      "federation.graph",
+      graphValue,
+      scope,
+      "v1-federation-workspace",
+      graphCompleteness,
+      undefined,
+      limits,
+    ),
+    assertion(
+      workspaceSubject,
+      "imports.sourceScan",
+      jsonValue(
+        {
+          projects: input.projects.map((project) => ({
+            name: project.project.name,
+            sourceScope: project.imports.sourceScope ?? "complete",
+            sourceReadFailures: project.imports.sourceReadFailures ?? [],
+          })),
+          groupEvidenceIncomplete: input.groupEvidenceIncomplete,
+        },
+        "/imports.sourceScan",
+        options,
+        new WeakSet<object>(),
+        tracker,
+      ),
+      scope,
+      "v1-federation-workspace",
+      workspaceSourceCompleteness,
+      undefined,
+      limits,
+    ),
+  );
+
+  for (const project of input.projects) {
+    const subject: EvidenceSubject = {
+      id: stableEvidenceId(
+        "subject.project",
+        { name: project.project.name, root: project.project.root },
+        limits,
+      ),
+      kind: "project",
+      name: project.project.name,
+    };
+    graph.subjects.push(subject);
+    graph.assertions.push(
+      assertion(
+        subject,
+        "project.scope",
+        {
+          name: project.project.name,
+          root: project.project.root,
+          bundler: project.bundler.name,
+        },
+        scope,
+        "v1-federation-workspace",
+        completeness("complete", "Project identity and bundler scope are present."),
+        "scope",
+        limits,
+      ),
+      assertion(
+        subject,
+        "imports.sourceScan",
+        jsonValue(
+          {
+            sourceScope: project.imports.sourceScope ?? "complete",
+            sourceReadFailures: project.imports.sourceReadFailures ?? [],
+            ...(project.analysis ? { analysis: project.analysis } : {}),
+          },
+          `/projects/${project.project.name}/imports.sourceScan`,
+          options,
+          new WeakSet<object>(),
+          tracker,
+        ),
+        scope,
+        "v1-federation-workspace",
+        sourceScanCompleteness(project),
+        undefined,
+        limits,
+      ),
+    );
+  }
+
+  const packages = new Set(
+    federation.projects.flatMap((node) =>
+      Object.keys((node.instance?.moduleFederation ?? node.project.moduleFederation)?.shared ?? {}),
+    ),
+  );
+  for (const pkg of [...packages].sort()) {
+    graph.subjects.push({
+      id: stableEvidenceId(
+        "subject.shared-package",
+        { package: pkg, workspace: workspaceName },
+        limits,
+      ),
+      kind: "shared-package",
+      name: pkg,
+    });
+  }
+
   return finalizeGraph(graph, options);
 }
 
