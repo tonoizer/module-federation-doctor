@@ -1047,6 +1047,8 @@ export interface RuntimeAnalysisResult {
     findings: number;
   };
   exitCode: 0 | 1;
+  /** Additive v2/debug metadata for runtime evidence rollout. */
+  evidence?: EvidenceAnalysisMetadata;
 }
 
 export interface DoctorReport {

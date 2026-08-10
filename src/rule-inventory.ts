@@ -229,12 +229,22 @@ export const MIGRATED_GROUP4_RULE_IDS = [
   "federation/external-runtime-provider-missing",
 ] as const;
 
+/** Group 5 imported runtime-correlated rules promoted by the staged V1 rollout. */
+export const MIGRATED_GROUP5_RULE_IDS = [
+  "runtime/remote-load-failed",
+  "runtime/init-failed",
+  "runtime/shared-mismatch",
+  "runtime/remote-unknown",
+  "runtime/error-correlated",
+] as const;
+
 const MIGRATED_RULE_IDS: ReadonlySet<string> = new Set([
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   ...MIGRATED_GROUP2_RULE_IDS,
   ...MIGRATED_GROUP3_RULE_IDS,
   ...MIGRATED_GROUP4_RULE_IDS,
+  ...MIGRATED_GROUP5_RULE_IDS,
 ]);
 
 type RulePlan = {

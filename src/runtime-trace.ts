@@ -8,11 +8,19 @@ import {
   type RuntimeCaptureEnvelope,
   type RuntimeCaptureObservabilityRecord,
 } from "./capture.js";
+import {
+  stableEvidenceId,
+  type EvidenceCompletenessInfo,
+  type EvidenceGraphV2,
+  type EvidenceSubject,
+  type EvidenceValue,
+} from "./evidence.js";
 import { runtimeRuleMeta } from "./rules.js";
 import { projectFactsFromEvidence, readEvidenceFile } from "./evidence-reader.js";
 import { writeFederationReports } from "./reporters.js";
 import type {
   DoctorFinding,
+  EvidenceAnalysisMetadata,
   OutputFormat,
   ProjectFacts,
   RuntimeAnalysisResult,
@@ -22,6 +30,9 @@ import type {
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
 import { fingerprint, looksLikeUrl, redact, redactRuntimeUrl, sortFindings } from "./utils.js";
 import { mapBounded } from "./async-map.js";
+import type { EvidenceRolloutController } from "./evidence-rollout.js";
+import { createEvidenceRolloutController } from "./evidence-rollout.js";
+import { compareV1Outputs } from "./evidence-parity.js";
 
 const FAILED = new Set(["error", "failed", "timeout"]);
 const REMOTE_PHASES = new Set([
@@ -1120,6 +1131,374 @@ function sharedVersionMismatch(
   return false;
 }
 
+export type RuntimeAttributionConfidence = "exact" | "high" | "low" | "unknown";
+export type RuntimeAttributionCompleteness = "complete" | "partial" | "unknown";
+
+export interface RuntimeAttribution {
+  remoteName: string | undefined;
+  matches: ProjectFacts[];
+  hostProject: ProjectFacts | undefined;
+  producerProject: ProjectFacts | undefined;
+  hostCandidates: ProjectFacts[];
+  producerCandidates: ProjectFacts[];
+  projectName: string;
+  attributedProjects: ProjectFacts[];
+  federationInstanceId: string | undefined;
+  identityEvidence: Record<string, unknown>;
+  roleCandidates: {
+    host: string[];
+    producer: string[];
+    consumer: string[];
+    provider: string[];
+    moduleInfo: string[];
+  };
+  owner: string | undefined;
+  exactProducer: boolean;
+  exactHost: boolean;
+  ambiguousIdentity: boolean;
+  weakAliasOnly: boolean;
+  ownerHintConflict: boolean;
+  ownerHintUnresolved: boolean;
+  supportedOwner: boolean;
+  matchedManifest: ProjectFacts["artifacts"]["manifest"] | undefined;
+  confidence: RuntimeAttributionConfidence;
+  completeness: RuntimeAttributionCompleteness;
+  /** True when attribution is exact enough for the evidence bridge oracle. */
+  exactAttribution: boolean;
+  scopeProject: ProjectFacts | undefined;
+}
+
+function traceEvidenceCompleteness(trace: RuntimeTraceReport): RuntimeAttributionCompleteness {
+  if (trace.sourceContract === "partial" || trace.outcome === "partial") return "partial";
+  if (trace.evidenceClipped) return "partial";
+  return "complete";
+}
+
+/** Classify how a runtime trace can be attributed to loaded project facts. */
+export function classifyRuntimeAttribution(
+  trace: RuntimeTraceReport,
+  projectFacts: ProjectFacts[],
+): RuntimeAttribution {
+  const projects = runtimeScopedProjects(projectFacts);
+  const remoteName = trace.remote?.name ?? trace.remote?.alias;
+  const matches = remoteName ? findProjectsForRemote(projects, remoteName) : [];
+  const hostProject = exactProject(projects, trace.hostName);
+  const producerProject = exactProject(projects, trace.remote?.name);
+  const hostCandidates = exactProjectCandidates(projects, trace.hostName);
+  const producerCandidates = exactProjectCandidates(projects, trace.remote?.name);
+  const aliasHostMatches = aliasRemoteProjects(projects, trace.requestAlias);
+  const aliasRemoteMatches = aliasRemoteProjects(projects, trace.remote?.alias);
+  const moduleInfoCandidates = moduleInfoNameCandidates(projects, trace);
+  const ownerHintConflict = trace.ownerHintConflict === true;
+  const owner = ownerHintConflict
+    ? undefined
+    : (trace.diagnosis?.ownerHint ?? trace.ownerHint ?? trace.diagnosis?.owner);
+  const exactProducer = Boolean(trace.remote?.name && producerProject);
+  const exactHost = Boolean(trace.hostName && hostProject);
+  const weakAliasOnly =
+    !exactProducer &&
+    !exactHost &&
+    (aliasHostMatches.length > 0 || aliasRemoteMatches.length > 0 || Boolean(trace.remote?.alias));
+  const ownerHintUnresolved =
+    (owner === "host" && !hostProject) || (owner === "remote" && !producerProject);
+  const ambiguousIdentity =
+    ownerHintConflict ||
+    ownerHintUnresolved ||
+    weakAliasOnly ||
+    hostCandidates.length > 1 ||
+    producerCandidates.length > 1 ||
+    (!owner &&
+      exactHost &&
+      exactProducer &&
+      hostProject!.project.name !== producerProject!.project.name);
+  const supportedOwner =
+    owner === "host" ||
+    owner === "remote" ||
+    owner === "runtime" ||
+    owner === "shared" ||
+    owner === "network" ||
+    owner === "unknown";
+  const ownerProject =
+    owner === "host" ? hostProject : owner === "remote" ? producerProject : undefined;
+  const ownerEvidenceProject = ownerProject;
+  const projectName =
+    !supportedOwner ||
+    ownerHintConflict ||
+    weakAliasOnly ||
+    owner === "runtime" ||
+    owner === "network" ||
+    owner === "shared" ||
+    owner === "unknown"
+      ? "runtime"
+      : ownerEvidenceProject
+        ? ownerEvidenceProject.project.name
+        : ambiguousIdentity
+          ? "runtime"
+          : producerProject
+            ? producerProject.project.name
+            : !remoteName && hostProject
+              ? hostProject.project.name
+              : "runtime";
+  const attributedProjects = ownerEvidenceProject
+    ? [ownerEvidenceProject]
+    : projectName !== "runtime"
+      ? producerProject
+        ? [producerProject]
+        : hostProject
+          ? [hostProject]
+          : []
+      : [];
+  const federationInstanceId = uniqueFederationInstanceId(attributedProjects);
+  const roleCandidates = {
+    host: hostProject ? [hostProject.project.name] : [],
+    producer: producerProject ? [producerProject.project.name] : [],
+    consumer: aliasHostMatches.map((project) => project.project.name).sort(),
+    provider: trace.shared?.provider
+      ? projects
+          .filter(
+            (project) =>
+              project.moduleFederation?.name === trace.shared?.provider ||
+              project.artifacts.manifest?.name === trace.shared?.provider ||
+              project.artifacts.manifest?.id === trace.shared?.provider,
+          )
+          .map((project) => project.project.name)
+          .sort()
+      : [],
+    moduleInfo: moduleInfoCandidates,
+  };
+  const identityEvidence = {
+    ...(trace.hostName ? { hostName: trace.hostName } : {}),
+    ...(trace.remote?.name ? { producer: trace.remote.name } : {}),
+    ...(trace.remote?.alias ? { remoteAlias: trace.remote.alias } : {}),
+    ...(trace.requestAlias ? { requestAlias: trace.requestAlias } : {}),
+    ...(owner ? { ownerHint: owner } : {}),
+    roles: roleCandidates,
+    ...(ambiguousIdentity ||
+    !supportedOwner ||
+    ownerHintConflict ||
+    weakAliasOnly ||
+    owner === "shared" ||
+    owner === "network" ||
+    owner === "unknown"
+      ? {
+          matchReason: ownerHintConflict
+            ? "conflicting owner hints; neutral runtime attribution"
+            : ownerHintUnresolved
+              ? "owner hint did not match an exact candidate; neutral runtime attribution"
+              : hostCandidates.length > 1 || producerCandidates.length > 1
+                ? "multiple exact candidates; neutral runtime attribution"
+                : weakAliasOnly
+                  ? "alias-only or requestAlias evidence is weak; neutral runtime attribution"
+                  : !supportedOwner
+                    ? "unsupported owner hint; neutral runtime attribution"
+                    : owner === "network"
+                      ? "network failure; requesting host is context"
+                      : owner === "shared"
+                        ? "shared resolver/provider evidence"
+                        : "ambiguous host/producer identity",
+          ...(ownerHintConflict && trace.ownerHints ? { ownerHints: trace.ownerHints } : {}),
+          candidates: [
+            ...new Set(
+              [
+                ...roleCandidates.host,
+                ...roleCandidates.producer,
+                ...roleCandidates.consumer,
+                ...roleCandidates.provider,
+                ...roleCandidates.moduleInfo,
+                ...matches.map((project) => project.project.name),
+              ].filter((value): value is string => Boolean(value)),
+            ),
+          ].sort(),
+        }
+      : {
+          matchReason: exactProducer
+            ? "exact producer identity"
+            : exactHost
+              ? "exact host identity"
+              : "runtime attribution",
+        }),
+  };
+  const manifests = matches
+    .map((project) => project.artifacts.manifest)
+    .filter((manifest) => manifest && (manifest.valid || manifest.name || manifest.id));
+  const matchedManifest = manifests.length === 1 ? manifests[0] : undefined;
+  const completeness = traceEvidenceCompleteness(trace);
+  const neutralAttribution =
+    projectName === "runtime" ||
+    ambiguousIdentity ||
+    ownerHintConflict ||
+    weakAliasOnly ||
+    ownerHintUnresolved;
+  const exactAttribution = !neutralAttribution && completeness === "complete";
+  const confidence: RuntimeAttributionConfidence = exactAttribution
+    ? "exact"
+    : neutralAttribution
+      ? "low"
+      : completeness === "partial"
+        ? "high"
+        : "high";
+  const scopeProject = attributedProjects[0] ?? hostProject ?? producerProject ?? projects[0];
+  return {
+    remoteName,
+    matches,
+    hostProject,
+    producerProject,
+    hostCandidates,
+    producerCandidates,
+    projectName,
+    attributedProjects,
+    federationInstanceId,
+    identityEvidence,
+    roleCandidates,
+    owner,
+    exactProducer,
+    exactHost,
+    ambiguousIdentity,
+    weakAliasOnly,
+    ownerHintConflict,
+    ownerHintUnresolved,
+    supportedOwner,
+    matchedManifest,
+    confidence,
+    completeness,
+    exactAttribution,
+    scopeProject,
+  };
+}
+
+function completenessInfo(
+  status: RuntimeAttributionCompleteness,
+  reason: string,
+): EvidenceCompletenessInfo {
+  return { status, reason };
+}
+
+function redactTraceEvidenceValue(trace: RuntimeTraceReport): EvidenceValue {
+  return redact(JSON.parse(JSON.stringify(trace))) as EvidenceValue;
+}
+
+/** Stable trace key used for runtime-instance subjects and oracle scoping. */
+export function runtimeTraceKey(trace: RuntimeTraceReport, index: number): string {
+  return trace.traceId ?? `trace-${index + 1}`;
+}
+
+/** Scope runtime traces to the subject's trace key; never fall back to all traces. */
+export function tracesForSubject(
+  traces: readonly RuntimeTraceReport[],
+  subject: EvidenceSubject,
+): RuntimeTraceReport[] {
+  const subjectTraceKey =
+    (typeof subject.attributes?.traceId === "string" && subject.attributes.traceId) || subject.name;
+  return traces.filter((trace, index) => runtimeTraceKey(trace, index) === subjectTraceKey);
+}
+
+/** Attach opted-in runtime traces to an evidence graph as runtime-instance subjects. */
+export function attachRuntimeTraceEvidence(
+  graph: EvidenceGraphV2,
+  traces: readonly RuntimeTraceReport[],
+  projects: readonly ProjectFacts[],
+): void {
+  if (traces.length === 0) return;
+  const scopedProjects = runtimeScopedProjects([...projects]);
+  for (const [index, trace] of traces.entries()) {
+    const attribution = classifyRuntimeAttribution(trace, scopedProjects);
+    if (!attribution.scopeProject) continue;
+    const traceKey = runtimeTraceKey(trace, index);
+    const scopeProject = attribution.scopeProject;
+    const runtimeSubject: EvidenceSubject = {
+      id: stableEvidenceId("subject.runtime-instance", {
+        project: scopeProject.project.name,
+        traceKey,
+        ...(attribution.federationInstanceId
+          ? { federationInstanceId: attribution.federationInstanceId }
+          : {}),
+      }),
+      kind: "runtime-instance",
+      name: traceKey,
+      attributes: {
+        project: scopeProject.project.name,
+        ...(trace.traceId ? { traceId: trace.traceId } : {}),
+        ...(attribution.federationInstanceId
+          ? { federationInstanceId: attribution.federationInstanceId }
+          : {}),
+      },
+    };
+    graph.subjects.push(runtimeSubject);
+    const scopeValue: EvidenceValue = {
+      name: scopeProject.project.name,
+      root: scopeProject.project.root,
+      bundler: scopeProject.bundler.name,
+      ...(attribution.federationInstanceId
+        ? { federationInstanceId: attribution.federationInstanceId }
+        : {}),
+    };
+    graph.assertions.push({
+      id: stableEvidenceId("assertion", {
+        subject: runtimeSubject.id,
+        predicate: "project.scope",
+        value: scopeValue,
+        traceKey,
+      }),
+      subject: runtimeSubject.id,
+      predicate: "project.scope",
+      value: scopeValue,
+      layer: "declared",
+      scope: { ...graph.scope, bundler: { ...graph.scope.bundler } },
+      provenance: {
+        collector: { name: "@module-federation/doctor", version: "1" },
+        inputKind: "runtime-trace",
+        source: "runtime-trace",
+        sourceSchemaVersion: "1",
+      },
+      confidence: {
+        level: "high",
+        reason: "Runtime trace attribution scope is derived from the attributed project.",
+      },
+      completeness: completenessInfo(
+        "complete",
+        "Runtime trace project scope is present for this subject.",
+      ),
+    });
+    const traceValue = redactTraceEvidenceValue(trace);
+    const confidenceLevel = attribution.confidence === "low" ? "low" : "high";
+    graph.assertions.push({
+      id: stableEvidenceId("assertion", {
+        subject: runtimeSubject.id,
+        predicate: "runtime.trace",
+        value: traceValue,
+        traceKey,
+      }),
+      subject: runtimeSubject.id,
+      predicate: "runtime.trace",
+      value: traceValue,
+      layer: "runtime",
+      scope: { ...graph.scope, bundler: { ...graph.scope.bundler } },
+      provenance: {
+        collector: { name: "@module-federation/doctor", version: "1" },
+        inputKind: "runtime-trace",
+        source: "runtime-trace",
+        sourceSchemaVersion: "1",
+      },
+      confidence: {
+        level: confidenceLevel,
+        reason: attribution.exactAttribution
+          ? "Imported runtime trace evidence is exact when attributed."
+          : attribution.completeness === "partial"
+            ? "Imported runtime trace evidence is partial or stale."
+            : "Imported runtime trace attribution is weak or ambiguous.",
+      },
+      completeness: completenessInfo(
+        attribution.completeness,
+        attribution.exactAttribution
+          ? "Runtime trace attribution and payload are complete."
+          : attribution.completeness === "partial"
+            ? "Runtime trace payload or contract is partial or stale."
+            : "Runtime trace attribution is weak or ambiguous.",
+      ),
+    });
+  }
+}
+
 export function correlateRuntime(
   traces: RuntimeTraceReport[],
   projectFacts: ProjectFacts[],
@@ -1128,150 +1507,18 @@ export function correlateRuntime(
   const projects = runtimeScopedProjects(projectFacts);
 
   for (const trace of traces) {
-    const remoteName = trace.remote?.name ?? trace.remote?.alias;
-    const matches = remoteName ? findProjectsForRemote(projects, remoteName) : [];
-    const hostProject = exactProject(projects, trace.hostName);
-    const producerProject = exactProject(projects, trace.remote?.name);
-    const hostCandidates = exactProjectCandidates(projects, trace.hostName);
-    const producerCandidates = exactProjectCandidates(projects, trace.remote?.name);
-    const aliasHostMatches = aliasRemoteProjects(projects, trace.requestAlias);
-    const aliasRemoteMatches = aliasRemoteProjects(projects, trace.remote?.alias);
-    const moduleInfoCandidates = moduleInfoNameCandidates(projects, trace);
-    const ownerHintConflict = trace.ownerHintConflict === true;
-    const owner = ownerHintConflict
-      ? undefined
-      : (trace.diagnosis?.ownerHint ?? trace.ownerHint ?? trace.diagnosis?.owner);
-    const exactProducer = Boolean(trace.remote?.name && producerProject);
-    const exactHost = Boolean(trace.hostName && hostProject);
-    const weakAliasOnly =
-      !exactProducer &&
-      !exactHost &&
-      (aliasHostMatches.length > 0 ||
-        aliasRemoteMatches.length > 0 ||
-        Boolean(trace.remote?.alias));
-    const ownerHintUnresolved =
-      (owner === "host" && !hostProject) || (owner === "remote" && !producerProject);
-    const ambiguousIdentity =
-      ownerHintConflict ||
-      ownerHintUnresolved ||
-      weakAliasOnly ||
-      hostCandidates.length > 1 ||
-      producerCandidates.length > 1 ||
-      (!owner &&
-        exactHost &&
-        exactProducer &&
-        hostProject!.project.name !== producerProject!.project.name);
-    const supportedOwner =
-      owner === "host" ||
-      owner === "remote" ||
-      owner === "runtime" ||
-      owner === "shared" ||
-      owner === "network" ||
-      owner === "unknown";
-    const ownerProject =
-      owner === "host" ? hostProject : owner === "remote" ? producerProject : undefined;
-    const ownerEvidenceProject = ownerProject;
-    const projectName =
-      !supportedOwner ||
-      ownerHintConflict ||
-      weakAliasOnly ||
-      owner === "runtime" ||
-      owner === "network" ||
-      owner === "shared" ||
-      owner === "unknown"
-        ? "runtime"
-        : ownerEvidenceProject
-          ? ownerEvidenceProject.project.name
-          : ambiguousIdentity
-            ? "runtime"
-            : producerProject
-              ? producerProject.project.name
-              : !remoteName && hostProject
-                ? hostProject.project.name
-                : "runtime";
-    const attributedProjects = ownerEvidenceProject
-      ? [ownerEvidenceProject]
-      : projectName !== "runtime"
-        ? producerProject
-          ? [producerProject]
-          : hostProject
-            ? [hostProject]
-            : []
-        : [];
-    const findingInstanceId = uniqueFederationInstanceId(attributedProjects);
-    const roleCandidates = {
-      host: hostProject ? [hostProject.project.name] : [],
-      producer: producerProject ? [producerProject.project.name] : [],
-      consumer: aliasHostMatches.map((project) => project.project.name).sort(),
-      provider: trace.shared?.provider
-        ? projects
-            .filter(
-              (project) =>
-                project.moduleFederation?.name === trace.shared?.provider ||
-                project.artifacts.manifest?.name === trace.shared?.provider ||
-                project.artifacts.manifest?.id === trace.shared?.provider,
-            )
-            .map((project) => project.project.name)
-            .sort()
-        : [],
-      moduleInfo: moduleInfoCandidates,
-    };
-    const identityEvidence = {
-      ...(trace.hostName ? { hostName: trace.hostName } : {}),
-      ...(trace.remote?.name ? { producer: trace.remote.name } : {}),
-      ...(trace.remote?.alias ? { remoteAlias: trace.remote.alias } : {}),
-      ...(trace.requestAlias ? { requestAlias: trace.requestAlias } : {}),
-      ...(owner ? { ownerHint: owner } : {}),
-      roles: roleCandidates,
-      ...(ambiguousIdentity ||
-      !supportedOwner ||
-      ownerHintConflict ||
-      weakAliasOnly ||
-      owner === "shared" ||
-      owner === "network" ||
-      owner === "unknown"
-        ? {
-            matchReason: ownerHintConflict
-              ? "conflicting owner hints; neutral runtime attribution"
-              : ownerHintUnresolved
-                ? "owner hint did not match an exact candidate; neutral runtime attribution"
-                : hostCandidates.length > 1 || producerCandidates.length > 1
-                  ? "multiple exact candidates; neutral runtime attribution"
-                  : weakAliasOnly
-                    ? "alias-only or requestAlias evidence is weak; neutral runtime attribution"
-                    : !supportedOwner
-                      ? "unsupported owner hint; neutral runtime attribution"
-                      : owner === "network"
-                        ? "network failure; requesting host is context"
-                        : owner === "shared"
-                          ? "shared resolver/provider evidence"
-                          : "ambiguous host/producer identity",
-            ...(ownerHintConflict && trace.ownerHints ? { ownerHints: trace.ownerHints } : {}),
-            candidates: [
-              ...new Set(
-                [
-                  ...roleCandidates.host,
-                  ...roleCandidates.producer,
-                  ...roleCandidates.consumer,
-                  ...roleCandidates.provider,
-                  ...roleCandidates.moduleInfo,
-                  ...matches.map((project) => project.project.name),
-                ].filter((value): value is string => Boolean(value)),
-              ),
-            ].sort(),
-          }
-        : {
-            matchReason: exactProducer
-              ? "exact producer identity"
-              : exactHost
-                ? "exact host identity"
-                : "runtime attribution",
-          }),
-    };
-    const manifests = matches
-      .map((project) => project.artifacts.manifest)
-      .filter((manifest) => manifest && (manifest.valid || manifest.name || manifest.id));
-    const matchedManifest = manifests.length === 1 ? manifests[0] : undefined;
+    const attribution = classifyRuntimeAttribution(trace, projects);
+    const {
+      remoteName,
+      matches,
+      hostProject,
+      projectName,
+      federationInstanceId: findingInstanceId,
+      identityEvidence,
+      owner,
+      matchedManifest,
+      ownerHintConflict,
+    } = attribution;
     const phases = failedPhases(trace);
 
     if (remoteName && matches.length === 0) {
@@ -1524,6 +1771,8 @@ export async function analyzeRuntime(options: {
   score?: boolean;
   /** When false, omit top agent prompts from terminal output. */
   prompt?: boolean;
+  evidenceRollout?: EvidenceRolloutController;
+  rules?: Readonly<Record<string, import("./types.js").RuleSetting>>;
 }): Promise<RuntimeAnalysisResult> {
   const traces = await loadRuntimeTraceFile(options.tracePath);
   const projects = (
@@ -1542,7 +1791,62 @@ export async function analyzeRuntime(options: {
   if (projects.length === 0)
     throw new RuntimeTraceError("No project.json files matched for runtime correlation.");
 
-  const findings = correlateRuntime(traces, projects);
+  const legacyFindings = correlateRuntime(traces, projects);
+  const rollout = options.evidenceRollout ?? createEvidenceRolloutController();
+  const rolloutMode = rollout.modeFor("rules");
+  const settings = options.rules ?? {};
+  let findings = legacyFindings;
+  let evidence: EvidenceAnalysisMetadata | undefined;
+  if (rolloutMode !== "legacy") {
+    const {
+      migratedRuntimeEvidenceRuleIds,
+      projectMigratedFailures,
+      runMigratedRuntimeEvidenceRules,
+    } = await import("./evidence-rule-bridge.js");
+    const primary = projects[0]!;
+    const run = await runMigratedRuntimeEvidenceRules(
+      primary,
+      projects,
+      traces,
+      settings,
+      undefined,
+      { root: primary.project.root },
+    );
+    const migratedFindings = sortFindings(
+      projectMigratedFailures(
+        run.output.evaluations,
+        primary,
+        settings,
+        primary.project.root,
+        run.graph.subjects,
+      ),
+    );
+    const exactAttribution = (item: DoctorFinding) => item.project !== "runtime";
+    const parity =
+      rolloutMode === "shadow"
+        ? compareV1Outputs(
+            legacyFindings.filter(
+              (finding) =>
+                migratedRuntimeEvidenceRuleIds.has(finding.ruleId) && exactAttribution(finding),
+            ),
+            migratedFindings.filter(exactAttribution),
+          )
+        : undefined;
+    if (rolloutMode === "v2-compat")
+      findings = sortFindings([
+        ...legacyFindings.filter(
+          (finding) =>
+            !migratedRuntimeEvidenceRuleIds.has(finding.ruleId) || !exactAttribution(finding),
+        ),
+        ...migratedFindings,
+      ]);
+    evidence = {
+      rollout: { scope: "rules", mode: rolloutMode },
+      evaluations: run.output.evaluations,
+      execution: run.output.execution,
+      ...(parity ? { parity } : {}),
+    };
+  }
   const report = reportFromFindings(projects, findings);
   const ui = buildUiPayload(projects, report);
   const formats = options.formats ?? [];
@@ -1567,5 +1871,6 @@ export async function analyzeRuntime(options: {
       findings: findings.length,
     },
     exitCode: findings.some((item) => item.severity === "error") ? 1 : 0,
+    ...(evidence ? { evidence } : {}),
   };
 }

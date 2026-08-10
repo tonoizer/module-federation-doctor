@@ -10,6 +10,7 @@ import {
   MIGRATED_GROUP2_RULE_IDS,
   MIGRATED_GROUP3_RULE_IDS,
   MIGRATED_GROUP4_RULE_IDS,
+  MIGRATED_GROUP5_RULE_IDS,
   ruleInventory,
   ruleInventoryIds,
 } from "../../src/rule-inventory.js";
@@ -620,6 +621,7 @@ describe("evidence-aware rule contract", () => {
       ...MIGRATED_GROUP2_RULE_IDS,
       ...MIGRATED_GROUP3_RULE_IDS,
       ...MIGRATED_GROUP4_RULE_IDS,
+      ...MIGRATED_GROUP5_RULE_IDS,
     ]);
     expect(
       ruleInventory.every((entry) =>

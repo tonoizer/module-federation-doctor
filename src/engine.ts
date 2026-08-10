@@ -20,8 +20,10 @@ import {
 import {
   migratedEvidenceRules,
   migratedEvidenceRuleIds,
+  migratedRuntimeEvidenceRuleIds,
   projectMigratedFailures,
   runMigratedEvidenceRules,
+  runMigratedRuntimeEvidenceRules,
   type MigratedEvidenceRun,
 } from "./evidence-rule-bridge.js";
 import { createEvidenceRolloutController } from "./evidence-rollout.js";
@@ -313,6 +315,7 @@ async function runAnalysis(
       run: MigratedEvidenceRun;
     }> = [];
     const migratedExecutionErrors: RuleExecutionState[] = [];
+    let legacyRuntimeFindings: DoctorFinding[] = [];
     const bridgeBudget =
       rolloutMode === "legacy" ? undefined : new AnalysisBudgetTracker(resolved.analysisBudgets);
     if (rolloutMode !== "legacy") {
@@ -363,6 +366,34 @@ async function runAnalysis(
           }
         }
       }
+      if (resolved.runtimeTrace) {
+        try {
+          const { correlateRuntime, loadRuntimeTraceFile } = await import("./runtime-trace.js");
+          const runtimeTraces = await loadRuntimeTraceFile(resolved.runtimeTrace);
+          if (runtimeTraces.length > 0) {
+            const runtimeProjects = scopedFacts.length > 0 ? scopedFacts : [facts];
+            legacyRuntimeFindings = correlateRuntime(runtimeTraces, runtimeProjects);
+            const run = await runMigratedRuntimeEvidenceRules(
+              facts,
+              runtimeProjects,
+              runtimeTraces,
+              resolved.rules,
+              bridgeBudget,
+              {
+                root: resolved.root,
+                sharedPolicy: resolved.sharedPolicy,
+                ...(resolved.recognizeMfToolkit !== undefined
+                  ? { recognizeMfToolkit: resolved.recognizeMfToolkit }
+                  : {}),
+              },
+            );
+            migratedRuns.push({ facts, run });
+            migratedProjectionRuns.push({ facts, run });
+          }
+        } catch (error) {
+          migratedExecutionErrors.push(...bridgeEngineErrors(resolved.rules, error, resolved.root));
+        }
+      }
     }
     const migratedFindings = sortFindings(
       migratedProjectionRuns.flatMap(({ facts: factsForEvidence, run }) =>
@@ -371,13 +402,22 @@ async function runAnalysis(
           factsForEvidence,
           resolved.rules,
           resolved.root,
+          run.graph.subjects,
         ),
       ),
     );
+    const exactRuntimeAttribution = (finding: DoctorFinding) => finding.project !== "runtime";
     const parity =
       rolloutMode === "shadow"
         ? compareV1Outputs(
-            legacyFindings.filter((finding) => migratedEvidenceRuleIds.has(finding.ruleId)),
+            [
+              ...legacyFindings.filter((finding) => migratedEvidenceRuleIds.has(finding.ruleId)),
+              ...legacyRuntimeFindings.filter(
+                (finding) =>
+                  migratedRuntimeEvidenceRuleIds.has(finding.ruleId) &&
+                  exactRuntimeAttribution(finding),
+              ),
+            ],
             migratedFindings,
           )
         : undefined;
