@@ -3025,6 +3025,29 @@ describe("Group 6 evidence bridge", () => {
         (evaluation) => evaluation.rule.id === "reliability/version-first-offline-remotes",
       ),
     ).toMatchObject({ outcome: "fail" });
+
+    const multiBuildFacts = {
+      ...facts,
+      builds: [
+        { ...devBuild, id: "vite-build-1" },
+        {
+          ...devBuild,
+          id: "vite-build-2",
+          outputRoot: "dist/server",
+          effectiveMode: "production" as const,
+        },
+      ],
+    };
+    const multiBuildDev = await runMigrated(
+      multiBuildFacts,
+      { "vite/remote-hmr-dev": "info" },
+      multiBuildFacts.builds![0],
+    );
+    expect(
+      multiBuildDev.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
+      ),
+    ).toMatchObject({ outcome: "pass" });
   });
 
   it("keeps doctor/partial-analysis on unknown confidence while projecting capability gaps", async () => {

@@ -735,7 +735,7 @@ const plans: Record<string, RulePlan> = {
     "declared",
     "project",
     "high",
-    "Only fires when remoteHmr is explicitly false in Doctor development mode or a single scoped build effectiveMode; unknown skips.",
+    "Only fires when remoteHmr is explicitly false in Doctor development mode or a single unscoped project build effectiveMode; unknown skips.",
     VITE,
   ),
   "vite/alias-share-bypass": plan(

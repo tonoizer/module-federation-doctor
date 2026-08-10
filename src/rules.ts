@@ -383,11 +383,13 @@ function isLocalDemo(context: RuleContext): boolean {
   return context.options.localDemoOnly === true && context.facts.bundler.mode === "development";
 }
 
-/** True when Doctor analysis mode or a single scoped build reports development. */
+/** True when Doctor analysis mode or a single unscoped project build reports development. */
 function isDevelopmentBuild(context: RuleContext): boolean {
   if (context.facts.bundler.mode === "development") return true;
   const builds = context.facts.builds;
-  return builds?.length === 1 && builds[0]?.effectiveMode === "development";
+  const unscopedCount = context.options.unscopedProjectBuildCount;
+  const buildCount = typeof unscopedCount === "number" ? unscopedCount : (builds?.length ?? 0);
+  return buildCount === 1 && builds?.[0]?.effectiveMode === "development";
 }
 
 /** Detect retry / errorLoadRemote recovery plugins from configured paths. */

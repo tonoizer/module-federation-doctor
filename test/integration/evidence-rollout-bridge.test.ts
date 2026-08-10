@@ -1104,6 +1104,84 @@ describe("evidence-aware rule rollout bridge", () => {
     ).toMatchObject({ outcome: "fail" });
   });
 
+  it("keeps parity when multi-build projects skip remote-hmr effectiveMode shortcut", async () => {
+    const root = await fixture("group6-multi-build-effective-mode-parity");
+    const base = {
+      root,
+      bundler: "vite" as const,
+      mode: "ci" as const,
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "shop@http://localhost:4174/remoteEntry.js",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+        shareStrategy: "version-first" as const,
+        remoteHmr: false,
+        vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [] },
+      },
+      output: { formats: [] as never[] },
+      rules: {
+        ...quietRules,
+        "artifact/manifest-disabled": "off" as const,
+        "config/remote-manifest-recommended": "off" as const,
+        "vite/remotes-prefer-module": "off" as const,
+        "config/remote-localhost-in-production": "warning" as const,
+        "reliability/version-first-offline-remotes": ["warning", { localDemoOnly: true }] as const,
+        "vite/remote-hmr-dev": "info" as const,
+      },
+    };
+    const buildOutputs = [
+      {
+        adapter: "vite" as const,
+        bundler: "vite" as const,
+        outputRoot: "dist/client",
+        emittedAssets: [],
+        effectiveMode: "development" as const,
+        sourceHook: "writeBundle" as const,
+      },
+      {
+        adapter: "vite" as const,
+        bundler: "vite" as const,
+        outputRoot: "dist/server",
+        emittedAssets: [],
+        effectiveMode: "production" as const,
+        sourceHook: "writeBundle" as const,
+      },
+    ];
+    const legacy = await analyzeBuild(base, [], undefined, buildOutputs);
+    const shadow = await analyzeBuild(
+      { ...base, evidenceRollout: shadowRollout() },
+      [],
+      undefined,
+      buildOutputs,
+    );
+    const compat = await analyzeBuild(
+      { ...base, evidenceRollout: compatRollout() },
+      [],
+      undefined,
+      buildOutputs,
+    );
+
+    expect(compareV1Outputs(legacy.report, shadow.report).equal).toBe(true);
+    expect(compareV1Outputs(legacy.report, compat.report).equal).toBe(true);
+    expect(shadow.evidence?.parity?.equal).toBe(true);
+    expect(legacy.report.findings.some((finding) => finding.ruleId === "vite/remote-hmr-dev")).toBe(
+      false,
+    );
+    expect(
+      compat.evidence?.evaluations.some(
+        (evaluation) =>
+          evaluation.rule.id === "vite/remote-hmr-dev" && evaluation.outcome === "fail",
+      ),
+    ).toBe(false);
+  });
+
   it("projects doctor/partial-analysis while keeping per-rule unknowns separate", async () => {
     const root = await fixture("group6-partial-analysis-rollout-bridge");
     const result = await analyze({

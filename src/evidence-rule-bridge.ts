@@ -540,13 +540,21 @@ export interface MigratedEvidenceRun {
   output: EvidenceRuleRunnerOutput;
 }
 
+function unscopedProjectBuildCount(facts: ProjectFacts, selectedBuild?: BuildRecord): number {
+  if (facts.builds?.length) return facts.builds.length;
+  return selectedBuild ? 1 : 0;
+}
+
 function ruleOptionsFor(
   settings: Readonly<Record<string, RuleSetting>>,
+  unscopedBuildCount: number,
 ): Readonly<Record<string, Readonly<Record<string, unknown>>>> {
   return Object.fromEntries(
     migratedEvidenceRules.map((rule) => {
       const setting = settings[rule.meta.id];
-      return [rule.meta.id, Array.isArray(setting) ? setting[1] : {}];
+      const options = Array.isArray(setting) ? setting[1] : {};
+      if (rule.meta.id !== "vite/remote-hmr-dev") return [rule.meta.id, options];
+      return [rule.meta.id, { ...options, unscopedProjectBuildCount: unscopedBuildCount }];
     }),
   );
 }
@@ -580,6 +588,7 @@ export async function runMigratedEvidenceRules(
   selectedBuild?: BuildRecord,
   bridgeContext?: EvidenceBridgeContext,
 ): Promise<MigratedEvidenceRun> {
+  const unscopedBuildCount = unscopedProjectBuildCount(facts, selectedBuild);
   const scopedFacts = selectedBuild ? factsForBuild(facts, selectedBuild) : facts;
   const graph = migrateProjectFacts(
     factsForEvidence(scopedFacts),
@@ -600,7 +609,7 @@ export async function runMigratedEvidenceRules(
     rules,
     facts: scopedFacts,
     scope,
-    ruleOptions: ruleOptionsFor(settings),
+    ruleOptions: ruleOptionsFor(settings, unscopedBuildCount),
     ...(bridgeContext?.root ? { root: bridgeContext.root } : {}),
     ...(bridgeContext?.sharedPolicy ? { sharedPolicy: bridgeContext.sharedPolicy } : {}),
     ...(bridgeContext?.recognizeMfToolkit !== undefined
