@@ -2890,6 +2890,75 @@ describe("Group 6 evidence bridge", () => {
     }
   });
 
+  it("evaluates SSR Vite rules without adapter builds evidence", async () => {
+    const hostInit = viteFacts({
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          catalog: {
+            name: "catalog",
+            entry: "https://example.test/mf-manifest.json",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+        vite: {
+          bundleAllCSS: false,
+          ignoreOrigin: false,
+          ssrExternals: [],
+          target: "node",
+          hostInitInjectLocation: "html",
+        },
+      },
+    });
+    const hostInitRun = await runMigrated(hostInit, { "vite/host-init-inject-ssr": "error" });
+    expect(
+      hostInitRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/host-init-inject-ssr",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    expect(
+      hostInitRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/host-init-inject-ssr",
+      )?.reasonCode,
+    ).not.toBe("prerequisite-missing");
+
+    const nitro = viteFacts({
+      dependencies: { declared: { nitropack: "^2" }, installed: {} },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/remoteEntry.js",
+            shareScope: "default",
+          },
+        },
+        shared: {
+          react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+        },
+        vite: {
+          bundleAllCSS: false,
+          ignoreOrigin: false,
+          ssrExternals: ["react"],
+        },
+      },
+    });
+    const nitroRun = await runMigrated(nitro, { "vite/ssr-nitro-externals": "warning" });
+    expect(
+      nitroRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/ssr-nitro-externals",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    expect(
+      nitroRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/ssr-nitro-externals",
+      )?.reasonCode,
+    ).not.toBe("prerequisite-missing");
+  });
+
   it("marks vite dialect rules not-applicable on rspack", async () => {
     const facts = viteFacts({ bundler: { name: "rspack", mode: "ci" } });
     const migrated = await runMigrated(facts);

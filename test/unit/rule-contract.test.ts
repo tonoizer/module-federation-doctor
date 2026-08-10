@@ -641,9 +641,12 @@ describe("evidence-aware rule contract", () => {
       expect(entry.owner.name).not.toBe("");
       const requirements = requirementPredicates(entry.prerequisites);
       const optionalPluginFacts: Record<string, readonly string[]> = {
+        "vite/host-init-inject-ssr": ["builds"],
+        "vite/ssr-nitro-externals": ["builds"],
         "vite/manual-chunks-conflict": ["bundler.viteConfig"],
         "vite/alias-share-bypass": ["bundler.viteConfig"],
         "vite/server-origin": ["bundler.viteConfig"],
+        "vite/remote-hmr-dev": ["builds"],
         "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
       };
       const optionalReads = optionalPluginFacts[entry.id] ?? [];

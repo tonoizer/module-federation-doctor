@@ -715,7 +715,7 @@ const plans: Record<string, RulePlan> = {
     "declared",
     "project",
     "high",
-    "Requires adapter-observed user viteConfig.manualChunks / codeSplittingGroups; CLI skips when absent.",
+    "Absent plugin viteConfig facts → unknown; observed empty manualChunks/codeSplittingGroups → pass.",
     VITE,
   ),
   "vite/hashed-remote-filename": plan(
@@ -745,7 +745,7 @@ const plans: Record<string, RulePlan> = {
     "declared",
     "project",
     "high",
-    "Requires plugin-resolved resolveAliases; CLI skips when absent.",
+    "Absent plugin viteConfig facts → unknown; observed empty or no shared overlap → pass.",
     VITE,
   ),
   "vite/server-origin": plan(
@@ -755,7 +755,7 @@ const plans: Record<string, RulePlan> = {
     "declared",
     "project",
     "high",
-    "Requires plugin-observed server.origin fact; CLI skips when absent.",
+    "Absent plugin server.origin fact → unknown; observed matching origin → pass.",
     VITE,
   ),
   "config/transform-import-share-conflict": plan(
@@ -1577,7 +1577,13 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "bundler.viteConfig",
   ],
   "vite/hashed-remote-filename": ["project.scope", "moduleFederation", "bundler.name"],
-  "vite/remote-hmr-dev": ["project.scope", "moduleFederation", "bundler.name", "bundler.mode"],
+  "vite/remote-hmr-dev": [
+    "project.scope",
+    "moduleFederation",
+    "bundler.name",
+    "bundler.mode",
+    "builds",
+  ],
   "vite/alias-share-bypass": [
     "project.scope",
     "moduleFederation",
@@ -1696,9 +1702,12 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
     };
   }
   const optionalPluginFacts: Record<string, readonly string[]> = {
+    "vite/host-init-inject-ssr": ["builds"],
+    "vite/ssr-nitro-externals": ["builds"],
     "vite/manual-chunks-conflict": ["bundler.viteConfig"],
     "vite/alias-share-bypass": ["bundler.viteConfig"],
     "vite/server-origin": ["bundler.viteConfig"],
+    "vite/remote-hmr-dev": ["builds"],
     "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
   };
   const optional = optionalPluginFacts[id];
