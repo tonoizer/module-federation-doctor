@@ -711,6 +711,35 @@ describe("evidence-aware rule contract", () => {
           selector.predicate === "federation.graph" ||
           selector.predicate === "imports.sourceScan"
         ) {
+          expect(selector.subjectKind, `${id} ${selector.predicate}`).toBe("shared-package");
+        }
+      }
+    }
+    const circularRemote = ruleInventory.find((item) => item.id === "federation/circular-remote-graph");
+    expect(circularRemote).toBeTruthy();
+    for (const selector of requirementSelectors(circularRemote!.prerequisites)) {
+      if (!("predicate" in selector)) continue;
+      if (selector.predicate === "project.scope" || selector.predicate === "federation.graph") {
+        expect(selector.subjectKind, `federation/circular-remote-graph ${selector.predicate}`).toBe(
+          "remote",
+        );
+      }
+    }
+    for (const id of [
+      "federation/name-conflict",
+      "federation/share-strategy-mismatch",
+      "federation/host-gaps",
+      "federation/external-runtime-provider-missing",
+    ]) {
+      const entry = ruleInventory.find((item) => item.id === id);
+      expect(entry).toBeTruthy();
+      for (const selector of requirementSelectors(entry!.prerequisites)) {
+        if (!("predicate" in selector)) continue;
+        if (
+          selector.predicate === "project.scope" ||
+          selector.predicate === "federation.graph" ||
+          selector.predicate === "imports.sourceScan"
+        ) {
           expect(selector.subjectKind, `${id} ${selector.predicate}`).toBe("project");
         }
       }

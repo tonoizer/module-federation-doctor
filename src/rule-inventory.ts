@@ -255,6 +255,7 @@ type RulePlan = {
   subjectKind:
     | "project"
     | "dependency"
+    | "remote"
     | "shared-package"
     | "build"
     | "artifact"
@@ -990,7 +991,7 @@ const plans: Record<string, RulePlan> = {
     "warning",
     "federation.graph",
     "declared",
-    "project",
+    "remote",
     "high",
     "Federation graph evidence is high confidence when all projects are present.",
   ),
@@ -1633,18 +1634,12 @@ function selectorFor(path: string, spec: RulePlan): EvidenceRequirement {
           : predicate.startsWith("artifacts.")
             ? "artifact"
             : "effective";
-  const workspaceLevelPredicate =
-    predicate === "project.scope" ||
-    predicate === "federation.graph" ||
-    predicate === "imports.sourceScan";
   const subjectKind =
     predicate === "runtime.trace"
       ? "runtime-instance"
       : predicate.startsWith("artifacts.")
         ? "artifact"
-        : workspaceLevelPredicate && spec.subjectKind === "shared-package"
-          ? "project"
-          : spec.subjectKind;
+        : spec.subjectKind;
   return {
     predicate,
     layer,

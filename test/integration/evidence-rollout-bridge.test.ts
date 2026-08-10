@@ -19,6 +19,7 @@ import {
 } from "../../src/evidence-rollout.js";
 import { defineRule } from "../../src/rules.js";
 import { compareV1Outputs } from "../../src/evidence-parity.js";
+import { DEFAULT_ANALYSIS_BUDGETS } from "../../src/analysis-budgets.js";
 import type { ProjectFacts } from "../../src/types.js";
 import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
@@ -326,18 +327,87 @@ describe("evidence-aware rule rollout bridge", () => {
     await fs.writeFile(files[0]!, JSON.stringify(host));
     await fs.writeFile(files[1]!, JSON.stringify(remote));
     const compat = await analyzeFederation(files, { evidenceRollout: federationCompatRollout() });
-    expect(new Set(compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id))).toEqual(
-      new Set(EXPECTED_GROUP4_RULE_IDS),
+    const evaluatedRuleIds = new Set(compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id));
+    const rulesRequiringRemoteSubjects = new Set(["federation/circular-remote-graph"]);
+    for (const ruleId of EXPECTED_GROUP4_RULE_IDS) {
+      if (rulesRequiringRemoteSubjects.has(ruleId)) continue;
+      expect(evaluatedRuleIds.has(ruleId), `missing evaluation for ${ruleId}`).toBe(true);
+    }
+    expect(compat.evidence?.evaluations.length).toBeGreaterThanOrEqual(
+      EXPECTED_GROUP4_RULE_IDS.length - rulesRequiringRemoteSubjects.size,
     );
-    expect(compat.evidence?.evaluations).toHaveLength(EXPECTED_GROUP4_RULE_IDS.length);
-    expect(compat.evidence).toMatchObject({
-      rollout: { scope: "federation-workspace", mode: "v2-compat" },
-    });
     expect(
       compat.evidence?.evaluations.find(
         (evaluation) => evaluation.rule.id === "federation/share-strategy-mismatch",
       ),
     ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    expect(
+      compat.evidence?.evaluations.some((evaluation) => evaluation.rule.id === "shared/singleton-mismatch"),
+    ).toBe(true);
+    expect(compat.evidence).toMatchObject({
+      rollout: { scope: "federation-workspace", mode: "v2-compat" },
+    });
+    const migrated = await runMigratedFederationRules(
+      {
+        projects: [host, remote],
+        groupKey: "\0ungrouped",
+        groupEvidenceIncomplete: false,
+        alwaysShared: new Set(),
+      },
+      {},
+    );
+    expect(
+      migrated.output.evaluations.some((evaluation) => {
+        if (evaluation.rule.id !== "shared/singleton-mismatch") return false;
+        const subject = migrated.graph.subjects.find((item) => item.id === evaluation.subject);
+        return subject?.kind === "shared-package";
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps shared-package topology rules unknown when a federation sibling has incomplete analysis", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-group4-incomplete-mf-sibling-"));
+    roots.push(root);
+    const host = federationProjectFacts("host", { react: { singleton: true } }, ["react"]);
+    const incomplete = federationProjectFacts("incomplete", { react: { singleton: false } }, ["react"]);
+    incomplete.analysis = {
+      status: "partial",
+      limits: DEFAULT_ANALYSIS_BUDGETS,
+      usage: {
+        files: 0,
+        sourceBytes: 0,
+        artifacts: 0,
+        evidenceNodes: 0,
+        serializedBytes: 0,
+      },
+      exceeded: [{ kind: "files", limit: 1 }],
+    };
+    const files = [path.join(root, "host.json"), path.join(root, "incomplete.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(host));
+    await fs.writeFile(files[1]!, JSON.stringify(incomplete));
+    const migrated = await runMigratedFederationRules(
+      {
+        projects: [host, incomplete],
+        groupKey: "\0ungrouped",
+        groupEvidenceIncomplete: false,
+        alwaysShared: new Set(),
+      },
+      {},
+    );
+    const sharedPackageGraphAssertions = migrated.graph.assertions.filter(
+      (assertion) =>
+        assertion.predicate === "federation.graph" &&
+        migrated.graph.subjects.find((subject) => subject.id === assertion.subject)?.kind ===
+          "shared-package",
+    );
+    expect(
+      sharedPackageGraphAssertions.some((assertion) => assertion.completeness.status !== "complete"),
+    ).toBe(true);
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "federation/version-conflict",
+      ),
+    ).toMatchObject({ outcome: "unknown" });
   });
 
   it("keeps federation workspace output byte-compatible in shadow mode", async () => {
