@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,9 +38,24 @@ const document = {
 
 const content = `${JSON.stringify(document, null, 2)}\n`;
 
+async function formatInventory(rawContent) {
+  const tempPath = path.join(repository, "fixtures/rule-inventory/.v1.generated.json");
+  await fs.mkdir(path.dirname(tempPath), { recursive: true });
+  await fs.writeFile(tempPath, rawContent);
+  execSync(`pnpm exec oxfmt ${JSON.stringify(tempPath)}`, {
+    cwd: repository,
+    stdio: "pipe",
+  });
+  const formatted = await fs.readFile(tempPath, "utf8");
+  await fs.unlink(tempPath).catch(() => {});
+  return formatted;
+}
+
+const formattedContent = await formatInventory(content);
+
 if (check) {
   const current = await fs.readFile(outputPath, "utf8").catch(() => "");
-  if (current !== content) {
+  if (current !== formattedContent) {
     process.stderr.write(
       `Generated rule inventory drift: ${path.relative(repository, outputPath)}\n`,
     );
@@ -49,7 +65,7 @@ if (check) {
   }
 } else {
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, content);
+  await fs.writeFile(outputPath, formattedContent);
   process.stdout.write(
     `Wrote ${path.relative(repository, outputPath)} (${document.ruleCount} rules).\n`,
   );

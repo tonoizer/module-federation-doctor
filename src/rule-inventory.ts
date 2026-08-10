@@ -18,8 +18,8 @@ export interface RuleCompatibilityException {
 }
 
 /** Empty by design for V1 closeout — every current built-in is migrated. */
-export const RULE_COMPATIBILITY_EXCEPTIONS = Object.freeze(
-  [] as const satisfies readonly RuleCompatibilityException[],
+export const RULE_COMPATIBILITY_EXCEPTIONS: readonly RuleCompatibilityException[] = Object.freeze(
+  [],
 );
 
 export interface RuleInventoryEntry extends EvidenceAwareRuleMeta {

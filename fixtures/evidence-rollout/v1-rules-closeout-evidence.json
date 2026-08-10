@@ -43,7 +43,11 @@
     },
     "migration": {
       "status": "green",
-      "evidence": ["fixtures/rule-inventory/v1.json", "test/unit/rule-inventory-closeout.test.ts"]
+      "evidence": [
+        "fixtures/rule-inventory/v1.json",
+        "pnpm inventory:check",
+        "test/unit/rule-inventory-closeout.test.ts"
+      ]
     },
     "security": {
       "status": "green",
