@@ -638,7 +638,7 @@ describe("evidence-aware rule contract", () => {
     expect(ruleInventory.find((entry) => entry.id === "shared/unused")?.status).toBe("migrated");
     expect(
       ruleInventory.find((entry) => entry.id === "config/plugin-package-mismatch")?.evidenceReads,
-    ).toContain("bundler.moduleFederationPluginCount");
+    ).not.toContain("bundler.moduleFederationPluginCount");
     expect(ruleInventory.find((entry) => entry.id === "shared/unused")?.evidenceReads).toContain(
       "imports.sourceScan",
     );

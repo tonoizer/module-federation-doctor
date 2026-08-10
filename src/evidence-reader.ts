@@ -995,25 +995,19 @@ export function migrateProjectFacts(
         ),
       );
     }
-    if (!bundlerFieldEvidence.has("moduleFederationPluginCount")) {
-      const bundlerName = typeof bundlerValue.name === "string" ? bundlerValue.name : "unknown";
-      const pluginCountEvidence =
-        bundlerName === "webpack"
-          ? {
-              value: 0 as EvidenceValue,
-              completeness: completeness(
-                "not-collected",
-                "Webpack plugin registration count requires compiler diagnostics and was not collected.",
-                ["bundler.moduleFederationPluginCount"],
-              ),
-            }
-          : {
-              value: 0 as EvidenceValue,
-              completeness: completeness(
-                "complete",
-                "Non-webpack bundlers treat absent plugin registration as zero without compiler diagnostics.",
-              ),
-            };
+    if (
+      !bundlerFieldEvidence.has("moduleFederationPluginCount") &&
+      typeof bundlerValue.name === "string" &&
+      bundlerValue.name === "webpack"
+    ) {
+      const pluginCountEvidence = {
+        value: 0 as EvidenceValue,
+        completeness: completeness(
+          "not-collected",
+          "Webpack plugin registration count requires compiler diagnostics and was not collected.",
+          ["bundler.moduleFederationPluginCount"],
+        ),
+      };
       bundlerFieldEvidence.set("moduleFederationPluginCount", pluginCountEvidence);
       graph.assertions.push(
         assertion(

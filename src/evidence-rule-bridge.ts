@@ -112,6 +112,18 @@ function sharedUnusedEvidenceInconclusive(context: EvidenceRuleContext): string 
   return undefined;
 }
 
+function pluginPackageMismatchEvidenceInconclusive(
+  context: EvidenceRuleContext,
+): string | undefined {
+  if (!context.facts) return undefined;
+  if (
+    context.facts.bundler.name === "webpack" &&
+    context.facts.bundler.moduleFederationPluginCount === undefined
+  )
+    return "Webpack plugin registration count was not collected; package metadata alone cannot judge the integration.";
+  return undefined;
+}
+
 /**
  * Run the existing V1 check behind the evidence contract. The common runner
  * owns applicability, prerequisites, confidence, unknown results, identities,
@@ -159,7 +171,9 @@ export const migratedEvidenceRules: readonly EvidenceAwareRule[] = MIGRATED_EVID
   (id) =>
     id === "shared/unused"
       ? legacyEvidenceRule(id, sharedUnusedEvidenceInconclusive)
-      : legacyEvidenceRule(id),
+      : id === "config/plugin-package-mismatch"
+        ? legacyEvidenceRule(id, pluginPackageMismatchEvidenceInconclusive)
+        : legacyEvidenceRule(id),
 );
 
 export const migratedEvidenceRuleIds: ReadonlySet<string> = new Set(

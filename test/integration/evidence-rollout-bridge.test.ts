@@ -347,7 +347,7 @@ describe("evidence-aware rule rollout bridge", () => {
       migrated.output.evaluations.find(
         (evaluation) => evaluation.rule.id === "config/plugin-package-mismatch",
       ),
-    ).toMatchObject({ outcome: "unknown", reasonCode: "prerequisite-missing" });
+    ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
 
     const viteRoot = await fixture("group3-vite-plugin-package-rollout-bridge");
     const viteLegacy = await analyze(options(viteRoot, createEvidenceRolloutController()));
@@ -363,6 +363,72 @@ describe("evidence-aware rule rollout bridge", () => {
         (finding) => finding.ruleId === "config/plugin-package-mismatch",
       ),
     ).toBe(true);
+  });
+
+  it("keeps duplicate-plugin unknown when plugin count is absent for non-webpack bundlers", async () => {
+    const root = await fixture("group3-vite-duplicate-plugin-rollout-bridge");
+    const baseline = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      moduleFederation: { name: "host" },
+      output: { formats: [] },
+      rules: quietRules,
+    });
+    const facts = structuredClone(baseline.facts);
+    facts.bundler.federationInstances = [];
+    delete facts.bundler.moduleFederationPluginCount;
+    const migrated = await runMigratedEvidenceRules(facts, {
+      "config/duplicate-plugin-registration": "error",
+      "config/plugin-package-mismatch": "warning",
+    });
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toBeUndefined();
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/duplicate-plugin-registration",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "prerequisite-missing" });
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/plugin-package-mismatch",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+
+    const rspackRoot = await fixture("group3-rspack-duplicate-plugin-rollout-bridge");
+    const rspackBaseline = await analyze({
+      root: rspackRoot,
+      bundler: "rspack",
+      mode: "ci",
+      moduleFederation: { name: "host" },
+      output: { formats: [] },
+      rules: quietRules,
+    });
+    const rspackFacts = structuredClone(rspackBaseline.facts);
+    rspackFacts.bundler.federationInstances = [];
+    delete rspackFacts.bundler.moduleFederationPluginCount;
+    const rspackMigrated = await runMigratedEvidenceRules(rspackFacts, {
+      "config/duplicate-plugin-registration": "error",
+      "config/plugin-package-mismatch": "warning",
+    });
+    expect(
+      rspackMigrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toBeUndefined();
+    expect(
+      rspackMigrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/duplicate-plugin-registration",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "prerequisite-missing" });
+    expect(
+      rspackMigrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/plugin-package-mismatch",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
   });
 
   it("ledgers shared/unused as unknown when unresolved dynamic evidence is inconclusive", async () => {
