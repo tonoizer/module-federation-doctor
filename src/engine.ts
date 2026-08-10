@@ -407,18 +407,23 @@ async function runAnalysis(
       ),
     );
     const exactRuntimeAttribution = (finding: DoctorFinding) => finding.project !== "runtime";
+    const findingsForParity = (findings: readonly DoctorFinding[]) =>
+      [...findings].sort(
+        (left, right) =>
+          left.ruleId.localeCompare(right.ruleId) || left.project.localeCompare(right.project),
+      );
     const parity =
       rolloutMode === "shadow"
         ? compareV1Outputs(
-            [
+            findingsForParity([
               ...legacyFindings.filter((finding) => migratedEvidenceRuleIds.has(finding.ruleId)),
               ...legacyRuntimeFindings.filter(
                 (finding) =>
                   migratedRuntimeEvidenceRuleIds.has(finding.ruleId) &&
                   exactRuntimeAttribution(finding),
               ),
-            ],
-            migratedFindings,
+            ]),
+            findingsForParity(migratedFindings),
           )
         : undefined;
     const rawFindings = sortFindings(

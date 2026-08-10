@@ -2804,3 +2804,158 @@ describe("config/transform-import-share-conflict", () => {
     expect(await run(missing)).toHaveLength(0);
   });
 });
+
+describe("Group 6 evidence bridge", () => {
+  async function runMigrated(
+    facts: ProjectFacts,
+    settings: Readonly<Record<string, import("../../src/types.js").RuleSetting>> = {},
+    selectedBuild?: import("../../src/types.js").BuildRecord,
+  ) {
+    const { runMigratedEvidenceRules } = await import("../../src/evidence-rule-bridge.js");
+    return runMigratedEvidenceRules(facts, settings, undefined, selectedBuild);
+  }
+
+  function viteFacts(overrides: Partial<ProjectFacts> = {}): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/remoteEntry.js",
+            shareScope: ["default"],
+          },
+        },
+        shared: {
+          react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+        },
+        vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [] },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+      ...overrides,
+    };
+  }
+
+  it("returns unknown for absent viteConfig and transformImport facts", async () => {
+    const migrated = await runMigrated(viteFacts());
+    for (const id of [
+      "vite/manual-chunks-conflict",
+      "vite/alias-share-bypass",
+      "vite/server-origin",
+      "config/transform-import-share-conflict",
+    ] as const) {
+      expect(
+        migrated.output.evaluations.find((evaluation) => evaluation.rule.id === id),
+      ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
+    }
+  });
+
+  it("marks vite dialect rules not-applicable on rspack", async () => {
+    const facts = viteFacts({ bundler: { name: "rspack", mode: "ci" } });
+    const migrated = await runMigrated(facts);
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/remotes-prefer-module",
+      ),
+    ).toMatchObject({ outcome: "not-applicable" });
+  });
+
+  it("uses buildMode instead of analysis mode for remote-hmr-dev", async () => {
+    const facts = viteFacts({
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/remoteEntry.js",
+            shareScope: ["default"],
+          },
+        },
+        shared: {},
+        vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [], remoteHmr: false },
+      },
+    });
+    const withoutBuild = await runMigrated(facts, { "vite/remote-hmr-dev": "info" });
+    expect(
+      withoutBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
+      ),
+    ).toMatchObject({ outcome: "pass" });
+
+    const withBuild = await runMigrated(
+      facts,
+      { "vite/remote-hmr-dev": "info" },
+      {
+        id: "vite-build-1",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: "dist",
+        sourceHook: "writeBundle",
+        emittedAssets: [],
+        effectiveMode: "development",
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "unavailable", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+      },
+    );
+    expect(
+      withBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
+      ),
+    ).toMatchObject({ outcome: "fail" });
+  });
+
+  it("keeps doctor/partial-analysis on unknown confidence while projecting capability gaps", async () => {
+    const facts = viteFacts({
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+    });
+    const migrated = await runMigrated(facts, { "doctor/partial-analysis": "warning" });
+    const evaluation = migrated.output.evaluations.find(
+      (item) => item.rule.id === "doctor/partial-analysis",
+    );
+    expect(evaluation).toMatchObject({ outcome: "fail", confidence: "unknown" });
+    const { projectMigratedFailures } = await import("../../src/evidence-rule-bridge.js");
+    const projected = projectMigratedFailures(
+      migrated.output.evaluations,
+      facts,
+      { "doctor/partial-analysis": "warning" },
+      ".",
+    );
+    expect(projected.some((finding) => finding.ruleId === "doctor/partial-analysis")).toBe(true);
+  });
+});

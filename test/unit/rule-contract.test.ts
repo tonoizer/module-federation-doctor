@@ -11,6 +11,7 @@ import {
   MIGRATED_GROUP3_RULE_IDS,
   MIGRATED_GROUP4_RULE_IDS,
   MIGRATED_GROUP5_RULE_IDS,
+  MIGRATED_GROUP6_RULE_IDS,
   ruleInventory,
   ruleInventoryIds,
 } from "../../src/rule-inventory.js";
@@ -622,6 +623,7 @@ describe("evidence-aware rule contract", () => {
       ...MIGRATED_GROUP3_RULE_IDS,
       ...MIGRATED_GROUP4_RULE_IDS,
       ...MIGRATED_GROUP5_RULE_IDS,
+      ...MIGRATED_GROUP6_RULE_IDS,
     ]);
     expect(
       ruleInventory.every((entry) =>
@@ -638,8 +640,17 @@ describe("evidence-aware rule contract", () => {
       expect(entry.version).not.toBe("");
       expect(entry.owner.name).not.toBe("");
       const requirements = requirementPredicates(entry.prerequisites);
+      const optionalPluginFacts: Record<string, readonly string[]> = {
+        "vite/manual-chunks-conflict": ["bundler.viteConfig"],
+        "vite/alias-share-bypass": ["bundler.viteConfig"],
+        "vite/server-origin": ["bundler.viteConfig"],
+        "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
+      };
+      const optionalReads = optionalPluginFacts[entry.id] ?? [];
       expect(requirements.length).toBeGreaterThanOrEqual(2);
-      expect(requirements.sort()).toEqual([...entry.evidenceReads].sort());
+      expect(requirements.sort()).toEqual(
+        [...entry.evidenceReads].filter((read) => !optionalReads.includes(read)).sort(),
+      );
       expect(requirements.every((requirement) => requirement.length > 0)).toBe(true);
       expect(entry.applicability.adapters?.length).toBeGreaterThan(0);
       expect(entry.applicability.bundlers?.length).toBeGreaterThan(0);
@@ -718,6 +729,64 @@ describe("evidence-aware rule contract", () => {
     expect(
       ruleInventory.find((entry) => entry.id === "performance/asset-budget")?.defaultSeverity,
     ).toBe("warning");
+    expect(MIGRATED_GROUP6_RULE_IDS).toEqual([
+      "reliability/snapshot-capability-disabled",
+      "reliability/external-runtime-provider-unverified",
+      "reliability/async-startup-library-promise",
+      "performance/version-first-startup",
+      "reliability/version-first-offline-remotes",
+      "reliability/shared-import-false",
+      "reliability/tree-shaking-server-calc-contract",
+      "performance/vite-bundle-all-css",
+      "reliability/vite-fixed-parse-timeout",
+      "vite/remotes-prefer-module",
+      "vite/var-filename-interop",
+      "vite/host-init-inject-ssr",
+      "vite/ssr-nitro-externals",
+      "vite/manual-chunks-conflict",
+      "vite/hashed-remote-filename",
+      "vite/remote-hmr-dev",
+      "vite/alias-share-bypass",
+      "vite/server-origin",
+      "config/transform-import-share-conflict",
+      "doctor/partial-analysis",
+    ]);
+    for (const id of [
+      "reliability/snapshot-capability-disabled",
+      "reliability/external-runtime-provider-unverified",
+      "reliability/async-startup-library-promise",
+      "performance/version-first-startup",
+      "reliability/version-first-offline-remotes",
+      "reliability/shared-import-false",
+      "reliability/tree-shaking-server-calc-contract",
+    ]) {
+      const entry = ruleInventory.find((item) => item.id === id);
+      expect(entry?.confidenceCeiling, id).not.toBe("unknown");
+      expect(entry?.status, id).toBe("migrated");
+    }
+    expect(
+      ruleInventory.find((entry) => entry.id === "doctor/partial-analysis")?.confidenceCeiling,
+    ).toBe("unknown");
+    for (const id of [
+      "vite/remotes-prefer-module",
+      "vite/var-filename-interop",
+      "vite/host-init-inject-ssr",
+      "vite/ssr-nitro-externals",
+      "vite/manual-chunks-conflict",
+      "vite/hashed-remote-filename",
+      "vite/remote-hmr-dev",
+      "vite/alias-share-bypass",
+      "vite/server-origin",
+      "performance/vite-bundle-all-css",
+      "reliability/vite-fixed-parse-timeout",
+    ]) {
+      expect(
+        ruleInventory
+          .find((entry) => entry.id === id)
+          ?.applicability.bundlers?.map((item) => item.name),
+        id,
+      ).toEqual(["vite"]);
+    }
   });
 
   it("keeps declared reads aligned with the current built-in rule source", () => {
