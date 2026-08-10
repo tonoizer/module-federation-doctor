@@ -12,6 +12,7 @@ import {
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
   MIGRATED_GROUP3_RULE_IDS,
+  MIGRATED_GROUP5_RULE_IDS,
   ruleInventory,
 } from "./rule-inventory.js";
 import {
@@ -30,10 +31,16 @@ import type {
   ProjectFacts,
   RuleContext,
   RuleSetting,
+  RuntimeTraceReport,
   Severity,
 } from "./types.js";
 import { shouldSkipMf2SharedUnused } from "./mf-toolkit-shapes.js";
 import { fingerprint, redact } from "./utils.js";
+import {
+  attachRuntimeTraceEvidence,
+  classifyRuntimeAttribution,
+  correlateRuntime,
+} from "./runtime-trace.js";
 
 type LegacyFindingInput = Omit<
   DoctorFinding,
@@ -44,9 +51,12 @@ export type MigratedEvidenceRuleId =
   | (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number]
   | (typeof MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS)[number]
   | (typeof MIGRATED_GROUP2_RULE_IDS)[number]
-  | (typeof MIGRATED_GROUP3_RULE_IDS)[number];
+  | (typeof MIGRATED_GROUP3_RULE_IDS)[number]
+  | (typeof MIGRATED_GROUP5_RULE_IDS)[number];
 
-const MIGRATED_EVIDENCE_RULE_IDS = [
+export type MigratedRuntimeEvidenceRuleId = (typeof MIGRATED_GROUP5_RULE_IDS)[number];
+
+const MIGRATED_STATIC_EVIDENCE_RULE_IDS = [
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   ...MIGRATED_GROUP2_RULE_IDS,
@@ -131,7 +141,7 @@ function pluginPackageMismatchEvidenceInconclusive(
  * the rule gets a dedicated evidence-native evaluator in a later slice.
  */
 function legacyEvidenceRule(
-  id: MigratedEvidenceRuleId,
+  id: (typeof MIGRATED_STATIC_EVIDENCE_RULE_IDS)[number],
   inconclusive?: (context: EvidenceRuleContext) => string | undefined,
 ): EvidenceAwareRule {
   const legacy = builtInRules.find((rule) => rule.meta.id === id);
@@ -167,17 +177,114 @@ function legacyEvidenceRule(
   };
 }
 
-export const migratedEvidenceRules: readonly EvidenceAwareRule[] = MIGRATED_EVIDENCE_RULE_IDS.map(
-  (id) =>
+/**
+ * Run correlateRuntime as the compatibility oracle for one runtime rule when
+ * attribution is exact and runtime.trace prerequisites are satisfied.
+ */
+function runtimeEvidenceRule(id: MigratedRuntimeEvidenceRuleId): EvidenceAwareRule {
+  return {
+    meta: inventoryEntry(id),
+    evaluate(context: EvidenceRuleContext) {
+      const traces = context.options.runtimeTraces as RuntimeTraceReport[] | undefined;
+      const projects = context.options.runtimeProjects as ProjectFacts[] | undefined;
+      if (!traces?.length || !projects?.length) {
+        return {
+          outcome: "unknown" as const,
+          reason: "Runtime trace evidence was not opted in for this analysis.",
+          reasonCode: "evidence-inconclusive" as const,
+        };
+      }
+      const traceAssertion = context.evidence.find({
+        predicate: "runtime.trace",
+        layer: "runtime",
+        subjectKind: "runtime-instance",
+        minimumConfidence: "high",
+        minimumCompleteness: "complete",
+      });
+      if (traceAssertion.length === 0) {
+        const weak = context.evidence.find({
+          predicate: "runtime.trace",
+          layer: "runtime",
+          subjectKind: "runtime-instance",
+        });
+        if (weak.length === 0) {
+          return {
+            outcome: "unknown" as const,
+            reason: "Required runtime.trace evidence is missing for this subject.",
+            reasonCode: "evidence-inconclusive" as const,
+          };
+        }
+        const completeness = weak[0]?.completeness.status;
+        if (completeness === "partial" || completeness === "unknown") {
+          return {
+            outcome: "unknown" as const,
+            reason: "Runtime trace evidence is partial or stale.",
+            reasonCode: "evidence-inconclusive" as const,
+          };
+        }
+        return {
+          outcome: "unknown" as const,
+          reason: "Runtime trace attribution is too weak to judge this rule.",
+          reasonCode: "evidence-inconclusive" as const,
+        };
+      }
+      const subjectTraceId = context.subject.attributes?.traceId;
+      const scopedTraces = subjectTraceId
+        ? traces.filter((trace) => trace.traceId === subjectTraceId)
+        : traces;
+      const exactTraces = scopedTraces.filter(
+        (trace) => classifyRuntimeAttribution(trace, projects).exactAttribution,
+      );
+      if (exactTraces.length === 0) {
+        return {
+          outcome: "unknown" as const,
+          reason: "Runtime trace attribution is ambiguous or weak for this subject.",
+          reasonCode: "evidence-inconclusive" as const,
+        };
+      }
+      const findings = correlateRuntime(exactTraces, projects).filter(
+        (finding) => finding.ruleId === id,
+      );
+      if (findings.length === 0) {
+        return {
+          outcome: "pass" as const,
+          reason: `Evidence prerequisites passed for ${id}; runtime correlation found no issue.`,
+        };
+      }
+      const projected = findings.map((finding) =>
+        toEvidenceFinding({
+          message: finding.message,
+          evidence: finding.evidence,
+          ...(finding.suggestion ? { suggestion: finding.suggestion } : {}),
+        }),
+      );
+      return {
+        outcome: "fail" as const,
+        reason: projected[0]!.message,
+        findings: projected,
+      };
+    },
+  };
+}
+
+export const migratedRuntimeEvidenceRules: readonly EvidenceAwareRule[] =
+  MIGRATED_GROUP5_RULE_IDS.map((id) => runtimeEvidenceRule(id));
+
+export const migratedEvidenceRules: readonly EvidenceAwareRule[] =
+  MIGRATED_STATIC_EVIDENCE_RULE_IDS.map((id) =>
     id === "shared/unused"
       ? legacyEvidenceRule(id, sharedUnusedEvidenceInconclusive)
       : id === "config/plugin-package-mismatch"
         ? legacyEvidenceRule(id, pluginPackageMismatchEvidenceInconclusive)
         : legacyEvidenceRule(id),
-);
+  );
 
 export const migratedEvidenceRuleIds: ReadonlySet<string> = new Set(
   migratedEvidenceRules.map((rule) => rule.meta.id),
+);
+
+export const migratedRuntimeEvidenceRuleIds: ReadonlySet<string> = new Set(
+  migratedRuntimeEvidenceRules.map((rule) => rule.meta.id),
 );
 
 function projectRole(facts: ProjectFacts): string {
@@ -405,6 +512,27 @@ function ruleOptionsFor(
   );
 }
 
+function runtimeRuleOptionsFor(
+  settings: Readonly<Record<string, RuleSetting>>,
+  traces: readonly RuntimeTraceReport[],
+  projects: readonly ProjectFacts[],
+): Readonly<Record<string, Readonly<Record<string, unknown>>>> {
+  return Object.fromEntries(
+    migratedRuntimeEvidenceRules.map((rule) => {
+      const setting = settings[rule.meta.id];
+      const options = Array.isArray(setting) ? setting[1] : {};
+      return [
+        rule.meta.id,
+        {
+          ...options,
+          runtimeTraces: traces,
+          runtimeProjects: projects,
+        },
+      ];
+    }),
+  );
+}
+
 /** Build the v2 view from collected facts and run the migrated slice. */
 export async function runMigratedEvidenceRules(
   facts: ProjectFacts,
@@ -447,6 +575,49 @@ export async function runMigratedEvidenceRules(
   return { graph, output: { ...output, execution: [...disabled, ...output.execution] } };
 }
 
+/** Run Group 5 runtime rules when opted-in runtime traces are attached. */
+export async function runMigratedRuntimeEvidenceRules(
+  facts: ProjectFacts,
+  projects: readonly ProjectFacts[],
+  traces: readonly RuntimeTraceReport[],
+  settings: Readonly<Record<string, RuleSetting>>,
+  analysisBudget?: AnalysisBudgetTracker,
+  bridgeContext?: EvidenceBridgeContext,
+): Promise<MigratedEvidenceRun> {
+  const graph = migrateProjectFacts(
+    factsForEvidence(facts),
+    analysisBudget ? { analysisBudget } : {},
+  );
+  attachRuntimeTraceEvidence(graph, traces, projects);
+  const scope = evidenceRuleScopeFor(facts);
+  const graphScope = applyGraphScope(graph, scope);
+  const rules = migratedRuntimeEvidenceRules.filter((rule) => settings[rule.meta.id] !== "off");
+  const disabled: RuleExecutionState[] = migratedRuntimeEvidenceRules
+    .filter((rule) => settings[rule.meta.id] === "off")
+    .map((rule) => ({
+      state: "disabled" as const,
+      rule: { id: rule.meta.id, version: rule.meta.version },
+      reason: 'Rule is disabled by configuration (setting is "off").',
+    }));
+  const output = await runEvidenceAwareRules({
+    graph,
+    rules,
+    facts,
+    scope,
+    ruleOptions: runtimeRuleOptionsFor(settings, traces, projects),
+    ...(bridgeContext?.root ? { root: bridgeContext.root } : {}),
+    ...(bridgeContext?.sharedPolicy ? { sharedPolicy: bridgeContext.sharedPolicy } : {}),
+    ...(bridgeContext?.recognizeMfToolkit !== undefined
+      ? { recognizeMfToolkit: bridgeContext.recognizeMfToolkit }
+      : {}),
+    ...(analysisBudget ? { analysisBudget } : {}),
+  });
+  graph.evaluations = output.evaluations
+    .map((evaluation) => graphEvaluationFor(evaluation, graphScope))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  return { graph, output: { ...output, execution: [...disabled, ...output.execution] } };
+}
+
 function severityFor(setting: RuleSetting | undefined, fallback: Severity): Severity | undefined {
   if (setting === "off") return undefined;
   if (setting && typeof setting !== "string") return setting[0];
@@ -460,7 +631,10 @@ export function projectMigratedFailures(
   settings: Readonly<Record<string, RuleSetting>>,
   root: string,
 ): DoctorFinding[] {
-  const rules = new Map(migratedEvidenceRules.map((rule) => [rule.meta.id, rule]));
+  const rules = new Map([
+    ...migratedEvidenceRules.map((rule) => [rule.meta.id, rule] as const),
+    ...migratedRuntimeEvidenceRules.map((rule) => [rule.meta.id, rule] as const),
+  ]);
   const findings: DoctorFinding[] = [];
   for (const evaluation of evaluations) {
     if (evaluation.outcome !== "fail") continue;

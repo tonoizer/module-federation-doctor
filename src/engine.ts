@@ -22,6 +22,7 @@ import {
   migratedEvidenceRuleIds,
   projectMigratedFailures,
   runMigratedEvidenceRules,
+  runMigratedRuntimeEvidenceRules,
   type MigratedEvidenceRun,
 } from "./evidence-rule-bridge.js";
 import { createEvidenceRolloutController } from "./evidence-rollout.js";
@@ -361,6 +362,32 @@ async function runAnalysis(
               ),
             );
           }
+        }
+      }
+      if (resolved.runtimeTrace) {
+        try {
+          const { loadRuntimeTraceFile } = await import("./runtime-trace.js");
+          const runtimeTraces = await loadRuntimeTraceFile(resolved.runtimeTrace);
+          if (runtimeTraces.length > 0) {
+            const run = await runMigratedRuntimeEvidenceRules(
+              facts,
+              scopedFacts.length > 0 ? scopedFacts : [facts],
+              runtimeTraces,
+              resolved.rules,
+              bridgeBudget,
+              {
+                root: resolved.root,
+                sharedPolicy: resolved.sharedPolicy,
+                ...(resolved.recognizeMfToolkit !== undefined
+                  ? { recognizeMfToolkit: resolved.recognizeMfToolkit }
+                  : {}),
+              },
+            );
+            migratedRuns.push({ facts, run });
+            migratedProjectionRuns.push({ facts, run });
+          }
+        } catch (error) {
+          migratedExecutionErrors.push(...bridgeEngineErrors(resolved.rules, error, resolved.root));
         }
       }
     }

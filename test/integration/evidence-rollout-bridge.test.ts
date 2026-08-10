@@ -3,7 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { analyze, analyzeBuild, analyzeFederation } from "../../src/engine.js";
-import { evidenceRuleScopeFor, runMigratedEvidenceRules } from "../../src/evidence-rule-bridge.js";
+import {
+  evidenceRuleScopeFor,
+  runMigratedEvidenceRules,
+  runMigratedRuntimeEvidenceRules,
+} from "../../src/evidence-rule-bridge.js";
 import {
   runMigratedFederationRules,
   migratedFederationEvidenceRuleIds,
@@ -15,14 +19,15 @@ import {
 } from "../../src/evidence-rollout.js";
 import { defineRule } from "../../src/rules.js";
 import { compareV1Outputs } from "../../src/evidence-parity.js";
+import type { ProjectFacts } from "../../src/types.js";
 import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
   MIGRATED_GROUP3_RULE_IDS,
   MIGRATED_GROUP4_RULE_IDS,
+  MIGRATED_GROUP5_RULE_IDS,
 } from "../../src/rule-inventory.js";
-import type { ProjectFacts } from "../../src/types.js";
 
 const roots: string[] = [];
 const greenGates = Object.fromEntries(RELEASE_GATES.map((gate) => [gate, true]));
@@ -117,6 +122,14 @@ const EXPECTED_GROUP4_RULE_IDS = [
   "federation/ghost-shares",
   "shared/singleton-mismatch",
   "federation/external-runtime-provider-missing",
+] as const;
+
+const EXPECTED_GROUP5_RULE_IDS = [
+  "runtime/remote-load-failed",
+  "runtime/init-failed",
+  "runtime/shared-mismatch",
+  "runtime/remote-unknown",
+  "runtime/error-correlated",
 ] as const;
 
 const migratedRuleCount =
@@ -552,6 +565,169 @@ describe("evidence-aware rule rollout bridge", () => {
         (evaluation) => evaluation.rule.id === "federation/ghost-shares",
       ),
     ).toMatchObject({ outcome: "fail", completeness: "complete" });
+  });
+
+  it("routes the exact Group 5 migration tuple only when runtime traces are attached", async () => {
+    expect(MIGRATED_GROUP5_RULE_IDS).toEqual(EXPECTED_GROUP5_RULE_IDS);
+    const root = await fixture("group5-migration-rollout-bridge");
+    const baseline = await analyze(options(root, compatRollout()));
+    expect(
+      baseline.evidence?.evaluations.some((evaluation) =>
+        MIGRATED_GROUP5_RULE_IDS.includes(evaluation.rule.id as never),
+      ),
+    ).toBe(false);
+
+    const tracePath = path.resolve("fixtures/runtime-traces/remote-load-failed.json");
+    const hostFacts = {
+      schemaVersion: 1 as const,
+      project: { name: "host", root },
+      bundler: { name: "vite" as const, mode: "production" as const },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: true,
+        stats: false,
+        emittedAssets: true,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          checkout: {
+            name: "checkout",
+            entry: "https://cdn.example.com/checkout/mf-manifest.json",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"] as const,
+      },
+      artifacts: {
+        emittedAssets: [],
+        manifest: {
+          path: "mf-manifest.json",
+          valid: true,
+          id: "host",
+          name: "host",
+          exposes: [],
+          shared: [],
+        },
+      },
+    } satisfies ProjectFacts;
+    const checkoutFacts = {
+      ...hostFacts,
+      project: { name: "checkout", root },
+      moduleFederation: {
+        name: "checkout",
+        exposes: {},
+        remotes: {},
+        shared: {},
+      },
+      artifacts: { emittedAssets: [] },
+    } satisfies ProjectFacts;
+    const traces = await import("../../src/runtime-trace.js").then((module) =>
+      module.loadRuntimeTraceFile(tracePath),
+    );
+    const run = await runMigratedRuntimeEvidenceRules(
+      hostFacts,
+      [hostFacts, checkoutFacts],
+      traces,
+      {
+        "runtime/remote-load-failed": "error",
+        "runtime/error-correlated": "error",
+      },
+    );
+    expect(new Set(run.output.evaluations.map((evaluation) => evaluation.rule.id))).toEqual(
+      new Set(EXPECTED_GROUP5_RULE_IDS),
+    );
+    expect(
+      run.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "runtime/remote-load-failed",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    const projected = await import("../../src/evidence-rule-bridge.js").then((module) =>
+      module.projectMigratedFailures(
+        run.output.evaluations,
+        hostFacts,
+        {
+          "runtime/remote-load-failed": "error",
+          "runtime/error-correlated": "error",
+        },
+        root,
+      ),
+    );
+    expect(projected.some((finding) => finding.ruleId === "runtime/remote-load-failed")).toBe(true);
+    expect(projected.every((finding) => finding.project !== "runtime")).toBe(true);
+  });
+
+  it("keeps weak runtime attribution unknown in the evidence bridge", async () => {
+    const root = await fixture("group5-weak-attribution-rollout-bridge");
+    const hostFacts = {
+      schemaVersion: 1 as const,
+      project: { name: "host", root },
+      bundler: { name: "vite" as const, mode: "production" as const },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: true,
+        stats: false,
+        emittedAssets: true,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          checkout: {
+            name: "checkout",
+            alias: "checkout",
+            entry: "https://cdn.example/checkout.js",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"] as const,
+      },
+      artifacts: { emittedAssets: [] },
+    } satisfies ProjectFacts;
+    const traces = await import("../../src/runtime-trace.js").then((module) =>
+      module.parseRuntimeTraces({
+        requestAlias: "checkout",
+        summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+      }),
+    );
+    const run = await runMigratedRuntimeEvidenceRules(hostFacts, [hostFacts], traces, {
+      "runtime/remote-load-failed": "error",
+    });
+    expect(
+      run.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "runtime/remote-load-failed",
+      ),
+    ).toMatchObject({ outcome: "unknown" });
+    expect(
+      run.graph.assertions.some(
+        (assertion) => assertion.predicate === "runtime.trace" && assertion.layer === "runtime",
+      ),
+    ).toBe(false);
   });
 
   it("routes Group 3 heuristic rules through the bridge with V1 parity", async () => {

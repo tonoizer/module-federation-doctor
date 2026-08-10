@@ -4,11 +4,16 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   analyzeRuntime,
+  attachRuntimeTraceEvidence,
+  classifyRuntimeAttribution,
   correlateRuntime,
   loadRuntimeTraceFile,
   parseRuntimeTraces,
   RuntimeTraceError,
 } from "../../src/runtime-trace.js";
+import { migrateProjectFacts } from "../../src/evidence-reader.js";
+import { normalizeEvidenceGraph } from "../../src/evidence.js";
+import { runMigratedRuntimeEvidenceRules } from "../../src/evidence-rule-bridge.js";
 import {
   DEFAULT_RUNTIME_CAPTURE_LIMITS,
   HARD_RUNTIME_CAPTURE_LIMITS,
@@ -1066,5 +1071,173 @@ describe("runtime trace import", () => {
       failureCode: "invalid-field",
       pointer: "/shared/requiredVersion",
     });
+  });
+
+  it("classifies exact, weak, ambiguous, partial, and equal-name attribution", () => {
+    const host = baseProject({
+      name: "host",
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          checkout: {
+            name: "checkout",
+            entry: "https://cdn.example/checkout.js",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+    });
+    const checkout = baseProject({ name: "checkout" });
+    const exact = classifyRuntimeAttribution(
+      parseRuntimeTraces({
+        remote: { name: "checkout" },
+        diagnosis: { ownerHint: "remote" },
+        summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+      })[0]!,
+      [host, checkout],
+    );
+    expect(exact).toMatchObject({
+      projectName: "checkout",
+      exactAttribution: true,
+      confidence: "exact",
+      completeness: "complete",
+    });
+
+    const weak = classifyRuntimeAttribution(
+      parseRuntimeTraces({
+        requestAlias: "checkout",
+        summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+      })[0]!,
+      [host],
+    );
+    expect(weak).toMatchObject({
+      projectName: "runtime",
+      exactAttribution: false,
+      confidence: "low",
+    });
+
+    const ambiguous = classifyRuntimeAttribution(
+      parseRuntimeTraces({
+        hostName: "host",
+        remote: { name: "checkout" },
+        ownerHint: "host",
+        diagnosis: { ownerHint: "remote" },
+        summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+      })[0]!,
+      [host, checkout],
+    );
+    expect(ambiguous.ownerHintConflict).toBe(true);
+    expect(ambiguous.exactAttribution).toBe(false);
+
+    const partial = classifyRuntimeAttribution(
+      parseRuntimeTraces({ traceId: "partial", status: "pending", events: [] })[0]!,
+      [host],
+    );
+    expect(partial.completeness).toBe("partial");
+    expect(partial.exactAttribution).toBe(false);
+
+    const duplicate = classifyRuntimeAttribution(
+      parseRuntimeTraces({
+        remote: { name: "checkout" },
+        summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+      })[0]!,
+      [
+        host,
+        baseProject({ name: "checkout", project: { name: "checkout", root: "/a" } }),
+        baseProject({ name: "checkout", project: { name: "checkout", root: "/b" } }),
+      ],
+    );
+    expect(duplicate.projectName).toBe("runtime");
+    expect(duplicate.exactAttribution).toBe(false);
+  });
+
+  it("attaches runtime.trace evidence only for known identity scopes", () => {
+    const host = baseProject({
+      name: "host",
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          checkout: {
+            name: "checkout",
+            entry: "https://cdn.example/checkout.js",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+    });
+    const checkout = baseProject({ name: "checkout" });
+    const graph = migrateProjectFacts(host);
+    attachRuntimeTraceEvidence(
+      graph,
+      parseRuntimeTraces({
+        remote: { name: "checkout" },
+        traceId: "exact",
+        diagnosis: { ownerHint: "remote" },
+        summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+      }),
+      [host, checkout],
+    );
+    expect(graph.subjects.some((subject) => subject.kind === "runtime-instance")).toBe(true);
+    const runtimeTrace = graph.assertions.find(
+      (assertion) => assertion.predicate === "runtime.trace",
+    );
+    expect(runtimeTrace).toMatchObject({
+      layer: "runtime",
+      confidence: { level: "high" },
+      completeness: { status: "complete" },
+    });
+    expect(JSON.stringify(runtimeTrace?.value)).not.toMatch(/secret-token|Bearer/);
+    expect(() => normalizeEvidenceGraph(graph)).not.toThrow();
+
+    const weakGraph = migrateProjectFacts(host);
+    attachRuntimeTraceEvidence(
+      weakGraph,
+      parseRuntimeTraces({
+        requestAlias: "checkout",
+        traceId: "weak",
+        summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+      }),
+      [host],
+    );
+    expect(weakGraph.assertions.some((assertion) => assertion.predicate === "runtime.trace")).toBe(
+      false,
+    );
+  });
+
+  it("runs migrated runtime rules without graph cycles", async () => {
+    const host = baseProject({
+      name: "host",
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          checkout: {
+            name: "checkout",
+            entry: "https://cdn.example/checkout.js",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+    });
+    const checkout = baseProject({ name: "checkout" });
+    const traces = parseRuntimeTraces({
+      remote: { name: "checkout" },
+      traceId: "exact",
+      diagnosis: { ownerHint: "remote" },
+      summary: { outcome: "failed", phases: { remoteEntry: { status: "error" } } },
+    });
+    const run = await runMigratedRuntimeEvidenceRules(host, [host, checkout], traces, {
+      "runtime/remote-load-failed": "error",
+    });
+    expect(
+      run.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "runtime/remote-load-failed",
+      ),
+    ).toMatchObject({ outcome: "fail" });
   });
 });
