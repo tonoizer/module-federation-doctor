@@ -715,7 +715,9 @@ describe("evidence-aware rule contract", () => {
         }
       }
     }
-    const circularRemote = ruleInventory.find((item) => item.id === "federation/circular-remote-graph");
+    const circularRemote = ruleInventory.find(
+      (item) => item.id === "federation/circular-remote-graph",
+    );
     expect(circularRemote).toBeTruthy();
     for (const selector of requirementSelectors(circularRemote!.prerequisites)) {
       if (!("predicate" in selector)) continue;

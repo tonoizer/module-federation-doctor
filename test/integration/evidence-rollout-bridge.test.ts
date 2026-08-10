@@ -327,7 +327,9 @@ describe("evidence-aware rule rollout bridge", () => {
     await fs.writeFile(files[0]!, JSON.stringify(host));
     await fs.writeFile(files[1]!, JSON.stringify(remote));
     const compat = await analyzeFederation(files, { evidenceRollout: federationCompatRollout() });
-    const evaluatedRuleIds = new Set(compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id));
+    const evaluatedRuleIds = new Set(
+      compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id),
+    );
     const rulesRequiringRemoteSubjects = new Set(["federation/circular-remote-graph"]);
     for (const ruleId of EXPECTED_GROUP4_RULE_IDS) {
       if (rulesRequiringRemoteSubjects.has(ruleId)) continue;
@@ -342,7 +344,9 @@ describe("evidence-aware rule rollout bridge", () => {
       ),
     ).toMatchObject({ outcome: "fail", completeness: "complete" });
     expect(
-      compat.evidence?.evaluations.some((evaluation) => evaluation.rule.id === "shared/singleton-mismatch"),
+      compat.evidence?.evaluations.some(
+        (evaluation) => evaluation.rule.id === "shared/singleton-mismatch",
+      ),
     ).toBe(true);
     expect(compat.evidence).toMatchObject({
       rollout: { scope: "federation-workspace", mode: "v2-compat" },
@@ -369,7 +373,9 @@ describe("evidence-aware rule rollout bridge", () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-group4-incomplete-mf-sibling-"));
     roots.push(root);
     const host = federationProjectFacts("host", { react: { singleton: true } }, ["react"]);
-    const incomplete = federationProjectFacts("incomplete", { react: { singleton: false } }, ["react"]);
+    const incomplete = federationProjectFacts("incomplete", { react: { singleton: false } }, [
+      "react",
+    ]);
     incomplete.analysis = {
       status: "partial",
       limits: DEFAULT_ANALYSIS_BUDGETS,
@@ -401,7 +407,9 @@ describe("evidence-aware rule rollout bridge", () => {
           "shared-package",
     );
     expect(
-      sharedPackageGraphAssertions.some((assertion) => assertion.completeness.status !== "complete"),
+      sharedPackageGraphAssertions.some(
+        (assertion) => assertion.completeness.status !== "complete",
+      ),
     ).toBe(true);
     expect(
       migrated.output.evaluations.find(

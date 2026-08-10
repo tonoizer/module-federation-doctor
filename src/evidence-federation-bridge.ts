@@ -1,5 +1,11 @@
 import type { AnalysisBudgetTracker, AnalysisBudgetReport } from "./analysis-budgets.js";
-import type { EvidenceGraphV2, EvidenceRuleEvaluation, EvidenceScope, EvidenceSubject, EvidenceValue } from "./evidence.js";
+import type {
+  EvidenceGraphV2,
+  EvidenceRuleEvaluation,
+  EvidenceScope,
+  EvidenceSubject,
+  EvidenceValue,
+} from "./evidence.js";
 import {
   evaluateFederationWorkspaceOracle,
   type FederationOracleFinding,
@@ -70,11 +76,7 @@ function remoteEdgeMatchesFinding(
   return edges.some((edge) => {
     if (!edge || typeof edge !== "object") return false;
     const record = edge as Record<string, unknown>;
-    return (
-      record.project === fromProject &&
-      record.remote === remoteName &&
-      record.alias === alias
-    );
+    return record.project === fromProject && record.remote === remoteName && record.alias === alias;
   });
 }
 
@@ -197,7 +199,9 @@ export async function runMigratedFederationRules(
   );
   const representativeBundler = input.projects[0]?.bundler.name ?? "unknown";
   const workspaceName = input.groupKey === "\0ungrouped" ? "workspace" : input.groupKey;
-  if (!graph.subjects.some((subject) => subject.kind === "project" && subject.name === workspaceName)) {
+  if (
+    !graph.subjects.some((subject) => subject.kind === "project" && subject.name === workspaceName)
+  ) {
     throw new Error("Federation workspace subject is missing from the graph.");
   }
   const scope: EvidenceRuleScope = {
