@@ -1155,7 +1155,7 @@ describe("runtime trace import", () => {
     expect(duplicate.exactAttribution).toBe(false);
   });
 
-  it("attaches runtime.trace evidence only for known identity scopes", () => {
+  it("attaches runtime.trace with high confidence for exact attribution and low for weak", () => {
     const host = baseProject({
       name: "host",
       moduleFederation: {
@@ -1205,9 +1205,13 @@ describe("runtime trace import", () => {
       }),
       [host],
     );
-    expect(weakGraph.assertions.some((assertion) => assertion.predicate === "runtime.trace")).toBe(
-      false,
+    const weakRuntimeTrace = weakGraph.assertions.find(
+      (assertion) => assertion.predicate === "runtime.trace",
     );
+    expect(weakRuntimeTrace).toMatchObject({
+      layer: "runtime",
+      confidence: { level: "low" },
+    });
   });
 
   it("runs migrated runtime rules without graph cycles", async () => {

@@ -722,17 +722,20 @@ describe("evidence-aware rule rollout bridge", () => {
     const run = await runMigratedRuntimeEvidenceRules(hostFacts, [hostFacts], traces, {
       "runtime/remote-load-failed": "error",
     });
-    expect(run.graph.subjects.some((subject) => subject.kind === "runtime-instance")).toBe(false);
+    expect(run.graph.subjects.some((subject) => subject.kind === "runtime-instance")).toBe(true);
     expect(
       run.output.evaluations.find(
         (evaluation) => evaluation.rule.id === "runtime/remote-load-failed",
       ),
-    ).toBeUndefined();
+    ).toMatchObject({ outcome: "unknown" });
     expect(
       run.graph.assertions.some(
-        (assertion) => assertion.predicate === "runtime.trace" && assertion.layer === "runtime",
+        (assertion) =>
+          assertion.predicate === "runtime.trace" &&
+          assertion.layer === "runtime" &&
+          assertion.confidence.level === "low",
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("routes Group 3 heuristic rules through the bridge with V1 parity", async () => {

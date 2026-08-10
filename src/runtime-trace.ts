@@ -1402,7 +1402,7 @@ export function attachRuntimeTraceEvidence(
   const scopedProjects = runtimeScopedProjects([...projects]);
   for (const [index, trace] of traces.entries()) {
     const attribution = classifyRuntimeAttribution(trace, scopedProjects);
-    if (!attribution.scopeProject || attribution.projectName === "runtime") continue;
+    if (!attribution.scopeProject) continue;
     const traceKey = runtimeTraceKey(trace, index);
     const scopeProject = attribution.scopeProject;
     const runtimeSubject: EvidenceSubject = {
