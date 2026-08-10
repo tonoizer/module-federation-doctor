@@ -3075,4 +3075,16 @@ describe("Group 6 evidence bridge", () => {
     );
     expect(projected.some((finding) => finding.ruleId === "doctor/partial-analysis")).toBe(true);
   });
+
+  it("evaluates doctor/partial-analysis without moduleFederation evidence", async () => {
+    const facts = viteFacts();
+    delete facts.moduleFederation;
+    facts.capabilities.config = false;
+    const migrated = await runMigrated(facts, { "doctor/partial-analysis": "warning" });
+    const evaluation = migrated.output.evaluations.find(
+      (item) => item.rule.id === "doctor/partial-analysis",
+    );
+    expect(evaluation).toMatchObject({ outcome: "fail", confidence: "unknown" });
+    expect(evaluation?.reasonCode).not.toBe("prerequisite-missing");
+  });
 });
