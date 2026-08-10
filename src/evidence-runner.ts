@@ -486,13 +486,14 @@ export async function runEvidenceAwareRules(
         continue;
       }
       const prerequisite = requirementState(rule.meta.prerequisites, query);
+      const unknownCeiling = rule.meta.confidenceCeiling === "unknown";
       const confidence = capConfidence(
         prerequisite.confidence as never,
         rule.meta.confidenceCeiling,
       );
       if (
         !prerequisite.ok ||
-        confidence === "unknown" ||
+        (!unknownCeiling && confidence === "unknown") ||
         prerequisite.completeness !== "complete"
       ) {
         const reasonCode = !prerequisite.ok
@@ -556,7 +557,10 @@ export async function runEvidenceAwareRules(
           reasonCode: "rule-result",
           reason: decision.reason,
           evidenceIds: prerequisite.ids,
-          confidence: confidence as Exclude<typeof confidence, "unknown">,
+          confidence:
+            unknownCeiling && confidence === "unknown"
+              ? "unknown"
+              : (confidence as Exclude<typeof confidence, "unknown">),
           completeness: "complete",
           ...(decision.findings ? { findings: decision.findings } : {}),
         } as RuleEvaluationResult);

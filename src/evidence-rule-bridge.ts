@@ -14,6 +14,7 @@ import {
   MIGRATED_GROUP2_RULE_IDS,
   MIGRATED_GROUP3_RULE_IDS,
   MIGRATED_GROUP5_RULE_IDS,
+  MIGRATED_GROUP6_RULE_IDS,
   ruleInventory,
 } from "./rule-inventory.js";
 import {
@@ -54,7 +55,8 @@ export type MigratedEvidenceRuleId =
   | (typeof MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS)[number]
   | (typeof MIGRATED_GROUP2_RULE_IDS)[number]
   | (typeof MIGRATED_GROUP3_RULE_IDS)[number]
-  | (typeof MIGRATED_GROUP5_RULE_IDS)[number];
+  | (typeof MIGRATED_GROUP5_RULE_IDS)[number]
+  | (typeof MIGRATED_GROUP6_RULE_IDS)[number];
 
 export type MigratedRuntimeEvidenceRuleId = (typeof MIGRATED_GROUP5_RULE_IDS)[number];
 
@@ -63,6 +65,7 @@ const MIGRATED_STATIC_EVIDENCE_RULE_IDS = [
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   ...MIGRATED_GROUP2_RULE_IDS,
   ...MIGRATED_GROUP3_RULE_IDS,
+  ...MIGRATED_GROUP6_RULE_IDS,
 ] as const;
 
 function inventoryEntry(id: string) {
@@ -134,6 +137,49 @@ function pluginPackageMismatchEvidenceInconclusive(
   )
     return "Webpack plugin registration count was not collected; package metadata alone cannot judge the integration.";
   return undefined;
+}
+
+function vitePluginConfigEvidenceInconclusive(context: EvidenceRuleContext): string | undefined {
+  if (!context.facts || context.facts.bundler.name !== "vite") return undefined;
+  if (!context.facts.bundler.viteConfig)
+    return "Plugin-observed Vite config facts were not collected for this analysis.";
+  return undefined;
+}
+
+function viteServerOriginEvidenceInconclusive(context: EvidenceRuleContext): string | undefined {
+  const missing = vitePluginConfigEvidenceInconclusive(context);
+  if (missing) return missing;
+  const viteConfig = context.facts!.bundler.viteConfig;
+  if (!viteConfig || !("serverOrigin" in viteConfig))
+    return "server.origin was not observed by the Vite plugin for this analysis.";
+  return undefined;
+}
+
+function transformImportEvidenceInconclusive(context: EvidenceRuleContext): string | undefined {
+  if (!context.facts) return undefined;
+  if (context.facts.bundler.transformImportLibraries === undefined)
+    return "transformImport library facts were not collected for this analysis.";
+  return undefined;
+}
+
+const GROUP6_INCONCLUSIVE: Partial<
+  Record<
+    (typeof MIGRATED_GROUP6_RULE_IDS)[number],
+    (context: EvidenceRuleContext) => string | undefined
+  >
+> = {
+  "vite/manual-chunks-conflict": vitePluginConfigEvidenceInconclusive,
+  "vite/alias-share-bypass": vitePluginConfigEvidenceInconclusive,
+  "vite/server-origin": viteServerOriginEvidenceInconclusive,
+  "config/transform-import-share-conflict": transformImportEvidenceInconclusive,
+};
+
+function inconclusiveFor(
+  id: (typeof MIGRATED_STATIC_EVIDENCE_RULE_IDS)[number],
+): ((context: EvidenceRuleContext) => string | undefined) | undefined {
+  if (id === "shared/unused") return sharedUnusedEvidenceInconclusive;
+  if (id === "config/plugin-package-mismatch") return pluginPackageMismatchEvidenceInconclusive;
+  return GROUP6_INCONCLUSIVE[id as (typeof MIGRATED_GROUP6_RULE_IDS)[number]];
 }
 
 /**
@@ -270,13 +316,7 @@ export const migratedRuntimeEvidenceRules: readonly EvidenceAwareRule[] =
   MIGRATED_GROUP5_RULE_IDS.map((id) => runtimeEvidenceRule(id));
 
 export const migratedEvidenceRules: readonly EvidenceAwareRule[] =
-  MIGRATED_STATIC_EVIDENCE_RULE_IDS.map((id) =>
-    id === "shared/unused"
-      ? legacyEvidenceRule(id, sharedUnusedEvidenceInconclusive)
-      : id === "config/plugin-package-mismatch"
-        ? legacyEvidenceRule(id, pluginPackageMismatchEvidenceInconclusive)
-        : legacyEvidenceRule(id),
-  );
+  MIGRATED_STATIC_EVIDENCE_RULE_IDS.map((id) => legacyEvidenceRule(id, inconclusiveFor(id)));
 
 export const migratedEvidenceRuleIds: ReadonlySet<string> = new Set(
   migratedEvidenceRules.map((rule) => rule.meta.id),
@@ -500,13 +540,21 @@ export interface MigratedEvidenceRun {
   output: EvidenceRuleRunnerOutput;
 }
 
+function unscopedProjectBuildCount(facts: ProjectFacts, selectedBuild?: BuildRecord): number {
+  if (facts.builds?.length) return facts.builds.length;
+  return selectedBuild ? 1 : 0;
+}
+
 function ruleOptionsFor(
   settings: Readonly<Record<string, RuleSetting>>,
+  unscopedBuildCount: number,
 ): Readonly<Record<string, Readonly<Record<string, unknown>>>> {
   return Object.fromEntries(
     migratedEvidenceRules.map((rule) => {
       const setting = settings[rule.meta.id];
-      return [rule.meta.id, Array.isArray(setting) ? setting[1] : {}];
+      const options = Array.isArray(setting) ? setting[1] : {};
+      if (rule.meta.id !== "vite/remote-hmr-dev") return [rule.meta.id, options];
+      return [rule.meta.id, { ...options, unscopedProjectBuildCount: unscopedBuildCount }];
     }),
   );
 }
@@ -540,6 +588,7 @@ export async function runMigratedEvidenceRules(
   selectedBuild?: BuildRecord,
   bridgeContext?: EvidenceBridgeContext,
 ): Promise<MigratedEvidenceRun> {
+  const unscopedBuildCount = unscopedProjectBuildCount(facts, selectedBuild);
   const scopedFacts = selectedBuild ? factsForBuild(facts, selectedBuild) : facts;
   const graph = migrateProjectFacts(
     factsForEvidence(scopedFacts),
@@ -560,7 +609,7 @@ export async function runMigratedEvidenceRules(
     rules,
     facts: scopedFacts,
     scope,
-    ruleOptions: ruleOptionsFor(settings),
+    ruleOptions: ruleOptionsFor(settings, unscopedBuildCount),
     ...(bridgeContext?.root ? { root: bridgeContext.root } : {}),
     ...(bridgeContext?.sharedPolicy ? { sharedPolicy: bridgeContext.sharedPolicy } : {}),
     ...(bridgeContext?.recognizeMfToolkit !== undefined

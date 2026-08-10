@@ -38,6 +38,7 @@ import {
   MIGRATED_GROUP3_RULE_IDS,
   MIGRATED_GROUP4_RULE_IDS,
   MIGRATED_GROUP5_RULE_IDS,
+  MIGRATED_GROUP6_RULE_IDS,
 } from "../../src/rule-inventory.js";
 
 const roots: string[] = [];
@@ -143,17 +144,42 @@ const EXPECTED_GROUP5_RULE_IDS = [
   "runtime/error-correlated",
 ] as const;
 
+const EXPECTED_GROUP6_RULE_IDS = [
+  "reliability/snapshot-capability-disabled",
+  "reliability/external-runtime-provider-unverified",
+  "reliability/async-startup-library-promise",
+  "performance/version-first-startup",
+  "reliability/version-first-offline-remotes",
+  "reliability/shared-import-false",
+  "reliability/tree-shaking-server-calc-contract",
+  "performance/vite-bundle-all-css",
+  "reliability/vite-fixed-parse-timeout",
+  "vite/remotes-prefer-module",
+  "vite/var-filename-interop",
+  "vite/host-init-inject-ssr",
+  "vite/ssr-nitro-externals",
+  "vite/manual-chunks-conflict",
+  "vite/hashed-remote-filename",
+  "vite/remote-hmr-dev",
+  "vite/alias-share-bypass",
+  "vite/server-origin",
+  "config/transform-import-share-conflict",
+  "doctor/partial-analysis",
+] as const;
+
 const migratedRuleCount =
   MIGRATED_GROUP1_CONFIG_RULE_IDS.length +
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS.length +
   EXPECTED_GROUP2_RULE_IDS.length +
-  EXPECTED_GROUP3_RULE_IDS.length;
+  EXPECTED_GROUP3_RULE_IDS.length +
+  EXPECTED_GROUP6_RULE_IDS.length;
 
 const migratedRuleIds = new Set([
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   ...EXPECTED_GROUP2_RULE_IDS,
   ...EXPECTED_GROUP3_RULE_IDS,
+  ...EXPECTED_GROUP6_RULE_IDS,
 ]);
 
 function federationShadowRollout() {
@@ -1035,6 +1061,463 @@ describe("evidence-aware rule rollout bridge", () => {
           assertion.confidence.level === "low",
       ),
     ).toBe(true);
+  });
+
+  it("routes the exact Group 6 migration tuple through the bridge", async () => {
+    expect(MIGRATED_GROUP6_RULE_IDS).toEqual(EXPECTED_GROUP6_RULE_IDS);
+    const root = await fixture("group6-migration-rollout-bridge");
+    const compat = await analyze(options(root, compatRollout()));
+    expect(new Set(compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id))).toEqual(
+      migratedRuleIds,
+    );
+    expect(compat.evidence?.evaluations).toHaveLength(migratedRuleCount);
+  });
+
+  it("keeps Group 6 legacy output byte-compatible in shadow and v2-compat modes", async () => {
+    const root = await fixture("group6-parity-rollout-bridge");
+    const analyzeOptions = {
+      ...options(root, createEvidenceRolloutController()),
+      moduleFederation: {
+        name: "host",
+        manifest: true,
+        experiments: {
+          asyncStartup: false,
+          externalRuntime: true,
+          provideExternalRuntime: false,
+        },
+        remotes: { shop: "shop@https://example.test/mf-manifest.json" },
+        shared: { react: { singleton: true } },
+      },
+      rules: quietRules,
+    };
+    const legacy = await analyze(analyzeOptions);
+    const shadow = await analyze({ ...analyzeOptions, evidenceRollout: shadowRollout() });
+    const compat = await analyze({ ...analyzeOptions, evidenceRollout: compatRollout() });
+    expect(compareV1Outputs(legacy.report, shadow.report).equal).toBe(true);
+    expect(compareV1Outputs(legacy.report, compat.report).equal).toBe(true);
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "reliability/external-runtime-provider-unverified",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+  });
+
+  it("ledgers Group 6 Vite plugin facts as unknown when absent", async () => {
+    const root = await fixture("group6-vite-config-unknown-rollout-bridge");
+    const result = await analyze(options(root, shadowRollout()));
+    const migrated = await runMigratedEvidenceRules(result.facts, {});
+    for (const id of [
+      "vite/manual-chunks-conflict",
+      "vite/alias-share-bypass",
+      "vite/server-origin",
+    ] as const) {
+      expect(
+        migrated.output.evaluations.find((evaluation) => evaluation.rule.id === id),
+      ).toMatchObject({
+        outcome: "unknown",
+        reasonCode: "evidence-inconclusive",
+      });
+    }
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/transform-import-share-conflict",
+      ),
+    ).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "evidence-inconclusive",
+    });
+  });
+
+  it("evaluates SSR Vite rules from CLI facts without adapter builds", async () => {
+    const root = await fixture("group6-ssr-cli-no-builds-rollout-bridge");
+    const baseline = await analyze(options(root, shadowRollout()));
+    const facts = structuredClone(baseline.facts);
+    delete facts.builds;
+    facts.moduleFederation = {
+      name: "host",
+      exposes: {},
+      remotes: {
+        catalog: {
+          name: "catalog",
+          entry: "https://example.test/mf-manifest.json",
+          shareScope: "default",
+        },
+      },
+      shared: {},
+      vite: {
+        bundleAllCSS: false,
+        ignoreOrigin: false,
+        ssrExternals: [],
+        target: "node",
+        hostInitInjectLocation: "html",
+      },
+    };
+    const migrated = await runMigratedEvidenceRules(facts, {
+      "vite/host-init-inject-ssr": "error",
+      "vite/ssr-nitro-externals": "warning",
+    });
+    expect(facts.builds).toBeUndefined();
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/host-init-inject-ssr",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/host-init-inject-ssr",
+      )?.reasonCode,
+    ).not.toBe("prerequisite-missing");
+
+    const nitroFacts = structuredClone(facts);
+    nitroFacts.dependencies.declared.nitropack = "^2";
+    nitroFacts.moduleFederation = {
+      ...nitroFacts.moduleFederation!,
+      shared: {
+        react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+      },
+      vite: {
+        ...nitroFacts.moduleFederation!.vite!,
+        ssrExternals: ["react"],
+      },
+    };
+    const nitroRun = await runMigratedEvidenceRules(nitroFacts, {
+      "vite/ssr-nitro-externals": "warning",
+    });
+    expect(
+      nitroRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/ssr-nitro-externals",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    expect(
+      nitroRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/ssr-nitro-externals",
+      )?.reasonCode,
+    ).not.toBe("prerequisite-missing");
+  });
+
+  it("marks vite dialect rules not-applicable on non-Vite bundlers", async () => {
+    const root = await fixture("group6-rspack-na-rollout-bridge");
+    const result = await analyze({
+      ...options(root, shadowRollout()),
+      bundler: "rspack",
+      moduleFederation: {
+        name: "host",
+        remotes: { shop: "shop@https://example.test/remoteEntry.js" },
+        shared: { react: { singleton: true } },
+      },
+    });
+    const migrated = await runMigratedEvidenceRules(result.facts, {});
+    for (const id of [
+      "vite/remotes-prefer-module",
+      "vite/var-filename-interop",
+      "performance/vite-bundle-all-css",
+    ] as const) {
+      expect(
+        migrated.output.evaluations.find((evaluation) => evaluation.rule.id === id),
+      ).toMatchObject({ outcome: "not-applicable", reasonCode: "not-applicable" });
+    }
+  });
+
+  it("uses build effectiveMode only for vite/remote-hmr-dev", async () => {
+    const root = await fixture("group6-build-mode-rollout-bridge");
+    const facts = {
+      schemaVersion: 1 as const,
+      project: { name: "group6-build-mode-rollout-bridge", root },
+      bundler: { name: "vite" as const, mode: "ci" as const },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/remoteEntry.js",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+        shareStrategy: "version-first" as const,
+        vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [], remoteHmr: false },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"] as const,
+      },
+      artifacts: { emittedAssets: [] },
+    } satisfies ProjectFacts;
+    const withoutBuild = await runMigratedEvidenceRules(facts, {
+      "vite/remote-hmr-dev": "info",
+      "config/remote-localhost-in-production": "warning",
+    });
+    expect(
+      withoutBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
+      ),
+    ).toMatchObject({ outcome: "pass" });
+    expect(
+      withoutBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/remote-localhost-in-production",
+      ),
+    ).toMatchObject({ outcome: "fail" });
+
+    const build = {
+      id: "vite-build-1",
+      adapter: "vite" as const,
+      bundler: "vite" as const,
+      outputRoot: "dist",
+      sourceHook: "writeBundle" as const,
+      emittedAssets: [],
+      effectiveMode: "development",
+      artifacts: [],
+      capabilities: {
+        outputRoot: { state: "exact" as const, reason: "test" },
+        emittedAssets: { state: "exact" as const, reason: "test" },
+        artifacts: { state: "unavailable" as const, reason: "test" },
+        effectiveMode: { state: "exact" as const, reason: "test" },
+        target: { state: "exact" as const, reason: "test" },
+      },
+    };
+    const withBuild = await runMigratedEvidenceRules(
+      facts,
+      {
+        "vite/remote-hmr-dev": "info",
+        "config/remote-localhost-in-production": "warning",
+        "reliability/version-first-offline-remotes": ["warning", { localDemoOnly: true }],
+      },
+      undefined,
+      build,
+    );
+    expect(
+      withBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    expect(
+      withBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
+      )?.scope,
+    ).toMatchObject({ buildMode: "development" });
+    expect(
+      withBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/remote-localhost-in-production",
+      ),
+    ).toMatchObject({ outcome: "fail" });
+    expect(
+      withBuild.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "reliability/version-first-offline-remotes",
+      ),
+    ).toMatchObject({ outcome: "fail" });
+  });
+
+  it("keeps shadow and v2-compat parity for adapter builds with effectiveMode", async () => {
+    const root = await fixture("group6-effective-mode-parity-rollout-bridge");
+    const base = {
+      root,
+      bundler: "vite" as const,
+      mode: "ci" as const,
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "shop@http://localhost:4174/remoteEntry.js",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+        shareStrategy: "version-first" as const,
+        remoteHmr: false,
+        vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [] },
+      },
+      output: { formats: [] as never[] },
+      rules: {
+        ...quietRules,
+        "artifact/manifest-disabled": "off" as const,
+        "config/remote-manifest-recommended": "off" as const,
+        "vite/remotes-prefer-module": "off" as const,
+        "config/remote-localhost-in-production": "warning" as const,
+        "reliability/version-first-offline-remotes": ["warning", { localDemoOnly: true }] as const,
+        "vite/remote-hmr-dev": "info" as const,
+      },
+    };
+    const buildOutputs = [
+      {
+        adapter: "vite" as const,
+        bundler: "vite" as const,
+        outputRoot: "dist",
+        emittedAssets: [],
+        effectiveMode: "development" as const,
+        sourceHook: "writeBundle" as const,
+      },
+    ];
+    const legacy = await analyzeBuild(base, [], undefined, buildOutputs);
+    const shadow = await analyzeBuild(
+      { ...base, evidenceRollout: shadowRollout() },
+      [],
+      undefined,
+      buildOutputs,
+    );
+    const compat = await analyzeBuild(
+      { ...base, evidenceRollout: compatRollout() },
+      [],
+      undefined,
+      buildOutputs,
+    );
+
+    expect(compareV1Outputs(legacy.report, shadow.report).equal).toBe(true);
+    expect(compareV1Outputs(legacy.report, compat.report).equal).toBe(true);
+    expect(shadow.evidence?.parity?.equal).toBe(true);
+    for (const ruleId of [
+      "config/remote-localhost-in-production",
+      "reliability/version-first-offline-remotes",
+      "vite/remote-hmr-dev",
+    ] as const) {
+      expect(
+        legacy.report.findings.some((finding) => finding.ruleId === ruleId),
+        ruleId,
+      ).toBe(true);
+    }
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/remote-hmr-dev",
+      ),
+    ).toMatchObject({ outcome: "fail", scope: { buildMode: "development" } });
+    expect(
+      compat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/remote-localhost-in-production",
+      ),
+    ).toMatchObject({ outcome: "fail" });
+  });
+
+  it("keeps parity when multi-build projects skip remote-hmr effectiveMode shortcut", async () => {
+    const root = await fixture("group6-multi-build-effective-mode-parity");
+    const base = {
+      root,
+      bundler: "vite" as const,
+      mode: "ci" as const,
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "shop@http://localhost:4174/remoteEntry.js",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+        shareStrategy: "version-first" as const,
+        remoteHmr: false,
+        vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [] },
+      },
+      output: { formats: [] as never[] },
+      rules: {
+        ...quietRules,
+        "artifact/manifest-disabled": "off" as const,
+        "config/remote-manifest-recommended": "off" as const,
+        "vite/remotes-prefer-module": "off" as const,
+        "config/remote-localhost-in-production": "warning" as const,
+        "reliability/version-first-offline-remotes": ["warning", { localDemoOnly: true }] as const,
+        "vite/remote-hmr-dev": "info" as const,
+      },
+    };
+    const buildOutputs = [
+      {
+        adapter: "vite" as const,
+        bundler: "vite" as const,
+        outputRoot: "dist/client",
+        emittedAssets: [],
+        effectiveMode: "development" as const,
+        sourceHook: "writeBundle" as const,
+      },
+      {
+        adapter: "vite" as const,
+        bundler: "vite" as const,
+        outputRoot: "dist/server",
+        emittedAssets: [],
+        effectiveMode: "production" as const,
+        sourceHook: "writeBundle" as const,
+      },
+    ];
+    const legacy = await analyzeBuild(base, [], undefined, buildOutputs);
+    const shadow = await analyzeBuild(
+      { ...base, evidenceRollout: shadowRollout() },
+      [],
+      undefined,
+      buildOutputs,
+    );
+    const compat = await analyzeBuild(
+      { ...base, evidenceRollout: compatRollout() },
+      [],
+      undefined,
+      buildOutputs,
+    );
+
+    expect(compareV1Outputs(legacy.report, shadow.report).equal).toBe(true);
+    expect(compareV1Outputs(legacy.report, compat.report).equal).toBe(true);
+    expect(shadow.evidence?.parity?.equal).toBe(true);
+    expect(legacy.report.findings.some((finding) => finding.ruleId === "vite/remote-hmr-dev")).toBe(
+      false,
+    );
+    expect(
+      compat.evidence?.evaluations.some(
+        (evaluation) =>
+          evaluation.rule.id === "vite/remote-hmr-dev" && evaluation.outcome === "fail",
+      ),
+    ).toBe(false);
+  });
+
+  it("projects doctor/partial-analysis while keeping per-rule unknowns separate", async () => {
+    const root = await fixture("group6-partial-analysis-rollout-bridge");
+    const result = await analyze({
+      ...options(root, compatRollout()),
+      rules: {
+        ...quietRules,
+        "doctor/partial-analysis": "warning",
+        "vite/server-origin": "info",
+      },
+      moduleFederation: {
+        name: "host",
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/remoteEntry.js",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+    });
+    expect(
+      result.report.findings.some((finding) => finding.ruleId === "doctor/partial-analysis"),
+    ).toBe(true);
+    expect(
+      result.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "doctor/partial-analysis",
+      ),
+    ).toMatchObject({ outcome: "fail", confidence: "unknown" });
+    expect(
+      result.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/server-origin",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
+    expect(result.report.findings.some((finding) => finding.ruleId === "vite/server-origin")).toBe(
+      false,
+    );
   });
 
   it("routes Group 3 heuristic rules through the bridge with V1 parity", async () => {
