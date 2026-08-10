@@ -238,6 +238,30 @@ export const MIGRATED_GROUP5_RULE_IDS = [
   "runtime/error-correlated",
 ] as const;
 
+/** Group 6 reliability, performance, and Vite dialect rules promoted by the staged V1 rollout. */
+export const MIGRATED_GROUP6_RULE_IDS = [
+  "reliability/snapshot-capability-disabled",
+  "reliability/external-runtime-provider-unverified",
+  "reliability/async-startup-library-promise",
+  "performance/version-first-startup",
+  "reliability/version-first-offline-remotes",
+  "reliability/shared-import-false",
+  "reliability/tree-shaking-server-calc-contract",
+  "performance/vite-bundle-all-css",
+  "reliability/vite-fixed-parse-timeout",
+  "vite/remotes-prefer-module",
+  "vite/var-filename-interop",
+  "vite/host-init-inject-ssr",
+  "vite/ssr-nitro-externals",
+  "vite/manual-chunks-conflict",
+  "vite/hashed-remote-filename",
+  "vite/remote-hmr-dev",
+  "vite/alias-share-bypass",
+  "vite/server-origin",
+  "config/transform-import-share-conflict",
+  "doctor/partial-analysis",
+] as const;
+
 const MIGRATED_RULE_IDS: ReadonlySet<string> = new Set([
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
@@ -245,6 +269,7 @@ const MIGRATED_RULE_IDS: ReadonlySet<string> = new Set([
   ...MIGRATED_GROUP3_RULE_IDS,
   ...MIGRATED_GROUP4_RULE_IDS,
   ...MIGRATED_GROUP5_RULE_IDS,
+  ...MIGRATED_GROUP6_RULE_IDS,
 ]);
 
 type RulePlan = {
@@ -536,11 +561,11 @@ const plans: Record<string, RulePlan> = {
   "reliability/snapshot-capability-disabled": plan(
     6,
     "warning",
-    "analysis.capability",
+    "config.declared",
     "declared",
     "project",
-    "unknown",
-    "Capability evidence is not yet normalized by the evidence protocol.",
+    "high",
+    "Declared snapshot/disable and manifest facts are exact for this shape check.",
   ),
   "config/eager-tree-shaking-conflict": plan(
     1,
@@ -554,29 +579,29 @@ const plans: Record<string, RulePlan> = {
   "reliability/external-runtime-provider-unverified": plan(
     6,
     "warning",
-    "analysis.capability",
+    "config.declared",
     "declared",
     "project",
-    "unknown",
-    "Capability evidence is not yet normalized by the evidence protocol.",
+    "high",
+    "Declared externalRuntime experiments are exact for this verification advisory.",
   ),
   "reliability/async-startup-library-promise": plan(
     6,
     "warning",
-    "analysis.capability",
+    "config.declared",
     "declared",
     "project",
-    "unknown",
-    "Capability evidence is not yet normalized by the evidence protocol.",
+    "high",
+    "Declared asyncStartup and library.type facts are exact for this contract advisory.",
   ),
   "performance/version-first-startup": plan(
     6,
     "info",
-    "analysis.capability",
+    "config.declared",
     "declared",
     "project",
-    "unknown",
-    "Capability evidence is not yet normalized by the evidence protocol.",
+    "medium",
+    "Declared shareStrategy and remote count are exact for this startup advisory.",
   ),
   "performance/asset-budget": plan(
     2,
@@ -590,20 +615,20 @@ const plans: Record<string, RulePlan> = {
   "reliability/version-first-offline-remotes": plan(
     6,
     "warning",
-    "analysis.capability",
+    "config.declared",
     "declared",
     "project",
-    "unknown",
-    "Capability evidence is not yet normalized by the evidence protocol.",
+    "medium",
+    "Declared shareStrategy, remotes, and runtimePlugins are exact; demo soft-path uses build mode.",
   ),
   "reliability/shared-import-false": plan(
     6,
     "warning",
-    "analysis.capability",
+    "config.declared",
     "declared",
     "project",
-    "unknown",
-    "Capability evidence is not yet normalized by the evidence protocol.",
+    "high",
+    "Declared shared.import facts are exact for this fallback advisory.",
   ),
   "config/tree-shaking-server-calc-injection": plan(
     1,
@@ -617,30 +642,30 @@ const plans: Record<string, RulePlan> = {
   "reliability/tree-shaking-server-calc-contract": plan(
     6,
     "warning",
-    "analysis.capability",
+    "config.declared",
     "declared",
     "project",
-    "unknown",
-    "Capability evidence is not yet normalized by the evidence protocol.",
+    "high",
+    "Declared treeShaking directory and shared tree-shaking mode are exact for this contract check.",
   ),
   "performance/vite-bundle-all-css": plan(
     6,
     "warning",
-    "analysis.capability",
+    "config.declared",
     "declared",
     "project",
-    "unknown",
-    "Capability evidence is not yet normalized by the evidence protocol.",
+    "high",
+    "Declared bundleAllCSS and expose count are exact for this Vite advisory.",
     VITE,
   ),
   "reliability/vite-fixed-parse-timeout": plan(
     6,
     "info",
-    "analysis.capability",
+    "config.declared",
     "declared",
     "project",
-    "unknown",
-    "Capability evidence is not yet normalized by the evidence protocol.",
+    "high",
+    "Declared moduleParseTimeout facts are exact for this Vite advisory.",
     VITE,
   ),
   "vite/remotes-prefer-module": plan(
@@ -1668,6 +1693,20 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
           ],
         },
       ],
+    };
+  }
+  const optionalPluginFacts: Record<string, readonly string[]> = {
+    "vite/manual-chunks-conflict": ["bundler.viteConfig"],
+    "vite/alias-share-bypass": ["bundler.viteConfig"],
+    "vite/server-origin": ["bundler.viteConfig"],
+    "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
+  };
+  const optional = optionalPluginFacts[id];
+  if (optional) {
+    return {
+      allOf: reads
+        .filter((path) => !optional.includes(path))
+        .map((path) => selectorFor(path, spec)),
     };
   }
   return { allOf: reads.map((path) => selectorFor(path, spec)) };
