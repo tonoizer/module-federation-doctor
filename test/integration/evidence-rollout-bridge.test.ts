@@ -11,6 +11,7 @@ import {
 import {
   runMigratedFederationRules,
   migratedFederationEvidenceRuleIds,
+  projectMigratedFederationFailures,
 } from "../../src/evidence-federation-bridge.js";
 import {
   EVIDENCE_LEGACY_ENV,
@@ -20,7 +21,16 @@ import {
 import { defineRule } from "../../src/rules.js";
 import { compareV1Outputs } from "../../src/evidence-parity.js";
 import { DEFAULT_ANALYSIS_BUDGETS } from "../../src/analysis-budgets.js";
-import type { ProjectFacts } from "../../src/types.js";
+import {
+  describeFederationInstances,
+  federationInstanceRefs,
+} from "../../src/federation-instance.js";
+import { normalizeModuleFederation } from "../../src/normalize.js";
+import type {
+  FederationInstanceFacts,
+  ModuleFederationConfigLike,
+  ProjectFacts,
+} from "../../src/types.js";
 import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
@@ -195,6 +205,76 @@ function federationProjectFacts(
     },
     artifacts: { emittedAssets: [] },
     ...overrides,
+  };
+}
+
+function multiInstanceHostProject(
+  name: string,
+  configs: Array<{ config: ModuleFederationConfigLike; pluginName?: string }>,
+): ProjectFacts {
+  const descriptors = describeFederationInstances(
+    configs.map((item) => ({
+      config: item.config,
+      pluginName: item.pluginName ?? "ModuleFederationPlugin",
+    })),
+  );
+  const instances = descriptors.map((descriptor) => {
+    const moduleFederation = normalizeModuleFederation(descriptor.config, { bundler: "vite" })!;
+    return {
+      id: descriptor.id,
+      pluginName: descriptor.pluginName,
+      configDigest: descriptor.configDigest,
+      registrationGroup: descriptor.registrationGroup,
+      moduleFederation,
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
+      artifacts: { emittedAssets: [] },
+    } satisfies FederationInstanceFacts;
+  });
+  return {
+    schemaVersion: 1,
+    project: { name, root: "." },
+    bundler: {
+      name: "vite",
+      mode: "ci",
+      federationInstances: federationInstanceRefs(descriptors),
+    },
+    capabilities: {
+      config: true,
+      sourceImports: true,
+      manifest: false,
+      stats: false,
+      emittedAssets: false,
+      installedVersions: true,
+    },
+    moduleFederation: instances[0]!.moduleFederation,
+    federationInstances: instances,
+    dependencies: { declared: {}, installed: {} },
+    imports: {
+      sourceFiles: [],
+      specifiers: [],
+      packages: [],
+      dynamicPackages: [],
+      remotes: [],
+      unresolvedDynamic: [],
+      evidenceSources: [],
+    },
+    artifacts: { emittedAssets: [] },
   };
 }
 
@@ -439,6 +519,147 @@ describe("evidence-aware rule rollout bridge", () => {
         (evaluation) => evaluation.rule.id === "federation/share-strategy-mismatch",
       ),
     ).toBe(true);
+  });
+
+  it("reports version-first remote-cycle failures on remote subjects with edge-scoped evaluations", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-group4-circular-remote-"));
+    roots.push(root);
+    const first = federationProjectFacts("first", {}, []);
+    const second = federationProjectFacts("second", {}, []);
+    first.moduleFederation!.name = "app_a";
+    first.moduleFederation!.shareStrategy = "version-first";
+    first.moduleFederation!.remotes = {
+      b: { name: "app_b", entry: "https://example.test/b/remoteEntry.js", shareScope: ["default"] },
+    };
+    second.moduleFederation!.name = "app_b";
+    second.moduleFederation!.shareStrategy = "loaded-first";
+    second.moduleFederation!.remotes = {
+      a: { name: "app_a", entry: "https://example.test/a/remoteEntry.js", shareScope: ["default"] },
+    };
+    const files = [path.join(root, "first.json"), path.join(root, "second.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(first));
+    await fs.writeFile(files[1]!, JSON.stringify(second));
+
+    const legacy = await analyzeFederation(files);
+    const shadow = await analyzeFederation(files, { evidenceRollout: federationShadowRollout() });
+    expect(compareV1Outputs(legacy.report, shadow.report).equal).toBe(true);
+    expect(shadow.evidence?.parity?.equal).toBe(true);
+
+    const cycleFailEvals = shadow.evidence?.evaluations.filter(
+      (evaluation) =>
+        evaluation.rule.id === "federation/circular-remote-graph" && evaluation.outcome === "fail",
+    );
+    expect(cycleFailEvals).toHaveLength(2);
+    const migrated = await runMigratedFederationRules(
+      {
+        projects: [first, second],
+        groupKey: "\0ungrouped",
+        groupEvidenceIncomplete: false,
+        alwaysShared: new Set(),
+      },
+      {},
+    );
+    const migratedFailEvals = migrated.output.evaluations.filter(
+      (evaluation) =>
+        evaluation.rule.id === "federation/circular-remote-graph" && evaluation.outcome === "fail",
+    );
+    expect(migratedFailEvals).toHaveLength(2);
+    for (const evaluation of migratedFailEvals) {
+      expect(evaluation.scope.edgeId).toBeTruthy();
+      const subject = migrated.graph.subjects.find((item) => item.id === evaluation.subject);
+      expect(subject?.kind).toBe("remote");
+    }
+    for (const evaluation of cycleFailEvals ?? []) {
+      expect(evaluation.scope.edgeId).toBeTruthy();
+    }
+    expect(
+      legacy.report.findings.filter(
+        (finding) => finding.ruleId === "federation/circular-remote-graph",
+      ),
+    ).toHaveLength(1);
+    expect(
+      projectMigratedFederationFailures(migrated.output.evaluations, {}, root).filter(
+        (finding) => finding.ruleId === "federation/circular-remote-graph",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("matches circular-remote findings only to the federation instance in the cycle", async () => {
+    const host = multiInstanceHostProject("host", [
+      {
+        config: {
+          name: "app_a",
+          filename: "clientEntry.js",
+          exposes: {},
+          remotes: {
+            b: {
+              name: "app_b",
+              entry: "https://example.test/b/remoteEntry.js",
+              shareScope: ["default"],
+            },
+          },
+          shared: {},
+          shareStrategy: "version-first",
+        },
+      },
+      {
+        config: {
+          name: "app_a_ssr",
+          filename: "ssrEntry.js",
+          exposes: {},
+          remotes: {
+            b: {
+              name: "app_b",
+              entry: "https://example.test/b/remoteEntry.js",
+              shareScope: ["default"],
+            },
+          },
+          shared: {},
+          shareStrategy: "loaded-first",
+        },
+      },
+    ]);
+    const second = federationProjectFacts("second", {}, []);
+    second.moduleFederation!.name = "app_b";
+    second.moduleFederation!.shareStrategy = "loaded-first";
+    second.moduleFederation!.remotes = {
+      a: { name: "app_a", entry: "https://example.test/a/remoteEntry.js", shareScope: ["default"] },
+    };
+    const cycleClientId = host.federationInstances![0]!.id;
+    const ssrId = host.federationInstances![1]!.id;
+    const migrated = await runMigratedFederationRules(
+      {
+        projects: [host, second],
+        groupKey: "\0ungrouped",
+        groupEvidenceIncomplete: false,
+        alwaysShared: new Set(),
+      },
+      {},
+    );
+    const evaluationForInstance = (instanceId: string | undefined) => {
+      const remoteSubject = migrated.graph.subjects.find(
+        (subject) =>
+          subject.kind === "remote" &&
+          (subject.attributes?.federationInstanceId ?? undefined) === instanceId,
+      );
+      return migrated.output.evaluations.find(
+        (evaluation) =>
+          evaluation.rule.id === "federation/circular-remote-graph" &&
+          evaluation.subject === remoteSubject?.id,
+      );
+    };
+    expect(evaluationForInstance(cycleClientId)).toMatchObject({ outcome: "fail" });
+    expect(evaluationForInstance(ssrId)).toMatchObject({ outcome: "pass" });
+    const secondRemoteSubject = migrated.graph.subjects.find(
+      (subject) => subject.kind === "remote" && subject.attributes?.fromProject === "second",
+    );
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) =>
+          evaluation.rule.id === "federation/circular-remote-graph" &&
+          evaluation.subject === secondRemoteSubject?.id,
+      ),
+    ).toMatchObject({ outcome: "fail" });
   });
 
   it("keeps absence-sensitive Group 4 rules unknown when one sibling has partial source evidence", async () => {

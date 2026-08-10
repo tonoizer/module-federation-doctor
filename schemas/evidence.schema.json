@@ -74,7 +74,8 @@
         "projectRole": { "type": "string" },
         "buildId": { "type": "string" },
         "compilationId": { "type": "string" },
-        "federationInstanceId": { "type": "string" }
+        "federationInstanceId": { "type": "string" },
+        "edgeId": { "type": "string" }
       },
       "additionalProperties": false
     },

@@ -73,10 +73,18 @@ function remoteEdgeMatchesFinding(
   const fromProject = subject.attributes?.fromProject;
   const remoteName = subject.attributes?.remoteName;
   const alias = subject.attributes?.alias;
+  const subjectInstanceId = subject.attributes?.federationInstanceId ?? undefined;
   return edges.some((edge) => {
     if (!edge || typeof edge !== "object") return false;
     const record = edge as Record<string, unknown>;
-    return record.project === fromProject && record.remote === remoteName && record.alias === alias;
+    const edgeInstanceId =
+      typeof record.fromInstanceId === "string" ? record.fromInstanceId : undefined;
+    return (
+      record.project === fromProject &&
+      record.remote === remoteName &&
+      record.alias === alias &&
+      edgeInstanceId === subjectInstanceId
+    );
   });
 }
 
@@ -136,13 +144,33 @@ export interface MigratedFederationEvidenceRun {
   output: EvidenceRuleRunnerOutput;
 }
 
+const GRAPH_TARGETS = new Set<EvidenceScope["target"]>([
+  "web",
+  "node",
+  "browser",
+  "ssr",
+  "unknown",
+]);
+
 function graphScopeFor(graphScope: EvidenceScope, scope: EvidenceRuleScope): EvidenceScope {
+  const target = GRAPH_TARGETS.has(scope.target as EvidenceScope["target"])
+    ? (scope.target as EvidenceScope["target"])
+    : graphScope.target;
   return {
     ...graphScope,
     ...(scope.adapter ? { adapter: scope.adapter } : {}),
-    target: graphScope.target,
+    ...(scope.adapterVersion ? { adapterVersion: scope.adapterVersion } : {}),
+    bundler: {
+      ...graphScope.bundler,
+      ...scope.bundler,
+    },
+    target,
     ...(scope.buildMode ? { buildMode: scope.buildMode } : {}),
     ...(scope.projectRole ? { projectRole: scope.projectRole } : {}),
+    ...(scope.buildId ? { buildId: scope.buildId } : {}),
+    ...(scope.compilationId ? { compilationId: scope.compilationId } : {}),
+    ...(scope.federationInstanceId ? { federationInstanceId: scope.federationInstanceId } : {}),
+    ...(scope.edgeId ? { edgeId: scope.edgeId } : {}),
   };
 }
 

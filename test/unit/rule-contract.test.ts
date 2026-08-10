@@ -700,6 +700,7 @@ describe("evidence-aware rule contract", () => {
       "federation/missing-provider",
       "federation/ghost-shares",
       "federation/version-conflict",
+      "federation/share-scope-mismatch",
       "shared/singleton-mismatch",
     ]) {
       const entry = ruleInventory.find((item) => item.id === id);
