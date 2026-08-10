@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted as a foundation slice for issue #83. Runtime migration is intentionally deferred.
+Accepted. V1 built-in migration completed in issue #232; default CLI output remains on
+the legacy V1 path until #87 promotes rollout scopes.
 
 ## Decision
 
@@ -15,14 +16,16 @@ derived only from rule ID/version, canonical subject ID, and build/compilation/r
 not include messages, timestamps, array order, or absolute paths. Existing v1 finding fingerprints
 remain a separate compatibility identity.
 
-The migration inventory records every current built-in rule as `legacy` until a later bounded batch
-can supply real prerequisites and applicability. This keeps the contract reviewable without claiming
-that the old runner already produces evidence-aware results.
+The migration inventory records every current built-in as `migrated` with machine-checked
+prerequisites, applicability, and confidence ceilings. Compatibility-only exceptions must be
+documented explicitly in `RULE_COMPATIBILITY_EXCEPTIONS` with owner, reason, scope, and a
+deprecation plan. There are no silent legacy built-ins after the #232 closeout.
 
 ## Consequences
 
 - Rule authors have one public contract to target after the evidence protocol lands.
 - Confidence can be capped by either required evidence or rule policy.
-- The current CLI, JSON, SARIF, fingerprints, and custom-rule behavior do not change in this slice.
-- Later runner work must validate applicability before prerequisites and must never treat missing
-  evidence as a pass.
+- Default CLI, JSON, SARIF, fingerprints, and custom-rule behavior stay on the V1 path until
+  rollout scopes pass #87 release gates.
+- Shadow and `v2-compat` modes run the evidence-aware bridges with golden parity tests.
+- Applicability is validated before prerequisites and missing evidence is never treated as a pass.

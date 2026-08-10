@@ -84,6 +84,7 @@ describe("published schema contracts", () => {
       "probe.schema.json",
       "project.schema.json",
       "report.schema.json",
+      "rule-inventory.schema.json",
       "runtime-capture.schema.json",
       "runtime-trace.schema.json",
       "ui.schema.json",

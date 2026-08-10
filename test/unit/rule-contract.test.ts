@@ -660,7 +660,7 @@ describe("evidence-aware rule contract", () => {
       expect(entry.applicability.bundlers?.length).toBeGreaterThan(0);
       expect(entry.remediation.summary).toBe(ruleGuidance[entry.id]?.impact);
       expect(entry.remediation.fix).toBe(ruleGuidance[entry.id]?.fix);
-      expect(entry.migrationNote).toContain(`Planned group ${entry.group}`);
+      expect(entry.migrationNote).toContain(`Group ${entry.group}`);
       expect(entry.defaultSeverity).toBe(currentSeverities.get(entry.id));
     }
     expect(

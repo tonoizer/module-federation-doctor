@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "issue": "#232",
+  "parent": "#83",
+  "recordedAt": "2026-08-10",
+  "summary": "V1 evidence-aware built-in migration closeout for the rules and federation-workspace rollout scopes.",
+  "inventory": {
+    "ruleCount": 108,
+    "migratedCount": 108,
+    "compatibilityExceptionCount": 0,
+    "fixture": "fixtures/rule-inventory/v1.json",
+    "schema": "schemas/rule-inventory.schema.json"
+  },
+  "rolloutScopes": {
+    "rules": {
+      "shadowParity": "test/integration/evidence-rollout-bridge.test.ts",
+      "v2CompatParity": "test/integration/evidence-rollout-bridge.test.ts",
+      "bridges": ["src/evidence-rule-bridge.ts", "src/evidence-federation-bridge.ts"],
+      "runtimeBridge": "src/evidence-rule-bridge.ts#runMigratedRuntimeEvidenceRules"
+    },
+    "federation-workspace": {
+      "shadowParity": "test/integration/evidence-rollout-bridge.test.ts",
+      "v2CompatParity": "test/integration/evidence-rollout-bridge.test.ts",
+      "bridge": "src/evidence-federation-bridge.ts"
+    }
+  },
+  "releaseGates": {
+    "dependency": {
+      "status": "green",
+      "evidence": ["pnpm install --frozen-lockfile in CI", "pnpm pack:check"]
+    },
+    "schema": {
+      "status": "green",
+      "evidence": ["pnpm schema:check", "schemas/rule-inventory.schema.json"]
+    },
+    "parity": {
+      "status": "green",
+      "evidence": ["pnpm evidence:drift", "test/integration/evidence-rollout-bridge.test.ts"]
+    },
+    "matrix": {
+      "status": "green",
+      "evidence": [".github/workflows/compatibility.yml", "pnpm test:e2e"]
+    },
+    "migration": {
+      "status": "green",
+      "evidence": [
+        "fixtures/rule-inventory/v1.json",
+        "pnpm inventory:check",
+        "test/unit/rule-inventory-closeout.test.ts"
+      ]
+    },
+    "security": {
+      "status": "green",
+      "evidence": [
+        "apps/docs/docs/security.md",
+        "test/unit/evidence-parity.test.ts redaction cases"
+      ]
+    },
+    "performance": {
+      "status": "green",
+      "evidence": ["scripts/benchmark-analysis-cost.mjs", "apps/docs/docs/performance.md"]
+    },
+    "stability": {
+      "status": "green",
+      "evidence": ["pnpm demo:showcase", "test/unit/analysis-regression-contract.test.ts"]
+    },
+    "rollback": {
+      "status": "green",
+      "evidence": [
+        "MFDOCTOR_EVIDENCE_LEGACY",
+        "test/integration/evidence-rollout-bridge.test.ts rollback case"
+      ]
+    },
+    "docs": {
+      "status": "green",
+      "evidence": ["apps/docs/docs/evidence-aware-rules.md", "pnpm docs:build"]
+    }
+  },
+  "compatibility": {
+    "defaultMode": "legacy",
+    "emergencyRollback": "MFDOCTOR_EVIDENCE_LEGACY=1",
+    "customRuleAdapter": "retained through v1 custom defineRule API",
+    "v1Surface": [
+      "terminal output",
+      "report.json",
+      "project.json",
+      "SARIF",
+      "fingerprints",
+      "baselines",
+      "exit codes"
+    ],
+    "driftLedger": "fixtures/evidence-parity/drift-ledger.json"
+  },
+  "remaining": {
+    "parentIssue83": "open until #87 default rollout promotion and #30 release gate complete",
+    "postV1": ["#84 runtime capture adapters", "#86 governance correlation"]
+  }
+}

@@ -107,6 +107,7 @@
     "./schemas/runtime-capture.schema.json": "./schemas/runtime-capture.schema.json",
     "./schemas/ui.schema.json": "./schemas/ui.schema.json",
     "./schemas/evidence.schema.json": "./schemas/evidence.schema.json",
+    "./schemas/rule-inventory.schema.json": "./schemas/rule-inventory.schema.json",
     "./package.json": "./package.json"
   },
   "types": "./dist/index.d.ts",
@@ -206,8 +207,10 @@
     "changeset:check": "node scripts/changeset-contract.mjs",
     "schema:check": "node --experimental-strip-types scripts/schema-contract.mjs",
     "evidence:drift": "pnpm build && node scripts/evidence-drift-check.mjs",
+    "inventory:generate": "pnpm build && node scripts/generate-rule-inventory.mjs",
+    "inventory:check": "pnpm build && node scripts/generate-rule-inventory.mjs --check",
     "benchmark:analysis": "pnpm build && node scripts/benchmark-analysis-cost.mjs",
-    "check": "pnpm fmt:check && pnpm lint && pnpm changeset:check && pnpm build && pnpm typecheck && pnpm test:unit && pnpm test:integration && pnpm demo:showcase && pnpm test:e2e && pnpm docs:build && pnpm pack:check",
+    "check": "pnpm fmt:check && pnpm lint && pnpm changeset:check && pnpm build && pnpm typecheck && pnpm test:unit && pnpm test:integration && pnpm inventory:check && pnpm demo:showcase && pnpm test:e2e && pnpm docs:build && pnpm pack:check",
     "changeset": "changeset",
     "version": "changeset version",
     "release:dry-run": "pnpm pack:check && npm publish --dry-run --provenance --access public"
