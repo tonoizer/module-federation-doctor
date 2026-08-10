@@ -501,6 +501,19 @@ export async function runEvidenceAwareRules(
           );
           continue;
         }
+        if (decision.outcome === "unknown") {
+          evaluations.push({
+            ...base,
+            outcome: "unknown",
+            reasonCode: decision.reasonCode ?? "evidence-inconclusive",
+            reason: decision.reason,
+            evidenceIds: prerequisite.ids,
+            confidence,
+            completeness: prerequisite.completeness,
+            missingRequirements: [],
+          });
+          continue;
+        }
         if (decision.outcome !== "pass" && decision.outcome !== "fail")
           throw new Error("Rule returned an invalid outcome.");
         evaluations.push({

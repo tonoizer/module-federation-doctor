@@ -11,6 +11,7 @@ import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
+  MIGRATED_GROUP3_RULE_IDS,
   ruleInventory,
 } from "./rule-inventory.js";
 import {
@@ -31,6 +32,7 @@ import type {
   RuleSetting,
   Severity,
 } from "./types.js";
+import { shouldSkipMf2SharedUnused } from "./mf-toolkit-shapes.js";
 import { fingerprint, redact } from "./utils.js";
 
 type LegacyFindingInput = Omit<
@@ -41,12 +43,14 @@ type LegacyFindingInput = Omit<
 export type MigratedEvidenceRuleId =
   | (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number]
   | (typeof MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS)[number]
-  | (typeof MIGRATED_GROUP2_RULE_IDS)[number];
+  | (typeof MIGRATED_GROUP2_RULE_IDS)[number]
+  | (typeof MIGRATED_GROUP3_RULE_IDS)[number];
 
 const MIGRATED_EVIDENCE_RULE_IDS = [
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   ...MIGRATED_GROUP2_RULE_IDS,
+  ...MIGRATED_GROUP3_RULE_IDS,
 ] as const;
 
 function inventoryEntry(id: string) {
@@ -74,38 +78,83 @@ function toEvidenceFinding(value: LegacyFindingInput): EvidenceRuleFinding {
   };
 }
 
+function legacyRuleContext(context: EvidenceRuleContext): Omit<RuleContext, "report"> {
+  if (!context.facts) throw new Error("Project facts are missing for migrated rule evaluation.");
+  return {
+    facts: structuredClone(context.facts),
+    options: structuredClone(context.options),
+    ...(context.root ? { root: context.root } : {}),
+    ...(context.sharedPolicy
+      ? {
+          sharedPolicy: context.sharedPolicy as NonNullable<RuleContext["sharedPolicy"]>,
+        }
+      : {}),
+    ...(context.recognizeMfToolkit !== undefined
+      ? { recognizeMfToolkit: context.recognizeMfToolkit }
+      : {}),
+  };
+}
+
+function sharedUnusedEvidenceInconclusive(context: EvidenceRuleContext): string | undefined {
+  if (!context.facts) return undefined;
+  const unresolvedMayHideUsage = (context.facts.imports.unresolvedDynamic ?? []).some((item) =>
+    ["import", "loadShare", "loadShareSync"].includes(item.api),
+  );
+  if (unresolvedMayHideUsage)
+    return "Unresolved dynamic import or loadShare evidence cannot establish unused certainty.";
+  if (
+    shouldSkipMf2SharedUnused({
+      ...legacyRuleContext(context),
+      report: () => {},
+    })
+  )
+    return "MF2 shared-array manifest-only evidence cannot establish unused certainty.";
+  return undefined;
+}
+
+function pluginPackageMismatchEvidenceInconclusive(
+  context: EvidenceRuleContext,
+): string | undefined {
+  if (!context.facts) return undefined;
+  if (
+    context.facts.bundler.name === "webpack" &&
+    context.facts.bundler.moduleFederationPluginCount === undefined
+  )
+    return "Webpack plugin registration count was not collected; package metadata alone cannot judge the integration.";
+  return undefined;
+}
+
 /**
  * Run the existing V1 check behind the evidence contract. The common runner
  * owns applicability, prerequisites, confidence, unknown results, identities,
  * and execution metadata; the check remains the compatibility oracle until
  * the rule gets a dedicated evidence-native evaluator in a later slice.
  */
-function legacyEvidenceRule(id: MigratedEvidenceRuleId): EvidenceAwareRule {
+function legacyEvidenceRule(
+  id: MigratedEvidenceRuleId,
+  inconclusive?: (context: EvidenceRuleContext) => string | undefined,
+): EvidenceAwareRule {
   const legacy = builtInRules.find((rule) => rule.meta.id === id);
   if (!legacy) throw new Error(`Missing built-in rule implementation for ${id}`);
   return {
     meta: inventoryEntry(id),
     async evaluate(context: EvidenceRuleContext) {
-      if (!context.facts) throw new Error(`Project facts are missing for migrated rule ${id}`);
+      const inconclusiveReason = inconclusive?.(context);
+      if (inconclusiveReason) {
+        return {
+          outcome: "unknown" as const,
+          reason: inconclusiveReason,
+          reasonCode: "evidence-inconclusive" as const,
+        };
+      }
+      const legacyContext = legacyRuleContext(context);
       const findings: EvidenceRuleFinding[] = [];
-      const report = (value: LegacyFindingInput): void => {
-        findings.push(toEvidenceFinding(value));
-      };
-      const legacyContext: RuleContext = {
-        facts: structuredClone(context.facts),
-        options: structuredClone(context.options),
-        ...(context.root ? { root: context.root } : {}),
-        ...(context.sharedPolicy
-          ? {
-              sharedPolicy: context.sharedPolicy as NonNullable<RuleContext["sharedPolicy"]>,
-            }
-          : {}),
-        ...(context.recognizeMfToolkit !== undefined
-          ? { recognizeMfToolkit: context.recognizeMfToolkit }
-          : {}),
-        report,
-      };
-      const returned = await legacy.check(legacyContext);
+      const returned = await legacy.check({
+        ...legacyContext,
+        report: (value: LegacyFindingInput): void => {
+          findings.push(toEvidenceFinding(value));
+        },
+      });
       if (Array.isArray(returned))
         for (const finding of returned) findings.push(toEvidenceFinding(finding));
       return findings.length > 0
@@ -118,8 +167,14 @@ function legacyEvidenceRule(id: MigratedEvidenceRuleId): EvidenceAwareRule {
   };
 }
 
-export const migratedEvidenceRules: readonly EvidenceAwareRule[] =
-  MIGRATED_EVIDENCE_RULE_IDS.map(legacyEvidenceRule);
+export const migratedEvidenceRules: readonly EvidenceAwareRule[] = MIGRATED_EVIDENCE_RULE_IDS.map(
+  (id) =>
+    id === "shared/unused"
+      ? legacyEvidenceRule(id, sharedUnusedEvidenceInconclusive)
+      : id === "config/plugin-package-mismatch"
+        ? legacyEvidenceRule(id, pluginPackageMismatchEvidenceInconclusive)
+        : legacyEvidenceRule(id),
+);
 
 export const migratedEvidenceRuleIds: ReadonlySet<string> = new Set(
   migratedEvidenceRules.map((rule) => rule.meta.id),

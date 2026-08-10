@@ -3,17 +3,24 @@ import { describe, expect, it } from "vitest";
 import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "../../src/rules.js";
 import { ruleGuidance } from "../../src/rule-guidance.js";
 import { capConfidence, stableEvaluationId, weakestConfidence } from "../../src/rule-contract.js";
-import type { RuleEvaluationResult } from "../../src/rule-contract.js";
+import type { EvidenceRequirement, RuleEvaluationResult } from "../../src/rule-contract.js";
 import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
+  MIGRATED_GROUP3_RULE_IDS,
   ruleInventory,
   ruleInventoryIds,
 } from "../../src/rule-inventory.js";
 import { runEvidenceAwareRules } from "../../src/rule-contract.js";
 import type { EvidenceGraphV2 } from "../../src/evidence.js";
 import { AnalysisBudgetTracker, resolveAnalysisBudgets } from "../../src/analysis-budgets.js";
+
+function requirementPredicates(requirement: EvidenceRequirement): string[] {
+  if ("predicate" in requirement) return [requirement.predicate];
+  if ("allOf" in requirement) return requirement.allOf.flatMap(requirementPredicates);
+  return requirement.anyOf.flatMap(requirementPredicates);
+}
 
 describe("evidence-aware rule contract", () => {
   const makeAssertion = (predicate: string, id: string) => ({
@@ -291,6 +298,28 @@ describe("evidence-aware rule contract", () => {
       reasonCode: "prerequisite-incomplete",
     });
     expect(result.evaluations[0]?.confidence).toBe("low");
+  });
+
+  it("accepts inconclusive rule decisions as unknown evaluations", async () => {
+    const rule = {
+      meta,
+      evaluate: () => ({
+        outcome: "unknown" as const,
+        reason: "Heuristic evidence cannot establish certainty.",
+        reasonCode: "evidence-inconclusive" as const,
+      }),
+    };
+    const result = await runEvidenceAwareRules({
+      graph: graph({
+        assertions: [makeAssertion("config.declared", "assertion:config")],
+      }),
+      rules: [rule],
+    });
+    expect(result.evaluations[0]).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "evidence-inconclusive",
+      completeness: "complete",
+    });
   });
 
   it("maps migrated config.declared and source.scan prereqs to emitted graph predicates only", async () => {
@@ -582,6 +611,7 @@ describe("evidence-aware rule contract", () => {
       ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
       ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
       ...MIGRATED_GROUP2_RULE_IDS,
+      ...MIGRATED_GROUP3_RULE_IDS,
     ]);
     expect(
       ruleInventory.every((entry) =>
@@ -597,10 +627,10 @@ describe("evidence-aware rule contract", () => {
     for (const entry of ruleInventory) {
       expect(entry.version).not.toBe("");
       expect(entry.owner.name).not.toBe("");
-      const requirements = (entry.prerequisites as { allOf: Array<{ predicate: string }> }).allOf;
+      const requirements = requirementPredicates(entry.prerequisites);
       expect(requirements.length).toBeGreaterThanOrEqual(2);
-      expect(requirements.map((requirement) => requirement.predicate)).toEqual(entry.evidenceReads);
-      expect(requirements.every((requirement) => requirement.predicate.length > 0)).toBe(true);
+      expect(requirements.sort()).toEqual([...entry.evidenceReads].sort());
+      expect(requirements.every((requirement) => requirement.length > 0)).toBe(true);
       expect(entry.applicability.adapters?.length).toBeGreaterThan(0);
       expect(entry.applicability.bundlers?.length).toBeGreaterThan(0);
       expect(entry.remediation.summary).toBe(ruleGuidance[entry.id]?.impact);
@@ -611,6 +641,27 @@ describe("evidence-aware rule contract", () => {
     expect(
       ruleInventory.find((entry) => entry.id === "config/plugin-package-mismatch")?.group,
     ).toBe(3);
+    expect(ruleInventory.find((entry) => entry.id === "shared/unused")?.status).toBe("migrated");
+    expect(
+      ruleInventory.find((entry) => entry.id === "config/plugin-package-mismatch")?.evidenceReads,
+    ).not.toContain("bundler.moduleFederationPluginCount");
+    const duplicatePlugin = ruleInventory.find(
+      (entry) => entry.id === "config/duplicate-plugin-registration",
+    );
+    expect(duplicatePlugin?.prerequisites).toMatchObject({
+      allOf: [
+        { predicate: "project.scope" },
+        {
+          anyOf: [
+            { predicate: "bundler.moduleFederationPluginCount" },
+            { predicate: "bundler.federationInstances" },
+          ],
+        },
+      ],
+    });
+    expect(ruleInventory.find((entry) => entry.id === "shared/unused")?.evidenceReads).toContain(
+      "imports.sourceScan",
+    );
     expect(ruleInventory.find((entry) => entry.id === "performance/asset-budget")?.group).toBe(2);
     expect(ruleInventory.find((entry) => entry.id === "shared/singleton-mismatch")?.group).toBe(4);
     expect(

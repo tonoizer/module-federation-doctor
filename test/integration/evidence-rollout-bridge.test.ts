@@ -15,6 +15,7 @@ import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
   MIGRATED_GROUP2_RULE_IDS,
+  MIGRATED_GROUP3_RULE_IDS,
 } from "../../src/rule-inventory.js";
 
 const roots: string[] = [];
@@ -86,16 +87,39 @@ const EXPECTED_GROUP2_RULE_IDS = [
   "artifact/types-missing",
 ] as const;
 
+const EXPECTED_GROUP3_RULE_IDS = [
+  "security/get-public-path-dynamic-code",
+  "shared/version-unsatisfied",
+  "config/plugin-package-mismatch",
+  "shared/singleton-risk",
+  "shared/eager-without-singleton",
+  "shared/unused",
+  "shared/candidate",
+  "shared/react-host-missing",
+  "shared/deep-import-bypass",
+  "shared/prefix-share-recommended",
+] as const;
+
 const migratedRuleCount =
   MIGRATED_GROUP1_CONFIG_RULE_IDS.length +
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS.length +
-  EXPECTED_GROUP2_RULE_IDS.length;
+  EXPECTED_GROUP2_RULE_IDS.length +
+  EXPECTED_GROUP3_RULE_IDS.length;
 
 const migratedRuleIds = new Set([
   ...MIGRATED_GROUP1_CONFIG_RULE_IDS,
   ...MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   ...EXPECTED_GROUP2_RULE_IDS,
+  ...EXPECTED_GROUP3_RULE_IDS,
 ]);
+
+const CONFIDENCE_RANK: Record<string, number> = {
+  unknown: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  exact: 4,
+};
 
 const quietRules = {
   "artifact/remote-entry-missing": "off",
@@ -162,8 +186,10 @@ describe("evidence-aware rule rollout bridge", () => {
       },
       output: { formats: [] as never[] },
     };
-    const legacy = await analyze(base);
-    const compat = await analyze({ ...base, evidenceRollout: compatRollout() });
+    const legacy = await analyzeBuild(base, [], { moduleFederationPluginCount: 0 });
+    const compat = await analyzeBuild({ ...base, evidenceRollout: compatRollout() }, [], {
+      moduleFederationPluginCount: 0,
+    });
     const evaluatedIds = new Set(
       compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id),
     );
@@ -186,6 +212,453 @@ describe("evidence-aware rule rollout bridge", () => {
       migratedRuleIds,
     );
     expect(compat.evidence?.evaluations).toHaveLength(migratedRuleCount);
+  });
+
+  it("routes the exact Group 3 migration tuple through the bridge", async () => {
+    const root = await fixture("group3-migration-rollout-bridge");
+    const compat = await analyze(options(root, compatRollout()));
+
+    expect(MIGRATED_GROUP3_RULE_IDS).toEqual(EXPECTED_GROUP3_RULE_IDS);
+    expect(new Set(compat.evidence?.evaluations.map((evaluation) => evaluation.rule.id))).toEqual(
+      migratedRuleIds,
+    );
+    expect(compat.evidence?.evaluations).toHaveLength(migratedRuleCount);
+  });
+
+  it("routes Group 3 heuristic rules through the bridge with V1 parity", async () => {
+    const root = await fixture("group3-heuristics-rollout-bridge", {
+      "src/index.ts": [
+        'import { create } from "zustand";',
+        'import debounce from "lodash/debounce";',
+        'import React from "react";',
+        'import "react-dom/client";',
+        "void debounce;",
+        "export const useStore = create(() => ({}));",
+        "",
+      ].join("\n"),
+    });
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "group3-heuristics-rollout-bridge",
+        dependencies: {
+          zustand: "^5.0.0",
+          lodash: "^4.17.0",
+          react: "19.1.1",
+          "react-dom": "19.1.1",
+        },
+      }),
+    );
+    const analyzeOptions = {
+      root,
+      bundler: "vite" as const,
+      mode: "ci" as const,
+      moduleFederation: {
+        name: "host",
+        getPublicPath: "function () { return '/cdn/'; }",
+        remotes: { shop: "shop@https://example.test/mf-manifest.json" },
+        shared: {
+          zustand: { singleton: false },
+          lodash: { singleton: false, eager: true },
+          axios: { singleton: false },
+          "react-dom": { singleton: true },
+        },
+      },
+      output: { formats: [] as never[] },
+      rules: {
+        ...quietRules,
+        "artifact/manifest-disabled": "off" as const,
+        "config/get-public-path-unused": "off" as const,
+        "vite/remotes-prefer-module": "off" as const,
+        "config/plugin-package-mismatch": "warning" as const,
+        "shared/candidate": "info" as const,
+        "shared/singleton-risk": "warning" as const,
+        "shared/eager-without-singleton": "warning" as const,
+        "shared/unused": "warning" as const,
+        "shared/version-unsatisfied": "error" as const,
+        "shared/deep-import-bypass": "warning" as const,
+        "shared/prefix-share-recommended": "info" as const,
+        "security/get-public-path-dynamic-code": "warning" as const,
+        "shared/react-host-missing": "warning" as const,
+      },
+    };
+    const legacy = await analyze(analyzeOptions);
+    const compat = await analyze({ ...analyzeOptions, evidenceRollout: compatRollout() });
+
+    const parity = compareV1Outputs(legacy.report, compat.report);
+    expect(parity.equal).toBe(true);
+
+    const expectedOutcomes = {
+      "security/get-public-path-dynamic-code": "fail",
+      "config/plugin-package-mismatch": "fail",
+      "shared/singleton-risk": "fail",
+      "shared/eager-without-singleton": "fail",
+      "shared/unused": "fail",
+      "shared/candidate": "pass",
+      "shared/react-host-missing": "fail",
+      "shared/deep-import-bypass": "fail",
+      "shared/prefix-share-recommended": "fail",
+    } as const;
+    for (const [id, outcome] of Object.entries(expectedOutcomes)) {
+      const evaluation = compat.evidence?.evaluations.find((candidate) => candidate.rule.id === id);
+      expect(evaluation, id).toMatchObject({ outcome, completeness: "complete" });
+    }
+
+    const versionFacts = structuredClone(compat.facts);
+    versionFacts.dependencies.installed = {
+      ...versionFacts.dependencies.installed,
+      zustand: "5.0.0",
+    };
+    versionFacts.moduleFederation!.shared!.zustand!.requiredVersion = "^4.0.0";
+    const versionRun = await runMigratedEvidenceRules(versionFacts, analyzeOptions.rules);
+    expect(
+      versionRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "shared/version-unsatisfied",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+  });
+
+  it("keeps plugin-package-mismatch unknown on webpack without plugin registration evidence", async () => {
+    const root = await fixture("group3-webpack-plugin-count-rollout-bridge");
+    const baseline = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      moduleFederation: { name: "host" },
+      output: { formats: [] },
+      rules: quietRules,
+    });
+    expect(baseline.facts.bundler.moduleFederationPluginCount).toBeUndefined();
+
+    const missingCount = structuredClone(baseline.facts);
+    delete missingCount.bundler.moduleFederationPluginCount;
+    const migrated = await runMigratedEvidenceRules(missingCount, {
+      "config/plugin-package-mismatch": "warning",
+    });
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toMatchObject({
+      value: 0,
+      completeness: { status: "not-collected" },
+    });
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/plugin-package-mismatch",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
+
+    const viteRoot = await fixture("group3-vite-plugin-package-rollout-bridge");
+    const viteLegacy = await analyze(options(viteRoot, createEvidenceRolloutController()));
+    const viteCompat = await analyze(options(viteRoot, compatRollout()));
+    expect(compareV1Outputs(viteLegacy.report, viteCompat.report).equal).toBe(true);
+    expect(
+      viteCompat.evidence?.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/plugin-package-mismatch",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+    expect(
+      viteCompat.report.findings.some(
+        (finding) => finding.ruleId === "config/plugin-package-mismatch",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps duplicate-plugin unknown when registration evidence is absent for non-webpack bundlers", async () => {
+    const root = await fixture("group3-vite-duplicate-plugin-rollout-bridge");
+    const baseline = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      moduleFederation: { name: "host" },
+      output: { formats: [] },
+      rules: quietRules,
+    });
+    const facts = structuredClone(baseline.facts);
+    delete facts.bundler.federationInstances;
+    delete facts.bundler.moduleFederationPluginCount;
+    const migrated = await runMigratedEvidenceRules(facts, {
+      "config/duplicate-plugin-registration": "error",
+      "config/plugin-package-mismatch": "warning",
+    });
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toBeUndefined();
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.federationInstances",
+      ),
+    ).toBeUndefined();
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/duplicate-plugin-registration",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "prerequisite-missing" });
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/plugin-package-mismatch",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+
+    const rspackRoot = await fixture("group3-rspack-duplicate-plugin-rollout-bridge");
+    const rspackBaseline = await analyze({
+      root: rspackRoot,
+      bundler: "rspack",
+      mode: "ci",
+      moduleFederation: { name: "host" },
+      output: { formats: [] },
+      rules: quietRules,
+    });
+    const rspackFacts = structuredClone(rspackBaseline.facts);
+    delete rspackFacts.bundler.federationInstances;
+    delete rspackFacts.bundler.moduleFederationPluginCount;
+    const rspackMigrated = await runMigratedEvidenceRules(rspackFacts, {
+      "config/duplicate-plugin-registration": "error",
+      "config/plugin-package-mismatch": "warning",
+    });
+    expect(
+      rspackMigrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toBeUndefined();
+    expect(
+      rspackMigrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.federationInstances",
+      ),
+    ).toBeUndefined();
+    expect(
+      rspackMigrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/duplicate-plugin-registration",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "prerequisite-missing" });
+    expect(
+      rspackMigrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/plugin-package-mismatch",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+  });
+
+  it("reports duplicate-plugin fail from federation instances when plugin count is absent for non-webpack bundlers", async () => {
+    const duplicateConfig = { name: "host", filename: "remoteEntry.js" };
+    const root = await fixture("group3-vite-duplicate-plugin-rollout-bridge");
+    const baseline = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      moduleFederationInstances: [duplicateConfig, structuredClone(duplicateConfig)],
+      output: { formats: [] },
+      rules: quietRules,
+    });
+    expect(
+      baseline.report.findings.some(
+        (finding) => finding.ruleId === "config/duplicate-plugin-registration",
+      ),
+    ).toBe(true);
+
+    const facts = structuredClone(baseline.facts);
+    delete facts.bundler.moduleFederationPluginCount;
+    expect(facts.bundler.federationInstances?.length).toBeGreaterThan(1);
+    const migrated = await runMigratedEvidenceRules(facts, {
+      "config/duplicate-plugin-registration": "error",
+    });
+    expect(
+      migrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toBeUndefined();
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/duplicate-plugin-registration",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+
+    const rspackRoot = await fixture("group3-rspack-duplicate-plugin-rollout-bridge");
+    const rspackBaseline = await analyze({
+      root: rspackRoot,
+      bundler: "rspack",
+      mode: "ci",
+      moduleFederationInstances: [duplicateConfig, structuredClone(duplicateConfig)],
+      output: { formats: [] },
+      rules: quietRules,
+    });
+    expect(
+      rspackBaseline.report.findings.some(
+        (finding) => finding.ruleId === "config/duplicate-plugin-registration",
+      ),
+    ).toBe(true);
+
+    const rspackFacts = structuredClone(rspackBaseline.facts);
+    delete rspackFacts.bundler.moduleFederationPluginCount;
+    expect(rspackFacts.bundler.federationInstances?.length).toBeGreaterThan(1);
+    const rspackMigrated = await runMigratedEvidenceRules(rspackFacts, {
+      "config/duplicate-plugin-registration": "error",
+    });
+    expect(
+      rspackMigrated.graph.assertions.find(
+        (assertion) => assertion.predicate === "project.bundler.moduleFederationPluginCount",
+      ),
+    ).toBeUndefined();
+    expect(
+      rspackMigrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/duplicate-plugin-registration",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+  });
+
+  it("ledgers shared/unused as unknown when unresolved dynamic evidence is inconclusive", async () => {
+    const root = await fixture("group3-unresolved-unused-rollout-bridge");
+    await fs.mkdir(path.join(root, "src"), { recursive: true });
+    await fs.copyFile(
+      path.resolve("fixtures/dynamic-imports/unresolved-load-share.ts"),
+      path.join(root, "src/app.ts"),
+    );
+    const analyzeOptions = {
+      root,
+      bundler: "vite" as const,
+      mode: "development" as const,
+      output: { formats: [] as never[] },
+      rules: {
+        ...quietRules,
+        "doctor/partial-analysis": "warning" as const,
+        "shared/unused": "warning" as const,
+      },
+      moduleFederation: {
+        name: "dyn_partial",
+        shared: { lodash: { singleton: false } },
+      },
+    };
+    const legacy = await analyze(analyzeOptions);
+    const compat = await analyze({ ...analyzeOptions, evidenceRollout: compatRollout() });
+
+    expect(legacy.report.findings.some((finding) => finding.ruleId === "shared/unused")).toBe(
+      false,
+    );
+    expect(compat.report.findings.some((finding) => finding.ruleId === "shared/unused")).toBe(
+      false,
+    );
+    expect(
+      compat.evidence?.evaluations.find((item) => item.rule.id === "shared/unused"),
+    ).toMatchObject({
+      outcome: "unknown",
+      reasonCode: "evidence-inconclusive",
+    });
+  });
+
+  it("keeps absence-sensitive Group 3 shared rules unknown under partial source evidence", async () => {
+    const root = await fixture("group3-partial-source", {
+      "src/index.ts": "export const ok = true;\n",
+      "src/unreadable.ts": "export const hidden = true;\n",
+    });
+    const unreadable = path.join(root, "src/unreadable.ts");
+    const originalReadFile = fs.readFile;
+    const readFileSpy = await import("vitest").then(({ vi }) =>
+      vi.spyOn(fs, "readFile").mockImplementation(async (file, readOptions) => {
+        if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
+        return originalReadFile(file, readOptions);
+      }),
+    );
+    try {
+      const analyzeOptions = {
+        root,
+        bundler: "rspack" as const,
+        mode: "ci" as const,
+        moduleFederation: {
+          name: "remote",
+          shared: { lodash: { singleton: false } },
+        },
+        output: { formats: [] as never[] },
+        rules: {
+          ...quietRules,
+          "shared/unused": "warning" as const,
+        },
+      };
+      const legacy = await analyze(analyzeOptions);
+      const compat = await analyze({ ...analyzeOptions, evidenceRollout: compatRollout() });
+
+      expect(legacy.facts.imports.sourceReadFailures).toContain("src/unreadable.ts");
+      expect(legacy.report.findings.some((finding) => finding.ruleId === "shared/unused")).toBe(
+        false,
+      );
+      expect(compat.report.findings.some((finding) => finding.ruleId === "shared/unused")).toBe(
+        false,
+      );
+      expect(
+        compat.evidence?.evaluations.find((item) => item.rule.id === "shared/unused"),
+      ).toMatchObject({ outcome: "unknown" });
+    } finally {
+      readFileSpy.mockRestore();
+    }
+  });
+
+  it("caps Group 3 heuristic rule confidence at inventory ceilings", async () => {
+    const root = await fixture("group3-confidence-rollout-bridge", {
+      "src/index.ts": 'import "react-dom/client";\n',
+    });
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "group3-confidence-rollout-bridge",
+        dependencies: {
+          vite: "6.1.0",
+          react: "19.1.1",
+          "react-dom": "19.1.1",
+        },
+      }),
+    );
+    const compat = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      moduleFederation: {
+        name: "host",
+        getPublicPath: "function () { return '/cdn/'; }",
+        shared: {
+          react: { singleton: true, requiredVersion: "^18" },
+          "react-dom": { singleton: true },
+        },
+      },
+      evidenceRollout: compatRollout(),
+      output: { formats: [] },
+      rules: {
+        "doctor/partial-analysis": "off" as const,
+        "config/name-required": "off" as const,
+        "config/plugin-package-mismatch": "warning" as const,
+        "security/get-public-path-dynamic-code": "warning" as const,
+        "shared/version-unsatisfied": "error" as const,
+        "shared/singleton-risk": "warning" as const,
+        "shared/eager-without-singleton": "warning" as const,
+        "shared/unused": "warning" as const,
+        "shared/candidate": "info" as const,
+        "shared/react-host-missing": "warning" as const,
+        "shared/deep-import-bypass": "warning" as const,
+        "shared/prefix-share-recommended": "info" as const,
+      },
+    });
+    const ceilings: Record<string, string> = {
+      "security/get-public-path-dynamic-code": "low",
+      "shared/version-unsatisfied": "medium",
+      "config/plugin-package-mismatch": "medium",
+      "shared/singleton-risk": "low",
+      "shared/eager-without-singleton": "low",
+      "shared/unused": "low",
+      "shared/candidate": "low",
+      "shared/react-host-missing": "medium",
+      "shared/deep-import-bypass": "low",
+      "shared/prefix-share-recommended": "high",
+    };
+    for (const [id, ceiling] of Object.entries(ceilings)) {
+      const evaluation = compat.evidence?.evaluations.find((item) => item.rule.id === id);
+      expect(evaluation).toBeDefined();
+      if (evaluation?.outcome === "unknown") continue;
+      const rank = CONFIDENCE_RANK[evaluation!.confidence];
+      const ceilingRank = CONFIDENCE_RANK[ceiling];
+      expect(rank).toBeDefined();
+      expect(ceilingRank).toBeDefined();
+      expect(rank!).toBeLessThanOrEqual(ceilingRank!);
+    }
   });
 
   it("routes every Group 1 bridge, SSR, and runtime-plugin rule through the bridge with V1 parity", async () => {
@@ -958,7 +1431,6 @@ describe("evidence-aware rule rollout bridge", () => {
     });
     const completeFacts = structuredClone(baseline.facts);
     completeFacts.bundler.moduleFederationPluginCount = 2;
-    completeFacts.bundler.federationInstances = [];
     completeFacts.bundler.outputPublicPathKind = "non-string";
     const completeRun = await runMigratedEvidenceRules(completeFacts, {});
     expect(
@@ -979,6 +1451,7 @@ describe("evidence-aware rule rollout bridge", () => {
 
     const missingPluginCount = structuredClone(completeFacts);
     delete missingPluginCount.bundler.moduleFederationPluginCount;
+    delete missingPluginCount.bundler.federationInstances;
     const missingCountRun = await runMigratedEvidenceRules(missingPluginCount, {});
     expect(
       missingCountRun.output.evaluations.find(
