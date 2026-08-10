@@ -148,6 +148,7 @@ export interface RuleEvaluationIdentity {
     compilationId?: string;
     artifactDigest?: string;
     runtimeInstanceId?: string;
+    edgeId?: string;
     adapter?: string;
     adapterVersion?: string;
     bundler?: { name: string; version?: string };
@@ -196,6 +197,7 @@ export type EvidenceRuleDecision =
     });
 
 export interface EvidenceRuleScope {
+  project?: string;
   adapter?: string;
   adapterVersion?: string;
   bundler?: { name: string; version?: string };
@@ -205,6 +207,7 @@ export interface EvidenceRuleScope {
   buildId?: string;
   compilationId?: string;
   federationInstanceId?: string;
+  edgeId?: string;
 }
 
 export interface EvidenceRuleContext {

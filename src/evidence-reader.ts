@@ -438,6 +438,10 @@ function completeness(
   return { status, reason, ...(missing ? { missing: missing.slice() } : {}) };
 }
 
+function cloneCompleteness(info: EvidenceCompletenessInfo): EvidenceCompletenessInfo {
+  return completeness(info.status, info.reason, info.missing);
+}
+
 function projectFieldCapability(field: string): string | undefined {
   return {
     bundler: "config",
@@ -1430,47 +1434,68 @@ export function migrateFederationWorkspace(
   }
 
   const federation = buildFederationModel([...input.projects]);
-  const graphValue = jsonValue(
-    {
-      groupKey: input.groupKey,
-      groupEvidenceIncomplete: input.groupEvidenceIncomplete,
-      projects: federation.projects.map((node) => ({
-        id: node.id,
-        projectName: node.projectName,
-        ...(node.federationName ? { federationName: node.federationName } : {}),
-        ...(node.instanceId ? { instanceId: node.instanceId } : {}),
-        shareStrategy: node.shareStrategy,
-        asyncStartup: node.asyncStartup,
-      })),
-      remoteEdges: federation.remoteEdges.map((edge) => ({
-        id: edge.id,
-        fromProject: edge.fromProject,
-        fromFederationName: edge.fromFederationName,
-        remoteName: edge.remoteName,
-        alias: edge.alias,
-        matched: edge.matched,
-      })),
-      federationNames: [...federation.federationNames.entries()]
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([name, owners]) => ({
-          name,
-          owners: owners.map((owner) => ({
-            projectName: owner.projectName,
-            ...(owner.instanceId ? { instanceId: owner.instanceId } : {}),
-          })),
+  const federationGraphTemplate = {
+    groupKey: input.groupKey,
+    groupEvidenceIncomplete: input.groupEvidenceIncomplete,
+    projects: federation.projects.map((node) => ({
+      id: node.id,
+      projectName: node.projectName,
+      ...(node.federationName ? { federationName: node.federationName } : {}),
+      ...(node.instanceId ? { instanceId: node.instanceId } : {}),
+      shareStrategy: node.shareStrategy,
+      asyncStartup: node.asyncStartup,
+    })),
+    remoteEdges: federation.remoteEdges.map((edge) => ({
+      id: edge.id,
+      fromProject: edge.fromProject,
+      fromFederationName: edge.fromFederationName,
+      remoteName: edge.remoteName,
+      alias: edge.alias,
+      matched: edge.matched,
+    })),
+    federationNames: [...federation.federationNames.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([name, owners]) => ({
+        name,
+        owners: owners.map((owner) => ({
+          projectName: owner.projectName,
+          ...(owner.instanceId ? { instanceId: owner.instanceId } : {}),
         })),
-    },
-    "/federation.graph",
-    options,
-    new WeakSet<object>(),
-    tracker,
-  );
+      })),
+  };
+  const federationGraphValue = (pathSuffix: string) =>
+    jsonValue(
+      structuredClone(federationGraphTemplate),
+      `/federation.graph/${pathSuffix}`,
+      options,
+      new WeakSet<object>(),
+      tracker,
+    );
+
+  const workspaceScopeTemplate = {
+    workspace: workspaceName,
+    projects: input.projects.map((project) => project.project.name),
+  };
+  const sourceScanTemplate = {
+    projects: input.projects.map((project) => ({
+      name: project.project.name,
+      sourceScope: project.imports.sourceScope ?? "complete",
+      sourceReadFailures: project.imports.sourceReadFailures ?? [],
+    })),
+    groupEvidenceIncomplete: input.groupEvidenceIncomplete,
+  };
 
   graph.assertions.push(
     assertion(
       workspaceSubject,
       "project.scope",
-      { workspace: workspaceName, projects: input.projects.map((project) => project.project.name) },
+      jsonValue(
+        workspaceScopeTemplate,
+        "/project.scope/workspace",
+        options,
+        new WeakSet<object>(),
+        tracker,
+      ),
       scope,
       "v1-federation-workspace",
       completeness("complete", "Workspace scope is present."),
@@ -1480,7 +1505,7 @@ export function migrateFederationWorkspace(
     assertion(
       workspaceSubject,
       "federation.graph",
-      graphValue,
+      federationGraphValue("workspace"),
       scope,
       "v1-federation-workspace",
       graphCompleteness,
@@ -1491,15 +1516,8 @@ export function migrateFederationWorkspace(
       workspaceSubject,
       "imports.sourceScan",
       jsonValue(
-        {
-          projects: input.projects.map((project) => ({
-            name: project.project.name,
-            sourceScope: project.imports.sourceScope ?? "complete",
-            sourceReadFailures: project.imports.sourceReadFailures ?? [],
-          })),
-          groupEvidenceIncomplete: input.groupEvidenceIncomplete,
-        },
-        "/imports.sourceScan",
+        sourceScanTemplate,
+        "/imports.sourceScan/workspace",
         options,
         new WeakSet<object>(),
         tracker,
@@ -1561,8 +1579,112 @@ export function migrateFederationWorkspace(
     );
   }
 
-  // Federation workspace rules evaluate against the workspace project subject; shared-package
-  // subjects are not materialized until per-package evaluation is implemented.
+  const sharedPackages = new Set<string>();
+  for (const node of federation.projects) {
+    const config = node.instance?.moduleFederation ?? node.project.moduleFederation;
+    for (const pkg of Object.keys(config?.shared ?? {})) sharedPackages.add(pkg);
+  }
+  for (const pkg of [...sharedPackages].sort()) {
+    const sharedSubject: EvidenceSubject = {
+      id: stableEvidenceId(
+        "subject.shared-package",
+        { workspace: workspaceName, package: pkg },
+        limits,
+      ),
+      kind: "shared-package",
+      name: pkg,
+      attributes: {
+        workspace: workspaceName,
+        package: pkg,
+      },
+    };
+    graph.subjects.push(sharedSubject);
+    graph.assertions.push(
+      assertion(
+        sharedSubject,
+        "project.scope",
+        jsonValue(
+          structuredClone(workspaceScopeTemplate),
+          `/project.scope/shared-package/${pkg}`,
+          options,
+          new WeakSet<object>(),
+          tracker,
+        ),
+        scope,
+        "v1-federation-workspace",
+        completeness("complete", "Workspace scope is present."),
+        "scope",
+        limits,
+      ),
+      assertion(
+        sharedSubject,
+        "federation.graph",
+        federationGraphValue(`shared-package/${pkg}`),
+        scope,
+        "v1-federation-workspace",
+        cloneCompleteness(graphCompleteness),
+        undefined,
+        limits,
+      ),
+      assertion(
+        sharedSubject,
+        "imports.sourceScan",
+        jsonValue(
+          structuredClone(sourceScanTemplate),
+          `/imports.sourceScan/shared-package/${pkg}`,
+          options,
+          new WeakSet<object>(),
+          tracker,
+        ),
+        scope,
+        "v1-federation-workspace",
+        cloneCompleteness(workspaceSourceCompleteness),
+        undefined,
+        limits,
+      ),
+    );
+  }
+
+  for (const edge of federation.remoteEdges) {
+    const remoteSubject: EvidenceSubject = {
+      id: stableEvidenceId("subject.remote", { edgeId: edge.id }, limits),
+      kind: "remote",
+      name: edge.alias || edge.remoteName,
+      attributes: {
+        edgeId: edge.id,
+        fromProject: edge.fromProject,
+        remoteName: edge.remoteName,
+        alias: edge.alias,
+        ...(edge.fromInstanceId ? { federationInstanceId: edge.fromInstanceId } : {}),
+      },
+    };
+    graph.subjects.push(remoteSubject);
+    graph.assertions.push(
+      assertion(
+        remoteSubject,
+        "project.scope",
+        {
+          name: edge.fromProject,
+          ...(edge.fromInstanceId ? { federationInstanceId: edge.fromInstanceId } : {}),
+        },
+        scope,
+        "v1-federation-workspace",
+        completeness("complete", "Remote edge project scope is present."),
+        "scope",
+        limits,
+      ),
+      assertion(
+        remoteSubject,
+        "federation.graph",
+        federationGraphValue(`remote/${edge.id}`),
+        scope,
+        "v1-federation-workspace",
+        cloneCompleteness(graphCompleteness),
+        undefined,
+        limits,
+      ),
+    );
+  }
 
   return finalizeGraph(graph, options);
 }

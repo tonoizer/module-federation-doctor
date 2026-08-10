@@ -3,6 +3,7 @@ import type {
   EvidenceGraphV2,
   EvidenceRuleEvaluation,
   EvidenceScope,
+  EvidenceSubject,
   EvidenceValue,
 } from "./evidence.js";
 import {
@@ -57,15 +58,62 @@ function toEvidenceFinding(value: FederationOracleFinding): EvidenceRuleFinding 
   return finding;
 }
 
+function packageNameForSubject(subject: EvidenceSubject): string {
+  const fromAttributes = subject.attributes?.package;
+  return typeof fromAttributes === "string" ? fromAttributes : subject.name;
+}
+
+function remoteEdgeMatchesFinding(
+  subject: EvidenceSubject,
+  finding: FederationOracleFinding,
+): boolean {
+  if (finding.ruleId !== "federation/circular-remote-graph") return false;
+  const edges = finding.evidence.edges;
+  if (!Array.isArray(edges)) return false;
+  const fromProject = subject.attributes?.fromProject;
+  const remoteName = subject.attributes?.remoteName;
+  const alias = subject.attributes?.alias;
+  const subjectInstanceId = subject.attributes?.federationInstanceId ?? undefined;
+  return edges.some((edge) => {
+    if (!edge || typeof edge !== "object") return false;
+    const record = edge as Record<string, unknown>;
+    const edgeInstanceId =
+      typeof record.fromInstanceId === "string" ? record.fromInstanceId : undefined;
+    return (
+      record.project === fromProject &&
+      record.remote === remoteName &&
+      record.alias === alias &&
+      edgeInstanceId === subjectInstanceId
+    );
+  });
+}
+
+function filterOracleFindingsForSubject(
+  findings: readonly FederationOracleFinding[],
+  ruleId: string,
+  subject: EvidenceSubject,
+): FederationOracleFinding[] {
+  const ruleFindings = findings.filter((finding) => finding.ruleId === ruleId);
+  if (subject.kind === "project") return ruleFindings;
+  if (subject.kind === "shared-package") {
+    const pkg = packageNameForSubject(subject);
+    return ruleFindings.filter((finding) => finding.evidence.package === pkg);
+  }
+  if (subject.kind === "remote") {
+    return ruleFindings.filter((finding) => remoteEdgeMatchesFinding(subject, finding));
+  }
+  return [];
+}
+
 function federationEvidenceRule(id: MigratedFederationEvidenceRuleId): EvidenceAwareRule {
   return {
     meta: inventoryEntry(id),
     async evaluate(context: EvidenceRuleContext) {
       const oracleFindings =
         (context.options.oracleFindings as readonly FederationOracleFinding[] | undefined) ?? [];
-      const findings = oracleFindings
-        .filter((finding) => finding.ruleId === id)
-        .map(toEvidenceFinding);
+      const findings = filterOracleFindingsForSubject(oracleFindings, id, context.subject).map(
+        toEvidenceFinding,
+      );
       return findings.length > 0
         ? { outcome: "fail" as const, reason: findings[0]!.message, findings }
         : {
@@ -96,13 +144,33 @@ export interface MigratedFederationEvidenceRun {
   output: EvidenceRuleRunnerOutput;
 }
 
+const GRAPH_TARGETS = new Set<EvidenceScope["target"]>([
+  "web",
+  "node",
+  "browser",
+  "ssr",
+  "unknown",
+]);
+
 function graphScopeFor(graphScope: EvidenceScope, scope: EvidenceRuleScope): EvidenceScope {
+  const target = GRAPH_TARGETS.has(scope.target as EvidenceScope["target"])
+    ? (scope.target as EvidenceScope["target"])
+    : graphScope.target;
   return {
     ...graphScope,
     ...(scope.adapter ? { adapter: scope.adapter } : {}),
-    target: graphScope.target,
+    ...(scope.adapterVersion ? { adapterVersion: scope.adapterVersion } : {}),
+    bundler: {
+      ...graphScope.bundler,
+      ...scope.bundler,
+    },
+    target,
     ...(scope.buildMode ? { buildMode: scope.buildMode } : {}),
     ...(scope.projectRole ? { projectRole: scope.projectRole } : {}),
+    ...(scope.buildId ? { buildId: scope.buildId } : {}),
+    ...(scope.compilationId ? { compilationId: scope.compilationId } : {}),
+    ...(scope.federationInstanceId ? { federationInstanceId: scope.federationInstanceId } : {}),
+    ...(scope.edgeId ? { edgeId: scope.edgeId } : {}),
   };
 }
 
@@ -159,10 +227,11 @@ export async function runMigratedFederationRules(
   );
   const representativeBundler = input.projects[0]?.bundler.name ?? "unknown";
   const workspaceName = input.groupKey === "\0ungrouped" ? "workspace" : input.groupKey;
-  const workspaceSubject = graph.subjects.find(
-    (subject) => subject.kind === "project" && subject.name === workspaceName,
-  );
-  if (!workspaceSubject) throw new Error("Federation workspace subject is missing from the graph.");
+  if (
+    !graph.subjects.some((subject) => subject.kind === "project" && subject.name === workspaceName)
+  ) {
+    throw new Error("Federation workspace subject is missing from the graph.");
+  }
   const scope: EvidenceRuleScope = {
     adapter: representativeBundler,
     bundler: { name: representativeBundler },
@@ -189,10 +258,18 @@ export async function runMigratedFederationRules(
       rule: { id: rule.meta.id, version: rule.meta.version },
       reason: 'Rule is disabled by configuration (setting is "off").',
     }));
+  const evaluationSubjectIds = graph.subjects
+    .filter(
+      (subject) =>
+        subject.kind === "shared-package" ||
+        subject.kind === "remote" ||
+        (subject.kind === "project" && subject.name === workspaceName),
+    )
+    .map((subject) => subject.id);
   const output = await runEvidenceAwareRules({
     graph,
     rules,
-    subjects: [workspaceSubject.id],
+    subjects: evaluationSubjectIds,
     scope,
     ruleOptions: ruleOptionsFor(settings, oracleFindings),
     ...(analysisBudget ? { analysisBudget } : {}),
@@ -217,6 +294,7 @@ export function projectMigratedFederationFailures(
 ): DoctorFinding[] {
   const rules = new Map(migratedFederationEvidenceRules.map((rule) => [rule.meta.id, rule]));
   const findings: DoctorFinding[] = [];
+  const seenFingerprints = new Set<string>();
   for (const evaluation of evaluations) {
     if (evaluation.outcome !== "fail") continue;
     const rule = rules.get(evaluation.rule.id);
@@ -258,6 +336,9 @@ export function projectMigratedFederationFailures(
           ? { details: redact(finding.details, root) as Record<string, unknown> }
           : {}),
       });
+      const projectedFingerprint = findings[findings.length - 1]!.fingerprint;
+      if (seenFingerprints.has(projectedFingerprint)) findings.pop();
+      else seenFingerprints.add(projectedFingerprint);
     }
   }
   return findings;

@@ -284,6 +284,11 @@ function evaluationBase(
   graph: Pick<EvidenceGraphV2, "identity">,
   scope: EvidenceRuleScope,
 ) {
+  const subjectScope = scopeForSubject(scope, subject, graph);
+  const evaluationScope = {
+    ...scope,
+    ...subjectScope,
+  };
   return {
     id: stableEvaluationId({
       ruleId: rule.meta.id,
@@ -291,13 +296,42 @@ function evaluationBase(
       subjectId: subject.id,
       scope: {
         ...graph.identity,
-        project: graph.identity.project ?? subject.id,
-        ...scope,
+        project: graph.identity.project ?? evaluationScope.project ?? subject.id,
+        ...evaluationScope,
       },
     }),
     rule: { id: rule.meta.id, version: rule.meta.version },
     subject: subject.id,
-    scope,
+    scope: evaluationScope,
+  };
+}
+
+function scopeForSubject(
+  scope: EvidenceRuleScope,
+  subject: EvidenceSubject,
+  graph: Pick<EvidenceGraphV2, "identity">,
+): EvidenceRuleScope {
+  const attributes = subject.attributes ?? {};
+  const project =
+    typeof attributes.project === "string"
+      ? attributes.project
+      : subject.kind === "project" &&
+          subject.name !== graph.identity.workspace &&
+          subject.name !== "workspace"
+        ? subject.name
+        : typeof attributes.fromProject === "string"
+          ? attributes.fromProject
+          : undefined;
+  return {
+    ...scope,
+    ...(project ? { project } : {}),
+    ...(typeof attributes.compilationId === "string"
+      ? { compilationId: attributes.compilationId }
+      : {}),
+    ...(typeof attributes.federationInstanceId === "string"
+      ? { federationInstanceId: attributes.federationInstanceId }
+      : {}),
+    ...(typeof attributes.edgeId === "string" ? { edgeId: attributes.edgeId } : {}),
   };
 }
 
@@ -483,7 +517,7 @@ export async function runEvidenceAwareRules(
       try {
         const context: EvidenceRuleContext = deepFreeze({
           subject,
-          scope: deepFreeze(scope),
+          scope: deepFreeze(scopeForSubject(scope, subject, graph)),
           evidenceIds: Object.freeze(prerequisite.ids.slice()),
           evidence: query,
           ...(input.facts ? { facts: deepFreeze(structuredClone(input.facts)) } : {}),

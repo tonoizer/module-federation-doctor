@@ -46,6 +46,7 @@ export interface EvidenceScope {
   buildId?: string;
   compilationId?: string;
   federationInstanceId?: string;
+  edgeId?: string;
 }
 
 export interface EvidenceIdentity {
