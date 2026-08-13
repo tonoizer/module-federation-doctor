@@ -38,7 +38,7 @@ upstream validation records:
 
 | Surface                                     | Current evidence                                                                     | Matrix status    |
 | ------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------- |
-| Vite current ESM + Vite 5 CommonJS          | Production build + project/report/SARIF assertions on Node 22 and 24                 | CI               |
+| Vite current ESM + Vite 5 CommonJS          | Production build + project/report/SARIF assertions on Node 22, 24, and 26            | CI               |
 | Rspack, Rsbuild, Webpack, Modern.js adapter | Production build + MFDoctor report assertions                                        | CI               |
 | Svelte and SvelteKit SSR                    | Pinned upstream app reports plus SvelteKit SSR-entry regression test                 | validated        |
 | Angular                                     | Pinned upstream validation; the example's existing package baseline blocks the build | baseline-blocked |
@@ -87,11 +87,11 @@ certainty (`shared/unused`, invented remotes, scraped private plugin fields).
 
 ## Package managers
 
-| Manager                | Status        | Notes                                                                                                                                                                                                                        |
-| ---------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **pnpm** (primary)     | **supported** | pnpm 11 only (`packageManager: "pnpm@11.17.0"`; `engines.pnpm: ">=11.0.0 <12.0.0"`); CI uses `pnpm install --frozen-lockfile`; workspace filters for examples; ten-day release-age and explicit build approvals are enforced |
-| npm                    | **partial**   | Published package installs with `npm i -D @tonoizer/mfdoctor`; CLI via `npx mfdoctor`. This monorepo’s lockfile and filters are pnpm-only — do not expect `npm install` at the repo root to reproduce CI.                    |
-| yarn (classic / Berry) | **partial**   | Same published-package install/CLI story as npm. Yarn workspaces are not the repo’s CI path; use pnpm for contributing and matrix jobs.                                                                                      |
+| Manager                | Status        | Notes                                                                                                                                                                                                                                    |
+| ---------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **pnpm** (primary)     | **supported** | Vite+ delegates to pnpm 11 (`packageManager: "pnpm@11.17.0"`; `engines.pnpm: ">=11.0.0 <12.0.0"`); CI uses `vp install --frozen-lockfile`; workspace filters for examples; ten-day release-age and explicit build approvals are enforced |
+| npm                    | **partial**   | Published package installs with `npm i -D @tonoizer/mfdoctor`; CLI via `npx mfdoctor`. This monorepo’s lockfile and filters are pnpm-only — do not expect `npm install` at the repo root to reproduce CI.                                |
+| yarn (classic / Berry) | **partial**   | Same published-package install/CLI story as npm. Yarn workspaces are not the repo’s CI path; use pnpm for contributing and matrix jobs.                                                                                                  |
 
 Where paths differ: contributors and CI always use **pnpm**. Consumers of the
 published tarball may use npm or yarn to install MFDoctor into their own app; the
@@ -141,10 +141,10 @@ Reds that **do not** block other cells:
 
 | Workflow                      | What it proves                                                          |
 | ----------------------------- | ----------------------------------------------------------------------- |
-| `compatibility.yml`           | Per-bundler build+MFDoctor on Node 22 + 24; report surfaces             |
+| `compatibility.yml`           | Per-bundler build+MFDoctor on Node 22, 24 + 26; report surfaces         |
 | `doctor.yml`                  | Mixed + nested federation builds + workspace gates + SARIF upload       |
 | `integration.yml` / `e2e.yml` | Adapter tests plus the full matrix and Playwright mixed-federation path |
-| `package.yml`                 | Pack/consume smoke on Node 22 + 24 (includes Webpack)                   |
+| `package.yml`                 | Pack/consume smoke on Node 22, 24 + 26 (includes Webpack)               |
 | `quality.yml`                 | fmt, lint, types, unit tests, `docs:build`                              |
 
 ## mf-toolkit shapes

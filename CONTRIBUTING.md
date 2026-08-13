@@ -13,12 +13,12 @@ the [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
 
 ## Setup
 
-The repository requires Node `>=22.12.0` and pnpm `11.17.0`.
+The repository requires Node `>=22.12.0`. Install [Vite+](https://viteplus.dev/guide/)
+once; it selects the repository's Node.js, pnpm, and toolchain versions.
 
 ```bash
-npm install --global pnpm@11.17.0
-pnpm install --frozen-lockfile
-pnpm exec playwright install chromium
+vp install
+vp exec playwright install chromium
 ```
 
 ## Testing
@@ -26,16 +26,16 @@ pnpm exec playwright install chromium
 Run focused checks while working:
 
 ```bash
-pnpm fmt:check
-pnpm lint
-pnpm test:unit
-pnpm test:integration
+vp fmt --check
+vp lint --deny-warnings
+vp test run test/unit
+vp test run test/integration
 ```
 
 Before submitting a PR, run the full repository check:
 
 ```bash
-pnpm check
+vp run check
 ```
 
 `pnpm demo:showcase` is a release gate for the one-rule CLI fixtures under
@@ -73,7 +73,7 @@ or fork-only branches as official behavior.
 ## Changesets
 
 If a change affects the published `@tonoizer/mfdoctor` package, add a changeset
-with `pnpm changeset` and commit the generated file. Documentation, test-only,
+with `vp run changeset` and commit the generated file. Documentation, test-only,
 and repository-maintenance changes normally do not need one.
 
 The maintainer release flow lives in [RELEASING.md](./RELEASING.md).

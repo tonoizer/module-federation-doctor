@@ -248,19 +248,19 @@ loop.
 
 ## Development
 
-Requires Node `>=22.12.0` and pnpm 11 only. The workspace policy pins the
-package manager to `pnpm@11.17.0`, delays new dependency releases by ten days,
+Requires Node `>=22.12.0`. [Vite+](https://viteplus.dev/guide/) manages the
+repository's Node.js, pnpm, build, test, lint, and format toolchain. The
+workspace policy pins pnpm to `11.17.0`, delays new dependency releases by ten days,
 and requires explicit approval for dependency build scripts. See the
 [compatibility matrix](./apps/docs/docs/compatibility.md) for supported /
 partial / unsupported cells (Vite, Rspack, Rsbuild, Webpack, Modern.js; npm / yarn
 consumer notes; terminal / JSON / SARIF on CI).
 
 ```bash
-npm install --global pnpm@11.17.0
-pnpm install --frozen-lockfile
-pnpm exec playwright install chromium
-pnpm check
-pnpm release:dry-run
+vp install
+vp exec playwright install chromium
+vp run check
+vp run release:dry-run
 ```
 
 Examples:
@@ -317,4 +317,4 @@ Module Federation projects. Thanks to the Rsdoctor team for the inspiration.
 
 Please follow the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
-MIT © 2026 tonoizer and contributors.
+MIT © 2026 Kevin Beier and contributors.

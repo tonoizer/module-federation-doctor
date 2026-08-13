@@ -264,10 +264,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v6
+      - uses: voidzero-dev/setup-vp@v1.17.0
         with:
-          node-version: 24
-      - run: npm install --global pnpm@11.17.0 && pnpm install --frozen-lockfile
+          node-version: 26
+          cache: true
       - run: pnpm --filter './apps/docs' build
       - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@main
         with:

@@ -42,7 +42,7 @@ async function formatInventory(rawContent) {
   const tempPath = path.join(repository, "fixtures/rule-inventory/.v1.generated.json");
   await fs.mkdir(path.dirname(tempPath), { recursive: true });
   await fs.writeFile(tempPath, rawContent);
-  execSync(`pnpm exec oxfmt ${JSON.stringify(tempPath)}`, {
+  execSync(`vp fmt ${JSON.stringify(tempPath)}`, {
     cwd: repository,
     stdio: "pipe",
   });

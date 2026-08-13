@@ -72,7 +72,7 @@ describe("release file generation", () => {
     expect(workflow).toContain("contents: read");
     expect(workflow).toContain("contents: write");
     expect(workflow.indexOf("Verify release tag")).toBeLessThan(
-      workflow.indexOf("pnpm install --frozen-lockfile"),
+      workflow.indexOf("uses: ./.github/actions/setup-vp"),
     );
     expect(workflow).toContain("git rev-parse HEAD");
     expect(workflow).toContain("GH_REPO: ${{ github.repository }}");

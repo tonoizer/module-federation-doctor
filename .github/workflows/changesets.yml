@@ -23,14 +23,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - run: npm install --global pnpm@11.17.0
-
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      - uses: ./.github/actions/setup-vp
         with:
           node-version: 24
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
 
       # Version and changelog changes only. npm publishing is deliberately handled
       # by publish-on-release.yml after a future version PR is reviewed and merged.

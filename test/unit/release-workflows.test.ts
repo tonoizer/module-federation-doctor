@@ -2,6 +2,16 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("release workflow contracts", () => {
+  it("uses a pinned Vite+ setup action with frozen installs", async () => {
+    const action = await readFile(".github/actions/setup-vp/action.yml", "utf8");
+
+    expect(action).toContain(
+      "voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0",
+    );
+    expect(action).toContain("run-install: false");
+    expect(action).toContain("vp install --frozen-lockfile");
+  });
+
   it("publishes only an immutable version tag through staged OIDC publishing", async () => {
     const workflow = await readFile(".github/workflows/publish-on-release.yml", "utf8");
 
@@ -11,6 +21,7 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain('test "${TAG}" = "${VERSION}"');
     expect(workflow).toContain('git tag --points-at HEAD --list "${TAG}"');
     expect(workflow).toContain("npm install --global npm@11.17.0");
+    expect(workflow).toContain("node-version: [22, 24, 26]");
     expect(workflow).toContain("id-token: write");
     expect(workflow.indexOf("id-token: write")).toBeGreaterThan(workflow.indexOf("stage:"));
     expect(workflow).toContain("environment: npm");
