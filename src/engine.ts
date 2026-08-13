@@ -150,7 +150,7 @@ async function runRule(
       ...(facts.federationInstanceId ? { federationInstanceId: facts.federationInstanceId } : {}),
       evidence: { ruleId: rule.meta.id },
       documentation: rule.meta.documentation,
-      suggestion: "Fix or disable this rule, then re-run Doctor to collect the full report.",
+      suggestion: "Fix or disable this rule, then re-run MFDoctor to collect the full report.",
     };
     findings.push({ ...base, fingerprint: fingerprint(base) });
   }
@@ -462,7 +462,7 @@ async function runAnalysis(
   } catch (error) {
     if (resolved.output.formats.includes("terminal"))
       process.stderr.write(
-        `Module Federation Doctor could not complete: ${error instanceof Error ? error.message : String(error)}\n`,
+        `MFDoctor could not complete: ${error instanceof Error ? error.message : String(error)}\n`,
       );
     const emptyFacts = await collectProjectFacts({ ...resolved, include: [] });
     return { facts: emptyFacts, report: reportFor(emptyFacts, []), exitCode: 2 };
@@ -730,8 +730,8 @@ export async function analyzeFederation(
     pushWorkspacePartialFinding(
       findings,
       workspaceAnalysis.status === "unknown"
-        ? "Doctor completed with unknown workspace input due to an analysis budget."
-        : "Doctor completed with partial workspace input.",
+        ? "MFDoctor completed with unknown workspace input due to an analysis budget."
+        : "MFDoctor completed with partial workspace input.",
       { analysisBudget: workspaceAnalysis },
       { missing: [], analysisBudget: workspaceAnalysis },
     );
@@ -740,7 +740,7 @@ export async function analyzeFederation(
   if (incompleteProjects.length > 0) {
     pushWorkspacePartialFinding(
       findings,
-      "Doctor found persisted project facts with incomplete source analysis.",
+      "MFDoctor found persisted project facts with incomplete source analysis.",
       { projectAnalysis: incompleteProjects },
       { missing: [], projectAnalysis: incompleteProjects },
     );
@@ -748,7 +748,7 @@ export async function analyzeFederation(
   if (sourceReadFailures.length > 0) {
     pushWorkspacePartialFinding(
       findings,
-      "Doctor encountered unreadable source input in workspace; analysis is unknown.",
+      "MFDoctor encountered unreadable source input in workspace; analysis is unknown.",
       { sourceReadFailures },
       { missing: [], sourceReadFailures },
     );
@@ -756,7 +756,7 @@ export async function analyzeFederation(
   if (workspaceDiagnostics.length > 0) {
     pushWorkspacePartialFinding(
       findings,
-      "Doctor found workspace diagnostics; analysis is incomplete.",
+      "MFDoctor found workspace diagnostics; analysis is incomplete.",
       { workspaceDiagnostics },
       { missing: [], workspaceDiagnostics },
     );

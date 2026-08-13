@@ -12,7 +12,7 @@ import { workspaceRootForProjects } from "./monorepo-identity.js";
 import { mapBounded } from "./async-map.js";
 import { compareCodePoint, relativePath } from "./utils.js";
 
-/** Default discovery for Doctor project facts under each app. */
+/** Default discovery for MFDoctor project facts under each app. */
 export const DEFAULT_WORKSPACE_PROJECT_GLOBS = ["**/.mf/doctor/project.json"] as const;
 
 /** Paths skipped while walking workspace roots. */
@@ -29,7 +29,7 @@ export const WORKSPACE_IGNORE = [
 export interface DiscoverWorkspaceProjectsOptions {
   /** Absolute or cwd-relative roots to search. Defaults to `["."]`. */
   roots?: string[];
-  /** Override globs (manual escape hatch). Defaults to Doctor project.json layout. */
+  /** Override globs (manual escape hatch). Defaults to MFDoctor project.json layout. */
   globs?: string[];
   /** Base directory for relative roots. Defaults to `process.cwd()`. */
   cwd?: string;
@@ -639,7 +639,7 @@ async function inspectWorkspaceProjects(
 }
 
 /**
- * Discover Module Federation Doctor `project.json` files under workspace roots.
+ * Discover MFDoctor `project.json` files under workspace roots.
  * Offline only — does not fetch remotes or replace per-app build plugins.
  */
 export async function discoverWorkspaceProjectsWithBudget(

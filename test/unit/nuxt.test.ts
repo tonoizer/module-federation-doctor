@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createNuxtDoctorModule, nuxtDoctor } from "../../src/nuxt.js";
+import { createNuxtDoctorModule, moduleFederationDoctor, nuxtDoctor } from "../../src/nuxt.js";
 import type { NuxtModuleContext } from "../../src/nuxt.js";
 
 function nuxtContext(version: "3" | "4") {
@@ -49,11 +49,15 @@ describe("Nuxt adapter", () => {
 
   it("reads the Nuxt 4 module federation config when no explicit config is passed", () => {
     const { context, callbacks } = nuxtContext("4");
-    nuxtDoctor.setup({ mode: "ci", output: { formats: [] } }, context);
+    moduleFederationDoctor.setup({ mode: "ci", output: { formats: [] } }, context);
 
     const config: { plugins?: unknown[] } = { plugins: [] };
     callbacks[0]!(config);
     expect(config.plugins).toHaveLength(1);
+  });
+
+  it("keeps the pre-release Nuxt export as an alias", () => {
+    expect(nuxtDoctor).toBe(moduleFederationDoctor);
   });
 
   it("does not duplicate the plugin when Nuxt invokes the hook twice", () => {

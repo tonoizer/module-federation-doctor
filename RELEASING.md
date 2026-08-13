@@ -1,4 +1,4 @@
-# Releasing Module Federation Doctor
+# Releasing MFDoctor
 
 This is the maintainer flow for `@tonoizer/mfdoctor`. Public releases use plain
 semver tags such as `1.0.0-rc.0`, never a `v` prefix.
@@ -64,13 +64,33 @@ The job uses GitHub OIDC and npm provenance, not `NPM_TOKEN`. The repository
 `npm` environment requires approval and accepts deployments only from `main` or
 a tag. Release-tag update and deletion are protected by a repository ruleset.
 
+## Promote the RC to stable
+
+Treat `1.0.0-rc.0` as a public prerelease on npm tag `next`, not as the stable
+launch. Before promoting it, verify all of the following against the published
+package rather than the repository workspace:
+
+- a clean project can install `@tonoizer/mfdoctor@next` on Node 22 and 24;
+- `mfdoctor --help`, `mfdoctor check`, and one workspace command run from the
+  installed package;
+- the Vite, Nuxt, Rspack, Rsbuild, Webpack, and Modern.js documented imports
+  resolve from the packed exports;
+- npm shows the expected provenance and the package contains only reviewed
+  release files;
+- the GitHub prerelease has the matching immutable tag, changelog, tarball, and
+  checksums;
+- the canonical docs, CLI reference, integrations guide, and representative
+  rule page are live;
+- no release-blocking regressions are reported from real external projects.
+
 After the RC is proven, exit prerelease mode in a reviewed change:
 
 ```bash
 pnpm changeset pre exit
 ```
 
-Changesets then prepares the stable `1.0.0` version PR.
+Changesets then prepares the stable `1.0.0` version PR. Review and merge that
+PR through the same tag-only workflow; stable releases use npm tag `latest`.
 
 ## Release artifacts and failures
 

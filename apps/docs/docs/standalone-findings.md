@@ -1,7 +1,7 @@
 # Standalone per-bundler findings
 
 `examples/standalone-findings` has four **standalone** cells — one per supported
-bundler — that run a real `pnpm build` with the matching Doctor adapter and emit
+bundler — that run a real `pnpm build` with the matching MFDoctor adapter and emit
 intentional findings.
 
 They are not nested. Nested multi-app orchestration lives in

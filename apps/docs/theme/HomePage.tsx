@@ -4,7 +4,7 @@ const startLinks = [
   {
     href: "/setup",
     title: "Get started",
-    detail: "Install Doctor, run the first build, and gate the whole workspace.",
+    detail: "Install MFDoctor, run the first build, and gate the whole workspace.",
   },
   {
     href: "/integrations",
@@ -78,7 +78,7 @@ export function HomePage() {
   return (
     <main className="kb-home">
       <section className="kb-intro">
-        <h1>Module Federation Doctor</h1>
+        <h1>MFDoctor</h1>
         <div className="kb-copy">
           <p>
             <code>@tonoizer/mfdoctor</code> is a post-build diagnostic tool for Module Federation
@@ -86,12 +86,12 @@ export function HomePage() {
             the build still has enough evidence to explain them.
           </p>
           <p>
-            Register Doctor next to your federation plugin. Clean builds stay quiet; findings
+            Register MFDoctor next to your federation plugin. Clean builds stay quiet; findings
             include a rule, impact, suggested fix, and a direct documentation link. Errors fail CI
             only after every finding has been collected.
           </p>
           <p>
-            Doctor runs in Node after emit and adds nothing to the browser bundle. Start with the{" "}
+            MFDoctor runs in Node after emit and adds nothing to the browser bundle. Start with the{" "}
             <a href={withBase("/setup")}>setup guide</a>, or review the full{" "}
             <a href={withBase("/rules/")}>rule catalog</a>.
           </p>

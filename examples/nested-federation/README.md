@@ -1,6 +1,6 @@
 # Nested multi-bundler federation
 
-Healthy nesting topology for Doctor dogfood:
+Healthy nesting topology for MFDoctor dogfood:
 
 ```text
 Vite host (5180)
@@ -10,8 +10,8 @@ Vite host (5180)
     └── Webpack remote (3013)
 ```
 
-Each app registers the matching Doctor adapter next to Module Federation. A
-coordinated root build prints per-app Doctor output; then `mfdoctor workspace`
+Each app registers the matching MFDoctor adapter next to Module Federation. A
+coordinated root build prints per-app MFDoctor output; then `mfdoctor workspace`
 gates the emitted `.mf/doctor/project.json` facts.
 
 ## Green path

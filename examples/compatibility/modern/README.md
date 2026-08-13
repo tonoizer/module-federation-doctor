@@ -1,7 +1,7 @@
 # Modern.js compatibility smoke
 
 Exercises `@tonoizer/mfdoctor/modern` the way Modern.js registers plugins:
-`modifyBundlerChain` attaches the same post-emit Doctor hook used by direct
+`modifyBundlerChain` attaches the same post-emit MFDoctor hook used by direct
 Rspack. The smoke build uses `@rspack/core` + `@module-federation/enhanced/rspack`
 under the hood (what Modern.js does internally) so CI stays light without
 pulling `@modern-js/app-tools`.

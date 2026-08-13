@@ -1,6 +1,6 @@
 # Examples
 
-Runnable fixtures that show how Doctor behaves on real Module Federation
+Runnable fixtures that show how MFDoctor behaves on real Module Federation
 graphs. Start here, then open a specific page for commands and expected
 findings.
 

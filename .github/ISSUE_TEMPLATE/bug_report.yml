@@ -1,12 +1,12 @@
 name: Bug report
-description: Report a Module Federation Doctor problem
+description: Report an MFDoctor problem
 title: "[Bug]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve Module Federation Doctor.
+        Thanks for helping improve MFDoctor.
   - type: textarea
     id: what-happened
     attributes:
@@ -20,8 +20,8 @@ body:
     id: version
     attributes:
       label: Version
-      description: Which Doctor, Node, and bundler versions are you running?
-      placeholder: Doctor 0.1.0, Node 24, Vite 8
+      description: Which MFDoctor, Node, and bundler versions are you running?
+      placeholder: MFDoctor 0.1.0, Node 24, Vite 8
     validations:
       required: true
   - type: input
@@ -45,7 +45,7 @@ body:
       label: Validations
       description: Before submitting the issue, please make sure you do the following
       options:
-        - label: I read the Module Federation Doctor docs.
+        - label: I read the MFDoctor docs.
           required: true
         - label: I removed secrets and private paths from attached reports.
           required: true

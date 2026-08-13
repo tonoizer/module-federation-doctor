@@ -58,7 +58,7 @@ for (const dir of packages) {
     failed = true;
     continue;
   }
-  process.stdout.write(`ok ${dir} (clean Doctor build)\n`);
+  process.stdout.write(`ok ${dir} (clean MFDoctor build)\n`);
 }
 
 const workspace = run(process.execPath, [

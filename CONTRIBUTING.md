@@ -1,4 +1,4 @@
-# Module Federation Doctor Contributing Guide
+# MFDoctor Contributing Guide
 
 Thanks for your interest in contributing. New contributors are welcome. Read
 the [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
@@ -39,14 +39,14 @@ pnpm check
 ```
 
 `pnpm demo:showcase` is a release gate for the one-rule CLI fixtures under
-`examples/showcase`. Per-bundler build and Doctor demos live under
+`examples/showcase`. Per-bundler build and MFDoctor demos live under
 `examples/standalone-findings`; keep them current when adapter wiring or
 catchable configuration rules change.
 
 ## Adapter contract
 
-Doctor is plugin-primary and CLI-complementary. Bundler adapters run after emit
-in Node and must never inject Doctor into browser assets.
+MFDoctor is plugin-primary and CLI-complementary. Bundler adapters run after emit
+in Node and must never inject MFDoctor into browser assets.
 
 When adding or extending an adapter:
 

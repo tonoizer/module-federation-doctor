@@ -669,13 +669,13 @@ describe("adapter quiet success and failure terminal path", () => {
       };
 
       const clean = await run(cleanRoot, "clean");
-      expect(clean.writes.join("")).not.toContain("Module Federation Doctor");
+      expect(clean.writes.join("")).not.toContain("MFDoctor");
       expect(clean.threw).toBe(false);
 
       const failed = await run(errorRoot, "error");
       const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
       const out = failed.writes.join("").replace(ansi, "");
-      expect(out).toContain("Module Federation Doctor");
+      expect(out).toContain("MFDoctor");
       expect(out).toContain("config/expose-key-invalid");
       expect(out).toContain("error");
       expect(out).toContain(

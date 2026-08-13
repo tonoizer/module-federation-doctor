@@ -47,7 +47,7 @@ function runRequired(label, command, args) {
 
 function reportFor(relativeDir) {
   const reportPath = path.join(root, relativeDir, ".mf/doctor/report.json");
-  assert.ok(fs.existsSync(reportPath), `missing Doctor report: ${relativeDir}`);
+  assert.ok(fs.existsSync(reportPath), `missing MFDoctor report: ${relativeDir}`);
   return JSON.parse(fs.readFileSync(reportPath, "utf8"));
 }
 

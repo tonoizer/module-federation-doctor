@@ -159,7 +159,7 @@ async function loadModule(specifier: string, root: string): Promise<unknown> {
   const absolutePath = path.isAbsolute(specifier) || path.win32.isAbsolute(specifier);
   if (/^[a-z][a-z0-9+.-]*:/i.test(specifier) && !absolutePath) {
     throw new Error(
-      `Policy pack "${specifier}" uses a URL scheme. Doctor only loads local paths or installed packages (no remote HTTP download).`,
+      `Policy pack "${specifier}" uses a URL scheme. MFDoctor only loads local paths or installed packages (no remote HTTP download).`,
     );
   }
   const absolute =
@@ -228,7 +228,7 @@ export async function resolvePolicy(
       const loaded = unpackModule(await loadModule(entry, root), entry);
       if (typeof loaded === "string") {
         if (!isDoctorPresetName(loaded)) {
-          throw new Error(`Unknown Doctor preset "${loaded}" loaded from "${entry}".`);
+          throw new Error(`Unknown MFDoctor preset "${loaded}" loaded from "${entry}".`);
         }
         applyPack(presets[loaded], loaded);
       } else if (isDoctorRule(loaded)) {
@@ -248,7 +248,7 @@ export async function resolvePolicy(
       applyPack(entry, "policy-pack");
       continue;
     }
-    throw new Error(`Unsupported Doctor extends entry: ${String(entry)}`);
+    throw new Error(`Unsupported MFDoctor extends entry: ${String(entry)}`);
   }
 
   return { rules, plugins, applied, sharedPolicyLayers };

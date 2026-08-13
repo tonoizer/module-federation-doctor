@@ -56,7 +56,7 @@ export default {
 
 `profile` is appended after `extends` and before local `rules`. The effective
 order is `default < extends (left to right) < profile < local rules`. When
-`profile: "demo"` is used in CI, Doctor resolves the safer `production` overlay
+`profile: "demo"` is used in CI, MFDoctor resolves the safer `production` overlay
 instead of hiding demo-only recommendations. The resolved overlay is visible
 in `appliedPolicies`.
 

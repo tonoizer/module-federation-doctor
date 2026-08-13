@@ -55,7 +55,7 @@ function createAfterEmitPlugin(
 }
 
 /**
- * Modern.js-oriented Doctor plugin — register next to `moduleFederationPlugin`
+ * Modern.js-oriented MFDoctor plugin — register next to `moduleFederationPlugin`
  * from `@module-federation/modern-js` / `@module-federation/modern-js-v3`.
  *
  * Modern.js sits on Rspack (or Webpack). This adapter records `bundler: "modern"`
@@ -77,7 +77,7 @@ export function moduleFederationDoctorPlugin(options: DoctorOptions = {}): Moder
       };
       if (typeof api.modifyBundlerChain !== "function") {
         console.warn(
-          "[@tonoizer/mfdoctor/modern] api.modifyBundlerChain is missing; Doctor was not registered. Use a Modern.js App Tools plugin API, or call appendModuleFederationDoctor / @tonoizer/mfdoctor/rspack from tools.bundlerChain.",
+          "[@tonoizer/mfdoctor/modern] api.modifyBundlerChain is missing; MFDoctor was not registered. Use a Modern.js App Tools plugin API, or call appendModuleFederationDoctor / @tonoizer/mfdoctor/rspack from tools.bundlerChain.",
         );
         return;
       }

@@ -12,7 +12,7 @@
   trees (#145 → unlocks #127).
 - `mf-ssr-fragment`: in-repo mf-toolkit **mf-ssr** fragment URL remotes (not
   classic `remoteEntry.js`) with golden project facts (#145 → unlocks #127).
-- `policy-packs`: shareable Doctor policy pack example (`@acme/mfdoctor-policy`).
+- `policy-packs`: shareable MFDoctor policy pack example (`@acme/mfdoctor-policy`).
 - `runtime-traces`: Observability-style exports for `mfdoctor runtime` correlation.
 - `shared-inspector-mf2`: minimal MF2 shared-array / inherited-shared evidence
   JSON shaped like `@mf-toolkit/shared-inspector` stress fixtures (#145).

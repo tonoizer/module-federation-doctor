@@ -16,7 +16,7 @@ stack frame with a stable marker so fresh captures produce the same bytes.
   `keeps reports without runtime version as basic observability regardless of
 scope` in `@module-federation/devtools` 2.7.0.
 - `healthy.json`, `init-failed.json`, `remote-load-failed.json`, and
-  `shared-mismatch.json` are legacy Doctor fixtures. They remain separate for
+  `shared-mismatch.json` are legacy MFDoctor fixtures. They remain separate for
   the later migration adapter.
 
 Replay and sanitization details, original digests, sanitized digests, and the
@@ -24,7 +24,7 @@ field mapping are in `provenance.json`. The upstream package is MIT licensed;
 these small JSON fixtures contain no copied source code and retain attribution
 to the upstream repository.
 
-The upstream package has no runtime report schema version. Doctor must keep its
+The upstream package has no runtime report schema version. MFDoctor must keep its
 source-contract marker separate from `runtimeVersion`, which is the Module
 Federation runtime version.
 

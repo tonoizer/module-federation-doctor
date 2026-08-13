@@ -12,12 +12,11 @@ export * from "@rspress/core/theme-original";
 
 function Brand() {
   return (
-    <Link className="kb-brand" href={withBase("/")} aria-label="Module Federation Doctor home">
+    <Link className="kb-brand" href={withBase("/")} aria-label="MFDoctor home">
       <span className="kb-brand__mark">
-        <img src={withBase("/module-federation-doctor-mark.svg")} alt="" />
-        <span className="kb-brand__status" aria-hidden="true" />
+        <img src={withBase("/mfdoctor-mark.svg")} alt="" />
       </span>
-      <span>Doctor</span>
+      <span>MFDoctor</span>
     </Link>
   );
 }

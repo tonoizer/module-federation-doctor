@@ -1,7 +1,7 @@
 # Compatibility matrix
 
-Documented and CI-exercised support for every bundler and runtime Doctor claims
-in v1. Status labels are tied to analysis capabilities and real build+Doctor
+Documented and CI-exercised support for every bundler and runtime MFDoctor claims
+in v1. Status labels are tied to analysis capabilities and real build+MFDoctor
 paths — not fixture-only confidence.
 
 Related: [capabilities](./capabilities.md) ·
@@ -13,21 +13,21 @@ Related: [capabilities](./capabilities.md) ·
 
 | Status          | Meaning                                                                                         |
 | --------------- | ----------------------------------------------------------------------------------------------- |
-| **supported**   | First-class adapter + real bundler build writes Doctor facts; exercised in CI                   |
+| **supported**   | First-class adapter + real bundler build writes MFDoctor facts; exercised in CI                 |
 | **partial**     | Usable with honest gaps — emits `doctor/partial-analysis` (or weaker evidence) instead of lying |
 | **unsupported** | Out of v1 scope (post-v1 or permanent non-goal)                                                 |
 
 ## Bundlers
 
-| Bundler              | Status        | Adapter entry                | CI evidence                                                | Notes                                                                                                                                                                                                                                                |
-| -------------------- | ------------- | ---------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vite                 | **supported** | `@tonoizer/mfdoctor/vite`    | `compatibility` workflow → `host-vite` build + Doctor      | Primary host path in `examples/mixed-federation`                                                                                                                                                                                                     |
-| Vite 5 + CommonJS    | **supported** | `@tonoizer/mfdoctor/vite`    | `compatibility` workflow → `vite-cjs-v5` build + Doctor    | Async ESM bridge for the Vite MF plugin; validates Doctor's published CommonJS adapter                                                                                                                                                               |
-| Rolldown / Vite Plus | **partial**   | `@tonoizer/mfdoctor/vite`    | unit lifecycle hooks + honest `doctor/partial-analysis`    | Same Vite entry; usable with gaps until a real Rolldown/Vite Plus smoke build lands in CI (#11)                                                                                                                                                      |
-| Rspack               | **supported** | `@tonoizer/mfdoctor/rspack`  | `compatibility` workflow → `remote-rspack` build + Doctor  | Direct `@module-federation/enhanced/rspack` (first-class)                                                                                                                                                                                            |
-| Rsbuild              | **supported** | `@tonoizer/mfdoctor/rsbuild` | `compatibility` workflow → `remote-rsbuild` build + Doctor | `@module-federation/rsbuild-plugin`                                                                                                                                                                                                                  |
-| Webpack              | **supported** | `@tonoizer/mfdoctor/webpack` | `compatibility` workflow → `webpack-smoke` build + Doctor  | `@module-federation/enhanced/webpack` (#10 shipped)                                                                                                                                                                                                  |
-| Modern.js            | **partial**   | `@tonoizer/mfdoctor/modern`  | `compatibility` workflow → `modern-smoke` (Rspack stub)    | Adapter API + Rspack-under-the-hood smoke; the package export is fixed in [#4897](https://github.com/module-federation/core/pull/4897), but the core-demo unblock remains unverified and this is not full `@modern-js/app-tools` evidence yet (#130) |
+| Bundler              | Status        | Adapter entry                | CI evidence                                                  | Notes                                                                                                                                                                                                                                                |
+| -------------------- | ------------- | ---------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vite                 | **supported** | `@tonoizer/mfdoctor/vite`    | `compatibility` workflow → `host-vite` build + MFDoctor      | Primary host path in `examples/mixed-federation`                                                                                                                                                                                                     |
+| Vite 5 + CommonJS    | **supported** | `@tonoizer/mfdoctor/vite`    | `compatibility` workflow → `vite-cjs-v5` build + MFDoctor    | Async ESM bridge for the Vite MF plugin; validates MFDoctor's published CommonJS adapter                                                                                                                                                             |
+| Rolldown / Vite Plus | **partial**   | `@tonoizer/mfdoctor/vite`    | unit lifecycle hooks + honest `doctor/partial-analysis`      | Same Vite entry; usable with gaps until a real Rolldown/Vite Plus smoke build lands in CI (#11)                                                                                                                                                      |
+| Rspack               | **supported** | `@tonoizer/mfdoctor/rspack`  | `compatibility` workflow → `remote-rspack` build + MFDoctor  | Direct `@module-federation/enhanced/rspack` (first-class)                                                                                                                                                                                            |
+| Rsbuild              | **supported** | `@tonoizer/mfdoctor/rsbuild` | `compatibility` workflow → `remote-rsbuild` build + MFDoctor | `@module-federation/rsbuild-plugin`                                                                                                                                                                                                                  |
+| Webpack              | **supported** | `@tonoizer/mfdoctor/webpack` | `compatibility` workflow → `webpack-smoke` build + MFDoctor  | `@module-federation/enhanced/webpack` (#10 shipped)                                                                                                                                                                                                  |
+| Modern.js            | **partial**   | `@tonoizer/mfdoctor/modern`  | `compatibility` workflow → `modern-smoke` (Rspack stub)      | Adapter API + Rspack-under-the-hood smoke; the package export is fixed in [#4897](https://github.com/module-federation/core/pull/4897), but the core-demo unblock remains unverified and this is not full `@modern-js/app-tools` evidence yet (#130) |
 
 ## Variant coverage
 
@@ -39,7 +39,7 @@ upstream validation records:
 | Surface                                     | Current evidence                                                                     | Matrix status    |
 | ------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------- |
 | Vite current ESM + Vite 5 CommonJS          | Production build + project/report/SARIF assertions on Node 22 and 24                 | CI               |
-| Rspack, Rsbuild, Webpack, Modern.js adapter | Production build + Doctor report assertions                                          | CI               |
+| Rspack, Rsbuild, Webpack, Modern.js adapter | Production build + MFDoctor report assertions                                        | CI               |
 | Svelte and SvelteKit SSR                    | Pinned upstream app reports plus SvelteKit SSR-entry regression test                 | validated        |
 | Angular                                     | Pinned upstream validation; the example's existing package baseline blocks the build | baseline-blocked |
 | Nuxt 3/4                                    | Adapter contract and pinned upstream validation record                               | baseline-blocked |
@@ -64,7 +64,7 @@ Runtime-only Module Federation (no bundler MF **build** plugin) is
 
 | Path                                                                | Status      | Behavior when incomplete                                                       |
 | ------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
-| Bundler MF plugin + Doctor adapter + shared `mfOptions`             | supported   | Full post-emit facts; CI defaults to terminal + JSON + SARIF                   |
+| Bundler MF plugin + MFDoctor adapter + shared `mfOptions`           | supported   | Full post-emit facts; CI defaults to terminal + JSON + SARIF                   |
 | CLI `check` with explicit MF config, no emit                        | partial     | Config/imports only; weaker without artifacts                                  |
 | Unresolved dynamic `import(expr)` / non-literal `loadRemote` / etc. | partial     | Records `imports.unresolvedDynamic`; prefers `doctor/partial-analysis`         |
 | Opt-in Observability `runtimeTrace` / `mfdoctor runtime`            | supported\* | Offline correlation when a valid export is supplied; invalid/missing → partial |
@@ -94,7 +94,7 @@ certainty (`shared/unused`, invented remotes, scraped private plugin fields).
 | yarn (classic / Berry) | **partial**   | Same published-package install/CLI story as npm. Yarn workspaces are not the repo’s CI path; use pnpm for contributing and matrix jobs.                                                                                      |
 
 Where paths differ: contributors and CI always use **pnpm**. Consumers of the
-published tarball may use npm or yarn to install Doctor into their own app; the
+published tarball may use npm or yarn to install MFDoctor into their own app; the
 CLI binary name remains `mfdoctor`.
 
 ## Report surfaces
@@ -119,9 +119,9 @@ pnpm mfdoctor check --format terminal,json,sarif
 
 Reds that **block** a release claim for supported cells:
 
-1. Vite, Rspack, Rsbuild, or Webpack real build + Doctor path fails on Node 22
+1. Vite, Rspack, Rsbuild, or Webpack real build + MFDoctor path fails on Node 22
    or 24 in the `compatibility` workflow.
-2. Missing Doctor artifacts after a green bundler build (`project.json`,
+2. Missing MFDoctor artifacts after a green bundler build (`project.json`,
    `report.json`, or `results.sarif` on the CI path).
 3. Quality / package / integration / e2e gates that already guard the adapters.
 
@@ -141,7 +141,7 @@ Reds that **do not** block other cells:
 
 | Workflow                      | What it proves                                                          |
 | ----------------------------- | ----------------------------------------------------------------------- |
-| `compatibility.yml`           | Per-bundler build+Doctor on Node 22 + 24; report surfaces               |
+| `compatibility.yml`           | Per-bundler build+MFDoctor on Node 22 + 24; report surfaces             |
 | `doctor.yml`                  | Mixed + nested federation builds + workspace gates + SARIF upload       |
 | `integration.yml` / `e2e.yml` | Adapter tests plus the full matrix and Playwright mixed-federation path |
 | `package.yml`                 | Pack/consume smoke on Node 22 + 24 (includes Webpack)                   |
@@ -149,7 +149,7 @@ Reds that **do not** block other cells:
 
 ## mf-toolkit shapes
 
-Doctor soft-recognizes intentional **mf-toolkit** config shapes so agents do not
+MFDoctor soft-recognizes intentional **mf-toolkit** config shapes so agents do not
 get false broken-remote / component-DTS guidance:
 
 | Shape                           | Signal                                                                                                | Soft-exception                                                                                                                    |

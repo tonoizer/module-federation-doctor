@@ -28,7 +28,7 @@ Use it as a review checklist even when a rule does not yet automate the check.
 | `dts.generateTypes.outputDir`   | Type zip path drifts from nested `filename`        | Align outputDir with the remote-entry directory layout         |
 | Direct `.js` remotes + DTS      | No type URL without manifests/`remoteTypeUrls`     | Prefer manifests or set `remoteTypeUrls`                       |
 | Non-string `output.publicPath`  | Manifest generation is skipped upstream            | Use a string/`auto` publicPath when manifests are required     |
-| Localhost remotes in CI         | Deployed builds cannot reach loopback remotes      | Use deployed URLs for CI/production Doctor runs                |
+| Localhost remotes in CI         | Deployed builds cannot reach loopback remotes      | Use deployed URLs for CI/production MFDoctor runs              |
 | `experiments.asyncStartup`      | Entry exports become async                         | Ensure direct/UMD consumers await the Promise                  |
 | `externalRuntime` pair          | Hard load-order dependency                         | One pure provider; externalize only downstream browser remotes |
 | snapshot/remote/shared removal  | Tree-shaken capability still used                  | Never disable a configured capability                          |

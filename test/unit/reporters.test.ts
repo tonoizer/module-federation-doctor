@@ -199,13 +199,13 @@ describe("reporters", () => {
 
   it("prints the legacy success line when printLog.success is true", () => {
     expect(formatTerminalReport(emptyReport(), { printLog: { success: true } })).toContain(
-      "Module Federation Doctor: no findings.",
+      "MFDoctor: no findings.",
     );
   });
 
   it("honors MFDOCTOR_QUIET=0 to restore the success line", () => {
     vi.stubEnv("MFDOCTOR_QUIET", "0");
-    expect(formatTerminalReport(emptyReport())).toContain("Module Federation Doctor: no findings.");
+    expect(formatTerminalReport(emptyReport())).toContain("MFDoctor: no findings.");
   });
 
   it("formats severity, ruleId, message, suggestion, and doc links", () => {
@@ -224,7 +224,7 @@ describe("reporters", () => {
         },
       ]),
     );
-    expect(text).toContain("Module Federation Doctor");
+    expect(text).toContain("MFDoctor");
     expect(text).toContain("error");
     expect(text).toContain("config/expose-key-invalid");
     expect(text).toContain('Expose key "Widget" must start with "./".');
@@ -273,7 +273,7 @@ describe("reporters", () => {
 
   it("includes score on verbose success", () => {
     const text = formatTerminalReport(emptyReport(), { printLog: { success: true } });
-    expect(text).toContain("Module Federation Doctor: no findings.");
+    expect(text).toContain("MFDoctor: no findings.");
     expect(text).toContain("Score: 100/100 (Great)");
   });
 

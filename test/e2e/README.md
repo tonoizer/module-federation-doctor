@@ -3,11 +3,11 @@
 Playwright drives the healthy [`examples/mixed-federation`](../../examples/mixed-federation)
 green path and the intentional [`examples/mixed-federation-issues`](../../examples/mixed-federation-issues)
 red path. The full E2E gate also builds the nested and compatibility matrices,
-checks cross-app behavior, and verifies the expected Doctor findings before the
+checks cross-app behavior, and verifies the expected MFDoctor findings before the
 browser run. It also loads the production-built [`examples/compatibility/webpack`](../../examples/compatibility/webpack)
 fixture in a browser and executes two independent Webpack federation containers from the
 same compilation. The latter proves that the known-bad host/remotes still boot and serve their
-runtime entrypoints; the expected Doctor findings are asserted by `scripts/giga-smoke.mjs`.
+runtime entrypoints; the expected MFDoctor findings are asserted by `scripts/giga-smoke.mjs`.
 The compatibility matrix includes Webpack and Vite multi-instance containers plus dedicated
 single-instance Rspack and Rsbuild adapter cells because their current federation plugins
 enforce one plugin per compiler/configuration. The healthy mixed-federation path combines a

@@ -54,7 +54,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag --annotate "$VERSION" --message "MF Doctor $VERSION"
+          git tag --annotate "$VERSION" --message "MFDoctor $VERSION"
           git push origin "refs/tags/$VERSION"
 
       - name: Create release with generated notes
@@ -68,6 +68,6 @@ jobs:
             exit 0
           fi
 
-          args=("$VERSION" --verify-tag --generate-notes --title "MF Doctor $VERSION")
+          args=("$VERSION" --verify-tag --generate-notes --title "MFDoctor $VERSION")
           case "$VERSION" in *-*) args+=(--prerelease);; esac
           gh release create "${args[@]}"

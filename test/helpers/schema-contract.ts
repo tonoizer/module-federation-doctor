@@ -139,7 +139,7 @@ export async function assertPackageExportsMatchSchemas(): Promise<void> {
   }
 }
 
-/** Representative on-disk fixtures for pack:check (no Doctor runtime required). */
+/** Representative on-disk fixtures for pack:check (no MFDoctor runtime required). */
 export async function validateFixturePayloads(): Promise<void> {
   const evidence: unknown = JSON.parse(
     await fs.readFile(path.join(root, "examples/evidence/v2-conflict.json"), "utf8"),

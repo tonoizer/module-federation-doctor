@@ -106,10 +106,13 @@ export function createNuxtDoctorModule(defaults: NuxtDoctorOptions = {}): NuxtMo
 }
 
 /** Nuxt module for tuple registration and programmatic module loading. */
-export const nuxtDoctor = createNuxtDoctorModule();
+export const moduleFederationDoctor = createNuxtDoctorModule();
 
-/** Alias matching the Vite adapter's public naming. */
-export const federationDoctorNuxt = nuxtDoctor;
+/** @deprecated Use `moduleFederationDoctor`. */
+export const nuxtDoctor = moduleFederationDoctor;
+
+/** @deprecated Use `moduleFederationDoctor`. */
+export const federationDoctorNuxt = moduleFederationDoctor;
 
 /** Nuxt's module loader consumes the default module directly. */
-export default nuxtDoctor;
+export default moduleFederationDoctor;

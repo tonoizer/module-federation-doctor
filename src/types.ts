@@ -48,7 +48,7 @@ export interface ProjectIdentity {
   federationGroup?: string;
 }
 
-/** How the bundler `output.publicPath` was typed when Doctor observed the compiler. */
+/** How the bundler `output.publicPath` was typed when MFDoctor observed the compiler. */
 export type OutputPublicPathKind = "string" | "non-string" | "auto" | "unknown";
 
 export interface BundlerFacts {
@@ -59,7 +59,7 @@ export interface BundlerFacts {
   lifecycle?: ViteLifecycleFacts;
   /**
    * Count of Module Federation plugins on the compiler (webpack/rspack adapters).
-   * Absent when Doctor did not observe the compiler plugin list (CLI-only runs).
+   * Absent when MFDoctor did not observe the compiler plugin list (CLI-only runs).
    */
   moduleFederationPluginCount?: number;
   /**
@@ -70,7 +70,7 @@ export interface BundlerFacts {
   federationInstances?: FederationInstanceRef[];
   /**
    * Classification of bundler `output.publicPath` from the compiler (webpack/rspack).
-   * Absent when Doctor did not observe compiler output options.
+   * Absent when MFDoctor did not observe compiler output options.
    */
   outputPublicPathKind?: OutputPublicPathKind;
   /**
@@ -218,7 +218,7 @@ export interface DependencyFacts {
 /** How a resolved import/specifier entered project facts. */
 export type ImportEvidenceSource = "source" | "manifest" | "runtime-trace";
 
-/** Dynamic/runtime call sites Doctor could not resolve to a string specifier. */
+/** Dynamic/runtime call sites MFDoctor could not resolve to a string specifier. */
 export type UnresolvedDynamicApi =
   | "import"
   | "loadRemote"

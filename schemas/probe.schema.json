@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/probe.schema.json",
-  "title": "Module Federation Doctor manifest probe result",
+  "title": "MFDoctor manifest probe result",
   "type": "object",
   "required": ["schemaVersion", "manifest"],
   "properties": {

@@ -13,7 +13,7 @@ import type {
 } from "./types.js";
 import { stableStringify } from "./utils.js";
 
-/** Published Doctor docs origin. */
+/** Published MFDoctor docs origin. */
 export const DOCTOR_DOCS_ORIGIN = "https://mfdoctor.kevinbeier.com";
 
 /** Hosts allowed when printing official Module Federation source links. */
@@ -70,7 +70,7 @@ function formatScoreFooter(report: DoctorReport): string | undefined {
 }
 
 /**
- * Format the single end-of-build Doctor findings block for humans and agents.
+ * Format the single end-of-build MFDoctor findings block for humans and agents.
  * Returns an empty string when quiet success applies (zero findings).
  */
 export function formatTerminalReport(
@@ -82,7 +82,7 @@ export function formatTerminalReport(
   const showScore = options.score !== false;
   if (report.findings.length === 0) {
     if (quiet || !printLog.success) return "";
-    const lines = [pc.green("Module Federation Doctor: no findings.")];
+    const lines = [pc.green("MFDoctor: no findings.")];
     if (showScore) {
       const footer = formatScoreFooter(report);
       if (footer) lines.push(footer);
@@ -90,7 +90,7 @@ export function formatTerminalReport(
     return lines.join("\n");
   }
 
-  const lines: string[] = [pc.bold("Module Federation Doctor")];
+  const lines: string[] = [pc.bold("MFDoctor")];
   let project = "";
   for (const finding of report.findings) {
     if (finding.project !== project) {
@@ -148,7 +148,7 @@ function sarif(report: DoctorReport): Record<string, unknown> {
     $schema: "https://json.schemastore.org/sarif-2.1.0.json",
     runs: [
       {
-        tool: { driver: { name: "Module Federation Doctor", rules } },
+        tool: { driver: { name: "MFDoctor", rules } },
         results: report.findings.map((finding) => ({
           ruleId: finding.ruleId,
           level:

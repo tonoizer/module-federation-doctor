@@ -921,14 +921,14 @@ export function parseRuntimeTraces(raw: unknown): RuntimeTraceReport[] {
   assertSupportedDocumentVersion(record);
   if (isBuildReportDocument(record))
     throw new RuntimeTraceError(
-      "Wrong runtime trace document kind: build-report/Doctor report is not a runtime Observability report.",
+      "Wrong runtime trace document kind: build-report/MFDoctor report is not a runtime Observability report.",
     );
   const extracted = extractRawReports(raw);
   const rawReports = extracted.reports;
   rawReports.forEach(assertSupportedDocumentVersion);
   if (rawReports.some(isBuildReportDocument))
     throw new RuntimeTraceError(
-      "Wrong runtime trace document kind: build-report/Doctor report is not a runtime Observability report.",
+      "Wrong runtime trace document kind: build-report/MFDoctor report is not a runtime Observability report.",
     );
   const reports = rawReports
     .map(normalizeReport)
@@ -1602,7 +1602,7 @@ export function correlateRuntime(
             ),
             projects: hosts.map((project) => project.project.name).sort(),
           },
-          "Verify async startup, external runtime provider order, and runtime plugins against Doctor project facts.",
+          "Verify async startup, external runtime provider order, and runtime plugins against MFDoctor project facts.",
           uniqueFederationInstanceId(hosts),
         ),
       );
@@ -1720,7 +1720,7 @@ export function correlateRuntime(
             ? "error"
             : "warning",
           projectName,
-          `Runtime error ${trace.errorCode} correlated with Doctor project evidence.`,
+          `Runtime error ${trace.errorCode} correlated with MFDoctor project evidence.`,
           {
             errorCode: trace.errorCode,
             ...(trace.traceId ? { traceId: trace.traceId } : {}),

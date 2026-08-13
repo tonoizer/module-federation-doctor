@@ -1,6 +1,6 @@
 /**
- * Documented Modern.js config shape for Module Federation Doctor.
- * The CI smoke build (`build.mjs`) applies the same Doctor plugin via the
+ * Documented Modern.js config shape for MFDoctor.
+ * The CI smoke build (`build.mjs`) applies the same MFDoctor plugin via the
  * Modern.js `modifyBundlerChain` surface without requiring `@modern-js/app-tools`.
  *
  * Real app:

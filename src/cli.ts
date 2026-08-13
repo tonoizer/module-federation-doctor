@@ -118,10 +118,10 @@ Usage:
   mfdoctor probe https://host.example/mf-manifest.json
   mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
 
-Workspace: after each app builds with the Doctor plugin, \`workspace\` (or
+Workspace: after each app builds with the MFDoctor plugin, \`workspace\` (or
 \`federation --workspace\`) auto-discovers \`.mf/doctor/project.json\` under the
 given roots. Pass explicit globs to \`federation\` only when you need a manual
-escape hatch. Set \`federationGroup\` in each app's Doctor options when one
+escape hatch. Set \`federationGroup\` in each app's MFDoctor options when one
 repository contains multiple independent federation graphs, then select one
 with \`--group <name>\`. Projects in different explicit groups are never
 compared by federation-wide rules. Exit codes: 0 pass, 1 policy fail, 2
@@ -365,7 +365,7 @@ async function loadReport(reportPath: string): Promise<DoctorReport> {
         failureCode: "wrong-document-kind",
         pointer: "/",
       },
-      `${reportPath}: Expected a Doctor report document at /; received ${document.kind}.`,
+      `${reportPath}: Expected a MFDoctor report document at /; received ${document.kind}.`,
     );
   try {
     return isReportGraph

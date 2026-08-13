@@ -5,7 +5,7 @@
 
 ## Issue
 
-When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. Doctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis.
+When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. MFDoctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis.
 
 ## How to fix it
 

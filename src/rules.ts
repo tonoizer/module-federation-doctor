@@ -383,7 +383,7 @@ function isLocalDemo(context: RuleContext): boolean {
   return context.options.localDemoOnly === true && context.facts.bundler.mode === "development";
 }
 
-/** True when Doctor analysis mode or a single unscoped project build reports development. */
+/** True when MFDoctor analysis mode or a single unscoped project build reports development. */
 function isDevelopmentBuild(context: RuleContext): boolean {
   if (context.facts.bundler.mode === "development") return true;
   const builds = context.facts.builds;
@@ -745,7 +745,7 @@ export const builtInRules: DoctorRule[] = [
       if (!isLoopbackRemoteUrl(url)) continue;
       report(
         context,
-        `Remote "${name}" points at localhost in a CI/production Doctor run.`,
+        `Remote "${name}" points at localhost in a CI/production MFDoctor run.`,
         { name, entry: remote.entry, mode: context.facts.bundler.mode },
         "Use deployed remote URLs for CI and production builds; keep localhost for local development mode.",
         findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
@@ -995,7 +995,7 @@ export const builtInRules: DoctorRule[] = [
           context,
           `Runtime plugin "${plugin}" does not resolve to a scanned source file or on-disk plugin file.`,
           { plugin },
-          "Fix the runtime plugin path or include that file in Doctor's source scan.",
+          "Fix the runtime plugin path or include that file in MFDoctor's source scan.",
         );
     }
   }),
@@ -1658,7 +1658,7 @@ export const builtInRules: DoctorRule[] = [
         context,
         "The emitted manifest belongs to a different federation container name.",
         { configName, manifestName },
-        "Clean the output directory and make the plugin and Doctor use the same options object.",
+        "Clean the output directory and make the plugin and MFDoctor use the same options object.",
         findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { configName, manifestName }),
       );
   }),
@@ -1817,12 +1817,12 @@ export const builtInRules: DoctorRule[] = [
     report(
       context,
       sourceReadFailures.length > 0
-        ? "Doctor encountered unreadable source input; analysis is unknown."
+        ? "MFDoctor encountered unreadable source input; analysis is unknown."
         : budget?.status === "unknown"
-          ? "Doctor completed with unknown input due to an analysis budget."
+          ? "MFDoctor completed with unknown input due to an analysis budget."
           : unresolvedDynamic.length > 0 && missing.length === 0
-            ? "Doctor completed with unresolved dynamic import patterns."
-            : "Doctor completed with partial input.",
+            ? "MFDoctor completed with unresolved dynamic import patterns."
+            : "MFDoctor completed with partial input.",
       {
         ...(missing.length > 0 ? { missing } : {}),
         ...(unresolvedDynamic.length > 0 ? { unresolvedDynamic } : {}),
@@ -1833,13 +1833,13 @@ export const builtInRules: DoctorRule[] = [
           : {}),
       },
       sourceReadFailures.length > 0
-        ? "Restore access to unreadable source input and re-run Doctor."
+        ? "Restore access to unreadable source input and re-run MFDoctor."
         : unresolvedDynamic.length > 0
           ? "Prefer string-literal `import()` / `loadRemote` / `loadShare`, or pass an opt-in Observability export via `runtimeTrace` / `mfdoctor runtime`."
           : configMissing
             ? "Pass explicit MF options."
             : (viteArtifactSuggestion ??
-              "Run Doctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
+              "Run MFDoctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
       findingDetails(FINDING_DETAILS_SCHEMAS.DOCTOR_PARTIAL_ANALYSIS, {
         missing,
         ...(unresolvedDynamic.length > 0

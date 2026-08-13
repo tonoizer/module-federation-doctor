@@ -14,7 +14,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "When a producer exposes modules but explicitly disables DTS, consumers receive no automatic checked declaration contract for those modules.",
@@ -86,7 +86,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "The config promises an expose that the emitted manifest does not contain.",
@@ -165,7 +165,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Disabled asset analysis removes shared and expose asset details from producer metadata.",
@@ -237,10 +237,10 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
-        "summary": "When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. Doctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis.",
+        "summary": "When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. MFDoctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis.",
         "documentation": "/rules/artifact/manifest-disabled",
         "fix": "For a producer, set `manifest: true` to publish the metadata. For a consumer, point remotes at the producer's `mf-manifest.json` when those capabilities are wanted. If direct `remoteEntry.js` URLs are intentional, document that choice and turn this rule off."
       },
@@ -328,7 +328,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Preload and debugging tools cannot map an expose to its assets.",
@@ -414,7 +414,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "The runtime and tooling cannot consume malformed or incomplete manifest JSON.",
@@ -486,12 +486,12 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Stale output can register a different container than the current config.",
         "documentation": "/rules/artifact/manifest-name-mismatch",
-        "fix": "Clean output and make the federation plugin and Doctor share one options object."
+        "fix": "Clean output and make the federation plugin and MFDoctor share one options object."
       },
       "prerequisites": {
         "allOf": [
@@ -565,7 +565,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Consumers follow manifest metadata to a remote entry that was not emitted.",
@@ -664,7 +664,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Stale version metadata can choose the wrong shared provider at runtime.",
@@ -743,7 +743,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Module Federation skips manifest generation when bundler `output.publicPath` is not a string.",
@@ -822,7 +822,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A malformed asset base makes remote chunks and styles resolve from the wrong URL.",
@@ -894,7 +894,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A producer has no executable container at its configured filename.",
@@ -985,7 +985,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "The manifest cannot advertise generated type archives to consumers.",
@@ -1064,7 +1064,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "No emitted declaration artifact was found for a typed producer.",
@@ -1143,7 +1143,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Hand-rolled `loadRemote` / remote mounts skip Bridge lifecycle helpers and lose documented loading/error contracts.",
@@ -1250,7 +1250,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "`bridge.disableAlias` is a deprecated escape hatch; explicit `enableBridgeRouter` communicates intent clearly.",
@@ -1341,7 +1341,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Bridge producers without `./export-app` break the conventional Bridge remote contract expected by hosts.",
@@ -1420,7 +1420,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Lazy Bridge React loading requires `@module-federation/bridge-react/plugin` in `runtimePlugins` or Bridge remotes fail at runtime.",
@@ -1511,7 +1511,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Bridge remotes without `fallback`/`loading` leave consumers with a blank screen while the remote loads or fails.",
@@ -1610,7 +1610,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or root component contracts and break Bridge remotes.",
@@ -1709,7 +1709,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Bridge React v18/v19 needs `react-dom/` (or `react-dom/client`) in `shared` so renderer subpaths negotiate one copy across host and remote.",
@@ -1800,7 +1800,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Importing `@module-federation/bridge-react/v18` against React 19 (or the reverse) selects the wrong Bridge API surface and can fail at runtime.",
@@ -1899,7 +1899,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "The bare `@module-federation/bridge-react` entry can pick the wrong React Bridge API when the React major is known.",
@@ -1998,7 +1998,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Rspack may auto-enable Bridge router when the Bridge package is present; leaving `bridge.enableBridgeRouter` implicit hides the routing contract from reviewers and CI.",
@@ -2089,7 +2089,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Bridge router aliases React Router; sharing `react-router` / `react-router-dom` at the same time can load duplicate router runtimes and break navigation.",
@@ -2180,7 +2180,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Without a stable `bridge.instanceId`, SSR Bridge hydration registries can collide across requests.",
@@ -2271,7 +2271,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Browser-only Bridge React entries must not load inside node/SSR builds; doing so leaks DOM-oriented Bridge code into the server bundle.",
@@ -2370,7 +2370,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Bridge router aliasing plus `@tanstack/react-router` can duplicate navigation ownership in one app.",
@@ -2461,7 +2461,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Hand-rolled `loadRemote` mounts skip Vue Bridge lifecycle helpers and documented loading/error contracts.",
@@ -2568,7 +2568,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Browser-only Vue Bridge entries in node/SSR builds miss the server/hydration contract and can leak client-only Bridge code.",
@@ -2675,7 +2675,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Vue Bridge remotes and hosts that omit `vue` (and `vue-router` when used) from `shared` can load duplicate Vue runtimes and break reactivity or routing.",
@@ -2766,7 +2766,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Reusing one Vue app/router/store across SSR requests leaks request state between users.",
@@ -2873,7 +2873,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A nested remote-entry `filename` that disagrees with `dts.generateTypes.outputDir` can publish type archives to the wrong path.",
@@ -2945,7 +2945,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Registering Module Federation more than once on the same compiler breaks the core singleton contract.",
@@ -3032,7 +3032,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Eager modules live in the initial entry and cannot use the on-demand shared tree-shaking path.",
@@ -3104,7 +3104,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Consumers cannot address an expose whose public key does not follow the `./Name` form.",
@@ -3176,7 +3176,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "The producer build cannot include a module that does not exist at the configured path.",
@@ -3267,7 +3267,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "The same build cannot externalize the runtime it is responsible for providing.",
@@ -3339,7 +3339,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A runtime provider is only supported on a pure consumer and the upstream plugin throws otherwise.",
@@ -3411,7 +3411,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Unsafe paths can escape output layout; a non-JavaScript entry cannot run as a container.",
@@ -3483,7 +3483,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "The runtime cannot evaluate an invalid stringified public-path function.",
@@ -3555,7 +3555,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "`getPublicPath` has no effect on a consumer that exposes no modules.",
@@ -3627,7 +3627,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A custom implementation can violate the runtime contract expected by the build plugin.",
@@ -3699,7 +3699,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A consumer loader can fail when its remote type does not match the producer library format.",
@@ -3771,10 +3771,10 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
-        "summary": "The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so Doctor keeps this for offline checks rather than a showcase fixture.",
+        "summary": "The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so MFDoctor keeps this for offline checks rather than a showcase fixture.",
         "documentation": "/rules/config/name-required",
         "fix": "Set `name` to a stable, federation-wide unique id such as \"host\" or \"shop\"."
       },
@@ -3843,7 +3843,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Using the wrong integration can skip required bundler hooks and runtime generation.",
@@ -3922,7 +3922,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "An alias that prefixes another remote name/alias makes multi-level path references ambiguous and is rejected by the runtime.",
@@ -3994,7 +3994,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Tree-shaken remote-consumption code cannot load configured remotes.",
@@ -4066,7 +4066,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "The runtime cannot resolve a remote without a usable entry or manifest address.",
@@ -4138,7 +4138,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Remote code fetched over plain HTTP can be changed in transit.",
@@ -4210,7 +4210,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Localhost remotes in CI/production builds cannot resolve on other machines and break deployments.",
@@ -4289,7 +4289,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. The `demo` policy only softens this recommendation for explicitly known-local bare/relative entries or loopback URLs during development; external, authenticated non-loopback, unknown, and CI remotes remain visible.",
@@ -4361,7 +4361,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Module Federation 2.5+ projects can opt into runtime health correlation, but a declared Observability Plugin is ineffective until its runtime entry is registered. The default nudge requires the package to be present; the production profile can recommend it for every supported federated surface.",
@@ -4476,12 +4476,12 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A missing runtime plugin stops injected runtime behavior from loading.",
         "documentation": "/rules/config/runtime-plugin-missing",
-        "fix": "Correct the path/package and include local plugin files in the Doctor scan."
+        "fix": "Correct the path/package and include local plugin files in the MFDoctor scan."
       },
       "prerequisites": {
         "allOf": [
@@ -4567,7 +4567,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A dependency placed in a scope the container does not initialize cannot be reused there.",
@@ -4639,7 +4639,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Tree-shaken sharing code cannot register or consume configured shared packages.",
@@ -4711,7 +4711,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Runtime-injected used exports conflict with the deployment-owned `server-calc` contract.",
@@ -4783,7 +4783,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "unknown",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Missing facts, unresolved dynamic imports, unreadable source files recorded in `imports.sourceReadFailures`, budget-limited persisted projects, or omitted workspace projects reduce confidence and can hide relevant findings. Source read failures make project or workspace input `unknown`; a pure analysis-budget cutoff is `partial`. Incomplete workspace evidence suppresses absence-based federation rules (`host-gaps`, `ghost-shares`, `missing-provider`, and `external-runtime-provider-missing`) while positive mismatches remain useful. Package-capable unresolved dynamics suppress workspace absence certainty without changing the ordinary project exit code.",
@@ -4867,10 +4867,10 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
-        "summary": "A remote cycle is valid Module Federation topology by itself. Doctor warns only when a strongly connected group contains a `version-first` member that eagerly loads a remote during startup.",
+        "summary": "A remote cycle is valid Module Federation topology by itself. MFDoctor warns only when a strongly connected group contains a `version-first` member that eagerly loads a remote during startup.",
         "documentation": "/rules/federation/circular-remote-graph",
         "fix": "Keep valid `loaded-first` bi-directional setups. For a risky cycle, use `loaded-first`, add startup fallback handling, or make the remote edge on the startup path lazy."
       },
@@ -4939,7 +4939,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "External-runtime remotes cannot start without a federation-wide provider.",
@@ -5018,7 +5018,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A package is declared in `shared` by only one project and is unused elsewhere in the federation graph, creating one-sided version coupling.",
@@ -5097,7 +5097,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A package used by two or more federation projects is missing from every `shared` config, so each app may bundle its own copy.",
@@ -5176,7 +5176,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Every consumer disabled its fallback, so no build can provide the package.",
@@ -5255,7 +5255,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Duplicate container names collide in runtime data and global chunk storage.",
@@ -5327,7 +5327,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Projects in different scopes cannot reuse the same shared provider.",
@@ -5399,7 +5399,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Hosts and remotes that disagree on `version-first` vs `loaded-first` negotiate shared versions differently at startup.",
@@ -5471,7 +5471,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "No installed provider version satisfies every consumer range.",
@@ -5543,7 +5543,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "exact",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Federation assets that exceed project budgets slow startup and transfer more bytes than planned. Overlapping manifest groups are merged before the comparison so one physical asset is not counted twice.",
@@ -5622,7 +5622,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "`version-first` loads all remote entries during initialization, adding startup work.",
@@ -5694,7 +5694,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Vite attaches all bundle CSS to every expose, which can duplicate transfer and style work.",
@@ -5749,7 +5749,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Async startup changes synchronous library entry exports into a Promise contract.",
@@ -5821,7 +5821,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A remote fails if `_FEDERATION_RUNTIME_CORE` is absent or initialized too late.",
@@ -5893,7 +5893,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "With `import: false`, no local fallback exists if another provider is missing.",
@@ -5965,7 +5965,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Snapshot removal disables manifest remotes, preload, dynamic type hints, HMR, and DevTools data.",
@@ -6037,7 +6037,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Server-calculated shared artifacts need a known fallback output and deployment pipeline.",
@@ -6109,7 +6109,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "An unavailable remote can break startup before its exposed module is requested. The `demo` policy only softens this recommendation when every remote is an explicitly known-local bare/relative entry or loopback URL during development; external, authenticated non-loopback, unknown, and CI remotes remain visible.",
@@ -6171,7 +6171,7 @@
         ]
       },
       "evidenceReads": ["project.scope", "moduleFederation"],
-      "migrationNote": "Group 6; Declared shareStrategy, remotes, and runtimePlugins are exact; demo soft-path uses Doctor analysis mode. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+      "migrationNote": "Group 6; Declared shareStrategy, remotes, and runtimePlugins are exact; demo soft-path uses MFDoctor analysis mode. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
       "id": "reliability/vite-fixed-parse-timeout",
@@ -6181,7 +6181,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A busy large build can exceed a fixed timeout and produce incomplete remote/shared analysis.",
@@ -6236,7 +6236,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Vite string remotes and missing/`var` type default to script-style loading. Vite↔Vite ESM remotes need explicit `type: 'module'`; mixed bundlers should declare an explicit non-default type (for example `global`) or document a `varFilename` producer interop path.",
@@ -6291,7 +6291,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "`varFilename` emits an additional global-format remote entry so var hosts (webpack/rspack) can load this Vite producer.",
@@ -6346,7 +6346,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "SSR and HTML-less frameworks need host init injected into the entry, not the HTML document, or federation bootstrap never runs on the server.",
@@ -6414,7 +6414,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Shared React (or react-dom) can conflict with Nitro/SSR externals and `ssrEntryLoader` when the server expects a different module instance.",
@@ -6482,7 +6482,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles. This is an advisory signal because static config cannot prove a runtime cycle for every framework.",
@@ -6537,7 +6537,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds.",
@@ -6592,7 +6592,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Without `remoteHmr`, local Vite remotes miss cross-container hot updates.",
@@ -6650,7 +6650,7 @@
         "bundler.mode",
         "builds"
       ],
-      "migrationNote": "Group 6; Only fires when remoteHmr is explicitly false in Doctor development mode or a single unscoped project build effectiveMode; unknown skips. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+      "migrationNote": "Group 6; Only fires when remoteHmr is explicitly false in MFDoctor development mode or a single unscoped project build effectiveMode; unknown skips. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
       "id": "vite/alias-share-bypass",
@@ -6660,7 +6660,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "resolve.alias can rewrite imports around the share scope and duplicate singleton packages.",
@@ -6715,12 +6715,12 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development.",
         "documentation": "/rules/vite/server-origin",
-        "fix": "Set Vite `server.origin` to the URL remotes should publish for consumers. Doctor recommends `http://localhost:<server.port>` (default port 5173); configure `rules[\"vite/server-origin\"].recommendedOrigin` or turn off `requireServerOrigin` when your topology differs."
+        "fix": "Set Vite `server.origin` to the URL remotes should publish for consumers. MFDoctor recommends `http://localhost:<server.port>` (default port 5173); configure `rules[\"vite/server-origin\"].recommendedOrigin` or turn off `requireServerOrigin` when your topology differs."
       },
       "prerequisites": {
         "allOf": [
@@ -6770,7 +6770,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "transformImport (or equivalent) can rewrite packages that are also shared, bypassing or duplicating the share scope.",
@@ -6842,7 +6842,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A stable RUNTIME error code from an imported browser trace was matched to offline build evidence.",
@@ -6914,12 +6914,12 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Container initialization failed before exposes or shared resolution could finish.",
         "documentation": "/rules/runtime/init-failed",
-        "fix": "Verify async startup, external runtime provider order, and runtime plugins against Doctor project facts."
+        "fix": "Verify async startup, external runtime provider order, and runtime plugins against MFDoctor project facts."
       },
       "prerequisites": {
         "allOf": [
@@ -6986,7 +6986,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A browser Observability trace failed while loading a remote manifest, entry, expose, or factory.",
@@ -7058,10 +7058,10 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
-        "summary": "The trace names a remote that is absent from loaded Doctor project facts.",
+        "summary": "The trace names a remote that is absent from loaded MFDoctor project facts.",
         "documentation": "/rules/runtime/remote-unknown",
         "fix": "Collect project.json for every host and remote, or correct the remote name in the trace source."
       },
@@ -7130,7 +7130,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Runtime shared selection conflicts with installed versions, required ranges, or provider config.",
@@ -7202,7 +7202,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "CORS on createScript without matching createLink makes preload and load use different cache keys.",
@@ -7281,7 +7281,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A createScript hook without createLink can waste preload work when link-based loading is used.",
@@ -7360,7 +7360,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A runtime plugin without a factory or usable `name` is ignored at runtime (silent no-op).",
@@ -7439,7 +7439,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "low",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Module Federation evaluates this string with `new Function` in the consumer.",
@@ -7511,7 +7511,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "low",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A stateful framework dependency may be bundled separately by host and remote.",
@@ -7602,7 +7602,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "A React host that loads remotes without sharing its imported React runtime can create separate React or renderer instances across the federation graph.",
@@ -7693,7 +7693,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "low",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Subpath imports bypass Module Federation shared-scope negotiation when only the root package is declared in `shared`, so each microfrontend may bundle its own copy.",
@@ -7784,7 +7784,7 @@
       "defaultSeverity": "info",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Observed `react/...` or `react-dom/...` imports are not covered by the root shared key, so framework subpaths can bypass shared-scope negotiation and create duplicate renderer/runtime modules. Bridge projects use the focused `bridge/react-dom-prefix-missing` contract instead of this nudge.",
@@ -7875,7 +7875,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "low",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "An eager non-singleton can add copies to initial chunks without guaranteeing reuse.",
@@ -7947,7 +7947,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Projects disagree on whether multiple instances are allowed.",
@@ -8019,7 +8019,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "low",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Multiple framework runtimes can split global state, contexts, hooks, or renderers.",
@@ -8091,7 +8091,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "low",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Unused shared declarations add runtime bookkeeping and can signal stale config.",
@@ -8214,7 +8214,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "medium",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "The installed provider does not satisfy the configured consumer range.",
@@ -8293,7 +8293,7 @@
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Node/SSR producers that keep ESM-style `library.type` or enabled `dts` diverge from the commonjs dual-env contract used by server remotes.",
@@ -8365,7 +8365,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Node/SSR consumers that load the browser `mf-manifest.json` miss the server remote graph and can fail to resolve remotes during SSR.",
@@ -8437,7 +8437,7 @@
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
-        "name": "Module Federation Doctor maintainers"
+        "name": "MFDoctor maintainers"
       },
       "remediation": {
         "summary": "Without `@module-federation/node/runtimePlugin`, Node Federation hosts cannot load remotes with the server runtime contract.",

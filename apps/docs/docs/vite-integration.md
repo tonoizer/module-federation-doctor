@@ -1,19 +1,19 @@
 # Vite integration notes
 
-The Vite plugin is not a thin copy of the Rspack plugin. Doctor keeps its
+The Vite plugin is not a thin copy of the Rspack plugin. MFDoctor keeps its
 Vite-only facts under the `vite` section of `project.json`.
 
 ## Rolldown and Vite Plus
 
 Module Federation on Rolldown-integrated Vite and Vite Plus uses the **same**
-Doctor entry as classic Vite:
+MFDoctor entry as classic Vite:
 
 ```ts
 import { federation } from "@module-federation/vite";
 import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 ```
 
-| Flavor                    | How Doctor detects it                                                           | Emit engine |
+| Flavor                    | How MFDoctor detects it                                                         | Emit engine |
 | ------------------------- | ------------------------------------------------------------------------------- | ----------- |
 | Classic Vite              | Default when no strong Rolldown / Vite Plus markers                             | `rollup`    |
 | `rolldown-vite` / Vite 8+ | Declared `rolldown-vite`, `vite→rolldown-vite` alias, or `meta.rolldownVersion` | `rolldown`  |
@@ -22,11 +22,11 @@ import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 Bare `rolldown` in `package.json` is weak evidence only (common in monorepo
 tooling roots) and does **not** reclassify classic Vite by itself.
 
-Doctor records `bundler.lifecycle` (`flavor`, `engine`, `postEmitHook`,
+MFDoctor records `bundler.lifecycle` (`flavor`, `engine`, `postEmitHook`,
 `evidence`) on `project.json`. Emit analysis prefers **on-disk** `dist/**` /
 `build/**` assets over the in-memory Rollup `bundle` object, because Rolldown
 does not share that object across hooks. When Rolldown has not finished writing
-on `writeBundle`, Doctor defers to `closeBundle`. If emit facts are still
+on `writeBundle`, MFDoctor defers to `closeBundle`. If emit facts are still
 missing, it leaves `capabilities.emittedAssets` false so
 [`doctor/partial-analysis`](./rules/doctor/partial-analysis.md) reports the gap
 honestly.
@@ -36,7 +36,7 @@ dropped built-in Module Federation in favor of the Vite plugin.
 
 ## Vite-only options
 
-| Option                                       | Risk or opportunity                                     | Doctor guidance                                                                                |
+| Option                                       | Risk or opportunity                                     | MFDoctor guidance                                                                              |
 | -------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `publicPath`                                 | Wrong base breaks remote chunks and CSS                 | Compare with manifest output                                                                   |
 | `bundleAllCSS`                               | Full CSS set can repeat for every expose                | Warn for multi-expose producers                                                                |
@@ -49,7 +49,7 @@ dropped built-in Module Federation in favor of the Vite plugin.
 
 ### Remotes typing
 
-Vite string remotes and object remotes without `type` default to **`var`**. Doctor warns via
+Vite string remotes and object remotes without `type` default to **`var`**. MFDoctor warns via
 [`vite/remotes-prefer-module`](./rules/vite/remotes-prefer-module.md) unless you set explicit
 `type: 'module'` (Vite↔Vite ESM), another explicit type such as `global` for webpack/rspack
 remotes, or configure producer `varFilename` for var-host interop
@@ -88,7 +88,7 @@ Source:
 `manifest.disableAssetsAnalyze` is not the same as
 `dev.disableAssetsAnalyze`. The manifest option can speed a development
 consumer, but on a producer it omits shared/expose asset detail. The official
-`mf` skill currently describes this under `dev`; Doctor follows the actual
+`mf` skill currently describes this under `dev`; MFDoctor follows the actual
 plugin type and implementation.
 
 Fix: keep full asset analysis for production producer manifests. If it is

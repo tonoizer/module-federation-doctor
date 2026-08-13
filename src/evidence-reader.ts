@@ -272,7 +272,7 @@ function looksLikeRuntimeObservabilityDocument(value: JsonRecord): boolean {
 
 function documentKindOf(value: JsonRecord): EvidenceDocumentKind | "unknown" {
   if ("protocol" in value || "subjects" in value || "assertions" in value) return "evidence-graph";
-  // Doctor reports always include findings; bare `summary` also appears on Observability exports.
+  // MFDoctor reports always include findings; bare `summary` also appears on Observability exports.
   if ("findings" in value) return "doctor-report";
   if (looksLikeRuntimeObservabilityDocument(value)) return "unknown";
   if ("project" in value || "bundler" in value || "dependencies" in value) return "project-facts";
@@ -720,7 +720,7 @@ export function reportFromEvaluations(
 
 /**
  * Build the v1 report view from a generic v2 graph that carries evaluations.
- * Graphs produced before Doctor finding assertions existed still have enough
+ * Graphs produced before MFDoctor finding assertions existed still have enough
  * stable rule/evidence data for a useful offline report and baseline entry.
  */
 export function reportFromV2Evaluations(

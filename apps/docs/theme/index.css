@@ -151,30 +151,17 @@ body:not(.notTopArrived) .rp-nav {
 }
 
 .kb-brand__mark {
-  position: relative;
   display: inline-flex;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
 }
 
 .kb-brand__mark img {
-  width: 26px;
-  height: 24px;
+  width: 28px;
+  height: 27px;
   object-fit: contain;
-}
-
-.kb-brand__status {
-  position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 7px;
-  height: 7px;
-  border: 2px solid var(--kb-background);
-  border-radius: 999px;
-  background: #46a758;
-  box-sizing: content-box;
 }
 
 .rp-nav-menu__item__container {

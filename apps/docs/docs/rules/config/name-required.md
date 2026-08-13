@@ -5,7 +5,7 @@
 
 ## Issue
 
-The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so Doctor keeps this for offline checks rather than a showcase fixture.
+The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so MFDoctor keeps this for offline checks rather than a showcase fixture.
 
 ## How to fix it
 

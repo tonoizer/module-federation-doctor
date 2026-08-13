@@ -27,10 +27,10 @@ coverage — see
 
 ## Dynamic-import completeness (v1)
 
-Doctor’s import/shared analysis is **not** “static only.” Offline `check` /
+MFDoctor’s import/shared analysis is **not** “static only.” Offline `check` /
 adapter runs resolve the patterns below when evidence exists in source, config,
 manifest facts, or an opt-in Observability export. Unresolvable dynamics yield
-`doctor/partial-analysis` rather than fabricated certainty. Doctor still does
+`doctor/partial-analysis` rather than fabricated certainty. MFDoctor still does
 **not** claim 100% of arbitrary runtime JavaScript.
 
 ### Supported (resolved when evidence exists)
@@ -43,7 +43,7 @@ manifest facts, or an opt-in Observability export. Unresolvable dynamics yield
 | `loadRemote("alias/expose")`                                                              | Source scan (recorded under `imports.remotes`)                  |
 | `loadShare("pkg")` / `loadShareSync("pkg")`                                               | Source scan (`imports.packages` / `dynamicPackages`)            |
 | `registerRemotes([{ name: "…", … }])` with string `name` / `alias`                        | Source scan                                                     |
-| Conditional / runtime remotes named in an opt-in Observability trace                      | `runtimeTrace` on Doctor options or `mfdoctor runtime`          |
+| Conditional / runtime remotes named in an opt-in Observability trace                      | `runtimeTrace` on MFDoctor options or `mfdoctor runtime`        |
 | Remotes listed on an on-disk `mf-manifest.json`                                           | Manifest facts (`imports.remotes`, `evidenceSources: manifest`) |
 
 Shared usage for `shared/unused` includes static imports, resolved dynamic /

@@ -5,7 +5,7 @@
 
 ## Issue
 
-A remote cycle is valid Module Federation topology by itself. Doctor warns only when a strongly connected group contains a `version-first` member that eagerly loads a remote during startup.
+A remote cycle is valid Module Federation topology by itself. MFDoctor warns only when a strongly connected group contains a `version-first` member that eagerly loads a remote during startup.
 
 ## How to fix it
 
