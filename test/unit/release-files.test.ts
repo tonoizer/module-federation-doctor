@@ -78,6 +78,9 @@ describe("release file generation", () => {
     expect(workflow).toContain("git rev-parse HEAD");
     expect(workflow).toContain("GH_REPO: ${{ github.repository }}");
     expect(workflow).not.toContain("GITHUB_SHA");
+    expect(workflow).toContain("npm install --global npm@11.17.0");
+    expect(workflow).toContain("npm pack --pack-destination release-files");
+    expect(workflow).not.toContain("pnpm pack --pack-destination release-files");
     expect(workflow).toContain("gh release upload");
     expect(workflow).not.toContain("npm publish");
   });

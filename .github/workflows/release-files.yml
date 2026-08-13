@@ -51,6 +51,10 @@ jobs:
 
       - run: pnpm build
 
+      # Keep the downloadable release tarball byte-for-byte aligned with the
+      # artifact npm creates during trusted publishing.
+      - run: npm install --global npm@11.17.0
+
       - name: Pack release files
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
@@ -58,7 +62,7 @@ jobs:
         run: |
           rm -rf release-files
           mkdir release-files
-          pnpm pack --pack-destination release-files
+          npm pack --pack-destination release-files
           node scripts/generate-release-files.mjs release-files
 
       - name: Upload build output
