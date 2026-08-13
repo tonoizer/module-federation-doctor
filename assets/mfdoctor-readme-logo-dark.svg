@@ -1,6 +1,18 @@
 <svg width="154" height="40" viewBox="0 0 154 40" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title">
-  <title id="title">Doctor</title>
-  <image href="./module-federation-doctor-mark.svg" x="0" y="0" width="43" height="40"/>
+  <title id="title">Module Federation Doctor</title>
+  <g transform="translate(1 1)">
+    <path d="M21 1 37 10v18l-16 9L5 28V10L21 1Z" stroke="#108CB9" stroke-width="1.5"/>
+    <path d="m21 1 0 8M5 10l7 4M37 10l-7 4M5 28l7-4M37 28l-7-4M21 37v-8" stroke="#71BEDB" stroke-width="1.5"/>
+    <path d="m21 8 7 4-7 4-7-4 7-4Z" fill="#79B8FF"/>
+    <path d="m14 12 7 4v8l-7-4v-8Z" fill="#175CD3"/>
+    <path d="m28 12-7 4v8l7-4v-8Z" fill="#79B8FF"/>
+    <path d="m14 20 7 4-7 4-7-4 7-4Z" fill="#175CD3"/>
+    <path d="m7 24 7 4v8l-7-4v-8Z" fill="#79B8FF"/>
+    <path d="m21 24-7 4v8l7-4v-8Z" fill="#175CD3"/>
+    <path d="m28 20 7 4-7 4-7-4 7-4Z" fill="#175CD3"/>
+    <path d="m21 24 7 4v8l-7-4v-8Z" fill="#175CD3"/>
+    <path d="m35 24-7 4v8l7-4v-8Z" fill="#79B8FF"/>
+  </g>
   <circle cx="38" cy="35" r="4" fill="#46A758" stroke="#0A0A0A" stroke-width="2"/>
   <text x="54" y="27" fill="#EDEDED" font-family="Geist, Arial, sans-serif" font-size="23" font-weight="600" letter-spacing="-0.6">Doctor</text>
 </svg>
