@@ -43,7 +43,8 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain("branches: [main]");
     expect(workflow).toContain("pull-requests: write");
     expect(workflow).toContain("changesets/action@");
-    expect(workflow).toContain("version: pnpm version");
+    expect(workflow).toContain("version: pnpm run version");
+    expect(workflow).not.toMatch(/version: pnpm version(?:\r?\n|$)/);
     expect(workflow).not.toMatch(/^\s+publish:/m);
     expect(workflow).not.toMatch(/run:\s+(?:pnpm|npm) publish/);
     expect(workflow).not.toContain("NPM_TOKEN");
