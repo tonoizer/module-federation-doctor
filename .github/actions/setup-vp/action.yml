@@ -19,6 +19,9 @@ runs:
         cache: true
         run-install: false
         registry-url: ${{ inputs.registry-url }}
+    - name: Enable the pinned package manager
+      shell: bash
+      run: corepack enable pnpm
     - name: Install dependencies
       shell: bash
       run: vp install --frozen-lockfile
