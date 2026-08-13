@@ -14,9 +14,8 @@ Webpack, Modern.js, and Nuxt 3/4.
 
 Install as a **devDependency**. Doctor is **build/CI-only**: adapters run after
 emit in Node and are not part of the browser bundle. They add CI time, not
-runtime size or performance cost. Architecture:
-[plugin primary / CLI complementary](./apps/docs/docs/adr/hybrid-plugin-cli.md)
-(not CLI-only, not an in-browser agent).
+runtime size or performance cost. The build plugin is the primary integration;
+the CLI complements it for config, workspace, runtime, and deployed checks.
 
 **Agents:** read the terminal findings block, open the linked rule docs, apply
 the fix (or an intentional [governance](./apps/docs/docs/suppressions.md)
@@ -291,7 +290,7 @@ footer (`Score: N/100`) and top-3 copy-paste agent prompts. Use `--no-score` /
 `summary.score`. Offline: `mfdoctor prompt --finding <id>` and
 `--diagnostics-dir` for handoff dumps. For Module Federation concepts, use
 `.agents/skills/mf`. Upstream evidence for rule work lives in
-[docs/sources](apps/docs/docs/sources.md).
+the [contribution guide](./CONTRIBUTING.md#research-sources).
 
 ## Contribution
 

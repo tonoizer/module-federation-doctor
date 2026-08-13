@@ -1,4 +1,5 @@
 import { Layout as OriginalLayout } from "@rspress/core/theme-original";
+import { Link } from "@rspress/core/theme";
 import { withBase } from "@rspress/core/runtime";
 
 import "@fontsource-variable/geist";
@@ -11,13 +12,13 @@ export * from "@rspress/core/theme-original";
 
 function Brand() {
   return (
-    <span className="kb-brand">
+    <Link className="kb-brand" href={withBase("/")} aria-label="Module Federation Doctor home">
       <span className="kb-brand__mark">
         <img src={withBase("/module-federation-doctor-mark.svg")} alt="" />
         <span className="kb-brand__status" aria-hidden="true" />
       </span>
       <span>Doctor</span>
-    </span>
+    </Link>
   );
 }
 

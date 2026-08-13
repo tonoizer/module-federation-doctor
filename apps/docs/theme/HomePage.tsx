@@ -3,8 +3,13 @@ import { withBase } from "@rspress/core/runtime";
 const startLinks = [
   {
     href: "/setup",
-    title: "Install and configure",
-    detail: "Add the build plugin next to Module Federation and run your normal build.",
+    title: "Get started",
+    detail: "Install Doctor, run the first build, and gate the whole workspace.",
+  },
+  {
+    href: "/integrations",
+    title: "Choose a bundler integration",
+    detail: "Copy the setup for Vite, Nuxt, Rspack, Rsbuild, Webpack, or Modern.js.",
   },
   {
     href: "/rules/",
@@ -32,7 +37,7 @@ const projectLinks = [
   {
     href: "https://github.com/tonoizer/module-federation-doctor",
     title: "Source on GitHub",
-    meta: "Issues · contributing · release history",
+    meta: "Issues · contribution guide · changelog",
     external: true,
   },
 ];
@@ -109,6 +114,11 @@ export function HomePage() {
             <ProjectRow key={item.href} {...item} />
           ))}
         </div>
+        <p className="kb-note">
+          Inspired by the diagnostic depth of <a href="https://rsdoctor.rs/">Rsdoctor</a> and the
+          focused workflow of <a href="https://www.react.doctor/">React Doctor</a>, adapted for
+          Module Federation.
+        </p>
       </section>
     </main>
   );

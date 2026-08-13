@@ -83,5 +83,5 @@ public v2 author API stabilizes ([#83](https://github.com/tonoizer/module-federa
 
 - [Report schemas](./report-schemas.md) — v1 surfaces vs additive v2 evidence
 - [Runtime capture](./runtime-capture.md) — imported runtime evidence and unknown handling
-- [Security and privacy](./security.md) — redaction and parity digest rules
+- [Security policy](https://github.com/tonoizer/module-federation-doctor/blob/main/SECURITY.md) — reporting, privacy, and redaction behavior
 - [ADR 0083](https://github.com/tonoizer/module-federation-doctor/blob/main/docs/adr/0083-evidence-aware-rule-contract.md) — contract decision record

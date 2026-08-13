@@ -17,28 +17,29 @@ const socialImageUrl = `${siteOrigin}/doctor-social.svg`;
 const socialImageAlt = "Module Federation Doctor icon";
 
 const guideSidebar = [
-  {
-    sectionHeaderText: "Guides",
-  },
+  { sectionHeaderText: "Guide" },
   {
     text: "Getting started",
     items: [
       { text: "Setup", link: "/setup" },
-      { text: "CLI and CI", link: "/cli" },
-      { text: "Production readiness", link: "/production-readiness" },
+      { text: "Bundler integrations", link: "/integrations" },
     ],
   },
   {
-    text: "Configuration",
-    collapsible: true,
-    collapsed: true,
+    text: "Adoption",
     items: [
-      { text: "Configuration audit", link: "/configuration-audit" },
-      { text: "Vite integration", link: "/vite-integration" },
       { text: "Monorepos", link: "/monorepos" },
-      { text: "Custom rules", link: "/custom-rules" },
+      { text: "Production readiness", link: "/production-readiness" },
     ],
   },
+];
+
+const configurationSidebar = [
+  { sectionHeaderText: "Configuration" },
+  { text: "Configuration audit", link: "/configuration-audit" },
+  { text: "Vite integration", link: "/vite-integration" },
+  { text: "Custom rules", link: "/custom-rules" },
+  { text: "Evidence-aware rules", link: "/evidence-aware-rules" },
   {
     text: "Governance",
     collapsible: true,
@@ -47,9 +48,17 @@ const guideSidebar = [
       { text: "Suppressions", link: "/suppressions" },
       { text: "Fingerprint baselines", link: "/baselines" },
       { text: "Policy packs", link: "/policy-packs" },
-      { text: "Evidence-aware rules", link: "/evidence-aware-rules" },
     ],
   },
+];
+
+const cliSidebar = [
+  { sectionHeaderText: "CLI" },
+  { text: "Command reference", link: "/cli" },
+  { text: "Production and CI", link: "/production-readiness" },
+  { text: "Fingerprint baselines", link: "/baselines" },
+  { text: "Runtime capture", link: "/runtime-capture" },
+  { text: "Report schemas", link: "/report-schemas" },
 ];
 
 const exampleSidebar = [
@@ -70,22 +79,7 @@ const referenceSidebar = [
   { text: "Runtime capture", link: "/runtime-capture" },
   { text: "Report schemas", link: "/report-schemas" },
   { text: "Performance", link: "/performance" },
-  { text: "Security and privacy", link: "/security" },
   { text: "Limitations", link: "/limitations" },
-];
-
-const projectSidebar = [
-  { sectionHeaderText: "Project" },
-  { text: "Contributing", link: "/contributing" },
-  { text: "Releasing", link: "/releasing" },
-  { text: "Source map", link: "/sources" },
-  { text: "Inspiration", link: "/inspiration" },
-  {
-    text: "Architecture decisions",
-    collapsible: true,
-    collapsed: true,
-    items: [{ text: "Plugin and CLI", link: "/adr/hybrid-plugin-cli" }],
-  },
 ];
 
 const ruleCategoryOrder = [
@@ -151,13 +145,15 @@ const sidebar = {
   "/runtime-capture": referenceSidebar,
   "/report-schemas": referenceSidebar,
   "/performance": referenceSidebar,
-  "/security": referenceSidebar,
   "/limitations": referenceSidebar,
-  "/contributing": projectSidebar,
-  "/releasing": projectSidebar,
-  "/sources": projectSidebar,
-  "/inspiration": projectSidebar,
-  "/adr/": projectSidebar,
+  "/cli": cliSidebar,
+  "/configuration-audit": configurationSidebar,
+  "/vite-integration": configurationSidebar,
+  "/custom-rules": configurationSidebar,
+  "/evidence-aware-rules": configurationSidebar,
+  "/suppressions": configurationSidebar,
+  "/baselines": configurationSidebar,
+  "/policy-packs": configurationSidebar,
   "/": guideSidebar,
 };
 
@@ -193,10 +189,20 @@ export default defineConfig({
   themeConfig: {
     nav: [
       {
-        text: "Guides",
+        text: "Guide",
         link: "/setup",
+        activeMatch: "^/(setup|integrations|monorepos|production-readiness)",
+      },
+      {
+        text: "Configuration",
+        link: "/configuration-audit",
         activeMatch:
-          "^/(setup|cli|production-readiness|configuration-audit|vite-integration|monorepos|custom-rules|suppressions|baselines|policy-packs|evidence-aware-rules)",
+          "^/(configuration-audit|vite-integration|custom-rules|evidence-aware-rules|suppressions|baselines|policy-packs)",
+      },
+      {
+        text: "CLI",
+        link: "/cli",
+        activeMatch: "^/cli",
       },
       {
         text: "Rules",
@@ -204,17 +210,11 @@ export default defineConfig({
         activeMatch: "^/rules/",
       },
       {
-        text: "Examples",
-        link: "/examples",
-        activeMatch:
-          "^/(examples|mixed-example|mixed-issues-example|nested-example|standalone-findings|showcase)",
-      },
-      {
-        text: "More",
+        text: "Resources",
         items: [
+          { text: "Examples", link: "/examples" },
           { text: "Compatibility", link: "/compatibility" },
           { text: "Report schemas", link: "/report-schemas" },
-          { text: "Contributing", link: "/contributing" },
           {
             text: "Module Federation",
             link: "https://module-federation.io/",
@@ -234,9 +234,9 @@ export default defineConfig({
         content: "https://github.com/tonoizer/module-federation-doctor",
       },
       {
-        icon: "discord",
+        icon: "x",
         mode: "link",
-        content: "https://discord.gg/T8c6yAxkbv",
+        content: "https://x.com/tonoizer",
       },
     ],
   },

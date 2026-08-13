@@ -120,8 +120,6 @@ button {
 
 .rp-nav {
   height: var(--rp-nav-height);
-  padding-right: max(24px, calc((100vw - 896px) / 2 + 32px));
-  padding-left: max(24px, calc((100vw - 896px) / 2 + 32px));
   border-bottom: 1px solid var(--kb-border) !important;
   background: color-mix(in srgb, var(--kb-background) 80%, transparent) !important;
   backdrop-filter: blur(12px);
@@ -145,6 +143,11 @@ body:not(.notTopArrived) .rp-nav {
   font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1;
+  text-decoration: none;
+}
+
+.kb-brand:hover {
+  color: var(--kb-foreground);
 }
 
 .kb-brand__mark {
@@ -286,6 +289,23 @@ body:not(.notTopArrived) .rp-nav {
   gap: 8px;
 }
 
+.kb-note {
+  margin: 24px 0 0;
+  color: var(--kb-muted-foreground);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.kb-note a {
+  color: inherit;
+  text-decoration-color: var(--kb-border);
+  text-underline-offset: 3px;
+}
+
+.kb-note a:hover {
+  color: var(--kb-foreground);
+}
+
 .kb-row {
   display: flex;
   min-height: 82px;
@@ -421,11 +441,6 @@ body:not(.notTopArrived) .rp-nav {
 @media (max-width: 960px) {
   :root {
     --rp-content-padding-x: 32px;
-  }
-
-  .rp-nav {
-    padding-right: 24px;
-    padding-left: 24px;
   }
 }
 

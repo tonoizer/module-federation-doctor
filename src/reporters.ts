@@ -13,7 +13,7 @@ import type {
 } from "./types.js";
 import { stableStringify } from "./utils.js";
 
-/** Published independent Doctor docs origin (Rspress on GitHub Pages). */
+/** Published Doctor docs origin. */
 export const DOCTOR_DOCS_ORIGIN = "https://mfdoctor.kevinbeier.com";
 
 /** Hosts allowed when printing official Module Federation source links. */
