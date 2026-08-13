@@ -8,7 +8,7 @@ import { moduleFederationDoctorPlugin as rspackModuleFederationDoctorPlugin } fr
 import { compilerBuildOutput, type CompilerLike } from "../../src/plugin.js";
 
 describe("modern.js adapter", () => {
-  it("registers afterEmit Doctor via modifyBundlerChain without client hooks", async () => {
+  it("registers afterEmit MFDoctor via modifyBundlerChain without client hooks", async () => {
     const plugin = moduleFederationDoctorPlugin({
       moduleFederation: { name: "modern_fixture" },
     });

@@ -4,7 +4,7 @@ These setups are intentionally wrong so `mfdoctor check` / `mfdoctor federation`
 / `mfdoctor runtime` can demo **one rule (or a small combination) at a time**.
 They are CLI fixtures, not bundler apps, and are not part of the green e2e path.
 
-For per-bundler **build+Doctor** demos with visible findings, use
+For per-bundler **build+MFDoctor** demos with visible findings, use
 [`../standalone-findings`](../standalone-findings) (`pnpm demo:standalone`).
 
 Showcase fixtures prefer cases Module Federation plugins often allow through to

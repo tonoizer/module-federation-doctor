@@ -1,7 +1,7 @@
 # Per-bundler standalone findings
 
 Four **standalone** micro-frontend cells (one per supported bundler). Each runs
-`pnpm build` with the matching Doctor adapter and emits intentional findings in
+`pnpm build` with the matching MFDoctor adapter and emits intentional findings in
 `.mf/doctor/report.json`. They are not nested and are not part of Playwright e2e.
 
 For one-rule CLI fixtures, see [`../showcase`](../showcase) (one-rule catalog).

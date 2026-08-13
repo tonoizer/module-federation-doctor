@@ -2,7 +2,7 @@
 "@tonoizer/mfdoctor": minor
 ---
 
-Make the bundler plugins the primary Doctor DX with ecosystem-named exports
+Make the bundler plugins the primary MFDoctor DX with ecosystem-named exports
 (`federationDoctor`, `moduleFederationDoctorPlugin`,
 `pluginModuleFederationDoctor`), collect every finding before failing the
 build, drop the HTML UI, and auto-detect CI mode from common provider env vars

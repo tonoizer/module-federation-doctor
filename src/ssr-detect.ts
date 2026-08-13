@@ -22,7 +22,7 @@ export function optionSsrMode(options: Record<string, unknown>): SsrModeOption |
 }
 
 /**
- * True when Doctor should apply node/SSR dual-env rules.
+ * True when MFDoctor should apply node/SSR dual-env rules.
  *
  * Do not trust `builds[].targetKind` alone — Vite browser builds often record a
  * single `targetKind=node` output from default `ssr.target`. Require an explicit

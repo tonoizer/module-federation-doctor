@@ -105,10 +105,10 @@ describe("adapter cases", () => {
           env: baseEnvironment,
         },
       );
-      expect(stderr).not.toContain("Doctor could not complete");
-      expect(stdout).not.toContain("Module Federation Doctor: no findings.");
-      // Quiet success: no Doctor findings block on a clean build.
-      expect(stdout).not.toMatch(/^Module Federation Doctor$/m);
+      expect(stderr).not.toContain("MFDoctor could not complete");
+      expect(stdout).not.toContain("MFDoctor: no findings.");
+      // Quiet success: no MFDoctor findings block on a clean build.
+      expect(stdout).not.toMatch(/^MFDoctor$/m);
     }
 
     const { stdout: workspaceStdout } = await execFileAsync(
@@ -116,8 +116,8 @@ describe("adapter cases", () => {
       ["dist/cli.js", "workspace", "examples/mixed-federation", "--format", "terminal,json"],
       { cwd: repository, env: baseEnvironment },
     );
-    expect(workspaceStdout).not.toContain("Module Federation Doctor: no findings.");
-    expect(workspaceStdout).not.toMatch(/^Module Federation Doctor$/m);
+    expect(workspaceStdout).not.toContain("MFDoctor: no findings.");
+    expect(workspaceStdout).not.toMatch(/^MFDoctor$/m);
     await expect(
       fs.access(path.join(repository, ".mf/doctor/report.json")),
     ).resolves.toBeUndefined();

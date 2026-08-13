@@ -1,8 +1,8 @@
 # Governance: suppressions and allowlists
 
-Doctor already supports intentional allow/deny of specific rules. Use this page
+MFDoctor already supports intentional allow/deny of specific rules. Use this page
 when a finding is **known and accepted** — for example enterprise nesting that
-keeps direct `remoteEntry` URLs — so CI stays green without disabling Doctor.
+keeps direct `remoteEntry` URLs — so CI stays green without disabling MFDoctor.
 
 This is the short **Governance** reference for `rules: { "id": "off" }`,
 severity overrides, policy packs, fingerprint baselines, and `failOn`.
@@ -43,7 +43,7 @@ export default {
 ### Heuristic shared / config rules
 
 These rules use package-name or path heuristics. Defaults stay advisory so teams
-(and agents) do not learn to ignore Doctor:
+(and agents) do not learn to ignore MFDoctor:
 
 | Rule                               | Default   | Why it stays soft                                      |
 | ---------------------------------- | --------- | ------------------------------------------------------ |
@@ -53,7 +53,7 @@ These rules use package-name or path heuristics. Defaults stay advisory so teams
 | `shared/unused`                    | `warning` | Fires only when import evidence is complete enough     |
 
 Mute intentional exceptions with `rules: { "<id>": "off" }` (comment why). When
-dynamic `import()` / `loadShare*` cannot be resolved, Doctor prefers
+dynamic `import()` / `loadShare*` cannot be resolved, MFDoctor prefers
 `doctor/partial-analysis` over a confident `shared/unused` finding — see
 [capabilities](./capabilities.md#dynamic-import-completeness-v1). Showcase
 fixtures under `examples/showcase/shared/*-suppressed` and
@@ -97,7 +97,7 @@ federationDoctor({
 ```
 
 Copy that shape for production hosts that **knowingly** keep direct remote
-entries or skip version-first offline remotes: keep Doctor on, mute only the
+entries or skip version-first offline remotes: keep MFDoctor on, mute only the
 accepted rules, and leave a comment explaining the choice.
 
 ## Policy presets and packs

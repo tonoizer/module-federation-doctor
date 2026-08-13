@@ -6,7 +6,7 @@ harmful.
 
 ## Analysis budgets
 
-Doctor bounds source and workspace collection before parsing. Configure the
+MFDoctor bounds source and workspace collection before parsing. Configure the
 typed `analysisBudgets` option when a repository needs tighter limits:
 
 ```ts
@@ -84,9 +84,9 @@ Source:
 
 ## Asset budgets
 
-Doctor can fail (or warn on) federation assets whose on-disk sizes exceed project
+MFDoctor can fail (or warn on) federation assets whose on-disk sizes exceed project
 budgets. Sizes come from joining `mf-manifest.json` asset names to files under
-the project root (and emitted assets from a Doctor adapter build). Manifest and
+the project root (and emitted assets from a MFDoctor adapter build). Manifest and
 stats JSON do not carry byte sizes by themselves.
 
 Default limits for [`performance/asset-budget`](./rules/performance/asset-budget.md):
@@ -126,7 +126,7 @@ remotes enable `externalRuntime`. The provider must run first. Do not add
 combination.
 
 This can reduce duplicate runtime code, but it changes deployment order into a
-hard contract. Doctor checks both local invalid combinations and the
+hard contract. MFDoctor checks both local invalid combinations and the
 federation-wide provider.
 
 Source:
@@ -165,7 +165,7 @@ exposes matching optimization flags under `experiments.optimization`.
 - `disableSnapshot` removes manifest remotes, preload, dynamic type hints, HMR,
   and DevTools integration.
 
-Doctor reports a hard error when a removed capability is still configured. It
+MFDoctor reports a hard error when a removed capability is still configured. It
 reports snapshot loss as reliability risk because the build may run while
 important tooling silently disappears.
 

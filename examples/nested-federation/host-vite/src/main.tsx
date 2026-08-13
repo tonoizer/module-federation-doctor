@@ -7,7 +7,7 @@ const RsbuildCard = lazy(() => import("rsbuildRemote/Card"));
 function App() {
   return (
     <main>
-      <h1>Module Federation Doctor nested example</h1>
+      <h1>MFDoctor nested example</h1>
       <p>Vite host → Vite + Rsbuild remotes; each remote nests another bundler.</p>
       <Suspense fallback={<p data-testid="remote-loading">Loading remotes…</p>}>
         <section data-testid="vite-remote">

@@ -2127,7 +2127,7 @@ describe("config/implementation-suspicious", () => {
     artifacts: { emittedAssets: [] },
   });
 
-  it("skips Doctor [external]/ path rewrites", async () => {
+  it("skips MFDoctor [external]/ path rewrites", async () => {
     const facts = base();
     facts.moduleFederation!.implementation = "[external]/bundler.js";
     expect(await runRule(facts)).toHaveLength(0);

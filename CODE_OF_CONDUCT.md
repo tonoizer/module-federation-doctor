@@ -2,7 +2,7 @@
 
 ## Our Pledge
 
-We want Module Federation Doctor to be a welcoming, respectful, and inclusive
+We want MFDoctor to be a welcoming, respectful, and inclusive
 community. Everyone should be able to participate without discrimination,
 harassment, or intimidation.
 

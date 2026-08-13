@@ -68,9 +68,9 @@ for (const cell of matrix.upstreamValidation) {
   assert.ok(["validated", "baseline-blocked", "planned"].includes(cell.status));
   assert.equal(typeof cell.doctorErrors, "number");
   if (cell.status !== "planned")
-    assert.equal(cell.doctorErrors, 0, `${cell.id}: recorded Doctor errors must be zero`);
+    assert.equal(cell.doctorErrors, 0, `${cell.id}: recorded MFDoctor errors must be zero`);
   process.stdout.write(
-    `ok upstream ${cell.id} (${cell.repository}@${cell.ref}, ${cell.status}, Doctor errors:${cell.doctorErrors})\n`,
+    `ok upstream ${cell.id} (${cell.repository}@${cell.ref}, ${cell.status}, MFDoctor errors:${cell.doctorErrors})\n`,
   );
 }
 

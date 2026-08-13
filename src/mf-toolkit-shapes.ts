@@ -59,7 +59,7 @@ function isBridgeEntryTarget(target: string | undefined): boolean {
  * optionally alongside `./fragment` only — no classic component-style exposes.
  * Used to quiet component/DTS producer guidance for intentional bridge remotes.
  *
- * Note: Doctor project facts do not carry export graphs, so `register` is inferred
+ * Note: MFDoctor project facts do not carry export graphs, so `register` is inferred
  * from the `./entry` → `entry.*` convention used by mf-bridge (see fixtures).
  */
 export function isMfBridgeEntryProducer(facts: ProjectFacts): boolean {
@@ -98,7 +98,7 @@ export function hasMfSsrFragmentRemotes(facts: ProjectFacts): boolean {
 }
 
 /**
- * Doctor-normalized MF2 shared-array evidence (shared-inspector stress shape).
+ * MFDoctor-normalized MF2 shared-array evidence (shared-inspector stress shape).
  * Normalized manifests drop MF2 `from`; presence of a non-empty shared array on
  * a valid manifest is the alignment signal.
  */

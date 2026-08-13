@@ -29,7 +29,7 @@ async function loaded(observability: ReturnType<typeof createObservability>): Pr
   } as any);
 }
 
-describe("Doctor fixture capture", () => {
+describe("MFDoctor fixture capture", () => {
   it("serializes upstream loadRemote success", async () => {
     const observability = createObservability({ level: "verbose" });
     start(observability);

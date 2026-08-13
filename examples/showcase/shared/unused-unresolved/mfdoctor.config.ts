@@ -12,7 +12,7 @@ export default {
     manifest: true,
     exposes: { "./Widget": "./src/Widget.ts" },
     shared: {
-      // Would look unused if Doctor trusted incomplete dynamic evidence.
+      // Would look unused if MFDoctor trusted incomplete dynamic evidence.
       lodash: { singleton: false, requiredVersion: "^4.17.0" },
     },
   },

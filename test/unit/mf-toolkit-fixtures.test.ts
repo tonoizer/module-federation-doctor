@@ -102,7 +102,7 @@ describe("mf-toolkit fixtures (offline, #145)", () => {
       "react-dom",
       "zustand",
     ]);
-    // Doctor-normalized ArtifactManifest does not retain MF2 `from`.
+    // MFDoctor-normalized ArtifactManifest does not retain MF2 `from`.
     expect(manifest.shared?.every((entry) => entry.from === undefined)).toBe(true);
     expect(manifest.shared?.every((entry) => Array.isArray(entry.assets))).toBe(true);
 

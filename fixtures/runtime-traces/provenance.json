@@ -56,7 +56,7 @@
     {
       "fixture": "current-2.5.3.json",
       "upstreamFile": "packages/observability-plugin/__tests__/observability.spec.ts",
-      "captureTest": "Doctor fixture capture > serializes upstream loadRemote success",
+      "captureTest": "MFDoctor fixture capture > serializes upstream loadRemote success",
       "upstreamReference": "observability.spec.ts :: records a successful loadRemote report when enabled",
       "rawFile": "upstream-component-success.json",
       "rawSha256": "edf81de5f382c669c53959c11369680ca0d1ff3291cdbb94a9db7a574413fa50",
@@ -65,7 +65,7 @@
     {
       "fixture": "snapshot-failure-2.5.3.json",
       "upstreamFile": "packages/observability-plugin/__tests__/observability.spec.ts",
-      "captureTest": "Doctor fixture capture > serializes upstream snapshot failure",
+      "captureTest": "MFDoctor fixture capture > serializes upstream snapshot failure",
       "upstreamReference": "observability.spec.ts :: attaches clipped global moduleInfo only for snapshot dependent failures",
       "rawFile": "upstream-snapshot-failure.json",
       "rawSha256": "0bad0188949b2a939552e38d517d2e6ad0f692593200e81e41802308e3ba4b21",
@@ -76,7 +76,7 @@
       "rawSha256": "cac399d9384c4cc76cd9695d5a75ab88eac4de9156d281d58d40e1973fc055ad",
       "sanitizedSha256": "4006983943b5eaf05b872a7bb247df128347d7e6e68a07a9c03cbe3578a97291",
       "upstreamFile": "packages/chrome-devtools/__tests__/observability-devtools.spec.ts",
-      "captureTest": "Doctor DevTools fixture capture > serializes the pinned readObservabilitySnapshot partial report",
+      "captureTest": "MFDoctor DevTools fixture capture > serializes the pinned readObservabilitySnapshot partial report",
       "upstreamReference": "chrome-devtools/__tests__/observability-devtools.spec.ts :: keeps reports without runtime version as basic observability regardless of scope",
       "captureMethod": "serializes the exact report returned by readObservabilitySnapshot() from that test's getReports() stub; no runtime report data was invented"
     }

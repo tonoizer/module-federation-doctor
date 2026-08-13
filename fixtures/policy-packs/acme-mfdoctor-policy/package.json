@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Example shareable Module Federation Doctor policy pack for monorepo reuse.",
+  "description": "Example shareable MFDoctor policy pack for monorepo reuse.",
   "exports": {
     ".": "./index.js",
     "./package.json": "./package.json"

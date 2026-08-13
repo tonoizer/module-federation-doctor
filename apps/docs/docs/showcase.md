@@ -1,13 +1,13 @@
 # One-rule CLI showcase
 
 `examples/showcase` holds themed, intentional misconfigs for the **CLI**. Run
-them to see the exact rule IDs Doctor reports one fixture at a time:
+them to see the exact rule IDs MFDoctor reports one fixture at a time:
 
 ```bash
 pnpm demo:showcase
 ```
 
-For **per-bundler build+Doctor** demos (Vite / Webpack / Rspack / Rsbuild), see
+For **per-bundler build+MFDoctor** demos (Vite / Webpack / Rspack / Rsbuild), see
 [standalone findings](./standalone-findings.md) (`pnpm demo:standalone`).
 
 Prefer fixtures where a missing or weak config would still reach a Module

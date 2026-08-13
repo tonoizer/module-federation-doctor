@@ -11,7 +11,7 @@ const mfOptions = {
 
 module.exports = async () => {
   // Vite 5 keeps its federation plugin ESM-only. The async import is the
-  // supported CommonJS-config bridge; Doctor itself is loaded through its
+  // supported CommonJS-config bridge; MFDoctor itself is loaded through its
   // published CommonJS adapter condition above.
   const { federation } = await import("@module-federation/vite");
   return {

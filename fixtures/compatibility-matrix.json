@@ -243,7 +243,7 @@
       "variant": "Svelte",
       "status": "validated",
       "doctorErrors": 0,
-      "notes": ["Production app report completed without Doctor errors"]
+      "notes": ["Production app report completed without MFDoctor errors"]
     },
     {
       "id": "vite-angular",
@@ -253,7 +253,7 @@
       "status": "baseline-blocked",
       "doctorErrors": 0,
       "notes": [
-        "Example build was blocked by its existing Angular/package baseline; no Doctor-specific error was introduced"
+        "Example build was blocked by its existing Angular/package baseline; no MFDoctor-specific error was introduced"
       ]
     },
     {
@@ -272,7 +272,7 @@
       "variant": "Modern.js/Rspack",
       "status": "validated",
       "doctorErrors": 0,
-      "notes": ["Production app reports completed without Doctor errors"]
+      "notes": ["Production app reports completed without MFDoctor errors"]
     },
     {
       "id": "nuxt-vite-adapter",
@@ -282,7 +282,7 @@
       "status": "baseline-blocked",
       "doctorErrors": 0,
       "notes": [
-        "The upstream example build remained blocked by its existing package-resolution baseline; no new Doctor-specific finding was observed"
+        "The upstream example build remained blocked by its existing package-resolution baseline; no new MFDoctor-specific finding was observed"
       ]
     }
   ]

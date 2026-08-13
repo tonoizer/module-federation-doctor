@@ -75,8 +75,10 @@ assert.equal(typeof api.analyze, "function");
 assert.equal(typeof api.probeManifest, "function");
 assert.equal(typeof api.buildUiPayload, "function");
 assert.equal(typeof vite.federationDoctor, "function");
-assert.equal(typeof nuxt.nuxtDoctor.setup, "function");
-assert.equal(nuxt.federationDoctorNuxt, nuxt.nuxtDoctor);
+assert.equal(typeof nuxt.moduleFederationDoctor.setup, "function");
+assert.equal(nuxt.nuxtDoctor, nuxt.moduleFederationDoctor);
+assert.equal(nuxt.federationDoctorNuxt, nuxt.moduleFederationDoctor);
+assert.equal(nuxt.default, nuxt.moduleFederationDoctor);
 assert.equal(typeof nuxt.default.setup, "function");
 assert.equal(typeof rspack.moduleFederationDoctorPlugin, "function");
 assert.equal(typeof rsbuild.pluginModuleFederationDoctor, "function");
@@ -97,16 +99,16 @@ assert.equal(typeof policy.definePolicyPack, "function");
 assert.equal(typeof policy.presets.recommended, "object");
 assert.equal(typeof policy.presets.strict, "object");
 const schemaTitles = {
-  baseline: "Module Federation Doctor fingerprint baseline",
-  config: "Module Federation Doctor canonical config v1",
-  evidence: "Module Federation Doctor evidence protocol v2",
-  identity: "Module Federation Doctor semantic identity",
-  probe: "Module Federation Doctor manifest probe result",
-  project: "Module Federation Doctor project facts",
-  report: "Module Federation Doctor report",
-  "runtime-capture": "Module Federation Doctor external runtime capture v1",
-  "runtime-trace": "Module Federation Doctor runtime trace correlation summary",
-  ui: "Module Federation Doctor federation graph payload",
+  baseline: "MFDoctor fingerprint baseline",
+  config: "MFDoctor canonical config v1",
+  evidence: "MFDoctor evidence protocol v2",
+  identity: "MFDoctor semantic identity",
+  probe: "MFDoctor manifest probe result",
+  project: "MFDoctor project facts",
+  report: "MFDoctor report",
+  "runtime-capture": "MFDoctor external runtime capture v1",
+  "runtime-trace": "MFDoctor runtime trace correlation summary",
+  ui: "MFDoctor federation graph payload",
 };
 const schemaImports = {
   baseline: await import("@tonoizer/mfdoctor/schemas/baseline.schema.json", { with: { type: "json" } }),
@@ -182,7 +184,7 @@ assert.equal(rspackChain[0][0], "module-federation-doctor");
 `,
   );
   const consumerPnpmArgs = [...packageManagerArgs, "--dir", consumer];
-  // Keep pnpm's project lookup anchored at the Doctor workspace. A temp
+  // Keep pnpm's project lookup anchored at the MFDoctor workspace. A temp
   // consumer can otherwise inherit an unrelated parent packageManager field
   // (for example yarn in a user's home package.json).
   run(packageManager, [...consumerPnpmArgs, "install", "--ignore-scripts"], root);

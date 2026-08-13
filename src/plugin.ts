@@ -24,14 +24,14 @@ import { detectViteLifecycle, withPostEmitHook, type ViteHookMeta } from "./vite
 export function failAfterCollect(result: AnalysisResult): void {
   if (result.exitCode === 0) return;
   if (result.exitCode === 2) {
-    throw new Error("Module Federation Doctor could not complete analysis.");
+    throw new Error("MFDoctor could not complete analysis.");
   }
   const { errors, warnings, info } = result.report.summary;
   const details = result.report.findings
     .map((finding) => `  - [${finding.severity}] ${finding.ruleId}: ${finding.message}`)
     .join("\n");
   throw new Error(
-    `Module Federation Doctor policy failed (${errors} error(s), ${warnings} warning(s), ${info} info). See .mf/doctor/report.json.\n${details}`,
+    `MFDoctor policy failed (${errors} error(s), ${warnings} warning(s), ${info} info). See .mf/doctor/report.json.\n${details}`,
   );
 }
 
@@ -131,7 +131,7 @@ export function collectViteModuleFederationPluginInstances(
 }
 
 /**
- * Keep an explicit Doctor config authoritative over the Vite plugin's
+ * Keep an explicit MFDoctor config authoritative over the Vite plugin's
  * resolved defaults (for example `remoteEntry-[hash]`). Additional plugin
  * instances still retain their independently discovered configuration.
  */
@@ -406,9 +406,7 @@ export function attachDoctorAfterEmit(
     const ErrorCtor = compiler.webpack?.WebpackError ?? Error;
     // Single policy failure diagnostic — findings already printed by writeReports.
     compilation.errors.push(
-      new ErrorCtor(
-        `Module Federation Doctor policy failed. See terminal output and .mf/doctor/report.json.`,
-      ),
+      new ErrorCtor(`MFDoctor policy failed. See terminal output and .mf/doctor/report.json.`),
     );
     failAfterCollect(result);
   });
@@ -856,7 +854,7 @@ function createViteFamilyHooks(configured: DoctorOptions) {
  * build hooks (`configResolved` / `buildStart`) and analyze only on post-emit
  * surfaces (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild`).
  * Never register `transform` / `load` / `banner` (or similar) hooks that inject
- * Doctor into client assets. Findings print once via the shared terminal
+ * MFDoctor into client assets. Findings print once via the shared terminal
  * reporter at the end of analysis — adapters must not re-emit per-finding
  * bundler logs (#46).
  */

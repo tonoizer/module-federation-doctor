@@ -9,7 +9,7 @@ const e2ePort = (basePort: number) => basePort + portOffset;
 const mfOptions = {
   name: "host_vite_issues",
   manifest: true,
-  // Default shareStrategy is version-first; leave it so Doctor can report
+  // Default shareStrategy is version-first; leave it so MFDoctor can report
   // reliability/version-first-offline-remotes for this red demo.
   remotes: {
     rspackRemote: {

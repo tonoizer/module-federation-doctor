@@ -609,7 +609,7 @@ try {
       );
       await run("build package", pnpm, ["build"], environment);
       await run(
-        "clean E2E Doctor artifacts",
+        "clean E2E MFDoctor artifacts",
         process.execPath,
         ["scripts/clean-e2e-artifacts.mjs"],
         environment,

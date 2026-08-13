@@ -9,7 +9,7 @@ Stale output can register a different container than the current config.
 
 ## How to fix it
 
-Clean output and make the federation plugin and Doctor share one options object.
+Clean output and make the federation plugin and MFDoctor share one options object.
 
 Suppress or retarget with `rules["artifact/manifest-name-mismatch"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 

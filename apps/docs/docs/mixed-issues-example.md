@@ -1,7 +1,7 @@
 # Mixed federation issues example
 
 Same Vite + Rspack + Rsbuild topology as the [healthy mixed example](./mixed-example.md),
-but configured so Doctor reports shared and cross-project conflicts.
+but configured so MFDoctor reports shared and cross-project conflicts.
 
 | Finding                                     | How it is planted                                              |
 | ------------------------------------------- | -------------------------------------------------------------- |

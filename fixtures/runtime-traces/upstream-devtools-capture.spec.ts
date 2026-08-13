@@ -7,7 +7,7 @@ const output = process.env.DOCTOR_CAPTURE_DIR;
 if (!output) throw new Error("DOCTOR_CAPTURE_DIR is required");
 fs.mkdirSync(output, { recursive: true });
 
-describe("Doctor DevTools fixture capture", () => {
+describe("MFDoctor DevTools fixture capture", () => {
   afterEach(() => {
     rs.restoreAllMocks();
     Reflect.deleteProperty(globalThis, "chrome");

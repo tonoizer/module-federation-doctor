@@ -91,7 +91,7 @@
   {
     "type": "dir",
     "name": "doctor",
-    "label": "Doctor",
+    "label": "MFDoctor",
     "collapsible": true,
     "collapsed": true
   }

@@ -1,6 +1,6 @@
 # `@acme/mfdoctor-policy`
 
-In-repo fixture for shareable Doctor policy packs (MFDOCTOR-110 / #26).
+In-repo fixture for shareable MFDoctor policy packs (MFDOCTOR-110 / #26).
 
 ## What it ships
 

@@ -564,7 +564,7 @@ describe("multiple Module Federation instances", () => {
     ).toMatchObject([{ config: { name: "enhanced" } }]);
   });
 
-  it("keeps explicit Vite Doctor config ahead of resolved plugin defaults", () => {
+  it("keeps explicit Vite MFDoctor config ahead of resolved plugin defaults", () => {
     const explicit = instanceConfig("vite", "remoteEntry.js");
     const detected = [
       {

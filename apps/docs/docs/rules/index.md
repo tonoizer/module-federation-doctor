@@ -2,7 +2,7 @@
 
 Rule pages are generated from package metadata. Each page explains the issue, impact, fix, and upstream evidence.
 
-Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliability, Runtime, Runtime plugins, Federation, Performance, Vite, Security, and Doctor. Printed terminal `docs:` links open the same pages.
+Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliability, Runtime, Runtime plugins, Federation, Performance, Vite, Security, and MFDoctor. Printed terminal `docs:` links open the same pages.
 
 ## Correctness
 
@@ -30,7 +30,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`config/external-runtime-with-exposes`](./config/external-runtime-with-exposes.md) | error | A runtime provider is only supported on a pure consumer and the upstream plugin throws otherwise. |
 | [`config/get-public-path-invalid`](./config/get-public-path-invalid.md) | error | The runtime cannot evaluate an invalid stringified public-path function. |
 | [`config/library-remote-type-mismatch`](./config/library-remote-type-mismatch.md) | warning | A consumer loader can fail when its remote type does not match the producer library format. |
-| [`config/name-required`](./config/name-required.md) | error | The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so Doctor keeps this for offline checks rather than a showcase fixture. |
+| [`config/name-required`](./config/name-required.md) | error | The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so MFDoctor keeps this for offline checks rather than a showcase fixture. |
 | [`config/plugin-package-mismatch`](./config/plugin-package-mismatch.md) | warning | Using the wrong integration can skip required bundler hooks and runtime generation. |
 | [`config/remote-alias-prefix-collision`](./config/remote-alias-prefix-collision.md) | error | An alias that prefixes another remote name/alias makes multi-level path references ambiguous and is rejected by the runtime. |
 | [`config/remote-capability-disabled`](./config/remote-capability-disabled.md) | error | Tree-shaken remote-consumption code cannot load configured remotes. |
@@ -71,7 +71,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`config/dts-output-dir-mismatch`](./config/dts-output-dir-mismatch.md) | warning | A nested remote-entry `filename` that disagrees with `dts.generateTypes.outputDir` can publish type archives to the wrong path. |
 | [`config/implementation-suspicious`](./config/implementation-suspicious.md) | info | A custom implementation can violate the runtime contract expected by the build plugin. |
 | [`config/remote-localhost-in-production`](./config/remote-localhost-in-production.md) | warning | Localhost remotes in CI/production builds cannot resolve on other machines and break deployments. |
-| [`federation/circular-remote-graph`](./federation/circular-remote-graph.md) | warning | A remote cycle is valid Module Federation topology by itself. Doctor warns only when a strongly connected group contains a `version-first` member that eagerly loads a remote during startup. |
+| [`federation/circular-remote-graph`](./federation/circular-remote-graph.md) | warning | A remote cycle is valid Module Federation topology by itself. MFDoctor warns only when a strongly connected group contains a `version-first` member that eagerly loads a remote during startup. |
 | [`federation/missing-provider`](./federation/missing-provider.md) | error | Every consumer disabled its fallback, so no build can provide the package. |
 | [`federation/share-strategy-mismatch`](./federation/share-strategy-mismatch.md) | warning | Hosts and remotes that disagree on `version-first` vs `loaded-first` negotiate shared versions differently at startup. |
 | [`reliability/async-startup-library-promise`](./reliability/async-startup-library-promise.md) | warning | Async startup changes synchronous library entry exports into a Promise contract. |
@@ -122,7 +122,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 
 | Rule | Severity | What it protects |
 | --- | --- | --- |
-| [`artifact/manifest-disabled`](./artifact/manifest-disabled.md) | warning | When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. Doctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis. |
+| [`artifact/manifest-disabled`](./artifact/manifest-disabled.md) | warning | When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. MFDoctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis. |
 | [`artifact/types-metadata-missing`](./artifact/types-metadata-missing.md) | warning | The manifest cannot advertise generated type archives to consumers. |
 | [`artifact/types-missing`](./artifact/types-missing.md) | warning | No emitted declaration artifact was found for a typed producer. |
 | [`bridge/disable-alias-deprecated`](./bridge/disable-alias-deprecated.md) | info | `bridge.disableAlias` is a deprecated escape hatch; explicit `enableBridgeRouter` communicates intent clearly. |
@@ -133,6 +133,6 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`config/observability-plugin-recommended`](./config/observability-plugin-recommended.md) | info | Module Federation 2.5+ projects can opt into runtime health correlation, but a declared Observability Plugin is ineffective until its runtime entry is registered. The default nudge requires the package to be present; the production profile can recommend it for every supported federated surface. |
 | [`config/remote-manifest-recommended`](./config/remote-manifest-recommended.md) | info | A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. The `demo` policy only softens this recommendation for explicitly known-local bare/relative entries or loopback URLs during development; external, authenticated non-loopback, unknown, and CI remotes remain visible. |
 | [`doctor/partial-analysis`](./doctor/partial-analysis.md) | warning | Missing facts, unresolved dynamic imports, unreadable source files recorded in `imports.sourceReadFailures`, budget-limited persisted projects, or omitted workspace projects reduce confidence and can hide relevant findings. Source read failures make project or workspace input `unknown`; a pure analysis-budget cutoff is `partial`. Incomplete workspace evidence suppresses absence-based federation rules (`host-gaps`, `ghost-shares`, `missing-provider`, and `external-runtime-provider-missing`) while positive mismatches remain useful. Package-capable unresolved dynamics suppress workspace absence certainty without changing the ordinary project exit code. |
-| [`runtime/remote-unknown`](./runtime/remote-unknown.md) | warning | The trace names a remote that is absent from loaded Doctor project facts. |
+| [`runtime/remote-unknown`](./runtime/remote-unknown.md) | warning | The trace names a remote that is absent from loaded MFDoctor project facts. |
 | [`vite/remote-hmr-dev`](./vite/remote-hmr-dev.md) | info | Without `remoteHmr`, local Vite remotes miss cross-container hot updates. |
 | [`vite/var-filename-interop`](./vite/var-filename-interop.md) | info | `varFilename` emits an additional global-format remote entry so var hosts (webpack/rspack) can load this Vite producer. |

@@ -1,6 +1,6 @@
 name: Workspace federation gate
-description: Discover Doctor project.json facts across a monorepo and run the offline federation gate (JSON/SARIF).
-author: Module Federation Doctor
+description: Discover MFDoctor project.json facts across a monorepo and run the offline federation gate (JSON/SARIF).
+author: MFDoctor
 
 branding:
   icon: activity
@@ -16,7 +16,7 @@ inputs:
   globs:
     description: >-
       Optional override globs (manual escape hatch). Newline or space
-      separated. When set, replaces the default Doctor project.json layout.
+      separated. When set, replaces the default MFDoctor project.json layout.
     required: false
     default: ""
   formats:
@@ -29,7 +29,7 @@ inputs:
     default: "."
   build-command:
     description: >-
-      Optional shell command that builds each app with the Doctor plugin so
+      Optional shell command that builds each app with the MFDoctor plugin so
       project.json facts exist before the gate. Leave empty when builds already ran.
     required: false
     default: ""

@@ -28,7 +28,7 @@ function emptyWorkspaceReport(project: ProjectFacts): DoctorReport {
 }
 
 describe("workspace discovery", () => {
-  it("defaults to Doctor project.json layout", () => {
+  it("defaults to MFDoctor project.json layout", () => {
     expect(DEFAULT_WORKSPACE_PROJECT_GLOBS).toEqual(["**/.mf/doctor/project.json"]);
   });
 
@@ -1002,7 +1002,9 @@ describe("workspace discovery", () => {
       });
       expect(result.exitCode).toBe(2);
       const finding = result.findings.find((item) => item.ruleId === "doctor/partial-analysis");
-      expect(finding?.message).toBe("Doctor found workspace diagnostics; analysis is incomplete.");
+      expect(finding?.message).toBe(
+        "MFDoctor found workspace diagnostics; analysis is incomplete.",
+      );
       expect(finding?.message).not.toMatch(/stale|duplicate|conflicting|invalid/i);
       expect(finding?.detailsSchema).toBe("doctor.partial-analysis.v1");
       expect(finding?.details).toMatchObject({

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Assert a supported compatibility-matrix cell wrote Doctor facts and
+ * Assert a supported compatibility-matrix cell wrote MFDoctor facts and
  * CI report surfaces (JSON + SARIF). Optionally assert a captured terminal log.
  *
  * Usage:
@@ -35,7 +35,7 @@ for (const file of [projectPath, reportPath, sarifPath]) {
   try {
     await fs.access(file);
   } catch {
-    throw new Error(`Missing Doctor artifact for ${cellId}: ${file}`);
+    throw new Error(`Missing MFDoctor artifact for ${cellId}: ${file}`);
   }
 }
 
@@ -69,12 +69,12 @@ const terminalLog = terminalLogArg;
 if (terminalLog) {
   const log = await fs.readFile(path.resolve(terminalLog), "utf8");
   assert.ok(log.trim().length > 0, `terminal log empty: ${terminalLog}`);
-  // Quiet success (#46): clean builds may omit the Doctor findings block.
-  // Still require some Doctor-related signal in the captured build log, or
+  // Quiet success (#46): clean builds may omit the MFDoctor findings block.
+  // Still require some MFDoctor-related signal in the captured build log, or
   // accept quiet success when the report itself has zero findings.
-  const hasDoctorSignal = /Module Federation Doctor|doctor\/|findings|mfdoctor/i.test(log);
+  const hasDoctorSignal = /MFDoctor|doctor\/|findings|mfdoctor/i.test(log);
   const quietClean = report.findings.length === 0;
-  assert.ok(hasDoctorSignal || quietClean, `terminal log missing Doctor output: ${terminalLog}`);
+  assert.ok(hasDoctorSignal || quietClean, `terminal log missing MFDoctor output: ${terminalLog}`);
 }
 
 const capabilities = project.capabilities ?? {};

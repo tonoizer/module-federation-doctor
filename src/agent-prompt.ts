@@ -97,7 +97,7 @@ function docsUrl(finding: DoctorFinding): string {
  */
 export function buildAgentPrompt(finding: DoctorFinding, options: AgentPromptOptions = {}): string {
   const guidance = ruleGuidance[finding.ruleId];
-  const fix = finding.suggestion ?? guidance?.fix ?? "Address this finding, then re-run Doctor.";
+  const fix = finding.suggestion ?? guidance?.fix ?? "Address this finding, then re-run MFDoctor.";
   const impact = guidance?.impact ?? "This finding affects Module Federation correctness or DX.";
   const sources = guidance?.sources ?? [];
   const verify = options.verifyCommand ?? "mfdoctor check";
@@ -107,7 +107,7 @@ export function buildAgentPrompt(finding: DoctorFinding, options: AgentPromptOpt
   const lines = [
     `# Fix: ${finding.ruleId}`,
     "",
-    "Fix exactly this Module Federation Doctor finding. Do not change unrelated rules.",
+    "Fix exactly this MFDoctor finding. Do not change unrelated rules.",
     "Do not suggest suppressions or baseline entries unless the user asks.",
     "",
     "## Finding",
@@ -128,7 +128,7 @@ export function buildAgentPrompt(finding: DoctorFinding, options: AgentPromptOpt
     ...(evidenceLines.length > 0 ? evidenceLines : ["- (none)"]),
     "",
     "## Docs",
-    `- Doctor: ${docsUrl(finding)}`,
+    `- MFDoctor: ${docsUrl(finding)}`,
     ...sources.map((source) => `- Source: ${source}`),
     "",
     "## Verify",
@@ -230,7 +230,7 @@ export async function writeDiagnosticsDump(
       : `Score: ${report.summary.score}/100 (${report.summary.scoreLabel ?? "n/a"})`;
 
   const summaryLines = [
-    "# Module Federation Doctor — agent diagnostics",
+    "# MFDoctor — agent diagnostics",
     "",
     scoreLine,
     `${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info` +

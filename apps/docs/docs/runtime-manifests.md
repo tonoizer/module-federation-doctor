@@ -23,7 +23,7 @@ The exact upstream shapes live in
 and
 [stats types](https://github.com/module-federation/core/blob/641a0b6edc0f30865586e7d021522bfa27051c4c/packages/sdk/src/types/stats.ts).
 
-Doctor records:
+MFDoctor records:
 
 - container id and name,
 - public path,
@@ -39,11 +39,11 @@ assets. This catches stale output that a config-only linter cannot see.
 
 ## Per-bundler expectations
 
-Doctor’s `capabilities.manifest` / `capabilities.stats` flags mean “on-disk
+MFDoctor’s `capabilities.manifest` / `capabilities.stats` flags mean “on-disk
 `mf-manifest.json` / `mf-stats.json` were collected,” not “webpack compilation
 stats exist.” Emit defaults differ by MF plugin family:
 
-| Bundler                         | `mf-manifest.json` / `mf-stats.json`                                              | Webpack-style compilation stats          | What Doctor expects                                                                                              |
+| Bundler                         | `mf-manifest.json` / `mf-stats.json`                                              | Webpack-style compilation stats          | What MFDoctor expects                                                                                            |
 | ------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **Vite** / Rolldown / Vite Plus | Opt-in: set `manifest: true` on `@module-federation/vite`. Omitted ⇒ **no** emit. | **Not applicable** — missing is expected | With `manifest: true`, both MF artifacts; without them, honest `doctor/partial-analysis` (not “pass MF options”) |
 | **Webpack** (Enhanced)          | Default emit when `manifest !== false`                                            | Available via compilation hooks          | Manifest/stats capabilities when emit lands; omit/`undefined` is **enabled**, not disabled                       |
@@ -52,7 +52,7 @@ stats exist.” Emit defaults differ by MF plugin family:
 | **Modern.js**                   | Same Enhanced default under the hood                                              | Via Rspack/Webpack `afterEmit`           | Adapter OK; core Modern demos may be blocked upstream (see soak notes)                                           |
 
 **Explicit:** absence of webpack compilation `stats.json` on Vite / Rolldown /
-Vite Plus is **expected**. Do not treat it as a Doctor or adapter failure.
+Vite Plus is **expected**. Do not treat it as a MFDoctor or adapter failure.
 
 Related fixes (closed):
 
@@ -73,16 +73,16 @@ From the 2026-08-01 bundler soak (reconstructions; `SOAK_REPORT.md` is not
 vendored in-tree):
 
 - **Adapters are healthy** across Vite, Webpack, Rspack, and Rsbuild when MF
-  emits the artifacts Doctor can read. Failures that looked like “missing
+  emits the artifacts MFDoctor can read. Failures that looked like “missing
   manifest/stats” were usually Vite opt-in gaps or Enhanced default-emit
   normalization — addressed in #116 / #119 / #125.
 - **Modern.js core demos** (`modern-ssr-*`, `modern-data-fetch-*`) failed
-  **before** Doctor ran in the 2026-08-01 soak because
+  **before** MFDoctor ran in the 2026-08-01 soak because
   `@module-federation/bridge-react/size-limited-cache` was missing on the soaked
   core branch (upstream packaging / dist drift). The package export was added
   by [Core PR #4897](https://github.com/module-federation/core/pull/4897) and is
   present in `@module-federation/bridge-react@2.8.2`, but the corresponding
-  core-demo re-soak remains unverified. It was **not** a Doctor Modern adapter
+  core-demo re-soak remains unverified. It was **not** a MFDoctor Modern adapter
   crash. In-repo
   [`examples/compatibility/modern`](https://github.com/tonoizer/module-federation-doctor/tree/main/examples/compatibility/modern)
   smoke stays green; a full `@modern-js/app-tools` core-demo re-soak is still
@@ -127,7 +127,7 @@ and the [Vite integration](./vite-integration.md) notes.
 
 ## Report capabilities block
 
-After a build or `mfdoctor check`, inspect what Doctor actually collected:
+After a build or `mfdoctor check`, inspect what MFDoctor actually collected:
 
 ```bash
 jq '.capabilities' .mf/doctor/report.json
@@ -173,7 +173,7 @@ and
 
 ## Observability
 
-Doctor's default analysis is static and offline. For a live failure, use the
+MFDoctor's default analysis is static and offline. For a live failure, use the
 official
 [Observability Plugin](https://module-federation.io/plugin/plugins/observability-plugin).
 It can identify whether a failure occurred during manifest, remote entry,
@@ -184,7 +184,7 @@ Do not guess from a generic network error:
 1. keep the stable `RUNTIME-xxx` code;
 2. capture the failed URL/status and original browser exception;
 3. export an observability report when available;
-4. correlate that export with Doctor build facts:
+4. correlate that export with MFDoctor build facts:
 
 ```bash
 mfdoctor check --format json

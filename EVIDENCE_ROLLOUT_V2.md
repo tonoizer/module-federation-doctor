@@ -1,7 +1,7 @@
 # Evidence v2 rollout
 
 This file records the rollout control plane for issue #87. It is internal documentation.
-It does not change the Doctor CLI, report files, SARIF, exit codes, fingerprints, baselines,
+It does not change the MFDoctor CLI, report files, SARIF, exit codes, fingerprints, baselines,
 custom rules, or client bundles.
 
 ## Modes and scope
