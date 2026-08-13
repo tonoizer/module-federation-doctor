@@ -1,6 +1,6 @@
 {
   "name": "@tonoizer/mfdoctor",
-  "version": "1.0.0-rc.0",
+  "version": "1.0.0",
   "description": "Module Federation diagnostics for Vite, Rolldown/Vite Plus, Rspack, Rsbuild, Webpack, and Modern.js",
   "type": "module",
   "bin": {
