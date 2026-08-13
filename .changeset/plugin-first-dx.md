@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": minor
+"@tonoizer/mfdoctor": minor
 ---
 
 Make the bundler plugins the primary Doctor DX with ecosystem-named exports

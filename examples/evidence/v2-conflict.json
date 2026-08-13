@@ -2,7 +2,7 @@
   "protocol": {
     "protocolVersion": 2,
     "schemaVersion": 2,
-    "producer": { "name": "@module-federation/doctor", "version": "0.1.0" },
+    "producer": { "name": "@tonoizer/mfdoctor", "version": "0.1.0" },
     "source": { "kind": "project", "schemaVersion": "1" }
   },
   "scope": {

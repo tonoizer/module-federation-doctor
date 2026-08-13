@@ -78,8 +78,9 @@ scrape private plugin instance state, undocumented internals, or other
 non-public compiler/plugin fields. Missing optional public input yields
 `doctor/partial-analysis` instead of reaching into private MF plugin state.
 
-Adapter authors: see
-[architecture notes](./contributing.md#architecture-notes).
+Adapter authors should use public Module Federation options and emitted build
+artifacts. Contribution guidance lives in the repository
+[contribution guide](https://github.com/tonoizer/module-federation-doctor/blob/main/CONTRIBUTING.md#adapter-contract).
 
 ### Topology / production governance evidence notes (MFDOCTOR-123)
 
@@ -102,9 +103,8 @@ emit in Node and must not appear in the client bundle
 ([#32](https://github.com/tonoizer/module-federation-doctor/issues/32),
 `MFDOCTOR-115`). An in-browser Doctor runtime agent is **not planned**
 ([#33](https://github.com/tonoizer/module-federation-doctor/issues/33),
-`MFDOCTOR-116`). Delivery model (plugin primary / CLI complementary / not
-CLI-only / not in-browser agent):
-[ADR: Hybrid plugin + CLI](./adr/hybrid-plugin-cli.md).
+`MFDOCTOR-116`). Doctor stays plugin-primary, with a complementary CLI, and is
+never injected as an in-browser agent.
 
 **Runtime-only** Module Federation apps — `@module-federation/runtime` /
 `createInstance` / runtime plugins **without** a Vite, Rspack, Rsbuild,

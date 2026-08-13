@@ -5,7 +5,7 @@ import type { DoctorFinding, DoctorReport, Severity } from "./types.js";
 import { stableStringify } from "./utils.js";
 
 /** Same origin as reporters.DOCTOR_DOCS_ORIGIN (avoid circular import). */
-const DOCTOR_DOCS_ORIGIN = "https://module-federation.github.io";
+const DOCTOR_DOCS_ORIGIN = "https://mfdoctor.kevinbeier.com";
 
 const SEVERITY_RANK: Record<Severity, number> = { error: 3, warning: 2, info: 1 };
 const CATEGORY_RANK: Record<RuleCategory, number> = {

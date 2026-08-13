@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": minor
+"@tonoizer/mfdoctor": minor
 ---
 
 Extend the Vite adapter for Rolldown and Vite Plus emit lifecycles: detect

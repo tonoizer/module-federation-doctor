@@ -12,7 +12,7 @@ describe("modern.js adapter", () => {
     const plugin = moduleFederationDoctorPlugin({
       moduleFederation: { name: "modern_fixture" },
     });
-    expect(plugin.name).toBe("@module-federation/doctor");
+    expect(plugin.name).toBe("@tonoizer/mfdoctor");
     expect(typeof plugin.setup).toBe("function");
 
     const registered: Array<{ name: string; plugin: { name?: string; apply?: unknown } }> = [];

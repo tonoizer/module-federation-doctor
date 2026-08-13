@@ -61,12 +61,12 @@ function createAfterEmitPlugin(
  * Modern.js sits on Rspack (or Webpack). This adapter records `bundler: "modern"`
  * and attaches the **same** post-emit analysis used by the direct Rspack/Webpack
  * adapters via `modifyBundlerChain`. It does **not** replace or deprecate
- * `@module-federation/doctor/rspack` — bare `@rspack/core` projects should keep
+ * `@tonoizer/mfdoctor/rspack` — bare `@rspack/core` projects should keep
  * using that entry.
  */
 export function moduleFederationDoctorPlugin(options: DoctorOptions = {}): ModernDoctorPlugin {
   return {
-    name: "@module-federation/doctor",
+    name: "@tonoizer/mfdoctor",
     setup(api) {
       const context = api.getAppContext?.() ?? {};
       const root = options.root ?? context.appDirectory;
@@ -77,7 +77,7 @@ export function moduleFederationDoctorPlugin(options: DoctorOptions = {}): Moder
       };
       if (typeof api.modifyBundlerChain !== "function") {
         console.warn(
-          "[@module-federation/doctor/modern] api.modifyBundlerChain is missing; Doctor was not registered. Use a Modern.js App Tools plugin API, or call appendModuleFederationDoctor / @module-federation/doctor/rspack from tools.bundlerChain.",
+          "[@tonoizer/mfdoctor/modern] api.modifyBundlerChain is missing; Doctor was not registered. Use a Modern.js App Tools plugin API, or call appendModuleFederationDoctor / @tonoizer/mfdoctor/rspack from tools.bundlerChain.",
         );
         return;
       }

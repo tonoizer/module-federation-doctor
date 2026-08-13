@@ -418,7 +418,7 @@ function baseGraph(
     protocol: {
       protocolVersion: 2,
       schemaVersion: 2,
-      producer: { name: "@module-federation/doctor", version: "1" },
+      producer: { name: "@tonoizer/mfdoctor", version: "1" },
       source: { kind: source, schemaVersion: "1" },
     },
     scope: { ...scope, bundler: { ...scope.bundler } },
@@ -827,7 +827,7 @@ function assertion(
         : "effective",
     scope: { ...scope, bundler: { ...scope.bundler } },
     provenance: {
-      collector: { name: "@module-federation/doctor", version: "1" },
+      collector: { name: "@tonoizer/mfdoctor", version: "1" },
       inputKind: source,
       source: "legacy-v1",
       sourceSchemaVersion: "1",

@@ -97,7 +97,7 @@ recovery plugin so offline remotes do not drown the report:
 
 ```ts
 import { federation } from "@module-federation/vite";
-import { federationDoctor } from "@module-federation/doctor/vite";
+import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 
 const mfOptions = {
   name: "host_demo",

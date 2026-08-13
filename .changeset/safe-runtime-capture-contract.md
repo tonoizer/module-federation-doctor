@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": minor
+"@tonoizer/mfdoctor": minor
 ---
 
 Add the versioned, bounded external runtime-capture contract and schema. This is

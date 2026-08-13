@@ -1445,7 +1445,7 @@ export function attachRuntimeTraceEvidence(
       layer: "declared",
       scope: { ...graph.scope, bundler: { ...graph.scope.bundler } },
       provenance: {
-        collector: { name: "@module-federation/doctor", version: "1" },
+        collector: { name: "@tonoizer/mfdoctor", version: "1" },
         inputKind: "runtime-trace",
         source: "runtime-trace",
         sourceSchemaVersion: "1",
@@ -1474,7 +1474,7 @@ export function attachRuntimeTraceEvidence(
       layer: "runtime",
       scope: { ...graph.scope, bundler: { ...graph.scope.bundler } },
       provenance: {
-        collector: { name: "@module-federation/doctor", version: "1" },
+        collector: { name: "@tonoizer/mfdoctor", version: "1" },
         inputKind: "runtime-trace",
         source: "runtime-trace",
         sourceSchemaVersion: "1",

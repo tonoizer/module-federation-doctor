@@ -89,7 +89,7 @@ A pack is a `DoctorPolicyPack`: optional `name`, a `rules` severity map, and
 optional `plugins` (custom rules from `defineRule`).
 
 ```ts
-import { definePolicyPack, defineRule } from "@module-federation/doctor";
+import { definePolicyPack, defineRule } from "@tonoizer/mfdoctor";
 
 export const requireManifest = defineRule({
   meta: {
@@ -184,4 +184,4 @@ entries or as `plugins` on a pack.
 - `presets` / `recommendedPreset` / `strictPreset` / `demoPreset` /
   `productionPreset` — built-in packs and recommendation overlays
 - `resolvePolicy` / `resolveOptions` — resolve `extends` + merge `rules`
-- Subpath: `@module-federation/doctor/policy`
+- Subpath: `@tonoizer/mfdoctor/policy`

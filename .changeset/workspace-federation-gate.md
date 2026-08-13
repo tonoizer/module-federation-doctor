@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": minor
+"@tonoizer/mfdoctor": minor
 ---
 
 Add a one-shot workspace federation gate (`mfdoctor workspace` /

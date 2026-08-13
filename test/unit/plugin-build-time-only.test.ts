@@ -679,7 +679,7 @@ describe("adapter quiet success and failure terminal path", () => {
       expect(out).toContain("config/expose-key-invalid");
       expect(out).toContain("error");
       expect(out).toContain(
-        "docs: https://module-federation.github.io/rules/config/expose-key-invalid",
+        "docs: https://mfdoctor.kevinbeier.com/rules/config/expose-key-invalid",
       );
       expect(out).toContain("source: https://module-federation.io/configure/exposes.html");
       // Single print path: rule id once as a finding line (docs URL also contains the id).

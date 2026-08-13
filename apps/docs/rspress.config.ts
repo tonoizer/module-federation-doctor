@@ -1,30 +1,173 @@
+import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "@rspress/core";
 
 const docsAppDir = path.dirname(fileURLToPath(import.meta.url));
-// Absolute origin for OG/Twitter image URLs in the built site.
-// Default stays module-federation.github.io (planned org docs host) even while
-// the GitHub repo lives under tonoizer — override with SITE_ORIGIN when
-// deploying elsewhere (for example a Pages preview or custom domain).
-// Terminal/SARIF rule links use the same default via DOCTOR_DOCS_ORIGIN in src/reporters.ts.
-const siteOrigin = (process.env.SITE_ORIGIN || "https://module-federation.github.io").replace(
+// Vercel serves the canonical custom domain at the root. GitHub Pages overrides
+// DOCS_BASE for its repository-path fallback build. Terminal/SARIF rule links
+// use the same canonical origin via DOCTOR_DOCS_ORIGIN in src/reporters.ts.
+const base = process.env.DOCS_BASE || "/";
+const siteOrigin = (process.env.SITE_ORIGIN || "https://mfdoctor.kevinbeier.com").replace(
   /\/$/,
   "",
 );
-const siteIcon = "/doctor-icon.svg";
+const siteIcon = "/module-federation-doctor-mark.svg";
 const socialImageUrl = `${siteOrigin}/doctor-social.svg`;
 const socialImageAlt = "Module Federation Doctor icon";
 
+const guideSidebar = [
+  { sectionHeaderText: "Guide" },
+  {
+    text: "Getting started",
+    items: [
+      { text: "Setup", link: "/setup" },
+      { text: "Bundler integrations", link: "/integrations" },
+    ],
+  },
+  {
+    text: "Adoption",
+    items: [
+      { text: "Monorepos", link: "/monorepos" },
+      { text: "Production readiness", link: "/production-readiness" },
+    ],
+  },
+];
+
+const configurationSidebar = [
+  { sectionHeaderText: "Configuration" },
+  { text: "Configuration audit", link: "/configuration-audit" },
+  { text: "Vite integration", link: "/vite-integration" },
+  { text: "Custom rules", link: "/custom-rules" },
+  { text: "Evidence-aware rules", link: "/evidence-aware-rules" },
+  {
+    text: "Governance",
+    collapsible: true,
+    collapsed: true,
+    items: [
+      { text: "Suppressions", link: "/suppressions" },
+      { text: "Fingerprint baselines", link: "/baselines" },
+      { text: "Policy packs", link: "/policy-packs" },
+    ],
+  },
+];
+
+const cliSidebar = [
+  { sectionHeaderText: "CLI" },
+  { text: "Command reference", link: "/cli" },
+  { text: "Production and CI", link: "/production-readiness" },
+  { text: "Fingerprint baselines", link: "/baselines" },
+  { text: "Runtime capture", link: "/runtime-capture" },
+  { text: "Report schemas", link: "/report-schemas" },
+];
+
+const exampleSidebar = [
+  { sectionHeaderText: "Examples" },
+  { text: "Overview", link: "/examples" },
+  { text: "Mixed federation", link: "/mixed-example" },
+  { text: "Mixed federation issues", link: "/mixed-issues-example" },
+  { text: "Nested federation", link: "/nested-example" },
+  { text: "Standalone findings", link: "/standalone-findings" },
+  { text: "One-rule showcase", link: "/showcase" },
+];
+
+const referenceSidebar = [
+  { sectionHeaderText: "Reference" },
+  { text: "Compatibility", link: "/compatibility" },
+  { text: "Capabilities", link: "/capabilities" },
+  { text: "Runtime and manifests", link: "/runtime-manifests" },
+  { text: "Runtime capture", link: "/runtime-capture" },
+  { text: "Report schemas", link: "/report-schemas" },
+  { text: "Performance", link: "/performance" },
+  { text: "Limitations", link: "/limitations" },
+];
+
+const ruleCategoryOrder = [
+  "config",
+  "shared",
+  "bridge",
+  "ssr",
+  "artifact",
+  "reliability",
+  "runtime",
+  "runtime-plugins",
+  "federation",
+  "performance",
+  "vite",
+  "security",
+  "doctor",
+];
+
+const ruleLabels: Record<string, string> = {
+  config: "Config",
+  shared: "Shared",
+  bridge: "Bridge",
+  ssr: "SSR",
+  artifact: "Artifact",
+  reliability: "Reliability",
+  runtime: "Runtime",
+  "runtime-plugins": "Runtime plugins",
+  federation: "Federation",
+  performance: "Performance",
+  vite: "Vite",
+  security: "Security",
+  doctor: "Doctor",
+};
+
+const rulesRoot = path.join(docsAppDir, "docs", "rules");
+const rulesSidebar = [
+  { sectionHeaderText: "Rules" },
+  { text: "Overview", link: "/rules/" },
+  ...ruleCategoryOrder.map((category) => ({
+    text: ruleLabels[category]!,
+    collapsible: true,
+    collapsed: true,
+    items: fs
+      .readdirSync(path.join(rulesRoot, category), { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+      .map((entry) => entry.name.slice(0, -3))
+      .sort((a, b) => a.localeCompare(b))
+      .map((rule) => ({ text: rule, link: `/rules/${category}/${rule}` })),
+  })),
+];
+
+const sidebar = {
+  "/rules/": rulesSidebar,
+  "/examples": exampleSidebar,
+  "/mixed-example": exampleSidebar,
+  "/mixed-issues-example": exampleSidebar,
+  "/nested-example": exampleSidebar,
+  "/standalone-findings": exampleSidebar,
+  "/showcase": exampleSidebar,
+  "/compatibility": referenceSidebar,
+  "/capabilities": referenceSidebar,
+  "/runtime-manifests": referenceSidebar,
+  "/runtime-capture": referenceSidebar,
+  "/report-schemas": referenceSidebar,
+  "/performance": referenceSidebar,
+  "/limitations": referenceSidebar,
+  "/cli": cliSidebar,
+  "/configuration-audit": configurationSidebar,
+  "/vite-integration": configurationSidebar,
+  "/custom-rules": configurationSidebar,
+  "/evidence-aware-rules": configurationSidebar,
+  "/suppressions": configurationSidebar,
+  "/baselines": configurationSidebar,
+  "/policy-packs": configurationSidebar,
+  "/": guideSidebar,
+};
+
 export default defineConfig({
   root: path.join(docsAppDir, "docs"),
+  base,
+  siteOrigin,
   llms: true,
   title: "Module Federation Doctor",
   description: "Diagnostics for Vite, Rspack, Rsbuild, Webpack, and Modern.js federation projects",
   icon: siteIcon,
   logo: {
-    light: "/doctor-logo.svg",
-    dark: "/doctor-logo-white.svg",
+    light: "/module-federation-doctor-mark.svg",
+    dark: "/module-federation-doctor-mark.svg",
   },
   outDir: "doc_build",
   head: [
@@ -44,6 +187,42 @@ export default defineConfig({
     },
   },
   themeConfig: {
+    nav: [
+      {
+        text: "Guide",
+        link: "/setup",
+        activeMatch: "^/(setup|integrations|monorepos|production-readiness)",
+      },
+      {
+        text: "Configuration",
+        link: "/configuration-audit",
+        activeMatch:
+          "^/(configuration-audit|vite-integration|custom-rules|evidence-aware-rules|suppressions|baselines|policy-packs)",
+      },
+      {
+        text: "CLI",
+        link: "/cli",
+        activeMatch: "^/cli",
+      },
+      {
+        text: "Rules",
+        link: "/rules/",
+        activeMatch: "^/rules/",
+      },
+      {
+        text: "Resources",
+        items: [
+          { text: "Examples", link: "/examples" },
+          { text: "Compatibility", link: "/compatibility" },
+          { text: "Report schemas", link: "/report-schemas" },
+          {
+            text: "Module Federation",
+            link: "https://module-federation.io/",
+          },
+        ],
+      },
+    ],
+    sidebar,
     editLink: {
       docRepoBaseUrl:
         "https://github.com/tonoizer/module-federation-doctor/tree/main/apps/docs/docs",
@@ -55,9 +234,9 @@ export default defineConfig({
         content: "https://github.com/tonoizer/module-federation-doctor",
       },
       {
-        icon: "discord",
+        icon: "x",
         mode: "link",
-        content: "https://discord.gg/T8c6yAxkbv",
+        content: "https://x.com/tonoizer",
       },
     ],
   },

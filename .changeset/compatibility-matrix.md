@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": patch
+"@tonoizer/mfdoctor": patch
 ---
 
 Document and CI-exercise the v1 compatibility matrix (Vite / Rspack / Rsbuild /

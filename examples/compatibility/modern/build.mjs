@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { rspack } from "@rspack/core";
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/modern";
+import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/modern";
 import { mfOptions } from "./modern.config.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));

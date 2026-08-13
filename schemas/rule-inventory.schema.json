@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://module-federation.github.io/doctor/schemas/rule-inventory.schema.json",
+  "$id": "https://mfdoctor.kevinbeier.com/doctor/schemas/rule-inventory.schema.json",
   "title": "Module Federation Doctor rule migration inventory",
   "type": "object",
   "additionalProperties": false,

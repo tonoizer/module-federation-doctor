@@ -30,7 +30,7 @@ not changed. Reader errors include the file label (when supplied), document
 kind, source version, failure code, and JSON pointer. Current CLI command paths
 still read and write v1 documents until a later dual-read compatibility slice.
 
-`@module-federation/doctor/schemas/evidence.schema.json` defines the canonical
+`@tonoizer/mfdoctor/schemas/evidence.schema.json` defines the canonical
 v2 evidence graph. It keeps declared, effective, artifact, deployment, and
 runtime claims separate. Every assertion names its subject, scope, provenance,
 confidence, and completeness. Rule evaluations use exactly one outcome:
@@ -70,14 +70,14 @@ query parameters are removed while the URL remains a URL; POSIX, Windows, and
 UNC filesystem paths become `[PATH]`. Stack paths are also redacted after
 opening punctuation such as `(`, `[` or `{`. Other strings are left unchanged.
 
-| Schema export                                                 | Produced by                        | Contract kind           |
-| ------------------------------------------------------------- | ---------------------------------- | ----------------------- |
-| `@module-federation/doctor/schemas/project.schema.json`       | Build / collect → `project.json`   | Persisted artifact      |
-| `@module-federation/doctor/schemas/report.schema.json`        | Analyze → `report.json`            | Persisted artifact      |
-| `@module-federation/doctor/schemas/baseline.schema.json`      | Baseline generate / update         | Persisted artifact      |
-| `@module-federation/doctor/schemas/probe.schema.json`         | `mfdoctor probe` / `probeManifest` | CLI / API result        |
-| `@module-federation/doctor/schemas/runtime-trace.schema.json` | `analyzeRuntime` summary           | Correlation summary     |
-| `@module-federation/doctor/schemas/ui.schema.json`            | `buildUiPayload`                   | Programmatic graph only |
+| Schema export                                          | Produced by                        | Contract kind           |
+| ------------------------------------------------------ | ---------------------------------- | ----------------------- |
+| `@tonoizer/mfdoctor/schemas/project.schema.json`       | Build / collect → `project.json`   | Persisted artifact      |
+| `@tonoizer/mfdoctor/schemas/report.schema.json`        | Analyze → `report.json`            | Persisted artifact      |
+| `@tonoizer/mfdoctor/schemas/baseline.schema.json`      | Baseline generate / update         | Persisted artifact      |
+| `@tonoizer/mfdoctor/schemas/probe.schema.json`         | `mfdoctor probe` / `probeManifest` | CLI / API result        |
+| `@tonoizer/mfdoctor/schemas/runtime-trace.schema.json` | `analyzeRuntime` summary           | Correlation summary     |
+| `@tonoizer/mfdoctor/schemas/ui.schema.json`            | `buildUiPayload`                   | Programmatic graph only |
 
 `ui.schema.json` is **not** a persisted CLI artifact (Doctor no longer ships an
 HTML dashboard). It remains the published shape for programmatic consumers of
@@ -111,8 +111,8 @@ internals open for additive fields within schema version 1.
 Doctor does **not** ship an HTML dashboard. The retired `--ui` / HTML report path
 is gone. What remains is a **programmatic** graph contract:
 
-- Export: `buildUiPayload(projects, report)` from `@module-federation/doctor`
-- Schema: `@module-federation/doctor/schemas/ui.schema.json`
+- Export: `buildUiPayload(projects, report)` from `@tonoizer/mfdoctor`
+- Schema: `@tonoizer/mfdoctor/schemas/ui.schema.json`
 - Shape: `DoctorUiPayload` with remotes / shared / orchestration node-edge graphs
 - Also attached on `FederationAnalysisResult.ui` and `RuntimeAnalysisResult.ui`
 
@@ -179,7 +179,7 @@ existing findings.
 
 TypeScript exports: `FINDING_DETAILS_SCHEMAS`, `TYPED_DETAILS_RULE_IDS`,
 `readFindingDetails`, and per-family `*DetailsV1` types from
-`@module-federation/doctor`.
+`@tonoizer/mfdoctor`.
 
 ### Agent / CI example (prefer `details`, not message regex)
 
@@ -188,7 +188,7 @@ import {
   readFindingDetails,
   FINDING_DETAILS_SCHEMAS,
   type SharedUnusedDetailsV1,
-} from "@module-federation/doctor";
+} from "@tonoizer/mfdoctor";
 
 for (const finding of report.findings) {
   const typed = readFindingDetails(finding);
@@ -209,7 +209,7 @@ Prefer a namespaced id such as `custom.<team>.<topic>.v1`.
 
 ## Semantic identity schema
 
-`@module-federation/doctor/schemas/identity.schema.json` is the additive
+`@tonoizer/mfdoctor/schemas/identity.schema.json` is the additive
 identity contract for correlation work. Identity keys use
 `mfid:v1:<kind>:<digest>` and use semantic dimensions only. Checkout paths,
 timestamps, display labels, runtime session values, and occurrence IDs never

@@ -1,5 +1,5 @@
 import { federation } from "@module-federation/vite";
-import { federationDoctor } from "@module-federation/doctor/vite";
+import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 import { nitro } from "nitro/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";

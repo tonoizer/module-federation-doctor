@@ -8,7 +8,7 @@
  * ```ts
  * import { appTools, defineConfig } from "@modern-js/app-tools";
  * import { moduleFederationPlugin } from "@module-federation/modern-js";
- * import { moduleFederationDoctorPlugin } from "@module-federation/doctor/modern";
+ * import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/modern";
  *
  * const mfOptions = { name: "modern_smoke", ... };
  *
@@ -24,7 +24,7 @@
  * Escape hatch (public Rspack adapter, records bundler as `rspack`):
  *
  * ```ts
- * import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+ * import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/rspack";
  * // tools.bundlerChain(chain => {
  * //   chain.plugin("mf-doctor").use(moduleFederationDoctorPlugin({ moduleFederation: mfOptions }));
  * // })

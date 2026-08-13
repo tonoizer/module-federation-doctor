@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": minor
+"@tonoizer/mfdoctor": minor
 ---
 
 Bound discovered artifact parsing with the new `analysisBudgets.maxArtifacts`

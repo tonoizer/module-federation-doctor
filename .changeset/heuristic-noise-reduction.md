@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": patch
+"@tonoizer/mfdoctor": patch
 ---
 
 Reduce false-positive noise from soft heuristic rules: default

@@ -45,7 +45,7 @@ Recommended CI policy — register the plugin and let CI env auto-detect do the
 rest (`failOn: "error"` + SARIF when `CI` / provider vars are set):
 
 ```ts
-import { federationDoctor } from "@module-federation/doctor/vite";
+import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 
 federationDoctor({
   moduleFederation: mfOptions,
@@ -73,8 +73,10 @@ shared bundler `mfOptions` object — not by shipping Doctor into the runtime.
 
 ## Research sources
 
-See the [source map](./sources.md) for pinned upstream URLs used when changing
-rules or claiming Module Federation behavior. High-level entry points:
+Use primary upstream references when changing rules or claiming Module
+Federation behavior. The repository
+[contribution guide](https://github.com/tonoizer/module-federation-doctor/blob/main/CONTRIBUTING.md#research-sources)
+keeps the maintainer source list. High-level entry points:
 
 - [Official configuration index](https://module-federation.io/configure/index.html)
 - [Official `mf` agent skill](https://github.com/module-federation/agent-skills/tree/main/skills/mf)

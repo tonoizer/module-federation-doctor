@@ -51,10 +51,7 @@
     },
     "security": {
       "status": "green",
-      "evidence": [
-        "apps/docs/docs/security.md",
-        "test/unit/evidence-parity.test.ts redaction cases"
-      ]
+      "evidence": ["SECURITY.md", "test/unit/evidence-parity.test.ts redaction cases"]
     },
     "performance": {
       "status": "green",

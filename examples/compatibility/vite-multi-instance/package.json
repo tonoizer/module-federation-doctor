@@ -11,7 +11,7 @@
     "@module-federation/vite": "1.20.4"
   },
   "devDependencies": {
-    "@module-federation/doctor": "workspace:*",
+    "@tonoizer/mfdoctor": "workspace:*",
     "vite": "5.4.19"
   }
 }

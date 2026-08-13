@@ -53,7 +53,7 @@ describe("agent prompts", () => {
     expect(prompt).toContain('Set name to "host".');
     expect(prompt).toContain("mfdoctor check");
     expect(prompt).toContain(
-      "- Doctor: https://module-federation.github.io/rules/config/name-required",
+      "- Doctor: https://mfdoctor.kevinbeier.com/rules/config/name-required",
     );
     // Evidence values are bounded
     expect(prompt).toMatch(/note: x{120}…/);

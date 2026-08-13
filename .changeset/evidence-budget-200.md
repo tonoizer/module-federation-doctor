@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": patch
+"@tonoizer/mfdoctor": patch
 ---
 
 Bound imported evidence processing before copying, normalization, and hashing

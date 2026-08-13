@@ -1,5 +1,5 @@
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/rspack";
 
 const mfOptions = {
   name: "nested_rspack_remote",

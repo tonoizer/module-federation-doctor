@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ModuleFederationPlugin } from "@module-federation/enhanced/webpack";
-import { ModuleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+import { ModuleFederationDoctorPlugin } from "@tonoizer/mfdoctor/webpack";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 

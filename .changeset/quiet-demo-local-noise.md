@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": patch
+"@tonoizer/mfdoctor": patch
 ---
 
 Make the `demo` policy pack hide only local development noise from bare remote

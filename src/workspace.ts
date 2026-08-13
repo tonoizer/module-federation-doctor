@@ -10,7 +10,7 @@ import {
 } from "./analysis-budgets.js";
 import { workspaceRootForProjects } from "./monorepo-identity.js";
 import { mapBounded } from "./async-map.js";
-import { compareCodePoint } from "./utils.js";
+import { compareCodePoint, relativePath } from "./utils.js";
 
 /** Default discovery for Doctor project facts under each app. */
 export const DEFAULT_WORKSPACE_PROJECT_GLOBS = ["**/.mf/doctor/project.json"] as const;
@@ -545,7 +545,7 @@ async function inspectWorkspaceProjects(
   const diagnostics: WorkspaceProjectDiagnostic[] = [];
   const identities = new Map<string, string[]>();
   const inspected = await mapBounded(files, async (file) => {
-    const displayFile = path.relative(workspaceRoot, file.file) || ".";
+    const displayFile = relativePath(workspaceRoot, file.file);
     const read = await readProjectEnvelope(
       file.file,
       file.reservedBytes,
@@ -613,14 +613,14 @@ async function inspectWorkspaceProjects(
     const sorted = matches.slice().sort(compareCodePoint);
     diagnostics.push({
       kind: "duplicate",
-      files: sorted.map((file) => path.relative(workspaceRoot, file) || "."),
+      files: sorted.map((file) => relativePath(workspaceRoot, file)),
       message: `Duplicate project identity "${identity}" was found in ${sorted.length} files.`,
     });
     const contents = sorted.map((file) => inspected.find((item) => item?.file === file)?.contents);
     if (new Set(contents).size > 1) {
       diagnostics.push({
         kind: "conflict",
-        files: sorted.map((file) => path.relative(workspaceRoot, file) || "."),
+        files: sorted.map((file) => relativePath(workspaceRoot, file)),
         message: `Project files with identity "${identity}" disagree.`,
       });
     }

@@ -26,7 +26,7 @@ jobs:
       - run: pnpm fmt:check
       - run: pnpm lint
       - run: pnpm changeset:check
-      # Examples resolve @module-federation/doctor/* from dist/; build before typecheck.
+      # Examples resolve @tonoizer/mfdoctor/* from dist/; build before typecheck.
       - run: pnpm build
       - run: pnpm inventory:check
       - run: node scripts/evidence-drift-check.mjs

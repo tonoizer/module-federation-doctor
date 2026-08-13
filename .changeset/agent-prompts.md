@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": minor
+"@tonoizer/mfdoctor": minor
 ---
 
 Add copyable agent fix prompts (top-3 terminal handoff, `mfdoctor prompt`,

@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": patch
+"@tonoizer/mfdoctor": patch
 ---
 
 Bound independent source, artifact, asset-size, and workspace validation reads

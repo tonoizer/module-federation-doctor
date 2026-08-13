@@ -85,7 +85,7 @@ function engineFromMeta(meta: ViteHookMeta | undefined): ViteLifecycleEngine | u
  * `rolldown` alone is weak evidence (common in monorepo tooling roots) and
  * must not reclassify classic Vite.
  *
- * Supported MF entry path for all flavors: `@module-federation/doctor/vite`
+ * Supported MF entry path for all flavors: `@tonoizer/mfdoctor/vite`
  * next to `@module-federation/vite`. Direct Rolldown without the Vite MF
  * plugin is unsupported (Rolldown dropped built-in MF).
  */

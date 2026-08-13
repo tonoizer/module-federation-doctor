@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": minor
+"@tonoizer/mfdoctor": minor
 ---
 
 Complete v1 dynamic-import analysis: resolve string-literal `import()` /

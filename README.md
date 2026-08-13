@@ -1,14 +1,21 @@
-# Module Federation Doctor
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/mfdoctor-readme-logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="./assets/mfdoctor-readme-logo-light.svg">
+  <img alt="Module Federation Doctor" src="./assets/mfdoctor-readme-logo-light.svg" width="154" height="40">
+</picture>
 
-`@module-federation/doctor` finds config, sharing, runtime, manifest, and output
+[![version](https://img.shields.io/npm/v/%40tonoizer%2Fmfdoctor?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@tonoizer/mfdoctor)
+[![downloads](https://img.shields.io/npm/dt/%40tonoizer%2Fmfdoctor.svg?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@tonoizer/mfdoctor)
+[![documentation](https://img.shields.io/badge/docs-mfdoctor.kevinbeier.com-000000?style=flat)](https://mfdoctor.kevinbeier.com)
+
+`@tonoizer/mfdoctor` finds config, sharing, runtime, manifest, and output
 problems in Module Federation projects built with Vite, Rspack, Rsbuild,
 Webpack, Modern.js, and Nuxt 3/4.
 
 Install as a **devDependency**. Doctor is **build/CI-only**: adapters run after
 emit in Node and are not part of the browser bundle. They add CI time, not
-runtime size or performance cost. Architecture:
-[plugin primary / CLI complementary](./apps/docs/docs/adr/hybrid-plugin-cli.md)
-(not CLI-only, not an in-browser agent).
+runtime size or performance cost. The build plugin is the primary integration;
+the CLI complements it for config, workspace, runtime, and deployed checks.
 
 **Agents:** read the terminal findings block, open the linked rule docs, apply
 the fix (or an intentional [governance](./apps/docs/docs/suppressions.md)
@@ -25,7 +32,7 @@ collected. Clean builds stay quiet by default.
 
 ```ts
 import { federation } from "@module-federation/vite";
-import { federationDoctor } from "@module-federation/doctor/vite";
+import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 
 plugins: [federation(mfOptions), federationDoctor({ moduleFederation: mfOptions })];
 ```
@@ -33,7 +40,7 @@ plugins: [federation(mfOptions), federationDoctor({ moduleFederation: mfOptions 
 **Nuxt 3/4** (public `vite:extendConfig` adapter)
 
 ```ts
-import nuxtDoctor from "@module-federation/doctor/nuxt";
+import nuxtDoctor from "@tonoizer/mfdoctor/nuxt";
 
 export default defineNuxtConfig({
   modules: [[nuxtDoctor, { moduleFederation: mfOptions }]],
@@ -70,7 +77,7 @@ aggregated deterministically.
 
 ```ts
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/rspack";
 
 plugins: [
   new ModuleFederationPlugin(mfOptions),
@@ -82,7 +89,7 @@ plugins: [
 
 ```ts
 import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
-import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild";
+import { pluginModuleFederationDoctor } from "@tonoizer/mfdoctor/rsbuild";
 
 plugins: [
   pluginModuleFederation(mfOptions),
@@ -94,7 +101,7 @@ plugins: [
 
 ```ts
 import { ModuleFederationPlugin } from "@module-federation/enhanced/webpack";
-import { ModuleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+import { ModuleFederationDoctorPlugin } from "@tonoizer/mfdoctor/webpack";
 
 plugins: [
   new ModuleFederationPlugin(mfOptions),
@@ -106,7 +113,7 @@ plugins: [
 
 ```ts
 import { moduleFederationPlugin } from "@module-federation/modern-js";
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/modern";
+import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/modern";
 
 plugins: [
   appTools(),
@@ -152,7 +159,7 @@ Use the CLI when you are not running a bundler build, or for cross-project and
 deployed checks:
 
 ```bash
-pnpm add -D @module-federation/doctor
+pnpm add -D @tonoizer/mfdoctor
 pnpm mfdoctor check --ci
 pnpm mfdoctor check --format terminal,json,sarif
 pnpm mfdoctor check --baseline ./mfdoctor.baseline.json
@@ -283,7 +290,7 @@ footer (`Score: N/100`) and top-3 copy-paste agent prompts. Use `--no-score` /
 `summary.score`. Offline: `mfdoctor prompt --finding <id>` and
 `--diagnostics-dir` for handoff dumps. For Module Federation concepts, use
 `.agents/skills/mf`. Upstream evidence for rule work lives in
-[docs/sources](apps/docs/docs/sources.md).
+the [contribution guide](./CONTRIBUTING.md#research-sources).
 
 ## Contribution
 

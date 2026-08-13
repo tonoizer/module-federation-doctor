@@ -45,7 +45,7 @@ ordering. Applications that run multiple analyses in one process can opt into a
 bounded parsed-input cache:
 
 ```ts
-import { AnalysisContentCache } from "@module-federation/doctor";
+import { AnalysisContentCache } from "@tonoizer/mfdoctor";
 
 const analysisCache = new AnalysisContentCache({
   maxEntries: 256,

@@ -12,4 +12,6 @@ doctor-terminal.txt
 .DS_Store
 .idea/
 .playwright-mcp/
+.vercel/
+.env*
 nohup.out

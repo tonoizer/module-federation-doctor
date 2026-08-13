@@ -1,194 +1,258 @@
-# CLI and CI
+---
+title: CLI command reference
+description: Run Module Federation Doctor locally and in CI, across a workspace, against runtime traces, or against a deployed manifest.
+---
 
-The **build plugin** is the primary DX. Use the CLI for offline checks,
-cross-project federation analysis, runtime trace correlation, and deployed
-manifest probes. Architecture lock:
-[plugin primary / CLI complementary](./adr/hybrid-plugin-cli.md)
-(not CLI-only, not an in-browser agent).
+# CLI command reference
+
+The **build plugin** is the primary Doctor experience. Use the CLI for a local
+check, a cross-project federation gate, baseline maintenance, runtime trace
+correlation, or a deliberate deployed-manifest probe. Doctor is not a CLI-only
+source scanner and does not inject an agent into the browser. The build plugin
+remains the primary integration; use the CLI for tasks outside a bundler emit.
+
+After installing `@tonoizer/mfdoctor` as a development dependency, run the
+binary through your package manager or a package script:
+
+```bash
+pnpm exec mfdoctor check
+```
+
+The examples below use the shorter `mfdoctor` form.
+
+## Choose a command
+
+| Command                                 | Use it for                                                                               | Network access |
+| --------------------------------------- | ---------------------------------------------------------------------------------------- | -------------- |
+| [`check`](#check-one-project)           | Analyze one project or checkout                                                          | No             |
+| [`workspace`](#check-a-workspace)       | Discover built Doctor project facts below one or more roots and gate the full federation | No             |
+| [`federation`](#check-a-federation)     | Analyze explicit `project.json` globs, or use workspace discovery explicitly             | No             |
+| [`baseline`](#manage-a-baseline)        | Generate, extend, or prune accepted finding fingerprints                                 | No             |
+| [`runtime`](#correlate-a-runtime-trace) | Correlate an Observability export with local Doctor project facts                        | No             |
+| [`prompt`](#print-agent-fix-prompts)    | Reprint fix prompts from a saved Doctor report                                           | No             |
+| [`rules`](#inspect-the-rule-catalog)    | Inspect all built-in rules or one rule's metadata                                        | No             |
+| [`probe`](#probe-a-deployed-manifest)   | Validate a deployed manifest and optionally its remote entry                             | **Yes**        |
+
+Doctor loads an optional `mfdoctor.config.ts`; command-line flags override its
+values. Use `extends` for [named presets and shareable policy packs](./policy-packs.md).
+
+## Check one project
 
 ```bash
 mfdoctor check
+```
+
+Analyzes the current working directory. Use a positional path to analyze a
+different project:
+
+```bash
 mfdoctor check packages/host --ci
+```
+
+`--ci` applies CI policy even when Doctor does not detect a CI environment. It
+defaults `failOn` to `error` and output to terminal, JSON, and SARIF. Local
+development defaults `failOn` to `never`, so findings print without breaking
+the build.
+
+### Select report formats
+
+```bash
 mfdoctor check --format terminal,json,sarif
+```
+
+Accepted formats are `terminal`, `json`, and `sarif`. JSON and SARIF artifacts
+are written below `.mf/doctor/`. A format list containing only `json` or `sarif`
+does not add human-readable terminal output.
+
+### Apply accepted debt
+
+```bash
 mfdoctor check --baseline ./mfdoctor.baseline.json
+```
+
+Matching findings remain visible but are marked as suppressed and do not fail
+policy by default. Treat the file as tracked debt and shrink it as issues are
+fixed. See [Fingerprint baselines](./baselines.md).
+
+### Control terminal output
+
+```bash
 mfdoctor check --verbose
 mfdoctor check --no-score
 mfdoctor check --no-prompt
 mfdoctor check --prompt
+```
+
+- Doctor is quiet when a check has no findings. `--verbose` restores the green
+  success line.
+- `--no-score` hides the terminal health score. Report JSON still contains
+  `summary.score` and `summary.scoreLabel`.
+- `--no-prompt` hides the copy-paste fix prompts printed after findings.
+- `--prompt` force-enables those prompts, including when config disables them.
+
+You can also set `MFDOCTOR_QUIET=0` to show successful checks or
+`MFDOCTOR_QUIET=1` to force quiet success. Environment configuration wins over
+the file configuration.
+
+### Write a diagnostic bundle
+
+```bash
 mfdoctor check --diagnostics-dir .mf/doctor/diagnostics
+```
+
+Writes `report.json`, `summary.md`, and `prompts/*.md` to a directory inside the
+project root. Doctor rejects a diagnostics path that escapes the project.
+
+## Print agent fix prompts
+
+```bash
+mfdoctor prompt
 mfdoctor prompt --finding config/name-required
+mfdoctor prompt --finding <fingerprint> .mf/doctor/report.json
+```
+
+`prompt` reads `.mf/doctor/report.json` by default. Without `--finding`, it
+prints up to three prompts for the highest-priority non-suppressed findings.
+Pass a rule ID or exact finding fingerprint to print one prompt. This command
+does not re-run analysis.
+
+## Check a workspace
+
+Build each app with its Doctor adapter first so it emits
+`.mf/doctor/project.json`, then run one cross-project gate:
+
+```bash
 mfdoctor workspace
 mfdoctor workspace apps packages --format terminal,json,sarif
 mfdoctor workspace apps packages --group checkout
+```
+
+- With no roots, `workspace` searches below the current directory.
+- Positional values such as `apps packages` are discovery roots.
+- Discovery looks for `**/.mf/doctor/project.json` beneath each root.
+- `--group checkout` includes only projects assigned to that explicit
+  `federationGroup`, which keeps independent federation graphs separate.
+
+Override the discovery layout only when the defaults do not fit:
+
+```bash
+mfdoctor workspace --glob "packages/*/.mf/doctor/project.json"
+```
+
+Quote globs so the CLI—not the shell—expands them consistently.
+
+## Check a federation
+
+Use `federation --workspace` when you want to spell out that workspace
+discovery feeds federation analysis. It runs the same discovery and analysis
+path as `workspace`:
+
+```bash
 mfdoctor federation --workspace
 mfdoctor federation --workspace apps packages --format terminal,json,sarif
 mfdoctor federation --workspace apps packages --group checkout
+```
+
+For a hand-tuned CI layout, pass one or more quoted `project.json` patterns
+without `--workspace`:
+
+```bash
 mfdoctor federation ".mf/doctor/**/project.json"
 mfdoctor federation ".mf/doctor/**/project.json" --baseline ./mfdoctor.baseline.json
+```
+
+Use `workspace` for normal monorepo discovery. Use explicit `federation` globs
+when the reports live in a custom location or CI has already selected an exact
+set of project files.
+
+## Manage a baseline
+
+All three commands read `.mf/doctor/report.json` and write
+`mfdoctor.baseline.json` by default. The explicit forms are:
+
+```bash
 mfdoctor baseline generate .mf/doctor/report.json --out mfdoctor.baseline.json
 mfdoctor baseline update .mf/doctor/report.json --out mfdoctor.baseline.json
 mfdoctor baseline prune .mf/doctor/report.json --out mfdoctor.baseline.json
+```
+
+| Action     | Effect                                                                                             |
+| ---------- | -------------------------------------------------------------------------------------------------- |
+| `generate` | Replace the output with the unique current finding fingerprints.                                   |
+| `update`   | Add new current fingerprints while retaining existing entries. A missing output file starts empty. |
+| `prune`    | Remove entries that no longer match the current report. It requires an existing baseline.          |
+
+Review baseline changes like code. Do not automatically update the baseline on
+every CI run, because that would silently accept new debt.
+
+## Correlate a runtime trace
+
+```bash
 mfdoctor runtime ./trace.json
 mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
+```
+
+`runtime` reads a user-supplied Module Federation Observability export and
+correlates it with local Doctor project facts. Project files default to
+`.mf/doctor/**/project.json`. You may instead set `runtimeTrace` in
+`mfdoctor.config` and omit the trace path.
+
+Doctor never fetches URLs found in a trace and never executes remote
+JavaScript. It collapses trace URLs to origin plus basename and redacts token,
+cookie, authorization, password, and secret fields before emitting findings.
+
+## Inspect the rule catalog
+
+```bash
 mfdoctor rules
 mfdoctor rules config/name-required
+```
+
+With no rule ID, `rules` prints the machine-readable built-in catalog as JSON.
+With one ID, it prints that rule's default severity, category, impact, fix,
+supported bundlers, docs path, and official sources. An unknown rule exits `2`.
+
+## Probe a deployed manifest
+
+```bash
 mfdoctor probe https://cdn.example.com/mf-manifest.json
 mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
 ```
 
-Doctor loads optional `mfdoctor.config.ts`; flags win over config. Use
-`extends` for [named presets and shareable policy packs](./policy-packs.md).
-`check`, `workspace`, and `federation` exit `0` when policy passes, `1` for
-policy findings, and `2` when analysis cannot finish (invalid args, no matching
-`project.json`, or a hard failure). `check`, `workspace`, and `federation` make
-no network requests. `runtime` also stays offline: it only reads a
-user-supplied Observability export and local `project.json` files.
-
-## Quiet success and terminal format
-
-By default Doctor prints **nothing** when there are zero findings (agent-friendly
-quiet success). Restore the green success line with any of:
-
-- CLI `--verbose`
-- `printLog: { success: true }` / `quiet: false` in config or plugin options
-- `MFDOCTOR_QUIET=0` (env wins over config; `MFDOCTOR_QUIET=1` forces quiet)
-
-When findings exist, the terminal block includes severity, rule id, message, a
-short fix, the Doctor rule docs URL, and official `module-federation.io` sources
-when available. After the counts line, Doctor prints a colorized health score
-footer (`Score: N/100 (Great|OK|Needs work)`), then up to three copy-paste agent
-fix prompts (highest severity/impact first; suppressed findings skipped). Hide
-the score with `--no-score` / `score: false`, or the prompts with `--no-prompt` /
-`prompt: false`. Report JSON still includes `summary.score` /
-`summary.scoreLabel`. Pure JSON/SARIF output (no `terminal` format) skips both
-footers. See [Report schemas](./report-schemas.md) for the score formula.
-
-### Offline prompts and diagnostics dump
-
-```bash
-mfdoctor prompt --finding <fingerprint|ruleId> [.mf/doctor/report.json]
-mfdoctor prompt [.mf/doctor/report.json]
-mfdoctor check --diagnostics-dir .mf/doctor/diagnostics
-```
-
-`mfdoctor prompt` reads a saved report offline and prints one finding prompt
-(`--finding`) or the top three. `--diagnostics-dir` writes a root-contained
-folder with `report.json`, `prompts/*.md`, and `summary.md` (score + top
-findings). Paths outside the project root are rejected. Adapters share this
-single print path — they do not also push per-finding bundler warnings.
-
-## Workspace federation gate
-
-After each app builds with the Doctor plugin, run the one-shot workspace gate:
-
-```bash
-mfdoctor workspace
-mfdoctor federation --workspace apps packages
-```
-
-Defaults discover `**/.mf/doctor/project.json` under the given roots (cwd when
-omitted). Override discovery with `--glob` when you need a manual layout:
-
-```bash
-mfdoctor workspace --glob "packages/*/.mf/doctor/project.json"
-mfdoctor federation --workspace examples/showcase/federation/version-conflict --glob "*.project.json"
-```
-
-Explicit `federation` globs without `--workspace` remain the escape hatch for
-hand-tuned CI:
-
-```bash
-mfdoctor federation ".mf/doctor/**/project.json"
-```
-
-Use `federationGroup` in adapter options when a repository contains multiple
-independent federation graphs. `--group <name>` selects that graph; projects
-in different explicit groups are excluded from federation-wide comparisons.
-For repositories containing unrelated fixtures, prefer separate workspace
-roots/globs or assign a group to each fixture set.
-
-## Fingerprint baselines
-
-For incremental CI adoption, check in a fingerprint baseline so known debt does
-not block `failOn` while new findings still fail. See
-[Fingerprint baselines](./baselines.md) and
-[Suppressions and allowlists](./suppressions.md).
-
-```bash
-mfdoctor baseline generate .mf/doctor/report.json --out mfdoctor.baseline.json
-mfdoctor check --ci --baseline ./mfdoctor.baseline.json
-```
-
-Suppressed findings still appear in reports (marked suppressed) but do not fail
-policy unless `baseline.failOnSuppressed` is true. Baselines are tracked debt —
-prune them as findings are fixed.
-
-## CI auto-detect
-
-Doctor enables CI defaults automatically when the environment looks like CI
-(`CI=true` / `CI=1`, `GITHUB_ACTIONS`, `GITLAB_CI`, `CIRCLECI`, Jenkins,
-Azure Pipelines, and similar). No `mode: "ci"` is required in plugin config.
-
-When CI is detected (or you pass `--ci` / `mode: "ci"`):
-
-- `failOn` defaults to `"error"`
-- output formats default to `terminal`, `json`, and `sarif`
-
-Local development defaults to `failOn: "never"` so findings still print without
-breaking the build. Override with `failOn: "warning" | "error" | "never"`, or
-force local defaults in CI with `mode: "development"`.
-
-`rules` prints the machine-readable built-in rule catalog. Pass one rule id to
-get its default severity, category, impact, fix, supported bundlers, docs path,
-and official sources.
-
-## Runtime trace import
-
-`runtime` is an explicit opt-in path for correlating browser Observability Plugin
-reports with Doctor project facts. Pass a JSON export (`exportReport`,
-`.mf/observability/latest.json`, or an array/`reports` wrapper). Project globs
-default to `.mf/doctor/**/project.json`. You can also set `runtimeTrace` in
-`mfdoctor.config` when the CLI path is omitted. The same `runtimeTrace` option
-on bundler/`check` Doctor options merges shared and remote hints into import
-facts for dynamic-import recall without changing offline defaults when unset.
-
-Doctor never fetches URLs found in the trace and never executes remote
-JavaScript. Trace URLs are collapsed to origin plus basename, and token, cookie,
-authorization, password, and secret fields are redacted before findings are
-emitted.
-
-See `examples/showcase/runtime/green` (exit 0) and
-`examples/showcase/runtime/shared-mismatch` (exit 1) for offline demos.
-
-## Deployed manifest probe
-
-`probe` is the only command that uses the network. It downloads a deployed
-manifest, checks that it looks like a federation manifest, and prints a small
-JSON summary. Query strings are removed from the output, so signed URLs do not
+`probe` is the only command that makes a network request. It downloads the
+manifest, validates that it looks like a federation manifest, and prints a
+small JSON summary. Query strings are removed from output so signed URLs do not
 leak into logs.
 
-Use `--remote-entry` to send a `HEAD` request to the entry named by the
-manifest. Doctor reports its status, content type, and size. It does not
-download or run that JavaScript.
+`--remote-entry` sends a `HEAD` request to the entry named by the manifest and
+reports its status, content type, and size. Doctor does not download or execute
+that JavaScript.
 
 Safety defaults:
 
-- HTTPS is required, except HTTP on the initial localhost/loopback URL.
-- The manifest timeout is 10 seconds. Change it with `--timeout 5000`.
-- The manifest size limit is 2 MiB. Change it with `--max-bytes 1000000`.
-- Redirects are re-validated each hop and limited to five. Redirect targets
-  do not inherit the initial HTTP-localhost exception.
-- Private, link-local, loopback, and cloud-metadata hosts are blocked unless
-  the probe API sets `allowPrivateNetworks`.
-- URLs with embedded user names or passwords are rejected.
+- HTTPS is required, except for an initial localhost or loopback URL.
+- The timeout is 10 seconds; override it with `--timeout 5000`.
+- The manifest limit is 2 MiB; override it with `--max-bytes 1000000`.
+- Redirects are revalidated at every hop and limited to five.
+- Private, link-local, loopback, and cloud-metadata targets are blocked by the
+  public CLI probe.
+- URLs containing user names or passwords are rejected.
 
-An unreachable target or invalid response exits 2. A reachable remote entry
-with an HTTP error exits 1.
+An unreachable or invalid target exits `2`. A valid manifest whose requested
+remote entry returns an HTTP error exits `1`.
+
+## Exit codes
+
+| Code | Meaning                                                                                           |
+| ---- | ------------------------------------------------------------------------------------------------- |
+| `0`  | Analysis completed and the active policy passed.                                                  |
+| `1`  | Findings failed policy, or a requested remote entry returned an HTTP error.                       |
+| `2`  | Invalid arguments, missing inputs, incomplete analysis, an unknown rule, or another hard failure. |
 
 ## GitHub Actions
 
-Reuse the composite action after each federated app has emitted
-`.mf/doctor/project.json`:
+Run the workspace gate after the federated apps have emitted their Doctor
+project facts:
 
 ```yaml
 permissions:
@@ -212,8 +276,7 @@ jobs:
           formats: terminal,json,sarif
 ```
 
-Optional inputs: `build-command` (run builds inside the action), `globs` (manual
-discovery escape hatch), `upload-sarif` / `upload-artifact`.
-
-You can also call the CLI directly and upload `.mf/doctor/results.sarif` with
-`github/codeql-action/upload-sarif` when code scanning is enabled.
+Optional action inputs are `build-command`, `globs`, `upload-sarif`, and
+`upload-artifact`. You can also run the CLI directly and upload
+`.mf/doctor/results.sarif` with `github/codeql-action/upload-sarif` when code
+scanning is enabled.

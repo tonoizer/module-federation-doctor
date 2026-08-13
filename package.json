@@ -1,5 +1,5 @@
 {
-  "name": "@module-federation/doctor",
+  "name": "@tonoizer/mfdoctor",
   "version": "0.1.0",
   "description": "Module Federation diagnostics for Vite, Rolldown/Vite Plus, Rspack, Rsbuild, Webpack, and Modern.js",
   "type": "module",
@@ -164,7 +164,7 @@
   "bugs": {
     "url": "https://github.com/tonoizer/module-federation-doctor/issues"
   },
-  "homepage": "https://github.com/tonoizer/module-federation-doctor#readme",
+  "homepage": "https://mfdoctor.kevinbeier.com/",
   "keywords": [
     "module-federation",
     "vite",
@@ -201,8 +201,8 @@
     "demo:standalone": "pnpm build && node scripts/demo-standalone-findings.mjs",
     "demo:nested": "pnpm build && node scripts/demo-nested.mjs",
     "demo:examples": "pnpm --filter @mfdoctor-example/demos demo",
-    "docs:dev": "pnpm --filter @module-federation/doctor-docs dev",
-    "docs:build": "pnpm --filter @module-federation/doctor-docs build",
+    "docs:dev": "pnpm --filter @tonoizer/mfdoctor-docs dev",
+    "docs:build": "pnpm --filter @tonoizer/mfdoctor-docs build",
     "pack:check": "pnpm build && publint run --pack npm . && attw --pack . --profile esm-only && pnpm schema:check && node scripts/pack-check.mjs",
     "changeset:check": "node scripts/changeset-contract.mjs",
     "schema:check": "node --experimental-strip-types scripts/schema-contract.mjs",

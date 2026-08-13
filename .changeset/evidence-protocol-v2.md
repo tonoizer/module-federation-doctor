@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": minor
+"@tonoizer/mfdoctor": minor
 ---
 
 Add the public Evidence Protocol v2 types, schema, deterministic ID helpers,

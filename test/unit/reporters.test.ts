@@ -229,9 +229,7 @@ describe("reporters", () => {
     expect(text).toContain("config/expose-key-invalid");
     expect(text).toContain('Expose key "Widget" must start with "./".');
     expect(text).toContain('fix: Rename the key to "./Widget".');
-    expect(text).toContain(
-      "docs: https://module-federation.github.io/rules/config/expose-key-invalid",
-    );
+    expect(text).toContain("docs: https://mfdoctor.kevinbeier.com/rules/config/expose-key-invalid");
     expect(text).toContain("source: https://module-federation.io/configure/exposes.html");
     expect(text).toContain("1 error(s)");
     expect(text).toContain("Score: 99/100 (Great)");

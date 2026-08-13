@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": patch
+"@tonoizer/mfdoctor": patch
 ---
 
 Rename the Webpack adapter export to `ModuleFederationDoctorPlugin` so it
