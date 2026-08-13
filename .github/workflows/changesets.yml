@@ -40,5 +40,6 @@ jobs:
           version: pnpm run version
           commit: "chore: version packages"
           title: "chore: version packages"
+          commitMode: github-api
         env:
           GITHUB_TOKEN: ${{ github.token }}
