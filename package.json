@@ -165,6 +165,7 @@
     "url": "https://github.com/tonoizer/module-federation-doctor/issues"
   },
   "homepage": "https://mfdoctor.kevinbeier.com/",
+  "author": "Kevin Beier",
   "keywords": [
     "module-federation",
     "vite",
@@ -182,16 +183,16 @@
   },
   "scripts": {
     "prepare": "husky",
-    "build": "tsdown",
-    "dev": "tsdown --watch",
+    "build": "vp pack",
+    "dev": "vp pack --watch",
     "clean": "node -e \"import('node:fs').then(fs=>{for(const p of ['dist','.mf','coverage'])fs.rmSync(p,{recursive:true,force:true})})\" && pnpm --filter './apps/docs' --filter './examples/**' clean",
-    "fmt": "oxfmt .",
-    "fmt:check": "oxfmt --check .",
-    "lint": "oxlint --deny-warnings .",
+    "fmt": "vp fmt .",
+    "fmt:check": "vp fmt --check .",
+    "lint": "vp lint --deny-warnings .",
     "typecheck": "tsc -p tsconfig.json && pnpm --filter './apps/docs' --filter './examples/**' typecheck",
     "test": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
-    "test:unit": "vitest run test/unit",
-    "test:integration": "vitest run test/integration",
+    "test:unit": "vp test run test/unit",
+    "test:integration": "vp test run test/integration",
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:giga": "pnpm test:e2e",
     "test:examples": "pnpm --filter './examples/mixed-federation/**' build",
@@ -232,12 +233,11 @@
     "@types/semver": "7.7.1",
     "ajv-formats": "3.0.1",
     "husky": "9.1.7",
-    "oxfmt": "0.60.0",
-    "oxlint": "1.75.0",
     "playwright": "1.61.1",
     "publint": "0.3.22",
-    "tsdown": "0.22.14",
     "typescript": "5.9.3",
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9",
+    "vite-plus": "0.2.9",
     "vitest": "4.1.10"
   }
 }

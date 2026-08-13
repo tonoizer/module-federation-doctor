@@ -2,15 +2,36 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("release workflow contracts", () => {
+  it("uses a pinned Vite+ setup action with frozen installs", async () => {
+    const action = await readFile(".github/actions/setup-vp/action.yml", "utf8");
+
+    expect(action).toContain(
+      "voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0",
+    );
+    expect(action).toContain("run-install: false");
+    expect(action).toContain("vp install --frozen-lockfile");
+  });
+
+  it("formats generated inventory without constructing a shell command", async () => {
+    const generator = await readFile("scripts/generate-rule-inventory.mjs", "utf8");
+
+    expect(generator).toContain('execFileSync(process.execPath, [vitePlusCli, "fmt", tempPath]');
+    expect(generator).not.toContain("execSync(");
+  });
+
   it("publishes only an immutable version tag through staged OIDC publishing", async () => {
     const workflow = await readFile(".github/workflows/publish-on-release.yml", "utf8");
 
     expect(workflow).toContain("types: [published]");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch' && 'main'");
+    expect(workflow).not.toContain("ref: ${{ needs.resolve-ref.outputs.sha }}");
     expect(workflow).toContain("description: Existing plain-semver tag");
     expect(workflow).not.toContain("description: Branch or plain semver tag");
     expect(workflow).toContain('test "${TAG}" = "${VERSION}"');
     expect(workflow).toContain('git tag --points-at HEAD --list "${TAG}"');
     expect(workflow).toContain("npm install --global npm@11.17.0");
+    expect(workflow).toContain("node-version: [22, 24, 26]");
     expect(workflow).toContain("id-token: write");
     expect(workflow.indexOf("id-token: write")).toBeGreaterThan(workflow.indexOf("stage:"));
     expect(workflow).toContain("environment: npm");

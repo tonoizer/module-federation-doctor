@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.event.release.tag_name }}
           persist-credentials: false
 
       - name: Verify release tag
@@ -45,14 +45,9 @@ jobs:
         id: revision
         run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - run: npm install --global pnpm@11.17.0
-
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      - uses: ./.github/actions/setup-vp
         with:
           node-version: 24
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
 
       - run: pnpm build
 

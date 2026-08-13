@@ -1,4 +1,14 @@
 import { viteDoctor } from "./plugin.js";
+import type { DoctorOptions } from "./types.js";
+
+/**
+ * Version-neutral Vite plugin surface. Keeping the public type structural
+ * avoids coupling consumers to the Vite peer instance used by Unplugin while
+ * retaining everything Vite requires to register the plugin.
+ */
+export interface ViteDoctorPlugin {
+  name: string;
+}
 
 /**
  * Vite-family MFDoctor plugin — register next to `federation` from
@@ -11,7 +21,9 @@ import { viteDoctor } from "./plugin.js";
  *
  * Direct Rolldown without `@module-federation/vite` is unsupported.
  */
-export const federationDoctor = viteDoctor.vite;
+export function federationDoctor(options?: DoctorOptions): ViteDoctorPlugin {
+  return viteDoctor.vite(options) as unknown as ViteDoctorPlugin;
+}
 
 /** @deprecated Use `federationDoctor`. */
 export const doctor = federationDoctor;

@@ -74,8 +74,8 @@ jobs:
           gh release create "${args[@]}"
 
       # Events created with GITHUB_TOKEN do not recursively start release
-      # workflows. workflow_dispatch is the supported exception, so dispatch
-      # both tag-gated workflows explicitly after the release exists.
+      # workflows. Dispatch both workflows on main; each treats the tag only as
+      # a value to validate against that trusted checkout, never as executable ref.
       - name: Dispatch release verification and artifacts
         env:
           GH_TOKEN: ${{ github.token }}

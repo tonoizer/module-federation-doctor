@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +12,7 @@ import {
 const check = process.argv.includes("--check");
 const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputPath = path.join(repository, "fixtures/rule-inventory/v1.json");
+const vitePlusCli = path.join(repository, "node_modules/vite-plus/bin/vp");
 
 const document = {
   schemaVersion: 1,
@@ -42,7 +43,7 @@ async function formatInventory(rawContent) {
   const tempPath = path.join(repository, "fixtures/rule-inventory/.v1.generated.json");
   await fs.mkdir(path.dirname(tempPath), { recursive: true });
   await fs.writeFile(tempPath, rawContent);
-  execSync(`pnpm exec oxfmt ${JSON.stringify(tempPath)}`, {
+  execFileSync(process.execPath, [vitePlusCli, "fmt", tempPath], {
     cwd: repository,
     stdio: "pipe",
   });

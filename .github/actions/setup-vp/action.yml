@@ -1,0 +1,27 @@
+name: Set up Vite+
+description: Install the pinned Vite+ toolchain, Node.js, pnpm, and workspace dependencies.
+
+inputs:
+  node-version:
+    description: Node.js version for the job.
+    required: true
+  registry-url:
+    description: Optional npm registry URL for publishing jobs.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: true
+        run-install: false
+        registry-url: ${{ inputs.registry-url }}
+    - name: Enable the pinned package manager
+      shell: bash
+      run: corepack enable pnpm
+    - name: Install dependencies
+      shell: bash
+      run: vp install --frozen-lockfile

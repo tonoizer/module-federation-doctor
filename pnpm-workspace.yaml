@@ -29,6 +29,18 @@ minimumReleaseAgeIgnoreMissingTime: false
 # Keep these entries exact; do not broaden this security exception by package
 # name or wildcard, and keep the ten-day minimum-release policy enabled.
 minimumReleaseAgeExclude:
+  # Vite+ 0.2.9 is the reviewed toolchain selected for the v1 build migration.
+  # Keep every exception exact so future Vite+ releases still wait ten days.
+  - vite-plus@0.2.9
+  - "@voidzero-dev/vite-plus-core@0.2.9"
+  - "@voidzero-dev/vite-plus-darwin-arm64@0.2.9"
+  - "@voidzero-dev/vite-plus-darwin-x64@0.2.9"
+  - "@voidzero-dev/vite-plus-linux-arm64-gnu@0.2.9"
+  - "@voidzero-dev/vite-plus-linux-arm64-musl@0.2.9"
+  - "@voidzero-dev/vite-plus-linux-x64-gnu@0.2.9"
+  - "@voidzero-dev/vite-plus-linux-x64-musl@0.2.9"
+  - "@voidzero-dev/vite-plus-win32-arm64-msvc@0.2.9"
+  - "@voidzero-dev/vite-plus-win32-x64-msvc@0.2.9"
   - fast-uri@3.1.5
   - js-yaml@3.15.1 || 4.3.1
   - "@module-federation/dts-plugin@2.8.2"

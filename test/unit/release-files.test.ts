@@ -68,11 +68,12 @@ describe("release file generation", () => {
 
     expect(workflow).toContain("types: [published]");
     expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch' && 'main'");
     expect(workflow).toContain("description: Existing plain-semver GitHub release tag");
     expect(workflow).toContain("contents: read");
     expect(workflow).toContain("contents: write");
     expect(workflow.indexOf("Verify release tag")).toBeLessThan(
-      workflow.indexOf("pnpm install --frozen-lockfile"),
+      workflow.indexOf("uses: ./.github/actions/setup-vp"),
     );
     expect(workflow).toContain("git rev-parse HEAD");
     expect(workflow).toContain("GH_REPO: ${{ github.repository }}");
