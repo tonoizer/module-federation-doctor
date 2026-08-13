@@ -63,6 +63,11 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain("require('./package.json').version");
     expect(workflow).toContain('git tag --annotate "$VERSION"');
     expect(workflow).toContain("--generate-notes");
+    expect(workflow).toContain("actions: write");
+    expect(workflow).toContain('gh workflow run release-files.yml --ref main -f "tag=$VERSION"');
+    expect(workflow).toContain(
+      'gh workflow run publish-on-release.yml --ref main -f "tag=$VERSION"',
+    );
     expect(workflow).not.toMatch(/(?:pnpm|npm) publish/);
   });
 });
