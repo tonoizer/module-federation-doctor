@@ -40,7 +40,7 @@ pnpm check
 
 ## Changesets
 
-If a change affects the published `@module-federation/doctor` package, add a
+If a change affects the published `@tonoizer/mfdoctor` package, add a
 changeset with `pnpm changeset` and commit the generated file. Documentation,
 test-only, and repository-maintenance changes normally do not need one.
 

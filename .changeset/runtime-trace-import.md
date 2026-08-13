@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": minor
+"@tonoizer/mfdoctor": minor
 ---
 
 Add opt-in `mfdoctor runtime` to import Observability Plugin browser traces,

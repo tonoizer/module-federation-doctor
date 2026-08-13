@@ -33,7 +33,7 @@ This ADR locks the model so docs, adapters, and roadmap work stay aligned.
    remains a **user-exported offline import** (`mfdoctor runtime` / related
    paths from [#17](https://github.com/tonoizer/module-federation-doctor/issues/17)
    / [#105](https://github.com/tonoizer/module-federation-doctor/issues/105)).
-5. **Package install:** `@module-federation/doctor` is a **`devDependency`** —
+5. **Package install:** `@tonoizer/mfdoctor` is a **`devDependency`** —
    build/CI-only, never a production client dependency.
 
 ## Consequences

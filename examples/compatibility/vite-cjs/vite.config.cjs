@@ -1,4 +1,4 @@
-const { federationDoctor } = require("@module-federation/doctor/vite");
+const { federationDoctor } = require("@tonoizer/mfdoctor/vite");
 
 const mfOptions = {
   name: "vite_cjs_v5",

@@ -15,7 +15,7 @@ are enough for v1.
 ## File format
 
 Check in `mfdoctor.baseline.json` (JSON only; JSON Schema:
-`@module-federation/doctor/schemas/baseline.schema.json`):
+`@tonoizer/mfdoctor/schemas/baseline.schema.json`):
 
 ```json
 {

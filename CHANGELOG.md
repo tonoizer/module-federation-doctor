@@ -1,4 +1,4 @@
-# @module-federation/doctor
+# @tonoizer/mfdoctor
 
 ## Unreleased
 

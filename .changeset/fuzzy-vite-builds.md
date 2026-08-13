@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": minor
+"@tonoizer/mfdoctor": minor
 ---
 
 Record exact Vite-family output assets and bounded artifact evidence from public build hooks.

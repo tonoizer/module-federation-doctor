@@ -2,7 +2,7 @@
  * Example shareable policy pack (`@acme/mfdoctor-policy`).
  *
  * Prefer authoring with `definePolicyPack` / `defineRule` from
- * `@module-federation/doctor` in published packs. This fixture keeps a plain
+ * `@tonoizer/mfdoctor` in published packs. This fixture keeps a plain
  * default export so path-based `extends` resolution works without linking.
  *
  * Monorepo reuse:

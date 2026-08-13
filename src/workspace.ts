@@ -545,7 +545,7 @@ async function inspectWorkspaceProjects(
   const diagnostics: WorkspaceProjectDiagnostic[] = [];
   const identities = new Map<string, string[]>();
   const inspected = await mapBounded(files, async (file) => {
-    const displayFile = path.relative(workspaceRoot, file.file) || ".";
+    const displayFile = path.relative(workspaceRoot, file.file).split(path.sep).join("/") || ".";
     const read = await readProjectEnvelope(
       file.file,
       file.reservedBytes,
@@ -613,14 +613,18 @@ async function inspectWorkspaceProjects(
     const sorted = matches.slice().sort(compareCodePoint);
     diagnostics.push({
       kind: "duplicate",
-      files: sorted.map((file) => path.relative(workspaceRoot, file) || "."),
+      files: sorted.map(
+        (file) => path.relative(workspaceRoot, file).split(path.sep).join("/") || ".",
+      ),
       message: `Duplicate project identity "${identity}" was found in ${sorted.length} files.`,
     });
     const contents = sorted.map((file) => inspected.find((item) => item?.file === file)?.contents);
     if (new Set(contents).size > 1) {
       diagnostics.push({
         kind: "conflict",
-        files: sorted.map((file) => path.relative(workspaceRoot, file) || "."),
+        files: sorted.map(
+          (file) => path.relative(workspaceRoot, file).split(path.sep).join("/") || ".",
+        ),
         message: `Project files with identity "${identity}" disagree.`,
       });
     }

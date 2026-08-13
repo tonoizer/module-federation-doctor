@@ -19,7 +19,7 @@ export type ViteLifecycleEngine = "rollup" | "rolldown";
 
 /**
  * Supported Vite-family MF entry flavors. All use
- * `@module-federation/doctor/vite` + `@module-federation/vite`.
+ * `@tonoizer/mfdoctor/vite` + `@module-federation/vite`.
  */
 export type ViteLifecycleFlavor = "vite" | "rolldown-vite" | "vite-plus";
 

@@ -1,5 +1,5 @@
 import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
-import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild";
+import { pluginModuleFederationDoctor } from "@tonoizer/mfdoctor/rsbuild";
 import { defineConfig } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 

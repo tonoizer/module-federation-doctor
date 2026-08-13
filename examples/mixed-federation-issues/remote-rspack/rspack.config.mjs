@@ -1,5 +1,5 @@
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/rspack";
 
 const portOffset = Number(process.env.MFDOCTOR_E2E_PORT_OFFSET ?? 0);
 

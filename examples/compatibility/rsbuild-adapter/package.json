@@ -11,7 +11,7 @@
     "@module-federation/rsbuild-plugin": "2.8.2"
   },
   "devDependencies": {
-    "@module-federation/doctor": "workspace:*",
+    "@tonoizer/mfdoctor": "workspace:*",
     "@rsbuild/core": "2.1.8"
   }
 }

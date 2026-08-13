@@ -3,7 +3,7 @@
 ## Supported versions
 
 Security fixes are accepted for the latest published release of
-`@module-federation/doctor` on the `main` branch.
+`@tonoizer/mfdoctor` on the `main` branch.
 
 ## Reporting a vulnerability
 

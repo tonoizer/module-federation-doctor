@@ -10,15 +10,14 @@ icon for hero and social surfaces.
 OG and Twitter image URLs in the built HTML are absolute. They use:
 
 ```bash
-SITE_ORIGIN=https://module-federation.github.io   # default
+SITE_ORIGIN=https://mfdoctor.kevinbeier.com   # default
 ```
 
-That default matches the planned Module Federation org docs host and the
+That default is the independent GitHub Pages deployment and matches the
 `DOCTOR_DOCS_ORIGIN` constant used in terminal/SARIF rule links
-(`src/reporters.ts`). The GitHub repository currently lives under
-`tonoizer/module-federation-doctor`; until an org transfer, keep the default
-unless you deploy docs elsewhere — then set `SITE_ORIGIN` to that public
-origin (no trailing slash) for the docs build.
+(`src/reporters.ts`). The production build also uses
+`DOCS_BASE=/module-federation-doctor/`; override both values together only when
+deploying to a different host or base path.
 
 Navigation IA is Start → CLI → Rules → Examples → Limitations, with deeper
 guides under More guides. Top nav: **Start** (`/setup`) and **Rules**

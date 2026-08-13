@@ -45,7 +45,7 @@ Recommended CI policy — register the plugin and let CI env auto-detect do the
 rest (`failOn: "error"` + SARIF when `CI` / provider vars are set):
 
 ```ts
-import { federationDoctor } from "@module-federation/doctor/vite";
+import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 
 federationDoctor({
   moduleFederation: mfOptions,

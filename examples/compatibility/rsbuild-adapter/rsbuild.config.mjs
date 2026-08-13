@@ -1,5 +1,5 @@
 import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
-import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild";
+import { pluginModuleFederationDoctor } from "@tonoizer/mfdoctor/rsbuild";
 
 const firstOptions = {
   name: "rsbuild_adapter",

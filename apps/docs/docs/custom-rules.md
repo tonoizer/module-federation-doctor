@@ -7,7 +7,7 @@ capabilities — not private plugin state
 ([limitations](./limitations.md#permanent-guarantees--non-goals)).
 
 ```ts
-import { defineRule } from "@module-federation/doctor/rules";
+import { defineRule } from "@tonoizer/mfdoctor/rules";
 
 export const requireManifest = defineRule({
   meta: {

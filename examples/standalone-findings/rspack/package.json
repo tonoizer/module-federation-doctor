@@ -14,7 +14,7 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@module-federation/doctor": "workspace:*",
+    "@tonoizer/mfdoctor": "workspace:*",
     "@rspack/cli": "2.1.5",
     "@rspack/core": "2.1.5",
     "@types/react": "18.3.18",

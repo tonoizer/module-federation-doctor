@@ -1,0 +1,73 @@
+name: Create GitHub release
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: github-release-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Only a merged PR created by changesets/action is a release boundary. Merging
+    # ordinary feature/setup PRs can never create a tag or GitHub Release.
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.ref == 'changeset-release/main' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate release version
+        id: release
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]] || {
+            echo "Invalid plain-semver package version: $VERSION"
+            exit 1
+          }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create immutable version tag
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        shell: bash
+        run: |
+          git fetch --force --tags origin
+          if git rev-parse --verify --quiet "refs/tags/$VERSION" >/dev/null; then
+            test "$(git rev-list -n 1 "$VERSION")" = "$(git rev-parse HEAD)" || {
+              echo "Tag $VERSION already points to another commit"
+              exit 1
+            }
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag --annotate "$VERSION" --message "MF Doctor $VERSION"
+          git push origin "refs/tags/$VERSION"
+
+      - name: Create release with generated notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        shell: bash
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists"
+            exit 0
+          fi
+
+          args=("$VERSION" --verify-tag --generate-notes --title "MF Doctor $VERSION")
+          case "$VERSION" in *-*) args+=(--prerelease);; esac
+          gh release create "${args[@]}"

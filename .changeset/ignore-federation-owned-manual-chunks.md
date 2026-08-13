@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": patch
+"@tonoizer/mfdoctor": patch
 ---
 
 Avoid reporting Vite Module Federation's internal `manualChunks` hook as a

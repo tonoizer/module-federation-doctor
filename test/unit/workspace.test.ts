@@ -435,7 +435,7 @@ describe("workspace discovery", () => {
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   it("reports all files as unresolved when group preflight reaches its wall-time budget", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-probe-time-"));

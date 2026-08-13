@@ -1,5 +1,5 @@
 ---
-"@module-federation/doctor": minor
+"@tonoizer/mfdoctor": minor
 ---
 
 Add public version-aware capability-pack definitions and queries for the Module Federation core contract.

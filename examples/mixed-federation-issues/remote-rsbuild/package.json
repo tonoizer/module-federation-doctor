@@ -17,7 +17,7 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
-    "@module-federation/doctor": "workspace:*",
+    "@tonoizer/mfdoctor": "workspace:*",
     "@rsbuild/core": "2.1.8",
     "@rsbuild/plugin-react": "2.1.0",
     "@types/react": "19.2.17",

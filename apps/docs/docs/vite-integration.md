@@ -10,7 +10,7 @@ Doctor entry as classic Vite:
 
 ```ts
 import { federation } from "@module-federation/vite";
-import { federationDoctor } from "@module-federation/doctor/vite";
+import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 ```
 
 | Flavor                    | How Doctor detects it                                                           | Emit engine |

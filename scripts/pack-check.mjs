@@ -43,7 +43,7 @@ try {
         modern: "node modern-smoke.mjs",
       },
       dependencies: {
-        "@module-federation/doctor": `file:${tarball}`,
+        "@tonoizer/mfdoctor": `file:${tarball}`,
         "@rspack/cli": "2.1.5",
         "@rspack/core": "2.1.5",
         "@rsbuild/core": "2.1.5",
@@ -61,16 +61,16 @@ try {
   await fs.writeFile(
     path.join(consumer, "check.mjs"),
     `import assert from "node:assert/strict";
-const api = await import("@module-federation/doctor");
-const vite = await import("@module-federation/doctor/vite");
-const nuxt = await import("@module-federation/doctor/nuxt");
-const rspack = await import("@module-federation/doctor/rspack");
-const rsbuild = await import("@module-federation/doctor/rsbuild");
-const webpack = await import("@module-federation/doctor/webpack");
-const modern = await import("@module-federation/doctor/modern");
-const rules = await import("@module-federation/doctor/rules");
-const capture = await import("@module-federation/doctor/capture");
-const packageJson = await import("@module-federation/doctor/package.json", { with: { type: "json" } });
+const api = await import("@tonoizer/mfdoctor");
+const vite = await import("@tonoizer/mfdoctor/vite");
+const nuxt = await import("@tonoizer/mfdoctor/nuxt");
+const rspack = await import("@tonoizer/mfdoctor/rspack");
+const rsbuild = await import("@tonoizer/mfdoctor/rsbuild");
+const webpack = await import("@tonoizer/mfdoctor/webpack");
+const modern = await import("@tonoizer/mfdoctor/modern");
+const rules = await import("@tonoizer/mfdoctor/rules");
+const capture = await import("@tonoizer/mfdoctor/capture");
+const packageJson = await import("@tonoizer/mfdoctor/package.json", { with: { type: "json" } });
 assert.equal(typeof api.analyze, "function");
 assert.equal(typeof api.probeManifest, "function");
 assert.equal(typeof api.buildUiPayload, "function");
@@ -92,7 +92,7 @@ assert.equal(typeof webpack.default, "function");
 assert.equal(typeof modern.default, "function");
 assert.equal(typeof rules.defineRule, "function");
 assert.equal(typeof capture.validateRuntimeCaptureEnvelope, "function");
-const policy = await import("@module-federation/doctor/policy");
+const policy = await import("@tonoizer/mfdoctor/policy");
 assert.equal(typeof policy.definePolicyPack, "function");
 assert.equal(typeof policy.presets.recommended, "object");
 assert.equal(typeof policy.presets.strict, "object");
@@ -109,16 +109,16 @@ const schemaTitles = {
   ui: "Module Federation Doctor federation graph payload",
 };
 const schemaImports = {
-  baseline: await import("@module-federation/doctor/schemas/baseline.schema.json", { with: { type: "json" } }),
-  config: await import("@module-federation/doctor/schemas/config.schema.json", { with: { type: "json" } }),
-  evidence: await import("@module-federation/doctor/schemas/evidence.schema.json", { with: { type: "json" } }),
-  identity: await import("@module-federation/doctor/schemas/identity.schema.json", { with: { type: "json" } }),
-  probe: await import("@module-federation/doctor/schemas/probe.schema.json", { with: { type: "json" } }),
-  project: await import("@module-federation/doctor/schemas/project.schema.json", { with: { type: "json" } }),
-  report: await import("@module-federation/doctor/schemas/report.schema.json", { with: { type: "json" } }),
-  "runtime-capture": await import("@module-federation/doctor/schemas/runtime-capture.schema.json", { with: { type: "json" } }),
-  "runtime-trace": await import("@module-federation/doctor/schemas/runtime-trace.schema.json", { with: { type: "json" } }),
-  ui: await import("@module-federation/doctor/schemas/ui.schema.json", { with: { type: "json" } }),
+  baseline: await import("@tonoizer/mfdoctor/schemas/baseline.schema.json", { with: { type: "json" } }),
+  config: await import("@tonoizer/mfdoctor/schemas/config.schema.json", { with: { type: "json" } }),
+  evidence: await import("@tonoizer/mfdoctor/schemas/evidence.schema.json", { with: { type: "json" } }),
+  identity: await import("@tonoizer/mfdoctor/schemas/identity.schema.json", { with: { type: "json" } }),
+  probe: await import("@tonoizer/mfdoctor/schemas/probe.schema.json", { with: { type: "json" } }),
+  project: await import("@tonoizer/mfdoctor/schemas/project.schema.json", { with: { type: "json" } }),
+  report: await import("@tonoizer/mfdoctor/schemas/report.schema.json", { with: { type: "json" } }),
+  "runtime-capture": await import("@tonoizer/mfdoctor/schemas/runtime-capture.schema.json", { with: { type: "json" } }),
+  "runtime-trace": await import("@tonoizer/mfdoctor/schemas/runtime-trace.schema.json", { with: { type: "json" } }),
+  ui: await import("@tonoizer/mfdoctor/schemas/ui.schema.json", { with: { type: "json" } }),
 };
 for (const [name, title] of Object.entries(schemaTitles)) {
   const schema = schemaImports[name];
@@ -133,35 +133,35 @@ assert.equal(packageJson.default.bin.mfdoctor, "dist/cli.js");
     '{ moduleFederation: { name: "consumer" }, output: { formats: [] }, rules: { "doctor/partial-analysis": "off", "config/plugin-package-mismatch": "off", "artifact/remote-entry-missing": "off" } }';
   await fs.writeFile(
     path.join(consumer, "vite.config.js"),
-    `import { federationDoctor } from "@module-federation/doctor/vite";
+    `import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 export default { plugins: [federationDoctor(${doctorOptions})] };
 `,
   );
   await fs.writeFile(
     path.join(consumer, "rspack.config.mjs"),
-    `import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+    `import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/rspack";
 export default { mode: "production", entry: "./src/index.js", plugins: [moduleFederationDoctorPlugin(${doctorOptions})] };
 `,
   );
   await fs.writeFile(
     path.join(consumer, "rsbuild.config.mjs"),
     `import { defineConfig } from "@rsbuild/core";
-import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild";
+import { pluginModuleFederationDoctor } from "@tonoizer/mfdoctor/rsbuild";
 export default defineConfig({ plugins: [pluginModuleFederationDoctor(${doctorOptions})] });
 `,
   );
   await fs.writeFile(
     path.join(consumer, "webpack.config.mjs"),
-    `import { ModuleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+    `import { ModuleFederationDoctorPlugin } from "@tonoizer/mfdoctor/webpack";
 export default { mode: "production", entry: "./src/index.js", plugins: [ModuleFederationDoctorPlugin(${doctorOptions})] };
 `,
   );
   await fs.writeFile(
     path.join(consumer, "modern-smoke.mjs"),
     `import assert from "node:assert/strict";
-import { moduleFederationDoctorPlugin, appendModuleFederationDoctor } from "@module-federation/doctor/modern";
+import { moduleFederationDoctorPlugin, appendModuleFederationDoctor } from "@tonoizer/mfdoctor/modern";
 const plugin = moduleFederationDoctorPlugin(${doctorOptions});
-assert.equal(plugin.name, "@module-federation/doctor");
+assert.equal(plugin.name, "@tonoizer/mfdoctor");
 assert.equal(typeof plugin.setup, "function");
 const registered = [];
 const chain = { plugin(name) { return { use(p) { registered.push([name, p]); return this; } }; } };

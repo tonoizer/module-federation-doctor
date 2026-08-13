@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/rspack";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 

@@ -98,7 +98,7 @@ export function createNuxtDoctorModule(defaults: NuxtDoctorOptions = {}): NuxtMo
     setup(options, nuxt);
   }) as NuxtModule;
   module.meta = {
-    name: "@module-federation/doctor/nuxt",
+    name: "@tonoizer/mfdoctor/nuxt",
     configKey: "moduleFederationDoctor",
   };
   module.setup = setup;

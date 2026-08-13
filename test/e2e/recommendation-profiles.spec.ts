@@ -296,7 +296,7 @@ async function createViteAdapterProject(scenario: RecommendationScenario): Promi
   await fs.writeFile(
     path.join(root, "vite.config.ts"),
     `import { federation } from "@module-federation/vite";
-import { federationDoctor } from "@module-federation/doctor/vite";
+import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 import { defineConfig } from "vite";
 
 const mfOptions = ${JSON.stringify(adapterModuleFederation)};

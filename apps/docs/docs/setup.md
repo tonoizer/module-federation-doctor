@@ -1,6 +1,6 @@
 # Get started
 
-Install Doctor as a **devDependency** (`pnpm add -D @module-federation/doctor`).
+Install Doctor as a **devDependency** (`pnpm add -D @tonoizer/mfdoctor`).
 Keep one `mfOptions` object and pass it to both Module Federation and Doctor.
 Explicit options give Doctor the safest and most complete input — including MF
 `runtimePlugins`, which Doctor analyzes from that config at build time.
@@ -36,14 +36,14 @@ already exports those variables.
 
 ## Which adapter?
 
-| Project surface                | Doctor entry                        | Notes                                                                                  |
-| ------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------- |
-| Vite                           | `@module-federation/doctor/vite`    | Primary host path                                                                      |
-| Nuxt 3 / Nuxt 4                | `@module-federation/doctor/nuxt`    | Public `vite:extendConfig`; observes client + SSR builds                               |
-| Direct Rspack (`@rspack/core`) | `@module-federation/doctor/rspack`  | First-class; do **not** replace with the Modern.js entry                               |
-| Rsbuild                        | `@module-federation/doctor/rsbuild` | `onAfterBuild`                                                                         |
-| Webpack                        | `@module-federation/doctor/webpack` | `@module-federation/enhanced/webpack`                                                  |
-| Modern.js (`modern.config.*`)  | `@module-federation/doctor/modern`  | **partial** — composes post-emit via `modifyBundlerChain`; records `bundler: "modern"` |
+| Project surface                | Doctor entry                 | Notes                                                                                  |
+| ------------------------------ | ---------------------------- | -------------------------------------------------------------------------------------- |
+| Vite                           | `@tonoizer/mfdoctor/vite`    | Primary host path                                                                      |
+| Nuxt 3 / Nuxt 4                | `@tonoizer/mfdoctor/nuxt`    | Public `vite:extendConfig`; observes client + SSR builds                               |
+| Direct Rspack (`@rspack/core`) | `@tonoizer/mfdoctor/rspack`  | First-class; do **not** replace with the Modern.js entry                               |
+| Rsbuild                        | `@tonoizer/mfdoctor/rsbuild` | `onAfterBuild`                                                                         |
+| Webpack                        | `@tonoizer/mfdoctor/webpack` | `@module-federation/enhanced/webpack`                                                  |
+| Modern.js (`modern.config.*`)  | `@tonoizer/mfdoctor/modern`  | **partial** — composes post-emit via `modifyBundlerChain`; records `bundler: "modern"` |
 
 Modern.js builds on Rspack (or Webpack). The Modern.js adapter is a convenience
 for `modern.config` — it does **not** deprecate direct Rspack coverage. Matrix
@@ -69,7 +69,7 @@ rule docs URL, and official `module-federation.io` sources when available.
 
 ```ts
 import { federation } from "@module-federation/vite";
-import { federationDoctor } from "@module-federation/doctor/vite";
+import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 
 const mfOptions = { name: "host", remotes: {} };
 export default {
@@ -77,7 +77,7 @@ export default {
 };
 ```
 
-The same `@module-federation/doctor/vite` entry covers classic Vite,
+The same `@tonoizer/mfdoctor/vite` entry covers classic Vite,
 Rolldown-integrated Vite (`rolldown-vite` / Vite 8+), and Vite Plus. See
 [Vite integration](./vite-integration.md#rolldown-and-vite-plus).
 
@@ -88,7 +88,7 @@ module. Pass the same federation options to both integrations when the
 application owns the configuration:
 
 ```ts
-import nuxtDoctor from "@module-federation/doctor/nuxt";
+import nuxtDoctor from "@tonoizer/mfdoctor/nuxt";
 
 const mfOptions = { name: "host", remotes: {} };
 
@@ -110,7 +110,7 @@ Use this for **direct** `@rspack/core` projects (not Modern.js / Rsbuild wrapper
 
 ```ts
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
+import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/rspack";
 
 const mfOptions = { name: "remote", exposes: { "./App": "./src/App.tsx" } };
 export default {
@@ -125,7 +125,7 @@ export default {
 
 ```ts
 import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
-import { pluginModuleFederationDoctor } from "@module-federation/doctor/rsbuild";
+import { pluginModuleFederationDoctor } from "@tonoizer/mfdoctor/rsbuild";
 
 const mfOptions = { name: "remote", exposes: { "./App": "./src/App.tsx" } };
 export default {
@@ -140,7 +140,7 @@ export default {
 
 ```ts
 import { ModuleFederationPlugin } from "@module-federation/enhanced/webpack";
-import { ModuleFederationDoctorPlugin } from "@module-federation/doctor/webpack";
+import { ModuleFederationDoctorPlugin } from "@tonoizer/mfdoctor/webpack";
 
 const mfOptions = { name: "remote", exposes: { "./App": "./src/App.tsx" } };
 export default {
@@ -160,7 +160,7 @@ analysis as the Rspack/Webpack adapters.
 ```ts
 import { appTools, defineConfig } from "@modern-js/app-tools";
 import { moduleFederationPlugin } from "@module-federation/modern-js";
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/modern";
+import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/modern";
 
 const mfOptions = { name: "remote", exposes: { "./App": "./src/App.tsx" } };
 
@@ -177,8 +177,8 @@ Escape hatch — keep using the **public Rspack adapter** inside Modern.js
 `tools.bundlerChain` (facts record `bundler: "rspack"`):
 
 ```ts
-import { moduleFederationDoctorPlugin } from "@module-federation/doctor/rspack";
-// or: import { appendModuleFederationDoctor } from "@module-federation/doctor/modern";
+import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/rspack";
+// or: import { appendModuleFederationDoctor } from "@tonoizer/mfdoctor/modern";
 
 export default defineConfig({
   tools: {
