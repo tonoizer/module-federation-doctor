@@ -68,6 +68,7 @@ describe("release file generation", () => {
 
     expect(workflow).toContain("types: [published]");
     expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch' && 'main'");
     expect(workflow).toContain("description: Existing plain-semver GitHub release tag");
     expect(workflow).toContain("contents: read");
     expect(workflow).toContain("contents: write");

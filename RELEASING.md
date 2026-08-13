@@ -20,9 +20,9 @@ semver tags such as `1.0.0-rc.0`, never a `v` prefix.
 
 5. Merge the version PR only after explicit release approval. The
    `Create GitHub release` workflow then creates the plain-semver tag and GitHub
-   release. It explicitly dispatches the tag-gated release-file and npm staging
-   workflows because GitHub does not recursively emit workflow events created
-   with `GITHUB_TOKEN`. It does not run for other branches.
+   release, then dispatches the release-file and npm staging workflows on
+   `main`. The tag input is validated against that trusted checkout and is never
+   used as an executable ref. It does not run for other branches.
 
 ## Publish a release
 

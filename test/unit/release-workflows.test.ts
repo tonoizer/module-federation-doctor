@@ -12,10 +12,20 @@ describe("release workflow contracts", () => {
     expect(action).toContain("vp install --frozen-lockfile");
   });
 
+  it("formats generated inventory without constructing a shell command", async () => {
+    const generator = await readFile("scripts/generate-rule-inventory.mjs", "utf8");
+
+    expect(generator).toContain('execFileSync(process.execPath, [vitePlusCli, "fmt", tempPath]');
+    expect(generator).not.toContain("execSync(");
+  });
+
   it("publishes only an immutable version tag through staged OIDC publishing", async () => {
     const workflow = await readFile(".github/workflows/publish-on-release.yml", "utf8");
 
     expect(workflow).toContain("types: [published]");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch' && 'main'");
+    expect(workflow).not.toContain("ref: ${{ needs.resolve-ref.outputs.sha }}");
     expect(workflow).toContain("description: Existing plain-semver tag");
     expect(workflow).not.toContain("description: Branch or plain semver tag");
     expect(workflow).toContain('test "${TAG}" = "${VERSION}"');
