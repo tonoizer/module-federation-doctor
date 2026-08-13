@@ -21,7 +21,9 @@ semver tags such as `1.0.0-rc.0`, never a `v` prefix.
 
 5. Merge the version PR only after explicit release approval. The
    `Create GitHub release` workflow then creates the plain-semver tag and GitHub
-   release. It does not run for other branches.
+   release. It explicitly dispatches the tag-gated release-file and npm staging
+   workflows because GitHub does not recursively emit workflow events created
+   with `GITHUB_TOKEN`. It does not run for other branches.
 
 The repository is already in Changesets `rc` prerelease mode. Its checked-in
 major changeset makes the first version PR `1.0.0-rc.0`. Merging the release

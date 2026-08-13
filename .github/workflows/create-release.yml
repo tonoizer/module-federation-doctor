@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: github-release-${{ github.event.pull_request.number }}
@@ -71,3 +72,14 @@ jobs:
           args=("$VERSION" --verify-tag --generate-notes --title "MFDoctor $VERSION")
           case "$VERSION" in *-*) args+=(--prerelease);; esac
           gh release create "${args[@]}"
+
+      # Events created with GITHUB_TOKEN do not recursively start release
+      # workflows. workflow_dispatch is the supported exception, so dispatch
+      # both tag-gated workflows explicitly after the release exists.
+      - name: Dispatch release verification and artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          gh workflow run release-files.yml --ref main -f "tag=$VERSION"
+          gh workflow run publish-on-release.yml --ref main -f "tag=$VERSION"
