@@ -44,6 +44,7 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain("pull-requests: write");
     expect(workflow).toContain("changesets/action@");
     expect(workflow).toContain("version: pnpm run version");
+    expect(workflow).toContain("commitMode: github-api");
     expect(workflow).not.toMatch(/version: pnpm version(?:\r?\n|$)/);
     expect(workflow).not.toMatch(/^\s+publish:/m);
     expect(workflow).not.toMatch(/run:\s+(?:pnpm|npm) publish/);
