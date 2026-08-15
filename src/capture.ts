@@ -1100,6 +1100,11 @@ export interface RuntimeCaptureFallbackOptions {
   location?: string;
 }
 
+export interface RuntimeCaptureNetworkFallbackOptions extends RuntimeCaptureFallbackOptions {
+  /** Maximum distance for a relation that remains a time-window candidate. */
+  timeWindowMs?: number;
+}
+
 export class RuntimeCaptureExportError extends Error {
   readonly fileLabel: string | undefined;
 
@@ -1816,15 +1821,20 @@ function fallbackSafeStringValue(
   value: unknown,
   path: string,
   limits: RuntimeCaptureLimits,
+  maxLength = limits.maxStringLength,
 ): string | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== "string") return undefined;
-  if (value.length > limits.maxStringLength)
-    throw new RuntimeCaptureExportError(`${path} exceeds maxStringLength`);
+  if (value.length > maxLength)
+    throw new RuntimeCaptureExportError(
+      `${path} exceeds ${maxLength === limits.maxDiagnosisStringLength ? "maxDiagnosisStringLength" : "maxStringLength"}`,
+    );
   const redacted = redactEvidenceValue(value) as unknown;
   if (typeof redacted !== "string" || redacted.length === 0) return undefined;
-  if (redacted.length > limits.maxStringLength)
-    throw new RuntimeCaptureExportError(`${path} exceeds maxStringLength after redaction`);
+  if (redacted.length > maxLength)
+    throw new RuntimeCaptureExportError(
+      `${path} exceeds ${maxLength === limits.maxDiagnosisStringLength ? "maxDiagnosisStringLength" : "maxStringLength"} after redaction`,
+    );
   return redacted;
 }
 
@@ -1833,12 +1843,13 @@ function fallbackStringProperty(
   key: string,
   path: string,
   limits: RuntimeCaptureLimits,
+  maxLength = limits.maxStringLength,
 ): FallbackStringRead {
   const property = fallbackProperty(value, key, path);
   if (!property.present || property.value === undefined || property.value === null)
     return { present: property.present, malformed: false };
   if (typeof property.value !== "string") return { present: true, malformed: true };
-  const safeValue = fallbackSafeStringValue(property.value, `${path}.${key}`, limits);
+  const safeValue = fallbackSafeStringValue(property.value, `${path}.${key}`, limits, maxLength);
   return {
     present: true,
     ...(safeValue !== undefined ? { value: safeValue } : {}),
@@ -1853,6 +1864,19 @@ function fallbackNumberProperty(value: unknown, key: string, path: string): Fall
   if (!Number.isSafeInteger(property.value) || (property.value as number) < 0)
     return { present: true, malformed: true };
   return { present: true, value: property.value as number, malformed: false };
+}
+
+function fallbackFiniteNumberProperty(
+  value: unknown,
+  key: string,
+  path: string,
+): FallbackNumberRead {
+  const property = fallbackProperty(value, key, path);
+  if (!property.present || property.value === undefined || property.value === null)
+    return { present: property.present, malformed: false };
+  if (typeof property.value !== "number" || !Number.isFinite(property.value))
+    return { present: true, malformed: true };
+  return { present: true, value: property.value, malformed: false };
 }
 
 function fallbackBooleanProperty(value: unknown, key: string, path: string): FallbackBooleanRead {
@@ -2467,7 +2491,7 @@ export function importRuntimeCaptureFallback(
         capturedAt,
         contentDigest: runtimeCaptureContentDigest(value as unknown as EvidenceValue),
         provenance: provenance(),
-        completeness: snapshotCompleteness,
+        completeness: { ...snapshotCompleteness },
         value,
       };
     });
@@ -2480,7 +2504,7 @@ export function importRuntimeCaptureFallback(
         capturedAt,
         contentDigest: runtimeCaptureContentDigest(value as unknown as EvidenceValue),
         provenance: provenance(),
-        completeness: instanceCompleteness,
+        completeness: { ...instanceCompleteness },
         value,
       };
     });
@@ -2622,6 +2646,726 @@ export function importRuntimeCaptureFallback(
     if (error instanceof RuntimeCaptureExportError) throw error;
     throw new RuntimeCaptureExportError(
       `Runtime fallback projection failed capture validation: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+const RUNTIME_NETWORK_FALLBACK_SOURCE_VERSION = "runtime-network-fallback-v1";
+const NETWORK_FALLBACK_KIND_VALUES = [
+  "manifest",
+  "remote-entry",
+  "preload",
+  "chunk",
+  "unknown",
+] as const;
+const NETWORK_FALLBACK_NETWORK_KEYS = ["network", "networkRecords", "requests", "fetches"] as const;
+const NETWORK_FALLBACK_ERROR_KEYS = ["errors", "runtimeErrors", "errorRecords"] as const;
+
+interface FallbackNetworkErrorSources {
+  network?: FallbackSourceRef;
+  networkPresent: boolean;
+  networkMalformed: boolean;
+  errors?: FallbackSourceRef;
+  errorsPresent: boolean;
+  errorsMalformed: boolean;
+  runtimeVersion?: string;
+  sourceScope?: string;
+}
+
+interface FallbackMetadataCollection {
+  items: FallbackInstanceItem[];
+  declaredCount: number;
+  malformed: boolean;
+  truncated: boolean;
+}
+
+interface FallbackTimestampRead {
+  capturedAt: number;
+  hasTimestamp: boolean;
+  malformed: boolean;
+}
+
+interface FallbackNetworkProjection {
+  value?: RuntimeCaptureNetworkValue;
+  requestId?: string;
+  locator?: string;
+  capturedAt: number;
+  hasTimestamp: boolean;
+  partial: boolean;
+}
+
+interface FallbackErrorProjection {
+  value?: RuntimeCaptureErrorValue;
+  requestId?: string;
+  locator?: string;
+  capturedAt: number;
+  hasTimestamp: boolean;
+  partial: boolean;
+}
+
+interface FallbackLinkMeta {
+  id: string;
+  requestId?: string;
+  locator?: string;
+  capturedAt: number;
+  hasTimestamp: boolean;
+}
+
+function fallbackFirstStringProperty(
+  value: unknown,
+  keys: readonly string[],
+  path: string,
+  limits: RuntimeCaptureLimits,
+  maxLength = limits.maxStringLength,
+): FallbackStringRead {
+  let present = false;
+  let malformed = false;
+  for (const key of keys) {
+    const read = fallbackStringProperty(value, key, path, limits, maxLength);
+    present ||= read.present;
+    malformed ||= read.malformed;
+    if (read.value !== undefined) return { present: true, value: read.value, malformed };
+  }
+  return { present, malformed };
+}
+
+function fallbackTimestamp(
+  value: unknown,
+  path: string,
+  defaultCapturedAt: number,
+): FallbackTimestampRead {
+  let malformed = false;
+  for (const key of ["capturedAt", "timestamp", "startedAt"] as const) {
+    const read = fallbackNumberProperty(value, key, path);
+    malformed ||= read.malformed;
+    if (read.value !== undefined) return { capturedAt: read.value, hasTimestamp: true, malformed };
+  }
+  return { capturedAt: defaultCapturedAt, hasTimestamp: false, malformed };
+}
+
+function collectRuntimeCaptureNetworkErrorSources(
+  input: unknown,
+  limits: RuntimeCaptureLimits,
+): FallbackNetworkErrorSources {
+  if (!fallbackPlainRecord(input, "/"))
+    throw new RuntimeCaptureExportError("Runtime network/error state must be a plain object");
+  const sources: FallbackNetworkErrorSources = {
+    networkPresent: false,
+    networkMalformed: false,
+    errorsPresent: false,
+    errorsMalformed: false,
+  };
+  const visited = new WeakSet<object>();
+
+  const visit = (value: unknown, path: string, depth: number): void => {
+    const record = fallbackPlainRecord(value, path);
+    if (!record || depth > 4) return;
+    if (visited.has(record)) return;
+    visited.add(record);
+    if (sources.runtimeVersion === undefined) {
+      const runtimeVersion = fallbackStringProperty(record, "runtimeVersion", path, limits);
+      if (runtimeVersion.value !== undefined) sources.runtimeVersion = runtimeVersion.value;
+    }
+    if (sources.sourceScope === undefined) {
+      const sourceScope = fallbackStringProperty(record, "sourceScope", path, limits);
+      if (sourceScope.value !== undefined) sources.sourceScope = sourceScope.value;
+    }
+    if (!sources.networkPresent) {
+      for (const key of NETWORK_FALLBACK_NETWORK_KEYS) {
+        const property = fallbackProperty(record, key, path);
+        if (!property.present) continue;
+        sources.networkPresent = true;
+        sources.network = { value: property.value, path: `${path}.${key}` };
+        if (property.value === undefined || property.value === null)
+          sources.networkMalformed = true;
+        break;
+      }
+    }
+    if (!sources.errorsPresent) {
+      for (const key of NETWORK_FALLBACK_ERROR_KEYS) {
+        const property = fallbackProperty(record, key, path);
+        if (!property.present) continue;
+        sources.errorsPresent = true;
+        sources.errors = { value: property.value, path: `${path}.${key}` };
+        if (property.value === undefined || property.value === null) sources.errorsMalformed = true;
+        break;
+      }
+    }
+    if (
+      sources.networkPresent &&
+      sources.errorsPresent &&
+      sources.runtimeVersion &&
+      sources.sourceScope
+    )
+      return;
+    if (depth >= 4) return;
+    for (const key of FALLBACK_WRAPPER_KEYS) {
+      const nested = fallbackProperty(record, key, path);
+      if (!nested.present || nested.value === undefined || nested.value === null) continue;
+      if (nested.value === value) continue;
+      visit(nested.value, `${path}.${key}`, depth + 1);
+    }
+  };
+  visit(input, "/", 0);
+  return sources;
+}
+
+function collectRuntimeCaptureMetadataItems(
+  source: FallbackSourceRef | undefined,
+  knownKeys: readonly string[],
+  maxItems: number,
+): FallbackMetadataCollection {
+  if (!source) return { items: [], declaredCount: 0, malformed: false, truncated: false };
+  const array = fallbackArray(source.value, source.path);
+  if (array) {
+    const items: FallbackInstanceItem[] = [];
+    let malformed = false;
+    for (let index = 0; index < Math.min(array.length, maxItems); index += 1) {
+      let descriptor: PropertyDescriptor | undefined;
+      try {
+        descriptor = Object.getOwnPropertyDescriptor(array.value, String(index));
+      } catch {
+        throw new RuntimeCaptureExportError(`${source.path}[${index}] cannot be safely read`);
+      }
+      if (!descriptor) {
+        malformed = true;
+        continue;
+      }
+      if (!("value" in descriptor))
+        throw new RuntimeCaptureExportError(
+          `${source.path}[${index}] must be an own data property`,
+        );
+      if (!fallbackPlainRecord(descriptor.value, `${source.path}[${index}]`)) {
+        malformed = true;
+        continue;
+      }
+      items.push({ value: descriptor.value, path: `${source.path}[${index}]` });
+    }
+    return {
+      items,
+      declaredCount: array.length,
+      malformed,
+      truncated: array.length > maxItems,
+    };
+  }
+  const record = fallbackPlainRecord(source.value, source.path);
+  if (!record) return { items: [], declaredCount: 0, malformed: true, truncated: false };
+  if (!fallbackHasOwnKnownKey(record, knownKeys, source.path))
+    return { items: [], declaredCount: 0, malformed: true, truncated: false };
+  return {
+    items: [{ value: record, path: source.path }],
+    declaredCount: 1,
+    malformed: false,
+    truncated: false,
+  };
+}
+
+function projectRuntimeCaptureNetworkRecord(
+  item: FallbackInstanceItem,
+  limits: RuntimeCaptureLimits,
+  defaultCapturedAt: number,
+): FallbackNetworkProjection {
+  const record = fallbackPlainRecord(item.value, item.path);
+  if (!record) return { capturedAt: defaultCapturedAt, hasTimestamp: false, partial: true };
+  let partial = false;
+  const url = fallbackFirstStringProperty(record, ["url", "requestUrl"], item.path, limits);
+  partial ||= url.malformed;
+  const timestamp = fallbackTimestamp(record, item.path, defaultCapturedAt);
+  partial ||= timestamp.malformed;
+  const requestId = fallbackStringProperty(record, "requestId", item.path, limits);
+  partial ||= requestId.malformed;
+  if (url.value === undefined)
+    return {
+      capturedAt: timestamp.capturedAt,
+      hasTimestamp: timestamp.hasTimestamp,
+      partial: true,
+    };
+  const rawKind = fallbackStringProperty(record, "kind", item.path, limits);
+  partial ||= rawKind.malformed || rawKind.value === undefined;
+  const kind = NETWORK_FALLBACK_KIND_VALUES.includes(
+    rawKind.value as (typeof NETWORK_FALLBACK_KIND_VALUES)[number],
+  )
+    ? (rawKind.value as RuntimeCaptureNetworkValue["kind"])
+    : "unknown";
+  if (rawKind.value !== undefined && kind === "unknown" && rawKind.value !== "unknown")
+    partial = true;
+  const status = fallbackNumberProperty(record, "status", item.path);
+  partial ||= status.malformed || (status.value !== undefined && status.value > 999);
+  const duration = fallbackFiniteNumberProperty(record, "durationMs", item.path);
+  partial ||= duration.malformed || (duration.value !== undefined && duration.value < 0);
+  const failureClass = fallbackStringProperty(record, "failureClass", item.path, limits);
+  const initiatorClass = fallbackStringProperty(record, "initiatorClass", item.path, limits);
+  partial ||= failureClass.malformed || initiatorClass.malformed;
+  const value: RuntimeCaptureNetworkValue = {
+    url: url.value,
+    kind,
+    ...(status.value !== undefined && status.value <= 999 ? { status: status.value } : {}),
+    ...(failureClass.value ? { failureClass: failureClass.value } : {}),
+    ...(duration.value !== undefined && duration.value >= 0 ? { durationMs: duration.value } : {}),
+    ...(initiatorClass.value ? { initiatorClass: initiatorClass.value } : {}),
+  };
+  return {
+    value,
+    ...(requestId.value ? { requestId: requestId.value } : {}),
+    locator: value.url,
+    capturedAt: timestamp.capturedAt,
+    hasTimestamp: timestamp.hasTimestamp,
+    partial,
+  };
+}
+
+function projectRuntimeCaptureErrorRecord(
+  item: FallbackInstanceItem,
+  limits: RuntimeCaptureLimits,
+  defaultCapturedAt: number,
+  defaultRuntimeVersion: string | undefined,
+): FallbackErrorProjection {
+  const record = fallbackPlainRecord(item.value, item.path);
+  if (!record) return { capturedAt: defaultCapturedAt, hasTimestamp: false, partial: true };
+  let partial = false;
+  const timestamp = fallbackTimestamp(record, item.path, defaultCapturedAt);
+  partial ||= timestamp.malformed;
+  const requestId = fallbackStringProperty(record, "requestId", item.path, limits);
+  const locator = fallbackFirstStringProperty(record, ["url", "requestUrl"], item.path, limits);
+  partial ||= requestId.malformed || locator.malformed;
+  const code = fallbackFirstStringProperty(record, ["code", "errorCode"], item.path, limits);
+  const name = fallbackFirstStringProperty(record, ["name", "errorName"], item.path, limits);
+  const message = fallbackFirstStringProperty(
+    record,
+    ["message", "errorMessage"],
+    item.path,
+    limits,
+    limits.maxDiagnosisStringLength,
+  );
+  const phase = fallbackFirstStringProperty(record, ["phase", "failedPhase"], item.path, limits);
+  const runtimeVersion = fallbackStringProperty(record, "runtimeVersion", item.path, limits);
+  partial ||=
+    code.malformed ||
+    name.malformed ||
+    message.malformed ||
+    phase.malformed ||
+    runtimeVersion.malformed;
+  const hasErrorField = Boolean(code.value || name.value || message.value || phase.value);
+  const projectedRuntimeVersion =
+    runtimeVersion.value ?? (hasErrorField ? defaultRuntimeVersion : undefined);
+  const value: RuntimeCaptureErrorValue = {
+    ...(code.value ? { code: code.value } : {}),
+    ...(name.value ? { name: name.value } : {}),
+    ...(message.value ? { message: message.value } : {}),
+    ...(phase.value ? { phase: phase.value } : {}),
+    ...(projectedRuntimeVersion ? { runtimeVersion: projectedRuntimeVersion } : {}),
+  };
+  if (Object.keys(value).length === 0)
+    return {
+      capturedAt: timestamp.capturedAt,
+      hasTimestamp: timestamp.hasTimestamp,
+      partial: true,
+    };
+  return {
+    value,
+    ...(requestId.value ? { requestId: requestId.value } : {}),
+    ...(locator.value ? { locator: locator.value } : {}),
+    capturedAt: timestamp.capturedAt,
+    hasTimestamp: timestamp.hasTimestamp,
+    partial,
+  };
+}
+
+function fallbackMetadataCompleteness(
+  source: "network" | "error",
+  partial: boolean,
+  expectedCount: number,
+  observedCount: number,
+  reason: string,
+): EvidenceCompletenessInfo {
+  return {
+    status: partial ? "partial" : "complete",
+    expectedCount,
+    observedCount,
+    reason: `${source} fallback: ${reason}`,
+  };
+}
+
+function fallbackNetworkErrorRelation(
+  network: FallbackLinkMeta[],
+  error: FallbackLinkMeta,
+  timeWindowMs: number,
+): RuntimeCaptureRelationRecord | undefined {
+  const sameRequest = error.requestId
+    ? network.find((item) => item.requestId === error.requestId)
+    : undefined;
+  if (sameRequest)
+    return {
+      id: relationId(sameRequest.id, error.id),
+      from: sameRequest.id,
+      to: error.id,
+      relation: "exact-id",
+      reason: "The supplied network and error metadata shared an exact requestId.",
+    };
+  const sameLocator = error.locator
+    ? network.find((item) => item.locator === error.locator)
+    : undefined;
+  if (sameLocator)
+    return {
+      id: relationId(sameLocator.id, error.id),
+      from: sameLocator.id,
+      to: error.id,
+      relation: "exact-safe-locator",
+      reason: "The supplied network and error metadata shared an exact redacted URL locator.",
+    };
+  if (!error.hasTimestamp) return undefined;
+  const candidate = network
+    .filter(
+      (item) => item.hasTimestamp && Math.abs(item.capturedAt - error.capturedAt) <= timeWindowMs,
+    )
+    .sort(
+      (left, right) =>
+        Math.abs(left.capturedAt - error.capturedAt) -
+          Math.abs(right.capturedAt - error.capturedAt) || left.id.localeCompare(right.id),
+    )[0];
+  if (!candidate) return undefined;
+  return {
+    id: relationId(candidate.id, error.id),
+    from: candidate.id,
+    to: error.id,
+    relation: "time-window-candidate",
+    reason: `The supplied records were within the configured ${timeWindowMs}ms window but had no exact identity or locator match.`,
+  };
+}
+
+/** Project supplied MF-focused network/error metadata without live network access. */
+export function importRuntimeCaptureNetworkFallback(
+  input: unknown,
+  options: RuntimeCaptureNetworkFallbackOptions = {},
+): RuntimeCaptureEnvelope {
+  try {
+    const limits = { ...DEFAULT_RUNTIME_CAPTURE_LIMITS, ...options.limits };
+    assertLimits(limits);
+    const sources = collectRuntimeCaptureNetworkErrorSources(input, limits);
+    const runtimeVersion =
+      options.runtimeVersion === undefined
+        ? sources.runtimeVersion
+        : fallbackSafeStringValue(options.runtimeVersion, "/options.runtimeVersion", limits);
+    const sourceScope =
+      options.sourceScope === undefined
+        ? (sources.sourceScope ?? "runtime-network-fallback")
+        : fallbackSafeStringValue(options.sourceScope, "/options.sourceScope", limits);
+    if (!sourceScope) throw new RuntimeCaptureExportError("sourceScope must be a non-empty string");
+    const capturedAt = options.capturedAt ?? 0;
+    if (!Number.isFinite(capturedAt) || capturedAt < 0)
+      throw new RuntimeCaptureExportError("capturedAt must be a non-negative finite number");
+    const timeWindowMs = options.timeWindowMs ?? 5_000;
+    if (!Number.isSafeInteger(timeWindowMs) || timeWindowMs < 0 || timeWindowMs > 60_000)
+      throw new RuntimeCaptureExportError("timeWindowMs must be an integer from 0 through 60000");
+    const networkItems = collectRuntimeCaptureMetadataItems(
+      sources.network,
+      ["url", "requestUrl", "kind"],
+      limits.maxNetworkRecords,
+    );
+    const errorItems = collectRuntimeCaptureMetadataItems(
+      sources.errors,
+      ["code", "errorCode", "name", "errorName", "message", "errorMessage", "phase", "failedPhase"],
+      limits.maxErrors,
+    );
+    const networkProjections = networkItems.items.map((item) =>
+      projectRuntimeCaptureNetworkRecord(item, limits, capturedAt),
+    );
+    const errorProjections = errorItems.items.map((item) =>
+      projectRuntimeCaptureErrorRecord(item, limits, capturedAt, runtimeVersion),
+    );
+    const sourceDigest = createHash("sha256")
+      .update(
+        JSON.stringify({
+          source: RUNTIME_NETWORK_FALLBACK_SOURCE_VERSION,
+          runtimeVersion,
+          sourceScope,
+          network: networkProjections.map((projection) => ({
+            value: projection.value,
+            requestId: projection.requestId,
+            locator: projection.locator,
+            capturedAt: projection.capturedAt,
+          })),
+          errors: errorProjections.map((projection) => ({
+            value: projection.value,
+            requestId: projection.requestId,
+            locator: projection.locator,
+            capturedAt: projection.capturedAt,
+          })),
+        }),
+      )
+      .digest("hex");
+    const captureId =
+      options.captureId === undefined
+        ? `capture-${sourceDigest.slice(0, 16)}`
+        : fallbackSafeStringValue(options.captureId, "/options.captureId", limits);
+    if (!captureId) throw new RuntimeCaptureExportError("captureId must be a non-empty string");
+    const navigationId =
+      options.navigationId === undefined
+        ? "navigation-1"
+        : fallbackSafeStringValue(options.navigationId, "/options.navigationId", limits);
+    const realmId =
+      options.realmId === undefined
+        ? "realm-top"
+        : fallbackSafeStringValue(options.realmId, "/options.realmId", limits);
+    if (!navigationId || !realmId)
+      throw new RuntimeCaptureExportError("fallback identity fields must be non-empty strings");
+    const collectorName =
+      options.collector?.name === undefined
+        ? "mfdoctor-capture-network-fallback"
+        : fallbackSafeStringValue(options.collector.name, "/options.collector.name", limits);
+    const collectorVersion =
+      options.collector?.version === undefined
+        ? "1"
+        : fallbackSafeStringValue(options.collector.version, "/options.collector.version", limits);
+    if (!collectorName || !collectorVersion)
+      throw new RuntimeCaptureExportError("collector name and version must be non-empty strings");
+    const collector = { name: collectorName, version: collectorVersion };
+    const location =
+      options.location === undefined
+        ? undefined
+        : fallbackSafeStringValue(options.location, "/options.location", limits);
+    const provenance = (): EvidenceProvenance => ({
+      collector: { ...collector },
+      inputKind: "runtime-network-error-fallback",
+      source: "runtime-network-fallback",
+      sourceSchemaVersion: RUNTIME_NETWORK_FALLBACK_SOURCE_VERSION,
+      contentDigest: sourceDigest,
+      ...(location ? { location } : {}),
+    });
+    let sequence = 0;
+    const nextIdentity = (
+      requestId: string | undefined,
+      recordRuntimeVersion?: string,
+    ): RuntimeCaptureIdentity => {
+      const identityRuntimeVersion = recordRuntimeVersion ?? runtimeVersion;
+      return {
+        captureId,
+        navigationId,
+        realmId,
+        sequence: sequence++,
+        sourceScope,
+        ...(identityRuntimeVersion ? { runtimeVersion: identityRuntimeVersion } : {}),
+        ...(requestId ? { requestId } : {}),
+      };
+    };
+    const networkPartial =
+      sources.networkMalformed ||
+      networkItems.malformed ||
+      networkItems.truncated ||
+      networkProjections.some((item) => item.partial);
+    const errorPartial =
+      sources.errorsMalformed ||
+      errorItems.malformed ||
+      errorItems.truncated ||
+      errorProjections.some((item) => item.partial);
+    const networkCompleteness = fallbackMetadataCompleteness(
+      "network",
+      networkPartial,
+      networkItems.declaredCount,
+      networkProjections.filter((item) => item.value).length,
+      networkItems.truncated
+        ? "the network collection exceeded maxNetworkRecords"
+        : networkPartial
+          ? "one or more network records were malformed or incompletely classified"
+          : "allowlisted network metadata was read without retaining request internals",
+    );
+    const errorCompleteness = fallbackMetadataCompleteness(
+      "error",
+      errorPartial,
+      errorItems.declaredCount,
+      errorProjections.filter((item) => item.value).length,
+      errorItems.truncated
+        ? "the error collection exceeded maxErrors"
+        : errorPartial
+          ? "one or more error records were malformed or incomplete"
+          : "allowlisted runtime-error metadata was read without retaining raw stacks",
+    );
+    const networkRecords: RuntimeCaptureNetworkRecord[] = [];
+    const networkLinks: FallbackLinkMeta[] = [];
+    for (const projection of networkProjections) {
+      if (!projection.value) continue;
+      const recordIdentity = nextIdentity(projection.requestId);
+      const record: RuntimeCaptureNetworkRecord = {
+        id: runtimeCaptureRecordId(
+          "network",
+          recordIdentity,
+          projection.value as unknown as EvidenceValue,
+        ),
+        identity: recordIdentity,
+        source: "network",
+        capturedAt: projection.capturedAt,
+        contentDigest: runtimeCaptureContentDigest(projection.value as unknown as EvidenceValue),
+        provenance: provenance(),
+        completeness: { ...networkCompleteness },
+        value: projection.value,
+      };
+      networkRecords.push(record);
+      networkLinks.push({
+        id: record.id,
+        ...(projection.requestId ? { requestId: projection.requestId } : {}),
+        ...(projection.locator ? { locator: projection.locator } : {}),
+        capturedAt: projection.capturedAt,
+        hasTimestamp: projection.hasTimestamp,
+      });
+    }
+    const errorRecords: RuntimeCaptureErrorRecord[] = [];
+    const errorLinks: FallbackLinkMeta[] = [];
+    for (const projection of errorProjections) {
+      if (!projection.value) continue;
+      const recordIdentity = nextIdentity(projection.requestId, projection.value.runtimeVersion);
+      const record: RuntimeCaptureErrorRecord = {
+        id: runtimeCaptureRecordId(
+          "error",
+          recordIdentity,
+          projection.value as unknown as EvidenceValue,
+        ),
+        identity: recordIdentity,
+        source: "error",
+        capturedAt: projection.capturedAt,
+        contentDigest: runtimeCaptureContentDigest(projection.value as unknown as EvidenceValue),
+        provenance: provenance(),
+        completeness: { ...errorCompleteness },
+        value: projection.value,
+      };
+      errorRecords.push(record);
+      errorLinks.push({
+        id: record.id,
+        ...(projection.requestId ? { requestId: projection.requestId } : {}),
+        ...(projection.locator ? { locator: projection.locator } : {}),
+        capturedAt: projection.capturedAt,
+        hasTimestamp: projection.hasTimestamp,
+      });
+    }
+    const truncation: RuntimeCaptureTruncation[] = [];
+    if (networkItems.truncated)
+      truncation.push({
+        collection: "network",
+        dropped: Math.max(1, networkItems.declaredCount - limits.maxNetworkRecords),
+        firstSequence: limits.maxNetworkRecords,
+        reason: "The supplied network metadata exceeded maxNetworkRecords.",
+      });
+    if (errorItems.truncated)
+      truncation.push({
+        collection: "error",
+        dropped: Math.max(1, errorItems.declaredCount - limits.maxErrors),
+        firstSequence: limits.maxErrors,
+        reason: "The supplied error metadata exceeded maxErrors.",
+      });
+    const networkState: RuntimeCaptureCapability = !sources.networkPresent
+      ? "unavailable"
+      : networkRecords.length === 0 && networkPartial
+        ? "unknown"
+        : networkPartial
+          ? "partial"
+          : "exact";
+    const errorState: RuntimeCaptureCapability = !sources.errorsPresent
+      ? "unavailable"
+      : errorRecords.length === 0 && errorPartial
+        ? "unknown"
+        : errorPartial
+          ? "partial"
+          : "exact";
+    const observations: RuntimeCaptureCapabilityInfo[] = [
+      capability(
+        "reports",
+        "unavailable",
+        "observability",
+        "The network/error fallback input does not contain an Observability report export.",
+        sourceScope,
+        "not-present",
+        runtimeVersion,
+      ),
+      capability(
+        "shared-lifecycle",
+        "unavailable",
+        "observability",
+        "The network/error fallback does not infer shared-lifecycle facts.",
+        sourceScope,
+        "not-present",
+        runtimeVersion,
+      ),
+      capability(
+        "snapshot",
+        "unavailable",
+        "snapshot",
+        "Snapshot data is not projected by the network/error fallback.",
+        sourceScope,
+        "not-present",
+        runtimeVersion,
+      ),
+      capability(
+        "instance",
+        "unavailable",
+        "instance",
+        "Runtime-instance data is not projected by the network/error fallback.",
+        sourceScope,
+        "not-present",
+        runtimeVersion,
+      ),
+      capability(
+        "network-error",
+        networkState,
+        "network",
+        !sources.networkPresent
+          ? "The supplied state did not expose network metadata."
+          : networkState === "exact"
+            ? "Allowlisted network metadata was projected without retaining request internals."
+            : "Network metadata was available, but the projection is partial or malformed.",
+        sourceScope,
+        sources.networkPresent ? RUNTIME_NETWORK_FALLBACK_SOURCE_VERSION : "not-present",
+        runtimeVersion,
+      ),
+      capability(
+        "network-error",
+        errorState,
+        "error",
+        !sources.errorsPresent
+          ? "The supplied state did not expose runtime-error metadata."
+          : errorState === "exact"
+            ? "Allowlisted runtime-error metadata was projected without retaining raw stacks."
+            : "Runtime-error metadata was available, but the projection is partial or malformed.",
+        sourceScope,
+        sources.errorsPresent ? RUNTIME_NETWORK_FALLBACK_SOURCE_VERSION : "not-present",
+        runtimeVersion,
+      ),
+      capability(
+        "devtools",
+        "unavailable",
+        "devtools",
+        "The network/error fallback input is not an existing DevTools export.",
+        sourceScope,
+        "not-present",
+        runtimeVersion,
+      ),
+    ];
+    const relations = errorLinks.flatMap((error) => {
+      const relation = fallbackNetworkErrorRelation(networkLinks, error, timeWindowMs);
+      return relation ? [relation] : [];
+    });
+    const envelope: RuntimeCaptureEnvelope = {
+      schemaVersion: 1,
+      contractVersion: RUNTIME_CAPTURE_CONTRACT_VERSION,
+      collector,
+      transport: options.transport ?? "browser-debug",
+      captureId,
+      capabilities: { observations },
+      limits,
+      truncation,
+      reports: [],
+      events: [],
+      devtools: [],
+      snapshots: [],
+      instances: [],
+      network: networkRecords,
+      errors: errorRecords,
+      relations,
+    };
+    validateRuntimeCaptureEnvelope(envelope);
+    return envelope;
+  } catch (error) {
+    if (error instanceof RuntimeCaptureExportError) throw error;
+    throw new RuntimeCaptureExportError(
+      `Runtime network/error fallback failed capture validation: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }

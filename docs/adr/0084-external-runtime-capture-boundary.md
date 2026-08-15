@@ -3,8 +3,8 @@
 ## Status
 
 Proposed for owner review. The contract, offline import, browser transport, and
-read-only snapshot/runtime-instance fallback slices are implemented; network/
-error fallback, atomic export, and compatibility closeout remain separate
+read-only snapshot/runtime-instance and network/error fallback slices are
+implemented; atomic export and compatibility closeout remain separate
 implementation slices.
 
 ## Context
@@ -133,11 +133,21 @@ The read-only fallback projection slice is also implemented:
   unknown runtime graphs, functions, getters, factories, and raw error fields
   are not exported.
 
+The network/error fallback slice is also implemented:
+
+- only bounded MF-focused URL/status/kind metadata and bounded runtime-error
+  code/name/message/phase metadata are projected;
+- credentials and secret query values are redacted before digesting, while
+  headers, bodies, cookies, raw stacks, and arbitrary error contexts are not
+  read;
+- exact request-ID/URL links remain exact, while timestamp-only matches are
+  explicitly `time-window-candidate` relations and flood/malformed input stays
+  partial or unknown.
+
 The remaining work stays linear and independently reviewable:
 
-1. MF-focused network/error metadata and candidate-link semantics.
-2. Final quota/redaction/atomic exporter integration and offline handoff proof.
-3. Compatibility matrix, package-boundary audit, privacy docs, and capture-
+1. Final quota/redaction/atomic exporter integration and offline handoff proof.
+2. Compatibility matrix, package-boundary audit, privacy docs, and capture-
    then-import examples.
 
 No slice may reopen the rejected runtime-agent design or be merged as a broad

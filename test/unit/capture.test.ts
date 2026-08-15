@@ -8,6 +8,7 @@ import {
   captureRuntimeBrowserExport,
   detectRuntimeCaptureExport,
   importRuntimeCaptureFallback,
+  importRuntimeCaptureNetworkFallback,
   importRuntimeCaptureExport,
   loadRuntimeCaptureExportFile,
   runtimeCaptureContentDigest,
@@ -821,6 +822,149 @@ describe("runtime capture contract", () => {
       ]),
     );
     expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
+  });
+
+  it("projects network/error metadata with redaction and exact safe relations", async () => {
+    const capture = importRuntimeCaptureNetworkFallback({
+      runtimeVersion: "2.5.0",
+      sourceScope: "top-page",
+      network: [
+        {
+          url: "https://cdn.example.test/remote/remoteEntry.js?token=secret-token",
+          kind: "remote-entry",
+          status: 200,
+          requestId: "request-1",
+          timestamp: 1_000,
+          headers: { authorization: "Bearer should-not-leak" },
+          body: "should-not-leak",
+        },
+        {
+          url: "https://cdn.example.test/remote/chunk.js",
+          kind: "chunk",
+          timestamp: 2_000,
+        },
+      ],
+      errors: [
+        {
+          errorCode: "RUNTIME-007",
+          errorName: "NetworkError",
+          errorMessage: "remote entry failed",
+          requestId: "request-1",
+          timestamp: 1_001,
+          errorStack: "should-not-leak",
+        },
+        {
+          code: "CHUNK-001",
+          message: "chunk failed",
+          url: "https://cdn.example.test/remote/chunk.js",
+          timestamp: 2_001,
+        },
+      ],
+    });
+    const serialized = JSON.stringify(capture);
+
+    expect(capture.network).toHaveLength(2);
+    expect(capture.errors).toHaveLength(2);
+    expect(capture.network[0]?.value.url).toContain("token=[REDACTED]");
+    expect(serialized).not.toContain("secret-token");
+    expect(serialized).not.toContain("should-not-leak");
+    expect(capture.relations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ relation: "exact-id" }),
+        expect.objectContaining({ relation: "exact-safe-locator" }),
+      ]),
+    );
+    expect(capture.capabilities.observations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          capabilityKind: "network-error",
+          source: "network",
+          state: "exact",
+        }),
+        expect.objectContaining({
+          capabilityKind: "network-error",
+          source: "error",
+          state: "exact",
+        }),
+      ]),
+    );
+    expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
+    await validatePayload("runtime-capture.schema.json", capture, "network/error fallback capture");
+  });
+
+  it("keeps time-window links as candidates instead of exact relationships", () => {
+    const capture = importRuntimeCaptureNetworkFallback(
+      {
+        network: [
+          {
+            url: "https://cdn.example.test/remote/remoteEntry.js",
+            kind: "remote-entry",
+            timestamp: 10_000,
+          },
+        ],
+        errors: [{ code: "RUNTIME-009", message: "load failed", timestamp: 10_500 }],
+      },
+      { timeWindowMs: 1_000 },
+    );
+    expect(capture.relations).toEqual([
+      expect.objectContaining({ relation: "time-window-candidate" }),
+    ]);
+  });
+
+  it("records network/error flood limits and malformed metadata conservatively", () => {
+    const capture = importRuntimeCaptureNetworkFallback(
+      {
+        network: [
+          { kind: "remote-entry", timestamp: 1 },
+          {
+            url: "https://cdn.example.test/remote/remoteEntry.js",
+            kind: "remote-entry",
+            timestamp: 2,
+          },
+        ],
+        errors: [{ message: "error" }],
+      },
+      { limits: { maxNetworkRecords: 1 } },
+    );
+    expect(capture.network).toHaveLength(0);
+    expect(capture.truncation).toEqual(
+      expect.arrayContaining([expect.objectContaining({ collection: "network", dropped: 1 })]),
+    );
+    expect(capture.capabilities.observations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          capabilityKind: "network-error",
+          source: "network",
+          state: "unknown",
+        }),
+      ]),
+    );
+    expect(capture.errors).toHaveLength(1);
+    expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
+  });
+
+  it("does not execute network/error getters or traverse cyclic unknown fields", () => {
+    let networkRead = 0;
+    const getterState = {
+      get network() {
+        networkRead += 1;
+        throw new Error("network getter ran");
+      },
+    };
+    expect(() => importRuntimeCaptureNetworkFallback(getterState)).toThrow("own data property");
+    expect(networkRead).toBe(0);
+
+    const cyclic: Record<string, unknown> = {
+      url: "https://cdn.example.test/remote/remoteEntry.js",
+      kind: "remote-entry",
+      headers: { token: "should-not-leak" },
+    };
+    cyclic.unknownRuntimeGraph = cyclic;
+    const capture = importRuntimeCaptureNetworkFallback({ network: [cyclic] });
+    expect(capture.network[0]?.value).toEqual({
+      url: "https://cdn.example.test/remote/remoteEntry.js",
+      kind: "remote-entry",
+    });
   });
 
   it("requires an explicit approved target and cleans up browser sessions", async () => {

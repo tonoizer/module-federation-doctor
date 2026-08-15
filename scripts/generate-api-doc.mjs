@@ -9,7 +9,8 @@ const output = path.join(repository, "apps/docs/docs/api.md");
 
 const purposes = {
   ".": "Core analysis, policy, baselines, evidence, runtime correlation, and graph payloads.",
-  "./capture": "Validate envelopes and adapt offline runtime exports and read-only fallback state.",
+  "./capture":
+    "Validate envelopes and adapt offline runtime exports, read-only fallback state, and bounded network/error metadata.",
   "./modern": "Modern.js adapter integration.",
   "./nuxt": "Nuxt adapter integration.",
   "./policy": "Named policy packs and policy helpers.",

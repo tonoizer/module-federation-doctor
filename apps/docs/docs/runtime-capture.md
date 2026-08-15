@@ -24,8 +24,8 @@ object keys. The hard total ceiling is 25 MiB; truncation must be recorded.
 
 The contract, bounded file-only import, existing file/export adapters, explicit
 read-only browser transport, and safe snapshot/runtime-instance projections are
-the shipped safe slices. Network/error fallback, atomic export, and automatic
-export remain separate stacked slices for issue #84. The bounded file-only import is available through
+the shipped safe slices. Network/error fallback is also available; atomic
+export and automatic export remain separate stacked slices for issue #84. The bounded file-only import is available through
 the existing offline runtime command:
 
 ```bash
@@ -33,8 +33,8 @@ mfdoctor runtime ./capture.json
 ```
 
 The command accepts only contract version 1, rejects oversized or unsafe files
-before analysis, and keeps the existing runtime output shape. Network/error
-fallback, atomic output writing, and runtime mutation remain deferred.
+before analysis, and keeps the existing runtime output shape. Atomic output
+writing and runtime mutation remain deferred.
 
 ## Existing export adapters
 
@@ -119,3 +119,40 @@ with no snapshot records. Missing moduleInfo is `unavailable`; clipped,
 uncounted, malformed, or quota-limited data remains `partial` or `unknown`.
 Preview/unknown runtime versions do not upgrade shared-lifecycle capability and
 the fallback never infers shared-state health from instance names or scopes.
+
+## Network/error fallback metadata
+
+An external collector can hand over bounded MF-focused request and runtime-error
+metadata without exporting request internals:
+
+```ts
+import { importRuntimeCaptureNetworkFallback } from "@tonoizer/mfdoctor/capture";
+
+const capture = importRuntimeCaptureNetworkFallback({
+  network: [
+    {
+      url: "https://cdn.example.test/checkout/remoteEntry.js",
+      kind: "remote-entry",
+      status: 200,
+      requestId: "request-1",
+      timestamp: 1_000,
+    },
+  ],
+  errors: [
+    {
+      code: "RUNTIME-007",
+      message: "remote entry failed",
+      requestId: "request-1",
+      timestamp: 1_001,
+    },
+  ],
+});
+```
+
+Only allowlisted URL, kind, status, failure/duration/initiator classes, error
+code/name/message/phase, request IDs, and timestamps are projected. URL
+credentials and secret query values are redacted before digesting or writing;
+headers, bodies, cookies, raw stacks, and arbitrary error contexts are ignored.
+An exact request ID or redacted URL creates an exact relation. A timestamp-only
+match is a `time-window-candidate`, never an exact causal link. Floods and
+malformed records remain partial/unknown and produce explicit truncation.
