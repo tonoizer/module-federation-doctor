@@ -146,6 +146,37 @@ export async function validateFixturePayloads(): Promise<void> {
   );
   await validatePayload("evidence.schema.json", evidence, "examples/evidence/v2-conflict.json");
 
+  await validatePayload(
+    "capabilities.schema.json",
+    {
+      schemaVersion: 1,
+      package: { name: "@tonoizer/mfdoctor", version: "1.0.0" },
+      commands: {
+        capabilities: {
+          description: "Print this machine-readable CLI discovery contract.",
+          network: false,
+          formats: ["json"],
+        },
+      },
+      formats: ["terminal", "json", "sarif"],
+      schemaVersions: { capabilities: 1, report: 1 },
+      exitCodes: {
+        "0": "success",
+        "1": "policy-fail",
+        "2": "usage-or-incomplete-analysis",
+      },
+      nonInteractive: {
+        flags: ["--ci", "--format"],
+        commands: { discover: "mfdoctor capabilities" },
+      },
+      schemas: {
+        capabilities: "./schemas/capabilities.schema.json",
+        report: "./schemas/report.schema.json",
+      },
+    },
+    "representative CLI capabilities",
+  );
+
   const projectFixtures = [
     "examples/showcase/federation/version-conflict/host.project.json",
     "examples/showcase/runtime/green/host.project.json",

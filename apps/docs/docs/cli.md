@@ -22,19 +22,33 @@ The examples below use the shorter `mfdoctor` form.
 
 ## Choose a command
 
-| Command                                 | Use it for                                                                                 | Network access |
-| --------------------------------------- | ------------------------------------------------------------------------------------------ | -------------- |
-| [`check`](#check-one-project)           | Analyze one project or checkout                                                            | No             |
-| [`workspace`](#check-a-workspace)       | Discover built MFDoctor project facts below one or more roots and gate the full federation | No             |
-| [`federation`](#check-a-federation)     | Analyze explicit `project.json` globs, or use workspace discovery explicitly               | No             |
-| [`baseline`](#manage-a-baseline)        | Generate, extend, or prune accepted finding fingerprints                                   | No             |
-| [`runtime`](#correlate-a-runtime-trace) | Correlate an Observability export with local MFDoctor project facts                        | No             |
-| [`prompt`](#print-agent-fix-prompts)    | Reprint fix prompts from a saved MFDoctor report                                           | No             |
-| [`rules`](#inspect-the-rule-catalog)    | Inspect all built-in rules or one rule's metadata                                          | No             |
-| [`probe`](#probe-a-deployed-manifest)   | Validate a deployed manifest and optionally its remote entry                               | **Yes**        |
+| Command                                      | Use it for                                                                                 | Network access |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------- |
+| [`check`](#check-one-project)                | Analyze one project or checkout                                                            | No             |
+| [`workspace`](#check-a-workspace)            | Discover built MFDoctor project facts below one or more roots and gate the full federation | No             |
+| [`federation`](#check-a-federation)          | Analyze explicit `project.json` globs, or use workspace discovery explicitly               | No             |
+| [`baseline`](#manage-a-baseline)             | Generate, extend, or prune accepted finding fingerprints                                   | No             |
+| [`runtime`](#correlate-a-runtime-trace)      | Correlate an Observability export with local MFDoctor project facts                        | No             |
+| [`prompt`](#print-agent-fix-prompts)         | Reprint fix prompts from a saved MFDoctor report                                           | No             |
+| [`rules`](#inspect-the-rule-catalog)         | Inspect all built-in rules or one rule's metadata                                          | No             |
+| [`capabilities`](#discover-cli-capabilities) | Print the versioned machine-readable CLI contract                                          | No             |
+| [`probe`](#probe-a-deployed-manifest)        | Validate a deployed manifest and optionally its remote entry                               | **Yes**        |
 
 MFDoctor loads an optional `mfdoctor.config.ts`; command-line flags override its
 values. Use `extends` for [named presets and shareable policy packs](./policy-packs.md).
+
+## Discover CLI capabilities
+
+```bash
+mfdoctor capabilities
+```
+
+This command prints a versioned JSON contract without loading project
+configuration or accessing the network. Agents and wrappers can use it to
+discover supported commands, output formats, public schema paths, exit-code
+meanings, and noninteractive handoff commands. Validate the payload with the
+shipped [`capabilities.schema.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/schemas/capabilities.schema.json)
+when integrating across package versions.
 
 ## Check one project
 

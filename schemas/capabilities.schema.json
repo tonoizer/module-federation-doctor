@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/capabilities.schema.json",
+  "title": "MFDoctor CLI capabilities",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "package",
+    "commands",
+    "formats",
+    "schemaVersions",
+    "exitCodes",
+    "nonInteractive",
+    "schemas"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "@tonoizer/mfdoctor" },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "commands": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[a-z][a-z-]*$" },
+      "additionalProperties": { "$ref": "#/$defs/command" }
+    },
+    "formats": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["terminal", "json", "sarif"] }
+    },
+    "schemaVersions": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[a-z][a-z-]*$" },
+      "additionalProperties": { "type": "integer", "minimum": 1 }
+    },
+    "exitCodes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["0", "1", "2"],
+      "properties": {
+        "0": { "type": "string", "minLength": 1 },
+        "1": { "type": "string", "minLength": 1 },
+        "2": { "type": "string", "minLength": 1 }
+      }
+    },
+    "nonInteractive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["flags", "commands"],
+      "properties": {
+        "flags": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^--[a-z][a-z-]*$" },
+          "uniqueItems": true
+        },
+        "commands": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "pattern": "^[a-z][a-z-]*$" },
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "schemas": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[a-z][a-z-]*$" },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^\\./schemas/[a-z0-9.-]+\\.schema\\.json$"
+      }
+    }
+  },
+  "$defs": {
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "network"],
+      "properties": {
+        "description": { "type": "string", "minLength": 1 },
+        "network": { "type": "boolean" },
+        "formats": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["terminal", "json", "sarif"] }
+        }
+      }
+    }
+  }
+}

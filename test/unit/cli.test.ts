@@ -532,6 +532,50 @@ describe("CLI arguments", () => {
     await expect(main(["rules", "not/a-rule"])).resolves.toBe(2);
   });
 
+  it("prints the versioned machine-readable CLI capabilities contract", async () => {
+    expect(parseArgs(["capabilities"])).toEqual({
+      command: "capabilities",
+      patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
+      ci: false,
+      verbose: false,
+      score: true,
+      prompt: true,
+      forcePrompt: false,
+    });
+    const chunks: string[] = [];
+    const write = process.stdout.write;
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      chunks.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      await expect(main(["capabilities", "--format", "json"])).resolves.toBe(0);
+    } finally {
+      process.stdout.write = write;
+    }
+    const capabilities = JSON.parse(chunks.join("")) as {
+      schemaVersion: number;
+      package: { name: string; version: string };
+      commands: Record<string, unknown>;
+      formats: string[];
+      exitCodes: Record<string, string>;
+      nonInteractive: { commands: Record<string, string> };
+      schemas: Record<string, string>;
+    };
+    expect(capabilities.schemaVersion).toBe(1);
+    expect(capabilities.package.name).toBe("@tonoizer/mfdoctor");
+    expect(capabilities.package.version).toMatch(/^\d+\.\d+\.\d+/);
+    expect(capabilities.commands).toHaveProperty("check");
+    expect(capabilities.commands).toHaveProperty("capabilities");
+    expect(capabilities.formats).toEqual(["terminal", "json", "sarif"]);
+    expect(capabilities.exitCodes).toMatchObject({ "0": "success", "1": "policy-fail" });
+    expect(capabilities.nonInteractive.commands.discover).toBe("mfdoctor capabilities");
+    expect(capabilities.schemas.capabilities).toBe("./schemas/capabilities.schema.json");
+  });
+
   it("prints offline agent prompts from report.json and dumps diagnostics", async () => {
     const root = await temporaryProject(`export default {
       moduleFederation: { remotes: { app: "http://example.com/remoteEntry.js" }, exposes: {}, shared: {} },
