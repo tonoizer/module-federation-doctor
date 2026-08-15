@@ -12,14 +12,21 @@ const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const packageManagerArgs = [];
 const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+// Packing also exercises temporary directories and installed tarball consumers,
+// where there is intentionally no Git checkout for Husky to initialize.
+const packEnvironment = { ...process.env, CI: "", HUSKY: "0" };
 
 function packedFiles() {
   const output = execFileSync(npmCommand, ["pack", "--dry-run", "--ignore-scripts", "--json"], {
     cwd: root,
     encoding: "utf8",
-    env: { ...process.env, CI: "" },
+    env: packEnvironment,
   });
-  const packages = JSON.parse(output);
+  // npm 10 may still run the package prepare hook despite --ignore-scripts.
+  // Keep parsing resilient to lifecycle-hook output before the JSON manifest.
+  const manifestStart = output.indexOf("[");
+  assert(manifestStart >= 0, "npm pack did not return a JSON manifest");
+  const packages = JSON.parse(output.slice(manifestStart));
   return new Set(packages.flatMap((pkg) => pkg.files.map((file) => file.path)));
 }
 
@@ -46,7 +53,7 @@ function run(command, args, cwd = temporary) {
     cwd,
     stdio: "inherit",
     shell: process.platform === "win32" && command.endsWith(".cmd"),
-    env: { ...process.env, CI: "" },
+    env: packEnvironment,
   });
 }
 
@@ -55,7 +62,7 @@ function capture(command, args, cwd = temporary) {
     cwd,
     encoding: "utf8",
     shell: process.platform === "win32" && command.endsWith(".cmd"),
-    env: { ...process.env, CI: "" },
+    env: packEnvironment,
   });
 }
 
@@ -64,7 +71,7 @@ function runForStatus(command, args, cwd = temporary) {
     cwd,
     encoding: "utf8",
     shell: process.platform === "win32" && command.endsWith(".cmd"),
-    env: { ...process.env, CI: "" },
+    env: packEnvironment,
   });
   return {
     status: result.status ?? 2,
