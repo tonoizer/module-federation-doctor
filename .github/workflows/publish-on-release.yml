@@ -81,6 +81,16 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name || inputs.tag }}
           persist-credentials: false
+      - name: Use current release pack harness
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+          path: .release-tooling
+          sparse-checkout: scripts/pack-check.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Refresh release pack harness
+        run: cp .release-tooling/scripts/pack-check.mjs scripts/pack-check.mjs
       - uses: ./.github/actions/setup-vp
         with:
           node-version: ${{ matrix.node-version }}
@@ -100,6 +110,16 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name || inputs.tag }}
           persist-credentials: false
+      - name: Use current release pack harness
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+          path: .release-tooling
+          sparse-checkout: scripts/pack-check.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Refresh release pack harness
+        run: cp .release-tooling/scripts/pack-check.mjs scripts/pack-check.mjs
       - uses: ./.github/actions/setup-vp
         with:
           node-version: 26
