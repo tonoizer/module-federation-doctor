@@ -1693,3 +1693,256 @@ export async function loadRuntimeCaptureExportFile(
     await handle?.close().catch(() => undefined);
   }
 }
+
+/** An explicitly selected browser target; no target is selected implicitly. */
+export interface RuntimeCaptureBrowserTarget {
+  id: string;
+  url?: string;
+}
+
+export type RuntimeCaptureBrowserMode = "attach" | "launch";
+
+export interface RuntimeCaptureBrowserConnectOptions {
+  mode: RuntimeCaptureBrowserMode;
+  target: RuntimeCaptureBrowserTarget;
+  signal?: AbortSignal;
+}
+
+/** Session/navigation/realm identity supplied by the external browser connector. */
+export interface RuntimeCaptureBrowserScope {
+  sessionId: string;
+  targetId: string;
+  navigationId: string;
+  realmId: string;
+  sourceScope?: string;
+  capturedAt?: number;
+}
+
+export interface RuntimeCaptureBrowserReadRequest {
+  target: RuntimeCaptureBrowserTarget;
+  scope: RuntimeCaptureBrowserScope;
+  signal?: AbortSignal;
+}
+
+/**
+ * Narrow read-only connector contract for an external browser tool. The
+ * connector owns Playwright/CDP/browser lifecycle details; MFDoctor receives
+ * only an existing official export and never evaluates arbitrary page code.
+ */
+export interface RuntimeCaptureBrowserConnection {
+  scope: RuntimeCaptureBrowserScope | Promise<RuntimeCaptureBrowserScope>;
+  readObservabilityExport?: (
+    request: RuntimeCaptureBrowserReadRequest,
+  ) => Promise<unknown> | unknown;
+  readDevtoolsExport?: (request: RuntimeCaptureBrowserReadRequest) => Promise<unknown> | unknown;
+  close: () => Promise<void> | void;
+}
+
+export interface RuntimeCaptureBrowserConnector {
+  attach: (
+    options: RuntimeCaptureBrowserConnectOptions,
+  ) => Promise<RuntimeCaptureBrowserConnection>;
+  launch: (
+    options: RuntimeCaptureBrowserConnectOptions,
+  ) => Promise<RuntimeCaptureBrowserConnection>;
+}
+
+export interface RuntimeCaptureBrowserCaptureOptions {
+  mode: RuntimeCaptureBrowserMode;
+  target: RuntimeCaptureBrowserTarget;
+  /** Capture is never implicit; callers must prove an explicit user approval. */
+  userApproved: true;
+  adapter?: "observability" | "devtools";
+  captureId?: string;
+  sourceScope?: string;
+  capturedAt?: number;
+  collector?: { name: string; version: string };
+  limits?: Partial<RuntimeCaptureLimits>;
+  signal?: AbortSignal;
+}
+
+function browserIdentityValue(value: unknown, label: string): string {
+  if (typeof value !== "string" || value.length === 0)
+    throw new RuntimeCaptureExportError(`${label} must be a non-empty string`);
+  const redacted = redactEvidenceValue(value);
+  if (typeof redacted !== "string" || redacted.length === 0)
+    throw new RuntimeCaptureExportError(`${label} is not safe to persist`);
+  return redacted;
+}
+
+function browserTarget(target: RuntimeCaptureBrowserTarget): RuntimeCaptureBrowserTarget {
+  if (!isObject(target)) throw new RuntimeCaptureExportError("browser target must be an object");
+  assertKnownKeys(target, new Set(["id", "url"]), "/browser/target");
+  ownDataEntries(target, "/browser/target");
+  const id = browserIdentityValue(target?.id, "browser target id");
+  if (target.url === undefined) return { id };
+  if (typeof target.url !== "string" || target.url.length === 0)
+    throw new RuntimeCaptureExportError("browser target url must be a non-empty string");
+  let parsed: URL;
+  try {
+    parsed = new URL(target.url);
+  } catch {
+    throw new RuntimeCaptureExportError("browser target url must be a valid URL");
+  }
+  if (!new Set(["http:", "https:"]).has(parsed.protocol))
+    throw new RuntimeCaptureExportError("browser target url must use http or https");
+  if (parsed.username || parsed.password)
+    throw new RuntimeCaptureExportError("browser target url must not contain credentials");
+  if ([...parsed.searchParams.keys()].some((key) => SECRET_KEY.test(key)))
+    throw new RuntimeCaptureExportError("browser target url must not contain secret query keys");
+  return { id, url: parsed.toString() };
+}
+
+function browserScope(
+  scope: RuntimeCaptureBrowserScope,
+  target: RuntimeCaptureBrowserTarget,
+): RuntimeCaptureBrowserScope {
+  if (!scope || typeof scope !== "object")
+    throw new RuntimeCaptureExportError("browser connector did not provide a scope");
+  assertKnownKeys(
+    scope,
+    new Set(["sessionId", "targetId", "navigationId", "realmId", "sourceScope", "capturedAt"]),
+    "/browser/scope",
+  );
+  ownDataEntries(scope, "/browser/scope");
+  const targetId = browserIdentityValue(scope.targetId, "browser scope targetId");
+  if (targetId !== target.id)
+    throw new RuntimeCaptureExportError(
+      "browser scope targetId does not match the selected target",
+    );
+  const normalized: RuntimeCaptureBrowserScope = {
+    sessionId: browserIdentityValue(scope.sessionId, "browser scope sessionId"),
+    targetId,
+    navigationId: browserIdentityValue(scope.navigationId, "browser scope navigationId"),
+    realmId: browserIdentityValue(scope.realmId, "browser scope realmId"),
+    ...(scope.sourceScope !== undefined
+      ? { sourceScope: browserIdentityValue(scope.sourceScope, "browser scope sourceScope") }
+      : {}),
+  };
+  const capturedAt = scope.capturedAt;
+  if (capturedAt !== undefined) {
+    if (!Number.isFinite(capturedAt) || capturedAt < 0)
+      throw new RuntimeCaptureExportError("browser scope capturedAt must be non-negative");
+    normalized.capturedAt = capturedAt;
+  }
+  return normalized;
+}
+
+function assertBrowserCaptureNotAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw new RuntimeCaptureExportError("browser capture was aborted");
+}
+
+/**
+ * Attach to or launch one explicitly approved browser target and read one
+ * existing official export. The connector is deliberately capability-shaped:
+ * it has no arbitrary evaluate method, and this function calls only the
+ * recognized Observability/DevTools readers before always closing the session.
+ */
+export async function captureRuntimeBrowserExport(
+  connector: RuntimeCaptureBrowserConnector,
+  options: RuntimeCaptureBrowserCaptureOptions,
+): Promise<RuntimeCaptureEnvelope> {
+  if (options.userApproved !== true)
+    throw new RuntimeCaptureExportError("browser capture requires explicit user approval");
+  const target = browserTarget(options.target);
+  assertBrowserCaptureNotAborted(options.signal);
+  if (options.mode !== "attach" && options.mode !== "launch")
+    throw new RuntimeCaptureExportError("browser capture mode must be attach or launch");
+  const connect = connector?.[options.mode];
+  if (typeof connect !== "function")
+    throw new RuntimeCaptureExportError(`browser connector does not support ${options.mode}`);
+  let connection: RuntimeCaptureBrowserConnection;
+  try {
+    connection = await connect.call(connector, {
+      mode: options.mode,
+      target,
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+  } catch (error) {
+    if (error instanceof RuntimeCaptureExportError) throw error;
+    throw new RuntimeCaptureExportError(
+      `Unable to ${options.mode} browser target: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  let operationError: unknown;
+  let operationFailed = false;
+  let closeError: unknown;
+  let closeFailed = false;
+  let result: RuntimeCaptureEnvelope | undefined;
+  try {
+    assertBrowserCaptureNotAborted(options.signal);
+    if (!connection || typeof connection !== "object" || typeof connection.close !== "function")
+      throw new RuntimeCaptureExportError("browser connector returned an invalid connection");
+    const scope = browserScope(await connection.scope, target);
+    assertBrowserCaptureNotAborted(options.signal);
+    const requestedAdapter = options.adapter;
+    let adapter = requestedAdapter;
+    if (adapter === undefined)
+      adapter = connection.readObservabilityExport ? "observability" : "devtools";
+    const read =
+      adapter === "observability"
+        ? connection.readObservabilityExport
+        : connection.readDevtoolsExport;
+    if (!read)
+      throw new RuntimeCaptureExportError(`browser target has no ${adapter} export reader`);
+    const request: RuntimeCaptureBrowserReadRequest = {
+      target,
+      scope,
+      ...(options.signal ? { signal: options.signal } : {}),
+    };
+    let rawExport = await read.call(connection, request);
+    if (rawExport === undefined && requestedAdapter === undefined && adapter === "observability") {
+      if (!connection.readDevtoolsExport)
+        throw new RuntimeCaptureExportError("browser target returned no Observability export");
+      adapter = "devtools";
+      rawExport = await connection.readDevtoolsExport(request);
+    }
+    assertBrowserCaptureNotAborted(options.signal);
+    const captureId = options.captureId
+      ? browserIdentityValue(options.captureId, "captureId")
+      : `browser-${browserIdentityValue(scope.sessionId, "browser scope sessionId")}`;
+    const sourceScope =
+      options.sourceScope !== undefined
+        ? browserIdentityValue(options.sourceScope, "sourceScope")
+        : scope.sourceScope;
+    result = await importRuntimeCaptureExport(rawExport, {
+      adapter,
+      transport: "browser-debug",
+      captureId,
+      navigationId: scope.navigationId,
+      realmId: scope.realmId,
+      ...(sourceScope ? { sourceScope } : {}),
+      ...(scope.capturedAt !== undefined
+        ? { capturedAt: scope.capturedAt }
+        : options.capturedAt !== undefined
+          ? { capturedAt: options.capturedAt }
+          : {}),
+      ...(options.collector ? { collector: options.collector } : {}),
+      ...(options.limits ? { limits: options.limits } : {}),
+    });
+  } catch (error) {
+    operationFailed = true;
+    operationError = error;
+  } finally {
+    if (connection && typeof connection.close === "function") {
+      try {
+        await connection.close();
+      } catch (error) {
+        closeFailed = true;
+        closeError = error;
+      }
+    }
+  }
+  if (operationFailed) {
+    if (operationError instanceof RuntimeCaptureExportError) throw operationError;
+    throw new RuntimeCaptureExportError(
+      `Unable to capture browser runtime export: ${operationError instanceof Error ? operationError.message : String(operationError)}`,
+    );
+  }
+  if (closeFailed)
+    throw new RuntimeCaptureExportError(
+      `Unable to close browser capture: ${closeError instanceof Error ? closeError.message : String(closeError)}`,
+    );
+  if (!result) throw new RuntimeCaptureExportError("Browser capture produced no envelope");
+  return result;
+}

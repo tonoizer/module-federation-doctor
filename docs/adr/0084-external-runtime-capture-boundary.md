@@ -111,15 +111,23 @@ attachment:
 - report/event count limits produce explicit truncation and partial capability
   state.
 
+The explicit browser transport slice is also implemented without fallback
+global reads:
+
+- an external connector must be selected with `attach` or `launch`, one target,
+  and explicit user approval;
+- only recognized Observability/DevTools export reader callbacks are invoked;
+- session, target, navigation, realm, and source scope are validated and passed
+  into the capture identity;
+- the connector is always closed after success or failure.
+
 The remaining work stays linear and independently reviewable:
 
-1. Explicit external browser transport with session/navigation/realm tracking
-   and cleanup, without fallback global reads.
-2. Read-only snapshot and runtime-instance projections with hostile-object and
+1. Read-only snapshot and runtime-instance projections with hostile-object and
    `disableSnapshot` coverage.
-3. MF-focused network/error metadata and candidate-link semantics.
-4. Final quota/redaction/atomic exporter integration and offline handoff proof.
-5. Compatibility matrix, package-boundary audit, privacy docs, and capture-
+2. MF-focused network/error metadata and candidate-link semantics.
+3. Final quota/redaction/atomic exporter integration and offline handoff proof.
+4. Compatibility matrix, package-boundary audit, privacy docs, and capture-
    then-import examples.
 
 No slice may reopen the rejected runtime-agent design or be merged as a broad

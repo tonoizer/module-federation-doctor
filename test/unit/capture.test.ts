@@ -5,6 +5,7 @@ import {
   DEFAULT_RUNTIME_CAPTURE_LIMITS,
   HARD_RUNTIME_CAPTURE_LIMITS,
   RUNTIME_CAPTURE_CONTRACT_VERSION,
+  captureRuntimeBrowserExport,
   detectRuntimeCaptureExport,
   importRuntimeCaptureExport,
   loadRuntimeCaptureExportFile,
@@ -660,5 +661,138 @@ describe("runtime capture contract", () => {
       ]),
     );
     expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
+  });
+
+  it("requires an explicit approved target and cleans up browser sessions", async () => {
+    let attached = 0;
+    let launched = 0;
+    let closed = 0;
+    let readRequests = 0;
+    const fixture = await readRuntimeFixture("current-2.5.3.json");
+    const connection = {
+      scope: {
+        sessionId: "session-1",
+        targetId: "tab-1",
+        navigationId: "navigation-2",
+        realmId: "frame-0",
+        sourceScope: "runtime_host",
+        capturedAt: 123,
+      },
+      readObservabilityExport: async (request: { scope: { realmId: string } }) => {
+        readRequests += 1;
+        expect(request.scope.realmId).toBe("frame-0");
+        return fixture;
+      },
+      close: async () => {
+        closed += 1;
+      },
+    };
+    const connector = {
+      attach: async (options: { mode: string; target: { id: string } }) => {
+        attached += 1;
+        expect(options.mode).toBe("attach");
+        expect(options.target.id).toBe("tab-1");
+        return connection;
+      },
+      launch: async () => {
+        launched += 1;
+        return connection;
+      },
+    };
+
+    await expect(
+      captureRuntimeBrowserExport(connector, {
+        mode: "attach",
+        target: { id: "tab-1", url: "file:///not-a-web-target" },
+        userApproved: true,
+      }),
+    ).rejects.toThrow("http or https");
+    expect(attached).toBe(0);
+
+    const capture = await captureRuntimeBrowserExport(connector, {
+      mode: "attach",
+      target: { id: "tab-1", url: "https://example.test/app" },
+      userApproved: true,
+    });
+    expect(capture.transport).toBe("browser-debug");
+    expect(capture.captureId).toBe("browser-session-1");
+    expect(capture.reports[0]?.identity).toMatchObject({
+      navigationId: "navigation-2",
+      realmId: "frame-0",
+      sourceScope: "runtime_host",
+    });
+    expect(attached).toBe(1);
+    expect(launched).toBe(0);
+    expect(readRequests).toBe(1);
+    expect(closed).toBe(1);
+    expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
+  });
+
+  it("uses DevTools only when the approved browser connection exposes no Observability export", async () => {
+    let closed = 0;
+    const fixture = await readRuntimeFixture("partial-devtools.json");
+    const connector = {
+      attach: async () => ({
+        scope: {
+          sessionId: "session-devtools",
+          targetId: "tab-devtools",
+          navigationId: "navigation-1",
+          realmId: "frame-0",
+        },
+        readObservabilityExport: async () => undefined,
+        readDevtoolsExport: async () => fixture,
+        close: () => {
+          closed += 1;
+        },
+      }),
+      launch: async () => {
+        throw new Error("launch must not be used");
+      },
+    };
+
+    const capture = await captureRuntimeBrowserExport(connector, {
+      mode: "attach",
+      target: { id: "tab-devtools" },
+      userApproved: true,
+    });
+    expect(capture.devtools).toHaveLength(1);
+    expect(capture.capabilities.observations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ capabilityKind: "devtools", state: "exact" }),
+      ]),
+    );
+    expect(closed).toBe(1);
+  });
+
+  it("closes an external browser session when the reader fails", async () => {
+    let closed = 0;
+    const connector = {
+      attach: async () => ({
+        scope: {
+          sessionId: "session-failure",
+          targetId: "tab-failure",
+          navigationId: "navigation-1",
+          realmId: "frame-0",
+        },
+        readObservabilityExport: () => {
+          throw new Error("reader failed");
+        },
+        close: () => {
+          closed += 1;
+        },
+      }),
+      launch: async () => {
+        throw new Error("launch must not be used");
+      },
+    };
+
+    await expect(
+      captureRuntimeBrowserExport(connector, {
+        mode: "attach",
+        target: { id: "tab-failure" },
+        userApproved: true,
+      }),
+    ).rejects.toThrow("reader failed");
+    expect(closed).toBe(1);
   });
 });
