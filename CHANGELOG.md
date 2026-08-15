@@ -1,5 +1,27 @@
 # @tonoizer/mfdoctor
 
+## 1.1.0
+
+### Minor Changes
+
+- 87d3483: Add an opt-in build/artifact/deployment correlation contract with explicit environment links and validated redeploy/rollback relationships.
+- 1344775: Add opt-in finding lineage and offline history contracts with stable semantic IDs, separate occurrence IDs, and comparable-evidence diff states.
+- 6bee730: Add additive governance waiver validation, scope-aware expiry, injected-clock evaluation, and auditable conflict decisions without changing V1 baselines.
+- 2f777a4: Add additive semantic identity correlation, scoped capability edges, and deterministic coverage summaries. Existing V1 reports, fingerprints, CLI output, and exit behavior are unchanged.
+- 1768d74: Add additive portable identity governance rules and deterministic ownership resolution with explicit scope, precedence, conflict, and incomplete-evidence handling. Existing V1 reports, fingerprints, CLI output, and exit behavior are unchanged.
+- 5639ad8: Add an explicitly approved, read-only browser transport connector for existing Observability and DevTools exports.
+- a801a6c: Add safe offline adapters for existing Observability, DevTools, app-owned, and Node/SSR runtime exports.
+- 024f3d2: Add a read-only, allowlisted fallback projection for runtime snapshots and runtime-instance state.
+- 7465d0b: Add bounded, redacted network and runtime-error fallback metadata with exact and candidate relation semantics, plus atomic validated JSON handoff.
+- 1768d74: Add an opt-in runtime identity projection contract for sanitized runtime captures, including explicit realm/instance boundaries, unknown-state preservation, and a published JSON Schema.
+- 5d22469: Add an additive semantic graph/query bridge for mixed V1 project facts and V2 identity capability edges while preserving the existing V1 UI graph projection.
+- 0d08d91: Add an additive V1 suppression projection that preserves baseline matching while recording governed-waiver provenance and policy relevance.
+
+### Patch Changes
+
+- 921a0a2: Add a machine-readable `mfdoctor capabilities` contract and verify the packed-package repair loop for agent diagnostics.
+- c86f3d8: Make README images and documentation links render correctly from the npm package.
+
 ## 1.0.0
 
 ### Major Changes
