@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/mfdoctor-readme-logo-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="./assets/mfdoctor-readme-logo-light.svg">
-  <img alt="MFDoctor" src="./assets/mfdoctor-readme-logo-light.svg" width="180" height="40">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tonoizer/module-federation-doctor/main/assets/mfdoctor-readme-logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tonoizer/module-federation-doctor/main/assets/mfdoctor-readme-logo-light.svg">
+  <img alt="MFDoctor" src="https://raw.githubusercontent.com/tonoizer/module-federation-doctor/main/assets/mfdoctor-readme-logo-light.svg" width="180" height="40">
 </picture>
 
 [![version](https://img.shields.io/npm/v/%40tonoizer%2Fmfdoctor?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@tonoizer/mfdoctor)
@@ -18,7 +18,7 @@ runtime size or performance cost. The build plugin is the primary integration;
 the CLI complements it for config, workspace, runtime, and deployed checks.
 
 **Agents:** read the terminal findings block, open the linked rule docs, apply
-the fix (or an intentional [governance](./apps/docs/docs/suppressions.md)
+the fix (or an intentional [governance](https://mfdoctor.kevinbeier.com/suppressions)
 mute), and rebuild until the process exits **0**. Quiet success prints nothing.
 
 ## Primary DX: build plugin
@@ -148,10 +148,10 @@ federationDoctor({
 });
 ```
 
-See [Governance: suppressions and allowlists](./apps/docs/docs/suppressions.md)
+See [Governance: suppressions and allowlists](https://mfdoctor.kevinbeier.com/suppressions)
 for severity overrides, policy packs, fingerprint baselines, `failOn`, and the
 canonical `examples/mixed-federation` host pattern. Full rule catalog:
-[Rule reference](./apps/docs/docs/rules/index.md).
+[Rule reference](https://mfdoctor.kevinbeier.com/rules/).
 
 ## CLI (complementary)
 
@@ -192,8 +192,8 @@ docs).
 only command that fetches over the network, and it never executes remote
 JavaScript. Exit codes: `0` pass, `1` policy fail, `2` analysis incomplete.
 Fingerprint baselines keep known debt visible in reports without failing policy
-by default — see [baselines](./apps/docs/docs/baselines.md) and
-[governance](./apps/docs/docs/suppressions.md).
+by default — see [baselines](https://mfdoctor.kevinbeier.com/baselines) and
+[governance](https://mfdoctor.kevinbeier.com/suppressions).
 
 `runtime` accepts one JSON Observability report, an array of reports, or a
 `{"report": ...}` / `{"reports": [...]}` envelope. Current upstream
@@ -223,7 +223,7 @@ as a top-level shortcut when the overlay should follow `extends`; local
 `rules` still win, and a demo profile resolves to the production overlay in CI.
 Profiles only adjust recommendation severities and bounded rule options;
 correctness findings stay on. Packs can ship severity maps plus custom
-`defineRule` plugins. See [policy packs](./apps/docs/docs/policy-packs.md).
+`defineRule` plugins. See [policy packs](https://mfdoctor.kevinbeier.com/policy-packs).
 
 ## What it checks
 
@@ -238,12 +238,12 @@ MF `runtimePlugins` in bundler config are checked at build time. **Runtime-only*
 apps (`createInstance` / runtime plugins without a Vite/Rspack/Rsbuild/Webpack MF
 **build** plugin) are out of scope for first-class support — use Observability +
 `mfdoctor runtime` instead of shipping MFDoctor into the browser. See
-[limitations](./apps/docs/docs/limitations.md) and
+[limitations](https://mfdoctor.kevinbeier.com/limitations) and
 [#34](https://github.com/tonoizer/module-federation-doctor/issues/34).
 
 Every built-in rule has an issue, impact, fix, category, and source link. See
-the [rule reference](./apps/docs/docs/rules/index.md) and
-[Get started](./apps/docs/docs/setup.md) for setup, CI, and the fix-until-exit-0
+the [rule reference](https://mfdoctor.kevinbeier.com/rules/) and
+[Get started](https://mfdoctor.kevinbeier.com/setup) for setup, CI, and the fix-until-exit-0
 loop.
 
 ## Development
@@ -252,7 +252,7 @@ Requires Node `>=22.12.0`. [Vite+](https://viteplus.dev/guide/) manages the
 repository's Node.js, pnpm, build, test, lint, and format toolchain. The
 workspace policy pins pnpm to `11.17.0`, delays new dependency releases by ten days,
 and requires explicit approval for dependency build scripts. See the
-[compatibility matrix](./apps/docs/docs/compatibility.md) for supported /
+[compatibility matrix](https://mfdoctor.kevinbeier.com/compatibility) for supported /
 partial / unsupported cells (Vite, Rspack, Rsbuild, Webpack, Modern.js; npm / yarn
 consumer notes; terminal / JSON / SARIF on CI).
 
@@ -277,7 +277,7 @@ Examples:
   `pnpm demo:showcase`
 - From `examples/`: `pnpm --dir examples demo` runs showcase + standalone +
   mixed-issues + nested (or `pnpm demo:examples` from the repo root)
-- See [Examples](./apps/docs/docs/examples.md) for the full catalog. The
+- See [Examples](https://mfdoctor.kevinbeier.com/examples) for the full catalog. The
   one-command full E2E gate is `pnpm test:e2e`; it builds the green,
   intentional-finding, nested, and compatibility cells, runs cross-app gates,
   and executes the green and negative Playwright runtime paths. `pnpm test:giga`
@@ -290,11 +290,11 @@ footer (`Score: N/100`) and top-3 copy-paste agent prompts. Use `--no-score` /
 `summary.score`. Offline: `mfdoctor prompt --finding <id>` and
 `--diagnostics-dir` for handoff dumps. For Module Federation concepts, use
 `.agents/skills/mf`. Upstream evidence for rule work lives in
-the [contribution guide](./CONTRIBUTING.md#research-sources).
+the [contribution guide](https://github.com/tonoizer/module-federation-doctor/blob/main/CONTRIBUTING.md#research-sources).
 
 ## Contribution
 
-New contributors are welcome. Please read the [Contributing Guide](./CONTRIBUTING.md).
+New contributors are welcome. Please read the [Contributing Guide](https://github.com/tonoizer/module-federation-doctor/blob/main/CONTRIBUTING.md).
 
 ## Inspiration
 
@@ -315,6 +315,6 @@ Module Federation projects. Thanks to the Rsdoctor team for the inspiration.
 
 ## Code of Conduct
 
-Please follow the [Code of Conduct](./CODE_OF_CONDUCT.md).
+Please follow the [Code of Conduct](https://github.com/tonoizer/module-federation-doctor/blob/main/CODE_OF_CONDUCT.md).
 
 MIT © 2026 Kevin Beier and contributors.
