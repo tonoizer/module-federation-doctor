@@ -177,7 +177,8 @@ reviewable:
    comparable-evidence diff states (implemented in the additive finding-lineage
    slice; V1 fingerprints and report projections remain unchanged).
 9. **Governance waivers** — validation, scope, injected clock, expiry, and
-   audit decisions; no baseline schema changes.
+   audit decisions; no baseline schema changes (implemented in the additive
+   waiver slice).
 10. **V1 compatibility bridge and integration** — preserve fingerprints,
     terminal/JSON/SARIF/UI projections, and exit semantics with parity proof.
 
@@ -205,5 +206,17 @@ PR.
 3. Waivers remain a separate post-lineage slice and never modify
    `baseline.schema.json`.
 4. V2 output remains additive/opt-in until parity and rollout gates pass.
+
+### Stage 9 implementation note
+
+The additive waiver contract is implemented by `defineGovernanceWaiver`,
+`evaluateGovernanceWaiver`, and `resolveGovernanceWaivers`. Waivers require an
+explicit identity/parent/container selector, named environments, owner/reason/
+ticket/approver metadata, and an expiry. Evaluation accepts an injected clock,
+keeps target/realm/environment boundaries, and retains per-waiver decisions with
+IDs, reasons, expiry, missing dimensions, and conflicts. Expired, future,
+out-of-scope, incomplete, and overlapping-conflict decisions never suppress.
+The contract does not modify `baseline.schema.json`, V1 fingerprints, reports,
+SARIF, terminal output, or exit semantics.
 
 Part of [#86](https://github.com/tonoizer/module-federation-doctor/issues/86).
