@@ -94,6 +94,7 @@ describe("published schema contracts", () => {
       "runtime-capture.schema.json",
       "runtime-identity-correlation.schema.json",
       "runtime-trace.schema.json",
+      "semantic-graph.schema.json",
       "ui.schema.json",
     ]);
     expect(contracts.find((contract) => contract.file === "ui.schema.json")?.kind).toBe(
@@ -524,6 +525,50 @@ describe("published schema contracts", () => {
         "runtime-identity-correlation.schema.json",
         { ...projection, instance: { ...projection.instance, unexpected: true } },
         "runtime identity extra field",
+      ),
+    ).rejects.toThrow("Schema validation failed");
+  });
+
+  it("validates the additive semantic graph contract", async () => {
+    const graph = {
+      schemaVersion: 1,
+      nodes: [
+        {
+          id: "mfid:v1:application:0123456789abcdef01234567",
+          key: "mfid:v1:application:0123456789abcdef01234567",
+          kind: "application",
+          label: "checkout",
+          completeness: "complete",
+          confidence: "strong",
+        },
+        {
+          id: "legacy:v1:project:fedcba9876543210fedcba98",
+          kind: "legacy-project",
+          label: "checkout",
+          project: "checkout",
+          completeness: "partial",
+          confidence: "unknown",
+        },
+      ],
+      edges: [],
+      coverage: [],
+      legacyProjection: {
+        projects: [
+          {
+            project: "checkout",
+            nodeId: "legacy:v1:project:fedcba9876543210fedcba98",
+            identityKey: "mfid:v1:application:0123456789abcdef01234567",
+            ambiguous: false,
+          },
+        ],
+      },
+    };
+    await validatePayload("semantic-graph.schema.json", graph, "semantic graph");
+    await expect(
+      validatePayload(
+        "semantic-graph.schema.json",
+        { ...graph, unexpected: true },
+        "semantic graph extra field",
       ),
     ).rejects.toThrow("Schema validation failed");
   });

@@ -111,6 +111,7 @@
     "./schemas/governance-waiver.schema.json": "./schemas/governance-waiver.schema.json",
     "./schemas/identity-correlation.schema.json": "./schemas/identity-correlation.schema.json",
     "./schemas/identity-governance.schema.json": "./schemas/identity-governance.schema.json",
+    "./schemas/semantic-graph.schema.json": "./schemas/semantic-graph.schema.json",
     "./schemas/ui.schema.json": "./schemas/ui.schema.json",
     "./schemas/evidence.schema.json": "./schemas/evidence.schema.json",
     "./schemas/rule-inventory.schema.json": "./schemas/rule-inventory.schema.json",

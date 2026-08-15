@@ -182,6 +182,11 @@ reviewable:
 10. **V1 compatibility bridge and integration** — preserve fingerprints,
     terminal/JSON/SARIF/UI projections, and exit semantics with parity proof
     (implemented by the additive V1 suppression projection).
+11. **Semantic graph/workspace/UI integration** — expose explicit semantic
+    graph queries beside the unchanged V1 graph; retain mixed legacy projects
+    as unknown/ambiguous legacy nodes rather than promoting name matches.
+12. **Fixtures, docs, and end-to-end closeout** — add representative mixed,
+    cross-target, and governance examples with package/schema/build gates.
 
 Do not merge a later stage before its dependency stage has a stable contract.
 Do not combine #84 live capture, #86 correlation, and #87 rollout gates in one
@@ -230,5 +235,14 @@ relevant under `failOnSuppressed`. Ambiguous, unknown, or mismatched lineage
 decisions never suppress. Unit parity tests compare the projection with the
 existing `applyBaseline` result and verify that input findings/baselines remain
 unchanged. No default CLI/report/SARIF/UI shape or exit behavior is changed.
+
+### Stage 11 implementation note
+
+`buildSemanticGraph` and `querySemanticGraph` are the opt-in semantic graph
+query seam. They accept explicit V2 identities and scoped capability edges,
+compute coverage only inside the requested target/realm/environment, and
+preserve V1 project facts as explicit legacy nodes. `buildSemanticUiPayload`
+returns the semantic graph beside the unchanged `buildUiPayload` result, so
+mixed V1/V2 consumers can migrate without changing default reports or UI IDs.
 
 Part of [#86](https://github.com/tonoizer/module-federation-doctor/issues/86).

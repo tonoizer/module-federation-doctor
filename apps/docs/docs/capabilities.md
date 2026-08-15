@@ -179,3 +179,18 @@ finding lineage ID exactly matches the supplied lineage. Ambiguous, unknown, or
 mismatched decisions remain visible but do not suppress. `failOnSuppressed`
 preserves the existing policy rule: a suppressed finding is still policy
 relevant when that option is enabled.
+
+## Semantic graph bridge
+
+`buildSemanticGraph` is the opt-in Stage 7 graph/query seam. It accepts explicit
+V2 semantic identities and scoped capability edges, computes coverage only in
+the requested target/realm/environment scope, and keeps unresolved or weak
+edges visible. `querySemanticGraph` filters those nodes, edges, and coverage
+records without selecting an arbitrary candidate.
+
+`buildSemanticUiPayload` returns this semantic graph beside the unchanged V1
+`buildUiPayload` result. V1 project facts are represented as explicit legacy
+nodes; same-named or duplicate legacy projects are never promoted to exact
+semantic identities. The semantic graph is additive and does not change the
+default report, terminal/JSON/SARIF output, UI payload, fingerprints, baselines,
+or exit codes.
