@@ -101,6 +101,7 @@ const headingTranslations = new Map([
   ["## Privacy and package boundary", "## Datenschutz und Paketgrenze"],
   ["## Semantic identity correlation", "## Korrelation semantischer Identitäten"],
   ["## Portable ownership governance", "## Portable Ownership-Governance"],
+  ["## Runtime identity projection", "## Laufzeit-Identitätsprojektion"],
   ["## V1 compatibility and rollout", "## V1-Kompatibilität und Einführung"],
   ["## Tooling", "## Werkzeuge"],
   ["## Report surfaces", "## Report-Oberflächen"],

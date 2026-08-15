@@ -108,3 +108,20 @@ Bereichskonflikte und fehlende Target-, Realm- oder Umgebungsdimensionen bleiben
 als Diagnosen erhalten. Governance ist eine additive Bibliotheksfunktion; sie
 unterdrückt keine Befunde, ändert keine Baselines und implementiert keine
 Waiver.
+
+## Laufzeit-Identitätsprojektion
+
+`projectRuntimeCaptureIdentity(capture, options)` ist die additive Brücke von
+einer bereinigten #84-Laufzeitaufzeichnung zu expliziten Laufzeit-Realm- und
+Laufzeit-Instanzidentitäten. Sie verlangt ein explizites Target und Realm,
+trennt Deployment-, Realm-, Instanz-, Paket- und Versionsdimensionen und
+liefert exact, strong, weak oder unknown mit begrenzten Diagnosen fehlender
+Felder.
+
+Fehlende Deployment- oder Instanznachweise bleiben eine quellbezogene
+unbekannte Identität. Ein `instanceName` oder ein anderes Anzeigelabel wird
+niemals zu semantischem Nachweis. Die Projektion bewahrt Grenzen zwischen
+Browser, SSR, Worker, Node und Frames und verändert weder Laufzeitstatus noch
+führt sie Remote-Code aus oder prüft Client-Bundles. V1-Berichte und CLI-
+Verhalten bleiben unverändert; Finding-Historie, Waiver und die V1-
+Kompatibilitätsbrücke bleiben getrennte additive Slices.
