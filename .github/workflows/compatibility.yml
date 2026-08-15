@@ -50,12 +50,12 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: ${{ matrix.node }}
-      - run: pnpm build
+      - run: vp run build
       - name: Build ${{ matrix.bundler.id }} example with MFDoctor
         # CI env enables failOn:error + terminal/json/sarif from the adapter.
         run: |
           set -o pipefail
-          pnpm --filter ${{ matrix.bundler.filter }} build 2>&1 | tee "${{ matrix.bundler.dir }}/doctor-terminal.txt"
+          vp run --filter ${{ matrix.bundler.filter }} build 2>&1 | tee "${{ matrix.bundler.dir }}/doctor-terminal.txt"
       - name: Assert MFDoctor project + JSON + SARIF + terminal
         run: >
           node scripts/verify-compatibility-cell.mjs
@@ -85,7 +85,7 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: ${{ matrix.node }}
-      - run: pnpm build
+      - run: vp run build
       - name: CLI check with terminal,json,sarif
         working-directory: examples/showcase/config/filename-invalid
         run: |

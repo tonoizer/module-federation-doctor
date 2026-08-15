@@ -5,40 +5,40 @@ multi-level multi-bundler orchestration, standalone cells for per-bundler
 build+MFDoctor findings, the red path for intentional conflicts, the showcase for
 one-rule demos, and compatibility for production framework/bundler smoke.
 
-| Suite                                                                | Intent                                                         | Command                                 |
-| -------------------------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------- |
-| [`mixed-federation`](./mixed-federation)                             | Healthy Vite + Rspack + Rsbuild e2e                            | `pnpm test:examples` / `pnpm test:e2e`  |
-| [`nested-federation`](./nested-federation)                           | Nested Vite host → Vite/Rsbuild → Rspack/Webpack               | `pnpm test:nested` / `pnpm demo:nested` |
-| [`standalone-findings`](./standalone-findings)                       | Per-bundler standalone cells with visible MFDoctor findings    | `pnpm demo:standalone`                  |
-| [`mixed-federation-issues`](./mixed-federation-issues)               | Same flat topology, intentional shared/federation conflicts    | `pnpm demo:mixed-issues`                |
-| [`showcase`](./showcase)                                             | One-rule CLI fixtures (config / shared / federation / runtime) | `pnpm demo:showcase`                    |
-| [`compatibility/webpack`](./compatibility/webpack)                   | Webpack smoke for the compatibility matrix                     | compatibility workflow                  |
-| [`compatibility/vite-nitro-react`](./compatibility/vite-nitro-react) | Vite + Nitro + React SSR output-shape smoke                    | compatibility workflow                  |
+| Suite                                                                | Intent                                                         | Command                                     |
+| -------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------- |
+| [`mixed-federation`](./mixed-federation)                             | Healthy Vite + Rspack + Rsbuild e2e                            | `vp run test:examples` / `vp run test:e2e`  |
+| [`nested-federation`](./nested-federation)                           | Nested Vite host → Vite/Rsbuild → Rspack/Webpack               | `vp run test:nested` / `vp run demo:nested` |
+| [`standalone-findings`](./standalone-findings)                       | Per-bundler standalone cells with visible MFDoctor findings    | `vp run demo:standalone`                    |
+| [`mixed-federation-issues`](./mixed-federation-issues)               | Same flat topology, intentional shared/federation conflicts    | `vp run demo:mixed-issues`                  |
+| [`showcase`](./showcase)                                             | One-rule CLI fixtures (config / shared / federation / runtime) | `vp run demo:showcase`                      |
+| [`compatibility/webpack`](./compatibility/webpack)                   | Webpack smoke for the compatibility matrix                     | compatibility workflow                      |
+| [`compatibility/vite-nitro-react`](./compatibility/vite-nitro-react) | Vite + Nitro + React SSR output-shape smoke                    | compatibility workflow                      |
 
 From the repo root:
 
 ```bash
-pnpm build
-pnpm demo:showcase
-pnpm demo:standalone
-pnpm demo:mixed-issues
-pnpm demo:nested
+vp run build
+vp run demo:showcase
+vp run demo:standalone
+vp run demo:mixed-issues
+vp run demo:nested
 ```
 
 From this folder (via [`package.json`](./package.json)):
 
 ```bash
-pnpm --dir examples demo              # showcase + standalone + mixed-issues + nested
-pnpm --dir examples demo:showcase
-pnpm --dir examples demo:standalone
-pnpm --dir examples demo:mixed-issues
-pnpm --dir examples demo:nested
-pnpm --dir examples build:green       # build healthy mixed-federation
-pnpm --dir examples test:e2e          # full E2E gate
+vp run demo              # showcase + standalone + mixed-issues + nested
+vp run demo:showcase
+vp run demo:standalone
+vp run demo:mixed-issues
+vp run demo:nested
+vp run build:green       # build healthy mixed-federation
+vp run test:e2e          # full E2E gate
 ```
 
 Or with the workspace filter:
 
 ```bash
-pnpm --filter @mfdoctor-example/demos demo
+vp run --filter @mfdoctor-example/demos demo
 ```

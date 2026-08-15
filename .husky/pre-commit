@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
-pnpm fmt:check
-pnpm lint
+vp run fmt:check
+vp run lint

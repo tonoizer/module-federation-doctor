@@ -36,7 +36,7 @@ inputs:
   cli:
     description: >-
       Command used to invoke mfdoctor (for example `mfdoctor`,
-      `pnpm exec mfdoctor`, or `node dist/cli.js`).
+      `vp exec mfdoctor`, or `node dist/cli.js`).
     required: false
     default: "mfdoctor"
   upload-sarif:

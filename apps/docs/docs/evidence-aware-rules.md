@@ -7,7 +7,7 @@ from the legacy `defineRule` “report or stay silent” model.
 
 The machine-checked migration inventory lives in
 [`fixtures/rule-inventory/v1.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/fixtures/rule-inventory/v1.json)
-and is validated by `pnpm inventory:check`.
+and is validated by `vp run inventory:check`.
 
 ## Outcomes
 

@@ -5,7 +5,7 @@ These setups are intentionally wrong so `mfdoctor check` / `mfdoctor federation`
 They are CLI fixtures, not bundler apps, and are not part of the green e2e path.
 
 For per-bundler **build+MFDoctor** demos with visible findings, use
-[`../standalone-findings`](../standalone-findings) (`pnpm demo:standalone`).
+[`../standalone-findings`](../standalone-findings) (`vp run demo:standalone`).
 
 Showcase fixtures prefer cases Module Federation plugins often allow through to
 a build (or only warn about later). Rules that duplicate a hard plugin
@@ -69,8 +69,8 @@ Committed `.project.json` facts for `mfdoctor federation`:
 | `runtime/shared-mismatch` | `runtime/shared-mismatch` | 1    |
 
 ```bash
-pnpm build
-pnpm demo:showcase
+vp run build
+vp run demo:showcase
 # or one at a time:
 node dist/cli.js check examples/showcase/config/expose-key-invalid --ci --format terminal
 node dist/cli.js federation "examples/showcase/federation/version-conflict/*.project.json" --format terminal

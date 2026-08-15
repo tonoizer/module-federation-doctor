@@ -17,9 +17,9 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: 24
-      - run: pnpm build
-      - run: pnpm test:examples
-      - run: pnpm test:nested
+      - run: vp run build
+      - run: vp run test:examples
+      - run: vp run test:nested
       - name: Analyze federation (workspace gate)
         uses: ./.github/actions/workspace-federation-gate
         with:

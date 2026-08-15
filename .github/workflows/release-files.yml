@@ -49,7 +49,7 @@ jobs:
         with:
           node-version: 24
 
-      - run: pnpm build
+      - run: vp run build
 
       - name: Pack release files
         env:
@@ -58,6 +58,8 @@ jobs:
         run: |
           rm -rf release-files
           mkdir release-files
+          # Vite+ has no release-files destination wrapper; retain the pinned
+          # low-level pnpm pack operation for the artifact boundary.
           pnpm pack --pack-destination release-files
           node scripts/generate-release-files.mjs release-files
 

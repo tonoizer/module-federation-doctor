@@ -16,8 +16,8 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: 24
-      - run: pnpm build
-      - run: pnpm test:integration
+      - run: vp run build
+      - run: vp run test:integration
       # One-rule showcase fixtures (config, shared, federation, runtime).
       - run: node scripts/demo-showcase.mjs
       # Red multi-bundler demo: asserts planted findings and federation conflicts.

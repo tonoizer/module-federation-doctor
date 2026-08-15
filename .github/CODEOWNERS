@@ -1,0 +1,3 @@
+# Repository-wide fallback owner. Keep branch protection independent from this
+# file until a second maintainer can approve changes.
+* @tonoizer

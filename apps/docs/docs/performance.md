@@ -58,7 +58,7 @@ await analyze({ analysisCache });
 The cache is process-local and opt-in. Entries are invalidated by source or
 artifact content digest and include adapter/config identity in their key; the
 LRU entry and byte ceilings prevent unbounded retention. It does not replace a
-remote or daemon cache. The checked-in `pnpm benchmark:analysis` command runs
+remote or daemon cache. The checked-in `vp run benchmark:analysis` command runs
 the small/medium/large fixtures twice through the legacy, shadow, and explicitly
 gate-promoted v2-compat controller selections. It records wall time/RSS/budget
 usage/cache reuse, checks stable v1 output, and uses the existing

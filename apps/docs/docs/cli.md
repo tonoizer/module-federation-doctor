@@ -268,11 +268,11 @@ jobs:
         with:
           node-version: 26
           cache: true
-      - run: pnpm --filter './apps/docs' build
+      - run: vp run --filter './apps/docs' build
       - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@main
         with:
           roots: .
-          cli: pnpm exec mfdoctor
+          cli: vp exec mfdoctor
           formats: terminal,json,sarif
 ```
 

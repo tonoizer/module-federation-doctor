@@ -14,9 +14,9 @@ Each app wires the MFDoctor adapter for its bundler. Build the suite, then gate
 cross-app facts:
 
 ```bash
-pnpm demo:nested
+vp run demo:nested
 # or:
-pnpm test:nested
+vp run test:nested
 ```
 
 This path stays green. Consumers that use `remoteEntry.js` turn off

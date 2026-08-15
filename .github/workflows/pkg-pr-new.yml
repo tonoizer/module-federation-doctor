@@ -19,7 +19,8 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: 24
-      - run: pnpm build
+      - run: vp run build
       # Requires https://github.com/apps/pkg-pr-new on this repo.
       # --compact needs the package on npm; omit until first publish.
+      # Vite+ has no dlx equivalent for this external one-shot CLI.
       - run: pnpm dlx pkg-pr-new@0.0.80 publish

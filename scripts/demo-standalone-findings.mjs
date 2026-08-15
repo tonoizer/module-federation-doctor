@@ -4,8 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-const packageManagerArgs = [];
+const vitePlus = process.platform === "win32" ? "vp.cmd" : "vp";
+const vitePlusArgs = ["run"];
 
 /** @type {Array<{ label: string; filter: string; dir: string; ruleIds: string[] }>} */
 const cells = [
@@ -65,7 +65,7 @@ function assertRules(label, ruleIds, findings) {
 let failed = false;
 
 for (const cell of cells) {
-  const build = run(packageManager, [...packageManagerArgs, "--filter", cell.filter, "build"]);
+  const build = run(vitePlus, [...vitePlusArgs, "--filter", cell.filter, "build"]);
   if (build.exitCode !== 0) {
     process.stdout.write(`FAIL build ${cell.label}\n${build.output}`);
     failed = true;

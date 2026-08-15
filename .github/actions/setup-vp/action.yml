@@ -1,5 +1,5 @@
 name: Set up Vite+
-description: Install the pinned Vite+ toolchain, Node.js, pnpm, and workspace dependencies.
+description: Install the pinned Vite+ toolchain, Node.js, and workspace dependencies.
 
 inputs:
   node-version:
@@ -19,7 +19,9 @@ runs:
         cache: true
         run-install: false
         registry-url: ${{ inputs.registry-url }}
-    - name: Enable the pinned package manager
+    # Keep the pinned pnpm shim available for Vercel and low-level package
+    # operations that intentionally remain outside Vite+'s task interface.
+    - name: Enable the pinned package manager compatibility shim
       shell: bash
       run: corepack enable pnpm
     - name: Install dependencies

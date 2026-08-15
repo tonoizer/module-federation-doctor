@@ -13,6 +13,6 @@ findings.
 | `examples/showcase`                | One-rule CLI demos by category                        | [One-rule showcase](./showcase.md)                   |
 | `examples/compatibility/webpack`   | Webpack adapter smoke for the compatibility matrix    | [Compatibility](./compatibility.md)                  |
 
-Root helpers: `pnpm demo:showcase`, `pnpm demo:standalone`, `pnpm demo:mixed-issues`,
-`pnpm demo:nested`, and `pnpm demo:examples` (showcase + standalone + mixed-issues +
+Root helpers: `vp run demo:showcase`, `vp run demo:standalone`, `vp run demo:mixed-issues`,
+`vp run demo:nested`, and `vp run demo:examples` (showcase + standalone + mixed-issues +
 nested).

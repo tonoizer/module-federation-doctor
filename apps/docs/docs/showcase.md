@@ -4,11 +4,11 @@
 them to see the exact rule IDs MFDoctor reports one fixture at a time:
 
 ```bash
-pnpm demo:showcase
+vp run demo:showcase
 ```
 
 For **per-bundler build+MFDoctor** demos (Vite / Webpack / Rspack / Rsbuild), see
-[standalone findings](./standalone-findings.md) (`pnpm demo:standalone`).
+[standalone findings](./standalone-findings.md) (`vp run demo:standalone`).
 
 Prefer fixtures where a missing or weak config would still reach a Module
 Federation plugin or build. Hard plugin failures (for example an empty `name`)

@@ -16,11 +16,11 @@ Vite host with Rspack and Rsbuild remotes.
 ## Run locally
 
 ```bash
-pnpm exec playwright install chromium
-pnpm test:e2e
+vp exec playwright install chromium
+vp run test:e2e
 ```
 
-`pnpm test:e2e` builds the package and the full local federation matrix, including the
+`vp run test:e2e` builds the package and the full local federation matrix, including the
 multi-instance Webpack/Vite fixtures and Rspack/Rsbuild adapter cells, then runs Playwright.
 It prints the selected ten-port range, automatically moves to a free range when another
 local app or SSH tunnel owns the defaults, and starts the ten servers defined in
@@ -35,15 +35,15 @@ build used. Direct Playwright runs do not choose a port range or rebuild the
 examples:
 
 ```bash
-E2E_OFFSET=0 # replace 0 with the offset printed by pnpm test:e2e
-MFDOCTOR_E2E_PORT_OFFSET="$E2E_OFFSET" pnpm exec playwright test
+E2E_OFFSET=0 # replace 0 with the offset printed by vp run test:e2e
+MFDOCTOR_E2E_PORT_OFFSET="$E2E_OFFSET" vp exec playwright test
 ```
 
 For compatibility with older automation, the former command remains available as
 an alias:
 
 ```bash
-pnpm test:giga
+vp run test:giga
 ```
 
 It runs the same full E2E gate; there is no separate Giga test suite anymore.
@@ -71,7 +71,7 @@ availability. When a run fails:
 
 ### Manual server checks
 
-With preview servers running, use the ports printed by `pnpm test:e2e`. The
+With preview servers running, use the ports printed by `vp run test:e2e`. The
 defaults below apply only when the runner reports offset `0`. Probes use
 `127.0.0.1` (not `localhost`) to match the IPv4 bind used in CI:
 
@@ -90,8 +90,8 @@ curl -fsS http://127.0.0.1:5183/ | head
 
 ### Common causes
 
-- **Remote entry 404** — example not built; run `pnpm test:examples` or full
-  `pnpm test:e2e` so builds run first.
+- **Remote entry 404** — example not built; run `vp run test:examples` or full
+  `vp run test:e2e` so builds run first.
 - **Port already in use** — the full runner automatically selects another range;
   if you supplied `MFDOCTOR_E2E_PORT_OFFSET` manually, clear it or choose a free
   offset.

@@ -8,9 +8,9 @@ import { analyze, analyzeFederation } from "../../src/engine.js";
 import type { BundlerName, DoctorOptions, ProjectFacts } from "../../src/types.js";
 
 const execFileAsync = promisify(execFile);
-const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-const pnpmArgs: string[] = [];
-const pnpmExecOptions = { shell: process.platform === "win32" };
+const vitePlus = process.platform === "win32" ? "vp.cmd" : "vp";
+const vitePlusArgs: string[] = ["run"];
+const vitePlusExecOptions = { shell: process.platform === "win32" };
 const roots: string[] = [];
 
 async function project(bundler: BundlerName, kind: "clean" | "warning" | "error") {
@@ -97,10 +97,10 @@ describe("adapter cases", () => {
 
     for (const packageName of packages) {
       const { stdout, stderr } = await execFileAsync(
-        pnpmCommand,
-        [...pnpmArgs, "--filter", packageName, "build"],
+        vitePlus,
+        [...vitePlusArgs, "--filter", packageName, "build"],
         {
-          ...pnpmExecOptions,
+          ...vitePlusExecOptions,
           cwd: repository,
           env: baseEnvironment,
         },
@@ -131,10 +131,10 @@ describe("adapter cases", () => {
     delete baseEnvironment.VITEST_WORKER_ID;
 
     await execFileAsync(
-      pnpmCommand,
-      [...pnpmArgs, "--filter", "@mfdoctor-example/webpack-smoke", "build"],
+      vitePlus,
+      [...vitePlusArgs, "--filter", "@mfdoctor-example/webpack-smoke", "build"],
       {
-        ...pnpmExecOptions,
+        ...vitePlusExecOptions,
         cwd: repository,
         env: baseEnvironment,
       },
@@ -174,8 +174,8 @@ describe("adapter cases", () => {
 
   it("demos intentional showcase findings through the CLI", async () => {
     const repository = path.resolve(import.meta.dirname, "../..");
-    await execFileAsync(pnpmCommand, [...pnpmArgs, "build"], {
-      ...pnpmExecOptions,
+    await execFileAsync(vitePlus, [...vitePlusArgs, "build"], {
+      ...vitePlusExecOptions,
       cwd: repository,
     });
     const { stdout } = await execFileAsync("node", ["scripts/demo-showcase.mjs"], {

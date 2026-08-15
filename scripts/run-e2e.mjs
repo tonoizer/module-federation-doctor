@@ -578,6 +578,7 @@ function isPortConflict(error) {
 
 const requestedOffset = process.env.MFDOCTOR_E2E_PORT_OFFSET;
 const forwardedArgs = process.argv[2] === "--" ? process.argv.slice(3) : process.argv.slice(2);
+const vitePlus = process.platform === "win32" ? "vp.cmd" : "vp";
 const playwrightArgs = ["exec", "playwright", "test", ...forwardedArgs];
 let releaseWorkspace;
 try {
@@ -602,12 +603,10 @@ try {
         MFDOCTOR_E2E_PORT_OFFSET: String(offset),
         MFDOCTOR_E2E_SERVER_REGISTRY: serverRegistryPath,
       };
-      const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-
       process.stdout.write(
         `Using E2E port offset ${offset}: ${BASE_PORTS.map((port) => port + offset).join(", ")}\n`,
       );
-      await run("build package", pnpm, ["build"], environment);
+      await run("build package", vitePlus, ["run", "build"], environment);
       await run(
         "clean E2E MFDoctor artifacts",
         process.execPath,
@@ -630,7 +629,7 @@ try {
       assertNotInterrupted();
 
       try {
-        await run("run Playwright runtime smoke", pnpm, playwrightArgs, environment, {
+        await run("run Playwright runtime smoke", vitePlus, playwrightArgs, environment, {
           captureOutput: true,
         });
       } catch (error) {

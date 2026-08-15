@@ -80,8 +80,8 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: ${{ matrix.node-version }}
-      - run: pnpm exec playwright install chromium
-      - run: pnpm check
+      - run: vp exec playwright install chromium
+      - run: vp run check
 
   stage:
     needs: [resolve-ref, verify]
@@ -101,7 +101,7 @@ jobs:
           node-version: 26
           registry-url: https://registry.npmjs.org
       - run: npm install --global npm@11.17.0
-      - run: pnpm release:dry-run
+      - run: vp run release:dry-run
       - name: Select npm tag
         id: npm
         run: |

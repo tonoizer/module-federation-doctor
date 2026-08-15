@@ -17,8 +17,8 @@ breaking older `project.json` files that omit them.
 ## Public v1 schema contracts
 
 These JSON Schema files are **public contracts for schema version 1**. They are
-exported from the npm package and enforced in CI via `pnpm schema:check` (also
-wired into `pnpm pack:check`) against representative MFDoctor output. Breaking
+exported from the npm package and enforced in CI via `vp run schema:check` (also
+wired into `vp run pack:check`) against representative MFDoctor output. Breaking
 changes require a new `schemaVersion` (or an intentional, documented exception).
 
 ## Evidence protocol v2

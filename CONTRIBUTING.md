@@ -14,7 +14,7 @@ the [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
 ## Setup
 
 The repository requires Node `>=22.12.0`. Install [Vite+](https://viteplus.dev/guide/)
-once; it selects the repository's Node.js, pnpm, and toolchain versions.
+once; it selects the repository's Node.js, package manager, and toolchain versions.
 
 ```bash
 vp install
@@ -32,13 +32,18 @@ vp test run test/unit
 vp test run test/integration
 ```
 
+Use `vp run <script>` for repository tasks, `vp run --filter <package> <script>`
+for workspace tasks, and `vp exec <binary>` for local tools. Use `vp add` and
+`vp remove` when changing dependencies; the pinned pnpm policy is an implementation
+detail of the Vite+ setup.
+
 Before submitting a PR, run the full repository check:
 
 ```bash
 vp run check
 ```
 
-`pnpm demo:showcase` is a release gate for the one-rule CLI fixtures under
+`vp run demo:showcase` is a release gate for the one-rule CLI fixtures under
 `examples/showcase`. Per-bundler build and MFDoctor demos live under
 `examples/standalone-findings`; keep them current when adapter wiring or
 catchable configuration rules change.
