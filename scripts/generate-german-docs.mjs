@@ -103,6 +103,8 @@ const headingTranslations = new Map([
   ["## Portable ownership governance", "## Portable Ownership-Governance"],
   ["## Runtime identity projection", "## Laufzeit-Identitätsprojektion"],
   ["## Build/artifact/deployment correlation", "## Build-/Artifact-/Deployment-Korrelation"],
+  ["## Finding lineage and offline history", "## Finding-Lineage und Offline-Historie"],
+  ["## Governance waivers and audit decisions", "## Governance-Waiver und Audit-Entscheidungen"],
   ["## V1 compatibility and rollout", "## V1-Kompatibilität und Einführung"],
   ["## Tooling", "## Werkzeuge"],
   ["## Report surfaces", "## Report-Oberflächen"],
@@ -233,6 +235,7 @@ function renderGerman(relativePath, source) {
   const insertion = frontmatterEndIndex >= 0 ? frontmatterEndIndex + 1 : 0;
   const marker = [
     "<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->",
+    "",
     "> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.",
     "",
   ];

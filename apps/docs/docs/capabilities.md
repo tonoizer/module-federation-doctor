@@ -145,3 +145,22 @@ unknown/unconfirmed changes. A missing or partial later snapshot cannot prove a
 finding resolved; only complete comparable evidence can do that. The contract is
 offline and library-only: it adds no telemetry service, hosted history store,
 default CLI behavior, or rule suppression.
+
+## Governance waivers and audit decisions
+
+`defineGovernanceWaiver` validates a portable, owner-approved exception. A waiver
+must identify a rule and explicit subject, owner, reason, ticket, approver,
+expiration, and one or more named environments. Wildcards, sensitive metadata,
+and selectors that cannot identify a concrete subject are rejected.
+
+`evaluateGovernanceWaiver` and `resolveGovernanceWaivers` require the finding to
+be a complete failure and require environment, target, realm, and environment
+identity evidence whenever a waiver scopes those dimensions. An injected clock
+makes expiry tests and audit output reproducible. Expired, not-yet-active,
+out-of-scope, incomplete, and ambiguous waivers never suppress a finding.
+
+The result retains every waiver ID, decision reason, expiry, evaluation time,
+missing dimension, and conflict. Multiple overlapping approvals with different
+owner/reason/ticket metadata remain `ambiguous` instead of selecting a winner.
+This contract is additive and library-only: it does not change finding lineage,
+the V1 fingerprint, `baseline.schema.json`, report projections, or exit codes.

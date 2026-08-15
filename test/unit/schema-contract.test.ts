@@ -83,6 +83,7 @@ describe("published schema contracts", () => {
       "config.schema.json",
       "evidence.schema.json",
       "finding-lineage.schema.json",
+      "governance-waiver.schema.json",
       "identity-correlation.schema.json",
       "identity-governance.schema.json",
       "identity.schema.json",
@@ -283,6 +284,69 @@ describe("published schema contracts", () => {
         "identity-governance.schema.json",
         { ...rule, owner: "https://example.com/team" },
         "unsafe owner",
+      ),
+    ).rejects.toThrow("Schema validation failed");
+  });
+
+  it("validates additive governance waiver and audit contracts", async () => {
+    const findingLineageId = "mffinding:v1:0123456789abcdef01234567";
+    const waiver = {
+      schemaVersion: 1,
+      id: "waiver-checkout-react",
+      findingLineageId,
+      ruleId: "shared/singleton-mismatch",
+      subjectSelector: {
+        identityKey: "mfid:v1:application:fedcba9876543210fedcba98",
+        target: "browser",
+      },
+      owner: "team/checkout",
+      reason: "legacy host migration is scheduled",
+      ticket: "ENG-1234",
+      approvedBy: "platform-owner",
+      expiresAt: "2027-01-01T00:00:00.000Z",
+      environments: ["production"],
+      targetSelectors: ["browser"],
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const decision = {
+      schemaVersion: 1,
+      waiverId: waiver.id,
+      findingLineageId,
+      outcome: "applied",
+      suppress: true,
+      reason: "in-scope unexpired waiver matched",
+      missing: [],
+      conflicts: [],
+      expiresAt: waiver.expiresAt,
+      evaluatedAt: "2026-08-15T12:00:00.000Z",
+    };
+    const resolution = {
+      schemaVersion: 1,
+      findingLineageId,
+      outcome: "suppressed",
+      suppressed: true,
+      candidateWaiverIds: [waiver.id],
+      appliedWaiverIds: [waiver.id],
+      expiredWaiverIds: [],
+      outOfScopeWaiverIds: [],
+      unknownWaiverIds: [],
+      decisions: [decision],
+      missing: [],
+      conflicts: [],
+      reason: "one in-scope governance waiver applied",
+      evaluatedAt: decision.evaluatedAt,
+    };
+    await validatePayload("governance-waiver.schema.json", waiver, "governance waiver");
+    await validatePayload(
+      "governance-waiver.schema.json",
+      resolution,
+      "governance waiver resolution",
+    );
+    await expect(
+      validatePayload(
+        "governance-waiver.schema.json",
+        { ...waiver, environments: ["*"] },
+        "broad governance waiver",
       ),
     ).rejects.toThrow("Schema validation failed");
   });

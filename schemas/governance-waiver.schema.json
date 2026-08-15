@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/governance-waiver.schema.json",
+  "title": "MFDoctor governance waiver and audit decision",
+  "type": "object",
+  "properties": {
+    "schemaVersion": { "const": 1 }
+  },
+  "oneOf": [{ "$ref": "#/$defs/waiver" }, { "$ref": "#/$defs/resolution" }],
+  "$defs": {
+    "identityKey": {
+      "type": "string",
+      "pattern": "^mfid:v1:[a-z-]+:[a-f0-9]{24}$",
+      "maxLength": 64
+    },
+    "kind": {
+      "enum": [
+        "organization",
+        "application",
+        "container",
+        "adapter-target",
+        "build-lineage",
+        "build",
+        "artifact",
+        "environment",
+        "deployment",
+        "runtime-realm",
+        "runtime-instance"
+      ]
+    },
+    "target": {
+      "enum": ["browser", "ssr", "worker", "mobile", "node", "unknown"]
+    },
+    "realm": {
+      "enum": ["top-frame", "iframe", "worker", "node", "react-native", "unknown"]
+    },
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!.*(?:[A-Za-z]:[\\\\/]|\\\\\\\\|^/|[a-z][a-z\\d+.-]*://|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$))).+$"
+    },
+    "safeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?!.*(?:[A-Za-z]:[\\\\/]|\\\\\\\\|^/|[a-z][a-z\\d+.-]*://|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$))).+$"
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 7,
+      "anyOf": [
+        { "required": ["identityKey"] },
+        { "required": ["parentKey"] },
+        { "required": ["containerName"] }
+      ],
+      "properties": {
+        "identityKey": { "$ref": "#/$defs/identityKey" },
+        "kind": { "$ref": "#/$defs/kind" },
+        "parentKey": { "$ref": "#/$defs/identityKey" },
+        "containerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^(?!.*(?:[A-Za-z]:[\\\\/]|\\\\\\\\|^/|[a-z][a-z\\d+.-]*://|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$)|[*?])).+$"
+        },
+        "target": { "$ref": "#/$defs/target" },
+        "realm": { "$ref": "#/$defs/realm" },
+        "environmentKey": {
+          "allOf": [
+            { "$ref": "#/$defs/identityKey" },
+            { "type": "string", "pattern": "^mfid:v1:environment:" }
+          ]
+        }
+      }
+    },
+    "lineageId": {
+      "type": "string",
+      "pattern": "^mffinding:v1:[a-f0-9]{24}$"
+    },
+    "environment": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?!.*(?:[A-Za-z]:[\\\\/]|\\\\\\\\|^/|[a-z][a-z\\d+.-]*://|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$)|[*?])).+$"
+    },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "waiver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "ruleId",
+        "subjectSelector",
+        "owner",
+        "reason",
+        "ticket",
+        "approvedBy",
+        "expiresAt",
+        "environments"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "id": { "$ref": "#/$defs/safeId" },
+        "findingLineageId": { "$ref": "#/$defs/lineageId" },
+        "ruleId": { "$ref": "#/$defs/safeId" },
+        "subjectSelector": { "$ref": "#/$defs/selector" },
+        "owner": { "$ref": "#/$defs/safeText" },
+        "reason": { "$ref": "#/$defs/safeText" },
+        "ticket": { "$ref": "#/$defs/safeText" },
+        "approvedBy": { "$ref": "#/$defs/safeText" },
+        "expiresAt": { "$ref": "#/$defs/timestamp" },
+        "environments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/environment" }
+        },
+        "targetSelectors": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["browser", "ssr", "worker", "mobile", "node"]
+          }
+        },
+        "createdAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "waiverId",
+        "findingLineageId",
+        "outcome",
+        "suppress",
+        "reason",
+        "missing",
+        "conflicts",
+        "expiresAt",
+        "evaluatedAt"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "waiverId": { "$ref": "#/$defs/safeId" },
+        "findingLineageId": { "$ref": "#/$defs/lineageId" },
+        "outcome": {
+          "enum": ["applied", "not-applicable", "expired", "not-active", "out-of-scope", "unknown"]
+        },
+        "suppress": { "type": "boolean" },
+        "reason": { "$ref": "#/$defs/safeText" },
+        "missing": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "conflicts": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "expiresAt": { "$ref": "#/$defs/timestamp" },
+        "evaluatedAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "findingLineageId",
+        "outcome",
+        "suppressed",
+        "candidateWaiverIds",
+        "appliedWaiverIds",
+        "expiredWaiverIds",
+        "outOfScopeWaiverIds",
+        "unknownWaiverIds",
+        "decisions",
+        "missing",
+        "conflicts",
+        "reason",
+        "evaluatedAt"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "findingLineageId": { "$ref": "#/$defs/lineageId" },
+        "outcome": { "enum": ["suppressed", "not-suppressed", "ambiguous", "unknown"] },
+        "suppressed": { "type": "boolean" },
+        "candidateWaiverIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "appliedWaiverIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "expiredWaiverIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "outOfScopeWaiverIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "unknownWaiverIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "decisions": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/decision" }
+        },
+        "missing": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "conflicts": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "reason": { "$ref": "#/$defs/safeText" },
+        "evaluatedAt": { "$ref": "#/$defs/timestamp" }
+      }
+    }
+  }
+}

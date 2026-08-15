@@ -159,3 +159,25 @@ späterer Snapshot kann keine Behebung beweisen; dafür ist vollständige,
 vergleichbare Evidenz erforderlich. Der Vertrag ist offline und
 bibliotheksbasiert: Er fügt weder Telemetrie, einen gehosteten Verlaufsspeicher,
 standardmäßiges CLI-Verhalten noch Regelunterdrückung hinzu.
+
+## Governance-Waiver und Audit-Entscheidungen
+
+`defineGovernanceWaiver` validiert eine portable, vom Eigentümer genehmigte
+Ausnahme. Ein Waiver muss eine Regel und ein explizites Subject sowie Owner,
+Begründung, Ticket, Genehmiger, Ablaufzeitpunkt und mindestens eine benannte
+Umgebung angeben. Wildcards, sensible Metadaten und Selektoren ohne konkretes
+Subject werden abgelehnt.
+
+`evaluateGovernanceWaiver` und `resolveGovernanceWaivers` verlangen einen
+vollständigen Finding-Fehler und die Identitätsnachweise für Umgebung, Target,
+Realm und Umgebung, wenn ein Waiver diese Dimensionen einschränkt. Eine
+injizierte Uhr macht Ablaufprüfungen und Audit-Ausgaben reproduzierbar.
+Abgelaufene, noch nicht aktive, außerhalb des Scopes liegende, unvollständige
+und mehrdeutige Waiver unterdrücken niemals einen Befund.
+
+Das Ergebnis behält jede Waiver-ID, den Entscheidungsgrund, Ablaufzeitpunkt,
+Auswertungszeitpunkt, fehlende Dimensionen und Konflikte. Mehrere überlappende
+Genehmigungen mit unterschiedlichem Owner-, Begründungs- oder Ticket-Metadatum
+bleiben `ambiguous`, statt einen Gewinner auszuwählen. Der Vertrag ist additiv
+und bibliotheksbasiert: Lineage, V1-Fingerprint, `baseline.schema.json`,
+Report-Projektionen und Exit-Codes bleiben unverändert.

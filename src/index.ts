@@ -401,6 +401,23 @@ export type {
   FindingOccurrenceBasis,
 } from "./finding-lineage.js";
 export {
+  defineGovernanceWaiver,
+  evaluateGovernanceWaiver,
+  resolveGovernanceWaivers,
+  GOVERNANCE_WAIVER_SCHEMA_VERSION,
+} from "./governance-waivers.js";
+export type {
+  GovernanceWaiver,
+  GovernanceWaiverDecision,
+  GovernanceWaiverDecisionOutcome,
+  GovernanceWaiverEvaluationContext,
+  GovernanceWaiverInput,
+  GovernanceWaiverResolution,
+  GovernanceWaiverResolutionOutcome,
+  GovernanceWaiverSchemaVersion,
+  ResolveGovernanceWaiversOptions,
+} from "./governance-waivers.js";
+export {
   assertEvidenceGraphIntegrity,
   assertEvidenceValue,
   canonicalizeEvidenceValue,
