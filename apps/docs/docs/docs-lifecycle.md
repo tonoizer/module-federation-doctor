@@ -7,7 +7,7 @@ description: Release, language, and API-reference ownership rules for MFDoctor d
 
 MFDoctor keeps one canonical documentation surface: the English content at
 `mfdoctor.kevinbeier.com`. Release metadata, localization, and API references
-must be backed by maintained inputs before they become new navigation surfaces.
+are backed by maintained inputs before they become navigation surfaces.
 
 ## Release-backed version indicator
 
@@ -29,16 +29,21 @@ rendering a guessed label.
 ## Language policy
 
 English is the canonical language and `@tonoizer` is the maintainer for its
-technical accuracy. German and other translations are intentionally deferred
-until a translator owner, review path, and parity check exist. No language
-selector or partially translated route should be added before then.
+technical accuracy. German is published alongside English and is maintained by
+`@tonoizer` under the same release gate. The language selector is enabled only
+when every canonical page has a matching German route.
 
-When a translation is accepted, it must have:
+Each published translation must have:
 
-- a named owner and a review date;
+- a named owner and a release review;
 - parity with the canonical page set, including CLI flags, schemas, and rule links;
 - canonical and alternate links that resolve in the production build;
 - a documented policy for keeping release-specific examples current.
+
+Technical identifiers, CLI flags, rule IDs, schemas, links, and code examples
+remain contract-identical across languages. German UI labels and explanatory
+copy are reviewed with the release; the parity check prevents a German route
+from silently disappearing when an English page is added.
 
 ## API reference policy
 
@@ -51,9 +56,9 @@ an acceptable placeholder.
 
 ## Ownership and update rules
 
-| Surface                            | Owner                                    | Update trigger                             | Required proof                            |
-| ---------------------------------- | ---------------------------------------- | ------------------------------------------ | ----------------------------------------- |
-| Canonical English guides and rules | `@tonoizer`                              | Feature, rule, or release behavior changes | Docs build and link checks                |
-| Release indicator                  | Release workflow + `@tonoizer`           | Package version or GitHub release changes  | Package semver and exact release tag link |
-| Translations                       | Named translator with `@tonoizer` review | Canonical page changes                     | Content parity and production link checks |
-| API surface catalog                | Package export map                       | Public entry-point changes                 | Generated-doc drift check                 |
+| Surface                            | Owner                          | Update trigger                             | Required proof                            |
+| ---------------------------------- | ------------------------------ | ------------------------------------------ | ----------------------------------------- |
+| Canonical English guides and rules | `@tonoizer`                    | Feature, rule, or release behavior changes | Docs build and link checks                |
+| Release indicator                  | Release workflow + `@tonoizer` | Package version or GitHub release changes  | Package semver and exact release tag link |
+| German translation                 | `@tonoizer`                    | Canonical page changes                     | Content parity and production link checks |
+| API surface catalog                | Package export map             | Public entry-point changes                 | Generated-doc drift check                 |

@@ -1,0 +1,84 @@
+<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+
+> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+
+# One-rule CLI showcase
+
+`examples/showcase` holds themed, intentional misconfigs for the **CLI**. Run
+them to see the exact rule IDs MFDoctor reports one fixture at a time:
+
+```bash
+pnpm demo:showcase
+```
+
+For **per-bundler build+MFDoctor** demos (Vite / Webpack / Rspack / Rsbuild), see
+[standalone findings](./standalone-findings.md) (`pnpm demo:standalone`).
+
+Prefer fixtures where a missing or weak config would still reach a Module
+Federation plugin or build. Hard plugin failures (for example an empty `name`)
+stay as rules, not showcases.
+
+## Config
+
+| Setup                   | Command                                                                                     | Finding                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Expose key without `./` | `node dist/cli.js check examples/showcase/config/expose-key-invalid --ci`                   | `config/expose-key-invalid` (error)               |
+| Missing expose path     | `node dist/cli.js check examples/showcase/config/expose-path-missing --ci`                  | `config/expose-path-missing` (error)              |
+| Invalid remote entry    | `node dist/cli.js check examples/showcase/config/remote-entry-invalid --ci`                 | `config/remote-entry-invalid` (error)             |
+| Invalid filename        | `node dist/cli.js check examples/showcase/config/filename-invalid --ci`                     | `config/filename-invalid` (error)                 |
+| Undeclared share scope  | `node dist/cli.js check examples/showcase/config/share-scope-undeclared --ci`               | `config/share-scope-undeclared` (error)           |
+| Insecure remote HTTP    | `node dist/cli.js check examples/showcase/config/remote-http-insecure --ci`                 | `config/remote-http-insecure` (warning)           |
+| Local implementation    | `node dist/cli.js check examples/showcase/config/implementation-local --ci`                 | no findings (heuristic does not fire)             |
+| Suspicious impl muted   | `node dist/cli.js check examples/showcase/config/implementation-suspicious-suppressed --ci` | no findings (`"off"`)                             |
+| Localhost remotes in CI | `node dist/cli.js check examples/showcase/config/remote-localhost-in-production --ci`       | `config/remote-localhost-in-production` (warning) |
+| Alias prefix collision  | `node dist/cli.js check examples/showcase/config/remote-alias-prefix-collision --ci`        | `config/remote-alias-prefix-collision` (error)    |
+| DTS outputDir mismatch  | `node dist/cli.js check examples/showcase/config/dts-output-dir-mismatch --ci`              | `config/dts-output-dir-mismatch` (warning)        |
+
+## Shared
+
+| Setup                   | Command                                                                          | Finding                                        |
+| ----------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Eager without singleton | `node dist/cli.js check examples/showcase/shared/eager-without-singleton --ci`   | `shared/eager-without-singleton` (warning)     |
+| Version unsatisfied     | `node dist/cli.js check examples/showcase/shared/version-unsatisfied --ci`       | `shared/version-unsatisfied` (error)           |
+| Singleton risk          | `node dist/cli.js check examples/showcase/shared/singleton-risk --ci`            | `shared/singleton-risk` (warning)              |
+| Singleton risk muted    | `node dist/cli.js check examples/showcase/shared/singleton-risk-suppressed --ci` | no findings (`"off"`)                          |
+| Unused shared           | `node dist/cli.js check examples/showcase/shared/unused --ci`                    | `shared/unused` (warning)                      |
+| Unused + unresolved dyn | `node dist/cli.js check examples/showcase/shared/unused-unresolved --ci`         | `doctor/partial-analysis` (no `shared/unused`) |
+| Shared candidate        | `node dist/cli.js check examples/showcase/shared/candidate --ci`                 | `shared/candidate` (info)                      |
+| Shared candidate muted  | `node dist/cli.js check examples/showcase/shared/candidate-suppressed --ci`      | no findings (`"off"`)                          |
+| Deep-import bypass      | `node dist/cli.js check examples/showcase/shared/deep-import-bypass --ci`        | `shared/deep-import-bypass` (warning)          |
+
+## Reliability
+
+| Setup                         | Command                                                                                   | Finding                                               |
+| ----------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Version-first offline remotes | `node dist/cli.js check examples/showcase/reliability/version-first-offline-remotes --ci` | `reliability/version-first-offline-remotes` (warning) |
+| Shared `import: false`        | `node dist/cli.js check examples/showcase/reliability/shared-import-false --ci`           | `reliability/shared-import-false` (warning)           |
+
+## Federation
+
+| Setup                   | Command                                                                                             | Finding                                        |
+| ----------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Version conflict        | `node dist/cli.js federation "examples/showcase/federation/version-conflict/*.project.json"`        | `federation/version-conflict` (error)          |
+| Share scope mismatch    | `node dist/cli.js federation "examples/showcase/federation/share-scope-mismatch/*.project.json"`    | `federation/share-scope-mismatch` (error)      |
+| Share strategy mismatch | `node dist/cli.js federation "examples/showcase/federation/share-strategy-mismatch/*.project.json"` | `federation/share-strategy-mismatch` (warning) |
+| Circular remote graph   | `node dist/cli.js federation "examples/showcase/federation/circular-remote-graph/*.project.json"`   | `federation/circular-remote-graph` (warning)   |
+| Singleton mismatch      | `node dist/cli.js federation "examples/showcase/federation/singleton-mismatch/*.project.json"`      | `shared/singleton-mismatch` (warning)          |
+| Name conflict           | `node dist/cli.js federation "examples/showcase/federation/name-conflict/*.project.json"`           | `federation/name-conflict` (error)             |
+| Missing provider        | `node dist/cli.js federation "examples/showcase/federation/missing-provider/*.project.json"`        | `federation/missing-provider` (error)          |
+| Host gaps               | `node dist/cli.js federation "examples/showcase/federation/host-gaps/*.project.json"`               | `federation/host-gaps` (warning)               |
+| Ghost shares            | `node dist/cli.js federation "examples/showcase/federation/ghost-shares/*.project.json"`            | `federation/ghost-shares` (info)               |
+
+## Runtime
+
+| Setup           | Command                                                                                                                                    | Finding                           |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| Healthy trace   | `node dist/cli.js runtime examples/showcase/runtime/green/trace.json "examples/showcase/runtime/green/*.project.json"`                     | no findings (exit 0)              |
+| Shared mismatch | `node dist/cli.js runtime examples/showcase/runtime/shared-mismatch/trace.json "examples/showcase/runtime/shared-mismatch/*.project.json"` | `runtime/shared-mismatch` (error) |
+
+These directories are demo fixtures, not runnable apps. Keep
+[mixed federation](./mixed-example.md) for the healthy multi-bundler path,
+[nested federation](./nested-example.md) for multi-level orchestration,
+[mixed federation issues](./mixed-issues-example.md) for a red combination, and
+[standalone findings](./standalone-findings.md) for per-bundler build demos.
+See [Examples](./examples.md) for the full catalog.

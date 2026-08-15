@@ -2,6 +2,7 @@ node_modules/
 dist/
 .output/
 doc_build/
+apps/docs/.generated/
 .mf/
 !fixtures/**/.mf/
 coverage/

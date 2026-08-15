@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "node ../../scripts/generate-rule-docs.mjs && node ../../scripts/generate-api-doc.mjs && node ../../scripts/generate-german-docs.mjs --check && node ../../scripts/prepare-doc-site.mjs",
+    "predev": "pnpm run prepare",
     "dev": "rspress dev",
-    "build": "node ../../scripts/generate-rule-docs.mjs --check && node ../../scripts/generate-api-doc.mjs --check && node ../../scripts/check-doc-snippets.mjs && node ../../scripts/check-doc-links.mjs && rspress build",
+    "build": "node ../../scripts/generate-rule-docs.mjs --check && node ../../scripts/generate-api-doc.mjs --check && node ../../scripts/generate-german-docs.mjs --check && node ../../scripts/check-doc-parity.mjs && node ../../scripts/prepare-doc-site.mjs && node ../../scripts/check-doc-snippets.mjs && node ../../scripts/check-doc-links.mjs && rspress build",
     "preview": "rspress preview",
     "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('doc_build',{recursive:true,force:true}))\"",
     "typecheck": "tsc -p tsconfig.json"
