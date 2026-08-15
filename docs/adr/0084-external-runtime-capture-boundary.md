@@ -2,10 +2,10 @@
 
 ## Status
 
-Proposed for owner review. The contract, offline import, browser transport, and
-read-only snapshot/runtime-instance and network/error fallback slices are
-implemented; atomic export and compatibility closeout remain separate
-implementation slices.
+Proposed for owner review. The contract, offline import, browser transport,
+read-only snapshot/runtime-instance and network/error fallback slices, and the
+atomic validated exporter are implemented; compatibility closeout remains a
+separate implementation slice.
 
 ## Context
 
@@ -144,14 +144,17 @@ The network/error fallback slice is also implemented:
   explicitly `time-window-candidate` relations and flood/malformed input stays
   partial or unknown.
 
+The atomic exporter slice is also implemented:
+
+- a validated safe copy is serialized within the envelope byte quota before any
+  file is created;
+- the output is written with restrictive permissions, flushed, atomically
+  renamed into place, and cleaned up on failure;
+- validation and rename failures leave the existing output untouched.
+
 The remaining work stays linear and independently reviewable:
 
-1. Final quota/redaction/atomic exporter integration and offline handoff proof.
-2. Compatibility matrix, package-boundary audit, privacy docs, and capture-
-   The remaining work stays linear and independently reviewable:
-
-3. Final quota/redaction/atomic exporter integration and offline handoff proof.
-4. Compatibility matrix, package-boundary audit, privacy docs, and capture-
+1. Compatibility matrix, package-boundary audit, privacy docs, and capture-
    then-import examples.
 
 No slice may reopen the rejected runtime-agent design or be merged as a broad

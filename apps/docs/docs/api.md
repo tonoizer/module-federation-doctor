@@ -15,7 +15,7 @@ regenerated.
 | Import | Published runtime target | Purpose |
 | --- | --- | --- |
 | `@tonoizer/mfdoctor` | `./dist/index.js` | Core analysis, policy, baselines, evidence, runtime correlation, and graph payloads. |
-| `@tonoizer/mfdoctor/capture` | `./dist/capture.js` | Validate envelopes and adapt offline runtime exports, read-only fallback state, and bounded network/error metadata. |
+| `@tonoizer/mfdoctor/capture` | `./dist/capture.js` | Validate, adapt, and atomically write bounded offline runtime exports and fallback metadata. |
 | `@tonoizer/mfdoctor/modern` | `./dist/modern.js` | Modern.js adapter integration. |
 | `@tonoizer/mfdoctor/nuxt` | `./dist/nuxt.js` | Nuxt adapter integration. |
 | `@tonoizer/mfdoctor/policy` | `./dist/policy.js` | Named policy packs and policy helpers. |

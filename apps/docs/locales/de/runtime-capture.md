@@ -31,11 +31,12 @@ und 100 Objektschlüssel. Die harte Gesamtgrenze beträgt 25 MiB; Kürzungen wer
 aufgezeichnet.
 
 Vertrag, begrenzter dateibasierter Import, vorhandene Datei-/Export-Adapter, der
-explizite schreibgeschützte Browser-Transport und sichere
-Snapshot-/Runtime-Instance-Projektionen sind die ausgelieferten sicheren
-Slices. Der Netzwerk-/Fehler-Fallback ist ebenfalls verfügbar; atomischer
-Export und automatischer Export bleiben für Issue #84 getrennte Slices. Der begrenzte
-dateibasierte Import ist über den bestehenden Offline-Laufzeitbefehl verfügbar:
+explizite schreibgeschützte Browser-Transport, sichere
+Snapshot-/Runtime-Instance-Projektionen und der Netzwerk-/Fehler-Fallback sind
+die ausgelieferten sicheren Slices. Die atomische validierte JSON-Übergabe ist
+über den Capture-Einstiegspunkt verfügbar; automatischer Export bleibt außerhalb
+dieser Grenze. Der begrenzte dateibasierte Import ist über den bestehenden
+Offline-Laufzeitbefehl verfügbar:
 
 ```bash
 mfdoctor runtime ./capture.json
@@ -43,7 +44,7 @@ mfdoctor runtime ./capture.json
 
 Der Befehl akzeptiert nur Vertragsversion 1, weist übergroße oder unsichere
 Dateien vor der Analyse zurück und behält die bestehende Laufzeitausgabe bei.
-Atomisches Schreiben und Laufzeitmutation bleiben zurückgestellt.
+Laufzeitmutation und automatischer Export bleiben außerhalb der Grenze.
 
 ## Vorhandene Export-Adapter
 
@@ -70,7 +71,32 @@ Der Adapter liest ausschließlich den bereitgestellten Wert. Er startet keinen
 Browser und verbindet sich nicht mit einem Browser, liest keine Live-Globals,
 installiert kein Plugin, aktiviert DevTools nicht, ruft keine
 Laufzeit-`load`-/`register`-/`init`-APIs auf und verändert die Eingabe nicht.
-Das atomische Schreiben der Ausgabedatei bleibt ein späterer #84-Slice.
+Das atomische Schreiben der Ausgabedatei ist explizit und wird von diesem
+Adapter niemals implizit ausgeführt.
+
+## Atomische Offline-Übergabe
+
+Nach der Erzeugung eines validierten Envelopes durch einen externen Adapter kann
+der Capture-Einstiegspunkt ihn schreiben:
+
+```ts
+import {
+  importRuntimeCaptureNetworkFallback,
+  writeRuntimeCaptureExportFile,
+} from "@tonoizer/mfdoctor/capture";
+
+const capture = importRuntimeCaptureNetworkFallback({
+  errors: [{ code: "RUNTIME-007", message: "remote entry failed" }],
+});
+
+await writeRuntimeCaptureExportFile(capture, "./.mf/doctor/runtime-capture.json");
+```
+
+Der Writer validiert zunächst eine sichere normalisierte Kopie, bevor er eine
+temporäre Geschwisterdatei anlegt. Er begrenzt die serialisierte UTF-8-Ausgabe
+auf `limits.maxBytes`, schreibt mit Modus `0600`, leert die Datei, benennt sie
+atomar um und entfernt den temporären Pfad bei einem Fehler. Eine vorhandene
+Ausgabedatei bleibt bei Validierungs- oder Rename-Fehlern unverändert.
 
 ## Expliziter Browser-Transport
 

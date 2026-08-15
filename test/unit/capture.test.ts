@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_RUNTIME_CAPTURE_LIMITS,
   HARD_RUNTIME_CAPTURE_LIMITS,
@@ -14,6 +15,7 @@ import {
   runtimeCaptureContentDigest,
   runtimeCaptureRecordId,
   validateRuntimeCaptureEnvelope,
+  writeRuntimeCaptureExportFile,
   type RuntimeCaptureEnvelope,
   type RuntimeCaptureIdentity,
 } from "../../src/capture.js";
@@ -643,6 +645,65 @@ describe("runtime capture contract", () => {
     expect(serialized).not.toContain("user:pass");
     expect(capture.reports[0]?.provenance.location).toBe(filePath.replaceAll(filePath, "[PATH]"));
     expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
+  });
+
+  it("atomically writes a validated, redacted capture for offline handoff", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-capture-write-"));
+    try {
+      const capture = importRuntimeCaptureNetworkFallback({
+        network: [
+          {
+            url: "https://user:pass@example.test/remoteEntry.js?token=secret-token",
+            kind: "remote-entry",
+          },
+        ],
+      });
+      const output = path.join(root, "capture.json");
+      const result = await writeRuntimeCaptureExportFile(capture, output);
+      const serialized = await fs.readFile(output, "utf8");
+      const roundTrip = await loadRuntimeCaptureExportFile(output);
+      const stat = await fs.stat(output);
+
+      expect(result).toEqual({ path: output, bytes: Buffer.byteLength(serialized, "utf8") });
+      expect(serialized).not.toContain("user:pass");
+      expect(serialized).not.toContain("secret-token");
+      expect(() => validateRuntimeCaptureEnvelope(JSON.parse(serialized))).not.toThrow();
+      expect(roundTrip.network[0]?.value.url).not.toContain("secret-token");
+      expect(stat.mode & 0o777).toBe(0o600);
+      expect(await fs.readdir(root)).toEqual(["capture.json"]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves the old file and cleans the temporary file when rename fails", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-capture-write-failure-"));
+    const output = path.join(root, "capture.json");
+    try {
+      await fs.writeFile(output, "previous-capture");
+      const capture = importRuntimeCaptureFallback({ moduleInfo: { name: "remote" } });
+      vi.spyOn(fs, "rename").mockRejectedValueOnce(new Error("rename blocked"));
+
+      await expect(writeRuntimeCaptureExportFile(capture, output)).rejects.toThrow(
+        "Unable to atomically write runtime capture export",
+      );
+      expect(await fs.readFile(output, "utf8")).toBe("previous-capture");
+      expect(await fs.readdir(root)).toEqual(["capture.json"]);
+    } finally {
+      vi.restoreAllMocks();
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects invalid captures before creating a final or temporary file", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-capture-write-invalid-"));
+    const output = path.join(root, "capture.json");
+    try {
+      await expect(writeRuntimeCaptureExportFile({ schemaVersion: 1 }, output)).rejects.toThrow();
+      expect(await fs.readdir(root)).toEqual([]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 
   it("makes quota truncation explicit for report and event exports", async () => {
