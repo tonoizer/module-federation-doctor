@@ -2467,7 +2467,7 @@ export function importRuntimeCaptureFallback(
         capturedAt,
         contentDigest: runtimeCaptureContentDigest(value as unknown as EvidenceValue),
         provenance: provenance(),
-        completeness: snapshotCompleteness,
+        completeness: { ...snapshotCompleteness },
         value,
       };
     });
@@ -2480,7 +2480,7 @@ export function importRuntimeCaptureFallback(
         capturedAt,
         contentDigest: runtimeCaptureContentDigest(value as unknown as EvidenceValue),
         provenance: provenance(),
-        completeness: instanceCompleteness,
+        completeness: { ...instanceCompleteness },
         value,
       };
     });
