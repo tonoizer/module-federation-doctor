@@ -1,0 +1,18 @@
+# `config/name-required`
+
+- Category: **correctness**
+- Default severity: **error**
+
+## Issue
+
+The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so MFDoctor keeps this for offline checks rather than a showcase fixture.
+
+## How to fix it
+
+Set `name` to a stable, federation-wide unique id such as "host" or "shop".
+
+Suppress or retarget with `rules["config/name-required"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+
+## Sources
+
+- [Official source](https://module-federation.io/configure/name.html)

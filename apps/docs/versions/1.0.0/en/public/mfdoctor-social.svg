@@ -1,0 +1,26 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">MFDoctor</title>
+  <desc id="desc">Post-build diagnostics for Module Federation projects.</desc>
+  <rect width="1200" height="630" fill="#0A0A0A"/>
+  <line x1="112" y1="104" x2="1088" y2="104" stroke="#FFFFFF" stroke-opacity=".1"/>
+  <g transform="translate(112 130) scale(1.2)">
+    <path d="M21 1 37 10v18l-16 9L5 28V10L21 1Z" stroke="#108CB9" stroke-width="1.5"/>
+    <path d="m21 1 0 8M5 10l7 4M37 10l-7 4M5 28l7-4M37 28l-7-4M21 37v-8" stroke="#71BEDB" stroke-width="1.5"/>
+    <path d="m21 8 7 4-7 4-7-4 7-4Z" fill="#79B8FF"/>
+    <path d="m14 12 7 4v8l-7-4v-8Z" fill="#175CD3"/>
+    <path d="m28 12-7 4v8l7-4v-8Z" fill="#79B8FF"/>
+    <path d="m14 20 7 4-7 4-7-4 7-4Z" fill="#175CD3"/>
+    <path d="m7 24 7 4v8l-7-4v-8Z" fill="#79B8FF"/>
+    <path d="m21 24-7 4v8l7-4v-8Z" fill="#175CD3"/>
+    <path d="m28 20 7 4-7 4-7-4 7-4Z" fill="#175CD3"/>
+    <path d="m21 24 7 4v8l-7-4v-8Z" fill="#175CD3"/>
+    <path d="m35 24-7 4v8l7-4v-8Z" fill="#79B8FF"/>
+  </g>
+  <circle cx="158" cy="172" r="5" fill="#46A758" stroke="#0A0A0A" stroke-width="3"/>
+  <text x="181" y="168" fill="#EDEDED" font-family="Geist, Arial, sans-serif" font-size="30" font-weight="600" letter-spacing="-0.8">MFDoctor</text>
+  <text x="112" y="310" fill="#EDEDED" font-family="Geist, Arial, sans-serif" font-size="64" font-weight="600" letter-spacing="-2">Find federation failures</text>
+  <text x="112" y="382" fill="#EDEDED" font-family="Geist, Arial, sans-serif" font-size="64" font-weight="600" letter-spacing="-2">before runtime.</text>
+  <text x="112" y="458" fill="#9A9A9A" font-family="Geist, Arial, sans-serif" font-size="28">Post-build diagnostics for Module Federation projects.</text>
+  <line x1="112" y1="518" x2="1088" y2="518" stroke="#FFFFFF" stroke-opacity=".1"/>
+  <text x="112" y="566" fill="#9A9A9A" font-family="Geist Mono, Consolas, monospace" font-size="22">mfdoctor.kevinbeier.com</text>
+</svg>

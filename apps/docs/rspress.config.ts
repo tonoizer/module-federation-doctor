@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "@rspress/core";
+import { defineConfig, type Nav, type Sidebar } from "@rspress/core";
 import { docsRelease } from "./docs-release.js";
 
 const docsAppDir = path.dirname(fileURLToPath(import.meta.url));
@@ -162,10 +162,169 @@ const sidebar = {
   "/": guideSidebar,
 };
 
+type MenuNode = {
+  [key: string]: unknown;
+  items?: MenuNode[];
+  link?: string;
+  activeMatch?: string;
+  text?: string;
+};
+
+const nav: MenuNode[] = [
+  {
+    text: "Guide",
+    link: "/setup",
+    activeMatch: "^/(setup|integrations|monorepos|production-readiness)",
+  },
+  {
+    text: "Configuration",
+    link: "/configuration-audit",
+    activeMatch:
+      "^/(configuration-audit|vite-integration|custom-rules|evidence-aware-rules|suppressions|baselines|policy-packs)",
+  },
+  {
+    text: "CLI",
+    link: "/cli",
+    activeMatch: "^/cli",
+  },
+  {
+    text: "Rules",
+    link: "/rules/",
+    activeMatch: "^/rules/",
+  },
+  {
+    text: "Resources",
+    items: [
+      { text: "Examples", link: "/examples" },
+      { text: "Compatibility", link: "/compatibility" },
+      { text: "Report schemas", link: "/report-schemas" },
+      { text: `MFDoctor v${docsRelease.version}`, link: docsRelease.releaseUrl },
+      {
+        text: "Module Federation",
+        link: "https://module-federation.io/",
+      },
+    ],
+  },
+];
+
+const germanLabels: Record<string, string> = {
+  Guide: "Anleitung",
+  "Getting started": "Erste Schritte",
+  Setup: "Einrichtung",
+  "Bundler integrations": "Bundler-Integrationen",
+  Adoption: "Einführung",
+  Monorepos: "Monorepos",
+  "Production readiness": "Produktionsbereitschaft",
+  Configuration: "Konfiguration",
+  "Configuration audit": "Konfigurationsprüfung",
+  "Vite integration": "Vite-Integration",
+  "Custom rules": "Eigene Regeln",
+  "Evidence-aware rules": "Evidenzbasierte Regeln",
+  Governance: "Governance",
+  Suppressions: "Unterdrückungen",
+  "Fingerprint baselines": "Fingerprint-Baselines",
+  "Policy packs": "Policy-Pakete",
+  CLI: "CLI",
+  "Command reference": "Befehlsreferenz",
+  "Production and CI": "Produktion und CI",
+  "Runtime capture": "Laufzeitaufzeichnung",
+  "Report schemas": "Report-Schemas",
+  Examples: "Beispiele",
+  Overview: "Übersicht",
+  "Mixed federation": "Gemischte Federation",
+  "Mixed federation issues": "Probleme in gemischten Federations",
+  "Nested federation": "Verschachtelte Federation",
+  "Standalone findings": "Einzelbefunde",
+  "One-rule showcase": "Ein-Regel-Schaukasten",
+  Rules: "Regeln",
+  Resources: "Ressourcen",
+  Compatibility: "Kompatibilität",
+  Capabilities: "Fähigkeiten",
+  "Documentation lifecycle": "Lebenszyklus der Dokumentation",
+  "Public API surface": "Öffentliche API-Oberfläche",
+  "Runtime and manifests": "Laufzeit und Manifeste",
+  Performance: "Leistung",
+  Limitations: "Einschränkungen",
+  Config: "Konfiguration",
+  Shared: "Shared",
+  Reliability: "Zuverlässigkeit",
+  Federation: "Federation",
+  Artifact: "Artefakt",
+  "Runtime plugins": "Laufzeit-Plugins",
+  "Module Federation": "Module Federation",
+};
+
+function routePrefix(version: string, language: string) {
+  const versionPart =
+    docsRelease.multiVersion && version !== docsRelease.version ? `/${version}` : "";
+  const languagePart = language === "en" ? "" : `/${language}`;
+  return `${versionPart}${languagePart}`;
+}
+
+function prefixLink(link: string, prefix: string) {
+  if (!link || prefix === "" || /^(?:https?:|mailto:|#)/.test(link)) return link;
+  if (!link.startsWith("/")) return link;
+  return `${prefix}${link}` || "/";
+}
+
+function prefixMenu(items: MenuNode[], prefix: string, localize: boolean): MenuNode[] {
+  return items.map((item) => {
+    const next: MenuNode = { ...item };
+    if (typeof next.text === "string" && localize) next.text = germanLabels[next.text] ?? next.text;
+    if (typeof next.link === "string") next.link = prefixLink(next.link, prefix);
+    if (typeof next.activeMatch === "string" && prefix) {
+      next.activeMatch = next.activeMatch.replace(/^\^\//, `^${prefix}/`);
+    }
+    if (Array.isArray(next.items)) next.items = prefixMenu(next.items, prefix, localize);
+    return next;
+  });
+}
+
+function prefixedSidebar(baseSidebar: Record<string, MenuNode[]>, language: string) {
+  const result: Record<string, MenuNode[]> = {};
+  for (const version of docsRelease.maintainedVersions) {
+    const prefix = routePrefix(version, language);
+    for (const [key, items] of Object.entries(baseSidebar)) {
+      const sidebarKey = `${prefix}${key}` || "/";
+      result[sidebarKey] = prefixMenu(items, prefix, language === "de");
+    }
+  }
+  return result;
+}
+
+function versionedNav(language: string) {
+  const values = Object.fromEntries(
+    docsRelease.maintainedVersions.map((version) => [
+      version,
+      prefixMenu(nav, routePrefix(version, language), language === "de"),
+    ]),
+  );
+  return docsRelease.multiVersion ? values : values[docsRelease.version]!;
+}
+
+const docsBuildRoot = path.join(docsAppDir, ".generated");
+const englishNav = versionedNav("en") as unknown as Nav;
+const germanNav = versionedNav("de") as unknown as Nav;
+const englishSidebar = prefixedSidebar(sidebar, "en") as unknown as Sidebar;
+const germanSidebar = prefixedSidebar(sidebar, "de") as unknown as Sidebar;
+
 export default defineConfig({
-  root: path.join(docsAppDir, "docs"),
+  root: docsBuildRoot,
   base,
   siteOrigin,
+  lang: "en",
+  locales: [
+    { lang: "en", label: "English" },
+    { lang: "de", label: "Deutsch" },
+  ],
+  ...(docsRelease.multiVersion
+    ? {
+        multiVersion: {
+          default: docsRelease.multiVersion.default,
+          versions: [...docsRelease.multiVersion.versions],
+        },
+      }
+    : {}),
   llms: true,
   title: "MFDoctor",
   description: "Diagnostics for Vite, Rspack, Rsbuild, Webpack, and Modern.js federation projects",
@@ -192,43 +351,16 @@ export default defineConfig({
     },
   },
   themeConfig: {
-    nav: [
+    nav: englishNav,
+    sidebar: englishSidebar,
+    locales: [
       {
-        text: "Guide",
-        link: "/setup",
-        activeMatch: "^/(setup|integrations|monorepos|production-readiness)",
-      },
-      {
-        text: "Configuration",
-        link: "/configuration-audit",
-        activeMatch:
-          "^/(configuration-audit|vite-integration|custom-rules|evidence-aware-rules|suppressions|baselines|policy-packs)",
-      },
-      {
-        text: "CLI",
-        link: "/cli",
-        activeMatch: "^/cli",
-      },
-      {
-        text: "Rules",
-        link: "/rules/",
-        activeMatch: "^/rules/",
-      },
-      {
-        text: "Resources",
-        items: [
-          { text: "Examples", link: "/examples" },
-          { text: "Compatibility", link: "/compatibility" },
-          { text: "Report schemas", link: "/report-schemas" },
-          { text: `MFDoctor v${docsRelease.version}`, link: docsRelease.releaseUrl },
-          {
-            text: "Module Federation",
-            link: "https://module-federation.io/",
-          },
-        ],
+        lang: "de",
+        label: "Deutsch",
+        nav: germanNav,
+        sidebar: germanSidebar,
       },
     ],
-    sidebar,
     editLink: {
       docRepoBaseUrl:
         "https://github.com/tonoizer/module-federation-doctor/tree/main/apps/docs/docs",

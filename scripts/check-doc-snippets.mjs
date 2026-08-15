@@ -4,7 +4,13 @@ import ts from "typescript";
 import fg from "fast-glob";
 
 const repository = path.resolve(import.meta.dirname, "..");
-const files = await fg("apps/docs/docs/**/*.md", { cwd: repository, absolute: true });
+const generatedRoot = path.join(repository, "apps/docs/.generated");
+const docsRoot = process.env.DOCS_ROOT
+  ? path.resolve(repository, process.env.DOCS_ROOT)
+  : (await fs.stat(generatedRoot).catch(() => null))?.isDirectory()
+    ? generatedRoot
+    : path.join(repository, "apps/docs/docs");
+const files = await fg("**/*.md", { cwd: docsRoot, absolute: true });
 let failed = false;
 for (const file of files.sort()) {
   const markdown = await fs.readFile(file, "utf8");
