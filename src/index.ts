@@ -375,6 +375,32 @@ export type {
   DeploymentRelationshipKind,
 } from "./build-artifact-deployment-correlation.js";
 export {
+  assertFindingLineageRecord,
+  createFindingHistorySnapshot,
+  createFindingLineage,
+  diffFindingHistory,
+  diffFindingHistorySeries,
+  FINDING_LINEAGE_SCHEMA_VERSION,
+  FindingLineageValidationError,
+} from "./finding-lineage.js";
+export type {
+  FindingHistoryChange,
+  FindingHistoryDiff,
+  FindingHistorySnapshot,
+  FindingHistorySnapshotInput,
+  FindingHistoryState,
+  FindingIdentityDimensionValue,
+  FindingLineageCompleteness,
+  FindingLineageConfidence,
+  FindingLineageInput,
+  FindingLineageOutcome,
+  FindingLineageRecord,
+  FindingLineageSchemaVersion,
+  FindingLineageScope,
+  FindingLineageSeverity,
+  FindingOccurrenceBasis,
+} from "./finding-lineage.js";
+export {
   assertEvidenceGraphIntegrity,
   assertEvidenceValue,
   canonicalizeEvidenceValue,

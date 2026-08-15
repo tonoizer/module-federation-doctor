@@ -129,3 +129,19 @@ These relationships preserve separate build and deployment occurrences while
 allowing one artifact set to be redeployed. Incomplete or conflicting #81-style
 evidence remains weak or unknown, and no deployment is performed by the
 library.
+
+## Finding lineage and offline history
+
+`createFindingLineage` gives a rule evaluation a stable `findingLineageId` and
+an independent `findingOccurrenceId`. Lineage is built only from the rule's
+declared identity schema, semantic subject, stable violation key, and explicitly
+declared scope. Messages, severity, source locations, timestamps, and volatile
+evidence are excluded from the lineage ID. The existing V1 fingerprint remains
+unchanged and is still the baseline/SARIF compatibility identity.
+
+`createFindingHistorySnapshot` and `diffFindingHistory` compare saved local or CI
+snapshots. They report new, persistent, resolved, regressed, improved, and
+unknown/unconfirmed changes. A missing or partial later snapshot cannot prove a
+finding resolved; only complete comparable evidence can do that. The contract is
+offline and library-only: it adds no telemetry service, hosted history store,
+default CLI behavior, or rule suppression.

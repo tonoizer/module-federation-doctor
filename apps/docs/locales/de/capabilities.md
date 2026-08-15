@@ -140,3 +140,22 @@ Die Beziehungen bewahren getrennte Build- und Deployment-Vorkommnisse, auch
 wenn eine Artifact-Menge erneut ausgerollt wird. Unvollständige oder
 widersprüchliche #81-Evidenz bleibt weak oder unknown; die Bibliothek führt
 keine Deployments aus.
+
+## Finding-Lineage und Offline-Historie
+
+`createFindingLineage` gibt einer Regelauswertung eine stabile
+`findingLineageId` und eine getrennte `findingOccurrenceId`. Die Lineage wird
+nur aus dem von der Regel deklarierten Identitätsschema, dem semantischen
+Subject, dem stabilen Verstoßschlüssel und dem ausdrücklich deklarierten Scope
+gebildet. Nachrichten, Schweregrad, Quellpositionen, Zeitstempel und volatile
+Evidenz sind nicht Teil der Lineage-ID. Der bestehende V1-Fingerprint bleibt
+unverändert und ist weiterhin die Kompatibilitätsidentität für Baselines und
+SARIF.
+
+`createFindingHistorySnapshot` und `diffFindingHistory` vergleichen gespeicherte
+lokale oder CI-Snapshots. Sie melden neue, persistente, behobene, verschärfte,
+verbesserte und unbekannte/unbestätigte Änderungen. Ein fehlender oder partieller
+späterer Snapshot kann keine Behebung beweisen; dafür ist vollständige,
+vergleichbare Evidenz erforderlich. Der Vertrag ist offline und
+bibliotheksbasiert: Er fügt weder Telemetrie, einen gehosteten Verlaufsspeicher,
+standardmäßiges CLI-Verhalten noch Regelunterdrückung hinzu.

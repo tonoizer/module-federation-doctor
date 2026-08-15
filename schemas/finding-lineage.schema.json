@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/finding-lineage.schema.json",
+  "title": "MFDoctor finding lineage and history",
+  "type": "object",
+  "properties": {
+    "schemaVersion": { "const": 1 }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/record" },
+    { "$ref": "#/$defs/snapshot" },
+    { "$ref": "#/$defs/diff" }
+  ],
+  "$defs": {
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?!.*(?:[A-Za-z]:[\\\\/]|\\\\\\\\|^/|[a-z][a-z\\d+.-]*://|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$))).+$"
+    },
+    "safeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?!.*(?:[A-Za-z]:[\\\\/]|\\\\\\\\|^/|[a-z][a-z\\d+.-]*://|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$))).+$"
+    },
+    "identityKey": {
+      "type": "string",
+      "pattern": "^mfid:v1:[a-z-]+:[a-f0-9]{24}$",
+      "maxLength": 64
+    },
+    "subjectKey": {
+      "type": "string",
+      "pattern": "^(?:mfid:v1:[a-z-]+:[a-f0-9]{24}|mfedge:v1:[a-f0-9]{24})$",
+      "maxLength": 64
+    },
+    "lineageId": {
+      "type": "string",
+      "pattern": "^mffinding:v1:[a-f0-9]{24}$"
+    },
+    "occurrenceId": {
+      "type": "string",
+      "pattern": "^mffinding-occurrence:v1:[a-f0-9]{24}$"
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+        },
+        "version": { "$ref": "#/$defs/safeId" }
+      }
+    },
+    "dimensions": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[A-Za-z][A-Za-z0-9_.-]*$": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeText" },
+            {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/safeText" }
+            }
+          ]
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 9,
+      "properties": {
+        "target": { "enum": ["browser", "ssr", "worker", "mobile", "node", "unknown"] },
+        "realm": { "enum": ["top-frame", "iframe", "worker", "node", "react-native", "unknown"] },
+        "environmentKey": {
+          "allOf": [
+            { "$ref": "#/$defs/identityKey" },
+            { "type": "string", "pattern": "^mfid:v1:environment:" }
+          ]
+        },
+        "buildLineageKey": {
+          "allOf": [
+            { "$ref": "#/$defs/identityKey" },
+            { "type": "string", "pattern": "^mfid:v1:build-lineage:" }
+          ]
+        },
+        "buildKey": {
+          "allOf": [
+            { "$ref": "#/$defs/identityKey" },
+            { "type": "string", "pattern": "^mfid:v1:build:" }
+          ]
+        },
+        "artifactKey": {
+          "allOf": [
+            { "$ref": "#/$defs/identityKey" },
+            { "type": "string", "pattern": "^mfid:v1:artifact:" }
+          ]
+        },
+        "deploymentKey": {
+          "allOf": [
+            { "$ref": "#/$defs/identityKey" },
+            { "type": "string", "pattern": "^mfid:v1:deployment:" }
+          ]
+        },
+        "runtimeRealmKey": {
+          "allOf": [
+            { "$ref": "#/$defs/identityKey" },
+            { "type": "string", "pattern": "^mfid:v1:runtime-realm:" }
+          ]
+        },
+        "runtimeInstanceKey": {
+          "allOf": [
+            { "$ref": "#/$defs/identityKey" },
+            { "type": "string", "pattern": "^mfid:v1:runtime-instance:" }
+          ]
+        },
+        "edgeKey": { "type": "string", "pattern": "^mfedge:v1:[a-f0-9]{24}$" }
+      }
+    },
+    "outcome": { "enum": ["pass", "fail", "unknown", "not-applicable"] },
+    "completeness": { "enum": ["complete", "partial", "unknown"] },
+    "confidence": { "enum": ["exact", "strong", "weak", "unknown"] },
+    "evidenceIds": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/safeId" }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "findingLineageId",
+        "findingOccurrenceId",
+        "identitySchemaVersion",
+        "rule",
+        "subjectKey",
+        "violationKey",
+        "identityDimensions",
+        "outcome",
+        "completeness",
+        "confidence",
+        "evidenceIds",
+        "occurrenceBasis"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "findingLineageId": { "$ref": "#/$defs/lineageId" },
+        "findingOccurrenceId": { "$ref": "#/$defs/occurrenceId" },
+        "identitySchemaVersion": { "const": 1 },
+        "rule": { "$ref": "#/$defs/rule" },
+        "subjectKey": { "$ref": "#/$defs/subjectKey" },
+        "violationKey": { "$ref": "#/$defs/safeText" },
+        "identityDimensions": { "$ref": "#/$defs/dimensions" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "outcome": { "$ref": "#/$defs/outcome" },
+        "completeness": { "$ref": "#/$defs/completeness" },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "evidenceIds": { "$ref": "#/$defs/evidenceIds" },
+        "occurrenceBasis": { "enum": ["explicit", "evidence", "lineage"] },
+        "occurrenceKey": { "$ref": "#/$defs/safeText" },
+        "severity": { "enum": ["info", "warning", "error"] }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "snapshotId",
+        "completeness",
+        "comparable",
+        "evaluations",
+        "missing"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "snapshotId": { "$ref": "#/$defs/safeId" },
+        "completeness": { "$ref": "#/$defs/completeness" },
+        "comparable": { "type": "boolean" },
+        "evaluations": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "$ref": "#/$defs/record" }
+        },
+        "missing": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 128,
+          "items": { "$ref": "#/$defs/safeId" }
+        }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "findingLineageId", "state", "reason"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "findingLineageId": { "$ref": "#/$defs/lineageId" },
+        "state": {
+          "enum": ["new", "persistent", "resolved", "regressed", "improved", "unknown/unconfirmed"]
+        },
+        "reason": { "$ref": "#/$defs/safeText" },
+        "previousOutcome": { "$ref": "#/$defs/outcome" },
+        "currentOutcome": { "$ref": "#/$defs/outcome" },
+        "previousOccurrenceId": { "$ref": "#/$defs/occurrenceId" },
+        "currentOccurrenceId": { "$ref": "#/$defs/occurrenceId" }
+      }
+    },
+    "diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "fromSnapshotId", "toSnapshotId", "comparable", "changes"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "fromSnapshotId": { "$ref": "#/$defs/safeId" },
+        "toSnapshotId": { "$ref": "#/$defs/safeId" },
+        "comparable": { "type": "boolean" },
+        "changes": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "$ref": "#/$defs/change" }
+        }
+      }
+    }
+  }
+}
