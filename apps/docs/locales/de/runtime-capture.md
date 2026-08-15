@@ -198,3 +198,19 @@ exakte Relation. Eine Übereinstimmung nur über Zeit ist
 `time-window-candidate` und niemals eine exakte kausale Verknüpfung. Überläufe
 und fehlerhafte Datensätze bleiben `partial`/`unknown` und erzeugen explizite
 Kürzungsdaten.
+
+## Datenschutz und Paketgrenze
+
+Der Capture-Vertrag bewahrt nur begrenzte, freigegebene Nachweise:
+
+| Aufbewahrt                                                                                                                                                      | Niemals gelesen oder aufbewahrt                                                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Quellversion, abgegrenzte Identität, sicherer Locator, Status-/Klassenmetadaten, begrenzter Diagnose-Text, Herkunft, Vollständigkeit, Digest und Kürzungsstatus | Cookies, Authorization-Header, Request-/Response-Bodies, Zugangsdaten, geheime Query-Werte, rohe Stacks, Factories, Props, Storage, beliebige Runtime-Graphen oder private Plugin-Interna |
+
+Die Redigierung erfolgt vor stabilen IDs, Content-Digests, Pufferung und
+Dateischreiben. Der Standard-Einstieg `@tonoizer/mfdoctor` und die Bundler-
+Adapter importieren den Capture-Einstiegspunkt nicht und stellen seine
+Funktionen nicht bereit. Verwenden Sie den expliziten Subpath
+`@tonoizer/mfdoctor/capture` nur aus einem Node-/Offline-Tool; er darf niemals
+in ein Client-Bundle oder in `check`, einen Build-Adapter oder den
+Anwendungsstart gelangen.

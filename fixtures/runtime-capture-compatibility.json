@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "description": "Checked-in runtime-capture compatibility inputs for current, legacy, partial, DevTools, Node/SSR, preview, disabled-snapshot, frame, and worker boundaries.",
+  "fileCases": [
+    {
+      "id": "observability-current",
+      "input": "fixtures/runtime-traces/current-2.5.3.json",
+      "expectedKind": "observability",
+      "expectedTransport": "file"
+    },
+    {
+      "id": "observability-legacy",
+      "input": "fixtures/runtime-traces/healthy.json",
+      "expectedKind": "observability",
+      "expectedTransport": "file"
+    },
+    {
+      "id": "observability-sensitive-partial",
+      "input": "fixtures/runtime-traces/remote-load-failed.json",
+      "expectedKind": "observability",
+      "expectedTransport": "file",
+      "forbiddenOutput": ["secret-token", "user:pass"]
+    },
+    {
+      "id": "devtools-partial",
+      "input": "fixtures/runtime-traces/partial-devtools.json",
+      "expectedKind": "devtools",
+      "expectedTransport": "devtools-export"
+    },
+    {
+      "id": "node-ssr",
+      "input": "fixtures/runtime-traces/current-2.5.3.json",
+      "wrapper": "node-file",
+      "expectedKind": "node",
+      "expectedTransport": "node-file"
+    }
+  ],
+  "projectionCases": ["preview-runtime", "disabled-snapshot", "browser-frame", "browser-worker"]
+}

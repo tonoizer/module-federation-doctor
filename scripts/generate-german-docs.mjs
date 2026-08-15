@@ -97,6 +97,8 @@ const headingTranslations = new Map([
     "## Versionierte Befunddetails (`detailsSchema` + `details`)",
   ],
   ["## Variant coverage", "## Variantenabdeckung"],
+  ["## Runtime capture compatibility", "## Laufzeit-Capture-Kompatibilität"],
+  ["## Privacy and package boundary", "## Datenschutz und Paketgrenze"],
   ["## V1 compatibility and rollout", "## V1-Kompatibilität und Einführung"],
   ["## Tooling", "## Werkzeuge"],
   ["## Report surfaces", "## Report-Oberflächen"],
