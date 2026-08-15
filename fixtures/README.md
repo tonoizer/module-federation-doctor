@@ -14,6 +14,8 @@
   classic `remoteEntry.js`) with golden project facts (#145 → unlocks #127).
 - `policy-packs`: shareable MFDoctor policy pack example (`@acme/mfdoctor-policy`).
 - `runtime-traces`: Observability-style exports for `mfdoctor runtime` correlation.
+- `semantic-graph/mixed-v1-v2.json`: mixed V1 project facts and V2 identity/capability
+  input used by the packaged semantic graph verifier.
 - `shared-inspector-mf2`: minimal MF2 shared-array / inherited-shared evidence
   JSON shaped like `@mf-toolkit/shared-inspector` stress fixtures (#145).
 - `workspaces`: portable multi-app `.mf/doctor/project.json` trees for the

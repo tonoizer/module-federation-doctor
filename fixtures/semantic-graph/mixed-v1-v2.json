@@ -1,0 +1,120 @@
+{
+  "identities": [
+    {
+      "schemaVersion": 1,
+      "kind": "organization",
+      "key": "mfid:v1:organization:24b7b48c6ac0384f62c049d6",
+      "aliases": [],
+      "completeness": "complete",
+      "confidence": "strong",
+      "provenance": { "source": "unknown", "evidenceIds": [] },
+      "organizationId": "acme",
+      "displayName": "Acme"
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "application",
+      "key": "mfid:v1:application:aa9b95915473d7fc3205c933",
+      "aliases": [],
+      "completeness": "complete",
+      "confidence": "strong",
+      "provenance": { "source": "unknown", "evidenceIds": [] },
+      "applicationId": "checkout",
+      "organizationId": "acme",
+      "parentKey": "mfid:v1:organization:24b7b48c6ac0384f62c049d6",
+      "displayName": "checkout"
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "container",
+      "key": "mfid:v1:container:8ce98e8be13f81ef2236d24c",
+      "aliases": [],
+      "completeness": "complete",
+      "confidence": "strong",
+      "provenance": { "source": "unknown", "evidenceIds": [] },
+      "applicationId": "checkout",
+      "containerName": "shop",
+      "organizationId": "acme",
+      "parentKey": "mfid:v1:application:aa9b95915473d7fc3205c933",
+      "displayName": "shop"
+    }
+  ],
+  "edges": [
+    {
+      "schemaVersion": 1,
+      "id": "mfedge:v1:fe71aa0070bf1fb7fa2a8d4f",
+      "kind": "producer",
+      "fromKey": "mfid:v1:application:aa9b95915473d7fc3205c933",
+      "toKey": "mfid:v1:container:8ce98e8be13f81ef2236d24c",
+      "scope": { "target": "browser" },
+      "outcome": "exact",
+      "completeness": "complete",
+      "evidenceIds": ["fixture-config"]
+    }
+  ],
+  "coverage": [
+    {
+      "subjectKey": "mfid:v1:application:aa9b95915473d7fc3205c933",
+      "scope": { "target": "browser" },
+      "expectedKinds": ["producer"]
+    }
+  ],
+  "legacyProjects": [
+    {
+      "schemaVersion": 1,
+      "project": {
+        "name": "checkout",
+        "root": "fixtures/legacy-checkout-a",
+        "identityKey": "mfid:v1:application:aa9b95915473d7fc3205c933"
+      },
+      "bundler": { "name": "vite", "mode": "production" },
+      "capabilities": {
+        "config": true,
+        "sourceImports": false,
+        "manifest": false,
+        "stats": false,
+        "emittedAssets": false,
+        "installedVersions": true
+      },
+      "dependencies": { "declared": {}, "installed": {} },
+      "imports": {
+        "sourceFiles": [],
+        "specifiers": [],
+        "packages": [],
+        "dynamicPackages": [],
+        "remotes": [],
+        "unresolvedDynamic": [],
+        "evidenceSources": []
+      },
+      "artifacts": { "emittedAssets": [] }
+    },
+    {
+      "schemaVersion": 1,
+      "project": {
+        "name": "checkout",
+        "root": "fixtures/legacy-checkout-b",
+        "identityKey": "mfid:v1:application:aa9b95915473d7fc3205c933"
+      },
+      "bundler": { "name": "vite", "mode": "production" },
+      "capabilities": {
+        "config": true,
+        "sourceImports": false,
+        "manifest": false,
+        "stats": false,
+        "emittedAssets": false,
+        "installedVersions": true
+      },
+      "dependencies": { "declared": {}, "installed": {} },
+      "imports": {
+        "sourceFiles": [],
+        "specifiers": [],
+        "packages": [],
+        "dynamicPackages": [],
+        "remotes": [],
+        "unresolvedDynamic": [],
+        "evidenceSources": []
+      },
+      "artifacts": { "emittedAssets": [] }
+    }
+  ]
+}
