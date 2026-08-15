@@ -128,6 +128,17 @@ const packageJson = await import("@tonoizer/mfdoctor/package.json", { with: { ty
 assert.equal(typeof api.analyze, "function");
 assert.equal(typeof api.probeManifest, "function");
 assert.equal(typeof api.buildUiPayload, "function");
+for (const captureOnlyExport of [
+  "captureRuntimeBrowserExport",
+  "importRuntimeCaptureExport",
+  "loadRuntimeCaptureExportFile",
+  "writeRuntimeCaptureExportFile",
+])
+  assert.equal(
+    api[captureOnlyExport],
+    undefined,
+    "default package entry must not expose capture-only export " + captureOnlyExport,
+  );
 assert.equal(typeof vite.federationDoctor, "function");
 assert.equal(typeof nuxt.moduleFederationDoctor.setup, "function");
 assert.equal(nuxt.nuxtDoctor, nuxt.moduleFederationDoctor);

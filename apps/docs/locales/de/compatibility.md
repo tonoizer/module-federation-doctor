@@ -80,6 +80,29 @@ Partial cells must not silently skip gaps. Prefer
 [`doctor/partial-analysis`](./rules/doctor/partial-analysis.md) over false
 certainty (`shared/unused`, invented remotes, scraped private plugin fields).
 
+## Laufzeit-Capture-Kompatibilität
+
+Laufzeit-Capture ist eine separate, optionale Node-/Offline-Grenze. Der
+eingecheckte Vertrag unter
+[`fixtures/runtime-capture-compatibility.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/fixtures/runtime-capture-compatibility.json)
+und `scripts/verify-runtime-capture-compatibility.mjs` prüft nach jedem
+Package-Build den öffentlichen Einstiegspunkt `@tonoizer/mfdoctor/capture`:
+
+| Oberfläche                               | Status        | Nachweis                             | Kompatibilitätsgarantie                                                                       |
+| ---------------------------------------- | ------------- | ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Aktueller Observability-Export           | **supported** | `current-2.5.3.json`                 | Begrenzt Reports/Events und bewahrt den Quellenstatus.                                        |
+| Legacy-Observability-Export              | **supported** | `healthy.json`                       | Bewahrt Legacy-Parsing; fehlende Felder bleiben unbekannt.                                    |
+| Teilweiser/sensibler Export              | **supported** | `remote-load-failed.json`            | Zugangsdaten/Secrets werden vor der Ausgabe redigiert; rohe Fehler-Interna bleiben außen vor. |
+| Offizieller DevTools-Export              | **supported** | `partial-devtools.json`              | Quellen-Metadaten bleiben teilweise und werten fehlende Report-Fakten nicht auf.              |
+| Node/SSR-JSON-Export                     | **supported** | Node-Wrapper um `current-2.5.3.json` | Verwendet den Transport `node-file` und einen eigenen SSR-Realm.                              |
+| Preview-Runtime / deaktivierter Snapshot | **supported** | Fallback-Vertragsfälle               | Preview-Versionen inferieren keinen Shared-Lifecycle; `disableSnapshot` ist `not-applicable`. |
+| Browser-Frame-/Worker-Realm              | **supported** | Browser-Connector-Vertragsfälle      | Navigation, Realm und Quellenbereich bleiben isoliert und freigegeben.                        |
+
+Der Standard-Einstieg `@tonoizer/mfdoctor` und die Bundler-Adapter stellen keine
+Capture-Funktionen bereit. Capture ist nur über den expliziten Subpath
+`@tonoizer/mfdoctor/capture` verfügbar; ein automatischer Browser-Agent gehört
+nicht zum Paket.
+
 ## Node.js
 
 | Cell                     | Status          | Exact versions                                                                |

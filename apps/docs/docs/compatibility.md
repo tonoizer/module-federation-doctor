@@ -76,6 +76,28 @@ Partial cells must not silently skip gaps. Prefer
 [`doctor/partial-analysis`](./rules/doctor/partial-analysis.md) over false
 certainty (`shared/unused`, invented remotes, scraped private plugin fields).
 
+## Runtime capture compatibility
+
+Runtime capture is a separate, opt-in Node/offline boundary. The checked-in
+contract at [`fixtures/runtime-capture-compatibility.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/fixtures/runtime-capture-compatibility.json)
+and `scripts/verify-runtime-capture-compatibility.mjs` exercise the public
+`@tonoizer/mfdoctor/capture` entry point after every package build:
+
+| Surface                             | Status        | Evidence                                 | Compatibility guarantee                                                                |
+| ----------------------------------- | ------------- | ---------------------------------------- | -------------------------------------------------------------------------------------- |
+| Current Observability export        | **supported** | `current-2.5.3.json`                     | Projects bounded reports/events and preserves source capability state.                 |
+| Legacy Observability export         | **supported** | `healthy.json`                           | Keeps legacy report parsing and leaves absent fields unknown.                          |
+| Partial/sensitive export            | **supported** | `remote-load-failed.json`                | Redacts credentials/secrets before output and never retains raw error internals.       |
+| Official DevTools export            | **supported** | `partial-devtools.json`                  | Retains source-partial metadata and does not upgrade missing report facts.             |
+| Node/SSR JSON export                | **supported** | Node wrapper around `current-2.5.3.json` | Uses the `node-file` transport and a separate SSR realm.                               |
+| Preview runtime / disabled snapshot | **supported** | Fallback contract cases                  | Preview versions do not infer shared lifecycle; `disableSnapshot` is `not-applicable`. |
+| Browser frame / worker realms       | **supported** | Browser connector contract cases         | Navigation, realm, and source scope remain isolated and user-approved.                 |
+
+The default `@tonoizer/mfdoctor` entry and bundler adapter entries do not expose
+capture functions. Capture remains available only from the explicit
+`@tonoizer/mfdoctor/capture` subpath, and no automatic browser agent is part of
+the package.
+
 ## Node.js
 
 | Cell                     | Status          | Exact versions                                                                |

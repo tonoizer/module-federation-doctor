@@ -181,3 +181,17 @@ headers, bodies, cookies, raw stacks, and arbitrary error contexts are ignored.
 An exact request ID or redacted URL creates an exact relation. A timestamp-only
 match is a `time-window-candidate`, never an exact causal link. Floods and
 malformed records remain partial/unknown and produce explicit truncation.
+
+## Privacy and package boundary
+
+The capture contract retains only bounded, allowlisted evidence:
+
+| Retained                                                                                                                                             | Never read or retained                                                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source version, scoped identity, safe locator, status/class metadata, bounded diagnosis text, provenance, completeness, digest, and truncation state | Cookies, authorization headers, request/response bodies, credentials, secret query values, raw stacks, factories, props, storage, arbitrary runtime graphs, or private plugin internals |
+
+Redaction happens before stable IDs, content digests, buffering, or file writes.
+The default `@tonoizer/mfdoctor` entry and bundler adapters do not import the
+capture entry point or expose its functions. Use the explicit
+`@tonoizer/mfdoctor/capture` subpath from a Node/offline tool; never add it to a
+client bundle or invoke it from `check`, a build adapter, or application startup.
