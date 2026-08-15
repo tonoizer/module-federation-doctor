@@ -13,6 +13,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Pack validation intentionally runs in temporary non-Git directories.
+  HUSKY: "0"
+
 concurrency:
   group: npm-stage-${{ github.event.release.tag_name || inputs.tag }}
   cancel-in-progress: false
@@ -28,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
           fetch-depth: 0
           persist-credentials: false
       - id: resolve
@@ -75,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
           persist-credentials: false
       - uses: ./.github/actions/setup-vp
         with:
@@ -94,7 +98,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
           persist-credentials: false
       - uses: ./.github/actions/setup-vp
         with:

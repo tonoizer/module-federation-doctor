@@ -13,6 +13,7 @@ semver tags such as `1.0.0-rc.0`, never a `v` prefix.
 
    ```bash
    vp install
+   vp pack # bootstrap local package exports for Vite+ workspace discovery
    vp exec playwright install chromium
    vp run check
    vp run release:dry-run

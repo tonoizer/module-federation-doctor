@@ -24,7 +24,7 @@ describe("release workflow contracts", () => {
 
     expect(workflow).toContain("types: [published]");
     expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).toContain("github.event_name == 'workflow_dispatch' && 'main'");
+    expect(workflow).toContain("github.event.release.tag_name || inputs.tag");
     expect(workflow).not.toContain("ref: ${{ needs.resolve-ref.outputs.sha }}");
     expect(workflow).toContain("description: Existing plain-semver tag");
     expect(workflow).not.toContain("description: Branch or plain semver tag");
