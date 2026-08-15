@@ -22,20 +22,20 @@ The default limits are 5 MiB, 100 reports, 5,000 events, 500 snapshots, 100
 instances, 2,000 network records, 200 errors, 4 KiB strings, depth 12, and 100
 object keys. The hard total ceiling is 25 MiB; truncation must be recorded.
 
-The contract, bounded file-only import, and existing file/export adapters are
-the first safe slices. Browser transport, safe snapshot projections,
-network/error fallback, and automatic export remain separate stacked slices for
-issue #84. The bounded file-only import is available through the existing
-offline runtime command:
+The contract, bounded file-only import, existing file/export adapters, and
+explicit read-only browser transport are the first safe slices. Safe snapshot
+projections, network/error fallback, and automatic export remain separate
+stacked slices for issue #84. The bounded file-only import is available through
+the existing offline runtime command:
 
 ```bash
 mfdoctor runtime ./capture.json
 ```
 
 The command accepts only contract version 1, rejects oversized or unsafe files
-before analysis, and keeps the existing runtime output shape. Browser and
-DevTools live transport, snapshot probing, network/error fallback, and runtime
-mutation remain deferred.
+before analysis, and keeps the existing runtime output shape. Snapshot probing,
+network/error fallback, atomic output writing, and runtime mutation remain
+deferred.
 
 ## Existing export adapters
 
@@ -59,5 +59,29 @@ retain a source-supplied relation to their report records.
 
 The adapter only reads the supplied value. It does not launch or attach to a
 browser, inspect live globals, install a plugin, enable DevTools, call runtime
-load/register/init APIs, or mutate the input. Atomic output-file writing and
-live browser transport remain later #84 slices.
+load/register/init APIs, or mutate the input. Atomic output-file writing
+remains a later #84 slice.
+
+## Explicit browser transport
+
+An external browser tool may provide a narrow connector to an explicitly
+approved target. MFDoctor calls only `readObservabilityExport` or
+`readDevtoolsExport`; the connector must not expose arbitrary page evaluation,
+plugin injection, runtime mutation, or DevTools overrides.
+
+```ts
+import { captureRuntimeBrowserExport } from "@tonoizer/mfdoctor/capture";
+
+const capture = await captureRuntimeBrowserExport(connector, {
+  mode: "attach",
+  target: { id: "tab-1", url: "https://app.example.test/" },
+  userApproved: true,
+});
+```
+
+The connector supplies the session, target, navigation, and realm identity.
+The transport validates web targets, rejects credentials and secret query keys,
+passes the scope to the official export reader, and closes the external
+connection on success or failure. It does not reload or navigate the page.
+Capture is still one explicit operation; ordinary `check`, bundler adapters,
+and application startup never call it.

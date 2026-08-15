@@ -2,39 +2,96 @@
 
 > Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
-# External runtime capture contract
+# Vertrag für externe Laufzeitaufzeichnungen
 
-The runtime capture contract is an explicit handoff boundary for a future
-external capture tool. It is not a MFDoctor runtime agent.
+Der Laufzeitaufzeichnungsvertrag ist eine explizite Übergabegrenze für ein
+externes Capture-/Export-Tool. Er ist kein MFDoctor-Laufzeitagent.
 
-The design record is [ADR 0084: External runtime capture boundary](https://github.com/tonoizer/module-federation-doctor/blob/main/docs/adr/0084-external-runtime-capture-boundary.md).
+Die Designentscheidung steht in [ADR 0084: External runtime capture boundary](https://github.com/tonoizer/module-federation-doctor/blob/main/docs/adr/0084-external-runtime-capture-boundary.md).
 
-Capture must be invoked by a user with an approved target or export file. It
-must not run from `check`, a bundler adapter, application startup, or a client
-bundle. Capture reads existing public Observability or DevTools exports and
-strictly projected fallback evidence. It never injects plugins, calls runtime
-mutators, reads storage, or exports headers, bodies, cookies, source, props,
-factories, or raw stacks.
+Capture muss von einer Person mit einem freigegebenen Ziel oder einer Exportdatei
+gestartet werden. Es darf nicht aus `check`, einem Bundler-Adapter, dem
+Anwendungsstart oder einem Client-Bundle laufen. Die aktuelle Adapterschnittstelle
+liest vorhandene Exporte von Observability, DevTools, Anwendungen und Node/SSR;
+spätere Slices ergänzen ausdrücklich angeforderten Browser-Transport und streng
+projizierte Fallback-Nachweise. Es werden niemals Plugins injiziert,
+Laufzeit-Mutatoren aufgerufen, Storage gelesen oder Header, Bodies, Cookies,
+Quelltext, Props, Factories oder Raw Stacks exportiert.
 
-The contract records source capabilities as `exact`, `partial`, `unavailable`,
-`not-applicable`, or `unknown`. Missing old/preview fields stay unknown. It
-also scopes every record by capture, navigation, realm, and sequence so equal
-trace IDs from separate realms do not merge.
+Der Vertrag zeichnet Quellenfähigkeiten als `exact`, `partial`, `unavailable`,
+`not-applicable` oder `unknown` auf. Fehlende Felder alter oder Preview-Versionen
+bleiben unbekannt. Jeder Datensatz erhält außerdem Capture-, Navigation-, Realm-
+und Sequenzbezug, damit gleiche Trace-IDs verschiedener Realms nicht verbunden
+werden.
 
-The default limits are 5 MiB, 100 reports, 5,000 events, 500 snapshots, 100
-instances, 2,000 network records, 200 errors, 4 KiB strings, depth 12, and 100
-object keys. The hard total ceiling is 25 MiB; truncation must be recorded.
+Die Standardgrenzen betragen 5 MiB, 100 Reports, 5.000 Events, 500 Snapshots,
+100 Instanzen, 2.000 Netzwerkdatensätze, 200 Fehler, 4 KiB Strings, Tiefe 12
+und 100 Objektschlüssel. Die harte Gesamtgrenze beträgt 25 MiB; Kürzungen werden
+aufgezeichnet.
 
-The contract and bounded file-only import are the first safe slice. Browser
-transport, safe snapshot projections, network/error fallback, and automatic
-capture remain separate stacked slices for issue #84. The bounded file-only import is now
-available through the existing offline runtime command:
+Vertrag, begrenzter dateibasierter Import, vorhandene Datei-/Export-Adapter und
+der explizite schreibgeschützte Browser-Transport sind die ersten sicheren
+Slices. Sichere Snapshot-Projektionen, Netzwerk-/Fehler-Fallbacks und
+automatischer Export bleiben für Issue #84 getrennte Slices. Der begrenzte
+dateibasierte Import ist über den bestehenden Offline-Laufzeitbefehl verfügbar:
 
 ```bash
 mfdoctor runtime ./capture.json
 ```
 
-The command accepts only contract version 1, rejects oversized or unsafe files
-before analysis, and keeps the existing runtime output shape. Browser and
-DevTools transport, snapshot probing, network/error fallback, and runtime
-mutation remain deferred.
+Der Befehl akzeptiert nur Vertragsversion 1, weist übergroße oder unsichere
+Dateien vor der Analyse zurück und behält die bestehende Laufzeitausgabe bei.
+Snapshot-Prüfung, Netzwerk-/Fehler-Fallback, atomisches Schreiben und
+Laufzeitmutation bleiben zurückgestellt.
+
+## Vorhandene Export-Adapter
+
+Der Einstiegspunkt `@tonoizer/mfdoctor/capture` kann einen vom Benutzer
+bereitgestellten Export ohne Browser- oder Laufzeitanbindung normalisieren:
+
+```ts
+import { loadRuntimeCaptureExportFile } from "@tonoizer/mfdoctor/capture";
+
+const capture = await loadRuntimeCaptureExportFile(".mf/observability/latest.json", {
+  adapter: "observability",
+});
+```
+
+Der Adapter akzeptiert aktuelle oder teilweise Observability-Reports, offizielle
+DevTools-Exporte, anwendungseigene `onReport`-/`onEvent`-Dateien sowie Node/SSR-
+JSON-Exporte. Er verwendet den vorhandenen Runtime-Reader erneut, ergänzt
+bereichsbezogene Identität, Herkunft, Fähigkeiten, Kürzungen und stabile
+Datensatz-IDs und validiert anschließend den vollständigen Vertrag. DevTools-
+Projektionen bleiben teilweise und behalten eine `source-supplied`-Relation zu
+ihren Report-Datensätzen.
+
+Der Adapter liest ausschließlich den bereitgestellten Wert. Er startet keinen
+Browser und verbindet sich nicht mit einem Browser, liest keine Live-Globals,
+installiert kein Plugin, aktiviert DevTools nicht, ruft keine
+Laufzeit-`load`-/`register`-/`init`-APIs auf und verändert die Eingabe nicht.
+Das atomische Schreiben der Ausgabedatei bleibt ein späterer #84-Slice.
+
+## Expliziter Browser-Transport
+
+Ein externes Browser-Tool kann einen engen Connector für ein ausdrücklich
+freigegebenes Ziel bereitstellen. MFDoctor ruft nur
+`readObservabilityExport` oder `readDevtoolsExport` auf. Der Connector darf
+keine beliebige Seitenauswertung, Plugin-Injektion, Laufzeitmutation oder
+DevTools-Overrides anbieten.
+
+```ts
+import { captureRuntimeBrowserExport } from "@tonoizer/mfdoctor/capture";
+
+const capture = await captureRuntimeBrowserExport(connector, {
+  mode: "attach",
+  target: { id: "tab-1", url: "https://app.example.test/" },
+  userApproved: true,
+});
+```
+
+Der Connector liefert Session-, Ziel-, Navigations- und Realm-Identität. Der
+Transport validiert Web-Ziele, weist Zugangsdaten und geheime Query-Schlüssel
+zurück, übergibt den Bereich an den offiziellen Export-Reader und schließt die
+externe Verbindung bei Erfolg oder Fehler. Die Seite wird weder neu geladen noch
+navigiert. Capture bleibt eine einzelne explizite Operation; gewöhnliches
+`check`, Bundler-Adapter und Anwendungsstart rufen sie nie auf.
