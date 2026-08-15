@@ -69,7 +69,7 @@ Committed `.project.json` facts for `mfdoctor federation`:
 | `runtime/shared-mismatch` | `runtime/shared-mismatch` | 1    |
 
 ```bash
-vp run build
+vp run --filter . build
 vp run demo:showcase
 # or one at a time:
 node dist/cli.js check examples/showcase/config/expose-key-invalid --ci --format terminal

@@ -28,7 +28,7 @@ Comments in each config explain why. For intentional red findings, use
 
 ## Commands
 
-From the repo root (after `vp run build`):
+From the repo root (after `vp run --filter . build`):
 
 ```bash
 vp run test:nested

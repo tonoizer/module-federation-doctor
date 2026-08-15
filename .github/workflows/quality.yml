@@ -24,7 +24,7 @@ jobs:
       - run: vp run lint
       - run: vp run changeset:check
       # Examples resolve @tonoizer/mfdoctor/* from dist/; build before typecheck.
-      - run: vp run build
+      - run: vp run --filter . build
       - run: vp run inventory:check
       - run: node scripts/evidence-drift-check.mjs
       - run: vp run typecheck

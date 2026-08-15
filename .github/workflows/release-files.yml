@@ -49,7 +49,7 @@ jobs:
         with:
           node-version: 24
 
-      - run: vp run build
+      - run: vp run --filter . build
 
       - name: Pack release files
         env:

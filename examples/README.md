@@ -18,7 +18,7 @@ one-rule demos, and compatibility for production framework/bundler smoke.
 From the repo root:
 
 ```bash
-vp run build
+vp run --filter . build
 vp run demo:showcase
 vp run demo:standalone
 vp run demo:mixed-issues

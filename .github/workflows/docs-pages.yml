@@ -25,7 +25,7 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: 24
-      - run: vp run build
+      - run: vp run --filter . build
       - run: vp run docs:build
         env:
           DOCS_BASE: /module-federation-doctor/

@@ -606,7 +606,7 @@ try {
       process.stdout.write(
         `Using E2E port offset ${offset}: ${BASE_PORTS.map((port) => port + offset).join(", ")}\n`,
       );
-      await run("build package", vitePlus, ["run", "build"], environment);
+      await run("build package", vitePlus, ["run", "--filter", ".", "build"], environment);
       await run(
         "clean E2E MFDoctor artifacts",
         process.execPath,
