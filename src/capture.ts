@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import nodePath from "node:path";
 import {
@@ -3420,6 +3420,82 @@ export async function loadRuntimeCaptureExportFile(
     );
   } finally {
     await handle?.close().catch(() => undefined);
+  }
+}
+
+export interface RuntimeCaptureFileWriteResult {
+  path: string;
+  bytes: number;
+}
+
+function runtimeCaptureFsErrorCode(error: unknown): string | undefined {
+  return isObject(error) && typeof error.code === "string" ? error.code : undefined;
+}
+
+async function syncRuntimeCaptureDirectory(directory: string): Promise<void> {
+  let handle: fs.FileHandle | undefined;
+  try {
+    handle = await fs.open(directory, "r");
+    await handle.sync();
+  } catch (error) {
+    if (!["EISDIR", "EINVAL", "ENOTSUP", "EPERM"].includes(runtimeCaptureFsErrorCode(error) ?? ""))
+      throw error;
+  } finally {
+    await handle?.close().catch(() => undefined);
+  }
+}
+
+/** Validate and atomically hand off one capture envelope as a bounded JSON file. */
+export async function writeRuntimeCaptureExportFile(
+  input: unknown,
+  filePath: string,
+): Promise<RuntimeCaptureFileWriteResult> {
+  const resolved = nodePath.resolve(filePath);
+  let normalized: RuntimeCaptureEnvelope;
+  try {
+    normalized = normalizeRuntimeCaptureEnvelope(input);
+  } catch (error) {
+    throw new RuntimeCaptureExportError(
+      `Runtime capture export failed validation: ${error instanceof Error ? error.message : String(error)}`,
+      resolved,
+    );
+  }
+  const serialized = normalizedJson(normalized);
+  const bytes = Buffer.byteLength(serialized, "utf8");
+  if (bytes > normalized.limits.maxBytes)
+    throw new RuntimeCaptureExportError(
+      `Runtime capture export exceeds the ${normalized.limits.maxBytes} byte output limit`,
+      resolved,
+    );
+  if (bytes > HARD_RUNTIME_CAPTURE_LIMITS.maxBytes)
+    throw new RuntimeCaptureExportError(
+      `Runtime capture export exceeds the ${HARD_RUNTIME_CAPTURE_LIMITS.maxBytes} byte hard output limit`,
+      resolved,
+    );
+
+  const directory = nodePath.dirname(resolved);
+  const temporary = `${nodePath.join(directory, `.${nodePath.basename(resolved)}.mfdoctor-${process.pid}-${randomUUID()}.tmp`)}`;
+  let handle: fs.FileHandle | undefined;
+  let renamed = false;
+  try {
+    handle = await fs.open(temporary, "wx", 0o600);
+    await handle.writeFile(serialized, "utf8");
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
+    await fs.rename(temporary, resolved);
+    renamed = true;
+    await syncRuntimeCaptureDirectory(directory).catch(() => undefined);
+    return { path: resolved, bytes };
+  } catch (error) {
+    if (error instanceof RuntimeCaptureExportError && error.fileLabel === resolved) throw error;
+    throw new RuntimeCaptureExportError(
+      `Unable to atomically write runtime capture export: ${resolved}`,
+      resolved,
+    );
+  } finally {
+    await handle?.close().catch(() => undefined);
+    if (!renamed) await fs.rm(temporary, { force: true }).catch(() => undefined);
   }
 }
 

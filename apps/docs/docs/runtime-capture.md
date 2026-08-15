@@ -23,9 +23,10 @@ instances, 2,000 network records, 200 errors, 4 KiB strings, depth 12, and 100
 object keys. The hard total ceiling is 25 MiB; truncation must be recorded.
 
 The contract, bounded file-only import, existing file/export adapters, explicit
-read-only browser transport, and safe snapshot/runtime-instance projections are
-the shipped safe slices. Network/error fallback is also available; atomic
-export and automatic export remain separate stacked slices for issue #84. The bounded file-only import is available through
+read-only browser transport, safe snapshot/runtime-instance projections, and
+network/error fallback are the shipped safe slices. The atomic validated JSON
+handoff is available through the capture entry point; automatic export remains
+outside this boundary. The bounded file-only import is available through
 the existing offline runtime command:
 
 ```bash
@@ -33,8 +34,8 @@ mfdoctor runtime ./capture.json
 ```
 
 The command accepts only contract version 1, rejects oversized or unsafe files
-before analysis, and keeps the existing runtime output shape. Atomic output
-writing and runtime mutation remain deferred.
+before analysis, and keeps the existing runtime output shape. Runtime mutation
+and automatic export remain outside the boundary.
 
 ## Existing export adapters
 
@@ -59,7 +60,31 @@ retain a source-supplied relation to their report records.
 The adapter only reads the supplied value. It does not launch or attach to a
 browser, inspect live globals, install a plugin, enable DevTools, call runtime
 load/register/init APIs, or mutate the input. Atomic output-file writing
-remains a later #84 slice.
+is explicit and is never performed by this adapter implicitly.
+
+## Atomic offline handoff
+
+After an external adapter has produced a validated envelope, write it with the
+capture entry point:
+
+```ts
+import {
+  importRuntimeCaptureNetworkFallback,
+  writeRuntimeCaptureExportFile,
+} from "@tonoizer/mfdoctor/capture";
+
+const capture = importRuntimeCaptureNetworkFallback({
+  errors: [{ code: "RUNTIME-007", message: "remote entry failed" }],
+});
+
+await writeRuntimeCaptureExportFile(capture, "./.mf/doctor/runtime-capture.json");
+```
+
+The writer validates a safe normalized copy before creating a sibling temporary
+file. It bounds the serialized UTF-8 output by `limits.maxBytes`, writes with
+mode `0600`, flushes the file, atomically renames it into place, and cleans up
+the temporary path if the handoff fails. Existing output stays untouched when
+validation or the rename fails.
 
 ## Explicit browser transport
 
