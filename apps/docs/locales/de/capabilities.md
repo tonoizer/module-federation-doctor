@@ -168,3 +168,18 @@ missing dimension, and conflict. Multiple overlapping approvals with different
 owner/reason/ticket metadata remain `ambiguous` instead of selecting a winner.
 This contract is additive and library-only: it does not change finding lineage,
 the V1 fingerprint, `baseline.schema.json`, report projections, or exit codes.
+
+## V1-Kompatibilitätsbrücke
+
+`projectV1Suppression` is the explicit compatibility seam for consumers that
+have both a legacy `DoctorFinding` and additive lineage/waiver evidence. It
+delegates baseline matching to the existing V1 matcher, records whether the
+baseline, a governed waiver, or both supplied suppression, and exposes the
+waiver outcome without changing the finding, baseline file, fingerprint,
+terminal/JSON/SARIF projection, or exit policy.
+
+Waiver suppression is accepted only when its resolution is `suppressed` and its
+finding lineage ID exactly matches the supplied lineage. Ambiguous, unknown, or
+mismatched decisions remain visible but do not suppress. `failOnSuppressed`
+preserves the existing policy rule: a suppressed finding is still policy
+relevant when that option is enabled.
