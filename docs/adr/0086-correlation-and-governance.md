@@ -44,6 +44,13 @@ environment identities. Redeploy and rollback are accepted only as explicit
 metadata relationships with matching environment and artifact sets; chronology
 is never inferred from timestamps or labels.
 
+The finding-lineage slice adds `finding-lineage.schema.json`, deterministic
+semantic `findingLineageId` values, separate occurrence IDs, and offline
+snapshot history diffs. Rule-owned identity dimensions and explicit scope are
+the only lineage material. Messages, locations, severity, timestamps, and
+volatile evidence are excluded. A later incomplete or incomparable snapshot
+returns `unknown/unconfirmed` rather than claiming a finding was resolved.
+
 ## Decision
 
 ### Identity hierarchy
@@ -167,7 +174,8 @@ reviewable:
    precedence/conflict behavior; no waivers yet (implemented in the governance
    slice).
 8. **Finding lineage and history** — bridge #83 rule identity dimensions and
-   comparable-evidence diff states.
+   comparable-evidence diff states (implemented in the additive finding-lineage
+   slice; V1 fingerprints and report projections remain unchanged).
 9. **Governance waivers** — validation, scope, injected clock, expiry, and
    audit decisions; no baseline schema changes.
 10. **V1 compatibility bridge and integration** — preserve fingerprints,

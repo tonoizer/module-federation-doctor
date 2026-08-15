@@ -82,6 +82,7 @@ describe("published schema contracts", () => {
       "capabilities.schema.json",
       "config.schema.json",
       "evidence.schema.json",
+      "finding-lineage.schema.json",
       "identity-correlation.schema.json",
       "identity-governance.schema.json",
       "identity.schema.json",
@@ -340,6 +341,67 @@ describe("published schema contracts", () => {
         "build-artifact-deployment.schema.json",
         { ...relationship, unexpected: true },
         "unexpected relationship field",
+      ),
+    ).rejects.toThrow("Schema validation failed");
+  });
+
+  it("validates finding lineage records, snapshots, and history diffs", async () => {
+    const record = {
+      schemaVersion: 1,
+      findingLineageId: "mffinding:v1:0123456789abcdef01234567",
+      findingOccurrenceId: "mffinding-occurrence:v1:fedcba9876543210fedcba98",
+      identitySchemaVersion: 1,
+      rule: { id: "shared/singleton-mismatch", version: "2.1.0" },
+      subjectKey: "mfid:v1:application:0123456789abcdef01234567",
+      violationKey: "react",
+      identityDimensions: { package: "react", shareScope: ["default", "legacy"] },
+      scope: {
+        target: "browser",
+        buildKey: "mfid:v1:build:fedcba9876543210fedcba98",
+        deploymentKey: "mfid:v1:deployment:abcdefabcdefabcdefabcdef",
+      },
+      outcome: "fail",
+      completeness: "complete",
+      confidence: "strong",
+      evidenceIds: ["evidence-1"],
+      occurrenceBasis: "explicit",
+      occurrenceKey: "build-occurrence-1",
+      severity: "warning",
+    };
+    const snapshot = {
+      schemaVersion: 1,
+      snapshotId: "snapshot-1",
+      completeness: "complete",
+      comparable: true,
+      evaluations: [record],
+      missing: [],
+    };
+    const diff = {
+      schemaVersion: 1,
+      fromSnapshotId: "snapshot-1",
+      toSnapshotId: "snapshot-2",
+      comparable: true,
+      changes: [
+        {
+          schemaVersion: 1,
+          findingLineageId: record.findingLineageId,
+          state: "persistent",
+          reason: "the failure remains in the comparable snapshot",
+          previousOutcome: "fail",
+          currentOutcome: "fail",
+          previousOccurrenceId: record.findingOccurrenceId,
+          currentOccurrenceId: record.findingOccurrenceId,
+        },
+      ],
+    };
+    await validatePayload("finding-lineage.schema.json", record, "finding lineage record");
+    await validatePayload("finding-lineage.schema.json", snapshot, "finding history snapshot");
+    await validatePayload("finding-lineage.schema.json", diff, "finding history diff");
+    await expect(
+      validatePayload(
+        "finding-lineage.schema.json",
+        { ...record, unexpected: true },
+        "finding lineage extra field",
       ),
     ).rejects.toThrow("Schema validation failed");
   });
