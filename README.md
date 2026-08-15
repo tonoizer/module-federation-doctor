@@ -160,18 +160,34 @@ deployed checks:
 
 ```bash
 pnpm add -D @tonoizer/mfdoctor
-pnpm mfdoctor check --ci
-pnpm mfdoctor check --format terminal,json,sarif
-pnpm mfdoctor check --baseline ./mfdoctor.baseline.json
-pnpm mfdoctor check --verbose
-pnpm mfdoctor workspace
-pnpm mfdoctor federation --workspace
-pnpm mfdoctor federation ".mf/doctor/**/project.json"
-pnpm mfdoctor baseline generate .mf/doctor/report.json
-pnpm mfdoctor runtime ./.mf/observability/latest.json
-pnpm mfdoctor probe https://cdn.example.com/mf-manifest.json --remote-entry
-pnpm mfdoctor rules config/name-required
+pnpm exec mfdoctor check --ci
+pnpm exec mfdoctor check --format terminal,json,sarif
+pnpm exec mfdoctor check --baseline ./mfdoctor.baseline.json
+pnpm exec mfdoctor check --verbose
+pnpm exec mfdoctor workspace
+pnpm exec mfdoctor federation --workspace
+pnpm exec mfdoctor federation ".mf/doctor/**/project.json"
+pnpm exec mfdoctor baseline generate .mf/doctor/report.json
+pnpm exec mfdoctor runtime ./.mf/observability/latest.json
+pnpm exec mfdoctor probe https://cdn.example.com/mf-manifest.json --remote-entry
+pnpm exec mfdoctor rules config/name-required
 ```
+
+For a coding-agent or other non-interactive handoff, discover the supported
+contract first, then keep machine-readable artifacts and prompts on disk:
+
+```bash
+pnpm exec mfdoctor capabilities
+pnpm exec mfdoctor check --ci --format terminal,json,sarif \
+  --diagnostics-dir .mf/doctor/diagnostics
+pnpm exec mfdoctor prompt --finding config/name-required .mf/doctor/report.json
+```
+
+`capabilities` is versioned JSON and does not load project configuration or use
+the network. A check exits `0` when policy passes, `1` when policy fails, and
+`2` when analysis is incomplete. The diagnostics directory contains bounded
+`report.json`, `summary.md`, and `prompts/*.md`; JSON and SARIF remain stable
+machine-readable contracts, so agents do not need to scrape terminal output.
 
 Supported report formats are **terminal**, **JSON**, and **SARIF** only — there
 is no HTML report or `--ui` dashboard. For a programmatic remotes/shared graph,
