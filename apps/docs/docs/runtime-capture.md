@@ -3,6 +3,8 @@
 The runtime capture contract is an explicit handoff boundary for a future
 external capture tool. It is not a MFDoctor runtime agent.
 
+The design record is [ADR 0084: External runtime capture boundary](https://github.com/tonoizer/module-federation-doctor/blob/main/docs/adr/0084-external-runtime-capture-boundary.md).
+
 Capture must be invoked by a user with an approved target or export file. It
 must not run from `check`, a bundler adapter, application startup, or a client
 bundle. Capture reads existing public Observability or DevTools exports and
