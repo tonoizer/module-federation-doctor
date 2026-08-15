@@ -24,6 +24,20 @@ unknown candidate results, scoped capability edges, and per-scope coverage. It
 is library-only and intentionally does not integrate with V1 report generation
 or CLI output.
 
+The governance implementation slice adds `identity-governance.schema.json`, a
+portable rule validator, and an ownership resolver. Exact identity selectors
+precede parent/kind and container/kind selectors; priority resolves rules within
+one specificity tier. Equal-precedence responsibility conflicts and incomplete
+governance evidence remain visible. Waivers, finding history, and baseline
+integration are not part of this slice.
+
+The runtime identity slice adds `runtime-identity-correlation.schema.json` and
+an explicit adapter from sanitized #84 capture identities to runtime-realm and
+runtime-instance identities. It preserves unknown deployment and instance
+dimensions, requires explicit target/realm scope, and never treats a display
+name as identity proof. It is additive and library-only; it does not claim
+finding lineage, waivers, or V1 report integration.
+
 ## Decision
 
 ### Identity hierarchy
@@ -140,9 +154,11 @@ reviewable:
 5. **Build/artifact/deployment correlation** — consume exact #81 evidence and
    offline deployment metadata; add rollback/redeploy/environment cases.
 6. **Runtime/realm correlation** — consume #82/#84 evidence; enforce browser,
-   SSR, worker, Node, frame, and partial-snapshot boundaries.
+   SSR, worker, Node, frame, and partial-snapshot boundaries (implemented in the
+   additive runtime identity slice).
 7. **Ownership resolver** — governance file, responsibility edges,
-   precedence/conflict behavior; no waivers yet.
+   precedence/conflict behavior; no waivers yet (implemented in the governance
+   slice).
 8. **Finding lineage and history** — bridge #83 rule identity dimensions and
    comparable-evidence diff states.
 9. **Governance waivers** — validation, scope, injected clock, expiry, and

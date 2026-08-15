@@ -336,6 +336,31 @@ export type {
   IdentityCorrelationScope,
 } from "./identity-correlation.js";
 export {
+  defineIdentityGovernanceRule,
+  resolveIdentityGovernance,
+  IDENTITY_GOVERNANCE_SCHEMA_VERSION,
+} from "./identity-governance.js";
+export type {
+  DefineIdentityGovernanceRuleOptions,
+  IdentityGovernanceOptions,
+  IdentityGovernanceResolution,
+  IdentityGovernanceResolutionOutcome,
+  IdentityGovernanceResponsibility,
+  IdentityGovernanceRule,
+  IdentityGovernanceSchemaVersion,
+  IdentityGovernanceSelector,
+} from "./identity-governance.js";
+export {
+  projectRuntimeCaptureIdentity,
+  RUNTIME_IDENTITY_CORRELATION_SCHEMA_VERSION,
+} from "./runtime-identity-correlation.js";
+export type {
+  RuntimeCaptureIdentityProjection,
+  RuntimeCaptureIdentitySource,
+  RuntimeIdentityCorrelationOptions,
+  RuntimeIdentityCorrelationSchemaVersion,
+} from "./runtime-identity-correlation.js";
+export {
   assertEvidenceGraphIntegrity,
   assertEvidenceValue,
   canonicalizeEvidenceValue,

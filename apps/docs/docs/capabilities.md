@@ -83,3 +83,35 @@ runtime relationships as deterministic digest IDs. `assessIdentityCapabilityCove
 evaluates those edges within one requested scope and reports complete, partial,
 or unknown coverage. These graph facts are opt-in library data; existing legacy
 host/remote projections remain unchanged.
+
+## Portable ownership governance
+
+`defineIdentityGovernanceRule` validates a portable ownership rule, while
+`resolveIdentityGovernance(identity, rules)` applies deterministic precedence:
+an exact identity-key selector wins first, followed by parent/kind and
+container/kind selectors, with priority resolving rules within the same
+specificity tier. Responsibilities stay distinct for consumers, producers,
+shared providers, deployments, and runtime platforms.
+
+Equal-precedence owners are returned as `ambiguous`; the resolver never picks a
+team alphabetically. Partial or unknown governance evidence remains `unknown`
+and reports the incomplete rule IDs. Scope mismatches and missing target, realm,
+or environment dimensions are preserved as diagnostics. Governance is
+library-only and additive; it does not suppress findings, modify baselines, or
+implement waivers.
+
+## Runtime identity projection
+
+`projectRuntimeCaptureIdentity(capture, options)` is the additive bridge from a
+sanitized #84 runtime-capture identity into explicit runtime-realm and
+runtime-instance identities. It requires an explicit target and realm, keeps
+deployment, realm, instance, package, and version dimensions separate, and
+returns exact, strong, weak, or unknown confidence with bounded missing-field
+diagnostics.
+
+Absent deployment or instance evidence remains a source-scoped unknown identity.
+An `instanceName` or other display label is never promoted to semantic proof.
+The projection preserves browser, SSR, worker, Node, and frame boundaries and
+does not mutate runtime state, execute remote code, inspect client bundles, or
+change V1 reports and CLI behavior. Finding lineage, waivers, and the V1
+compatibility bridge remain separate additive slices.
