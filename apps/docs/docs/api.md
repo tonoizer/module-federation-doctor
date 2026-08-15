@@ -41,6 +41,7 @@ regenerated.
 | `@tonoizer/mfdoctor/schemas/report.schema.json` | `schemas/report.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/rule-inventory.schema.json` | `schemas/rule-inventory.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/runtime-capture.schema.json` | `schemas/runtime-capture.schema.json` | Public JSON Schema contract. |
+| `@tonoizer/mfdoctor/schemas/runtime-identity-correlation.schema.json` | `schemas/runtime-identity-correlation.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/runtime-trace.schema.json` | `schemas/runtime-trace.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/ui.schema.json` | `schemas/ui.schema.json` | Public JSON Schema contract. |
 

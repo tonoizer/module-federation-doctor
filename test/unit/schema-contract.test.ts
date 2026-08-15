@@ -89,6 +89,7 @@ describe("published schema contracts", () => {
       "report.schema.json",
       "rule-inventory.schema.json",
       "runtime-capture.schema.json",
+      "runtime-identity-correlation.schema.json",
       "runtime-trace.schema.json",
       "ui.schema.json",
     ]);
@@ -280,6 +281,64 @@ describe("published schema contracts", () => {
         "identity-governance.schema.json",
         { ...rule, owner: "https://example.com/team" },
         "unsafe owner",
+      ),
+    ).rejects.toThrow("Schema validation failed");
+  });
+
+  it("validates runtime identity projections", async () => {
+    const projection = {
+      schemaVersion: 1,
+      captureId: "capture-schema-check",
+      deploymentKey: "mfid:v1:deployment:0123456789abcdef01234567",
+      scope: {
+        target: "browser",
+        realm: "iframe",
+        environmentKey: "mfid:v1:environment:fedcba9876543210fedcba98",
+      },
+      realm: {
+        schemaVersion: 1,
+        kind: "runtime-realm",
+        key: "mfid:v1:runtime-realm:0123456789abcdef01234567",
+        aliases: [],
+        completeness: "complete",
+        confidence: "exact",
+        provenance: { source: "runtime", evidenceIds: [] },
+        parentKey: "mfid:v1:deployment:0123456789abcdef01234567",
+        deploymentKey: "mfid:v1:deployment:0123456789abcdef01234567",
+        realm: "iframe",
+        realmId: "frame-1",
+      },
+      instance: {
+        schemaVersion: 1,
+        kind: "runtime-instance",
+        key: "mfid:v1:runtime-instance:fedcba9876543210fedcba98",
+        aliases: [],
+        completeness: "complete",
+        confidence: "exact",
+        provenance: { source: "runtime", evidenceIds: [] },
+        parentKey: "mfid:v1:runtime-realm:0123456789abcdef01234567",
+        realmKey: "mfid:v1:runtime-realm:0123456789abcdef01234567",
+        runtimeInstanceId: "instance-1",
+        runtimePackage: "@module-federation/runtime",
+        runtimeVersion: "2.5.3",
+        occurrenceId: "instance-1",
+      },
+      outcome: "exact",
+      completeness: "complete",
+      confidence: "exact",
+      missing: [],
+      reason: "explicit deployment, realm, instance, package, and version evidence projected",
+    };
+    await validatePayload(
+      "runtime-identity-correlation.schema.json",
+      projection,
+      "runtime identity projection",
+    );
+    await expect(
+      validatePayload(
+        "runtime-identity-correlation.schema.json",
+        { ...projection, instance: { ...projection.instance, unexpected: true } },
+        "runtime identity extra field",
       ),
     ).rejects.toThrow("Schema validation failed");
   });

@@ -175,6 +175,7 @@ const schemaTitles = {
   project: "MFDoctor project facts",
   report: "MFDoctor report",
   "runtime-capture": "MFDoctor external runtime capture v1",
+  "runtime-identity-correlation": "MFDoctor runtime identity correlation",
   "runtime-trace": "MFDoctor runtime trace correlation summary",
   ui: "MFDoctor federation graph payload",
 };
@@ -190,6 +191,7 @@ const schemaImports = {
   project: await import("@tonoizer/mfdoctor/schemas/project.schema.json", { with: { type: "json" } }),
   report: await import("@tonoizer/mfdoctor/schemas/report.schema.json", { with: { type: "json" } }),
   "runtime-capture": await import("@tonoizer/mfdoctor/schemas/runtime-capture.schema.json", { with: { type: "json" } }),
+  "runtime-identity-correlation": await import("@tonoizer/mfdoctor/schemas/runtime-identity-correlation.schema.json", { with: { type: "json" } }),
   "runtime-trace": await import("@tonoizer/mfdoctor/schemas/runtime-trace.schema.json", { with: { type: "json" } }),
   ui: await import("@tonoizer/mfdoctor/schemas/ui.schema.json", { with: { type: "json" } }),
 };
