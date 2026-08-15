@@ -180,7 +180,8 @@ reviewable:
    audit decisions; no baseline schema changes (implemented in the additive
    waiver slice).
 10. **V1 compatibility bridge and integration** — preserve fingerprints,
-    terminal/JSON/SARIF/UI projections, and exit semantics with parity proof.
+    terminal/JSON/SARIF/UI projections, and exit semantics with parity proof
+    (implemented by the additive V1 suppression projection).
 
 Do not merge a later stage before its dependency stage has a stable contract.
 Do not combine #84 live capture, #86 correlation, and #87 rollout gates in one
@@ -218,5 +219,16 @@ IDs, reasons, expiry, missing dimensions, and conflicts. Expired, future,
 out-of-scope, incomplete, and overlapping-conflict decisions never suppress.
 The contract does not modify `baseline.schema.json`, V1 fingerprints, reports,
 SARIF, terminal output, or exit semantics.
+
+### Stage 10 implementation note
+
+`projectV1Suppression` delegates matching to the existing `entryMatchesFinding`
+baseline matcher and never rewrites baseline data. It can combine that result
+with a lineage-bound `GovernanceWaiverResolution`, retaining whether baseline,
+waiver, or both supplied suppression and whether the finding remains policy
+relevant under `failOnSuppressed`. Ambiguous, unknown, or mismatched lineage
+decisions never suppress. Unit parity tests compare the projection with the
+existing `applyBaseline` result and verify that input findings/baselines remain
+unchanged. No default CLI/report/SARIF/UI shape or exit behavior is changed.
 
 Part of [#86](https://github.com/tonoizer/module-federation-doctor/issues/86).

@@ -181,3 +181,20 @@ Genehmigungen mit unterschiedlichem Owner-, Begründungs- oder Ticket-Metadatum
 bleiben `ambiguous`, statt einen Gewinner auszuwählen. Der Vertrag ist additiv
 und bibliotheksbasiert: Lineage, V1-Fingerprint, `baseline.schema.json`,
 Report-Projektionen und Exit-Codes bleiben unverändert.
+
+## V1-Kompatibilitätsbrücke
+
+`projectV1Suppression` ist die explizite Kompatibilitätsschnittstelle für
+Verbraucher, die ein Legacy-`DoctorFinding` und additive Lineage-/Waiver-
+Nachweise gemeinsam haben. Sie delegiert den Baseline-Abgleich an den
+bestehenden V1-Matcher, zeichnet auf, ob die Baseline, ein genehmigter Waiver
+oder beide die Unterdrückung geliefert haben, und macht das Waiver-Ergebnis
+sichtbar, ohne Finding, Baseline-Datei, Fingerprint, Terminal-/JSON-/SARIF-
+Projektion oder Exit-Policy zu verändern.
+
+Eine Waiver-Unterdrückung wird nur akzeptiert, wenn die Auflösung `suppressed`
+lautet und die Finding-Lineage-ID exakt mit der gelieferten Lineage-ID
+übereinstimmt. Mehrdeutige, unbekannte oder nicht übereinstimmende
+Entscheidungen bleiben sichtbar, unterdrücken aber nichts. `failOnSuppressed`
+behält die bestehende Policy-Regel bei: Ein unterdrücktes Finding bleibt bei
+aktivierter Option policy-relevant.

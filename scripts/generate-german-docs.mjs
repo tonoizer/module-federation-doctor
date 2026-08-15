@@ -105,6 +105,7 @@ const headingTranslations = new Map([
   ["## Build/artifact/deployment correlation", "## Build-/Artifact-/Deployment-Korrelation"],
   ["## Finding lineage and offline history", "## Finding-Lineage und Offline-Historie"],
   ["## Governance waivers and audit decisions", "## Governance-Waiver und Audit-Entscheidungen"],
+  ["## V1 compatibility bridge", "## V1-Kompatibilitätsbrücke"],
   ["## V1 compatibility and rollout", "## V1-Kompatibilität und Einführung"],
   ["## Tooling", "## Werkzeuge"],
   ["## Report surfaces", "## Report-Oberflächen"],

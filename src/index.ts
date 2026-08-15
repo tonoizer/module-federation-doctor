@@ -417,6 +417,14 @@ export type {
   GovernanceWaiverSchemaVersion,
   ResolveGovernanceWaiversOptions,
 } from "./governance-waivers.js";
+export { projectV1Suppression, V1_COMPATIBILITY_SCHEMA_VERSION } from "./v1-compatibility.js";
+export type {
+  V1CompatibilitySchemaVersion,
+  V1SuppressionProjection,
+  V1SuppressionProjectionInput,
+  V1SuppressionSource,
+  V1WaiverDecisionState,
+} from "./v1-compatibility.js";
 export {
   assertEvidenceGraphIntegrity,
   assertEvidenceValue,
