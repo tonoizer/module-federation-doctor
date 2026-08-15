@@ -18,6 +18,7 @@ once; it selects the repository's Node.js, package manager, and toolchain versio
 
 ```bash
 vp install
+vp pack
 vp exec playwright install chromium
 ```
 

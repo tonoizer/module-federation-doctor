@@ -13,7 +13,9 @@ must preserve its original provenance.
   a bare `vp run build` schedules every workspace build and can load example
   configs before the root package has produced its exported `dist` files.
 - The Husky pre-commit hook uses `vp run`.
-- CI workflows use `vp run` and `vp exec` after `.github/actions/setup-vp`.
+- CI workflows use `vp run` and `vp exec` after `.github/actions/setup-vp`,
+  whose clean-checkout bootstrap runs `vp pack` before Vite+ discovers workspace
+  task configs.
 - `scripts/demo-*.mjs`, `scripts/giga-smoke.mjs`,
   `scripts/verify-compatibility-matrix.mjs`, `scripts/run-e2e.mjs`,
   `test/integration/adapters.test.ts`, and `playwright.config.ts` use Vite+
@@ -26,7 +28,8 @@ must preserve its original provenance.
 - `package.json`'s `packageManager` and `engines.pnpm`, `pnpm-lock.yaml`, and
   `pnpm-workspace.yaml` are the pinned package-manager policy consumed by Vite+.
 - `.github/actions/setup-vp/action.yml` enables the pinned pnpm shim so Vercel
-  and low-level package operations retain a deterministic fallback.
+  and low-level package operations retain a deterministic fallback, then runs
+  `vp pack` so local package exports exist before workspace task discovery.
 - `vercel.json` keeps `pnpm install --frozen-lockfile` and the pnpm build command
   until a Vercel preview proves that the global `vp` shim is available there.
 - `scripts/pack-check.mjs` uses pnpm for tarball creation and the isolated

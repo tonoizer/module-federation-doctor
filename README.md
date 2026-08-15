@@ -258,6 +258,7 @@ consumer notes; terminal / JSON / SARIF on CI).
 
 ```bash
 vp install
+vp pack
 vp exec playwright install chromium
 vp run check
 vp run release:dry-run

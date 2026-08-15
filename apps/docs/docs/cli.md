@@ -268,6 +268,7 @@ jobs:
         with:
           node-version: 26
           cache: true
+      - run: vp pack
       - run: vp run --filter './apps/docs' build
       - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@main
         with:
