@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = process.cwd();
+const packageJson = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-pack-"));
 const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const packageManagerArgs = [];
@@ -47,6 +48,29 @@ function run(command, args, cwd = temporary) {
     shell: process.platform === "win32" && command.endsWith(".cmd"),
     env: { ...process.env, CI: "" },
   });
+}
+
+function capture(command, args, cwd = temporary) {
+  return execFileSync(command, args, {
+    cwd,
+    encoding: "utf8",
+    shell: process.platform === "win32" && command.endsWith(".cmd"),
+    env: { ...process.env, CI: "" },
+  });
+}
+
+function runForStatus(command, args, cwd = temporary) {
+  const result = spawnSync(command, args, {
+    cwd,
+    encoding: "utf8",
+    shell: process.platform === "win32" && command.endsWith(".cmd"),
+    env: { ...process.env, CI: "" },
+  });
+  return {
+    status: result.status ?? 2,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+  };
 }
 
 try {
@@ -130,6 +154,7 @@ assert.equal(typeof policy.presets.recommended, "object");
 assert.equal(typeof policy.presets.strict, "object");
 const schemaTitles = {
   baseline: "MFDoctor fingerprint baseline",
+  capabilities: "MFDoctor CLI capabilities",
   config: "MFDoctor canonical config v1",
   evidence: "MFDoctor evidence protocol v2",
   identity: "MFDoctor semantic identity",
@@ -142,6 +167,7 @@ const schemaTitles = {
 };
 const schemaImports = {
   baseline: await import("@tonoizer/mfdoctor/schemas/baseline.schema.json", { with: { type: "json" } }),
+  capabilities: await import("@tonoizer/mfdoctor/schemas/capabilities.schema.json", { with: { type: "json" } }),
   config: await import("@tonoizer/mfdoctor/schemas/config.schema.json", { with: { type: "json" } }),
   evidence: await import("@tonoizer/mfdoctor/schemas/evidence.schema.json", { with: { type: "json" } }),
   identity: await import("@tonoizer/mfdoctor/schemas/identity.schema.json", { with: { type: "json" } }),
@@ -221,6 +247,80 @@ assert.equal(rspackChain[0][0], "module-federation-doctor");
   run(packageManager, [...consumerPnpmArgs, "check"], root);
   run(packageManager, [...consumerPnpmArgs, "cli"], root);
   run(npxCommand, ["--no-install", "mfdoctor", "--help"], consumer);
+  const capabilities = JSON.parse(
+    capture(npxCommand, ["--no-install", "mfdoctor", "capabilities"], consumer),
+  );
+  assert.equal(capabilities.package.name, "@tonoizer/mfdoctor");
+  assert.equal(capabilities.package.version, packageJson.version);
+  assert.equal(capabilities.schemaVersion, 1);
+  assert.equal(capabilities.schemas.capabilities, "./schemas/capabilities.schema.json");
+  assert.deepEqual(capabilities.formats, ["terminal", "json", "sarif"]);
+
+  const repairLoop = path.join(consumer, "repair-loop");
+  await fs.mkdir(repairLoop, { recursive: true });
+  await fs.writeFile(
+    path.join(repairLoop, "package.json"),
+    JSON.stringify({ name: "mfdoctor-repair-loop", private: true, type: "module" }),
+  );
+  const repairConfig = (name) => `export default {
+  moduleFederation: { ${name ? `name: ${JSON.stringify(name)}, ` : ""}exposes: {}, remotes: {}, shared: {} },
+  failOn: "error",
+  rules: {
+    "doctor/partial-analysis": "off",
+    "config/name-required": "error",
+    "config/plugin-package-mismatch": "off",
+    "artifact/remote-entry-missing": "off",
+  },
+};
+`;
+  await fs.writeFile(path.join(repairLoop, "mfdoctor.config.mjs"), repairConfig(""));
+  const repairCommand = [
+    "--no-install",
+    "mfdoctor",
+    "check",
+    "--ci",
+    "--format",
+    "terminal,json,sarif",
+    "--diagnostics-dir",
+    ".mf/doctor/diagnostics",
+  ];
+  const failingRepair = runForStatus(npxCommand, repairCommand, repairLoop);
+  assert.equal(
+    failingRepair.status,
+    1,
+    `repair-loop fixture should fail before the fix:\n${failingRepair.stdout}\n${failingRepair.stderr}`,
+  );
+  assert.match(`${failingRepair.stdout}\n${failingRepair.stderr}`, /config\/name-required/);
+  assert.ok(
+    (await fs.readdir(path.join(repairLoop, ".mf/doctor/diagnostics/prompts"))).some((file) =>
+      file.endsWith(".md"),
+    ),
+    "failing repair-loop check should write an agent prompt",
+  );
+  await fs.access(path.join(repairLoop, ".mf/doctor/results.sarif"));
+
+  await fs.writeFile(path.join(repairLoop, "mfdoctor.config.mjs"), repairConfig("repair-loop"));
+  const passingRepair = runForStatus(npxCommand, repairCommand, repairLoop);
+  assert.equal(
+    passingRepair.status,
+    0,
+    `repair-loop fixture should pass after the narrow fix:\n${passingRepair.stdout}\n${passingRepair.stderr}`,
+  );
+  const repairReport = JSON.parse(
+    await fs.readFile(path.join(repairLoop, ".mf/doctor/report.json"), "utf8"),
+  );
+  assert.deepEqual(repairReport.findings, []);
+  assert.match(
+    await fs.readFile(path.join(repairLoop, ".mf/doctor/diagnostics/summary.md"), "utf8"),
+    /\(none\)/,
+  );
+  assert.deepEqual(
+    (await fs.readdir(path.join(repairLoop, ".mf/doctor/diagnostics/prompts"))).filter((file) =>
+      file.endsWith(".md"),
+    ),
+    [],
+    "passing repair-loop check should remove stale agent prompts",
+  );
   run(packageManager, [...consumerPnpmArgs, "vite"], root);
   run(packageManager, [...consumerPnpmArgs, "rspack"], root);
   run(packageManager, [...consumerPnpmArgs, "rsbuild"], root);

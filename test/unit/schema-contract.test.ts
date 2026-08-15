@@ -78,6 +78,7 @@ describe("published schema contracts", () => {
     const contracts = await listSchemaContracts();
     expect(contracts.map((contract) => contract.file)).toEqual([
       "baseline.schema.json",
+      "capabilities.schema.json",
       "config.schema.json",
       "evidence.schema.json",
       "identity.schema.json",

@@ -108,6 +108,7 @@
     "./schemas/ui.schema.json": "./schemas/ui.schema.json",
     "./schemas/evidence.schema.json": "./schemas/evidence.schema.json",
     "./schemas/rule-inventory.schema.json": "./schemas/rule-inventory.schema.json",
+    "./schemas/capabilities.schema.json": "./schemas/capabilities.schema.json",
     "./package.json": "./package.json"
   },
   "types": "./dist/index.d.ts",

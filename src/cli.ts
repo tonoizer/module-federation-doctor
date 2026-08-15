@@ -29,6 +29,7 @@ import {
 import { probeManifest } from "./probe.js";
 import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
 import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "./rules.js";
+import { loadCliCapabilities } from "./capabilities.js";
 import type {
   BaselineOptions,
   DoctorFinding,
@@ -51,6 +52,7 @@ interface Parsed {
     | "rules"
     | "baseline"
     | "prompt"
+    | "capabilities"
     | "help";
   baselineAction?: "generate" | "update" | "prune";
   root?: string;
@@ -115,6 +117,7 @@ Usage:
   mfdoctor runtime ./trace.json
   mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
   mfdoctor rules [rule-id]
+  mfdoctor capabilities [--format json]
   mfdoctor probe https://host.example/mf-manifest.json
   mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
 
@@ -142,6 +145,10 @@ prompts (severity then impact). Pass --no-prompt / prompt: false to hide.
 offline. \`--diagnostics-dir\` writes report.json, prompts/*.md, and summary.md
 inside the project root only.
 
+Capabilities: \`mfdoctor capabilities\` prints the versioned JSON contract for
+commands, formats, exit codes, noninteractive handoff commands, and public
+schema paths. It does not load project configuration or access the network.
+
 Baselines: use fingerprint baselines for incremental adoption. Suppressed
 findings still appear in reports but do not fail policy unless
 baseline.failOnSuppressed is set. Baselines are tracked debt — shrink them.`;
@@ -157,7 +164,8 @@ export function parseArgs(argv: string[]): Parsed {
     command !== "runtime" &&
     command !== "rules" &&
     command !== "baseline" &&
-    command !== "prompt"
+    command !== "prompt" &&
+    command !== "capabilities"
   )
     return {
       command: "help",
@@ -467,6 +475,20 @@ async function runBaseline(parsed: Parsed): Promise<number> {
   }
 }
 
+async function runCapabilities(parsed: Parsed): Promise<number> {
+  if (parsed.formats && (parsed.formats.length !== 1 || parsed.formats[0] !== "json")) {
+    process.stderr.write("capabilities only supports --format json.\n");
+    return 2;
+  }
+  try {
+    process.stdout.write(stableStringify(await loadCliCapabilities(), 2) + "\n");
+    return 0;
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return 2;
+  }
+}
+
 async function runFederationAnalysis(
   files: string[],
   formats: OutputFormat[] | undefined,
@@ -526,6 +548,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   }
   if (parsed.command === "baseline") return runBaseline(parsed);
   if (parsed.command === "prompt") return runPrompt(parsed);
+  if (parsed.command === "capabilities") return runCapabilities(parsed);
   if (parsed.command === "probe") {
     if (!parsed.url) {
       process.stderr.write("probe needs a manifest URL.\n");
