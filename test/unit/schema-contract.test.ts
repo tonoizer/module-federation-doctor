@@ -78,6 +78,7 @@ describe("published schema contracts", () => {
     const contracts = await listSchemaContracts();
     expect(contracts.map((contract) => contract.file)).toEqual([
       "baseline.schema.json",
+      "build-artifact-deployment.schema.json",
       "capabilities.schema.json",
       "config.schema.json",
       "evidence.schema.json",
@@ -281,6 +282,64 @@ describe("published schema contracts", () => {
         "identity-governance.schema.json",
         { ...rule, owner: "https://example.com/team" },
         "unsafe owner",
+      ),
+    ).rejects.toThrow("Schema validation failed");
+  });
+
+  it("validates build/artifact/deployment correlation contracts", async () => {
+    const build = {
+      schemaVersion: 1,
+      kind: "build-artifact-deployment",
+      buildKey: "mfid:v1:build:0123456789abcdef01234567",
+      buildLineageKey: "mfid:v1:build-lineage:fedcba9876543210fedcba98",
+      artifactKeys: ["mfid:v1:artifact:0123456789abcdef01234567"],
+      deploymentKey: "mfid:v1:deployment:0123456789abcdef01234567",
+      environmentKey: "mfid:v1:environment:fedcba9876543210fedcba98",
+      outcome: "exact",
+      completeness: "complete",
+      confidence: "exact",
+      matchedDimensions: [
+        "artifact.parentKey",
+        "build.buildLineageKey",
+        "deployment.artifactKeys",
+        "deployment.environmentKey",
+      ],
+      missing: [],
+      conflicts: [],
+      evidenceIds: ["build-1", "deploy-1"],
+      reason: "explicit build, artifact, deployment, and environment links agree",
+    };
+    const relationship = {
+      schemaVersion: 1,
+      kind: "deployment-relationship",
+      deploymentKey: "mfid:v1:deployment:0123456789abcdef01234567",
+      relatedDeploymentKey: "mfid:v1:deployment:fedcba9876543210fedcba98",
+      environmentKey: "mfid:v1:environment:fedcba9876543210fedcba98",
+      relation: "rollback",
+      outcome: "exact",
+      completeness: "complete",
+      confidence: "exact",
+      matchedDimensions: ["artifactKeys", "artifactSetDigest", "environmentKey"],
+      missing: [],
+      conflicts: [],
+      evidenceIds: ["deploy-2"],
+      reason: "explicit rollback relationship has matching environment and artifact set",
+    };
+    await validatePayload(
+      "build-artifact-deployment.schema.json",
+      build,
+      "build artifact deployment correlation",
+    );
+    await validatePayload(
+      "build-artifact-deployment.schema.json",
+      relationship,
+      "deployment relationship",
+    );
+    await expect(
+      validatePayload(
+        "build-artifact-deployment.schema.json",
+        { ...relationship, unexpected: true },
+        "unexpected relationship field",
       ),
     ).rejects.toThrow("Schema validation failed");
   });

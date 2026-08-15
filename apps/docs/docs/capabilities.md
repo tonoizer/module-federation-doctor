@@ -115,3 +115,17 @@ The projection preserves browser, SSR, worker, Node, and frame boundaries and
 does not mutate runtime state, execute remote code, inspect client bundles, or
 change V1 reports and CLI behavior. Finding lineage, waivers, and the V1
 compatibility bridge remain separate additive slices.
+
+## Build/artifact/deployment correlation
+
+`correlateBuildArtifactDeployment(input)` joins explicit build, artifact,
+deployment, and environment identities through parent and artifact-key links.
+It returns bounded matched, missing, and conflict dimensions instead of
+guessing from manifest names. `correlateDeploymentRelationship(input)` accepts
+an explicit offline `redeploy` or `rollback` fact only when the environment and
+artifact set agree; it does not infer ordering from timestamps or labels.
+
+These relationships preserve separate build and deployment occurrences while
+allowing one artifact set to be redeployed. Incomplete or conflicting #81-style
+evidence remains weak or unknown, and no deployment is performed by the
+library.

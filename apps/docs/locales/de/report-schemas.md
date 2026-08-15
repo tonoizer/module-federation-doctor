@@ -85,6 +85,7 @@ opening punctuation such as `(`, `[` or `{`. Other strings are left unchanged.
 | `@tonoizer/mfdoctor/schemas/identity-governance.schema.json`          | `resolveIdentityGovernance`                      | Additive governance contract  |
 | `@tonoizer/mfdoctor/schemas/runtime-capture.schema.json`              | `@tonoizer/mfdoctor/capture`                     | External capture contract     |
 | `@tonoizer/mfdoctor/schemas/runtime-identity-correlation.schema.json` | `projectRuntimeCaptureIdentity`                  | Runtime identity projection   |
+| `@tonoizer/mfdoctor/schemas/build-artifact-deployment.schema.json`    | `correlateBuildArtifactDeployment`               | Build/deployment correlation  |
 | `@tonoizer/mfdoctor/schemas/ui.schema.json`                           | `buildUiPayload`                                 | Programmatic graph only       |
 
 `ui.schema.json` is **not** a persisted CLI artifact (MFDoctor no longer ships an

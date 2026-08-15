@@ -125,3 +125,18 @@ Browser, SSR, Worker, Node und Frames und verändert weder Laufzeitstatus noch
 führt sie Remote-Code aus oder prüft Client-Bundles. V1-Berichte und CLI-
 Verhalten bleiben unverändert; Finding-Historie, Waiver und die V1-
 Kompatibilitätsbrücke bleiben getrennte additive Slices.
+
+## Build-/Artifact-/Deployment-Korrelation
+
+`correlateBuildArtifactDeployment(input)` verknüpft explizite Build-, Artifact-,
+Deployment- und Umgebungsidentitäten über Parent- und Artifact-Schlüssel.
+Begrenzte übereinstimmende, fehlende und konfliktbehaftete Dimensionen werden
+zurückgegeben, statt aus Manifestnamen zu raten. `correlateDeploymentRelationship(input)`
+akzeptiert ein explizites Offline-Faktum `redeploy` oder `rollback` nur bei
+übereinstimmender Umgebung und Artifact-Menge; die Reihenfolge wird nicht aus
+Zeitstempeln oder Labels abgeleitet.
+
+Die Beziehungen bewahren getrennte Build- und Deployment-Vorkommnisse, auch
+wenn eine Artifact-Menge erneut ausgerollt wird. Unvollständige oder
+widersprüchliche #81-Evidenz bleibt weak oder unknown; die Bibliothek führt
+keine Deployments aus.

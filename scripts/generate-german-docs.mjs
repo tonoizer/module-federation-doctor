@@ -102,6 +102,7 @@ const headingTranslations = new Map([
   ["## Semantic identity correlation", "## Korrelation semantischer Identitäten"],
   ["## Portable ownership governance", "## Portable Ownership-Governance"],
   ["## Runtime identity projection", "## Laufzeit-Identitätsprojektion"],
+  ["## Build/artifact/deployment correlation", "## Build-/Artifact-/Deployment-Korrelation"],
   ["## V1 compatibility and rollout", "## V1-Kompatibilität und Einführung"],
   ["## Tooling", "## Werkzeuge"],
   ["## Report surfaces", "## Report-Oberflächen"],
