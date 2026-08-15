@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/runtime-identity-correlation.schema.json",
+  "title": "MFDoctor runtime identity correlation",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "captureId",
+    "deploymentKey",
+    "scope",
+    "realm",
+    "instance",
+    "outcome",
+    "completeness",
+    "confidence",
+    "missing",
+    "reason"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "captureId": { "$ref": "#/$defs/safeId" },
+    "deploymentKey": { "$ref": "#/$defs/deploymentKey" },
+    "scope": { "$ref": "#/$defs/scope" },
+    "realm": { "$ref": "#/$defs/realmIdentity" },
+    "instance": { "$ref": "#/$defs/instanceIdentity" },
+    "outcome": { "enum": ["exact", "strong", "weak", "unknown"] },
+    "completeness": { "enum": ["complete", "partial", "unknown"] },
+    "confidence": { "enum": ["exact", "strong", "weak", "unknown"] },
+    "missing": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+    },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 256 }
+  },
+  "$defs": {
+    "identityKey": {
+      "type": "string",
+      "pattern": "^mfid:v1:[a-z-]+:[a-f0-9]{24}$",
+      "maxLength": 64
+    },
+    "deploymentKey": {
+      "type": "string",
+      "pattern": "^mfid:v1:deployment:[a-f0-9]{24}$",
+      "maxLength": 64
+    },
+    "environmentKey": {
+      "type": "string",
+      "pattern": "^mfid:v1:environment:[a-f0-9]{24}$",
+      "maxLength": 64
+    },
+    "runtimeRealmKey": {
+      "type": "string",
+      "pattern": "^mfid:v1:runtime-realm:[a-f0-9]{24}$",
+      "maxLength": 64
+    },
+    "safeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?!.*(?:[A-Za-z]:[\\\\/]|\\\\\\\\|^/|[a-z][a-z\\d+.-]*://|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$))).+$"
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 3,
+      "required": ["target", "realm"],
+      "properties": {
+        "target": {
+          "enum": ["browser", "ssr", "worker", "mobile", "node", "unknown"]
+        },
+        "realm": {
+          "enum": ["top-frame", "iframe", "worker", "node", "react-native", "unknown"]
+        },
+        "environmentKey": { "$ref": "#/$defs/environmentKey" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "evidenceIds"],
+      "properties": {
+        "source": {
+          "enum": ["config", "ci", "compiler", "artifact", "deployment", "runtime", "unknown"]
+        },
+        "evidenceIds": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/safeId" }
+        }
+      }
+    },
+    "realmIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "kind",
+        "key",
+        "aliases",
+        "completeness",
+        "confidence",
+        "provenance",
+        "parentKey",
+        "deploymentKey",
+        "realm",
+        "realmId"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "kind": { "const": "runtime-realm" },
+        "key": {
+          "type": "string",
+          "pattern": "^mfid:v1:runtime-realm:[a-f0-9]{24}$"
+        },
+        "aliases": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "completeness": { "enum": ["complete", "partial", "unknown"] },
+        "confidence": { "enum": ["exact", "strong", "weak", "unknown"] },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "parentKey": { "$ref": "#/$defs/deploymentKey" },
+        "deploymentKey": { "$ref": "#/$defs/deploymentKey" },
+        "realm": {
+          "enum": ["top-frame", "iframe", "worker", "node", "react-native", "unknown"]
+        },
+        "realmId": { "$ref": "#/$defs/safeId" },
+        "displayName": { "$ref": "#/$defs/safeId" }
+      }
+    },
+    "instanceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "kind",
+        "key",
+        "aliases",
+        "completeness",
+        "confidence",
+        "provenance",
+        "parentKey",
+        "realmKey",
+        "runtimeInstanceId",
+        "runtimePackage",
+        "runtimeVersion",
+        "occurrenceId"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "kind": { "const": "runtime-instance" },
+        "key": {
+          "type": "string",
+          "pattern": "^mfid:v1:runtime-instance:[a-f0-9]{24}$"
+        },
+        "aliases": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "completeness": { "enum": ["complete", "partial", "unknown"] },
+        "confidence": { "enum": ["exact", "strong", "weak", "unknown"] },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "parentKey": { "$ref": "#/$defs/runtimeRealmKey" },
+        "realmKey": { "$ref": "#/$defs/runtimeRealmKey" },
+        "runtimeInstanceId": { "$ref": "#/$defs/safeId" },
+        "runtimePackage": { "$ref": "#/$defs/safeId" },
+        "runtimeVersion": { "$ref": "#/$defs/safeId" },
+        "occurrenceId": { "$ref": "#/$defs/safeId" },
+        "displayName": { "$ref": "#/$defs/safeId" }
+      }
+    }
+  }
+}

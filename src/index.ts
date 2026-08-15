@@ -351,6 +351,16 @@ export type {
   IdentityGovernanceSelector,
 } from "./identity-governance.js";
 export {
+  projectRuntimeCaptureIdentity,
+  RUNTIME_IDENTITY_CORRELATION_SCHEMA_VERSION,
+} from "./runtime-identity-correlation.js";
+export type {
+  RuntimeCaptureIdentityProjection,
+  RuntimeCaptureIdentitySource,
+  RuntimeIdentityCorrelationOptions,
+  RuntimeIdentityCorrelationSchemaVersion,
+} from "./runtime-identity-correlation.js";
+export {
   assertEvidenceGraphIntegrity,
   assertEvidenceValue,
   canonicalizeEvidenceValue,
