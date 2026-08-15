@@ -148,6 +148,10 @@ The remaining work stays linear and independently reviewable:
 
 1. Final quota/redaction/atomic exporter integration and offline handoff proof.
 2. Compatibility matrix, package-boundary audit, privacy docs, and capture-
+   The remaining work stays linear and independently reviewable:
+
+3. Final quota/redaction/atomic exporter integration and offline handoff proof.
+4. Compatibility matrix, package-boundary audit, privacy docs, and capture-
    then-import examples.
 
 No slice may reopen the rejected runtime-agent design or be merged as a broad
