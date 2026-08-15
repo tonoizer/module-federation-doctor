@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/identity-correlation.schema.json",
+  "title": "MFDoctor semantic identity correlation",
+  "type": "object",
+  "properties": {
+    "schemaVersion": { "const": 1 }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/correlation" },
+    { "$ref": "#/$defs/edge" },
+    { "$ref": "#/$defs/coverage" }
+  ],
+  "$defs": {
+    "identityKey": {
+      "type": "string",
+      "pattern": "^mfid:v1:[a-z-]+:[a-f0-9]{24}$",
+      "maxLength": 64
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 3,
+      "properties": {
+        "target": {
+          "enum": ["browser", "ssr", "worker", "mobile", "node", "unknown"]
+        },
+        "realm": {
+          "enum": ["top-frame", "iframe", "worker", "node", "react-native", "unknown"]
+        },
+        "environmentKey": { "$ref": "#/$defs/identityKey" }
+      }
+    },
+    "outcome": {
+      "enum": ["exact", "strong", "weak", "ambiguous", "unknown"]
+    },
+    "completeness": { "enum": ["complete", "partial", "unknown"] },
+    "edgeKind": { "enum": ["producer", "consumer", "shared-provider", "runtime"] },
+    "dimensionNames": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$", "maxLength": 64 }
+    },
+    "safeReason": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "correlationCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identityKey",
+        "kind",
+        "outcome",
+        "matchedDimensions",
+        "missingDimensions",
+        "conflicts"
+      ],
+      "properties": {
+        "identityKey": { "$ref": "#/$defs/identityKey" },
+        "kind": { "type": "string", "pattern": "^[a-z][a-z-]*$" },
+        "outcome": { "enum": ["exact", "strong", "weak", "unknown"] },
+        "matchedDimensions": { "$ref": "#/$defs/dimensionNames" },
+        "missingDimensions": { "$ref": "#/$defs/dimensionNames" },
+        "conflicts": { "$ref": "#/$defs/dimensionNames" }
+      }
+    },
+    "correlation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "subjectKey",
+        "subjectKind",
+        "outcome",
+        "candidateKeys",
+        "candidates",
+        "matchedDimensions",
+        "missingDimensions",
+        "conflicts",
+        "reason",
+        "truncated"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "subjectKey": { "$ref": "#/$defs/identityKey" },
+        "subjectKind": { "type": "string", "pattern": "^[a-z][a-z-]*$" },
+        "outcome": { "$ref": "#/$defs/outcome" },
+        "candidateKeys": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": false,
+          "items": { "$ref": "#/$defs/identityKey" }
+        },
+        "candidates": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/correlationCandidate" }
+        },
+        "matchedDimensions": { "$ref": "#/$defs/dimensionNames" },
+        "missingDimensions": { "$ref": "#/$defs/dimensionNames" },
+        "conflicts": { "$ref": "#/$defs/dimensionNames" },
+        "reason": { "$ref": "#/$defs/safeReason" },
+        "truncated": { "type": "boolean" },
+        "scope": { "$ref": "#/$defs/scope" }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "fromKey",
+        "toKey",
+        "scope",
+        "outcome",
+        "completeness",
+        "evidenceIds"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "id": { "type": "string", "pattern": "^mfedge:v1:[a-f0-9]{24}$" },
+        "kind": { "$ref": "#/$defs/edgeKind" },
+        "fromKey": { "$ref": "#/$defs/identityKey" },
+        "toKey": { "$ref": "#/$defs/identityKey" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "outcome": { "$ref": "#/$defs/outcome" },
+        "completeness": { "$ref": "#/$defs/completeness" },
+        "evidenceIds": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^(?!.*(?:[A-Za-z]:[\\\\/]|\\\\\\\\|^/|[a-z][a-z\\d+.-]*://|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$))).+$"
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "scope",
+        "expectedKinds",
+        "observedKinds",
+        "missingKinds",
+        "weakKinds",
+        "unresolvedKinds",
+        "observedEdges",
+        "state",
+        "reason"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "scope": { "$ref": "#/$defs/scope" },
+        "expectedKinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/edgeKind" }
+        },
+        "observedKinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/edgeKind" }
+        },
+        "missingKinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/edgeKind" }
+        },
+        "weakKinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/edgeKind" }
+        },
+        "unresolvedKinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/edgeKind" }
+        },
+        "observedEdges": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "state": { "enum": ["complete", "partial", "unknown"] },
+        "reason": { "$ref": "#/$defs/safeReason" }
+      }
+    }
+  }
+}

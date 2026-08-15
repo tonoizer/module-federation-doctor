@@ -66,3 +66,27 @@ aliases are not treated as shared packages.
 When unresolved package-capable dynamics exist, `shared/unused` does **not**
 claim a package is unused — prefer `doctor/partial-analysis` over a false pass
 or false unused finding.
+
+## Korrelation semantischer Identitäten
+
+Der additive Identitätsvertrag ermöglicht deterministische Offline-Korrelation,
+ohne V1-Berichte, Fingerprints, Baselines, Terminalausgabe, SARIF oder
+Exit-Codes zu verändern. `correlateSemanticIdentity(subject, candidates)`
+liefert die Ergebnisse exact, strong, weak, ambiguous oder unknown sowie
+begrenzte Kandidatenschlüssel, übereinstimmende Dimensionsnamen, fehlende
+Evidenz und Konflikte. Bei gleichwertiger stärkster Evidenz wird niemals ein
+Kandidat willkürlich ausgewählt.
+
+Die Korrelation berücksichtigt den Geltungsbereich. Grenzen für Target, Realm
+und Umgebung bleiben getrennt; ein Browser-Kandidat kann keinen SSR-Bereich
+erfüllen, und ein unbekannter oder nicht begrenzter Bereich kann nicht zu
+vollständiger Evidenz aufgewertet werden. Die zur Erklärung verwendeten Werte
+werden nicht in das Ergebnis kopiert, sodass Pfade, URLs, Zugangsdaten und
+andere Quelldaten außerhalb des additiven Vertrags bleiben.
+
+`createIdentityCapabilityEdge` erfasst Producer-, Consumer-, Shared-Provider-
+und Runtime-Beziehungen als deterministische Digest-IDs.
+`assessIdentityCapabilityCoverage` bewertet diese Kanten innerhalb eines
+angeforderten Bereichs und meldet vollständige, partielle oder unbekannte
+Abdeckung. Diese Graph-Fakten sind optionale Bibliotheksdaten; bestehende
+Legacy-Host/Remote-Projektionen bleiben unverändert.

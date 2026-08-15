@@ -81,6 +81,7 @@ describe("published schema contracts", () => {
       "capabilities.schema.json",
       "config.schema.json",
       "evidence.schema.json",
+      "identity-correlation.schema.json",
       "identity.schema.json",
       "probe.schema.json",
       "project.schema.json",
@@ -179,6 +180,65 @@ describe("published schema contracts", () => {
         "identity.schema.json",
         { ...identity, bundlerVersion: "wrong-kind" },
         "wrong optional field",
+      ),
+    ).rejects.toThrow("Schema validation failed");
+  });
+
+  it("validates additive identity correlation contracts", async () => {
+    const edge = {
+      schemaVersion: 1,
+      id: "mfedge:v1:0123456789abcdef01234567",
+      kind: "producer",
+      fromKey: "mfid:v1:application:0123456789abcdef01234567",
+      toKey: "mfid:v1:container:0123456789abcdef01234567",
+      scope: { target: "browser" },
+      outcome: "exact",
+      completeness: "complete",
+      evidenceIds: ["config-1"],
+    };
+    const correlation = {
+      schemaVersion: 1,
+      subjectKey: "mfid:v1:application:0123456789abcdef01234567",
+      subjectKind: "application",
+      outcome: "ambiguous",
+      candidateKeys: ["mfid:v1:application:fedcba9876543210fedcba98"],
+      candidates: [
+        {
+          identityKey: "mfid:v1:application:fedcba9876543210fedcba98",
+          kind: "application",
+          outcome: "strong",
+          matchedDimensions: ["parentKey"],
+          missingDimensions: ["applicationId"],
+          conflicts: [],
+        },
+      ],
+      matchedDimensions: [],
+      missingDimensions: ["applicationId"],
+      conflicts: [],
+      reason: "multiple candidates share the strongest available evidence",
+      truncated: false,
+    };
+    const coverage = {
+      schemaVersion: 1,
+      scope: { target: "browser" },
+      expectedKinds: ["producer", "consumer"],
+      observedKinds: ["producer"],
+      missingKinds: ["consumer"],
+      weakKinds: [],
+      unresolvedKinds: [],
+      observedEdges: 1,
+      state: "partial",
+      reason:
+        "some capability evidence is missing, weak, ambiguous, or incomplete in the requested scope",
+    };
+    await validatePayload("identity-correlation.schema.json", edge, "identity edge");
+    await validatePayload("identity-correlation.schema.json", correlation, "identity correlation");
+    await validatePayload("identity-correlation.schema.json", coverage, "identity coverage");
+    await expect(
+      validatePayload(
+        "identity-correlation.schema.json",
+        { ...edge, unexpected: true },
+        "extra field",
       ),
     ).rejects.toThrow("Schema validation failed");
   });
