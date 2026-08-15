@@ -212,7 +212,7 @@
     "demo:examples": "vp run --filter @mfdoctor-example/demos demo",
     "docs:dev": "vp run --filter @tonoizer/mfdoctor-docs dev",
     "docs:build": "vp run --filter @tonoizer/mfdoctor-docs build",
-    "pack:check": "vp run --filter . build && vp exec publint run --pack npm . && vp exec attw --pack . --profile esm-only && vp run schema:check && node scripts/verify-runtime-capture-compatibility.mjs && node scripts/pack-check.mjs",
+    "pack:check": "vp run --filter . build && vp exec publint run --pack npm . && vp exec attw --pack . --profile esm-only && vp run schema:check && node scripts/verify-runtime-capture-compatibility.mjs && node scripts/verify-semantic-graph.mjs && node scripts/pack-check.mjs",
     "changeset:check": "node scripts/changeset-contract.mjs",
     "schema:check": "node --experimental-strip-types scripts/schema-contract.mjs",
     "evidence:drift": "vp run --filter . build && node scripts/evidence-drift-check.mjs",

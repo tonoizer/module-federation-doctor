@@ -124,6 +124,11 @@ under an explicit `legacyProjection` with ambiguous duplicates preserved as
 unknown rather than silently promoted. `buildSemanticUiPayload` returns this
 graph alongside the unchanged `buildUiPayload` result.
 
+The mixed migration fixture at `fixtures/semantic-graph/mixed-v1-v2.json` keeps
+this boundary executable. The package verification command builds the published
+`dist` entry point, projects the fixture, and checks scoped capability queries
+without allowing ambiguous V1 project names to become semantic identities.
+
 ## Programmatischer Federation-Graph (`buildUiPayload`)
 
 MFDoctor does **not** ship an HTML dashboard. The retired `--ui` / HTML report path
