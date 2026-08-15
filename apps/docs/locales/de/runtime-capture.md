@@ -11,10 +11,11 @@ Die Designentscheidung steht in [ADR 0084: External runtime capture boundary](ht
 
 Capture muss von einer Person mit einem freigegebenen Ziel oder einer Exportdatei
 gestartet werden. Es darf nicht aus `check`, einem Bundler-Adapter, dem
-Anwendungsstart oder einem Client-Bundle laufen. Die aktuelle Adapterschnittstelle
-liest vorhandene Exporte von Observability, DevTools, Anwendungen und Node/SSR;
-spätere Slices ergänzen ausdrücklich angeforderten Browser-Transport und streng
-projizierte Fallback-Nachweise. Es werden niemals Plugins injiziert,
+Anwendungsstart oder einem Client-Bundle laufen. Die aktuellen
+Adapterschnittstellen lesen vorhandene Exporte von Observability, DevTools,
+Anwendungen und Node/SSR, bieten einen ausdrücklich angeforderten
+Browser-Transport und projizieren bereitgestellte Snapshot-/Runtime-Instance-
+Fallback-Nachweise. Es werden niemals Plugins injiziert,
 Laufzeit-Mutatoren aufgerufen, Storage gelesen oder Header, Bodies, Cookies,
 Quelltext, Props, Factories oder Raw Stacks exportiert.
 
@@ -29,10 +30,11 @@ Die Standardgrenzen betragen 5 MiB, 100 Reports, 5.000 Events, 500 Snapshots,
 und 100 Objektschlüssel. Die harte Gesamtgrenze beträgt 25 MiB; Kürzungen werden
 aufgezeichnet.
 
-Vertrag, begrenzter dateibasierter Import, vorhandene Datei-/Export-Adapter und
-der explizite schreibgeschützte Browser-Transport sind die ersten sicheren
-Slices. Sichere Snapshot-Projektionen, Netzwerk-/Fehler-Fallbacks und
-automatischer Export bleiben für Issue #84 getrennte Slices. Der begrenzte
+Vertrag, begrenzter dateibasierter Import, vorhandene Datei-/Export-Adapter, der
+explizite schreibgeschützte Browser-Transport und sichere
+Snapshot-/Runtime-Instance-Projektionen sind die ausgelieferten sicheren
+Slices. Netzwerk-/Fehler-Fallbacks, atomischer Export und automatischer Export
+bleiben für Issue #84 getrennte Slices. Der begrenzte
 dateibasierte Import ist über den bestehenden Offline-Laufzeitbefehl verfügbar:
 
 ```bash
@@ -41,8 +43,8 @@ mfdoctor runtime ./capture.json
 
 Der Befehl akzeptiert nur Vertragsversion 1, weist übergroße oder unsichere
 Dateien vor der Analyse zurück und behält die bestehende Laufzeitausgabe bei.
-Snapshot-Prüfung, Netzwerk-/Fehler-Fallback, atomisches Schreiben und
-Laufzeitmutation bleiben zurückgestellt.
+Netzwerk-/Fehler-Fallback, atomisches Schreiben und Laufzeitmutation bleiben
+zurückgestellt.
 
 ## Vorhandene Export-Adapter
 
@@ -95,3 +97,40 @@ zurück, übergibt den Bereich an den offiziellen Export-Reader und schließt di
 externe Verbindung bei Erfolg oder Fehler. Die Seite wird weder neu geladen noch
 navigiert. Capture bleibt eine einzelne explizite Operation; gewöhnliches
 `check`, Bundler-Adapter und Anwendungsstart rufen sie nie auf.
+
+## Schreibgeschützte Fallback-Projektionen
+
+Wenn ein externes Tool bereits ein Laufzeit-State-Objekt gelesen hat, kann der
+Capture-Einstiegspunkt die kleine, sichere Snapshot-/Runtime-Instance-Oberfläche
+projizieren:
+
+```ts
+import { importRuntimeCaptureFallback } from "@tonoizer/mfdoctor/capture";
+
+const capture = importRuntimeCaptureFallback({
+  runtimeVersion: "2.5.0",
+  moduleInfo: {
+    totalCount: 1,
+    entries: [
+      {
+        name: "checkout",
+        publicPath: "https://cdn.example.test/checkout/",
+        remoteEntry: "https://cdn.example.test/checkout/remoteEntry.js",
+      },
+    ],
+  },
+  instances: [{ name: "host", remoteNames: ["checkout"], shareScopes: ["default"] }],
+});
+```
+
+Die Projektion liest für `moduleInfo`, Snapshot-Einträge und
+`instances`/`runtimeInstances` ausschließlich eigene Daten-Eigenschaften.
+Unbekannte Runtime-Graphen werden ignoriert; `getPublicPath`, Factories,
+Funktionen, Header, rohe Fehler und Runtime-APIs werden nicht gelesen oder
+aufgerufen. Das Eingabeobjekt wird nicht verändert. Ein konfiguriertes
+`disableSnapshot: true` erzeugt die Snapshot-Fähigkeit `not-applicable` ohne
+Snapshot-Datensätze. Fehlendes moduleInfo ist `unavailable`; abgeschnittene,
+ungezählte, fehlerhafte oder quotenbegrenzte Daten bleiben `partial` oder
+`unknown`. Preview-/unbekannte Runtime-Versionen erhöhen die
+Shared-Lifecycle-Fähigkeit nicht; der Fallback leitet aus Instanznamen oder
+Scopes niemals den Zustand geteilter Pakete ab.

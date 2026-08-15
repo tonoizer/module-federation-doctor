@@ -7,6 +7,7 @@ import {
   RUNTIME_CAPTURE_CONTRACT_VERSION,
   captureRuntimeBrowserExport,
   detectRuntimeCaptureExport,
+  importRuntimeCaptureFallback,
   importRuntimeCaptureExport,
   loadRuntimeCaptureExportFile,
   runtimeCaptureContentDigest,
@@ -658,6 +659,165 @@ describe("runtime capture contract", () => {
       expect.arrayContaining([
         expect.objectContaining({ collection: "observability", dropped: 1 }),
         expect.objectContaining({ collection: "observability", dropped: 3 }),
+      ]),
+    );
+    expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
+  });
+
+  it("projects allowlisted moduleInfo and runtime-instance state without leaking runtime fields", async () => {
+    const input = Object.freeze({
+      runtimeVersion: "2.6.0-canary.1",
+      hostName: "host",
+      moduleInfo: Object.freeze({
+        clipped: false,
+        totalCount: 1,
+        entries: [
+          Object.freeze({
+            name: "remote",
+            publicPath: "https://cdn.example.test/remote/",
+            remoteEntry: "https://cdn.example.test/remote/remoteEntry.js",
+            globalName: "remote_global",
+            getPublicPath: 'return "https://secret.example.test/";',
+            secretToken: "should-not-leak",
+          }),
+        ],
+      }),
+      instances: [
+        Object.freeze({
+          name: "host",
+          hostName: "host",
+          runtimeVersion: "2.6.0-canary.1",
+          remoteNames: ["remote"],
+          shareScopes: ["default"],
+          runtimeGlobal: { privateKey: "should-not-leak" },
+        }),
+      ],
+    });
+
+    const capture = importRuntimeCaptureFallback(input, {
+      captureId: "fallback-capture",
+      capturedAt: 456,
+    });
+    const serialized = JSON.stringify(capture);
+
+    expect(capture.transport).toBe("browser-debug");
+    expect(capture.snapshots).toHaveLength(1);
+    expect(capture.snapshots[0]?.value).toEqual({
+      name: "remote",
+      publicPath: "https://cdn.example.test/remote/",
+      remoteEntry: "https://cdn.example.test/remote/remoteEntry.js",
+      globalName: "remote_global",
+      entryCount: 1,
+    });
+    expect(capture.instances[0]?.value).toEqual({
+      name: "host",
+      hostName: "host",
+      runtimeVersion: "2.6.0-canary.1",
+      remoteNames: ["remote"],
+      shareScopes: ["default"],
+    });
+    expect(serialized).not.toContain("getPublicPath");
+    expect(serialized).not.toContain("should-not-leak");
+    expect(capture.capabilities.observations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ capabilityKind: "snapshot", state: "exact" }),
+        expect.objectContaining({ capabilityKind: "instance", state: "exact" }),
+        expect.objectContaining({
+          capabilityKind: "shared-lifecycle",
+          state: "unavailable",
+        }),
+      ]),
+    );
+    expect(
+      capture.capabilities.observations.find((item) => item.capabilityKind === "shared-lifecycle")
+        ?.reason,
+    ).toContain("preview-like");
+    expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
+    await validatePayload("runtime-capture.schema.json", capture, "runtime fallback capture");
+  });
+
+  it("preserves disableSnapshot and absence as explicit capability states", () => {
+    let moduleInfoRead = 0;
+    const disabled = {
+      disableSnapshot: true,
+      get moduleInfo() {
+        moduleInfoRead += 1;
+        throw new Error("moduleInfo getter ran");
+      },
+      instances: [],
+    };
+    const disabledCapture = importRuntimeCaptureFallback(disabled);
+    expect(moduleInfoRead).toBe(0);
+    expect(disabledCapture.snapshots).toEqual([]);
+    expect(disabledCapture.capabilities.observations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ capabilityKind: "snapshot", state: "not-applicable" }),
+      ]),
+    );
+
+    const absentCapture = importRuntimeCaptureFallback({ runtimeVersion: "2.4.0", instances: [] });
+    expect(absentCapture.snapshots).toEqual([]);
+    expect(absentCapture.capabilities.observations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ capabilityKind: "snapshot", state: "unavailable" }),
+        expect.objectContaining({ capabilityKind: "instance", state: "exact" }),
+      ]),
+    );
+  });
+
+  it("rejects getters and hostile proxies without traversing unknown cyclic fields", () => {
+    let getterRead = 0;
+    const getterState = {
+      get moduleInfo() {
+        getterRead += 1;
+        throw new Error("getter ran");
+      },
+    };
+    expect(() => importRuntimeCaptureFallback(getterState)).toThrow("own data property");
+    expect(getterRead).toBe(0);
+
+    const cyclic: Record<string, unknown> = {
+      name: "remote",
+      publicPath: "https://cdn.example.test/remote/",
+    };
+    cyclic.unknownRuntimeGraph = cyclic;
+    const capture = importRuntimeCaptureFallback({
+      moduleInfo: { totalCount: 1, entries: [cyclic] },
+    });
+    expect(capture.snapshots[0]?.value).toMatchObject({ name: "remote" });
+
+    const hostile = new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new Error("proxy ran");
+        },
+      },
+    );
+    expect(() => importRuntimeCaptureFallback({ moduleInfo: hostile })).toThrow(
+      "cannot be safely read",
+    );
+  });
+
+  it("records fallback quota truncation as partial evidence", () => {
+    const capture = importRuntimeCaptureFallback(
+      {
+        moduleInfo: {
+          totalCount: 3,
+          entries: [{ name: "one" }, { name: "two" }, { name: "three" }],
+        },
+        instances: [{ name: "host" }],
+      },
+      { limits: { maxSnapshots: 1 } },
+    );
+    expect(capture.snapshots).toHaveLength(1);
+    expect(capture.truncation).toEqual(
+      expect.arrayContaining([expect.objectContaining({ collection: "snapshot", dropped: 2 })]),
+    );
+    expect(capture.snapshots[0]?.completeness.status).toBe("partial");
+    expect(capture.capabilities.observations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ capabilityKind: "snapshot", state: "partial" }),
       ]),
     );
     expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
