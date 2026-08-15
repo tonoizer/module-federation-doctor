@@ -10,6 +10,35 @@ const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-pack-"));
 const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const packageManagerArgs = [];
 const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+
+function packedFiles() {
+  const output = execFileSync(npmCommand, ["pack", "--dry-run", "--ignore-scripts", "--json"], {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, CI: "" },
+  });
+  const packages = JSON.parse(output);
+  return new Set(packages.flatMap((pkg) => pkg.files.map((file) => file.path)));
+}
+
+async function assertPortableReadme(files) {
+  const readme = await fs.readFile(path.join(root, "README.md"), "utf8");
+  const targets = [];
+  for (const match of readme.matchAll(/\]\(([^)]+)\)|(?:src|srcset)="([^"]+)"/g)) {
+    targets.push(match[1] ?? match[2]);
+  }
+  const relativeTargets = targets
+    .map((target) => target.split("#", 1)[0])
+    .filter((target) => target && !/^[a-z][a-z\d+.-]*:/i.test(target) && !target.startsWith("/"));
+  for (const target of relativeTargets) {
+    const packagePath = target.replace(/^\.\//, "");
+    assert(
+      files.has(packagePath),
+      `README references a file missing from the npm package: ${target}`,
+    );
+  }
+}
 
 function run(command, args, cwd = temporary) {
   execFileSync(command, args, {
@@ -21,6 +50,7 @@ function run(command, args, cwd = temporary) {
 }
 
 try {
+  await assertPortableReadme(packedFiles());
   run(packageManager, [...packageManagerArgs, "pack", "--pack-destination", temporary], root);
   const archive = (await fs.readdir(temporary)).find((file) => file.endsWith(".tgz"));
   assert(archive, "pnpm pack did not create a tarball");

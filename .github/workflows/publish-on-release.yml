@@ -67,7 +67,7 @@ jobs:
     name: Verify (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
     strategy:
       fail-fast: false
       matrix:
