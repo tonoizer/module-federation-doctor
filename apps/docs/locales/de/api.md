@@ -16,18 +16,18 @@ regenerated.
 
 ## Laufzeit-Einstiegspunkte
 
-| Import                       | Published runtime target | Purpose                                                                              |
-| ---------------------------- | ------------------------ | ------------------------------------------------------------------------------------ |
-| `@tonoizer/mfdoctor`         | `./dist/index.js`        | Core analysis, policy, baselines, evidence, runtime correlation, and graph payloads. |
-| `@tonoizer/mfdoctor/capture` | `./dist/capture.js`      | Validate and normalize external runtime capture envelopes.                           |
-| `@tonoizer/mfdoctor/modern`  | `./dist/modern.js`       | Modern.js adapter integration.                                                       |
-| `@tonoizer/mfdoctor/nuxt`    | `./dist/nuxt.js`         | Nuxt adapter integration.                                                            |
-| `@tonoizer/mfdoctor/policy`  | `./dist/policy.js`       | Named policy packs and policy helpers.                                               |
-| `@tonoizer/mfdoctor/rsbuild` | `./dist/rsbuild.js`      | Rsbuild adapter integration.                                                         |
-| `@tonoizer/mfdoctor/rspack`  | `./dist/rspack.js`       | Rspack adapter integration.                                                          |
-| `@tonoizer/mfdoctor/rules`   | `./dist/rules.js`        | Custom rule definitions and built-in rule metadata.                                  |
-| `@tonoizer/mfdoctor/vite`    | `./dist/vite.js`         | Vite adapter integration.                                                            |
-| `@tonoizer/mfdoctor/webpack` | `./dist/webpack.js`      | Webpack adapter integration.                                                         |
+| Import                       | Published runtime target | Purpose                                                                                 |
+| ---------------------------- | ------------------------ | --------------------------------------------------------------------------------------- |
+| `@tonoizer/mfdoctor`         | `./dist/index.js`        | Core analysis, policy, baselines, evidence, runtime correlation, and graph payloads.    |
+| `@tonoizer/mfdoctor/capture` | `./dist/capture.js`      | Validate envelopes and normalize external runtime exports and read-only fallback state. |
+| `@tonoizer/mfdoctor/modern`  | `./dist/modern.js`       | Modern.js adapter integration.                                                          |
+| `@tonoizer/mfdoctor/nuxt`    | `./dist/nuxt.js`         | Nuxt adapter integration.                                                               |
+| `@tonoizer/mfdoctor/policy`  | `./dist/policy.js`       | Named policy packs and policy helpers.                                                  |
+| `@tonoizer/mfdoctor/rsbuild` | `./dist/rsbuild.js`      | Rsbuild adapter integration.                                                            |
+| `@tonoizer/mfdoctor/rspack`  | `./dist/rspack.js`       | Rspack adapter integration.                                                             |
+| `@tonoizer/mfdoctor/rules`   | `./dist/rules.js`        | Custom rule definitions and built-in rule metadata.                                     |
+| `@tonoizer/mfdoctor/vite`    | `./dist/vite.js`         | Vite adapter integration.                                                               |
+| `@tonoizer/mfdoctor/webpack` | `./dist/webpack.js`      | Webpack adapter integration.                                                            |
 
 ## JSON-Schema-Einstiegspunkte
 

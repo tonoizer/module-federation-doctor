@@ -7,9 +7,9 @@ The design record is [ADR 0084: External runtime capture boundary](https://githu
 
 Capture must be invoked by a user with an approved target or export file. It
 must not run from `check`, a bundler adapter, application startup, or a client
-bundle. The current adapter slice reads existing public Observability,
-DevTools, app-owned, and Node/SSR exports; later slices add explicitly
-requested browser transport and strictly projected fallback evidence. It
+bundle. The current adapter slices read existing public Observability, DevTools,
+app-owned, and Node/SSR exports, provide an explicitly requested browser
+transport, and project supplied snapshot/runtime-instance fallback evidence. It
 never injects plugins, calls runtime mutators, reads storage, or exports
 headers, bodies, cookies, source, props, factories, or raw stacks.
 
@@ -22,10 +22,10 @@ The default limits are 5 MiB, 100 reports, 5,000 events, 500 snapshots, 100
 instances, 2,000 network records, 200 errors, 4 KiB strings, depth 12, and 100
 object keys. The hard total ceiling is 25 MiB; truncation must be recorded.
 
-The contract, bounded file-only import, existing file/export adapters, and
-explicit read-only browser transport are the first safe slices. Safe snapshot
-projections, network/error fallback, and automatic export remain separate
-stacked slices for issue #84. The bounded file-only import is available through
+The contract, bounded file-only import, existing file/export adapters, explicit
+read-only browser transport, and safe snapshot/runtime-instance projections are
+the shipped safe slices. Network/error fallback, atomic export, and automatic
+export remain separate stacked slices for issue #84. The bounded file-only import is available through
 the existing offline runtime command:
 
 ```bash
@@ -33,9 +33,8 @@ mfdoctor runtime ./capture.json
 ```
 
 The command accepts only contract version 1, rejects oversized or unsafe files
-before analysis, and keeps the existing runtime output shape. Snapshot probing,
-network/error fallback, atomic output writing, and runtime mutation remain
-deferred.
+before analysis, and keeps the existing runtime output shape. Network/error
+fallback, atomic output writing, and runtime mutation remain deferred.
 
 ## Existing export adapters
 
@@ -85,3 +84,38 @@ passes the scope to the official export reader, and closes the external
 connection on success or failure. It does not reload or navigate the page.
 Capture is still one explicit operation; ordinary `check`, bundler adapters,
 and application startup never call it.
+
+## Read-only fallback projections
+
+When an external tool has already read a runtime state object, the capture
+entry point can project the small snapshot and runtime-instance surface that is
+safe to retain:
+
+```ts
+import { importRuntimeCaptureFallback } from "@tonoizer/mfdoctor/capture";
+
+const capture = importRuntimeCaptureFallback({
+  runtimeVersion: "2.5.0",
+  moduleInfo: {
+    totalCount: 1,
+    entries: [
+      {
+        name: "checkout",
+        publicPath: "https://cdn.example.test/checkout/",
+        remoteEntry: "https://cdn.example.test/checkout/remoteEntry.js",
+      },
+    ],
+  },
+  instances: [{ name: "host", remoteNames: ["checkout"], shareScopes: ["default"] }],
+});
+```
+
+The projection reads only own data properties for `moduleInfo`, snapshot
+entries, and `instances`/`runtimeInstances`. It ignores unknown runtime graphs,
+does not read `getPublicPath`, factories, functions, headers, or raw errors, and
+never calls a runtime API or mutates the supplied object. A configured
+`disableSnapshot: true` state produces a `not-applicable` snapshot capability
+with no snapshot records. Missing moduleInfo is `unavailable`; clipped,
+uncounted, malformed, or quota-limited data remains `partial` or `unknown`.
+Preview/unknown runtime versions do not upgrade shared-lifecycle capability and
+the fallback never infers shared-state health from instance names or scopes.

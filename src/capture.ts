@@ -1083,6 +1083,23 @@ export interface RuntimeCaptureExportOptions {
   location?: string;
 }
 
+/** Options for projecting an already supplied runtime state without attachment. */
+export interface RuntimeCaptureFallbackOptions {
+  transport?: RuntimeCaptureTransport;
+  captureId?: string;
+  navigationId?: string;
+  realmId?: string;
+  sourceScope?: string;
+  capturedAt?: number;
+  runtimeVersion?: string;
+  hostName?: string;
+  /** An explicit runtime/config flag; a true source value always wins. */
+  disableSnapshot?: boolean;
+  collector?: { name: string; version: string };
+  limits?: Partial<RuntimeCaptureLimits>;
+  location?: string;
+}
+
 export class RuntimeCaptureExportError extends Error {
   readonly fileLabel: string | undefined;
 
@@ -1639,6 +1656,974 @@ export async function importRuntimeCaptureExport(
     );
   }
   return envelope;
+}
+
+const RUNTIME_FALLBACK_SOURCE_VERSION = "runtime-fallback-v1";
+const FALLBACK_WRAPPER_KEYS = [
+  "state",
+  "runtimeState",
+  "runtime",
+  "globalThis",
+  "__FEDERATION__",
+  "federation",
+  "data",
+  "value",
+  "export",
+  "snapshot",
+] as const;
+const FALLBACK_INSTANCE_KEYS = [
+  "name",
+  "hostName",
+  "runtimeVersion",
+  "remoteNames",
+  "shareScopes",
+] as const;
+const FALLBACK_SNAPSHOT_KEYS = [
+  "name",
+  "publicPath",
+  "remoteEntry",
+  "globalName",
+  "availableNames",
+  "entryCount",
+  "entries",
+  "totalCount",
+  "matchedCount",
+  "clipped",
+] as const;
+
+interface FallbackProperty {
+  present: boolean;
+  value?: unknown;
+}
+
+interface FallbackStringRead {
+  present: boolean;
+  value?: string;
+  malformed: boolean;
+}
+
+interface FallbackNumberRead {
+  present: boolean;
+  value?: number;
+  malformed: boolean;
+}
+
+interface FallbackBooleanRead {
+  present: boolean;
+  value?: boolean;
+  malformed: boolean;
+}
+
+interface FallbackStringArrayRead {
+  present: boolean;
+  values: string[];
+  malformed: boolean;
+  truncated: boolean;
+}
+
+interface FallbackSourceRef {
+  value: unknown;
+  path: string;
+}
+
+interface FallbackCollectedSources {
+  moduleInfo?: FallbackSourceRef;
+  moduleInfoPresent: boolean;
+  moduleInfoMalformed: boolean;
+  instance?: FallbackSourceRef;
+  instancesPresent: boolean;
+  instancesMalformed: boolean;
+  runtimeVersion?: string;
+  hostName?: string;
+  disableSnapshot: boolean;
+}
+
+interface FallbackSnapshotProjection {
+  values: RuntimeCaptureSnapshotValue[];
+  sourceEntryCount?: number;
+  sourceTotalCount?: number;
+  clipped: boolean;
+  malformed: boolean;
+  truncated: boolean;
+}
+
+interface FallbackInstanceItem {
+  value: unknown;
+  path: string;
+  mapName?: string;
+}
+
+interface FallbackInstanceProjection {
+  values: RuntimeCaptureInstanceValue[];
+  declaredCount: number;
+  malformed: boolean;
+  truncated: boolean;
+}
+
+function fallbackPlainRecord(value: unknown, path: string): Record<string, unknown> | undefined {
+  if (!isObject(value)) return undefined;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null)
+      throw new RuntimeCaptureExportError(`${path} must be a plain object`);
+    return value;
+  } catch (error) {
+    if (error instanceof RuntimeCaptureExportError) throw error;
+    throw new RuntimeCaptureExportError(`${path} cannot be safely read`);
+  }
+}
+
+function fallbackProperty(value: unknown, key: string, path: string): FallbackProperty {
+  const record = fallbackPlainRecord(value, path);
+  if (!record) return { present: false };
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    if (!descriptor) return { present: false };
+    if (!("value" in descriptor))
+      throw new RuntimeCaptureExportError(`${path}.${key} must be an own data property`);
+    return { present: true, value: descriptor.value };
+  } catch (error) {
+    if (error instanceof RuntimeCaptureExportError) throw error;
+    throw new RuntimeCaptureExportError(`${path}.${key} cannot be safely read`);
+  }
+}
+
+function fallbackArray(
+  value: unknown,
+  path: string,
+): { value: unknown[]; length: number } | undefined {
+  if (!Array.isArray(value)) return undefined;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Array.prototype && prototype !== null)
+      throw new RuntimeCaptureExportError(`${path} must use an unmodified array prototype`);
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    if (
+      !lengthDescriptor ||
+      !("value" in lengthDescriptor) ||
+      !Number.isSafeInteger(lengthDescriptor.value) ||
+      lengthDescriptor.value < 0
+    )
+      throw new RuntimeCaptureExportError(`${path} has an invalid array length`);
+    return { value, length: lengthDescriptor.value };
+  } catch (error) {
+    if (error instanceof RuntimeCaptureExportError) throw error;
+    throw new RuntimeCaptureExportError(`${path} cannot be safely read`);
+  }
+}
+
+function fallbackSafeStringValue(
+  value: unknown,
+  path: string,
+  limits: RuntimeCaptureLimits,
+): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") return undefined;
+  if (value.length > limits.maxStringLength)
+    throw new RuntimeCaptureExportError(`${path} exceeds maxStringLength`);
+  const redacted = redactEvidenceValue(value) as unknown;
+  if (typeof redacted !== "string" || redacted.length === 0) return undefined;
+  if (redacted.length > limits.maxStringLength)
+    throw new RuntimeCaptureExportError(`${path} exceeds maxStringLength after redaction`);
+  return redacted;
+}
+
+function fallbackStringProperty(
+  value: unknown,
+  key: string,
+  path: string,
+  limits: RuntimeCaptureLimits,
+): FallbackStringRead {
+  const property = fallbackProperty(value, key, path);
+  if (!property.present || property.value === undefined || property.value === null)
+    return { present: property.present, malformed: false };
+  if (typeof property.value !== "string") return { present: true, malformed: true };
+  const safeValue = fallbackSafeStringValue(property.value, `${path}.${key}`, limits);
+  return {
+    present: true,
+    ...(safeValue !== undefined ? { value: safeValue } : {}),
+    malformed: false,
+  };
+}
+
+function fallbackNumberProperty(value: unknown, key: string, path: string): FallbackNumberRead {
+  const property = fallbackProperty(value, key, path);
+  if (!property.present || property.value === undefined || property.value === null)
+    return { present: property.present, malformed: false };
+  if (!Number.isSafeInteger(property.value) || (property.value as number) < 0)
+    return { present: true, malformed: true };
+  return { present: true, value: property.value as number, malformed: false };
+}
+
+function fallbackBooleanProperty(value: unknown, key: string, path: string): FallbackBooleanRead {
+  const property = fallbackProperty(value, key, path);
+  if (!property.present || property.value === undefined || property.value === null)
+    return { present: property.present, malformed: false };
+  if (typeof property.value !== "boolean") return { present: true, malformed: true };
+  return { present: true, value: property.value, malformed: false };
+}
+
+function fallbackStringArrayProperty(
+  value: unknown,
+  key: string,
+  path: string,
+  limits: RuntimeCaptureLimits,
+): FallbackStringArrayRead {
+  const property = fallbackProperty(value, key, path);
+  if (!property.present || property.value === undefined || property.value === null)
+    return { present: property.present, values: [], malformed: false, truncated: false };
+  const array = fallbackArray(property.value, `${path}.${key}`);
+  if (!array) return { present: true, values: [], malformed: true, truncated: false };
+  const maxItems = 100;
+  const values: string[] = [];
+  let malformed = false;
+  for (let index = 0; index < Math.min(array.length, maxItems); index += 1) {
+    let descriptor: PropertyDescriptor | undefined;
+    try {
+      descriptor = Object.getOwnPropertyDescriptor(array.value, String(index));
+    } catch {
+      throw new RuntimeCaptureExportError(`${path}.${key}[${index}] cannot be safely read`);
+    }
+    if (!descriptor) {
+      malformed = true;
+      continue;
+    }
+    if (!("value" in descriptor))
+      throw new RuntimeCaptureExportError(`${path}.${key}[${index}] must be an own data property`);
+    const next = fallbackSafeStringValue(descriptor.value, `${path}.${key}[${index}]`, limits);
+    if (next === undefined) malformed = true;
+    else values.push(next);
+  }
+  return {
+    present: true,
+    values,
+    malformed,
+    truncated: array.length > maxItems,
+  };
+}
+
+function fallbackEnumerableKeys(
+  value: Record<string, unknown>,
+  path: string,
+  maxItems: number,
+): { keys: string[]; truncated: boolean } {
+  try {
+    const keys = Object.keys(value);
+    return { keys: keys.slice(0, maxItems), truncated: keys.length > maxItems };
+  } catch {
+    throw new RuntimeCaptureExportError(`${path} keys cannot be safely read`);
+  }
+}
+
+function fallbackHasOwnKnownKey(value: unknown, keys: readonly string[], path: string): boolean {
+  return keys.some((key) => fallbackProperty(value, key, path).present);
+}
+
+function fallbackDisableSnapshot(value: unknown, path: string): boolean {
+  const direct = fallbackBooleanProperty(value, "disableSnapshot", path);
+  let disabled = direct.value === true;
+  for (const containerKey of ["experiments", "vite"] as const) {
+    const container = fallbackProperty(value, containerKey, path);
+    if (!container.present || container.value === undefined || container.value === null) continue;
+    const nested = fallbackBooleanProperty(
+      container.value,
+      "disableSnapshot",
+      `${path}.${containerKey}`,
+    );
+    disabled ||= nested.value === true;
+  }
+  const config = fallbackProperty(value, "config", path);
+  if (config.present && config.value !== undefined && config.value !== null) {
+    const configDisabled = fallbackBooleanProperty(
+      config.value,
+      "disableSnapshot",
+      `${path}.config`,
+    );
+    disabled ||= configDisabled.value === true;
+    for (const containerKey of ["experiments", "vite"] as const) {
+      const container = fallbackProperty(config.value, containerKey, `${path}.config`);
+      if (!container.present || container.value === undefined || container.value === null) continue;
+      const nested = fallbackBooleanProperty(
+        container.value,
+        "disableSnapshot",
+        `${path}.config.${containerKey}`,
+      );
+      disabled ||= nested.value === true;
+    }
+  }
+  return disabled;
+}
+
+function fallbackLooksLikeSnapshot(value: unknown, path: string): boolean {
+  if (Array.isArray(value)) return true;
+  return fallbackHasOwnKnownKey(value, FALLBACK_SNAPSHOT_KEYS, path);
+}
+
+function collectRuntimeCaptureFallbackSources(
+  input: unknown,
+  limits: RuntimeCaptureLimits,
+): FallbackCollectedSources {
+  if (!fallbackPlainRecord(input, "/"))
+    throw new RuntimeCaptureExportError("Runtime fallback state must be a plain object");
+  const sources: FallbackCollectedSources = {
+    moduleInfoPresent: false,
+    moduleInfoMalformed: false,
+    instancesPresent: false,
+    instancesMalformed: false,
+    disableSnapshot: false,
+  };
+  const visited = new WeakSet<object>();
+
+  const visit = (value: unknown, path: string, depth: number): void => {
+    const record = fallbackPlainRecord(value, path);
+    if (!record || depth > 4) return;
+    if (visited.has(record)) return;
+    visited.add(record);
+
+    const disabledHere = fallbackDisableSnapshot(record, path);
+    if (disabledHere) sources.disableSnapshot = true;
+
+    if (sources.runtimeVersion === undefined) {
+      const runtimeVersion = fallbackStringProperty(record, "runtimeVersion", path, limits);
+      if (runtimeVersion.value !== undefined) sources.runtimeVersion = runtimeVersion.value;
+    }
+    if (sources.hostName === undefined) {
+      const hostName = fallbackStringProperty(record, "hostName", path, limits);
+      if (hostName.value !== undefined) sources.hostName = hostName.value;
+    }
+
+    if (!sources.moduleInfoPresent && !sources.disableSnapshot && !disabledHere) {
+      const moduleInfo = fallbackProperty(record, "moduleInfo", path);
+      if (moduleInfo.present) {
+        sources.moduleInfoPresent = true;
+        sources.moduleInfo = { value: moduleInfo.value, path: `${path}.moduleInfo` };
+        if (!fallbackLooksLikeSnapshot(moduleInfo.value, `${path}.moduleInfo`))
+          sources.moduleInfoMalformed = true;
+      } else {
+        const entries = fallbackProperty(record, "entries", path);
+        if (entries.present && fallbackLooksLikeSnapshot(entries.value, `${path}.entries`)) {
+          sources.moduleInfoPresent = true;
+          sources.moduleInfo = { value: entries.value, path: `${path}.entries` };
+        } else {
+          const snapshot = fallbackProperty(record, "snapshot", path);
+          if (snapshot.present && fallbackLooksLikeSnapshot(snapshot.value, `${path}.snapshot`)) {
+            sources.moduleInfoPresent = true;
+            sources.moduleInfo = { value: snapshot.value, path: `${path}.snapshot` };
+          }
+        }
+      }
+    }
+
+    if (!sources.instancesPresent) {
+      for (const key of ["instances", "runtimeInstances", "runtimeInstance", "instance"] as const) {
+        const instances = fallbackProperty(record, key, path);
+        if (!instances.present) continue;
+        sources.instancesPresent = true;
+        sources.instance = { value: instances.value, path: `${path}.${key}` };
+        if (instances.value === undefined || instances.value === null)
+          sources.instancesMalformed = true;
+        break;
+      }
+    }
+
+    const needNested =
+      (!sources.moduleInfoPresent && !sources.disableSnapshot) ||
+      !sources.instancesPresent ||
+      sources.runtimeVersion === undefined ||
+      sources.hostName === undefined;
+    if (!needNested || depth >= 4) return;
+    for (const key of FALLBACK_WRAPPER_KEYS) {
+      const nested = fallbackProperty(record, key, path);
+      if (!nested.present || nested.value === undefined || nested.value === null) continue;
+      if (nested.value === value) continue;
+      visit(nested.value, `${path}.${key}`, depth + 1);
+    }
+  };
+
+  visit(input, "/", 0);
+  return sources;
+}
+
+function fallbackSnapshotValue(
+  value: unknown,
+  path: string,
+  limits: RuntimeCaptureLimits,
+  metadata?: { availableNames?: string[]; entryCount?: number },
+): {
+  value: RuntimeCaptureSnapshotValue;
+  malformed: boolean;
+  hasValue: boolean;
+  truncated: boolean;
+} {
+  if (Array.isArray(value))
+    return { value: {}, malformed: true, hasValue: false, truncated: false };
+  const record = fallbackPlainRecord(value, path);
+  if (!record) return { value: {}, malformed: true, hasValue: false, truncated: false };
+  const result: RuntimeCaptureSnapshotValue = {};
+  let malformed = false;
+  let truncated = false;
+  for (const key of ["name", "publicPath", "remoteEntry", "globalName"] as const) {
+    const read = fallbackStringProperty(record, key, path, limits);
+    malformed ||= read.malformed;
+    if (read.value !== undefined) result[key] = read.value;
+  }
+  const availableNames = fallbackStringArrayProperty(record, "availableNames", path, limits);
+  malformed ||= availableNames.malformed;
+  truncated ||= availableNames.truncated;
+  if (availableNames.values.length > 0) result.availableNames = availableNames.values;
+  const entryCount = fallbackNumberProperty(record, "entryCount", path);
+  malformed ||= entryCount.malformed;
+  if (entryCount.value !== undefined) result.entryCount = entryCount.value;
+  if (metadata?.availableNames?.length && result.availableNames === undefined)
+    result.availableNames = [...metadata.availableNames];
+  if (metadata?.entryCount !== undefined && result.entryCount === undefined)
+    result.entryCount = metadata.entryCount;
+  const hasValue = Object.keys(result).length > 0;
+  return { value: result, malformed, hasValue, truncated };
+}
+
+function projectRuntimeCaptureSnapshots(
+  source: FallbackSourceRef | undefined,
+  limits: RuntimeCaptureLimits,
+): FallbackSnapshotProjection {
+  if (!source)
+    return {
+      values: [],
+      clipped: false,
+      malformed: false,
+      truncated: false,
+    };
+  const array = fallbackArray(source.value, source.path);
+  let malformed = false;
+  let truncated = false;
+  let sourceEntryCount: number | undefined;
+  let sourceTotalCount: number | undefined;
+  let clipped = false;
+  let availableNames: string[] | undefined;
+  let entryCount: number | undefined;
+  let entries: unknown[] = [];
+  if (array) {
+    sourceEntryCount = array.length;
+    entries = array.value;
+  } else {
+    const record = fallbackPlainRecord(source.value, source.path);
+    if (!record) {
+      return { values: [], clipped: false, malformed: true, truncated: false };
+    }
+    const names = fallbackStringArrayProperty(record, "availableNames", source.path, limits);
+    malformed ||= names.malformed;
+    truncated ||= names.truncated;
+    if (names.values.length > 0) availableNames = names.values;
+    const totalCount = fallbackNumberProperty(record, "totalCount", source.path);
+    const matchedCount = fallbackNumberProperty(record, "matchedCount", source.path);
+    const directEntryCount = fallbackNumberProperty(record, "entryCount", source.path);
+    malformed ||= totalCount.malformed || matchedCount.malformed || directEntryCount.malformed;
+    sourceTotalCount = totalCount.value ?? directEntryCount.value;
+    entryCount = sourceTotalCount;
+    const clippedValue = fallbackBooleanProperty(record, "clipped", source.path);
+    malformed ||= clippedValue.malformed;
+    clipped = clippedValue.value === true;
+    const entriesProperty = fallbackProperty(record, "entries", source.path);
+    if (entriesProperty.present) {
+      const entriesArray = fallbackArray(entriesProperty.value, `${source.path}.entries`);
+      if (!entriesArray) malformed = true;
+      else {
+        sourceEntryCount = entriesArray.length;
+        entries = entriesArray.value;
+        source.path = `${source.path}.entries`;
+      }
+    } else {
+      entries = [source.value];
+    }
+  }
+  const values: RuntimeCaptureSnapshotValue[] = [];
+  const maxEntries = Math.min(limits.maxSnapshots, 500);
+  if (entries.length > maxEntries) truncated = true;
+  for (let index = 0; index < Math.min(entries.length, maxEntries); index += 1) {
+    let descriptor: PropertyDescriptor | undefined;
+    try {
+      descriptor = Object.getOwnPropertyDescriptor(entries, String(index));
+    } catch {
+      throw new RuntimeCaptureExportError(`${source.path}[${index}] cannot be safely read`);
+    }
+    if (!descriptor) {
+      malformed = true;
+      continue;
+    }
+    if (!("value" in descriptor))
+      throw new RuntimeCaptureExportError(`${source.path}[${index}] must be an own data property`);
+    const projected = fallbackSnapshotValue(
+      descriptor.value,
+      `${source.path}[${index}]`,
+      limits,
+      availableNames || entryCount !== undefined
+        ? {
+            ...(availableNames ? { availableNames } : {}),
+            ...(entryCount !== undefined ? { entryCount } : {}),
+          }
+        : undefined,
+    );
+    malformed ||= projected.malformed;
+    truncated ||= projected.truncated;
+    if (projected.hasValue) values.push(projected.value);
+  }
+  if (values.length === 0 && !array) {
+    const projected = fallbackSnapshotValue(source.value, source.path, limits, {
+      ...(availableNames ? { availableNames } : {}),
+      ...(entryCount !== undefined ? { entryCount } : {}),
+    });
+    malformed ||= projected.malformed;
+    truncated ||= projected.truncated;
+    if (projected.hasValue) values.push(projected.value);
+  }
+  return {
+    values,
+    ...(sourceEntryCount !== undefined ? { sourceEntryCount } : {}),
+    ...(sourceTotalCount !== undefined ? { sourceTotalCount } : {}),
+    clipped,
+    malformed,
+    truncated,
+  };
+}
+
+function collectRuntimeCaptureFallbackInstances(
+  source: FallbackSourceRef | undefined,
+  limits: RuntimeCaptureLimits,
+): {
+  items: FallbackInstanceItem[];
+  declaredCount: number;
+  malformed: boolean;
+  truncated: boolean;
+} {
+  if (!source) return { items: [], declaredCount: 0, malformed: false, truncated: false };
+  const array = fallbackArray(source.value, source.path);
+  if (array) {
+    const maxItems = Math.min(limits.maxInstances, 100);
+    const items: FallbackInstanceItem[] = [];
+    let malformed = false;
+    for (let index = 0; index < Math.min(array.length, maxItems); index += 1) {
+      let descriptor: PropertyDescriptor | undefined;
+      try {
+        descriptor = Object.getOwnPropertyDescriptor(array.value, String(index));
+      } catch {
+        throw new RuntimeCaptureExportError(`${source.path}[${index}] cannot be safely read`);
+      }
+      if (!descriptor) {
+        malformed = true;
+        continue;
+      }
+      if (!("value" in descriptor))
+        throw new RuntimeCaptureExportError(
+          `${source.path}[${index}] must be an own data property`,
+        );
+      if (!fallbackPlainRecord(descriptor.value, `${source.path}[${index}]`)) malformed = true;
+      else items.push({ value: descriptor.value, path: `${source.path}[${index}]` });
+    }
+    return {
+      items,
+      declaredCount: array.length,
+      malformed,
+      truncated: array.length > maxItems,
+    };
+  }
+  const record = fallbackPlainRecord(source.value, source.path);
+  if (!record) return { items: [], declaredCount: 0, malformed: true, truncated: false };
+  if (fallbackHasOwnKnownKey(record, FALLBACK_INSTANCE_KEYS, source.path))
+    return {
+      items: [{ value: record, path: source.path }],
+      declaredCount: 1,
+      malformed: false,
+      truncated: false,
+    };
+  const maxItems = Math.min(limits.maxInstances, limits.maxObjectKeys, 100);
+  const { keys, truncated } = fallbackEnumerableKeys(record, source.path, maxItems);
+  const items: FallbackInstanceItem[] = [];
+  let malformed = false;
+  for (const key of keys) {
+    if (FORBIDDEN_KEYS.has(key) || SECRET_KEY.test(key)) {
+      malformed = true;
+      continue;
+    }
+    const property = fallbackProperty(record, key, source.path);
+    if (!property.present) continue;
+    if (!fallbackPlainRecord(property.value, `${source.path}.${key}`)) {
+      malformed = true;
+      continue;
+    }
+    items.push({ value: property.value, path: `${source.path}.${key}`, mapName: key });
+  }
+  return { items, declaredCount: Object.keys(record).length, malformed, truncated };
+}
+
+function projectRuntimeCaptureInstances(
+  source: FallbackSourceRef | undefined,
+  limits: RuntimeCaptureLimits,
+  runtimeVersion: string | undefined,
+  hostName: string | undefined,
+): FallbackInstanceProjection {
+  const collected = collectRuntimeCaptureFallbackInstances(source, limits);
+  const values: RuntimeCaptureInstanceValue[] = [];
+  let malformed = collected.malformed;
+  let truncated = collected.truncated;
+  for (const item of collected.items) {
+    const record = fallbackPlainRecord(item.value, item.path);
+    if (!record) {
+      malformed = true;
+      continue;
+    }
+    const value: RuntimeCaptureInstanceValue = {};
+    const name = fallbackStringProperty(record, "name", item.path, limits);
+    const instanceHost = fallbackStringProperty(record, "hostName", item.path, limits);
+    const instanceVersion = fallbackStringProperty(record, "runtimeVersion", item.path, limits);
+    malformed ||= name.malformed || instanceHost.malformed || instanceVersion.malformed;
+    if (name.value !== undefined) value.name = name.value;
+    else if (item.mapName !== undefined) {
+      const mapName = fallbackSafeStringValue(item.mapName, `${item.path}.<map-key>`, limits);
+      if (mapName !== undefined) value.name = mapName;
+    }
+    if (instanceHost.value !== undefined) value.hostName = instanceHost.value;
+    else if (hostName !== undefined) value.hostName = hostName;
+    if (instanceVersion.value !== undefined) value.runtimeVersion = instanceVersion.value;
+    else if (runtimeVersion !== undefined) value.runtimeVersion = runtimeVersion;
+    const remoteNames = fallbackStringArrayProperty(record, "remoteNames", item.path, limits);
+    const shareScopes = fallbackStringArrayProperty(record, "shareScopes", item.path, limits);
+    malformed ||= remoteNames.malformed || shareScopes.malformed;
+    truncated ||= remoteNames.truncated || shareScopes.truncated;
+    if (remoteNames.values.length > 0) value.remoteNames = remoteNames.values;
+    if (shareScopes.values.length > 0) value.shareScopes = shareScopes.values;
+    if (Object.keys(value).length > 0) values.push(value);
+    else malformed = true;
+  }
+  return { values, declaredCount: collected.declaredCount, malformed, truncated };
+}
+
+function fallbackRecordCompleteness(
+  source: "snapshot" | "instance",
+  partial: boolean,
+  expectedCount: number | undefined,
+  observedCount: number | undefined,
+  reason: string,
+): EvidenceCompletenessInfo {
+  return {
+    status: partial ? "partial" : "complete",
+    ...(expectedCount !== undefined ? { expectedCount } : {}),
+    ...(observedCount !== undefined ? { observedCount } : {}),
+    reason: `${source} fallback: ${reason}`,
+  };
+}
+
+/**
+ * Project a supplied runtime global/state snapshot without attaching to a
+ * browser or invoking runtime APIs. Only documented, scalar/array fields are
+ * copied; unknown runtime objects are intentionally ignored.
+ */
+export function importRuntimeCaptureFallback(
+  input: unknown,
+  options: RuntimeCaptureFallbackOptions = {},
+): RuntimeCaptureEnvelope {
+  try {
+    const limits = { ...DEFAULT_RUNTIME_CAPTURE_LIMITS, ...options.limits };
+    assertLimits(limits);
+    const sources = collectRuntimeCaptureFallbackSources(input, limits);
+    const optionRuntimeVersion =
+      options.runtimeVersion === undefined
+        ? undefined
+        : fallbackSafeStringValue(options.runtimeVersion, "/options.runtimeVersion", limits);
+    const optionHostName =
+      options.hostName === undefined
+        ? undefined
+        : fallbackSafeStringValue(options.hostName, "/options.hostName", limits);
+    const runtimeVersion = optionRuntimeVersion ?? sources.runtimeVersion;
+    const hostName = optionHostName ?? sources.hostName;
+    const disableSnapshot = options.disableSnapshot === true || sources.disableSnapshot;
+    const snapshots = projectRuntimeCaptureSnapshots(
+      disableSnapshot ? undefined : sources.moduleInfo,
+      limits,
+    );
+    const instances = projectRuntimeCaptureInstances(
+      sources.instance,
+      limits,
+      runtimeVersion,
+      hostName,
+    );
+    const sourceDigest = createHash("sha256")
+      .update(
+        JSON.stringify({
+          source: RUNTIME_FALLBACK_SOURCE_VERSION,
+          runtimeVersion,
+          hostName,
+          disableSnapshot,
+          snapshots: snapshots.values.map((value) =>
+            runtimeCaptureContentDigest(value as unknown as EvidenceValue),
+          ),
+          instances: instances.values.map((value) =>
+            runtimeCaptureContentDigest(value as unknown as EvidenceValue),
+          ),
+        }),
+      )
+      .digest("hex");
+    const captureId =
+      options.captureId === undefined
+        ? `capture-${sourceDigest.slice(0, 16)}`
+        : fallbackSafeStringValue(options.captureId, "/options.captureId", limits);
+    if (!captureId) throw new RuntimeCaptureExportError("captureId must be a non-empty string");
+    const navigationId =
+      options.navigationId === undefined
+        ? "navigation-1"
+        : fallbackSafeStringValue(options.navigationId, "/options.navigationId", limits);
+    const realmId =
+      options.realmId === undefined
+        ? "realm-top"
+        : fallbackSafeStringValue(options.realmId, "/options.realmId", limits);
+    const sourceScope =
+      options.sourceScope === undefined
+        ? "runtime-fallback"
+        : fallbackSafeStringValue(options.sourceScope, "/options.sourceScope", limits);
+    if (!navigationId || !realmId || !sourceScope)
+      throw new RuntimeCaptureExportError("fallback identity fields must be non-empty strings");
+    const capturedAt = options.capturedAt ?? 0;
+    if (!Number.isFinite(capturedAt) || capturedAt < 0)
+      throw new RuntimeCaptureExportError("capturedAt must be a non-negative finite number");
+    const collectorName =
+      options.collector?.name === undefined
+        ? "mfdoctor-capture-fallback"
+        : fallbackSafeStringValue(options.collector.name, "/options.collector.name", limits);
+    const collectorVersion =
+      options.collector?.version === undefined
+        ? "1"
+        : fallbackSafeStringValue(options.collector.version, "/options.collector.version", limits);
+    if (!collectorName || !collectorVersion)
+      throw new RuntimeCaptureExportError("collector name and version must be non-empty strings");
+    const collector = { name: collectorName, version: collectorVersion };
+    const location =
+      options.location === undefined
+        ? undefined
+        : fallbackSafeStringValue(options.location, "/options.location", limits);
+    const provenance = (): EvidenceProvenance => ({
+      collector: { ...collector },
+      inputKind: "runtime-fallback-state",
+      source: "runtime-fallback",
+      sourceSchemaVersion: RUNTIME_FALLBACK_SOURCE_VERSION,
+      contentDigest: sourceDigest,
+      ...(location ? { location } : {}),
+    });
+    let sequence = 0;
+    const identity = (
+      source: "snapshot" | "instance",
+      value: RuntimeCaptureSnapshotValue | RuntimeCaptureInstanceValue,
+    ): RuntimeCaptureIdentity => {
+      const instanceValue =
+        source === "instance" ? (value as RuntimeCaptureInstanceValue) : undefined;
+      return {
+        captureId,
+        navigationId,
+        realmId,
+        sequence: sequence++,
+        sourceScope,
+        ...(runtimeVersion ? { runtimeVersion } : {}),
+        ...(instanceValue?.hostName ? { hostName: instanceValue.hostName } : {}),
+        ...(instanceValue?.name ? { instanceName: instanceValue.name } : {}),
+      };
+    };
+    const snapshotPartial =
+      snapshots.malformed ||
+      snapshots.truncated ||
+      snapshots.clipped ||
+      snapshots.sourceEntryCount === undefined ||
+      snapshots.sourceTotalCount === undefined ||
+      (snapshots.sourceTotalCount !== undefined &&
+        snapshots.sourceTotalCount !== snapshots.sourceEntryCount);
+    const snapshotCompleteness = fallbackRecordCompleteness(
+      "snapshot",
+      snapshotPartial,
+      snapshots.sourceTotalCount,
+      snapshots.sourceEntryCount,
+      snapshots.sourceEntryCount === undefined
+        ? "the state exposed metadata but not a counted entry collection"
+        : snapshots.clipped || snapshots.truncated
+          ? "the source marked the snapshot clipped or the snapshot quota was reached"
+          : snapshots.malformed
+            ? "one or more allowlisted fields were malformed"
+            : "the allowlisted snapshot entries matched the supplied source count",
+    );
+    const instancePartial = instances.malformed || instances.truncated;
+    const instanceCompleteness = fallbackRecordCompleteness(
+      "instance",
+      instancePartial,
+      instances.declaredCount,
+      instances.values.length,
+      instances.truncated
+        ? "the runtime-instance collection exceeded the configured quota"
+        : instances.malformed
+          ? "one or more allowlisted runtime-instance fields were malformed"
+          : "the allowlisted runtime-instance collection was read without mutation",
+    );
+    const snapshotRecords: RuntimeCaptureSnapshotRecord[] = snapshots.values.map((value) => {
+      const recordIdentity = identity("snapshot", value);
+      return {
+        id: runtimeCaptureRecordId("snapshot", recordIdentity, value as unknown as EvidenceValue),
+        identity: recordIdentity,
+        source: "snapshot",
+        capturedAt,
+        contentDigest: runtimeCaptureContentDigest(value as unknown as EvidenceValue),
+        provenance: provenance(),
+        completeness: snapshotCompleteness,
+        value,
+      };
+    });
+    const instanceRecords: RuntimeCaptureInstanceRecord[] = instances.values.map((value) => {
+      const recordIdentity = identity("instance", value);
+      return {
+        id: runtimeCaptureRecordId("instance", recordIdentity, value as unknown as EvidenceValue),
+        identity: recordIdentity,
+        source: "instance",
+        capturedAt,
+        contentDigest: runtimeCaptureContentDigest(value as unknown as EvidenceValue),
+        provenance: provenance(),
+        completeness: instanceCompleteness,
+        value,
+      };
+    });
+    const truncation: RuntimeCaptureTruncation[] = [];
+    if (snapshots.truncated) {
+      truncation.push({
+        collection: "snapshot",
+        dropped: Math.max(
+          1,
+          (snapshots.sourceEntryCount ?? snapshots.values.length) - limits.maxSnapshots,
+        ),
+        firstSequence: limits.maxSnapshots,
+        reason: "The supplied snapshot entries exceeded maxSnapshots.",
+      });
+    }
+    if (instances.truncated) {
+      truncation.push({
+        collection: "instance",
+        dropped: Math.max(1, instances.declaredCount - limits.maxInstances),
+        firstSequence: limits.maxInstances,
+        reason: "The supplied runtime instances exceeded maxInstances.",
+      });
+    }
+    const snapshotState: RuntimeCaptureCapability = disableSnapshot
+      ? "not-applicable"
+      : !sources.moduleInfoPresent
+        ? "unavailable"
+        : snapshots.values.length > 0 && !snapshotPartial
+          ? "exact"
+          : snapshots.values.length > 0
+            ? "partial"
+            : snapshots.malformed || sources.moduleInfoMalformed
+              ? "unknown"
+              : "partial";
+    const instanceState: RuntimeCaptureCapability = !sources.instancesPresent
+      ? "unavailable"
+      : instances.values.length > 0 || (instances.declaredCount === 0 && !instances.malformed)
+        ? instancePartial
+          ? "partial"
+          : "exact"
+        : "unknown";
+    const snapshotReason = disableSnapshot
+      ? "The supplied runtime/config state explicitly disabled snapshot capability."
+      : !sources.moduleInfoPresent
+        ? "The supplied runtime state did not expose moduleInfo snapshot data."
+        : snapshots.values.length === 0
+          ? "moduleInfo was present, but no safe allowlisted snapshot entry was available."
+          : snapshotState === "exact"
+            ? "Allowlisted moduleInfo entries were read with a matching source count."
+            : "Snapshot data was available, but the fallback projection is partial or malformed.";
+    const instanceReason = !sources.instancesPresent
+      ? "The supplied runtime state did not expose runtime-instance data."
+      : instances.values.length === 0 && instances.declaredCount > 0
+        ? "Runtime-instance data was present but no safe allowlisted instance could be projected."
+        : instanceState === "exact"
+          ? "Allowlisted runtime-instance fields were read without mutation."
+          : "Runtime-instance data was available, but the fallback projection is partial or malformed.";
+    const observations: RuntimeCaptureCapabilityInfo[] = [
+      capability(
+        "reports",
+        "unavailable",
+        "observability",
+        "The runtime fallback input does not contain an Observability report export.",
+        sourceScope,
+        "not-present",
+        runtimeVersion,
+      ),
+      capability(
+        "shared-lifecycle",
+        "unavailable",
+        "observability",
+        runtimeVersion && /preview|canary|nightly/i.test(runtimeVersion)
+          ? "The runtime version is preview-like; the fallback does not infer shared-lifecycle facts."
+          : "The fallback does not infer shared-lifecycle facts from runtime globals.",
+        sourceScope,
+        "not-present",
+        runtimeVersion,
+      ),
+      capability(
+        "snapshot",
+        snapshotState,
+        "snapshot",
+        snapshotReason,
+        sourceScope,
+        sources.moduleInfoPresent || disableSnapshot
+          ? RUNTIME_FALLBACK_SOURCE_VERSION
+          : "not-present",
+        runtimeVersion,
+      ),
+      capability(
+        "instance",
+        instanceState,
+        "instance",
+        instanceReason,
+        sourceScope,
+        sources.instancesPresent ? RUNTIME_FALLBACK_SOURCE_VERSION : "not-present",
+        runtimeVersion,
+      ),
+      capability(
+        "network-error",
+        "unavailable",
+        "network",
+        "Network and runtime-error metadata are not inferred from fallback globals.",
+        sourceScope,
+        "not-present",
+        runtimeVersion,
+      ),
+      capability(
+        "devtools",
+        "unavailable",
+        "devtools",
+        "The fallback input is not an existing DevTools export.",
+        sourceScope,
+        "not-present",
+        runtimeVersion,
+      ),
+    ];
+    const envelope: RuntimeCaptureEnvelope = {
+      schemaVersion: 1,
+      contractVersion: RUNTIME_CAPTURE_CONTRACT_VERSION,
+      collector,
+      transport: options.transport ?? "browser-debug",
+      captureId,
+      capabilities: { observations },
+      limits,
+      truncation,
+      reports: [],
+      events: [],
+      devtools: [],
+      snapshots: snapshotRecords,
+      instances: instanceRecords,
+      network: [],
+      errors: [],
+      relations: [],
+    };
+    validateRuntimeCaptureEnvelope(envelope);
+    return envelope;
+  } catch (error) {
+    if (error instanceof RuntimeCaptureExportError) throw error;
+    throw new RuntimeCaptureExportError(
+      `Runtime fallback projection failed capture validation: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 /** Read one bounded JSON export file and adapt it without starting a runtime. */
