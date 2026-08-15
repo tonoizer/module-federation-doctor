@@ -128,6 +128,9 @@ const packageJson = await import("@tonoizer/mfdoctor/package.json", { with: { ty
 assert.equal(typeof api.analyze, "function");
 assert.equal(typeof api.probeManifest, "function");
 assert.equal(typeof api.buildUiPayload, "function");
+assert.equal(typeof api.buildSemanticGraph, "function");
+assert.equal(typeof api.buildSemanticUiPayload, "function");
+assert.equal(typeof api.querySemanticGraph, "function");
 for (const captureOnlyExport of [
   "captureRuntimeBrowserExport",
   "importRuntimeCaptureExport",
@@ -174,6 +177,7 @@ const schemaTitles = {
   identity: "MFDoctor semantic identity",
   "identity-correlation": "MFDoctor semantic identity correlation",
   "identity-governance": "MFDoctor identity governance",
+  "semantic-graph": "MFDoctor additive semantic graph",
   probe: "MFDoctor manifest probe result",
   project: "MFDoctor project facts",
   report: "MFDoctor report",
@@ -193,6 +197,7 @@ const schemaImports = {
   identity: await import("@tonoizer/mfdoctor/schemas/identity.schema.json", { with: { type: "json" } }),
   "identity-correlation": await import("@tonoizer/mfdoctor/schemas/identity-correlation.schema.json", { with: { type: "json" } }),
   "identity-governance": await import("@tonoizer/mfdoctor/schemas/identity-governance.schema.json", { with: { type: "json" } }),
+  "semantic-graph": await import("@tonoizer/mfdoctor/schemas/semantic-graph.schema.json", { with: { type: "json" } }),
   probe: await import("@tonoizer/mfdoctor/schemas/probe.schema.json", { with: { type: "json" } }),
   project: await import("@tonoizer/mfdoctor/schemas/project.schema.json", { with: { type: "json" } }),
   report: await import("@tonoizer/mfdoctor/schemas/report.schema.json", { with: { type: "json" } }),

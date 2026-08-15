@@ -198,3 +198,19 @@ lautet und die Finding-Lineage-ID exakt mit der gelieferten Lineage-ID
 Entscheidungen bleiben sichtbar, unterdrücken aber nichts. `failOnSuppressed`
 behält die bestehende Policy-Regel bei: Ein unterdrücktes Finding bleibt bei
 aktivierter Option policy-relevant.
+
+## Semantische-Graph-Brücke
+
+`buildSemanticGraph` ist die opt-in Stage-7-Schnittstelle für Graph und Queries.
+Sie akzeptiert explizite V2-Semantikidentitäten und abgegrenzte Capability-
+Kanten, berechnet Abdeckung nur im angeforderten Target-/Realm-/Umgebungs-Scope
+und behält ungelöste oder schwache Kanten sichtbar. `querySemanticGraph`
+filtert diese Knoten, Kanten und Abdeckungsdatensätze, ohne einen beliebigen
+Kandidaten auszuwählen.
+
+`buildSemanticUiPayload` liefert diesen semantischen Graphen neben dem
+unveränderten V1-Ergebnis von `buildUiPayload`. V1-Projektfakten werden als
+explizite Legacy-Knoten dargestellt; gleichnamige oder doppelte Legacy-Projekte
+werden niemals zu exakten semantischen Identitäten aufgewertet. Der semantische
+Graph ist additiv und verändert weder Standardbericht, Terminal-/JSON-/SARIF-
+Ausgabe, UI-Payload, Fingerprints, Baselines noch Exit-Codes.

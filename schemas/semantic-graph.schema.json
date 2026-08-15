@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/semantic-graph.schema.json",
+  "title": "MFDoctor additive semantic graph",
+  "description": "Versioned semantic identity/capability graph with an explicit legacy V1 projection.",
+  "type": "object",
+  "required": ["schemaVersion", "nodes", "edges", "coverage", "legacyProjection"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "coverage": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/coverage" }
+    },
+    "legacyProjection": {
+      "type": "object",
+      "required": ["projects"],
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/legacyProject" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "scope": {
+      "type": "object",
+      "properties": {
+        "target": { "enum": ["browser", "ssr", "worker", "mobile", "node", "unknown"] },
+        "realm": { "enum": ["top-frame", "iframe", "worker", "node", "react-native", "unknown"] },
+        "environmentKey": { "type": "string", "pattern": "^mfid:v1:environment:[a-f0-9]{24}$" }
+      },
+      "additionalProperties": false
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "kind", "label", "completeness", "confidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": [
+            "organization",
+            "application",
+            "container",
+            "adapter-target",
+            "build-lineage",
+            "build",
+            "artifact",
+            "environment",
+            "deployment",
+            "runtime-realm",
+            "runtime-instance",
+            "legacy-project"
+          ]
+        },
+        "label": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "completeness": { "enum": ["complete", "partial", "unknown"] },
+        "confidence": { "enum": ["exact", "strong", "weak", "unknown"] },
+        "key": { "type": "string", "pattern": "^mfid:v1:[a-z-]+:[a-f0-9]{24}$" },
+        "project": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "target": { "enum": ["browser", "ssr", "worker", "mobile", "node", "unknown"] },
+        "realm": { "enum": ["top-frame", "iframe", "worker", "node", "react-native", "unknown"] },
+        "environmentKey": { "type": "string", "pattern": "^mfid:v1:environment:[a-f0-9]{24}$" },
+        "ambiguous": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "source",
+        "target",
+        "scope",
+        "outcome",
+        "completeness",
+        "evidenceIds"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^mfedge:v1:[a-f0-9]{24}$" },
+        "kind": { "enum": ["producer", "consumer", "shared-provider", "runtime"] },
+        "source": { "type": "string", "pattern": "^mfid:v1:[a-z-]+:[a-f0-9]{24}$" },
+        "target": { "type": "string", "pattern": "^mfid:v1:[a-z-]+:[a-f0-9]{24}$" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "outcome": { "enum": ["exact", "strong", "weak", "ambiguous", "unknown"] },
+        "completeness": { "enum": ["complete", "partial", "unknown"] },
+        "evidenceIds": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "coverage": {
+      "type": "object",
+      "required": [
+        "subjectKey",
+        "schemaVersion",
+        "scope",
+        "expectedKinds",
+        "observedKinds",
+        "missingKinds",
+        "weakKinds",
+        "unresolvedKinds",
+        "observedEdges",
+        "state",
+        "reason"
+      ],
+      "properties": {
+        "subjectKey": { "type": "string", "pattern": "^mfid:v1:[a-z-]+:[a-f0-9]{24}$" },
+        "schemaVersion": { "const": 1 },
+        "scope": { "$ref": "#/$defs/scope" },
+        "expectedKinds": {
+          "type": "array",
+          "items": { "enum": ["producer", "consumer", "shared-provider", "runtime"] }
+        },
+        "observedKinds": {
+          "type": "array",
+          "items": { "enum": ["producer", "consumer", "shared-provider", "runtime"] }
+        },
+        "missingKinds": {
+          "type": "array",
+          "items": { "enum": ["producer", "consumer", "shared-provider", "runtime"] }
+        },
+        "weakKinds": {
+          "type": "array",
+          "items": { "enum": ["producer", "consumer", "shared-provider", "runtime"] }
+        },
+        "unresolvedKinds": {
+          "type": "array",
+          "items": { "enum": ["producer", "consumer", "shared-provider", "runtime"] }
+        },
+        "observedEdges": { "type": "integer", "minimum": 0 },
+        "state": { "enum": ["complete", "partial", "unknown"] },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 512 }
+      },
+      "additionalProperties": false
+    },
+    "legacyProject": {
+      "type": "object",
+      "required": ["project", "nodeId", "ambiguous"],
+      "properties": {
+        "project": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "nodeId": { "type": "string", "pattern": "^legacy:v1:project:[a-f0-9]{24}$" },
+        "identityKey": { "type": "string", "pattern": "^mfid:v1:[a-z-]+:[a-f0-9]{24}$" },
+        "federationGroup": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "ambiguous": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

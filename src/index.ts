@@ -426,6 +426,26 @@ export type {
   V1WaiverDecisionState,
 } from "./v1-compatibility.js";
 export {
+  buildSemanticGraph,
+  buildSemanticUiPayload,
+  querySemanticGraph,
+  SEMANTIC_GRAPH_SCHEMA_VERSION,
+} from "./semantic-graph.js";
+export type {
+  SemanticGraph,
+  SemanticGraphCoverage,
+  SemanticGraphCoverageRequest,
+  SemanticGraphEdge,
+  SemanticGraphInput,
+  SemanticGraphLegacyProject,
+  SemanticGraphNode,
+  SemanticGraphNodeKind,
+  SemanticGraphQuery,
+  SemanticGraphQueryResult,
+  SemanticGraphSchemaVersion,
+  SemanticUiPayload,
+} from "./semantic-graph.js";
+export {
   assertEvidenceGraphIntegrity,
   assertEvidenceValue,
   canonicalizeEvidenceValue,
