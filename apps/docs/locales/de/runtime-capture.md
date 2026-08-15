@@ -33,8 +33,8 @@ aufgezeichnet.
 Vertrag, begrenzter dateibasierter Import, vorhandene Datei-/Export-Adapter, der
 explizite schreibgeschützte Browser-Transport und sichere
 Snapshot-/Runtime-Instance-Projektionen sind die ausgelieferten sicheren
-Slices. Netzwerk-/Fehler-Fallbacks, atomischer Export und automatischer Export
-bleiben für Issue #84 getrennte Slices. Der begrenzte
+Slices. Der Netzwerk-/Fehler-Fallback ist ebenfalls verfügbar; atomischer
+Export und automatischer Export bleiben für Issue #84 getrennte Slices. Der begrenzte
 dateibasierte Import ist über den bestehenden Offline-Laufzeitbefehl verfügbar:
 
 ```bash
@@ -43,8 +43,7 @@ mfdoctor runtime ./capture.json
 
 Der Befehl akzeptiert nur Vertragsversion 1, weist übergroße oder unsichere
 Dateien vor der Analyse zurück und behält die bestehende Laufzeitausgabe bei.
-Netzwerk-/Fehler-Fallback, atomisches Schreiben und Laufzeitmutation bleiben
-zurückgestellt.
+Atomisches Schreiben und Laufzeitmutation bleiben zurückgestellt.
 
 ## Vorhandene Export-Adapter
 
@@ -134,3 +133,42 @@ ungezählte, fehlerhafte oder quotenbegrenzte Daten bleiben `partial` oder
 `unknown`. Preview-/unbekannte Runtime-Versionen erhöhen die
 Shared-Lifecycle-Fähigkeit nicht; der Fallback leitet aus Instanznamen oder
 Scopes niemals den Zustand geteilter Pakete ab.
+
+## Netzwerk-/Fehler-Fallback-Metadaten
+
+Ein externer Collector kann begrenzte MF-orientierte Request- und
+Runtime-Fehler-Metadaten übergeben, ohne Request-Interna zu exportieren:
+
+```ts
+import { importRuntimeCaptureNetworkFallback } from "@tonoizer/mfdoctor/capture";
+
+const capture = importRuntimeCaptureNetworkFallback({
+  network: [
+    {
+      url: "https://cdn.example.test/checkout/remoteEntry.js",
+      kind: "remote-entry",
+      status: 200,
+      requestId: "request-1",
+      timestamp: 1_000,
+    },
+  ],
+  errors: [
+    {
+      code: "RUNTIME-007",
+      message: "remote entry failed",
+      requestId: "request-1",
+      timestamp: 1_001,
+    },
+  ],
+});
+```
+
+Projiziert werden nur freigegebene URL-, Kind-, Status-, Fehler-/Dauer-/Initiator-
+Klassen sowie Fehlercode/-name/-message/-phase, Request-IDs und Zeitstempel.
+URL-Zugangsdaten und geheime Query-Werte werden vor Digest und Speicherung
+redigiert; Header, Bodies, Cookies, Raw Stacks und beliebige Fehlerkontexte
+werden ignoriert. Eine gleiche Request-ID oder redigierte URL erzeugt eine
+exakte Relation. Eine Übereinstimmung nur über Zeit ist
+`time-window-candidate` und niemals eine exakte kausale Verknüpfung. Überläufe
+und fehlerhafte Datensätze bleiben `partial`/`unknown` und erzeugen explizite
+Kürzungsdaten.
