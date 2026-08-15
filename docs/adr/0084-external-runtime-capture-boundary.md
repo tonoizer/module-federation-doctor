@@ -101,17 +101,25 @@ The following slices are already on `main`:
   tests;
 - package/docs boundary checks.
 
+The following first adapter slice is now also implemented without live
+attachment:
+
+- existing Observability, DevTools, app-owned, and Node/SSR JSON exports are
+  detected, projected through the #82 reader, scoped, redacted, validated, and
+  returned as a contract-v1 envelope;
+- DevTools metadata stays source-partial and keeps source-supplied relations;
+- report/event count limits produce explicit truncation and partial capability
+  state.
+
 The remaining work stays linear and independently reviewable:
 
-1. Existing file/export adapters for Observability, DevTools, app-owned, and
-   Node/SSR files, without live attachment.
-2. Explicit external browser transport with session/navigation/realm tracking
+1. Explicit external browser transport with session/navigation/realm tracking
    and cleanup, without fallback global reads.
-3. Read-only snapshot and runtime-instance projections with hostile-object and
+2. Read-only snapshot and runtime-instance projections with hostile-object and
    `disableSnapshot` coverage.
-4. MF-focused network/error metadata and candidate-link semantics.
-5. Final quota/redaction/atomic exporter integration and offline handoff proof.
-6. Compatibility matrix, package-boundary audit, privacy docs, and capture-
+3. MF-focused network/error metadata and candidate-link semantics.
+4. Final quota/redaction/atomic exporter integration and offline handoff proof.
+5. Compatibility matrix, package-boundary audit, privacy docs, and capture-
    then-import examples.
 
 No slice may reopen the rejected runtime-agent design or be merged as a broad

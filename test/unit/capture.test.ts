@@ -1,8 +1,13 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_RUNTIME_CAPTURE_LIMITS,
   HARD_RUNTIME_CAPTURE_LIMITS,
   RUNTIME_CAPTURE_CONTRACT_VERSION,
+  detectRuntimeCaptureExport,
+  importRuntimeCaptureExport,
+  loadRuntimeCaptureExportFile,
   runtimeCaptureContentDigest,
   runtimeCaptureRecordId,
   validateRuntimeCaptureEnvelope,
@@ -10,6 +15,12 @@ import {
   type RuntimeCaptureIdentity,
 } from "../../src/capture.js";
 import { validatePayload } from "../helpers/schema-contract.js";
+
+const runtimeFixtureRoot = path.resolve("fixtures/runtime-traces");
+
+async function readRuntimeFixture(name: string): Promise<unknown> {
+  return JSON.parse(await fs.readFile(path.join(runtimeFixtureRoot, name), "utf8")) as unknown;
+}
 
 const identity = (sequence: number, captureId = "capture-1"): RuntimeCaptureIdentity => ({
   captureId,
@@ -529,5 +540,125 @@ describe("runtime capture contract", () => {
     const defaultIndex = await import("../../src/index.js");
     expect(packageJson.exports["./capture"]).toBeDefined();
     expect(defaultIndex).not.toHaveProperty("validateRuntimeCaptureEnvelope");
+  });
+
+  it("adapts an existing Observability export into deterministic capture records", async () => {
+    const input = await readRuntimeFixture("current-2.5.3.json");
+
+    expect(detectRuntimeCaptureExport(input)).toBe("observability");
+    const first = await importRuntimeCaptureExport(input, {
+      location: "/tmp/mfdoctor/export.json",
+    });
+    const second = await importRuntimeCaptureExport(input, {
+      location: "/tmp/mfdoctor/export.json",
+    });
+
+    expect(first).toEqual(second);
+    expect(first.transport).toBe("file");
+    expect(first.reports).toHaveLength(1);
+    expect(first.events).toHaveLength(2);
+    expect(first.reports[0]?.provenance).toMatchObject({
+      inputKind: "observability-export",
+      source: "official-observability",
+      location: "[PATH]",
+    });
+    expect(first.reports[0]?.contentDigest).toMatch(/^[a-f0-9]{64}$/);
+    expect(first.capabilities.observations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ capabilityKind: "reports", state: "exact" }),
+        expect.objectContaining({ capabilityKind: "shared-lifecycle" }),
+      ]),
+    );
+    expect(() => validateRuntimeCaptureEnvelope(first)).not.toThrow();
+  });
+
+  it("keeps an existing DevTools export partial and links source metadata", async () => {
+    const input = await readRuntimeFixture("partial-devtools.json");
+    expect(detectRuntimeCaptureExport(input)).toBe("devtools");
+
+    const capture = await importRuntimeCaptureExport(Object.freeze(input as object));
+    const devtools = capture.devtools[0];
+    const reportRecord = capture.reports[0];
+
+    expect(capture.transport).toBe("devtools-export");
+    expect(devtools?.value.reportIds).toEqual([reportRecord?.id]);
+    expect(reportRecord?.completeness.status).toBe("partial");
+    expect(reportRecord?.provenanceRefs).toEqual([devtools?.id]);
+    expect(capture.relations).toEqual([
+      expect.objectContaining({
+        from: devtools?.id,
+        to: reportRecord?.id,
+        relation: "source-supplied",
+      }),
+    ]);
+    expect(capture.capabilities.observations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          capabilityKind: "reports",
+          state: "partial",
+          source: "devtools",
+        }),
+        expect.objectContaining({ capabilityKind: "devtools", state: "exact" }),
+      ]),
+    );
+    expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
+  });
+
+  it("supports explicit app-owned and Node/SSR file wrappers", async () => {
+    const fixtureReport = await readRuntimeFixture("healthy.json");
+
+    const appInput = { adapter: "app", report: fixtureReport };
+    expect(detectRuntimeCaptureExport(appInput)).toBe("app");
+    const appCapture = await importRuntimeCaptureExport(appInput);
+    expect(appCapture.transport).toBe("app-export");
+    expect(appCapture.reports[0]?.provenance).toMatchObject({
+      inputKind: "app-owned-export",
+      source: "app-owned-export",
+    });
+
+    const nodeInput = { transport: "node-file", data: fixtureReport };
+    expect(detectRuntimeCaptureExport(nodeInput)).toBe("node");
+    const nodeCapture = await importRuntimeCaptureExport(nodeInput);
+    expect(nodeCapture.transport).toBe("node-file");
+    expect(nodeCapture.reports[0]?.identity.realmId).toBe("node-ssr");
+    expect(nodeCapture.reports[0]?.provenance).toMatchObject({
+      inputKind: "node-ssr-file",
+      source: "node-ssr-export",
+    });
+    expect(() => validateRuntimeCaptureEnvelope(appCapture)).not.toThrow();
+    expect(() => validateRuntimeCaptureEnvelope(nodeCapture)).not.toThrow();
+  });
+
+  it("redacts sensitive fields while loading a bounded export file", async () => {
+    const filePath = path.join(runtimeFixtureRoot, "remote-load-failed.json");
+    const capture = await loadRuntimeCaptureExportFile(filePath);
+    const serialized = JSON.stringify(capture);
+
+    expect(capture.reports).toHaveLength(1);
+    expect(serialized).not.toContain("should-not-leak");
+    expect(serialized).not.toContain("secret-token");
+    expect(serialized).not.toContain("user:pass");
+    expect(capture.reports[0]?.provenance.location).toBe(filePath.replaceAll(filePath, "[PATH]"));
+    expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
+  });
+
+  it("makes quota truncation explicit for report and event exports", async () => {
+    const input = [
+      await readRuntimeFixture("healthy.json"),
+      await readRuntimeFixture("current-2.5.3.json"),
+    ];
+    const capture = await importRuntimeCaptureExport(input, {
+      limits: { maxReports: 1, maxEvents: 1 },
+    });
+
+    expect(capture.reports).toHaveLength(1);
+    expect(capture.events).toHaveLength(1);
+    expect(capture.truncation).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ collection: "observability", dropped: 1 }),
+        expect.objectContaining({ collection: "observability", dropped: 3 }),
+      ]),
+    );
+    expect(() => validateRuntimeCaptureEnvelope(capture)).not.toThrow();
   });
 });
