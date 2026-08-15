@@ -69,117 +69,132 @@ or false unused finding.
 
 ## Korrelation semantischer Identitäten
 
-The additive identity contract provides deterministic offline correlation without
-changing V1 reports, fingerprints, baselines, terminal output, SARIF, or exit
-codes. `correlateSemanticIdentity(subject, candidates)` returns exact, strong,
-weak, ambiguous, or unknown outcomes together with bounded candidate keys,
-matched dimension names, missing evidence, and conflicts. It never chooses an
-arbitrary candidate when the strongest evidence ties.
+Der additive Identitätsvertrag ermöglicht deterministische Offline-Korrelation,
+ohne V1-Berichte, Fingerprints, Baselines, Terminalausgabe, SARIF oder
+Exit-Codes zu verändern. `correlateSemanticIdentity(subject, candidates)`
+liefert die Ergebnisse exact, strong, weak, ambiguous oder unknown sowie
+begrenzte Kandidatenschlüssel, übereinstimmende Dimensionsnamen, fehlende
+Evidenz und Konflikte. Bei gleichwertiger stärkster Evidenz wird niemals ein
+Kandidat willkürlich ausgewählt.
 
-Correlation is scope-aware. Target, realm, and environment boundaries are kept
-separate; a browser candidate cannot satisfy an SSR scope, and an unknown or
-unbounded scope cannot be promoted to complete evidence. Values used to explain
-correlation are not copied into the result, which keeps paths, URLs, credentials,
-and other raw source data outside the additive contract.
+Die Korrelation berücksichtigt den Geltungsbereich. Grenzen für Target, Realm
+und Umgebung bleiben getrennt; ein Browser-Kandidat kann keinen SSR-Bereich
+erfüllen, und ein unbekannter oder nicht begrenzter Bereich kann nicht zu
+vollständiger Evidenz aufgewertet werden. Die zur Erklärung verwendeten Werte
+werden nicht in das Ergebnis kopiert, sodass Pfade, URLs, Zugangsdaten und
+andere Quelldaten außerhalb des additiven Vertrags bleiben.
 
-`createIdentityCapabilityEdge` records producer, consumer, shared-provider, and
-runtime relationships as deterministic digest IDs. `assessIdentityCapabilityCoverage`
-evaluates those edges within one requested scope and reports complete, partial,
-or unknown coverage. These graph facts are opt-in library data; existing legacy
-host/remote projections remain unchanged.
+`createIdentityCapabilityEdge` erfasst Producer-, Consumer-, Shared-Provider-
+und Runtime-Beziehungen als deterministische Digest-IDs.
+`assessIdentityCapabilityCoverage` bewertet diese Kanten innerhalb eines
+angeforderten Bereichs und meldet vollständige, partielle oder unbekannte
+Abdeckung. Diese Graph-Fakten sind optionale Bibliotheksdaten; bestehende
+Legacy-Host/Remote-Projektionen bleiben unverändert.
 
 ## Portable Ownership-Governance
 
-`defineIdentityGovernanceRule` validates a portable ownership rule, while
-`resolveIdentityGovernance(identity, rules)` applies deterministic precedence:
-an exact identity-key selector wins first, followed by parent/kind and
-container/kind selectors, with priority resolving rules within the same
-specificity tier. Responsibilities stay distinct for consumers, producers,
-shared providers, deployments, and runtime platforms.
+`defineIdentityGovernanceRule` validiert eine portable Zuständigkeitsregel,
+während `resolveIdentityGovernance(identity, rules)` eine deterministische
+Priorität anwendet: Zuerst gewinnt ein Selektor für einen exakten
+Identitätsschlüssel, danach Selektoren für Parent/Kind und Container/Kind;
+Prioritäten lösen Regeln innerhalb derselben Spezifitätsstufe auf. Die
+Zuständigkeiten für Consumer, Producer, Shared Provider, Deployments und
+Runtime-Plattformen bleiben getrennt.
 
-Equal-precedence owners are returned as `ambiguous`; the resolver never picks a
-team alphabetically. Partial or unknown governance evidence remains `unknown`
-and reports the incomplete rule IDs. Scope mismatches and missing target, realm,
-or environment dimensions are preserved as diagnostics. Governance is
-library-only and additive; it does not suppress findings, modify baselines, or
-implement waivers.
+Zuständigkeiten mit gleicher Priorität werden als `ambiguous` zurückgegeben;
+der Resolver wählt kein Team alphabetisch aus. Partielle oder unbekannte
+Governance-Evidenz bleibt `unknown` und meldet die unvollständigen Regel-IDs.
+Bereichskonflikte und fehlende Target-, Realm- oder Umgebungsdimensionen bleiben
+als Diagnosen erhalten. Governance ist eine additive Bibliotheksfunktion; sie
+unterdrückt keine Befunde, ändert keine Baselines und implementiert keine
+Waiver.
 
 ## Laufzeit-Identitätsprojektion
 
-`projectRuntimeCaptureIdentity(capture, options)` is the additive bridge from a
-sanitized #84 runtime-capture identity into explicit runtime-realm and
-runtime-instance identities. It requires an explicit target and realm, keeps
-deployment, realm, instance, package, and version dimensions separate, and
-returns exact, strong, weak, or unknown confidence with bounded missing-field
-diagnostics.
+`projectRuntimeCaptureIdentity(capture, options)` ist die additive Brücke von
+einer bereinigten #84-Laufzeitaufzeichnung zu expliziten Laufzeit-Realm- und
+Laufzeit-Instanzidentitäten. Sie verlangt ein explizites Target und Realm,
+trennt Deployment-, Realm-, Instanz-, Paket- und Versionsdimensionen und
+liefert exact, strong, weak oder unknown mit begrenzten Diagnosen fehlender
+Felder.
 
-Absent deployment or instance evidence remains a source-scoped unknown identity.
-An `instanceName` or other display label is never promoted to semantic proof.
-The projection preserves browser, SSR, worker, Node, and frame boundaries and
-does not mutate runtime state, execute remote code, inspect client bundles, or
-change V1 reports and CLI behavior. Finding lineage, waivers, and the V1
-compatibility bridge remain separate additive slices.
+Fehlende Deployment- oder Instanznachweise bleiben eine quellbezogene
+unbekannte Identität. Ein `instanceName` oder ein anderes Anzeigelabel wird
+niemals zu semantischem Nachweis. Die Projektion bewahrt Grenzen zwischen
+Browser, SSR, Worker, Node und Frames und verändert weder Laufzeitstatus noch
+führt sie Remote-Code aus oder prüft Client-Bundles. V1-Berichte und CLI-
+Verhalten bleiben unverändert; Finding-Historie, Waiver und die V1-
+Kompatibilitätsbrücke bleiben getrennte additive Slices.
 
 ## Build-/Artifact-/Deployment-Korrelation
 
-`correlateBuildArtifactDeployment(input)` joins explicit build, artifact,
-deployment, and environment identities through parent and artifact-key links.
-It returns bounded matched, missing, and conflict dimensions instead of
-guessing from manifest names. `correlateDeploymentRelationship(input)` accepts
-an explicit offline `redeploy` or `rollback` fact only when the environment and
-artifact set agree; it does not infer ordering from timestamps or labels.
+`correlateBuildArtifactDeployment(input)` verknüpft explizite Build-, Artifact-,
+Deployment- und Umgebungsidentitäten über Parent- und Artifact-Schlüssel.
+Begrenzte übereinstimmende, fehlende und konfliktbehaftete Dimensionen werden
+zurückgegeben, statt aus Manifestnamen zu raten. `correlateDeploymentRelationship(input)`
+akzeptiert ein explizites Offline-Faktum `redeploy` oder `rollback` nur bei
+übereinstimmender Umgebung und Artifact-Menge; die Reihenfolge wird nicht aus
+Zeitstempeln oder Labels abgeleitet.
 
-These relationships preserve separate build and deployment occurrences while
-allowing one artifact set to be redeployed. Incomplete or conflicting #81-style
-evidence remains weak or unknown, and no deployment is performed by the
-library.
+Die Beziehungen bewahren getrennte Build- und Deployment-Vorkommnisse, auch
+wenn eine Artifact-Menge erneut ausgerollt wird. Unvollständige oder
+widersprüchliche #81-Evidenz bleibt weak oder unknown; die Bibliothek führt
+keine Deployments aus.
 
 ## Finding-Lineage und Offline-Historie
 
-`createFindingLineage` gives a rule evaluation a stable `findingLineageId` and
-an independent `findingOccurrenceId`. Lineage is built only from the rule's
-declared identity schema, semantic subject, stable violation key, and explicitly
-declared scope. Messages, severity, source locations, timestamps, and volatile
-evidence are excluded from the lineage ID. The existing V1 fingerprint remains
-unchanged and is still the baseline/SARIF compatibility identity.
+`createFindingLineage` gibt einer Regelauswertung eine stabile
+`findingLineageId` und eine getrennte `findingOccurrenceId`. Die Lineage wird
+nur aus dem von der Regel deklarierten Identitätsschema, dem semantischen
+Subject, dem stabilen Verstoßschlüssel und dem ausdrücklich deklarierten Scope
+gebildet. Nachrichten, Schweregrad, Quellpositionen, Zeitstempel und volatile
+Evidenz sind nicht Teil der Lineage-ID. Der bestehende V1-Fingerprint bleibt
+unverändert und ist weiterhin die Kompatibilitätsidentität für Baselines und
+SARIF.
 
-`createFindingHistorySnapshot` and `diffFindingHistory` compare saved local or CI
-snapshots. They report new, persistent, resolved, regressed, improved, and
-unknown/unconfirmed changes. A missing or partial later snapshot cannot prove a
-finding resolved; only complete comparable evidence can do that. The contract is
-offline and library-only: it adds no telemetry service, hosted history store,
-default CLI behavior, or rule suppression.
+`createFindingHistorySnapshot` und `diffFindingHistory` vergleichen gespeicherte
+lokale oder CI-Snapshots. Sie melden neue, persistente, behobene, verschärfte,
+verbesserte und unbekannte/unbestätigte Änderungen. Ein fehlender oder partieller
+späterer Snapshot kann keine Behebung beweisen; dafür ist vollständige,
+vergleichbare Evidenz erforderlich. Der Vertrag ist offline und
+bibliotheksbasiert: Er fügt weder Telemetrie, einen gehosteten Verlaufsspeicher,
+standardmäßiges CLI-Verhalten noch Regelunterdrückung hinzu.
 
 ## Governance-Waiver und Audit-Entscheidungen
 
-`defineGovernanceWaiver` validates a portable, owner-approved exception. A waiver
-must identify a rule and explicit subject, owner, reason, ticket, approver,
-expiration, and one or more named environments. Wildcards, sensitive metadata,
-and selectors that cannot identify a concrete subject are rejected.
+`defineGovernanceWaiver` validiert eine portable, vom Eigentümer genehmigte
+Ausnahme. Ein Waiver muss eine Regel und ein explizites Subject sowie Owner,
+Begründung, Ticket, Genehmiger, Ablaufzeitpunkt und mindestens eine benannte
+Umgebung angeben. Wildcards, sensible Metadaten und Selektoren ohne konkretes
+Subject werden abgelehnt.
 
-`evaluateGovernanceWaiver` and `resolveGovernanceWaivers` require the finding to
-be a complete failure and require environment, target, realm, and environment
-identity evidence whenever a waiver scopes those dimensions. An injected clock
-makes expiry tests and audit output reproducible. Expired, not-yet-active,
-out-of-scope, incomplete, and ambiguous waivers never suppress a finding.
+`evaluateGovernanceWaiver` und `resolveGovernanceWaivers` verlangen einen
+vollständigen Finding-Fehler und die Identitätsnachweise für Umgebung, Target,
+Realm und Umgebung, wenn ein Waiver diese Dimensionen einschränkt. Eine
+injizierte Uhr macht Ablaufprüfungen und Audit-Ausgaben reproduzierbar.
+Abgelaufene, noch nicht aktive, außerhalb des Scopes liegende, unvollständige
+und mehrdeutige Waiver unterdrücken niemals einen Befund.
 
-The result retains every waiver ID, decision reason, expiry, evaluation time,
-missing dimension, and conflict. Multiple overlapping approvals with different
-owner/reason/ticket metadata remain `ambiguous` instead of selecting a winner.
-This contract is additive and library-only: it does not change finding lineage,
-the V1 fingerprint, `baseline.schema.json`, report projections, or exit codes.
+Das Ergebnis behält jede Waiver-ID, den Entscheidungsgrund, Ablaufzeitpunkt,
+Auswertungszeitpunkt, fehlende Dimensionen und Konflikte. Mehrere überlappende
+Genehmigungen mit unterschiedlichem Owner-, Begründungs- oder Ticket-Metadatum
+bleiben `ambiguous`, statt einen Gewinner auszuwählen. Der Vertrag ist additiv
+und bibliotheksbasiert: Lineage, V1-Fingerprint, `baseline.schema.json`,
+Report-Projektionen und Exit-Codes bleiben unverändert.
 
 ## V1-Kompatibilitätsbrücke
 
-`projectV1Suppression` is the explicit compatibility seam for consumers that
-have both a legacy `DoctorFinding` and additive lineage/waiver evidence. It
-delegates baseline matching to the existing V1 matcher, records whether the
-baseline, a governed waiver, or both supplied suppression, and exposes the
-waiver outcome without changing the finding, baseline file, fingerprint,
-terminal/JSON/SARIF projection, or exit policy.
+`projectV1Suppression` ist die explizite Kompatibilitätsschnittstelle für
+Verbraucher, die ein Legacy-`DoctorFinding` und additive Lineage-/Waiver-
+Nachweise gemeinsam haben. Sie delegiert den Baseline-Abgleich an den
+bestehenden V1-Matcher, zeichnet auf, ob die Baseline, ein genehmigter Waiver
+oder beide die Unterdrückung geliefert haben, und macht das Waiver-Ergebnis
+sichtbar, ohne Finding, Baseline-Datei, Fingerprint, Terminal-/JSON-/SARIF-
+Projektion oder Exit-Policy zu verändern.
 
-Waiver suppression is accepted only when its resolution is `suppressed` and its
-finding lineage ID exactly matches the supplied lineage. Ambiguous, unknown, or
-mismatched decisions remain visible but do not suppress. `failOnSuppressed`
-preserves the existing policy rule: a suppressed finding is still policy
-relevant when that option is enabled.
+Eine Waiver-Unterdrückung wird nur akzeptiert, wenn die Auflösung `suppressed`
+lautet und die Finding-Lineage-ID exakt mit der gelieferten Lineage-ID
+übereinstimmt. Mehrdeutige, unbekannte oder nicht übereinstimmende
+Entscheidungen bleiben sichtbar, unterdrücken aber nichts. `failOnSuppressed`
+behält die bestehende Policy-Regel bei: Ein unterdrücktes Finding bleibt bei
+aktivierter Option policy-relevant.
