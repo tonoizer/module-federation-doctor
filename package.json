@@ -228,7 +228,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
     "@changesets/cli": "2.31.1",
-    "@playwright/test": "1.61.1",
+    "@playwright/test": "1.62.1",
     "@types/node": "26.1.2",
     "@types/semver": "7.7.1",
     "ajv-formats": "3.0.1",
