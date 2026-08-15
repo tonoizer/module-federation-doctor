@@ -106,6 +106,7 @@
     "./schemas/config.schema.json": "./schemas/config.schema.json",
     "./schemas/runtime-capture.schema.json": "./schemas/runtime-capture.schema.json",
     "./schemas/runtime-identity-correlation.schema.json": "./schemas/runtime-identity-correlation.schema.json",
+    "./schemas/build-artifact-deployment.schema.json": "./schemas/build-artifact-deployment.schema.json",
     "./schemas/identity-correlation.schema.json": "./schemas/identity-correlation.schema.json",
     "./schemas/identity-governance.schema.json": "./schemas/identity-governance.schema.json",
     "./schemas/ui.schema.json": "./schemas/ui.schema.json",

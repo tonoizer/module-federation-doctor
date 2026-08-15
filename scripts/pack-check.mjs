@@ -165,6 +165,7 @@ assert.equal(typeof policy.presets.recommended, "object");
 assert.equal(typeof policy.presets.strict, "object");
 const schemaTitles = {
   baseline: "MFDoctor fingerprint baseline",
+  "build-artifact-deployment": "MFDoctor build artifact deployment correlation",
   capabilities: "MFDoctor CLI capabilities",
   config: "MFDoctor canonical config v1",
   evidence: "MFDoctor evidence protocol v2",
@@ -181,6 +182,7 @@ const schemaTitles = {
 };
 const schemaImports = {
   baseline: await import("@tonoizer/mfdoctor/schemas/baseline.schema.json", { with: { type: "json" } }),
+  "build-artifact-deployment": await import("@tonoizer/mfdoctor/schemas/build-artifact-deployment.schema.json", { with: { type: "json" } }),
   capabilities: await import("@tonoizer/mfdoctor/schemas/capabilities.schema.json", { with: { type: "json" } }),
   config: await import("@tonoizer/mfdoctor/schemas/config.schema.json", { with: { type: "json" } }),
   evidence: await import("@tonoizer/mfdoctor/schemas/evidence.schema.json", { with: { type: "json" } }),

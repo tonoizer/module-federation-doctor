@@ -38,6 +38,12 @@ dimensions, requires explicit target/realm scope, and never treats a display
 name as identity proof. It is additive and library-only; it does not claim
 finding lineage, waivers, or V1 report integration.
 
+The build/deployment slice adds `build-artifact-deployment.schema.json` and
+joins explicit #81-style build/artifact records to offline deployment and
+environment identities. Redeploy and rollback are accepted only as explicit
+metadata relationships with matching environment and artifact sets; chronology
+is never inferred from timestamps or labels.
+
 ## Decision
 
 ### Identity hierarchy
@@ -152,7 +158,8 @@ reviewable:
    results, candidate retention, conflict fixtures; no CLI integration
    (implemented in the first #86 slice).
 5. **Build/artifact/deployment correlation** — consume exact #81 evidence and
-   offline deployment metadata; add rollback/redeploy/environment cases.
+   offline deployment metadata; add rollback/redeploy/environment cases
+   (implemented in the additive build/deployment slice).
 6. **Runtime/realm correlation** — consume #82/#84 evidence; enforce browser,
    SSR, worker, Node, frame, and partial-snapshot boundaries (implemented in the
    additive runtime identity slice).

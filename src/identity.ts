@@ -94,6 +94,7 @@ export interface DeploymentIdentity extends SemanticIdentity {
   kind: "deployment";
   environmentKey: string;
   deploymentId: string;
+  artifactSetDigest: string;
   occurrenceId: string;
   artifactKeys: string[];
 }

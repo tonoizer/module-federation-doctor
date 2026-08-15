@@ -30,6 +30,7 @@ regenerated.
 | Import | Published path | Purpose |
 | --- | --- | --- |
 | `@tonoizer/mfdoctor/schemas/baseline.schema.json` | `schemas/baseline.schema.json` | Public JSON Schema contract. |
+| `@tonoizer/mfdoctor/schemas/build-artifact-deployment.schema.json` | `schemas/build-artifact-deployment.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/capabilities.schema.json` | `schemas/capabilities.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/config.schema.json` | `schemas/config.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/evidence.schema.json` | `schemas/evidence.schema.json` | Public JSON Schema contract. |

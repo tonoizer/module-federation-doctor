@@ -361,6 +361,20 @@ export type {
   RuntimeIdentityCorrelationSchemaVersion,
 } from "./runtime-identity-correlation.js";
 export {
+  correlateBuildArtifactDeployment,
+  correlateDeploymentRelationship,
+  BUILD_ARTIFACT_DEPLOYMENT_SCHEMA_VERSION,
+} from "./build-artifact-deployment-correlation.js";
+export type {
+  BuildArtifactDeploymentCorrelation,
+  BuildArtifactDeploymentCorrelationInput,
+  BuildArtifactDeploymentOutcome,
+  BuildArtifactDeploymentSchemaVersion,
+  DeploymentRelationshipCorrelation,
+  DeploymentRelationshipInput,
+  DeploymentRelationshipKind,
+} from "./build-artifact-deployment-correlation.js";
+export {
   assertEvidenceGraphIntegrity,
   assertEvidenceValue,
   canonicalizeEvidenceValue,
