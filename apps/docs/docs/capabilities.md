@@ -83,3 +83,19 @@ runtime relationships as deterministic digest IDs. `assessIdentityCapabilityCove
 evaluates those edges within one requested scope and reports complete, partial,
 or unknown coverage. These graph facts are opt-in library data; existing legacy
 host/remote projections remain unchanged.
+
+## Portable ownership governance
+
+`defineIdentityGovernanceRule` validates a portable ownership rule, while
+`resolveIdentityGovernance(identity, rules)` applies deterministic precedence:
+an exact identity-key selector wins first, followed by parent/kind and
+container/kind selectors, with priority resolving rules within the same
+specificity tier. Responsibilities stay distinct for consumers, producers,
+shared providers, deployments, and runtime platforms.
+
+Equal-precedence owners are returned as `ambiguous`; the resolver never picks a
+team alphabetically. Partial or unknown governance evidence remains `unknown`
+and reports the incomplete rule IDs. Scope mismatches and missing target, realm,
+or environment dimensions are preserved as diagnostics. Governance is
+library-only and additive; it does not suppress findings, modify baselines, or
+implement waivers.

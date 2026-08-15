@@ -82,6 +82,7 @@ describe("published schema contracts", () => {
       "config.schema.json",
       "evidence.schema.json",
       "identity-correlation.schema.json",
+      "identity-governance.schema.json",
       "identity.schema.json",
       "probe.schema.json",
       "project.schema.json",
@@ -239,6 +240,46 @@ describe("published schema contracts", () => {
         "identity-correlation.schema.json",
         { ...edge, unexpected: true },
         "extra field",
+      ),
+    ).rejects.toThrow("Schema validation failed");
+  });
+
+  it("validates additive identity governance contracts", async () => {
+    const rule = {
+      schemaVersion: 1,
+      id: "owner-checkout",
+      responsibility: "consumer",
+      owner: "team/checkout",
+      selector: {
+        identityKey: "mfid:v1:application:0123456789abcdef01234567",
+      },
+      priority: 0,
+      evidenceIds: ["governance-1"],
+      completeness: "complete",
+    };
+    const resolution = {
+      schemaVersion: 1,
+      subjectKey: "mfid:v1:application:0123456789abcdef01234567",
+      subjectKind: "application",
+      outcome: "resolved",
+      owners: ["team/checkout"],
+      responsibilities: ["consumer"],
+      candidateRuleIds: ["owner-checkout"],
+      matchedRuleIds: ["owner-checkout"],
+      evidenceIds: ["governance-1"],
+      completeness: "complete",
+      incompleteRuleIds: [],
+      missing: [],
+      conflicts: [],
+      reason: "one highest-precedence governance responsibility resolved",
+    };
+    await validatePayload("identity-governance.schema.json", rule, "governance rule");
+    await validatePayload("identity-governance.schema.json", resolution, "governance resolution");
+    await expect(
+      validatePayload(
+        "identity-governance.schema.json",
+        { ...rule, owner: "https://example.com/team" },
+        "unsafe owner",
       ),
     ).rejects.toThrow("Schema validation failed");
   });

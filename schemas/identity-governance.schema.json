@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/identity-governance.schema.json",
+  "title": "MFDoctor identity governance",
+  "type": "object",
+  "properties": {
+    "schemaVersion": { "const": 1 }
+  },
+  "oneOf": [{ "$ref": "#/$defs/rule" }, { "$ref": "#/$defs/resolution" }],
+  "$defs": {
+    "identityKey": {
+      "type": "string",
+      "pattern": "^mfid:v1:[a-z-]+:[a-f0-9]{24}$",
+      "maxLength": 64
+    },
+    "kind": {
+      "enum": [
+        "organization",
+        "application",
+        "container",
+        "adapter-target",
+        "build-lineage",
+        "build",
+        "artifact",
+        "environment",
+        "deployment",
+        "runtime-realm",
+        "runtime-instance"
+      ]
+    },
+    "target": {
+      "enum": ["browser", "ssr", "worker", "mobile", "node", "unknown"]
+    },
+    "realm": {
+      "enum": ["top-frame", "iframe", "worker", "node", "react-native", "unknown"]
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 7,
+      "properties": {
+        "identityKey": { "$ref": "#/$defs/identityKey" },
+        "kind": { "$ref": "#/$defs/kind" },
+        "parentKey": { "$ref": "#/$defs/identityKey" },
+        "containerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^(?!.*(?:[A-Za-z]:[\\\\/]|\\\\\\\\|^/|[a-z][a-z\\d+.-]*://|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$))).+$"
+        },
+        "target": { "$ref": "#/$defs/target" },
+        "realm": { "$ref": "#/$defs/realm" },
+        "environmentKey": { "$ref": "#/$defs/identityKey" }
+      }
+    },
+    "responsibility": {
+      "enum": ["consumer", "producer", "shared-provider", "deployment", "runtime-platform"]
+    },
+    "safeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?!.*(?:[A-Za-z]:[\\\\/]|\\\\\\\\|^/|[a-z][a-z\\d+.-]*://|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$))).+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?!.*(?:[A-Za-z]:[\\\\/]|\\\\\\\\|^/|[a-z][a-z\\d+.-]*://|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$))).+$"
+    },
+    "evidenceIds": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/safeId" }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 3,
+      "properties": {
+        "target": { "$ref": "#/$defs/target" },
+        "realm": { "$ref": "#/$defs/realm" },
+        "environmentKey": { "$ref": "#/$defs/identityKey" }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "responsibility",
+        "owner",
+        "selector",
+        "priority",
+        "evidenceIds",
+        "completeness"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "id": { "$ref": "#/$defs/safeId" },
+        "responsibility": { "$ref": "#/$defs/responsibility" },
+        "owner": { "$ref": "#/$defs/owner" },
+        "selector": { "$ref": "#/$defs/selector" },
+        "priority": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "evidenceIds": { "$ref": "#/$defs/evidenceIds" },
+        "completeness": { "enum": ["complete", "partial", "unknown"] }
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "subjectKey",
+        "subjectKind",
+        "outcome",
+        "owners",
+        "responsibilities",
+        "candidateRuleIds",
+        "matchedRuleIds",
+        "evidenceIds",
+        "completeness",
+        "incompleteRuleIds",
+        "missing",
+        "conflicts",
+        "reason"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "subjectKey": { "$ref": "#/$defs/identityKey" },
+        "subjectKind": { "$ref": "#/$defs/kind" },
+        "outcome": { "enum": ["resolved", "ambiguous", "unknown"] },
+        "owners": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/owner" } },
+        "responsibilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/responsibility" }
+        },
+        "candidateRuleIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "matchedRuleIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "evidenceIds": { "$ref": "#/$defs/evidenceIds" },
+        "completeness": { "enum": ["complete", "partial", "unknown"] },
+        "incompleteRuleIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "missing": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "conflicts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "scope": { "$ref": "#/$defs/scope" }
+      }
+    }
+  }
+}

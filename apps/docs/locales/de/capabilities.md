@@ -90,3 +90,21 @@ und Runtime-Beziehungen als deterministische Digest-IDs.
 angeforderten Bereichs und meldet vollständige, partielle oder unbekannte
 Abdeckung. Diese Graph-Fakten sind optionale Bibliotheksdaten; bestehende
 Legacy-Host/Remote-Projektionen bleiben unverändert.
+
+## Portable Ownership-Governance
+
+`defineIdentityGovernanceRule` validiert eine portable Zuständigkeitsregel,
+während `resolveIdentityGovernance(identity, rules)` eine deterministische
+Priorität anwendet: Zuerst gewinnt ein Selektor für einen exakten
+Identitätsschlüssel, danach Selektoren für Parent/Kind und Container/Kind;
+Prioritäten lösen Regeln innerhalb derselben Spezifitätsstufe auf. Die
+Zuständigkeiten für Consumer, Producer, Shared Provider, Deployments und
+Runtime-Plattformen bleiben getrennt.
+
+Zuständigkeiten mit gleicher Priorität werden als `ambiguous` zurückgegeben;
+der Resolver wählt kein Team alphabetisch aus. Partielle oder unbekannte
+Governance-Evidenz bleibt `unknown` und meldet die unvollständigen Regel-IDs.
+Bereichskonflikte und fehlende Target-, Realm- oder Umgebungsdimensionen bleiben
+als Diagnosen erhalten. Governance ist eine additive Bibliotheksfunktion; sie
+unterdrückt keine Befunde, ändert keine Baselines und implementiert keine
+Waiver.
