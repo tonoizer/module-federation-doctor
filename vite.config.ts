@@ -29,6 +29,7 @@ export default defineConfig({
       "**/test-results/**",
       "apps/docs/doc_build/**",
       "apps/docs/docs/rules/**/*.md",
+      "apps/docs/docs/api.md",
       "fixtures/manifests/malformed.json",
       "pnpm-lock.yaml",
       ".agents/**",
