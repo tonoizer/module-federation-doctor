@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "@rspress/core";
+import { docsRelease } from "./docs-release.js";
 
 const docsAppDir = path.dirname(fileURLToPath(import.meta.url));
 // Vercel serves the canonical custom domain at the root. GitHub Pages overrides
@@ -73,8 +74,10 @@ const exampleSidebar = [
 
 const referenceSidebar = [
   { sectionHeaderText: "Reference" },
+  { text: "Public API surface", link: "/api" },
   { text: "Compatibility", link: "/compatibility" },
   { text: "Capabilities", link: "/capabilities" },
+  { text: "Documentation lifecycle", link: "/docs-lifecycle" },
   { text: "Runtime and manifests", link: "/runtime-manifests" },
   { text: "Runtime capture", link: "/runtime-capture" },
   { text: "Report schemas", link: "/report-schemas" },
@@ -139,8 +142,10 @@ const sidebar = {
   "/nested-example": exampleSidebar,
   "/standalone-findings": exampleSidebar,
   "/showcase": exampleSidebar,
+  "/api": referenceSidebar,
   "/compatibility": referenceSidebar,
   "/capabilities": referenceSidebar,
+  "/docs-lifecycle": referenceSidebar,
   "/runtime-manifests": referenceSidebar,
   "/runtime-capture": referenceSidebar,
   "/report-schemas": referenceSidebar,
@@ -215,6 +220,7 @@ export default defineConfig({
           { text: "Examples", link: "/examples" },
           { text: "Compatibility", link: "/compatibility" },
           { text: "Report schemas", link: "/report-schemas" },
+          { text: `MFDoctor v${docsRelease.version}`, link: docsRelease.releaseUrl },
           {
             text: "Module Federation",
             link: "https://module-federation.io/",

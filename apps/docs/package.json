@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "rspress dev",
-    "build": "node ../../scripts/generate-rule-docs.mjs --check && node ../../scripts/check-doc-snippets.mjs && node ../../scripts/check-doc-links.mjs && rspress build",
+    "build": "node ../../scripts/generate-rule-docs.mjs --check && node ../../scripts/generate-api-doc.mjs --check && node ../../scripts/check-doc-snippets.mjs && node ../../scripts/check-doc-links.mjs && rspress build",
     "preview": "rspress preview",
     "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('doc_build',{recursive:true,force:true}))\"",
     "typecheck": "tsc -p tsconfig.json"
