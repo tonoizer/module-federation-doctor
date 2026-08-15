@@ -3,7 +3,7 @@
  * Full local E2E/build/runtime contract gate for the local MF matrix.
  *
  * The filename is retained as a compatibility path for existing automation;
- * the user-facing entry point is `pnpm test:e2e`.
+ * the user-facing entry point is `vp run test:e2e`.
  *
  * The upstream repositories are represented by small, reviewed fixtures in
  * this repository. The provenance and compatibility files record which
@@ -22,8 +22,8 @@ const provenance = JSON.parse(fs.readFileSync(provenancePath, "utf8"));
 const compatibilityMatrix = JSON.parse(
   fs.readFileSync(path.join(root, "fixtures/compatibility-matrix.json"), "utf8"),
 );
-const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-const packageManagerArgs = [];
+const vitePlus = process.platform === "win32" ? "vp.cmd" : "vp";
+const vitePlusArgs = ["run"];
 
 function run(label, command, args, extraEnv = {}) {
   const result = spawnSync(command, args, {
@@ -76,8 +76,8 @@ process.stdout.write(
   `ok provenance ${provenance.upstreamSources.length} upstream surfaces mirrored\n`,
 );
 
-runRequired("production build: mixed green", packageManager, [
-  ...packageManagerArgs,
+runRequired("production build: mixed green", vitePlus, [
+  ...vitePlusArgs,
   "--filter",
   "./examples/mixed-federation/**",
   "build",
@@ -97,8 +97,8 @@ for (const dir of [
   });
 }
 
-runRequired("production build: intentional findings", packageManager, [
-  ...packageManagerArgs,
+runRequired("production build: intentional findings", vitePlus, [
+  ...vitePlusArgs,
   "--filter",
   "./examples/mixed-federation-issues/**",
   "build",
@@ -115,8 +115,8 @@ assertReport("examples/mixed-federation-issues/remote-rspack", {
   errors: 2,
 });
 
-runRequired("production build: nested graph", packageManager, [
-  ...packageManagerArgs,
+runRequired("production build: nested graph", vitePlus, [
+  ...vitePlusArgs,
   "--filter",
   "./examples/nested-federation/**",
   "build",
@@ -138,8 +138,8 @@ runRequired("workspace gate: nested graph", process.execPath, [
   "terminal,json",
 ]);
 
-runRequired("production build: compatibility cells", packageManager, [
-  ...packageManagerArgs,
+runRequired("production build: compatibility cells", vitePlus, [
+  ...vitePlusArgs,
   "--filter",
   "./examples/compatibility/**",
   "build",

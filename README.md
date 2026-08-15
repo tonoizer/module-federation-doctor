@@ -249,7 +249,7 @@ loop.
 ## Development
 
 Requires Node `>=22.12.0`. [Vite+](https://viteplus.dev/guide/) manages the
-repository's Node.js, pnpm, build, test, lint, and format toolchain. The
+repository's Node.js, package manager, build, test, lint, and format toolchain. The
 workspace policy pins pnpm to `11.17.0`, delays new dependency releases by ten days,
 and requires explicit approval for dependency build scripts. See the
 [compatibility matrix](https://mfdoctor.kevinbeier.com/compatibility) for supported /
@@ -258,6 +258,7 @@ consumer notes; terminal / JSON / SARIF on CI).
 
 ```bash
 vp install
+vp pack
 vp exec playwright install chromium
 vp run check
 vp run release:dry-run
@@ -267,20 +268,20 @@ Examples:
 
 - `examples/mixed-federation` — healthy Vite + Rspack + Rsbuild e2e path
 - `examples/nested-federation` — nested Vite host → Vite/Rsbuild → Rspack/Webpack;
-  run `pnpm demo:nested` or `pnpm test:nested`
+  run `vp run demo:nested` or `vp run test:nested`
 - `examples/compatibility/webpack` — Webpack build+MFDoctor smoke for the matrix
 - `examples/mixed-federation-issues` — same flat topology with intentional MFDoctor
-  findings; run `pnpm demo:mixed-issues`
+  findings; run `vp run demo:mixed-issues`
 - `examples/standalone-findings` — per-bundler Vite/Webpack/Rspack/Rsbuild
-  cells that emit visible MFDoctor findings; run `pnpm demo:standalone`
+  cells that emit visible MFDoctor findings; run `vp run demo:standalone`
 - `examples/showcase` — one-rule CLI fixtures + runtime green/fail demos; run
-  `pnpm demo:showcase`
-- From `examples/`: `pnpm --dir examples demo` runs showcase + standalone +
-  mixed-issues + nested (or `pnpm demo:examples` from the repo root)
+  `vp run demo:showcase`
+- From `examples/`: `vp run demo` runs showcase + standalone + mixed-issues +
+  nested (or `vp run demo:examples` from the repo root)
 - See [Examples](https://mfdoctor.kevinbeier.com/examples) for the full catalog. The
-  one-command full E2E gate is `pnpm test:e2e`; it builds the green,
+  one-command full E2E gate is `vp run test:e2e`; it builds the green,
   intentional-finding, nested, and compatibility cells, runs cross-app gates,
-  and executes the green and negative Playwright runtime paths. `pnpm test:giga`
+  and executes the green and negative Playwright runtime paths. `vp run test:giga`
   remains as a compatibility alias for existing automation.
 
 MFDoctor-specific agent UX prefers CLI/plugin finding output (rule id, fix,

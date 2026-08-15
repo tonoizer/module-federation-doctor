@@ -1,7 +1,7 @@
 # Standalone per-bundler findings
 
 `examples/standalone-findings` has four **standalone** cells — one per supported
-bundler — that run a real `pnpm build` with the matching MFDoctor adapter and emit
+bundler — that run a real `vp run build` with the matching MFDoctor adapter and emit
 intentional findings.
 
 They are not nested. Nested multi-app orchestration lives in
@@ -16,12 +16,12 @@ They are not nested. Nested multi-app orchestration lives in
 | `rsbuild/` | Rsbuild | `shared/eager-without-singleton`, `shared/singleton-risk`                                                        |
 
 ```bash
-pnpm demo:standalone
+vp run demo:standalone
 # or one cell:
-pnpm --filter @mfdoctor-standalone/vite build
-pnpm --filter @mfdoctor-standalone/webpack build
-pnpm --filter @mfdoctor-standalone/rspack build
-pnpm --filter @mfdoctor-standalone/rsbuild build
+vp run --filter @mfdoctor-standalone/vite build
+vp run --filter @mfdoctor-standalone/webpack build
+vp run --filter @mfdoctor-standalone/rspack build
+vp run --filter @mfdoctor-standalone/rsbuild build
 ```
 
 Each cell sets `failOn: "never"` so the build still completes and writes

@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: Run bounded analysis benchmark matrix
-        run: pnpm benchmark:analysis -- --output "analysis-cost-node${{ matrix.node }}.json"
+        run: vp run benchmark:analysis --output "analysis-cost-node${{ matrix.node }}.json"
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

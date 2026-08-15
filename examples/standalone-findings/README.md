@@ -1,7 +1,7 @@
 # Per-bundler standalone findings
 
 Four **standalone** micro-frontend cells (one per supported bundler). Each runs
-`pnpm build` with the matching MFDoctor adapter and emits intentional findings in
+`vp run build` with the matching MFDoctor adapter and emits intentional findings in
 `.mf/doctor/report.json`. They are not nested and are not part of Playwright e2e.
 
 For one-rule CLI fixtures, see [`../showcase`](../showcase) (one-rule catalog).
@@ -16,7 +16,7 @@ For nested multi-bundler orchestration, see [`../nested-federation`](../nested-f
 | `rsbuild/` | Rsbuild | `shared/eager-without-singleton`, `shared/singleton-risk`                                                        |
 
 ```bash
-pnpm demo:standalone
+vp run demo:standalone
 # or one cell:
-pnpm --filter @mfdoctor-standalone/vite build
+vp run --filter @mfdoctor-standalone/vite build
 ```

@@ -6,7 +6,7 @@ file, byte, artifact, and evidence cutoffs without involving runtime collection.
 Run the checked-in benchmark matrix after building with:
 
 ```sh
-pnpm benchmark:analysis -- --output analysis-cost-results.json
+vp run benchmark:analysis --output analysis-cost-results.json
 ```
 
 The command runs the actual v1 collector under the legacy, shadow, and

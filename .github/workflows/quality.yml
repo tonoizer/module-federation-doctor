@@ -20,13 +20,13 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: 24
-      - run: pnpm fmt:check
-      - run: pnpm lint
-      - run: pnpm changeset:check
+      - run: vp run fmt:check
+      - run: vp run lint
+      - run: vp run changeset:check
       # Examples resolve @tonoizer/mfdoctor/* from dist/; build before typecheck.
-      - run: pnpm build
-      - run: pnpm inventory:check
+      - run: vp run --filter . build
+      - run: vp run inventory:check
       - run: node scripts/evidence-drift-check.mjs
-      - run: pnpm typecheck
-      - run: pnpm docs:build
-      - run: pnpm test:unit
+      - run: vp run typecheck
+      - run: vp run docs:build
+      - run: vp run test:unit

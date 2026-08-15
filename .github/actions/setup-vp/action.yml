@@ -1,5 +1,5 @@
 name: Set up Vite+
-description: Install the pinned Vite+ toolchain, Node.js, pnpm, and workspace dependencies.
+description: Install the pinned Vite+ toolchain, dependencies, and package exports needed by workspace task discovery.
 
 inputs:
   node-version:
@@ -19,9 +19,17 @@ runs:
         cache: true
         run-install: false
         registry-url: ${{ inputs.registry-url }}
-    - name: Enable the pinned package manager
+    # Keep the pinned pnpm shim available for Vercel and low-level package
+    # operations that intentionally remain outside Vite+'s task interface.
+    - name: Enable the pinned package manager compatibility shim
       shell: bash
       run: corepack enable pnpm
     - name: Install dependencies
       shell: bash
       run: vp install --frozen-lockfile
+    # Vite+ loads workspace configs before executing `vp run`. Compatibility
+    # configs import the local package exports, so bootstrap dist first on a
+    # clean checkout.
+    - name: Build local package exports for Vite+ task discovery
+      shell: bash
+      run: vp pack

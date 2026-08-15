@@ -28,23 +28,23 @@ Comments in each config explain why. For intentional red findings, use
 
 ## Commands
 
-From the repo root (after `pnpm build`):
+From the repo root (after `vp run --filter . build`):
 
 ```bash
-pnpm test:nested
+vp run test:nested
 # or:
-pnpm --filter './examples/nested-federation/**' build
+vp run --filter './examples/nested-federation/**' build
 node dist/cli.js workspace examples/nested-federation --format terminal,json
 ```
 
 Preview (serve remotes, then host):
 
 ```bash
-pnpm --filter @mfdoctor-example/nested-remote-webpack preview &
-pnpm --filter @mfdoctor-example/nested-remote-rspack preview &
-pnpm --filter @mfdoctor-example/nested-remote-rsbuild preview &
-pnpm --filter @mfdoctor-example/nested-remote-vite preview &
-pnpm --filter @mfdoctor-example/nested-host-vite preview
+vp run --filter @mfdoctor-example/nested-remote-webpack preview &
+vp run --filter @mfdoctor-example/nested-remote-rspack preview &
+vp run --filter @mfdoctor-example/nested-remote-rsbuild preview &
+vp run --filter @mfdoctor-example/nested-remote-vite preview &
+vp run --filter @mfdoctor-example/nested-host-vite preview
 ```
 
 | App              | Port | Role                               |

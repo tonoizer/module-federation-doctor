@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const vitePlus = process.platform === "win32" ? "vp.cmd" : "vp";
+const previewCommand = (filter: string, extraArgs = "") =>
+  `${vitePlus} run --filter ${filter} preview${extraArgs ? ` ${extraArgs}` : ""}`;
 const rawPortOffset = process.env.MFDOCTOR_E2E_PORT_OFFSET;
 const portOffset = Number(rawPortOffset ?? 0);
 if (!Number.isInteger(portOffset) || portOffset < 0 || portOffset > 20_000)
@@ -13,17 +15,17 @@ const wrapServerCommand = (command: string) => `node scripts/run-e2e-server.mjs 
 const federationWebServers = [
   {
     name: "rspack-remote",
-    command: `${pnpmCommand} --dir examples/mixed-federation/remote-rspack preview`,
+    command: previewCommand("@mfdoctor-example/remote-rspack"),
     url: e2eUrl(3001, "/remoteEntry.js"),
   },
   {
     name: "rsbuild-remote",
-    command: `${pnpmCommand} --dir examples/mixed-federation/remote-rsbuild preview --strictPort`,
+    command: previewCommand("@mfdoctor-example/remote-rsbuild", "--strictPort"),
     url: e2eUrl(3002, "/remoteEntry.js"),
   },
   {
     name: "host-vite",
-    command: `${pnpmCommand} --dir examples/mixed-federation/host-vite preview`,
+    command: previewCommand("@mfdoctor-example/host-vite"),
     url: e2eUrl(5173),
   },
 ] as const;
@@ -31,17 +33,17 @@ const federationWebServers = [
 const issueWebServers = [
   {
     name: "issues-rspack-remote",
-    command: `${pnpmCommand} --dir examples/mixed-federation-issues/remote-rspack preview`,
+    command: previewCommand("@mfdoctor-example-issues/remote-rspack"),
     url: e2eUrl(3011, "/remoteEntry.js"),
   },
   {
     name: "issues-rsbuild-remote",
-    command: `${pnpmCommand} --dir examples/mixed-federation-issues/remote-rsbuild preview --strictPort`,
+    command: previewCommand("@mfdoctor-example-issues/remote-rsbuild", "--strictPort"),
     url: e2eUrl(3012, "/remoteEntry.js"),
   },
   {
     name: "issues-host-vite",
-    command: `${pnpmCommand} --dir examples/mixed-federation-issues/host-vite preview`,
+    command: previewCommand("@mfdoctor-example-issues/host-vite"),
     url: e2eUrl(5183),
   },
 ] as const;

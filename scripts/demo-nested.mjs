@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(root, "dist/cli.js");
-const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-const packageManagerArgs = [];
+const vitePlus = process.platform === "win32" ? "vp.cmd" : "vp";
+const vitePlusArgs = ["run"];
 
 function run(command, args) {
   const result = spawnSync(command, args, {
@@ -20,8 +20,8 @@ function run(command, args) {
   };
 }
 
-const build = run(packageManager, [
-  ...packageManagerArgs,
+const build = run(vitePlus, [
+  ...vitePlusArgs,
   "--filter",
   "./examples/nested-federation/**",
   "build",

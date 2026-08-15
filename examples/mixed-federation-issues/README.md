@@ -15,7 +15,7 @@ conflicts. Not part of Playwright e2e.
 | `shared/singleton-mismatch`                 | Host singleton vs Rspack non-singleton                         |
 
 ```bash
-pnpm demo:mixed-issues
+vp run demo:mixed-issues
 ```
 
 After a build, inspect cross-project conflicts with explicit project facts:

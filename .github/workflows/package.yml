@@ -20,4 +20,4 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: ${{ matrix.node }}
-      - run: pnpm pack:check
+      - run: vp run pack:check

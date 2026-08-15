@@ -25,8 +25,8 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: 24
-      - run: pnpm build
-      - run: pnpm docs:build
+      - run: vp run --filter . build
+      - run: vp run docs:build
         env:
           DOCS_BASE: /module-federation-doctor/
           SITE_ORIGIN: https://mfdoctor.kevinbeier.com

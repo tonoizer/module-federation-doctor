@@ -19,7 +19,7 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: 24
-      - run: pnpm test:e2e
+      - run: vp run test:e2e
       - if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:

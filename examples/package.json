@@ -3,13 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "demo": "pnpm demo:showcase && pnpm demo:standalone && pnpm demo:mixed-issues && pnpm demo:nested",
-    "demo:showcase": "pnpm --dir .. run demo:showcase",
-    "demo:standalone": "pnpm --dir .. run demo:standalone",
-    "demo:mixed-issues": "pnpm --dir .. run demo:mixed-issues",
-    "demo:nested": "pnpm --dir .. run demo:nested",
-    "build:green": "pnpm --dir .. run test:examples",
-    "build:nested": "pnpm --dir .. run test:nested",
-    "test:e2e": "pnpm --dir .. run test:e2e"
+    "demo": "vp run demo:showcase && vp run demo:standalone && vp run demo:mixed-issues && vp run demo:nested",
+    "demo:showcase": "vp run --filter @tonoizer/mfdoctor demo:showcase",
+    "demo:standalone": "vp run --filter @tonoizer/mfdoctor demo:standalone",
+    "demo:mixed-issues": "vp run --filter @tonoizer/mfdoctor demo:mixed-issues",
+    "demo:nested": "vp run --filter @tonoizer/mfdoctor demo:nested",
+    "build:green": "vp run --filter @tonoizer/mfdoctor test:examples",
+    "build:nested": "vp run --filter @tonoizer/mfdoctor test:nested",
+    "test:e2e": "vp run --filter @tonoizer/mfdoctor test:e2e"
   }
 }

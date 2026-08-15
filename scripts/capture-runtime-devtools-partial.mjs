@@ -22,6 +22,8 @@ await cp(
   path.join(repoDir, "fixtures/runtime-traces/upstream-devtools-capture.spec.ts"),
   captureTest,
 );
+// This command runs inside a separate pinned upstream checkout, not the
+// MFDoctor workspace. Keep its package-manager invocation intact.
 await execFileAsync(
   "pnpm",
   ["exec", "rstest", "-c", "rstest.config.ts", "--include", "__tests__/doctor-capture.spec.ts"],

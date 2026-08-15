@@ -14,9 +14,9 @@ but configured so MFDoctor reports shared and cross-project conflicts.
 | `shared/singleton-mismatch`                 | Host singleton vs Rspack non-singleton                         |
 
 ```bash
-pnpm demo:mixed-issues
+vp run demo:mixed-issues
 # or manually:
-pnpm --filter './examples/mixed-federation-issues/**' build
+vp run --filter './examples/mixed-federation-issues/**' build
 node dist/cli.js check examples/mixed-federation-issues/host-vite --ci --format terminal
 node dist/cli.js check examples/mixed-federation-issues/remote-rspack --ci --format terminal
 node dist/cli.js federation \
