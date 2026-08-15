@@ -271,6 +271,7 @@ export {
   createRuntimeInstanceIdentity,
   createRuntimeRealmIdentity,
   IDENTITY_SCHEMA_VERSION,
+  IdentityValidationError,
   unknownIdentity,
 } from "./identity.js";
 export type {
@@ -311,6 +312,29 @@ export type {
   RuntimeInstanceDimensions,
   SemanticIdentity,
 } from "./identity.js";
+export {
+  assessIdentityCapabilityCoverage,
+  correlateSemanticIdentity,
+  createIdentityCapabilityEdge,
+  isIdentityCapabilityEdgeId,
+  isSemanticIdentityKey,
+  IDENTITY_CORRELATION_SCHEMA_VERSION,
+} from "./identity-correlation.js";
+export type {
+  CreateIdentityCapabilityEdgeOptions,
+  IdentityCapabilityCoverage,
+  IdentityCapabilityCoverageOptions,
+  IdentityCapabilityCoverageState,
+  IdentityCapabilityEdge,
+  IdentityCapabilityEdgeKind,
+  IdentityCorrelationCandidate,
+  IdentityCorrelationConfidence,
+  IdentityCorrelationOptions,
+  IdentityCorrelationOutcome,
+  IdentityCorrelationResult,
+  IdentityCorrelationSchemaVersion,
+  IdentityCorrelationScope,
+} from "./identity-correlation.js";
 export {
   assertEvidenceGraphIntegrity,
   assertEvidenceValue,

@@ -105,6 +105,7 @@
     "./schemas/identity.schema.json": "./schemas/identity.schema.json",
     "./schemas/config.schema.json": "./schemas/config.schema.json",
     "./schemas/runtime-capture.schema.json": "./schemas/runtime-capture.schema.json",
+    "./schemas/identity-correlation.schema.json": "./schemas/identity-correlation.schema.json",
     "./schemas/ui.schema.json": "./schemas/ui.schema.json",
     "./schemas/evidence.schema.json": "./schemas/evidence.schema.json",
     "./schemas/rule-inventory.schema.json": "./schemas/rule-inventory.schema.json",

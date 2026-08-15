@@ -62,3 +62,24 @@ aliases are not treated as shared packages.
 When unresolved package-capable dynamics exist, `shared/unused` does **not**
 claim a package is unused — prefer `doctor/partial-analysis` over a false pass
 or false unused finding.
+
+## Semantic identity correlation
+
+The additive identity contract provides deterministic offline correlation without
+changing V1 reports, fingerprints, baselines, terminal output, SARIF, or exit
+codes. `correlateSemanticIdentity(subject, candidates)` returns exact, strong,
+weak, ambiguous, or unknown outcomes together with bounded candidate keys,
+matched dimension names, missing evidence, and conflicts. It never chooses an
+arbitrary candidate when the strongest evidence ties.
+
+Correlation is scope-aware. Target, realm, and environment boundaries are kept
+separate; a browser candidate cannot satisfy an SSR scope, and an unknown or
+unbounded scope cannot be promoted to complete evidence. Values used to explain
+correlation are not copied into the result, which keeps paths, URLs, credentials,
+and other raw source data outside the additive contract.
+
+`createIdentityCapabilityEdge` records producer, consumer, shared-provider, and
+runtime relationships as deterministic digest IDs. `assessIdentityCapabilityCoverage`
+evaluates those edges within one requested scope and reports complete, partial,
+or unknown coverage. These graph facts are opt-in library data; existing legacy
+host/remote projections remain unchanged.

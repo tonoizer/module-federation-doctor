@@ -33,6 +33,7 @@ regenerated.
 | `@tonoizer/mfdoctor/schemas/capabilities.schema.json` | `schemas/capabilities.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/config.schema.json` | `schemas/config.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/evidence.schema.json` | `schemas/evidence.schema.json` | Public JSON Schema contract. |
+| `@tonoizer/mfdoctor/schemas/identity-correlation.schema.json` | `schemas/identity-correlation.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/identity.schema.json` | `schemas/identity.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/probe.schema.json` | `schemas/probe.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/project.schema.json` | `schemas/project.schema.json` | Public JSON Schema contract. |

@@ -70,14 +70,15 @@ query parameters are removed while the URL remains a URL; POSIX, Windows, and
 UNC filesystem paths become `[PATH]`. Stack paths are also redacted after
 opening punctuation such as `(`, `[` or `{`. Other strings are left unchanged.
 
-| Schema export                                          | Produced by                        | Contract kind           |
-| ------------------------------------------------------ | ---------------------------------- | ----------------------- |
-| `@tonoizer/mfdoctor/schemas/project.schema.json`       | Build / collect → `project.json`   | Persisted artifact      |
-| `@tonoizer/mfdoctor/schemas/report.schema.json`        | Analyze → `report.json`            | Persisted artifact      |
-| `@tonoizer/mfdoctor/schemas/baseline.schema.json`      | Baseline generate / update         | Persisted artifact      |
-| `@tonoizer/mfdoctor/schemas/probe.schema.json`         | `mfdoctor probe` / `probeManifest` | CLI / API result        |
-| `@tonoizer/mfdoctor/schemas/runtime-trace.schema.json` | `analyzeRuntime` summary           | Correlation summary     |
-| `@tonoizer/mfdoctor/schemas/ui.schema.json`            | `buildUiPayload`                   | Programmatic graph only |
+| Schema export                                                 | Produced by                                      | Contract kind                 |
+| ------------------------------------------------------------- | ------------------------------------------------ | ----------------------------- |
+| `@tonoizer/mfdoctor/schemas/project.schema.json`              | Build / collect → `project.json`                 | Persisted artifact            |
+| `@tonoizer/mfdoctor/schemas/report.schema.json`               | Analyze → `report.json`                          | Persisted artifact            |
+| `@tonoizer/mfdoctor/schemas/baseline.schema.json`             | Baseline generate / update                       | Persisted artifact            |
+| `@tonoizer/mfdoctor/schemas/probe.schema.json`                | `mfdoctor probe` / `probeManifest`               | CLI / API result              |
+| `@tonoizer/mfdoctor/schemas/runtime-trace.schema.json`        | `analyzeRuntime` summary                         | Correlation summary           |
+| `@tonoizer/mfdoctor/schemas/identity-correlation.schema.json` | `correlateSemanticIdentity` / capability helpers | Additive correlation contract |
+| `@tonoizer/mfdoctor/schemas/ui.schema.json`                   | `buildUiPayload`                                 | Programmatic graph only       |
 
 `ui.schema.json` is **not** a persisted CLI artifact (MFDoctor no longer ships an
 HTML dashboard). It remains the published shape for programmatic consumers of

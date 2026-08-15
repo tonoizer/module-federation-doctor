@@ -2,9 +2,9 @@
 
 ## Status
 
-Proposed for owner review. This ADR defines the Stage 7 contract and PR order;
-it does not change default reports, fingerprints, baselines, exit codes, or
-runtime behavior.
+Accepted for additive implementation. This ADR defines the Stage 7 contract and
+PR order; it does not change default reports, fingerprints, baselines, exit
+codes, or runtime behavior.
 
 ## Context
 
@@ -17,6 +17,12 @@ legacy-preserving slices rather than one graph rewrite.
 The required evidence seams from #80–#85 are now present on `main`. #84 remains
 an optional external capture stage and may provide runtime evidence, but it does
 not prove a build or deployment relationship on its own.
+
+The first implementation slice is the public identity-correlation contract:
+`identity-correlation.schema.json`, deterministic exact/strong/weak/ambiguous/
+unknown candidate results, scoped capability edges, and per-scope coverage. It
+is library-only and intentionally does not integrate with V1 report generation
+or CLI output.
 
 ## Decision
 
@@ -122,13 +128,15 @@ The implementation must follow this order and keep each PR independently
 reviewable:
 
 1. **Identity ADR and canonical-key grammar** — this document; no runtime
-   behavior.
+   behavior (merged as #293).
 2. **Identity schemas/types/helpers** — extend only where the existing contract
-   has a proven gap; add deterministic and redaction tests.
+   has a proven gap; add deterministic and redaction tests (implemented in the
+   first #86 slice).
 3. **Capability edges and scoped coverage** — additive graph facts and legacy
-   projections.
+   projections (implemented in the first #86 slice).
 4. **Correlation candidate engine** — exact/strong/weak/ambiguous/unknown
-   results, candidate retention, conflict fixtures; no CLI integration.
+   results, candidate retention, conflict fixtures; no CLI integration
+   (implemented in the first #86 slice).
 5. **Build/artifact/deployment correlation** — consume exact #81 evidence and
    offline deployment metadata; add rollback/redeploy/environment cases.
 6. **Runtime/realm correlation** — consume #82/#84 evidence; enforce browser,
@@ -161,11 +169,10 @@ PR.
 
 ## Owner decisions required before implementation
 
-1. Confirm the identity hierarchy and stable-key law above.
-2. Decide whether ownership belongs after correlation (recommended) or is part
-   of the first graph slice.
-3. Confirm that waivers remain a separate post-lineage slice and never modify
+1. The identity hierarchy and stable-key law are confirmed for implementation.
+2. Ownership remains after correlation, as recommended.
+3. Waivers remain a separate post-lineage slice and never modify
    `baseline.schema.json`.
-4. Confirm additive/opt-in V2 output until parity and rollout gates pass.
+4. V2 output remains additive/opt-in until parity and rollout gates pass.
 
 Part of [#86](https://github.com/tonoizer/module-federation-doctor/issues/86).
