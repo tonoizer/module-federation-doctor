@@ -147,7 +147,7 @@ describe("artifact/react-dom-server-in-web (#329)", () => {
     };
     expect(await run(facts)).toHaveLength(0);
 
-    facts.moduleFederation!.vite = undefined;
+    delete facts.moduleFederation!.vite;
     facts.builds = [buildRecord("ssr", "ssr", "node")];
     expect(await run(facts)).toHaveLength(0);
     expect(isWebClientArtifactTarget(facts)).toBe(false);

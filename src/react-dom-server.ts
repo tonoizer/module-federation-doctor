@@ -23,11 +23,11 @@ export function isReactDomServerAssetPath(asset: string): boolean {
 }
 
 export interface ReactDomServerSignalInput {
-  specifiers?: readonly string[];
-  deepImports?: readonly string[];
-  shared?: Record<string, NormalizedShared>;
-  manifest?: ArtifactManifest;
-  emittedAssets?: readonly string[];
+  specifiers?: readonly string[] | undefined;
+  deepImports?: readonly string[] | undefined;
+  shared?: Record<string, NormalizedShared> | undefined;
+  manifest?: ArtifactManifest | undefined;
+  emittedAssets?: readonly string[] | undefined;
 }
 
 /** Deterministic list of react-dom/server signals from imports, shared, and artifacts. */
