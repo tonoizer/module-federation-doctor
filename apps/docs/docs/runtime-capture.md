@@ -38,6 +38,10 @@ the existing offline runtime command:
 mfdoctor runtime ./capture.json
 ```
 
+For the common Observability path (`.mf/observability/latest.json` →
+`mfdoctor runtime`, no in-browser agent), see
+[Observability latest.json → mfdoctor runtime](./observability-runtime.md).
+
 The command accepts only contract version 1, rejects oversized or unsafe files
 before analysis, and keeps the existing runtime output shape. Runtime mutation
 and automatic export remain outside the boundary.

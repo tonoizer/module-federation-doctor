@@ -149,6 +149,11 @@ const headingTranslations = new Map([
   ["## Discover CLI capabilities", "## CLI-Fähigkeiten ermitteln"],
   ["## Coverage map", "## Abdeckungskarte"],
   ["## Correlate a runtime trace", "## Eine Laufzeitspur korrelieren"],
+  ["## Example", "## Beispiel"],
+  ["## Expected inputs", "## Erwartete Eingaben"],
+  ["## Not an in-browser agent", "## Kein In-Browser-Agent"],
+  ["## Optional CI step", "## Optionaler CI-Schritt"],
+  ["## Related", "## Verwandte Seiten"],
   ["## Confidence", "## Konfidenz"],
   ["## Common and Core/Rspack/Rsbuild options", "## Gemeinsame und Core/Rspack/Rsbuild-Optionen"],
   ["## Choose the federation scope", "## Federation-Geltungsbereich auswählen"],
@@ -203,6 +208,14 @@ const frontmatterTranslations = new Map([
   [
     "Run MFDoctor locally and in CI, across a workspace, against runtime traces, or against a deployed manifest.",
     "MFDoctor lokal und in der CI ausführen, für einen Workspace, gegen Laufzeitspuren oder gegen ein bereitgestelltes Manifest.",
+  ],
+  [
+    "Observability latest.json → mfdoctor runtime",
+    "Observability latest.json → mfdoctor runtime",
+  ],
+  [
+    "Feed Module Federation Observability latest.json into mfdoctor runtime offline — no in-browser agent.",
+    "Module-Federation-Observability-latest.json offline in mfdoctor runtime einlesen — kein In-Browser-Agent.",
   ],
   [
     "Generated catalog of the package's public entry points and JSON schemas.",

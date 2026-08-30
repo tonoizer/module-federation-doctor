@@ -198,7 +198,9 @@ mfdoctor runtime ./.mf/observability/latest.json ".mf/doctor/**/project.json"
 `mfdoctor runtime` imports the user-supplied report, redacts secrets and full
 private URLs, and emits `runtime/*` findings that join remotes, shared packages,
 and init phases with `.mf/doctor/project.json` evidence. It does not fetch live
-remotes or execute remote JavaScript.
+remotes or execute remote JavaScript. Analysis stays on the CLI — there is no
+in-browser MFDoctor agent. See
+[Observability latest.json → mfdoctor runtime](./observability-runtime.md).
 
 This separates a bad deployment URL from valid JavaScript that downloaded and
 then failed during execution.
