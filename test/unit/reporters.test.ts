@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { computeHealthScore } from "../../src/health-score.js";
+import { CI_PROVIDER_ENV_KEYS } from "../../src/config.js";
 import {
   formatTerminalReport,
   writeFederationReports,
@@ -365,7 +366,7 @@ describe("reporters", () => {
         documentation: "/rules/config/expose-key-invalid",
       },
     ]);
-    const withPrompts = formatTerminalReport(report);
+    const withPrompts = formatTerminalReport(report, { prompt: true });
     expect(withPrompts).toContain("Score: 99/100 (Great)");
     expect(withPrompts).toContain("Agent prompts (top 1)");
     expect(withPrompts).toContain("# Fix: config/expose-key-invalid");
@@ -373,5 +374,28 @@ describe("reporters", () => {
     const without = formatTerminalReport(report, { prompt: false });
     expect(without).toContain("Score: 99/100 (Great)");
     expect(without).not.toContain("Agent prompts");
+  });
+
+  it("hides agent prompts by default in CI and shows them locally", () => {
+    const report = emptyReport([
+      {
+        schemaVersion: 1,
+        ruleId: "config/expose-key-invalid",
+        severity: "error",
+        message: "bad key",
+        project: "demo",
+        evidence: {},
+        fingerprint: "fp",
+        documentation: "/rules/config/expose-key-invalid",
+      },
+    ]);
+
+    vi.stubEnv("CI", "");
+    for (const key of CI_PROVIDER_ENV_KEYS) vi.stubEnv(key, "");
+    expect(formatTerminalReport(report)).toContain("Agent prompts (top 1)");
+
+    vi.stubEnv("CI", "true");
+    expect(formatTerminalReport(report)).not.toContain("Agent prompts");
+    expect(formatTerminalReport(report, { prompt: true })).toContain("Agent prompts (top 1)");
   });
 });

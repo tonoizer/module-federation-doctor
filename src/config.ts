@@ -90,6 +90,22 @@ export function isCiEnvironment(env: NodeJS.ProcessEnv = process.env): boolean {
 }
 
 /**
+ * Resolve whether terminal agent prompts should print.
+ * Explicit `prompt` wins. Otherwise: off in CI (`mode: "ci"` or CI env vars),
+ * on for local / interactive runs. Opt in with `--prompt` / `prompt: true`,
+ * or dump prompts via `--diagnostics-dir` without printing them.
+ */
+export function resolvePrompt(
+  options: { prompt?: boolean; mode?: DoctorOptions["mode"] } = {},
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  if (options.prompt !== undefined) return options.prompt;
+  if (options.mode === "ci") return false;
+  if (options.mode === "development") return true;
+  return !isCiEnvironment(env);
+}
+
+/**
  * Resolve MFDoctor options, including preset / policy-pack `extends`.
  *
  * Severity precedence (later wins):
@@ -158,7 +174,10 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
     },
     failOn: options.failOn ?? (ci ? "error" : "never"),
     score: options.score !== false,
-    prompt: options.prompt !== false,
+    prompt: resolvePrompt({
+      ...(options.prompt !== undefined ? { prompt: options.prompt } : {}),
+      mode: ci ? "ci" : "development",
+    }),
     diagnosticsPromptLimit: resolveDiagnosticsPromptLimitFromEnv(options.diagnosticsPromptLimit),
     quiet,
     printLog,

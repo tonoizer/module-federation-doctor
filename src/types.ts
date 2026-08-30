@@ -812,7 +812,9 @@ export interface DoctorOptions {
   score?: boolean;
   /**
    * When false, omit top-N agent prompts from terminal output.
-   * CLI: `--no-prompt`. Default on for human terminal.
+   * CLI: `--no-prompt` / `--prompt`. Default on locally; off in CI
+   * (CI env vars or `mode: "ci"`). Opt in with `--prompt` or dump via
+   * `--diagnostics-dir`.
    */
   prompt?: boolean;
   /**
@@ -904,7 +906,7 @@ export interface ResolvedDoctorOptions {
   score: boolean;
   /**
    * When false, omit top-N agent prompts from terminal output.
-   * Defaults to true.
+   * Defaults to true locally and false in CI.
    */
   prompt: boolean;
   /** Absolute path for optional diagnostics dump, when configured. */

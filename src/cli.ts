@@ -23,6 +23,7 @@ import {
   writeDiagnosticsDump,
 } from "./agent-prompt.js";
 import { analyze, analyzeFederation, isAnalysisIncomplete } from "./engine.js";
+import { resolvePrompt } from "./config.js";
 import {
   EvidenceReaderError,
   readEvidenceFile,
@@ -146,13 +147,15 @@ Score: terminal footer shows Score: N/100 (Great|OK|Needs work) after counts.
 Pass --no-score or score: false to hide it (report JSON still includes score).
 
 Agent prompts: after the score, terminal prints up to three copy-paste fix
-prompts (severity then impact). Pass --no-prompt / prompt: false to hide.
-\`mfdoctor prompt --finding <fingerprint|ruleId>\` reads .mf/doctor/report.json
-offline. \`--diagnostics-dir\` writes report.json, prompts/*.md, and summary.md
-inside the project root only (default top-3 prompts). Pass
-\`--diagnostics-prompts <n>\` (1–${MAX_DIAGNOSTICS_PROMPT_FINDINGS}) or set
-MFDOCTOR_DIAGNOSTICS_PROMPTS to dump more for agent/CI handoff; terminal
-output stays at top-3.
+prompts (severity then impact) for local runs. CI hides them by default —
+pass --prompt / prompt: true to print, or --diagnostics-dir to dump
+prompts/*.md without terminal noise. Pass --no-prompt / prompt: false to
+hide locally. \`mfdoctor prompt --finding <fingerprint|ruleId>\` reads
+.mf/doctor/report.json offline. \`--diagnostics-dir\` writes report.json,
+prompts/*.md, and summary.md inside the project root only (default top-3
+prompts). Pass \`--diagnostics-prompts <n>\` (1–${MAX_DIAGNOSTICS_PROMPT_FINDINGS})
+or set MFDOCTOR_DIAGNOSTICS_PROMPTS to dump more for agent/CI handoff;
+terminal output stays at top-3.
 
 Capabilities: \`mfdoctor capabilities\` prints the versioned JSON contract for
 commands, formats, exit codes, noninteractive handoff commands, public schema
@@ -381,6 +384,22 @@ function baselineFromConfig(config: DoctorOptions): string | BaselineOptions | u
   return config.baseline;
 }
 
+/**
+ * Merge CLI prompt flags with config / CI defaults.
+ * `--prompt` forces on; `--no-prompt` forces off; otherwise config + CI detection.
+ */
+function resolveCliPrompt(
+  parsed: Pick<Parsed, "prompt" | "forcePrompt" | "ci">,
+  config: DoctorOptions,
+): boolean {
+  const prompt = parsed.forcePrompt ? true : !parsed.prompt ? false : config.prompt;
+  const mode = parsed.ci ? "ci" : config.mode;
+  return resolvePrompt({
+    ...(prompt !== undefined ? { prompt } : {}),
+    ...(mode !== undefined ? { mode } : {}),
+  });
+}
+
 async function loadReport(reportPath: string): Promise<DoctorReport> {
   const document = await readEvidenceFile(reportPath, { fileLabel: reportPath });
   const isReportGraph = document.graph.assertions.some(
@@ -528,15 +547,16 @@ async function runFederationAnalysis(
   diagnosticsPromptLimit?: number,
   analysis?: import("./analysis-budgets.js").AnalysisBudgetReport,
   workspaceDiagnostics?: import("./workspace.js").WorkspaceProjectDiagnostic[],
+  ci = false,
 ): Promise<number> {
   if (files.length === 0 && !workspaceDiagnostics?.length && !isAnalysisIncomplete(analysis)) {
     process.stderr.write("No project reports matched.\n");
     return 2;
   }
   const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
-  // CLI --no-score / --no-prompt win; --prompt force-enables over config.
+  // CLI --no-score / --no-prompt win; --prompt force-enables over config / CI default.
   const showScore = score !== false && config.score !== false;
-  const showPrompt = forcePrompt || (prompt !== false && config.prompt !== false);
+  const showPrompt = resolveCliPrompt({ prompt, forcePrompt, ci }, config);
   const result = await analyzeFederation(files, {
     ...(formats ? { formats, outputDirectory } : {}),
     ...(baseline ? { baseline } : {}),
@@ -644,6 +664,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           parsed.diagnosticsPromptLimit,
           discovery.budget,
           discovery.diagnostics,
+          parsed.ci,
         );
       }
       if (parsed.patterns.length === 0) {
@@ -664,6 +685,9 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         parsed.forcePrompt,
         parsed.diagnosticsDir,
         parsed.diagnosticsPromptLimit,
+        undefined,
+        undefined,
+        parsed.ci,
       );
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
@@ -692,7 +716,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         ...(formats ? { formats, outputDirectory } : {}),
         ...(parsed.verbose ? { quiet: false, printLog: { success: true } } : {}),
         score: parsed.score !== false && config.score !== false,
-        prompt: parsed.forcePrompt || (parsed.prompt !== false && config.prompt !== false),
+        prompt: resolveCliPrompt(parsed, config),
       });
       if (parsed.diagnosticsDir || config.diagnosticsDir) {
         const dump = resolveDiagnosticsDir(root, parsed.diagnosticsDir ?? config.diagnosticsDir!);

@@ -54,6 +54,7 @@ export {
   resolveOptions,
   resolveQuiet,
   resolvePrintLog,
+  resolvePrompt,
   isCiEnvironment,
   DEFAULT_EXCLUDE,
   DEFAULT_INCLUDE,

@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { main, parseArgs } from "../../src/cli.js";
+import { CI_PROVIDER_ENV_KEYS } from "../../src/config.js";
 import reportFixture from "../../examples/evidence/v1-report.json";
 import v2ConflictFixture from "../../examples/evidence/v2-conflict.json";
 import { migrateDoctorReport } from "../../src/evidence-reader.js";
@@ -18,8 +19,29 @@ async function temporaryProject(config: string) {
 }
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
 });
+
+async function captureStdout(run: () => Promise<number>): Promise<{ code: number; text: string }> {
+  const chunks: string[] = [];
+  const write = process.stdout.write;
+  process.stdout.write = ((chunk: string | Uint8Array) => {
+    chunks.push(String(chunk));
+    return true;
+  }) as typeof process.stdout.write;
+  try {
+    const code = await run();
+    return { code, text: chunks.join("") };
+  } finally {
+    process.stdout.write = write;
+  }
+}
+
+function stubLocalEnv(): void {
+  vi.stubEnv("CI", "");
+  for (const key of CI_PROVIDER_ENV_KEYS) vi.stubEnv(key, "");
+}
 
 describe("CLI arguments", () => {
   it("parses --verbose for quiet-success opt-out", () => {
@@ -614,6 +636,31 @@ describe("CLI arguments", () => {
     expect(capabilities.bundlerMatrix.source).toBe("./fixtures/compatibility-matrix.json");
     expect(capabilities.bundlerMatrix.supported).toContain("vite");
     expect(capabilities.bundlerMatrix.partial).toContain("modern");
+  });
+
+  it("hides agent prompts in CI by default and keeps them locally", async () => {
+    const root = await temporaryProject(`export default {
+      moduleFederation: { remotes: { app: "http://example.com/remoteEntry.js" }, exposes: {}, shared: {} },
+      output: { formats: ["terminal"] },
+      failOn: "never",
+      rules: { "doctor/partial-analysis": "off", "config/name-required": "error" },
+    };`);
+
+    stubLocalEnv();
+    vi.stubEnv("CI", "true");
+    const ciDefault = await captureStdout(() => main(["check", root]));
+    expect(ciDefault.code).toBe(0);
+    expect(ciDefault.text).toContain("config/name-required");
+    expect(ciDefault.text).not.toContain("Agent prompts");
+
+    const ciOptIn = await captureStdout(() => main(["check", root, "--prompt"]));
+    expect(ciOptIn.code).toBe(0);
+    expect(ciOptIn.text).toContain("Agent prompts");
+
+    stubLocalEnv();
+    const localDefault = await captureStdout(() => main(["check", root]));
+    expect(localDefault.code).toBe(0);
+    expect(localDefault.text).toContain("Agent prompts");
   });
 
   it("prints offline agent prompts from report.json and dumps diagnostics", async () => {
