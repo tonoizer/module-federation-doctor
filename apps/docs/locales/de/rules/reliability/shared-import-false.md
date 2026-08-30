@@ -9,7 +9,7 @@
 
 ## Problem
 
-With `import: false`, no local fallback exists if another provider is missing.
+With `import: false`, a federation participant has no local fallback if another provider is missing. When workspace evidence shows no provider at all, `federation/missing-provider` owns that finding instead.
 
 ## So beheben Sie das Problem
 

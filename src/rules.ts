@@ -1309,7 +1309,16 @@ export const builtInRules: DoctorRule[] = [
       );
   }),
   createRule("reliability/shared-import-false", "warning", (context) => {
-    for (const [name, shared] of Object.entries(mf(context)?.shared ?? {}))
+    const config = mf(context);
+    if (!config) return;
+    // Discriminate from federation/missing-provider: without exposes or remotes this
+    // project is not a federation participant we can attribute a local-fallback advisory
+    // to. Workspace-wide absence belongs to missing-provider when sibling evidence proves
+    // no provider; a lone shared-only import:false stays quiet here to avoid mis-blame.
+    const participates =
+      Object.keys(config.exposes).length > 0 || Object.keys(config.remotes).length > 0;
+    if (!participates) return;
+    for (const [name, shared] of Object.entries(config.shared ?? {}))
       if (shared.import === false)
         report(
           context,

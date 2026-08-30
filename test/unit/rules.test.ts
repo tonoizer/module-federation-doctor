@@ -851,7 +851,10 @@ describe("built-in rules", () => {
     ],
     [
       "reliability/shared-import-false",
-      (facts: ProjectFacts) => (facts.moduleFederation!.shared.react!.import = false),
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.shared.react!.import = false;
+        facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
+      },
     ],
     [
       "config/tree-shaking-server-calc-injection",

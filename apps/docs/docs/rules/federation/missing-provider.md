@@ -5,7 +5,7 @@
 
 ## Issue
 
-Every consumer disabled its fallback, so no build can provide the package.
+Workspace evidence shows consumers disabled their fallback and no build provides the package. A lone `import: false` without sibling absence proof is `reliability/shared-import-false` instead.
 
 ## How to fix it
 

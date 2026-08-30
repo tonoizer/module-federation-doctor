@@ -278,7 +278,8 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   },
   "reliability/shared-import-false": {
     category: "reliability",
-    impact: "With `import: false`, no local fallback exists if another provider is missing.",
+    impact:
+      "With `import: false`, a federation participant has no local fallback if another provider is missing. When workspace evidence shows no provider at all, `federation/missing-provider` owns that finding instead.",
     fix: "Guarantee a provider loads first or restore a local fallback.",
     sources: [shared],
   },
@@ -561,7 +562,8 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   },
   "federation/missing-provider": {
     category: "reliability",
-    impact: "Every consumer disabled its fallback, so no build can provide the package.",
+    impact:
+      "Workspace evidence shows consumers disabled their fallback and no build provides the package. A lone `import: false` without sibling absence proof is `reliability/shared-import-false` instead.",
     fix: "Let at least one build provide the package or restore a local fallback.",
     sources: [shared],
   },
