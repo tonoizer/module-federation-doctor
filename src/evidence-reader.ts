@@ -713,6 +713,8 @@ export function reportFromEvaluations(
     summary: projectionValue(summary, limits),
     findings,
   };
+  const status = assertionValue(normalized, "doctor.status");
+  if (status !== undefined) output.status = projectionValue(status, limits);
   validateOrThrow(output, "doctor-report", {});
   if (tracker) reserveEvidenceBudget(output, tracker);
   return output as unknown as DoctorReport;
@@ -1813,6 +1815,20 @@ export function migrateDoctorReport(
         limits,
       ),
     );
+    if (input.status) {
+      graph.assertions.push(
+        assertion(
+          metadataSubject,
+          "doctor.status",
+          jsonValue(input.status, "/status", options, new WeakSet<object>(), tracker),
+          scope,
+          "v1-doctor-report",
+          completeness("complete", "Report status is copied from the schema-valid v1 report."),
+          "status",
+          limits,
+        ),
+      );
+    }
   }
   return finalizeGraph(graph, options);
 }

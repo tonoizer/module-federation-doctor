@@ -11,6 +11,7 @@ import type {
 import { summarizeFindings } from "./baseline.js";
 import { computeHealthScore } from "./health-score.js";
 import { buildFederationModel, type FederationModel } from "./federation-model.js";
+import { computeRunStatus, type ComputeRunStatusOptions } from "./run-status.js";
 
 function emptyGraph(): UiGraph {
   return { nodes: [], edges: [] };
@@ -424,6 +425,7 @@ export function buildUiPayload(projects: ProjectFacts[], report: DoctorReport): 
 export function reportFromFindings(
   projects: ProjectFacts[],
   findings: DoctorFinding[],
+  options: ComputeRunStatusOptions = {},
 ): DoctorReport {
   const summary = summarizeFindings(findings);
   const health = computeHealthScore(findings);
@@ -437,6 +439,7 @@ export function reportFromFindings(
       emittedAssets: projects.some((project) => project.capabilities.emittedAssets),
       installedVersions: projects.some((project) => project.capabilities.installedVersions),
     },
+    status: computeRunStatus(projects, options),
     summary: {
       projects: projects.length,
       info: summary.info,

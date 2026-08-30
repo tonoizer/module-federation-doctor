@@ -26,6 +26,22 @@
       },
       "additionalProperties": false
     },
+    "status": {
+      "description": "Additive run completeness. Always written by current reporters; optional when reading older reports. incompleteReasons is empty when complete is true.",
+      "type": "object",
+      "required": ["complete", "incompleteReasons"],
+      "properties": {
+        "complete": { "type": "boolean" },
+        "incompleteReasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["missing-emit", "partial-bundler", "probe-skipped", "evidence-unknown"]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "summary": {
       "type": "object",
       "required": ["projects", "info", "warnings", "errors"],
