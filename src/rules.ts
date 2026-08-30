@@ -385,13 +385,16 @@ function deepImportAllowlist(context: RuleContext): Set<string> {
   ]);
 }
 
-/** App entry basenames used for RUNTIME-005 async-boundary checks. */
-const APP_ENTRY_BASENAME = /(?:^|\/)(?:index|main|entry|app|client)(?:\.[^./]+)*\.[cm]?[jt]sx?$/i;
+/** Bundler entry basenames for RUNTIME-005 async-boundary checks.
+ * PascalCase `App.tsx` components are excluded — only lowercase `app.*` counts as an entry.
+ */
+const APP_ENTRY_BASENAME = /(?:^|\/)(?:index|main|entry|client)(?:\.[^./]+)*\.[cm]?[jt]sx?$/i;
+const LOWERCASE_APP_ENTRY = /(?:^|\/)app(?:\.[^./]+)*\.[cm]?[jt]sx?$/;
 
 function isLikelyAppEntryFile(file: string): boolean {
   const normalized = file.replaceAll("\\", "/");
   if (/(?:^|\/)bootstrap\.[cm]?[jt]sx?$/i.test(normalized)) return false;
-  return APP_ENTRY_BASENAME.test(normalized);
+  return APP_ENTRY_BASENAME.test(normalized) || LOWERCASE_APP_ENTRY.test(normalized);
 }
 
 function stripSourceComments(source: string): string {

@@ -2339,6 +2339,25 @@ describe("config/async-boundary-missing", () => {
     expect(await run(facts)).toEqual([]);
   });
 
+  it("does not treat PascalCase App.tsx as a bundler entry", async () => {
+    const root = await hostRoot('import React from "react";\nvoid React;\n');
+    await fs.writeFile(path.join(root, "src/App.tsx"), 'import React from "react";\nvoid React;\n');
+    await fs.rm(path.join(root, "src/index.ts"));
+    const findings = await run({
+      ...factsFor(root),
+      imports: {
+        sourceFiles: ["src/App.tsx"],
+        specifiers: ["react"],
+        packages: ["react"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+    });
+    expect(findings).toEqual([]);
+  });
+
   it("does not fire when shared packages are eager", async () => {
     const root = await hostRoot('import React from "react";\nvoid React;\n');
     const facts = factsFor(root);

@@ -216,6 +216,8 @@ async function createProject(scenario: RecommendationScenario): Promise<string> 
     path.join(root, "src/App.ts"),
     'import "react/jsx-runtime";\nimport "react-dom/client";\nexport {};\n',
   );
+  // Bundler-style async boundary so recommendation hosts stay free of RUNTIME-005.
+  await fs.writeFile(path.join(root, "src/index.ts"), 'import("./App");\n');
 
   await fs.writeFile(
     path.join(root, "mfdoctor.config.ts"),
@@ -280,13 +282,14 @@ async function createViteAdapterProject(scenario: RecommendationScenario): Promi
     path.join(root, "index.html"),
     '<!doctype html><html><body><script type="module" src="/src/main.ts"></script></body></html>\n',
   );
+  await fs.writeFile(path.join(root, "src/main.ts"), 'import("./bootstrap");\n');
   await fs.writeFile(
-    path.join(root, "src/main.ts"),
+    path.join(root, "src/bootstrap.ts"),
     'import "react/jsx-runtime";\nimport "react-dom/client";\nexport {};\n',
   );
   const adapterModuleFederation = {
     ...moduleFederation,
-    exposes: { "./App": "./src/main.ts" },
+    exposes: { "./App": "./src/bootstrap.ts" },
     shared: sharedConfig(false),
   };
   const adapterDoctorConfig = {
