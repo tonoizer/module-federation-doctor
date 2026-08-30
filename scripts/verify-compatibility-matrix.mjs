@@ -19,6 +19,21 @@ const ids = [...matrix.localCi, ...matrix.unitContracts, ...matrix.upstreamValid
 );
 assert.equal(new Set(ids).size, ids.length, "compatibility matrix ids must be unique");
 
+assert.ok(Array.isArray(matrix.bundlers) && matrix.bundlers.length > 0, "bundlers required");
+const bundlerIds = matrix.bundlers.map((entry) => entry.id);
+assert.equal(new Set(bundlerIds).size, bundlerIds.length, "bundler ids must be unique");
+for (const entry of matrix.bundlers) {
+  assert.ok(["supported", "partial"].includes(entry.status), `${entry.id}: invalid status`);
+  assert.match(entry.adapter, /^@tonoizer\/mfdoctor\//, `${entry.id}: adapter export required`);
+}
+const knownBundlers = new Set(bundlerIds);
+for (const cell of matrix.localCi) {
+  assert.ok(
+    knownBundlers.has(cell.bundler),
+    `${cell.id}: bundler ${cell.bundler} missing from matrix.bundlers`,
+  );
+}
+
 for (const cell of matrix.localCi) {
   const fixture = path.join(root, cell.fixture);
   assert.ok(fs.existsSync(fixture), `${cell.id}: missing fixture ${cell.fixture}`);

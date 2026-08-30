@@ -290,6 +290,14 @@ assert.equal(rspackChain[0][0], "module-federation-doctor");
   assert.equal(capabilities.schemaVersion, 1);
   assert.equal(capabilities.schemas.capabilities, "./schemas/capabilities.schema.json");
   assert.deepEqual(capabilities.formats, ["terminal", "json", "sarif"]);
+  assert.ok(Array.isArray(capabilities.nonGoals) && capabilities.nonGoals.length > 0);
+  assert.equal(typeof capabilities.completeness?.check, "string");
+  assert.equal(capabilities.githubAction?.name, "workspace-federation-gate");
+  assert.equal(capabilities.networkPolicy?.offlineByDefault, true);
+  assert.deepEqual(capabilities.networkPolicy?.networkCommands, ["probe"]);
+  assert.equal(capabilities.bundlerMatrix?.source, "./fixtures/compatibility-matrix.json");
+  assert.ok(capabilities.bundlerMatrix?.supported.includes("vite"));
+  assert.ok(capabilities.bundlerMatrix?.partial.includes("modern"));
 
   const repairLoop = path.join(consumer, "repair-loop");
   await fs.mkdir(repairLoop, { recursive: true });

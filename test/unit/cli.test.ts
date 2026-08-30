@@ -564,6 +564,15 @@ describe("CLI arguments", () => {
       exitCodes: Record<string, string>;
       nonInteractive: { commands: Record<string, string> };
       schemas: Record<string, string>;
+      nonGoals: string[];
+      completeness: Record<string, string>;
+      githubAction: { name: string; uses: string; pinToTag: string };
+      networkPolicy: { offlineByDefault: boolean; networkCommands: string[] };
+      bundlerMatrix: {
+        source: string;
+        supported: string[];
+        partial: string[];
+      };
     };
     expect(capabilities.schemaVersion).toBe(1);
     expect(capabilities.package.name).toBe("@tonoizer/mfdoctor");
@@ -574,6 +583,14 @@ describe("CLI arguments", () => {
     expect(capabilities.exitCodes).toMatchObject({ "0": "success", "1": "policy-fail" });
     expect(capabilities.nonInteractive.commands.discover).toBe("mfdoctor capabilities");
     expect(capabilities.schemas.capabilities).toBe("./schemas/capabilities.schema.json");
+    expect(capabilities.nonGoals.length).toBeGreaterThan(0);
+    expect(capabilities.completeness).toHaveProperty("check");
+    expect(capabilities.githubAction.name).toBe("workspace-federation-gate");
+    expect(capabilities.networkPolicy.offlineByDefault).toBe(true);
+    expect(capabilities.networkPolicy.networkCommands).toEqual(["probe"]);
+    expect(capabilities.bundlerMatrix.source).toBe("./fixtures/compatibility-matrix.json");
+    expect(capabilities.bundlerMatrix.supported).toContain("vite");
+    expect(capabilities.bundlerMatrix.partial).toContain("modern");
   });
 
   it("prints offline agent prompts from report.json and dumps diagnostics", async () => {

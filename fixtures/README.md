@@ -20,8 +20,10 @@
   JSON shaped like `@mf-toolkit/shared-inspector` stress fixtures (#145).
 - `workspaces`: portable multi-app `.mf/doctor/project.json` trees for the
   workspace federation gate (`clean` exit 0, `conflict` exit 1).
-- `compatibility-matrix.json`: the release-facing contract for local production
-  cells, regression unit contracts, and pinned upstream framework validation.
+- `compatibility-matrix.json`: the release-facing contract for bundler
+  supported/partial status, local production cells, regression unit contracts,
+  and pinned upstream framework validation. `mfdoctor capabilities` derives its
+  bundler matrix from this file (no second source of truth).
 
 Most fixtures are created in temporary directories by tests so generated output
 does not live in source control. The workspace and mf-toolkit trees are checked
