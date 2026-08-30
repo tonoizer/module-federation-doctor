@@ -37,6 +37,17 @@ const cases = [
     expectedExit: 1,
   },
   {
+    dir: "examples/showcase/config/async-boundary-missing",
+    ruleId: "config/async-boundary-missing",
+    expectedExit: 1,
+  },
+  {
+    dir: "examples/showcase/config/async-boundary-missing-ok",
+    expectNoFindings: true,
+    forbiddenRuleIds: ["config/async-boundary-missing"],
+    expectedExit: 0,
+  },
+  {
     dir: "examples/showcase/config/remote-http-insecure",
     ruleId: "config/remote-http-insecure",
     expectedExit: 0,

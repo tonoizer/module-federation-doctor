@@ -2,59 +2,54 @@
 
 > Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
-# Vertrag für externe Laufzeitaufzeichnungen
+# External runtime capture contract
 
-> Bibliothek-/Erweiterungsdokumentation für Autorinnen und Autoren, die ein
-> externes Capture-Tool anbinden. Host-Teams, die MFDoctor integrieren,
-> beginnen mit [Setup](./setup.md), [CI](./production-readiness.md),
-> [Rules](./rules/) und [Limitations](./limitations.md).
+> Library / extension docs for authors wiring an external capture tool. Host
+> teams integrating MFDoctor should start with [Setup](./setup.md),
+> [CI](./production-readiness.md), [Rules](./rules/), and
+> [Limitations](./limitations.md).
 
-Der Laufzeitaufzeichnungsvertrag ist eine explizite Übergabegrenze für ein
-externes Capture-/Export-Tool. Er ist kein MFDoctor-Laufzeitagent.
+The runtime capture contract is an explicit handoff boundary for an external
+capture/export tool. It is not a MFDoctor runtime agent.
 
-Die Designentscheidung steht in [ADR 0084: External runtime capture boundary](https://github.com/tonoizer/module-federation-doctor/blob/main/docs/adr/0084-external-runtime-capture-boundary.md).
+The design record is [ADR 0084: External runtime capture boundary](https://github.com/tonoizer/module-federation-doctor/blob/main/docs/adr/0084-external-runtime-capture-boundary.md).
 
-Capture muss von einer Person mit einem freigegebenen Ziel oder einer Exportdatei
-gestartet werden. Es darf nicht aus `check`, einem Bundler-Adapter, dem
-Anwendungsstart oder einem Client-Bundle laufen. Die aktuellen
-Adapterschnittstellen lesen vorhandene Exporte von Observability, DevTools,
-Anwendungen und Node/SSR, bieten einen ausdrücklich angeforderten
-Browser-Transport und projizieren bereitgestellte Snapshot-/Runtime-Instance-
-Fallback-Nachweise. Es werden niemals Plugins injiziert,
-Laufzeit-Mutatoren aufgerufen, Storage gelesen oder Header, Bodies, Cookies,
-Quelltext, Props, Factories oder Raw Stacks exportiert.
+Capture must be invoked by a user with an approved target or export file. It
+must not run from `check`, a bundler adapter, application startup, or a client
+bundle. The current adapter slices read existing public Observability, DevTools,
+app-owned, and Node/SSR exports, provide an explicitly requested browser
+transport, and project supplied snapshot/runtime-instance fallback evidence. It
+never injects plugins, calls runtime mutators, reads storage, or exports
+headers, bodies, cookies, source, props, factories, or raw stacks.
 
-Der Vertrag zeichnet Quellenfähigkeiten als `exact`, `partial`, `unavailable`,
-`not-applicable` oder `unknown` auf. Fehlende Felder alter oder Preview-Versionen
-bleiben unbekannt. Jeder Datensatz erhält außerdem Capture-, Navigation-, Realm-
-und Sequenzbezug, damit gleiche Trace-IDs verschiedener Realms nicht verbunden
-werden.
+The contract records source capabilities as `exact`, `partial`, `unavailable`,
+`not-applicable`, or `unknown`. Missing old/preview fields stay unknown. It
+also scopes every record by capture, navigation, realm, and sequence so equal
+trace IDs from separate realms do not merge.
 
-Die Standardgrenzen betragen 5 MiB, 100 Reports, 5.000 Events, 500 Snapshots,
-100 Instanzen, 2.000 Netzwerkdatensätze, 200 Fehler, 4 KiB Strings, Tiefe 12
-und 100 Objektschlüssel. Die harte Gesamtgrenze beträgt 25 MiB; Kürzungen werden
-aufgezeichnet.
+The default limits are 5 MiB, 100 reports, 5,000 events, 500 snapshots, 100
+instances, 2,000 network records, 200 errors, 4 KiB strings, depth 12, and 100
+object keys. The hard total ceiling is 25 MiB; truncation must be recorded.
 
-Vertrag, begrenzter dateibasierter Import, vorhandene Datei-/Export-Adapter, der
-explizite schreibgeschützte Browser-Transport, sichere
-Snapshot-/Runtime-Instance-Projektionen und der Netzwerk-/Fehler-Fallback sind
-die ausgelieferten sicheren Slices. Die atomische validierte JSON-Übergabe ist
-über den Capture-Einstiegspunkt verfügbar; automatischer Export bleibt außerhalb
-dieser Grenze. Der begrenzte dateibasierte Import ist über den bestehenden
-Offline-Laufzeitbefehl verfügbar:
+The contract, bounded file-only import, existing file/export adapters, explicit
+read-only browser transport, safe snapshot/runtime-instance projections, and
+network/error fallback are the shipped safe slices. The atomic validated JSON
+handoff is available through the capture entry point; automatic export remains
+outside this boundary. The bounded file-only import is available through
+the existing offline runtime command:
 
 ```bash
 mfdoctor runtime ./capture.json
 ```
 
-Der Befehl akzeptiert nur Vertragsversion 1, weist übergroße oder unsichere
-Dateien vor der Analyse zurück und behält die bestehende Laufzeitausgabe bei.
-Laufzeitmutation und automatischer Export bleiben außerhalb der Grenze.
+The command accepts only contract version 1, rejects oversized or unsafe files
+before analysis, and keeps the existing runtime output shape. Runtime mutation
+and automatic export remain outside the boundary.
 
-## Vorhandene Export-Adapter
+## Existing export adapters
 
-Der Einstiegspunkt `@tonoizer/mfdoctor/capture` kann einen vom Benutzer
-bereitgestellten Export ohne Browser- oder Laufzeitanbindung normalisieren:
+The `@tonoizer/mfdoctor/capture` entry point can normalize a user-supplied
+existing export without attaching to a browser or runtime:
 
 ```ts
 import { loadRuntimeCaptureExportFile } from "@tonoizer/mfdoctor/capture";
@@ -64,25 +59,22 @@ const capture = await loadRuntimeCaptureExportFile(".mf/observability/latest.jso
 });
 ```
 
-Der Adapter akzeptiert aktuelle oder teilweise Observability-Reports, offizielle
-DevTools-Exporte, anwendungseigene `onReport`-/`onEvent`-Dateien sowie Node/SSR-
-JSON-Exporte. Er verwendet den vorhandenen Runtime-Reader erneut, ergänzt
-bereichsbezogene Identität, Herkunft, Fähigkeiten, Kürzungen und stabile
-Datensatz-IDs und validiert anschließend den vollständigen Vertrag. DevTools-
-Projektionen bleiben teilweise und behalten eine `source-supplied`-Relation zu
-ihren Report-Datensätzen.
+The adapter accepts current or partial Observability reports, official
+DevTools exports, app-owned `onReport`/`onEvent` files, and Node/SSR JSON
+exports. It reuses the existing runtime reader, adds scoped identity,
+provenance, capabilities, truncation, and stable record IDs, then validates the
+complete contract before returning it. DevTools projections remain partial and
+retain a source-supplied relation to their report records.
 
-Der Adapter liest ausschließlich den bereitgestellten Wert. Er startet keinen
-Browser und verbindet sich nicht mit einem Browser, liest keine Live-Globals,
-installiert kein Plugin, aktiviert DevTools nicht, ruft keine
-Laufzeit-`load`-/`register`-/`init`-APIs auf und verändert die Eingabe nicht.
-Das atomische Schreiben der Ausgabedatei ist explizit und wird von diesem
-Adapter niemals implizit ausgeführt.
+The adapter only reads the supplied value. It does not launch or attach to a
+browser, inspect live globals, install a plugin, enable DevTools, call runtime
+load/register/init APIs, or mutate the input. Atomic output-file writing
+is explicit and is never performed by this adapter implicitly.
 
-## Atomische Offline-Übergabe
+## Atomic offline handoff
 
-Nach der Erzeugung eines validierten Envelopes durch einen externen Adapter kann
-der Capture-Einstiegspunkt ihn schreiben:
+After an external adapter has produced a validated envelope, write it with the
+capture entry point:
 
 ```ts
 import {
@@ -97,19 +89,18 @@ const capture = importRuntimeCaptureNetworkFallback({
 await writeRuntimeCaptureExportFile(capture, "./.mf/doctor/runtime-capture.json");
 ```
 
-Der Writer validiert zunächst eine sichere normalisierte Kopie, bevor er eine
-temporäre Geschwisterdatei anlegt. Er begrenzt die serialisierte UTF-8-Ausgabe
-auf `limits.maxBytes`, schreibt mit Modus `0600`, leert die Datei, benennt sie
-atomar um und entfernt den temporären Pfad bei einem Fehler. Eine vorhandene
-Ausgabedatei bleibt bei Validierungs- oder Rename-Fehlern unverändert.
+The writer validates a safe normalized copy before creating a sibling temporary
+file. It bounds the serialized UTF-8 output by `limits.maxBytes`, writes with
+mode `0600`, flushes the file, atomically renames it into place, and cleans up
+the temporary path if the handoff fails. Existing output stays untouched when
+validation or the rename fails.
 
-## Expliziter Browser-Transport
+## Explicit browser transport
 
-Ein externes Browser-Tool kann einen engen Connector für ein ausdrücklich
-freigegebenes Ziel bereitstellen. MFDoctor ruft nur
-`readObservabilityExport` oder `readDevtoolsExport` auf. Der Connector darf
-keine beliebige Seitenauswertung, Plugin-Injektion, Laufzeitmutation oder
-DevTools-Overrides anbieten.
+An external browser tool may provide a narrow connector to an explicitly
+approved target. MFDoctor calls only `readObservabilityExport` or
+`readDevtoolsExport`; the connector must not expose arbitrary page evaluation,
+plugin injection, runtime mutation, or DevTools overrides.
 
 ```ts
 import { captureRuntimeBrowserExport } from "@tonoizer/mfdoctor/capture";
@@ -121,18 +112,18 @@ const capture = await captureRuntimeBrowserExport(connector, {
 });
 ```
 
-Der Connector liefert Session-, Ziel-, Navigations- und Realm-Identität. Der
-Transport validiert Web-Ziele, weist Zugangsdaten und geheime Query-Schlüssel
-zurück, übergibt den Bereich an den offiziellen Export-Reader und schließt die
-externe Verbindung bei Erfolg oder Fehler. Die Seite wird weder neu geladen noch
-navigiert. Capture bleibt eine einzelne explizite Operation; gewöhnliches
-`check`, Bundler-Adapter und Anwendungsstart rufen sie nie auf.
+The connector supplies the session, target, navigation, and realm identity.
+The transport validates web targets, rejects credentials and secret query keys,
+passes the scope to the official export reader, and closes the external
+connection on success or failure. It does not reload or navigate the page.
+Capture is still one explicit operation; ordinary `check`, bundler adapters,
+and application startup never call it.
 
-## Schreibgeschützte Fallback-Projektionen
+## Read-only fallback projections
 
-Wenn ein externes Tool bereits ein Laufzeit-State-Objekt gelesen hat, kann der
-Capture-Einstiegspunkt die kleine, sichere Snapshot-/Runtime-Instance-Oberfläche
-projizieren:
+When an external tool has already read a runtime state object, the capture
+entry point can project the small snapshot and runtime-instance surface that is
+safe to retain:
 
 ```ts
 import { importRuntimeCaptureFallback } from "@tonoizer/mfdoctor/capture";
@@ -153,22 +144,20 @@ const capture = importRuntimeCaptureFallback({
 });
 ```
 
-Die Projektion liest für `moduleInfo`, Snapshot-Einträge und
-`instances`/`runtimeInstances` ausschließlich eigene Daten-Eigenschaften.
-Unbekannte Runtime-Graphen werden ignoriert; `getPublicPath`, Factories,
-Funktionen, Header, rohe Fehler und Runtime-APIs werden nicht gelesen oder
-aufgerufen. Das Eingabeobjekt wird nicht verändert. Ein konfiguriertes
-`disableSnapshot: true` erzeugt die Snapshot-Fähigkeit `not-applicable` ohne
-Snapshot-Datensätze. Fehlendes moduleInfo ist `unavailable`; abgeschnittene,
-ungezählte, fehlerhafte oder quotenbegrenzte Daten bleiben `partial` oder
-`unknown`. Preview-/unbekannte Runtime-Versionen erhöhen die
-Shared-Lifecycle-Fähigkeit nicht; der Fallback leitet aus Instanznamen oder
-Scopes niemals den Zustand geteilter Pakete ab.
+The projection reads only own data properties for `moduleInfo`, snapshot
+entries, and `instances`/`runtimeInstances`. It ignores unknown runtime graphs,
+does not read `getPublicPath`, factories, functions, headers, or raw errors, and
+never calls a runtime API or mutates the supplied object. A configured
+`disableSnapshot: true` state produces a `not-applicable` snapshot capability
+with no snapshot records. Missing moduleInfo is `unavailable`; clipped,
+uncounted, malformed, or quota-limited data remains `partial` or `unknown`.
+Preview/unknown runtime versions do not upgrade shared-lifecycle capability and
+the fallback never infers shared-state health from instance names or scopes.
 
-## Netzwerk-/Fehler-Fallback-Metadaten
+## Network/error fallback metadata
 
-Ein externer Collector kann begrenzte MF-orientierte Request- und
-Runtime-Fehler-Metadaten übergeben, ohne Request-Interna zu exportieren:
+An external collector can hand over bounded MF-focused request and runtime-error
+metadata without exporting request internals:
 
 ```ts
 import { importRuntimeCaptureNetworkFallback } from "@tonoizer/mfdoctor/capture";
@@ -194,28 +183,24 @@ const capture = importRuntimeCaptureNetworkFallback({
 });
 ```
 
-Projiziert werden nur freigegebene URL-, Kind-, Status-, Fehler-/Dauer-/Initiator-
-Klassen sowie Fehlercode/-name/-message/-phase, Request-IDs und Zeitstempel.
-URL-Zugangsdaten und geheime Query-Werte werden vor Digest und Speicherung
-redigiert; Header, Bodies, Cookies, Raw Stacks und beliebige Fehlerkontexte
-werden ignoriert. Eine gleiche Request-ID oder redigierte URL erzeugt eine
-exakte Relation. Eine Übereinstimmung nur über Zeit ist
-`time-window-candidate` und niemals eine exakte kausale Verknüpfung. Überläufe
-und fehlerhafte Datensätze bleiben `partial`/`unknown` und erzeugen explizite
-Kürzungsdaten.
+Only allowlisted URL, kind, status, failure/duration/initiator classes, error
+code/name/message/phase, request IDs, and timestamps are projected. URL
+credentials and secret query values are redacted before digesting or writing;
+headers, bodies, cookies, raw stacks, and arbitrary error contexts are ignored.
+An exact request ID or redacted URL creates an exact relation. A timestamp-only
+match is a `time-window-candidate`, never an exact causal link. Floods and
+malformed records remain partial/unknown and produce explicit truncation.
 
 ## Datenschutz und Paketgrenze
 
-Der Capture-Vertrag bewahrt nur begrenzte, freigegebene Nachweise:
+The capture contract retains only bounded, allowlisted evidence:
 
-| Aufbewahrt                                                                                                                                                      | Niemals gelesen oder aufbewahrt                                                                                                                                                           |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Quellversion, abgegrenzte Identität, sicherer Locator, Status-/Klassenmetadaten, begrenzter Diagnose-Text, Herkunft, Vollständigkeit, Digest und Kürzungsstatus | Cookies, Authorization-Header, Request-/Response-Bodies, Zugangsdaten, geheime Query-Werte, rohe Stacks, Factories, Props, Storage, beliebige Runtime-Graphen oder private Plugin-Interna |
+| Retained                                                                                                                                             | Never read or retained                                                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source version, scoped identity, safe locator, status/class metadata, bounded diagnosis text, provenance, completeness, digest, and truncation state | Cookies, authorization headers, request/response bodies, credentials, secret query values, raw stacks, factories, props, storage, arbitrary runtime graphs, or private plugin internals |
 
-Die Redigierung erfolgt vor stabilen IDs, Content-Digests, Pufferung und
-Dateischreiben. Der Standard-Einstieg `@tonoizer/mfdoctor` und die Bundler-
-Adapter importieren den Capture-Einstiegspunkt nicht und stellen seine
-Funktionen nicht bereit. Verwenden Sie den expliziten Subpath
-`@tonoizer/mfdoctor/capture` nur aus einem Node-/Offline-Tool; er darf niemals
-in ein Client-Bundle oder in `check`, einen Build-Adapter oder den
-Anwendungsstart gelangen.
+Redaction happens before stable IDs, content digests, buffering, or file writes.
+The default `@tonoizer/mfdoctor` entry and bundler adapters do not import the
+capture entry point or expose its functions. Use the explicit
+`@tonoizer/mfdoctor/capture` subpath from a Node/offline tool; never add it to a
+client bundle or invoke it from `check`, a build adapter, or application startup.

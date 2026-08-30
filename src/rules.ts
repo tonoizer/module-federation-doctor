@@ -52,6 +52,7 @@ import {
 } from "./finding-details.js";
 import { packageName as npmPackageName } from "./normalize.js";
 import { findShareRewriteOverlaps } from "./share-rewrite.js";
+import { packageName as specifierPackageName } from "./normalize.js";
 import type {
   DoctorRule,
   NormalizedMFConfig,
@@ -382,6 +383,49 @@ function deepImportAllowlist(context: RuleContext): Set<string> {
     ...(context.sharedPolicy?.deepImportAllowlist ?? DEFAULT_DEEP_IMPORT_ALLOWLIST),
     ...optionStringList(context.options, "allowlist"),
   ]);
+}
+
+/** Bundler entry basenames for RUNTIME-005 async-boundary checks.
+ * PascalCase `App.tsx` components are excluded — only lowercase `app.*` counts as an entry.
+ */
+const APP_ENTRY_BASENAME = /(?:^|\/)(?:index|main|entry|client)(?:\.[^./]+)*\.[cm]?[jt]sx?$/i;
+const LOWERCASE_APP_ENTRY = /(?:^|\/)app(?:\.[^./]+)*\.[cm]?[jt]sx?$/;
+
+function isLikelyAppEntryFile(file: string): boolean {
+  const normalized = file.replaceAll("\\", "/");
+  if (/(?:^|\/)bootstrap\.[cm]?[jt]sx?$/i.test(normalized)) return false;
+  return APP_ENTRY_BASENAME.test(normalized) || LOWERCASE_APP_ENTRY.test(normalized);
+}
+
+function stripSourceComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
+function syncSharedPackagesInSource(
+  source: string,
+  nonEagerShared: Map<string, NormalizedShared>,
+): string[] {
+  // Remove comments and dynamic `import()` so remaining matches are sync declarations/requires.
+  const cleaned = stripSourceComments(source).replace(/\bimport\s*\(\s*[^)]*\)/g, "/*dynamic*/");
+  const found = new Set<string>();
+  const staticSpecifier =
+    /(?:(?:import|export)\s+(?:type\s+)?(?:[^'"\n;]+?\s+from\s+)?|require\s*\(\s*)['"]([^'"]+)['"]/g;
+  for (const match of cleaned.matchAll(staticSpecifier)) {
+    const specifier = match[1];
+    if (!specifier || specifier.startsWith(".") || specifier.startsWith("/")) continue;
+    const pkg = specifierPackageName(specifier);
+    for (const [key, shared] of nonEagerShared) {
+      const sharedPkg = shared.package || key.replace(/\/$/, "");
+      if (
+        pkg === sharedPkg ||
+        pkg === key ||
+        (key.endsWith("/") && (pkg === key.slice(0, -1) || specifier.startsWith(key)))
+      ) {
+        found.add(key);
+      }
+    }
+  }
+  return [...found].sort();
 }
 
 function remoteEntryUrl(entry: string): string {
@@ -1224,6 +1268,56 @@ export const builtInRules: DoctorRule[] = [
           { package: name },
           "Choose eager loading for a small initial dependency or tree shaking for on-demand exports.",
         );
+  }),
+  createRule("config/async-boundary-missing", "error", async (context) => {
+    const config = mf(context);
+    if (!config) return;
+    // Hosts only — remotes/producers without remotes are out of scope.
+    const remotes = Object.keys(config.remotes);
+    const sharedEntries = Object.entries(config.shared ?? {});
+    if (remotes.length === 0) return;
+    if (sharedEntries.length === 0) return;
+    // Bundler-owned async startup removes the need for a manual bootstrap boundary.
+    if (config.experiments?.asyncStartup) return;
+    if (sourceEvidenceIncomplete(context.facts)) return;
+
+    const root = context.root ?? context.facts.project.root;
+    const sourceFiles = context.facts.imports.sourceFiles ?? [];
+    if (!root || sourceFiles.length === 0) return;
+
+    const entryFiles = sourceFiles.filter(isLikelyAppEntryFile);
+    if (entryFiles.length === 0) return;
+
+    const nonEagerShared = new Map(
+      sharedEntries
+        .filter(([, shared]) => !shared.eager)
+        .map(([name, shared]) => [name, shared] as const),
+    );
+    if (nonEagerShared.size === 0) return;
+
+    for (const file of entryFiles) {
+      let source: string;
+      try {
+        source = await fs.readFile(path.join(root, file), "utf8");
+      } catch {
+        continue;
+      }
+      const syncShared = syncSharedPackagesInSource(source, nonEagerShared);
+      if (syncShared.length === 0) continue;
+      report(
+        context,
+        `Host entry "${file}" synchronously imports shared package${syncShared.length === 1 ? "" : "s"} ${syncShared.map((name) => `"${name}"`).join(", ")}, which can crash with RUNTIME-005 without an async boundary.`,
+        {
+          errorCode: "RUNTIME-005",
+          entry: file,
+          packages: syncShared,
+          remotes,
+          asyncStartup: Boolean(config.experiments?.asyncStartup),
+        },
+        "Move application startup behind `import('./bootstrap')` (or another dynamic app-shell import), enable `experiments.asyncStartup`, or set `eager: true` on those shared packages when intentional.",
+      );
+      return;
+    }
   }),
   createRule("reliability/external-runtime-provider-unverified", "warning", (context) => {
     if (mf(context)?.experiments?.externalRuntime)

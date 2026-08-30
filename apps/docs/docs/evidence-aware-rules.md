@@ -53,7 +53,7 @@ Default MFDoctor output remains on the legacy V1 path (`legacy` rollout mode). S
 promotion. Set `MFDOCTOR_EVIDENCE_LEGACY=1` to force every scope back to legacy without
 rebuilding old artifacts.
 
-All 110 current built-ins are `migrated` in the inventory. There are no undocumented
+All 112 current built-ins are `migrated` in the inventory. There are no undocumented
 legacy built-ins. Any future compatibility-only exception must be added to
 `RULE_COMPATIBILITY_EXCEPTIONS` with owner, reason, scope, and deprecation plan.
 

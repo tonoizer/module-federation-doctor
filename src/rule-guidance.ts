@@ -234,6 +234,17 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Choose eager loading for small dependencies or tree shaking for larger libraries.",
     sources: [shared, vite],
   },
+  "config/async-boundary-missing": {
+    category: "correctness",
+    impact:
+      "A host entry that synchronously imports non-eager shared packages can hit RUNTIME-005 (`loadShareSync`) because Module Federation needs an async boundary before shared negotiation finishes.",
+    fix: "Move app startup behind a dynamic import (for example `import('./bootstrap')`), enable `experiments.asyncStartup`, or mark those shared packages `eager: true` when intentional.",
+    sources: [
+      "https://module-federation.io/guide/troubleshooting/runtime.html#runtime-005",
+      experiments,
+      shared,
+    ],
+  },
   "reliability/external-runtime-provider-unverified": {
     category: "reliability",
     impact: "A remote fails if `_FEDERATION_RUNTIME_CORE` is absent or initialized too late.",

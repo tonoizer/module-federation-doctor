@@ -67,6 +67,7 @@ const ids = [
   "config/copied-webpack-options-on-vite",
   "config/dts-output-dir-mismatch",
   "config/duplicate-plugin-registration",
+  "config/async-boundary-missing",
   "config/eager-tree-shaking-conflict",
   "config/expose-key-invalid",
   "config/expose-path-missing",
@@ -167,6 +168,7 @@ export const MIGRATED_GROUP1_CONFIG_RULE_IDS = [
   "config/remote-capability-disabled",
   "config/shared-capability-disabled",
   "config/eager-tree-shaking-conflict",
+  "config/async-boundary-missing",
   "config/tree-shaking-server-calc-injection",
 ] as const;
 
@@ -600,6 +602,15 @@ const plans: Record<string, RulePlan> = {
     "project",
     "high",
     "Declared config is exact for this shape check.",
+  ),
+  "config/async-boundary-missing": plan(
+    1,
+    "error",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Host remotes/shared config plus readable entry sources are exact when source scan is complete.",
   ),
   "reliability/external-runtime-provider-unverified": plan(
     6,
@@ -1533,6 +1544,12 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "bundler.federationInstances",
   ],
   "config/eager-tree-shaking-conflict": ["project.scope", "moduleFederation"],
+  "config/async-boundary-missing": [
+    "project.scope",
+    "moduleFederation",
+    "imports.sourceFiles",
+    "imports.sourceScan",
+  ],
   "config/expose-key-invalid": ["project.scope", "moduleFederation"],
   "config/expose-path-missing": [
     "project.scope",
