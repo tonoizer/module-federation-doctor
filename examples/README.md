@@ -1,9 +1,10 @@
 # Examples
 
-Seven stories live here. Use the flat green path for healthy e2e, nested for
-multi-level multi-bundler orchestration, standalone cells for per-bundler
-build+MFDoctor findings, the red path for intentional conflicts, the showcase for
-one-rule demos, and compatibility for production framework/bundler smoke.
+Seven build/demo stories live here, plus a consumer CI copy-paste workflow.
+Use the flat green path for healthy e2e, nested for multi-level multi-bundler
+orchestration, standalone cells for per-bundler build+MFDoctor findings, the red
+path for intentional conflicts, the showcase for one-rule demos, and
+compatibility for production framework/bundler smoke.
 
 | Suite                                                                | Intent                                                         | Command                                     |
 | -------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------- |
