@@ -59,6 +59,8 @@ a CI provider.
 Use `mfdoctor federation ".mf/doctor/**/project.json"` after every application
 has produced `project.json`. This is where name collisions, version/scope
 conflicts, missing providers, and external-runtime provider gaps become visible.
+Together with plugin emit, that is the green bar — not `mfdoctor check` alone
+(see the [agent loop](./agent-loop.md)).
 
 For incremental adoption, check in a
 [fingerprint baseline](./baselines.md) so known debt stays visible in reports

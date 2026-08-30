@@ -67,11 +67,17 @@ JSON, and SARIF reports.
 
 Use this loop:
 
-1. Build the project.
+1. Build the project (plugin emit — strongest evidence).
 2. Fix each policy-failing finding.
 3. Rebuild until the process exits `0`.
-4. If a finding is intentional, suppress the rule or baseline that exact
+4. In a monorepo, run `mfdoctor workspace` after every app has built.
+5. If a finding is intentional, suppress the rule or baseline that exact
    fingerprint. Do not remove MFDoctor to make CI green.
+
+`mfdoctor check` alone is offline config/static analysis. Do not claim green
+from check alone — see the [agent loop](./agent-loop.md) (check vs emit +
+workspace) and treat [`doctor/partial-analysis`](./rules/doctor/partial-analysis.md)
+as incomplete analysis.
 
 See [Rules](./rules/) for fixes and [Suppressions](./suppressions.md) for
 governance.

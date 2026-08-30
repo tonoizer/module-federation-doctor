@@ -15,6 +15,10 @@ correlation, or a deliberate deployed-manifest probe. MFDoctor is not a CLI-only
 source scanner and does not inject an agent into the browser. The build plugin
 remains the primary integration; use the CLI for tasks outside a bundler emit.
 
+Agents: `mfdoctor check` is tier 1 (config/static). Do **not** claim green from
+check alone — finish plugin emit plus the workspace gate, and never ignore
+`doctor/partial-analysis`. See the [agent loop](./agent-loop.md).
+
 After installing `@tonoizer/mfdoctor` as a development dependency, run the
 binary through your package manager or a package script:
 
@@ -28,7 +32,7 @@ The examples below use the shorter `mfdoctor` form.
 
 | Command                                      | Use it for                                                                                 | Network access |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------- |
-| [`check`](#check-one-project)                | Analyze one project or checkout                                                            | No             |
+| [`check`](#check-one-project)                | Analyze one project or checkout (tier 1 — not a full green claim alone)                    | No             |
 | [`workspace`](#check-a-workspace)            | Discover built MFDoctor project facts below one or more roots and gate the full federation | No             |
 | [`federation`](#check-a-federation)          | Analyze explicit `project.json` globs, or use workspace discovery explicitly               | No             |
 | [`baseline`](#manage-a-baseline)             | Generate, extend, or prune accepted finding fingerprints                                   | No             |
