@@ -250,6 +250,7 @@ export async function validateFixturePayloads(): Promise<void> {
         installedVersions: true,
       },
       summary: { projects: 1, info: 0, warnings: 1, errors: 0 },
+      status: { complete: false, incompleteReasons: ["missing-emit"] },
       findings: [
         {
           schemaVersion: 1,

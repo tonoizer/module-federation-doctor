@@ -13,7 +13,7 @@
 MFDoctor writes:
 
 - `.mf/doctor/project.json`: portable, schema-versioned project facts.
-- `.mf/doctor/report.json`: capabilities, summary, and sorted findings.
+- `.mf/doctor/report.json`: capabilities, status, summary, and sorted findings.
 - `.mf/doctor/results.sarif`: source locations and stable fingerprints.
 - `.mf/doctor/evidence.json` will be the v2 evidence graph output in the next
   compatibility slice. Its public contract ships now.
@@ -152,6 +152,25 @@ disk by default and is unrelated to terminal / JSON / SARIF report formats.
 Findings may include `suppressed` / `suppressionReason` when a
 [fingerprint baseline](./baselines.md) matches. Report `summary.suppressed`
 counts those findings when present.
+
+## Run-Status (`status.incompleteReasons`)
+
+Reports include an additive `status` object so agents and CI can see **why** a
+run was incomplete without scraping findings:
+
+- `status.complete`: `true` iff `incompleteReasons` is empty
+- `status.incompleteReasons`: stable reason codes (sorted uniquely); empty when
+  the run is complete
+
+| Code               | Meaning                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `missing-emit`     | No emitted-asset facts (`capabilities.emittedAssets` is false) — typically CLI check without a bundler emit |
+| `partial-bundler`  | Bundler cell is partial in the public matrix (`modern`, `unknown`, Rolldown/Vite Plus lifecycle)            |
+| `probe-skipped`    | Workspace group pre-probe could not classify one or more project files (`diagnostics.kind: probe`)          |
+| `evidence-unknown` | Source/budget evidence is partial or unknown (read failures, budget cutoff, unresolved dynamics)            |
+
+Current reporters always write `status`. Older reports may omit it. This field
+does not change rule evaluation, fingerprints, or exit codes.
 
 ## Gesundheitswert (`summary.score`)
 

@@ -76,6 +76,7 @@ import {
 } from "./analysis-budgets.js";
 import { mapBounded } from "./async-map.js";
 import type { RuleExecutionState } from "./rule-contract.js";
+import { computeRunStatus } from "./run-status.js";
 
 export function isAnalysisIncomplete(analysis: AnalysisBudgetReport | undefined): boolean {
   return Boolean(analysis && (analysis.status !== "complete" || analysis.exceeded.length > 0));
@@ -236,6 +237,7 @@ function reportFor(facts: ProjectFacts, findings: DoctorFinding[]): DoctorReport
   return {
     schemaVersion: 1,
     capabilities: facts.capabilities,
+    status: computeRunStatus([facts]),
     summary: {
       projects: 1,
       info: summary.info,
@@ -874,7 +876,11 @@ export async function analyzeFederation(
     sortFindings(findings),
     baselineOptions,
   );
-  const report = reportFromFindings(projects, baselined);
+  const report = reportFromFindings(
+    projects,
+    baselined,
+    options.workspaceDiagnostics ? { workspaceDiagnostics: options.workspaceDiagnostics } : {},
+  );
   const ui = buildUiPayload(projects, report);
   const formats = options.formats ?? [];
   if (options.outputDirectory && formats.length > 0)

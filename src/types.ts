@@ -1063,9 +1063,31 @@ export interface RuntimeAnalysisResult {
   evidence?: EvidenceAnalysisMetadata;
 }
 
+/**
+ * Additive run completeness on `report.status`.
+ * Always written by current reporters; optional when reading older reports.
+ */
+export type IncompleteReasonCode =
+  | "missing-emit"
+  | "partial-bundler"
+  | "probe-skipped"
+  | "evidence-unknown";
+
+export interface DoctorRunStatus {
+  /** True iff `incompleteReasons` is empty. */
+  complete: boolean;
+  /** Stable reason codes; empty when the run is complete. */
+  incompleteReasons: IncompleteReasonCode[];
+}
+
 export interface DoctorReport {
   schemaVersion: 1;
   capabilities: AnalysisCapabilities;
+  /**
+   * Additive run completeness for agents and CI.
+   * Always written by current reporters; optional when reading older reports.
+   */
+  status?: DoctorRunStatus;
   summary: {
     projects: number;
     info: number;

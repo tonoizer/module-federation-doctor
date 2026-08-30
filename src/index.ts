@@ -74,6 +74,8 @@ export {
 } from "./baseline.js";
 export { computeHealthScore, isExcludedFromScore, labelForScore } from "./health-score.js";
 export type { HealthScoreResult } from "./health-score.js";
+export { computeRunStatus, emptyRunStatus, INCOMPLETE_REASON_CODES } from "./run-status.js";
+export type { ComputeRunStatusOptions } from "./run-status.js";
 export {
   buildAgentPrompt,
   DEFAULT_PROMPT_FINDINGS,
@@ -213,6 +215,7 @@ export type {
   DoctorPresetName,
   DoctorPrintLog,
   DoctorReport,
+  DoctorRunStatus,
   DoctorRule,
   DoctorSharedPolicy,
   DoctorUiPayload,
@@ -220,6 +223,7 @@ export type {
   FederationInstanceRef,
   FederationAnalysisResult,
   HealthScoreLabel,
+  IncompleteReasonCode,
   ImportDepth,
   ImportEvidenceSource,
   ImportSourceScope,
