@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 108,
-  "migratedCount": 108,
+  "ruleCount": 109,
+  "migratedCount": 109,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
@@ -7866,6 +7866,61 @@
         "imports.deepImportFiles"
       ],
       "migrationNote": "Group 3; Observed deep-import and declared shared-key facts are exact when source collection is complete. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
+      "id": "shared/subpath-version-unresolved",
+      "version": "1",
+      "group": 3,
+      "status": "migrated",
+      "defaultSeverity": "error",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "On Vite, prefix and package-subpath shared keys inherit provider `version` from the parent package. When that resolution fails, the shared entry ships with `version: undefined`, which breaks singleton / `requiredVersion` matching and can crash remotes that expect the host to provide the share.",
+        "documentation": "/rules/shared/subpath-version-unresolved",
+        "fix": "Set an explicit `version` (or a concrete `requiredVersion` such as `\"^19.1.0\"`) on the prefix/subpath shared key, or ensure the parent package is installed so `@module-federation/vite` can inherit its version. Non-Vite adapters are out of scope for this rule."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "dependencies.installed",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "vite"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "vite"
+          }
+        ]
+      },
+      "evidenceReads": ["project.scope", "moduleFederation", "dependencies.installed"],
+      "migrationNote": "Group 3; Vite prefix/subpath share keys plus installed parent-package versions are exact when installedVersions collection completed. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
       "id": "shared/eager-without-singleton",

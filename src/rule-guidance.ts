@@ -519,6 +519,16 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: 'Add `"react/"` / `"react-dom/"` to `shared`, or add only the exact observed subpaths. Turn `rules["shared/prefix-share-recommended"]` off or baseline the fingerprint when the import boundary is intentional.',
     sources: [shared, "https://module-federation.io/guide/bridge/react-bridge"],
   },
+  "shared/subpath-version-unresolved": {
+    category: "correctness",
+    impact:
+      "On Vite, prefix and package-subpath shared keys inherit provider `version` from the parent package. When that resolution fails, the shared entry ships with `version: undefined`, which breaks singleton / `requiredVersion` matching and can crash remotes that expect the host to provide the share.",
+    fix: 'Set an explicit `version` (or a concrete `requiredVersion` such as `"^19.1.0"`) on the prefix/subpath shared key, or ensure the parent package is installed so `@module-federation/vite` can inherit its version. Non-Vite adapters are out of scope for this rule.',
+    sources: [
+      shared,
+      "https://github.com/module-federation/vite/blob/main/src/utils/normalizeModuleFederationOptions.ts",
+    ],
+  },
   "artifact/public-path-suspicious": {
     category: "correctness",
     impact: "A malformed asset base makes remote chunks and styles resolve from the wrong URL.",

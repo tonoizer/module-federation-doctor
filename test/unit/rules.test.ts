@@ -1229,6 +1229,22 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "shared/subpath-version-unresolved",
+      (facts: ProjectFacts) => {
+        facts.bundler.name = "vite";
+        facts.capabilities.installedVersions = true;
+        facts.dependencies.installed = {};
+        facts.moduleFederation!.shared = {
+          "react/": {
+            package: "react/",
+            singleton: true,
+            eager: false,
+            shareScope: ["default"],
+          },
+        };
+      },
+    ],
+    [
       "artifact/public-path-suspicious",
       (facts: ProjectFacts) =>
         (facts.artifacts.manifest = {

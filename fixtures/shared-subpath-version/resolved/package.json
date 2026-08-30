@@ -1,0 +1,9 @@
+{
+  "name": "@mfdoctor-fixture/shared-subpath-version-resolved",
+  "private": true,
+  "version": "0.0.0",
+  "dependencies": {
+    "@module-federation/vite": "1.20.4",
+    "react": "19.1.1"
+  }
+}
