@@ -3,7 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { computeHealthScore } from "../../src/health-score.js";
-import { formatTerminalReport, writeReports } from "../../src/reporters.js";
+import {
+  formatTerminalReport,
+  writeFederationReports,
+  writeFileAtomic,
+  writeReports,
+} from "../../src/reporters.js";
 import type { DoctorReport, ProjectFacts } from "../../src/types.js";
 
 function emptyReport(findings: DoctorReport["findings"] = []): DoctorReport {
@@ -31,41 +36,46 @@ function emptyReport(findings: DoctorReport["findings"] = []): DoctorReport {
   };
 }
 
+function demoFacts(name = "demo"): ProjectFacts {
+  return {
+    schemaVersion: 1,
+    project: { name, root: "." },
+    bundler: { name: "vite", mode: "development" },
+    capabilities: {
+      config: true,
+      sourceImports: false,
+      manifest: false,
+      stats: false,
+      emittedAssets: false,
+      installedVersions: false,
+    },
+    dependencies: { declared: {}, installed: {} },
+    imports: {
+      sourceFiles: [],
+      specifiers: [],
+      packages: [],
+      dynamicPackages: [],
+      remotes: [],
+      unresolvedDynamic: [],
+      evidenceSources: [],
+    },
+    artifacts: { emittedAssets: [] },
+  };
+}
+
 describe("reporters", () => {
   const roots: string[] = [];
 
   afterEach(async () => {
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
     await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
   });
 
   it("writes json and sarif reports", async () => {
     const output = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-reporters-"));
     roots.push(output);
-    const facts = {
-      schemaVersion: 1,
-      project: { name: "demo", root: "." },
-      bundler: { name: "vite", mode: "development" },
-      capabilities: {
-        config: true,
-        sourceImports: false,
-        manifest: false,
-        stats: false,
-        emittedAssets: false,
-        installedVersions: false,
-      },
-      dependencies: { declared: {}, installed: {} },
-      imports: {
-        sourceFiles: [],
-        specifiers: [],
-        packages: [],
-        dynamicPackages: [],
-        remotes: [],
-        unresolvedDynamic: [],
-        evidenceSources: [],
-      },
-      artifacts: { emittedAssets: [] },
-    } satisfies ProjectFacts;
+    const facts = demoFacts();
     const report = emptyReport([
       {
         schemaVersion: 1,
@@ -94,6 +104,71 @@ describe("reporters", () => {
       { kind: "external", justification: "legacy debt" },
     ]);
     await expect(fs.access(path.join(output, "report.html"))).rejects.toThrow();
+    // Atomic replace leaves only final paths — no leftover temp files.
+    expect((await fs.readdir(output)).sort()).toEqual(
+      ["project.json", "report.json", "results.sarif"].sort(),
+    );
+  });
+
+  it("replaces report files atomically and leaves no temp files", async () => {
+    const output = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-reporters-atomic-"));
+    roots.push(output);
+    const reportPath = path.join(output, "report.json");
+    await fs.writeFile(reportPath, '{"stale":true}\n');
+
+    const rename = vi.spyOn(fs, "rename");
+    await writeFileAtomic(reportPath, '{"fresh":true}\n');
+
+    expect(rename).toHaveBeenCalledOnce();
+    const [from, to] = rename.mock.calls[0]!;
+    expect(path.dirname(String(from))).toBe(output);
+    expect(path.basename(String(from))).toMatch(/^\.report\.json\.mfdoctor-\d+-.+\.tmp$/);
+    expect(String(to)).toBe(path.resolve(reportPath));
+    expect(await fs.readFile(reportPath, "utf8")).toBe('{"fresh":true}\n');
+    expect(await fs.readdir(output)).toEqual(["report.json"]);
+  });
+
+  it("preserves the previous report and cleans the temp file when rename fails", async () => {
+    const output = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-reporters-atomic-fail-"));
+    roots.push(output);
+    const reportPath = path.join(output, "report.json");
+    await fs.writeFile(reportPath, '{"previous":true}\n');
+    vi.spyOn(fs, "rename").mockRejectedValueOnce(new Error("rename blocked"));
+
+    await expect(writeFileAtomic(reportPath, '{"next":true}\n')).rejects.toThrow(
+      "Unable to atomically write report file",
+    );
+    expect(await fs.readFile(reportPath, "utf8")).toBe('{"previous":true}\n');
+    expect(await fs.readdir(output)).toEqual(["report.json"]);
+  });
+
+  it("writes federation json and sarif via atomic replace", async () => {
+    const output = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-reporters-federation-"));
+    roots.push(output);
+    const report = emptyReport([
+      {
+        schemaVersion: 1,
+        ruleId: "federation/name-conflict",
+        severity: "error",
+        message: "duplicate name",
+        project: "workspace",
+        evidence: {},
+        fingerprint: "fed",
+      },
+    ]);
+    const rename = vi.spyOn(fs, "rename");
+
+    await writeFederationReports(report, output, ["json", "sarif"]);
+
+    expect(rename.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(
+      JSON.parse(await fs.readFile(path.join(output, "report.json"), "utf8")).findings[0].ruleId,
+    ).toBe("federation/name-conflict");
+    expect(
+      JSON.parse(await fs.readFile(path.join(output, "results.sarif"), "utf8")).runs[0].results[0]
+        .ruleId,
+    ).toBe("federation/name-conflict");
+    expect((await fs.readdir(output)).sort()).toEqual(["report.json", "results.sarif"].sort());
   });
 
   it("persists source-analysis completeness while omitting in-memory config", async () => {

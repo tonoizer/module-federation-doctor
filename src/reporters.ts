@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import pc from "picocolors";
@@ -12,6 +13,36 @@ import type {
   ProjectFacts,
 } from "./types.js";
 import { stableStringify } from "./utils.js";
+
+/**
+ * Write `contents` via a same-directory temp file and rename so a crash never
+ * leaves a truncated final path. On failure the previous file (if any) is kept
+ * and the temp file is removed.
+ */
+export async function writeFileAtomic(filePath: string, contents: string): Promise<void> {
+  const resolved = path.resolve(filePath);
+  const directory = path.dirname(resolved);
+  const temporary = path.join(
+    directory,
+    `.${path.basename(resolved)}.mfdoctor-${process.pid}-${randomUUID()}.tmp`,
+  );
+  let handle: fs.FileHandle | undefined;
+  let renamed = false;
+  try {
+    handle = await fs.open(temporary, "wx");
+    await handle.writeFile(contents, "utf8");
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
+    await fs.rename(temporary, resolved);
+    renamed = true;
+  } catch (error) {
+    throw new Error(`Unable to atomically write report file: ${resolved}`, { cause: error });
+  } finally {
+    await handle?.close().catch(() => undefined);
+    if (!renamed) await fs.rm(temporary, { force: true }).catch(() => undefined);
+  }
+}
 
 /** Published MFDoctor docs origin. */
 export const DOCTOR_DOCS_ORIGIN = "https://mfdoctor.kevinbeier.com";
@@ -200,9 +231,9 @@ async function writeReportFormats(
   terminal: TerminalReportOptions,
 ): Promise<void> {
   if (formats.includes("json"))
-    await fs.writeFile(path.join(directory, "report.json"), stableStringify(report, 2) + "\n");
+    await writeFileAtomic(path.join(directory, "report.json"), stableStringify(report, 2) + "\n");
   if (formats.includes("sarif"))
-    await fs.writeFile(
+    await writeFileAtomic(
       path.join(directory, "results.sarif"),
       stableStringify(sarif(report), 2) + "\n",
     );
@@ -242,7 +273,7 @@ export async function writeReports(
           };
         })()
       : facts;
-  await fs.writeFile(
+  await writeFileAtomic(
     path.join(directory, "project.json"),
     stableStringify(persistedFacts, 2) + "\n",
   );
