@@ -270,7 +270,8 @@ remote entry returns an HTTP error exits `1`.
 ## GitHub Actions
 
 Run the workspace gate after the federated apps have emitted their MFDoctor
-project facts:
+project facts. Pin the Action to a **release tag** (not `@main`) so CI stays
+reproducible:
 
 ```yaml
 permissions:
@@ -288,14 +289,24 @@ jobs:
           cache: true
       - run: vp pack
       - run: vp run --filter './apps/docs' build
-      - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@main
+      - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@1.1.0
         with:
           roots: .
           cli: vp exec mfdoctor
           formats: terminal,json,sarif
 ```
 
-Optional action inputs are `build-command`, `globs`, `upload-sarif`, and
-`upload-artifact`. You can also run the CLI directly and upload
-`.mf/doctor/results.sarif` with `github/codeql-action/upload-sarif` when code
-scanning is enabled.
+The Action **requires** a runnable `mfdoctor` / `@tonoizer/mfdoctor` CLI (via the
+`cli` input). Missing CLI is a hard failure. If the job has not installed the
+package yet, set `install: true` (optionally with `package-spec:
+@tonoizer/mfdoctor@1.1.0`).
+
+`upload-sarif` defaults to `true` and needs `permissions.security-events: write`.
+If that permission is missing, the Action fails with an actionable error instead
+of a quiet upload miss. Set `upload-sarif: "false"` when you do not want code
+scanning upload.
+
+Optional action inputs are `build-command`, `globs`, `install`, `package-spec`,
+`upload-sarif`, and `upload-artifact`. You can also run the CLI directly and
+upload `.mf/doctor/results.sarif` with `github/codeql-action/upload-sarif` when
+code scanning is enabled.
