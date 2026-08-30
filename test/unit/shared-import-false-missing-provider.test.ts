@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { analyzeFederation } from "../../src/engine.js";
 import { builtInRules } from "../../src/rules.js";
-import type { DoctorFinding, ProjectFacts } from "../../src/types.js";
+import type { DoctorFinding, NormalizedRemote, ProjectFacts } from "../../src/types.js";
 
 const roots: string[] = [];
 
@@ -16,7 +16,7 @@ function projectFacts(
   name: string,
   shared: NonNullable<ProjectFacts["moduleFederation"]>["shared"],
   packages: string[] = [],
-  extras: { exposes?: Record<string, string>; remotes?: Record<string, string> } = {},
+  extras: { exposes?: Record<string, string>; remotes?: Record<string, NormalizedRemote> } = {},
 ): ProjectFacts {
   return {
     schemaVersion: 1,
