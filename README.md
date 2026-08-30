@@ -213,8 +213,10 @@ pnpm exec mfdoctor prompt --finding config/name-required .mf/doctor/report.json
 `capabilities` is versioned JSON and does not load project configuration or use
 the network. A check exits `0` when policy passes, `1` when policy fails, and
 `2` when analysis is incomplete. The diagnostics directory contains bounded
-`report.json`, `summary.md`, and `prompts/*.md`; JSON and SARIF remain stable
-machine-readable contracts, so agents do not need to scrape terminal output.
+`report.json`, `summary.md`, and `prompts/*.md` (default top-3 prompts; pass
+`--diagnostics-prompts <n>` up to 25, or set `MFDOCTOR_DIAGNOSTICS_PROMPTS`, to
+dump more). JSON and SARIF remain stable machine-readable contracts, so agents
+do not need to scrape terminal output.
 
 Supported report formats are **terminal**, **JSON**, and **SARIF** only — there
 is no HTML report or `--ui` dashboard. For a programmatic remotes/shared graph,

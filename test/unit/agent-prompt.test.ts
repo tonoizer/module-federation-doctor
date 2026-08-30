@@ -4,9 +4,14 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   buildAgentPrompt,
+  DEFAULT_PROMPT_FINDINGS,
+  DIAGNOSTICS_PROMPTS_ENV,
   findPromptTarget,
   formatTopAgentPrompts,
+  MAX_DIAGNOSTICS_PROMPT_FINDINGS,
   resolveDiagnosticsDir,
+  resolveDiagnosticsPromptLimit,
+  resolveDiagnosticsPromptLimitFromEnv,
   selectTopFindings,
   writeDiagnosticsDump,
 } from "../../src/agent-prompt.js";
@@ -222,5 +227,64 @@ describe("agent prompts", () => {
     const summary = await fs.readFile(result.summaryPath, "utf8");
     expect(summary).toContain("Score: 99/100 (Great)");
     expect(summary).toContain("config/name-required");
+  });
+
+  it("defaults diagnostics dumps to top-3 and allows opt-in beyond with a hard cap", async () => {
+    expect(DEFAULT_PROMPT_FINDINGS).toBe(3);
+    expect(MAX_DIAGNOSTICS_PROMPT_FINDINGS).toBe(25);
+    expect(resolveDiagnosticsPromptLimit()).toBe(3);
+    expect(resolveDiagnosticsPromptLimit(10)).toBe(10);
+    expect(resolveDiagnosticsPromptLimit("7")).toBe(7);
+    expect(() => resolveDiagnosticsPromptLimit(0)).toThrow(/integer between 1 and 25/);
+    expect(() => resolveDiagnosticsPromptLimit(1.5)).toThrow(/integer between 1 and 25/);
+    expect(() => resolveDiagnosticsPromptLimit(26)).toThrow(/dump budget of 25/);
+    expect(resolveDiagnosticsPromptLimitFromEnv(undefined, {})).toBe(3);
+    expect(
+      resolveDiagnosticsPromptLimitFromEnv(undefined, { [DIAGNOSTICS_PROMPTS_ENV]: "12" }),
+    ).toBe(12);
+    expect(resolveDiagnosticsPromptLimitFromEnv(4, { [DIAGNOSTICS_PROMPTS_ENV]: "12" })).toBe(4);
+
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-diag-limit-"));
+    roots.push(root);
+    const dumpRoot = resolveDiagnosticsDir(root, "diag");
+    const findings = Array.from({ length: 8 }, (_, index) =>
+      finding({
+        ruleId: "config/name-required",
+        severity: "error",
+        fingerprint: `fp-${String(index).padStart(2, "0")}`,
+        message: `finding ${index}`,
+      }),
+    );
+    const report: DoctorReport = {
+      schemaVersion: 1,
+      capabilities: {
+        config: true,
+        sourceImports: false,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: false,
+      },
+      summary: {
+        projects: 1,
+        info: 0,
+        warnings: 0,
+        errors: 8,
+        score: 40,
+        scoreLabel: "Needs work",
+      },
+      findings,
+    };
+
+    const defaultDump = await writeDiagnosticsDump(report, dumpRoot);
+    expect(defaultDump.promptFiles).toHaveLength(3);
+    expect(await fs.readdir(path.join(dumpRoot, "prompts"))).toHaveLength(3);
+
+    const wider = await writeDiagnosticsDump(report, dumpRoot, { limit: 6 });
+    expect(wider.promptFiles).toHaveLength(6);
+    const summary = await fs.readFile(wider.summaryPath, "utf8");
+    expect(summary).toContain("Top findings (6 of 8, dump budget 6)");
+    expect(formatTopAgentPrompts(findings)).toContain("Agent prompts (top 3)");
+    expect(formatTopAgentPrompts(findings)).not.toContain("finding 5");
   });
 });

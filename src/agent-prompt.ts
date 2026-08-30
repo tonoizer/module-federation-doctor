@@ -18,11 +18,55 @@ const CATEGORY_RANK: Record<RuleCategory, number> = {
 
 const MAX_EVIDENCE_KEYS = 8;
 const MAX_EVIDENCE_VALUE_CHARS = 120;
-const MAX_PROMPT_FINDINGS = 3;
+/** Default top-N for terminal prompts and diagnostics dumps. */
+export const DEFAULT_PROMPT_FINDINGS = 3;
+/**
+ * Hard cap for `--diagnostics-prompts` / `diagnosticsPromptLimit` dumps.
+ * Keeps agent handoff artifacts bounded (no unbounded write).
+ */
+export const MAX_DIAGNOSTICS_PROMPT_FINDINGS = 25;
+
+/** Env override for diagnostics dump prompt count (CLI flag wins). */
+export const DIAGNOSTICS_PROMPTS_ENV = "MFDOCTOR_DIAGNOSTICS_PROMPTS";
 
 export interface AgentPromptOptions {
   /** Override the verify command printed at the end. */
   verifyCommand?: string;
+}
+
+/**
+ * Resolve how many prompts a diagnostics dump may write.
+ * Defaults to {@link DEFAULT_PROMPT_FINDINGS}; clamps to
+ * {@link MAX_DIAGNOSTICS_PROMPT_FINDINGS}. Rejects non-integers and values below 1.
+ */
+export function resolveDiagnosticsPromptLimit(value?: number | string): number {
+  if (value === undefined || value === "") return DEFAULT_PROMPT_FINDINGS;
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error(
+      `--diagnostics-prompts must be an integer between 1 and ${MAX_DIAGNOSTICS_PROMPT_FINDINGS}.`,
+    );
+  }
+  if (parsed > MAX_DIAGNOSTICS_PROMPT_FINDINGS) {
+    throw new Error(
+      `--diagnostics-prompts exceeds the dump budget of ${MAX_DIAGNOSTICS_PROMPT_FINDINGS} (got ${parsed}).`,
+    );
+  }
+  return parsed;
+}
+
+/**
+ * Resolve diagnostics dump limit from explicit value, then env, else default.
+ * Explicit `value` (CLI / DoctorOptions) wins over {@link DIAGNOSTICS_PROMPTS_ENV}.
+ */
+export function resolveDiagnosticsPromptLimitFromEnv(
+  value?: number | string,
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  if (value !== undefined && value !== "") return resolveDiagnosticsPromptLimit(value);
+  const raw = env[DIAGNOSTICS_PROMPTS_ENV];
+  if (raw === undefined || raw === "") return DEFAULT_PROMPT_FINDINGS;
+  return resolveDiagnosticsPromptLimit(raw);
 }
 
 /**
@@ -39,7 +83,7 @@ export function findingPriority(finding: DoctorFinding): number {
 /** Non-suppressed findings ordered for agent handoff (highest priority first). */
 export function selectTopFindings(
   findings: DoctorFinding[],
-  limit = MAX_PROMPT_FINDINGS,
+  limit = DEFAULT_PROMPT_FINDINGS,
 ): DoctorFinding[] {
   return [...findings]
     .filter((finding) => !finding.suppressed)
@@ -145,7 +189,7 @@ export function formatTopAgentPrompts(
   findings: DoctorFinding[],
   options: AgentPromptOptions & { limit?: number } = {},
 ): string {
-  const top = selectTopFindings(findings, options.limit ?? MAX_PROMPT_FINDINGS);
+  const top = selectTopFindings(findings, options.limit ?? DEFAULT_PROMPT_FINDINGS);
   if (top.length === 0) return "";
   const blocks = [
     `Agent prompts (top ${top.length})`,
@@ -201,7 +245,10 @@ export interface DiagnosticsDumpResult {
 
 /**
  * Write a bounded agent handoff dump: report.json, prompts/*.md, summary.md.
- * No secrets, env dumps, or node_modules trees — report paths stay as stored.
+ * Prompt count defaults to {@link DEFAULT_PROMPT_FINDINGS}; pass `limit` (or
+ * resolve via {@link resolveDiagnosticsPromptLimit}) to dump more, up to
+ * {@link MAX_DIAGNOSTICS_PROMPT_FINDINGS}. No secrets, env dumps, or
+ * node_modules trees — report paths stay as stored.
  */
 export async function writeDiagnosticsDump(
   report: DoctorReport,
@@ -215,7 +262,8 @@ export async function writeDiagnosticsDump(
   const reportPath = path.join(diagnosticsDir, "report.json");
   await fs.writeFile(reportPath, stableStringify(report, 2) + "\n");
 
-  const top = selectTopFindings(report.findings, options.limit ?? MAX_PROMPT_FINDINGS);
+  const limit = resolveDiagnosticsPromptLimit(options.limit ?? DEFAULT_PROMPT_FINDINGS);
+  const top = selectTopFindings(report.findings, limit);
   const promptFiles: string[] = [];
   for (const [index, finding] of top.entries()) {
     const name = safePromptFilename(finding, index);
@@ -229,6 +277,12 @@ export async function writeDiagnosticsDump(
       ? "Score: n/a (partial analysis)"
       : `Score: ${report.summary.score}/100 (${report.summary.scoreLabel ?? "n/a"})`;
 
+  const eligible = report.findings.filter((finding) => !finding.suppressed).length;
+  const findingsHeading =
+    top.length > 0 && eligible > top.length
+      ? `## Top findings (${top.length} of ${eligible}, dump budget ${limit})`
+      : "## Top findings";
+
   const summaryLines = [
     "# MFDoctor — agent diagnostics",
     "",
@@ -236,7 +290,7 @@ export async function writeDiagnosticsDump(
     `${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info` +
       (report.summary.suppressed ? `, ${report.summary.suppressed} suppressed` : ""),
     "",
-    "## Top findings",
+    findingsHeading,
     ...(top.length === 0
       ? ["- (none)"]
       : top.map(

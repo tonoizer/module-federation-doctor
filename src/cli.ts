@@ -16,7 +16,10 @@ import {
   buildAgentPrompt,
   findPromptTarget,
   formatTopAgentPrompts,
+  MAX_DIAGNOSTICS_PROMPT_FINDINGS,
   resolveDiagnosticsDir,
+  resolveDiagnosticsPromptLimit,
+  resolveDiagnosticsPromptLimitFromEnv,
   writeDiagnosticsDump,
 } from "./agent-prompt.js";
 import { analyze, analyzeFederation, isAnalysisIncomplete } from "./engine.js";
@@ -74,6 +77,8 @@ interface Parsed {
   forcePrompt: boolean;
   finding?: string;
   diagnosticsDir?: string;
+  /** Opt-in dump size for `--diagnostics-dir` (1–25). Terminal top-3 unchanged. */
+  diagnosticsPromptLimit?: number;
   formats?: OutputFormat[];
   timeoutMs?: number;
   maxBytes?: number;
@@ -102,6 +107,7 @@ Usage:
   mfdoctor check --no-prompt
   mfdoctor check --prompt
   mfdoctor check --diagnostics-dir .mf/doctor/diagnostics
+  mfdoctor check --diagnostics-dir .mf/doctor/diagnostics --diagnostics-prompts 10
   mfdoctor prompt [--finding <fingerprint|ruleId>] [.mf/doctor/report.json]
   mfdoctor workspace [root...]
   mfdoctor workspace [root...] --glob "**/.mf/doctor/project.json"
@@ -143,7 +149,10 @@ Agent prompts: after the score, terminal prints up to three copy-paste fix
 prompts (severity then impact). Pass --no-prompt / prompt: false to hide.
 \`mfdoctor prompt --finding <fingerprint|ruleId>\` reads .mf/doctor/report.json
 offline. \`--diagnostics-dir\` writes report.json, prompts/*.md, and summary.md
-inside the project root only.
+inside the project root only (default top-3 prompts). Pass
+\`--diagnostics-prompts <n>\` (1–${MAX_DIAGNOSTICS_PROMPT_FINDINGS}) or set
+MFDOCTOR_DIAGNOSTICS_PROMPTS to dump more for agent/CI handoff; terminal
+output stays at top-3.
 
 Capabilities: \`mfdoctor capabilities\` prints the versioned JSON contract for
 commands, formats, exit codes, noninteractive handoff commands, and public
@@ -230,6 +239,21 @@ export function parseArgs(argv: string[]): Parsed {
       const dir = value.slice("--diagnostics-dir=".length);
       if (!dir) throw new Error("--diagnostics-dir needs a directory path.");
       parsed.diagnosticsDir = dir;
+    } else if (value === "--diagnostics-prompts") {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-"))
+        throw new Error(
+          `--diagnostics-prompts needs an integer between 1 and ${MAX_DIAGNOSTICS_PROMPT_FINDINGS}.`,
+        );
+      parsed.diagnosticsPromptLimit = resolveDiagnosticsPromptLimit(next);
+      index += 1;
+    } else if (value?.startsWith("--diagnostics-prompts=")) {
+      const raw = value.slice("--diagnostics-prompts=".length);
+      if (!raw)
+        throw new Error(
+          `--diagnostics-prompts needs an integer between 1 and ${MAX_DIAGNOSTICS_PROMPT_FINDINGS}.`,
+        );
+      parsed.diagnosticsPromptLimit = resolveDiagnosticsPromptLimit(raw);
     } else if (value === "--workspace" && (command === "federation" || command === "workspace")) {
       parsed.workspace = true;
     } else if (value === "--glob" && (command === "federation" || command === "workspace")) {
@@ -499,6 +523,7 @@ async function runFederationAnalysis(
   prompt = true,
   forcePrompt = false,
   diagnosticsDir?: string,
+  diagnosticsPromptLimit?: number,
   analysis?: import("./analysis-budgets.js").AnalysisBudgetReport,
   workspaceDiagnostics?: import("./workspace.js").WorkspaceProjectDiagnostic[],
 ): Promise<number> {
@@ -525,7 +550,10 @@ async function runFederationAnalysis(
   const dumpDir = diagnosticsDir ?? config.diagnosticsDir;
   if (dumpDir) {
     const absolute = resolveDiagnosticsDir(process.cwd(), dumpDir);
-    await writeDiagnosticsDump(result.report, absolute);
+    const limit = resolveDiagnosticsPromptLimitFromEnv(
+      diagnosticsPromptLimit ?? config.diagnosticsPromptLimit,
+    );
+    await writeDiagnosticsDump(result.report, absolute, { limit });
   }
   if (!formats)
     process.stdout.write(
@@ -611,6 +639,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           parsed.prompt,
           parsed.forcePrompt,
           parsed.diagnosticsDir,
+          parsed.diagnosticsPromptLimit,
           discovery.budget,
           discovery.diagnostics,
         );
@@ -632,6 +661,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         parsed.prompt,
         parsed.forcePrompt,
         parsed.diagnosticsDir,
+        parsed.diagnosticsPromptLimit,
       );
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
@@ -664,7 +694,10 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       });
       if (parsed.diagnosticsDir || config.diagnosticsDir) {
         const dump = resolveDiagnosticsDir(root, parsed.diagnosticsDir ?? config.diagnosticsDir!);
-        await writeDiagnosticsDump(result.report, dump);
+        const limit = resolveDiagnosticsPromptLimitFromEnv(
+          parsed.diagnosticsPromptLimit ?? config.diagnosticsPromptLimit,
+        );
+        await writeDiagnosticsDump(result.report, dump, { limit });
       }
       if (!formats)
         process.stdout.write(
@@ -698,6 +731,10 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     if (parsed.forcePrompt) options.prompt = true;
     if (parsed.diagnosticsDir) options.diagnosticsDir = parsed.diagnosticsDir;
     else if (config.diagnosticsDir) options.diagnosticsDir = config.diagnosticsDir;
+    if (parsed.diagnosticsPromptLimit !== undefined)
+      options.diagnosticsPromptLimit = parsed.diagnosticsPromptLimit;
+    else if (config.diagnosticsPromptLimit !== undefined)
+      options.diagnosticsPromptLimit = config.diagnosticsPromptLimit;
     if (parsed.formats) options.output = { ...config.output, formats: parsed.formats };
     if (parsed.baseline) options.baseline = parsed.baseline;
     const result = await analyze(options);

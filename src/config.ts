@@ -1,5 +1,5 @@
 import path from "node:path";
-import { resolveDiagnosticsDir } from "./agent-prompt.js";
+import { resolveDiagnosticsDir, resolveDiagnosticsPromptLimitFromEnv } from "./agent-prompt.js";
 import { resolveBaselineOptions } from "./baseline.js";
 import { resolveAnalysisBudgets } from "./analysis-budgets.js";
 import { resolvePolicy } from "./policy.js";
@@ -159,6 +159,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
     failOn: options.failOn ?? (ci ? "error" : "never"),
     score: options.score !== false,
     prompt: options.prompt !== false,
+    diagnosticsPromptLimit: resolveDiagnosticsPromptLimitFromEnv(options.diagnosticsPromptLimit),
     quiet,
     printLog,
     include: options.include ?? DEFAULT_INCLUDE,
