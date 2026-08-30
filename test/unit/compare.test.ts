@@ -246,6 +246,8 @@ describe("compare CLI", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
       timeoutMs: 3000,
       maxBytes: 50000,
       remoteEntry: true,
