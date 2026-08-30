@@ -218,16 +218,31 @@ export function evaluateFederationWorkspaceOracle(
     }
     const consumersWithoutFallback = entries.filter((entry) => entry.shared?.import === false);
     const providers = entries.filter((entry) => entry.shared?.import !== false);
+    // Discriminate from reliability/shared-import-false:
+    // - Provider present → never missing-provider (shared-import-false owns the advisory).
+    // - Provider absent needs workspace proof. A lone import:false sharer without sibling
+    //   use is the project-level advisory (provider may live outside this analysis set).
     if (!groupEvidenceIncomplete && consumersWithoutFallback.length > 0 && providers.length === 0) {
-      findings.push({
-        ruleId: "federation/missing-provider",
-        project: entries[0]?.node.projectName ?? "federation",
-        message: `"${name}" has no provider or local fallback.`,
-        evidence: {
-          package: name,
-          consumers: consumersWithoutFallback.map((entry) => nodeScope(entry.node)).sort(),
-        },
+      const siblingUsesWithoutProviding = federationNodes.some((node) => {
+        if (entries.some((entry) => entry.node === node)) return false;
+        const imported = new Set([
+          ...(node.project.imports?.packages ?? []),
+          ...(node.project.imports?.dynamicPackages ?? []),
+        ]);
+        return imported.has(name);
       });
+      const multipleImportFalseSharers = consumersWithoutFallback.length >= 2;
+      if (multipleImportFalseSharers || siblingUsesWithoutProviding) {
+        findings.push({
+          ruleId: "federation/missing-provider",
+          project: entries[0]?.node.projectName ?? "federation",
+          message: `"${name}" has no provider or local fallback.`,
+          evidence: {
+            package: name,
+            consumers: consumersWithoutFallback.map((entry) => nodeScope(entry.node)).sort(),
+          },
+        });
+      }
     }
   }
 
