@@ -66,4 +66,5 @@ Share org policy with a workspace package (or path) and `extends` — see
 [policy packs and presets](./policy-packs.md). Example fixture:
 `fixtures/policy-packs/acme-mfdoctor-policy`.
 
-See [CLI and CI](./cli.md) for the reusable GitHub Action.
+See [CLI and CI](./cli.md#github-actions) for the reusable GitHub Action
+(consumer snippet without Vite Plus / `setup-vp`).

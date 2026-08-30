@@ -14,6 +14,7 @@ one-rule demos, and compatibility for production framework/bundler smoke.
 | [`showcase`](./showcase)                                             | One-rule CLI fixtures (config / shared / federation / runtime) | `vp run demo:showcase`                      |
 | [`compatibility/webpack`](./compatibility/webpack)                   | Webpack smoke for the compatibility matrix                     | compatibility workflow                      |
 | [`compatibility/vite-nitro-react`](./compatibility/vite-nitro-react) | Vite + Nitro + React SSR output-shape smoke                    | compatibility workflow                      |
+| [`ci/github-actions-mfdoctor.yml`](./ci/github-actions-mfdoctor.yml) | Copy-paste consumer CI (no Vite Plus / `setup-vp`)             | paste into host `.github/workflows/`        |
 
 From the repo root:
 
