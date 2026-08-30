@@ -29,6 +29,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "config/shared-capability-disabled",
   "reliability/snapshot-capability-disabled",
   "config/eager-tree-shaking-conflict",
+  "config/async-boundary-missing",
   "reliability/external-runtime-provider-unverified",
   "reliability/async-startup-library-promise",
   "performance/version-first-startup",

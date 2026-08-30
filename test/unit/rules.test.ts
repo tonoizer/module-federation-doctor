@@ -794,6 +794,38 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/async-boundary-missing",
+      (facts: ProjectFacts) => {
+        const root = fsSync.mkdtempSync(path.join(os.tmpdir(), "mfdoctor-async-boundary-"));
+        fsSync.mkdirSync(path.join(root, "src"));
+        fsSync.writeFileSync(
+          path.join(root, "src/index.ts"),
+          [
+            'import React from "react";',
+            'import { App } from "./App";',
+            "void React;",
+            "void App;",
+            "",
+          ].join("\n"),
+        );
+        facts.project.root = root;
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/mf-manifest.json",
+            shareScope: "default",
+          },
+        };
+        facts.moduleFederation!.shared = {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+        };
+        facts.imports.sourceFiles = ["src/index.ts"];
+        facts.imports.packages = ["react"];
+        facts.imports.specifiers = ["react"];
+        facts.imports.evidenceSources = ["source"];
+      },
+    ],
+    [
       "reliability/external-runtime-provider-unverified",
       (facts: ProjectFacts) =>
         (facts.moduleFederation!.experiments = {
@@ -2177,6 +2209,141 @@ describe("config/implementation-suspicious", () => {
     const facts = base();
     facts.moduleFederation!.implementation = "custom-runtime";
     expect(await runRule(facts)).not.toHaveLength(0);
+  });
+});
+
+describe("config/async-boundary-missing", () => {
+  const caseRoots: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      caseRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+    );
+  });
+
+  async function hostRoot(entrySource: string, extraFiles: Record<string, string> = {}) {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-async-boundary-case-"));
+    caseRoots.push(root);
+    await fs.mkdir(path.join(root, "src"));
+    await fs.writeFile(path.join(root, "src/index.ts"), entrySource);
+    for (const [file, source] of Object.entries(extraFiles)) {
+      await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true });
+      await fs.writeFile(path.join(root, file), source);
+    }
+    return root;
+  }
+
+  function factsFor(root: string, overrides: Partial<ProjectFacts> = {}): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "host", root },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/mf-manifest.json",
+            shareScope: "default",
+          },
+        },
+        shared: {
+          react: { package: "react", singleton: true, eager: false, shareScope: "default" },
+        },
+        experiments: {
+          asyncStartup: false,
+          externalRuntime: false,
+          provideExternalRuntime: false,
+        },
+      },
+      dependencies: { declared: { react: "^19" }, installed: { react: "19.1.1" } },
+      imports: {
+        sourceFiles: ["src/index.ts"],
+        specifiers: ["react"],
+        packages: ["react"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+      ...overrides,
+    };
+  }
+
+  async function run(facts: ProjectFacts) {
+    const findings: Array<{ message: string; evidence?: Record<string, unknown> }> = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/async-boundary-missing")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  it("flags a host sync entry that imports non-eager shared packages", async () => {
+    const root = await hostRoot('import React from "react";\nvoid React;\n');
+    const findings = await run(factsFor(root));
+    expect(findings).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining("RUNTIME-005"),
+        evidence: expect.objectContaining({
+          errorCode: "RUNTIME-005",
+          entry: "src/index.ts",
+          packages: ["react"],
+        }),
+      }),
+    ]);
+  });
+
+  it("does not fire when the entry only dynamically imports bootstrap", async () => {
+    const root = await hostRoot('import("./bootstrap");\n', {
+      "src/bootstrap.ts": 'import React from "react";\nvoid React;\n',
+    });
+    const findings = await run({
+      ...factsFor(root),
+      imports: {
+        sourceFiles: ["src/index.ts", "src/bootstrap.ts"],
+        specifiers: ["react"],
+        packages: ["react"],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+    });
+    expect(findings).toEqual([]);
+  });
+
+  it("does not fire when experiments.asyncStartup is enabled", async () => {
+    const root = await hostRoot('import React from "react";\nvoid React;\n');
+    const facts = factsFor(root);
+    facts.moduleFederation!.experiments = {
+      asyncStartup: true,
+      externalRuntime: false,
+      provideExternalRuntime: false,
+    };
+    expect(await run(facts)).toEqual([]);
+  });
+
+  it("does not fire for non-host projects without remotes", async () => {
+    const root = await hostRoot('import React from "react";\nvoid React;\n');
+    const facts = factsFor(root);
+    facts.moduleFederation!.remotes = {};
+    expect(await run(facts)).toEqual([]);
+  });
+
+  it("does not fire when shared packages are eager", async () => {
+    const root = await hostRoot('import React from "react";\nvoid React;\n');
+    const facts = factsFor(root);
+    facts.moduleFederation!.shared.react!.eager = true;
+    expect(await run(facts)).toEqual([]);
   });
 });
 

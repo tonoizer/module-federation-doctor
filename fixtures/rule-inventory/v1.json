@@ -3187,6 +3187,97 @@
       "migrationNote": "Group 2; Compiler registration evidence is exact when collected. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
+      "id": "config/async-boundary-missing",
+      "version": "1",
+      "group": 1,
+      "status": "migrated",
+      "defaultSeverity": "error",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "A host entry that synchronously imports non-eager shared packages can hit RUNTIME-005 (`loadShareSync`) because Module Federation needs an async boundary before shared negotiation finishes.",
+        "documentation": "/rules/config/async-boundary-missing",
+        "fix": "Move app startup behind a dynamic import (for example `import('./bootstrap')`), enable `experiments.asyncStartup`, or mark those shared packages `eager: true` when intentional."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "imports.sourceFiles",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "imports.sourceScan",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ]
+      },
+      "evidenceReads": [
+        "project.scope",
+        "moduleFederation",
+        "imports.sourceFiles",
+        "imports.sourceScan"
+      ],
+      "migrationNote": "Group 1; Host remotes/shared config plus readable entry sources are exact when source scan is complete. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
       "id": "config/eager-tree-shaking-conflict",
       "version": "1",
       "group": 1,
