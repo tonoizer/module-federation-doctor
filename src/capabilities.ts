@@ -113,6 +113,12 @@ const DISCOVERY_CONTRACT = {
       network: false,
       formats: ["terminal", "json", "sarif"],
     },
+    compare: {
+      description:
+        "Diff deployed MF manifests for name, exposes, shared, publicPath, and remoteEntry.",
+      network: true,
+      formats: ["terminal", "json", "sarif"],
+    },
     federation: {
       description: "Analyze explicit project facts or a discovered workspace.",
       network: false,
@@ -152,6 +158,7 @@ const DISCOVERY_CONTRACT = {
     config: 1,
     evidence: 2,
     identity: 1,
+    compare: 1,
     probe: 1,
     project: 1,
     report: 1,
@@ -186,6 +193,7 @@ const DISCOVERY_CONTRACT = {
     config: "./schemas/config.schema.json",
     evidence: "./schemas/evidence.schema.json",
     identity: "./schemas/identity.schema.json",
+    compare: "./schemas/compare.schema.json",
     probe: "./schemas/probe.schema.json",
     project: "./schemas/project.schema.json",
     report: "./schemas/report.schema.json",

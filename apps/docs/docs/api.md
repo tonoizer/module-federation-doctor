@@ -40,6 +40,7 @@ regenerated.
 | `@tonoizer/mfdoctor/schemas/identity-governance.schema.json` | `schemas/identity-governance.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/identity.schema.json` | `schemas/identity.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/probe.schema.json` | `schemas/probe.schema.json` | Public JSON Schema contract. |
+| `@tonoizer/mfdoctor/schemas/compare.schema.json` | `schemas/compare.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/project.schema.json` | `schemas/project.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/report.schema.json` | `schemas/report.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/rule-inventory.schema.json` | `schemas/rule-inventory.schema.json` | Public JSON Schema contract. |

@@ -197,6 +197,7 @@ pnpm exec mfdoctor federation ".mf/doctor/**/project.json"
 pnpm exec mfdoctor baseline generate .mf/doctor/report.json
 pnpm exec mfdoctor runtime ./.mf/observability/latest.json
 pnpm exec mfdoctor probe https://cdn.example.com/mf-manifest.json --remote-entry
+pnpm exec mfdoctor compare https://cdn.example.com/mf-manifest.json https://canary.example.com/mf-manifest.json
 pnpm exec mfdoctor rules config/name-required
 ```
 
@@ -237,10 +238,12 @@ docs).
 | `baseline`      | Generate/update fingerprint baselines for incremental CI    |
 | `runtime`       | Correlate an Observability Plugin export with project facts |
 | `probe`         | Inspect a deployed manifest / remoteEntry HEAD (network)    |
+| `compare`       | Diff deployed manifests (network; same safety as `probe`)   |
 
-`check`, `workspace`, `federation`, and `runtime` stay offline. `probe` is the
-only command that fetches over the network, and it never executes remote
-JavaScript. Exit codes: `0` pass, `1` policy fail, `2` analysis incomplete.
+`check`, `workspace`, `federation`, and `runtime` stay offline. `probe` and
+`compare` are the only commands that fetch over the network, and they never
+execute remote JavaScript. Exit codes: `0` pass, `1` policy fail (or compare
+drift), `2` analysis incomplete.
 Fingerprint baselines keep known debt visible in reports without failing policy
 by default — see [baselines](https://mfdoctor.kevinbeier.com/baselines) and
 [governance](https://mfdoctor.kevinbeier.com/suppressions).

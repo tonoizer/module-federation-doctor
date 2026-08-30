@@ -80,6 +80,7 @@ describe("published schema contracts", () => {
       "baseline.schema.json",
       "build-artifact-deployment.schema.json",
       "capabilities.schema.json",
+      "compare.schema.json",
       "config.schema.json",
       "evidence.schema.json",
       "finding-lineage.schema.json",

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tonoizer/module-federation-doctor/schemas/compare.schema.json",
+  "title": "MFDoctor manifest compare result",
+  "type": "object",
+  "required": ["schemaVersion", "equal", "baseline", "candidates", "diffs"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "equal": { "type": "boolean" },
+    "baseline": { "$ref": "#/$defs/side" },
+    "candidates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/side" }
+    },
+    "diffs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diff" }
+    }
+  },
+  "$defs": {
+    "shared": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "side": {
+      "type": "object",
+      "required": ["url", "exposes", "shared"],
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "name": { "type": "string" },
+        "publicPath": { "type": "string", "format": "uri" },
+        "remoteEntry": { "type": "string", "format": "uri" },
+        "remoteEntryStatus": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "exposes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "shared": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/shared" }
+        }
+      }
+    },
+    "diff": {
+      "type": "object",
+      "required": ["field", "baselineUrl", "candidateUrl", "baseline", "candidate", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string",
+          "enum": ["name", "exposes", "shared", "publicPath", "remoteEntry", "remoteEntryStatus"]
+        },
+        "baselineUrl": { "type": "string", "format": "uri" },
+        "candidateUrl": { "type": "string", "format": "uri" },
+        "baseline": true,
+        "candidate": true,
+        "message": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
