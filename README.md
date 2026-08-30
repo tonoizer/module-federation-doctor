@@ -23,9 +23,15 @@ emit in Node and are not part of the browser bundle. They add CI time, not
 runtime size or performance cost. The build plugin is the primary integration;
 the CLI complements it for config, workspace, runtime, and deployed checks.
 
-**Agents:** read the terminal findings block, open the linked rule docs, apply
-the fix (or an intentional [governance](https://mfdoctor.kevinbeier.com/suppressions)
-mute), and rebuild until the process exits **0**. Quiet success prints nothing.
+**Agents:** follow the [two-tier loop](https://mfdoctor.kevinbeier.com/agent-loop).
+`mfdoctor check` is config/static only — **do not claim green from check alone**.
+After fixes, require plugin emit (build with a MFDoctor adapter) and, in
+monorepos, `mfdoctor workspace`. Treat exit `2` and
+[`doctor/partial-analysis`](https://mfdoctor.kevinbeier.com/rules/doctor/partial-analysis)
+as incomplete, not a pass. Read findings (or JSON/diagnostics), open the linked
+rule docs, apply the fix (or an intentional
+[governance](https://mfdoctor.kevinbeier.com/suppressions) mute when asked), and
+rebuild until policy exits **0**. Quiet success prints nothing.
 
 ## Primary DX: build plugin
 

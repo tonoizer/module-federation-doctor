@@ -13,9 +13,10 @@ mfdoctor workspace
 mfdoctor workspace apps packages --format terminal,json,sarif
 ```
 
-That discovers project facts and checks version ranges, providers, singleton
-choices, and share scopes across projects. Exit `0` / `1` / `2` match the rest
-of the CLI.
+That is **tier 2** of the [agent loop](./agent-loop.md): do not claim green from
+`mfdoctor check` alone. After every host and remote has built with its adapter,
+this gate checks version ranges, providers, singleton choices, and share scopes
+across projects. Exit `0` / `1` / `2` match the rest of the CLI.
 
 ## Federation-Geltungsbereich auswählen
 

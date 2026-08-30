@@ -58,6 +58,7 @@ const configurationSidebar = [
 const cliSidebar = [
   { sectionHeaderText: "CLI" },
   { text: "Command reference", link: "/cli" },
+  { text: "Agent loop", link: "/agent-loop" },
   { text: "CI", link: "/production-readiness" },
   { text: "Fingerprint baselines", link: "/baselines" },
 ];
@@ -157,6 +158,7 @@ const sidebar = {
   "/runtime-capture": librarySidebar,
   "/report-schemas": librarySidebar,
   "/cli": cliSidebar,
+  "/agent-loop": cliSidebar,
   "/configuration-audit": configurationSidebar,
   "/vite-integration": configurationSidebar,
   "/custom-rules": configurationSidebar,
@@ -195,7 +197,7 @@ const nav: MenuNode[] = [
   {
     text: "CLI",
     link: "/cli",
-    activeMatch: "^/cli",
+    activeMatch: "^/(cli|agent-loop)",
   },
   {
     text: "Rules",
@@ -241,7 +243,7 @@ const germanLabels: Record<string, string> = {
   "Policy packs": "Policy-Pakete",
   CLI: "CLI",
   "Command reference": "Befehlsreferenz",
-  "Production and CI": "Produktion und CI",
+  "Agent loop": "Agenten-Schleife",
   "Runtime capture": "Laufzeitaufzeichnung",
   "Report schemas": "Report-Schemas",
   Examples: "Beispiele",
