@@ -3,36 +3,41 @@ import { useLang, usePage, useSite, withBase } from "@rspress/core/runtime";
 const startLinks = [
   {
     href: "/setup",
-    title: "Get started",
-    detail: "Install MFDoctor, run the first build, and gate the whole workspace.",
+    title: "Setup",
+    detail: "Install MFDoctor, add a bundler adapter, and run the first check.",
   },
   {
-    href: "/integrations",
-    title: "Choose a bundler integration",
-    detail: "Copy the setup for Vite, Nuxt, Rspack, Rsbuild, Webpack, or Modern.js.",
+    href: "/production-readiness",
+    title: "CI",
+    detail: "Gate builds with fail-on-error, SARIF, workspace checks, and baselines.",
   },
   {
     href: "/rules/",
-    title: "Browse the rule reference",
+    title: "Rules",
     detail: "See what each finding protects, why it matters, and how to fix it.",
   },
   {
-    href: "/examples",
-    title: "Open an example",
-    detail: "Follow working Vite, Rspack, Rsbuild, Webpack, and mixed-federation setups.",
+    href: "/limitations",
+    title: "Limitations",
+    detail: "Know the supported surface, honest gaps, and permanent non-goals.",
   },
 ];
 
 const projectLinks = [
   {
-    href: "/compatibility",
-    title: "Bundler compatibility",
+    href: "/integrations",
+    title: "Bundler integrations",
     meta: "Vite · Rspack · Rsbuild · Webpack · Modern.js · Nuxt",
   },
   {
-    href: "/production-readiness",
-    title: "Production readiness",
-    meta: "CI policy · suppressions · baselines · SARIF",
+    href: "/compatibility",
+    title: "Bundler compatibility",
+    meta: "Supported · partial · CI evidence",
+  },
+  {
+    href: "/examples",
+    title: "Examples",
+    meta: "Working hosts, remotes, and mixed federation setups",
   },
   {
     href: "https://github.com/tonoizer/module-federation-doctor",
@@ -94,40 +99,45 @@ export function HomePage() {
     ? [
         {
           href: "/setup",
-          title: "Erste Schritte",
+          title: "Einrichtung",
           detail:
-            "MFDoctor installieren, den ersten Build ausführen und den gesamten Workspace absichern.",
+            "MFDoctor installieren, einen Bundler-Adapter hinzufügen und die erste Prüfung ausführen.",
         },
         {
-          href: "/integrations",
-          title: "Bundler-Integration auswählen",
-          detail: "Einrichtung für Vite, Nuxt, Rspack, Rsbuild, Webpack oder Modern.js übernehmen.",
+          href: "/production-readiness",
+          title: "CI",
+          detail:
+            "Builds mit fail-on-error, SARIF, Workspace-Prüfungen und Baselines absichern.",
         },
         {
           href: "/rules/",
-          title: "Regelreferenz durchsuchen",
+          title: "Regeln",
           detail:
             "Erfahren, was jeder Befund schützt, warum er wichtig ist und wie er behoben wird.",
         },
         {
-          href: "/examples",
-          title: "Beispiel öffnen",
-          detail:
-            "Funktionierende Vite-, Rspack-, Rsbuild-, Webpack- und Mixed-Federation-Setups nachvollziehen.",
+          href: "/limitations",
+          title: "Einschränkungen",
+          detail: "Unterstützte Fläche, ehrliche Lücken und dauerhafte Nicht-Ziele kennen.",
         },
       ]
     : startLinks;
   const localizedProjectLinks = isGerman
     ? [
         {
-          href: "/compatibility",
-          title: "Bundler-Kompatibilität",
+          href: "/integrations",
+          title: "Bundler-Integrationen",
           meta: "Vite · Rspack · Rsbuild · Webpack · Modern.js · Nuxt",
         },
         {
-          href: "/production-readiness",
-          title: "Produktionsbereitschaft",
-          meta: "CI-Richtlinie · Unterdrückungen · Baselines · SARIF",
+          href: "/compatibility",
+          title: "Bundler-Kompatibilität",
+          meta: "Supported · partial · CI-Nachweise",
+        },
+        {
+          href: "/examples",
+          title: "Beispiele",
+          meta: "Funktionierende Hosts, Remotes und Mixed-Federation-Setups",
         },
         {
           href: "https://github.com/tonoizer/module-federation-doctor",
@@ -159,9 +169,10 @@ export function HomePage() {
               </p>
               <p>
                 MFDoctor läuft nach der Ausgabe in Node und fügt dem Browser-Bundle nichts hinzu.
-                Beginnen Sie mit der <a href={localizeHref("/setup")}>Einrichtungsanleitung</a> oder
-                sehen Sie sich den vollständigen <a href={localizeHref("/rules/")}>Regelkatalog</a>{" "}
-                an.
+                Beginnen Sie mit <a href={localizeHref("/setup")}>Einrichtung</a>,{" "}
+                <a href={localizeHref("/production-readiness")}>CI</a>, dem{" "}
+                <a href={localizeHref("/rules/")}>Regelkatalog</a> und den{" "}
+                <a href={localizeHref("/limitations")}>Einschränkungen</a>.
               </p>
             </>
           ) : (
@@ -177,9 +188,11 @@ export function HomePage() {
                 CI only after every finding has been collected.
               </p>
               <p>
-                MFDoctor runs in Node after emit and adds nothing to the browser bundle. Start with
-                the <a href={localizeHref("/setup")}>setup guide</a>, or review the full{" "}
-                <a href={localizeHref("/rules/")}>rule catalog</a>.
+                MFDoctor runs in Node after emit and adds nothing to the browser bundle. Start with{" "}
+                <a href={localizeHref("/setup")}>Setup</a>,{" "}
+                <a href={localizeHref("/production-readiness")}>CI</a>, the{" "}
+                <a href={localizeHref("/rules/")}>rule catalog</a>, and{" "}
+                <a href={localizeHref("/limitations")}>Limitations</a>.
               </p>
             </>
           )}
@@ -193,6 +206,25 @@ export function HomePage() {
             <ProjectRow key={item.href} {...item} localizeHref={localizeHref} />
           ))}
         </div>
+        {isGerman ? (
+          <p className="kb-note">
+            Bibliotheksautorinnen und -autoren, die Doctor erweitern: Identity-, Waiver-, Graph-
+            und Capture-Verträge stehen unter{" "}
+            <a href={localizeHref("/capabilities#library-contracts-110")}>
+              Bibliothek / Erweiterung
+            </a>
+            .
+          </p>
+        ) : (
+          <p className="kb-note">
+            Extending Doctor as a library author? Identity, waivers, graph, and capture contracts
+            live under{" "}
+            <a href={localizeHref("/capabilities#library-contracts-110")}>
+              Library / extension
+            </a>
+            .
+          </p>
+        )}
       </section>
 
       <section className="kb-section">

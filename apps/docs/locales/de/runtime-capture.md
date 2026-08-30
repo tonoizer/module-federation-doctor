@@ -4,6 +4,11 @@
 
 # Vertrag für externe Laufzeitaufzeichnungen
 
+> Bibliothek-/Erweiterungsdokumentation für Autorinnen und Autoren, die ein
+> externes Capture-Tool anbinden. Host-Teams, die MFDoctor integrieren,
+> beginnen mit [Setup](./setup.md), [CI](./production-readiness.md),
+> [Rules](./rules/) und [Limitations](./limitations.md).
+
 Der Laufzeitaufzeichnungsvertrag ist eine explizite Übergabegrenze für ein
 externes Capture-/Export-Tool. Er ist kein MFDoctor-Laufzeitagent.
 
