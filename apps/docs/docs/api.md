@@ -32,6 +32,7 @@ regenerated.
 | `@tonoizer/mfdoctor/schemas/baseline.schema.json` | `schemas/baseline.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/build-artifact-deployment.schema.json` | `schemas/build-artifact-deployment.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/capabilities.schema.json` | `schemas/capabilities.schema.json` | Public JSON Schema contract. |
+| `@tonoizer/mfdoctor/schemas/compare.schema.json` | `schemas/compare.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/config.schema.json` | `schemas/config.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/evidence.schema.json` | `schemas/evidence.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/finding-lineage.schema.json` | `schemas/finding-lineage.schema.json` | Public JSON Schema contract. |
@@ -40,7 +41,6 @@ regenerated.
 | `@tonoizer/mfdoctor/schemas/identity-governance.schema.json` | `schemas/identity-governance.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/identity.schema.json` | `schemas/identity.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/probe.schema.json` | `schemas/probe.schema.json` | Public JSON Schema contract. |
-| `@tonoizer/mfdoctor/schemas/compare.schema.json` | `schemas/compare.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/project.schema.json` | `schemas/project.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/report.schema.json` | `schemas/report.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/rule-inventory.schema.json` | `schemas/rule-inventory.schema.json` | Public JSON Schema contract. |
