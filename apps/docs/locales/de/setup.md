@@ -21,6 +21,11 @@ Add MFDoctor as a development dependency:
 pnpm add -D @tonoizer/mfdoctor
 ```
 
+**Name clash:** `npx mf-doctor` is a different package (tiagocastro070), not this
+project. This package is `@tonoizer/mfdoctor` (CLI binary `mfdoctor`). Install as
+a dependency and run via package-manager exec (`pnpm exec mfdoctor`,
+`npx mfdoctor`, etc.) — not `npx mf-doctor`.
+
 Use npm or Yarn if that is what the project already uses. Supported versions
 are listed in the [compatibility matrix](./compatibility.md).
 
