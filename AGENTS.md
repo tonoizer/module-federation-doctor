@@ -51,11 +51,11 @@ as a Cursor/agent skill at `skills/mfdoctor/SKILL.md`.
 
 ## Exit codes
 
-| Code | Meaning              |
-| ---- | -------------------- |
-| `0`  | Policy passed        |
-| `1`  | Policy failed         |
-| `2`  | Analysis incomplete   |
+| Code | Meaning             |
+| ---- | ------------------- |
+| `0`  | Policy passed       |
+| `1`  | Policy failed       |
+| `2`  | Analysis incomplete |
 
 ## Out of scope (do not invent)
 

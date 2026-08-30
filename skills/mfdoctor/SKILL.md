@@ -57,10 +57,10 @@ over guessing or scraping terminal ANSI.
 
 ## Exit codes
 
-| Code | Meaning            |
-| ---- | ------------------ |
-| `0`  | Policy passed      |
-| `1`  | Policy failed     |
+| Code | Meaning             |
+| ---- | ------------------- |
+| `0`  | Policy passed       |
+| `1`  | Policy failed       |
 | `2`  | Analysis incomplete |
 
 ## Out of scope (do not invent)
