@@ -109,6 +109,7 @@ assertReport("examples/mixed-federation-issues/host-vite", {
     "reliability/version-first-offline-remotes",
     "shared/prefix-share-recommended",
   ],
+  errors: 1,
 });
 assertReport("examples/mixed-federation-issues/remote-rspack", {
   expectedRules: ["shared/version-unsatisfied", "shared/singleton-risk"],
