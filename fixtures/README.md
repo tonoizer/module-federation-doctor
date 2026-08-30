@@ -2,6 +2,8 @@
 
 - `adapters`: clean, warning, and error policy inputs for Vite, Rspack, Rsbuild,
   Webpack, and Modern.js.
+- `artifact-react-dom-server-in-web`: web (fires) vs SSR/node (quiet) facts for
+  `artifact/react-dom-server-in-web` (#329).
 - `diagnostics`: rule, redaction, ordering, and failure cases.
 - `diagnostics/runtime-plugins`: local runtime plugin contract samples (invalid factory/name, createScript CORS asymmetry, valid parity).
 - `dynamic-imports`: supported and unresolved dynamic MF import patterns (MFDOCTOR-105).

@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "web_remote",
+    "root": "."
+  },
+  "bundler": {
+    "name": "rspack",
+    "mode": "ci"
+  },
+  "capabilities": {
+    "config": true,
+    "sourceImports": true,
+    "manifest": true,
+    "stats": false,
+    "emittedAssets": true,
+    "installedVersions": true
+  },
+  "moduleFederation": {
+    "name": "web_remote",
+    "filename": "remoteEntry.js",
+    "exposes": {
+      "./Widget": "./src/Widget.tsx"
+    },
+    "remotes": {},
+    "shared": {
+      "react": {
+        "package": "react",
+        "singleton": true,
+        "eager": false,
+        "shareScope": ["default"]
+      },
+      "react-dom": {
+        "package": "react-dom",
+        "singleton": true,
+        "eager": false,
+        "shareScope": ["default"]
+      }
+    },
+    "experiments": {
+      "asyncStartup": false,
+      "externalRuntime": false,
+      "provideExternalRuntime": false,
+      "target": "web"
+    }
+  },
+  "dependencies": {
+    "declared": {
+      "react": "^19.1.0",
+      "react-dom": "^19.1.0"
+    },
+    "installed": {
+      "react": "19.1.0",
+      "react-dom": "19.1.0"
+    }
+  },
+  "imports": {
+    "sourceFiles": ["src/Widget.tsx"],
+    "specifiers": ["react-dom/server"],
+    "packages": ["react-dom"],
+    "dynamicPackages": [],
+    "remotes": [],
+    "unresolvedDynamic": [],
+    "deepImports": ["react-dom/server"],
+    "deepImportFiles": {
+      "react-dom": ["src/Widget.tsx"]
+    },
+    "evidenceSources": ["source"]
+  },
+  "artifacts": {
+    "emittedAssets": ["remoteEntry.js", "assets/Widget.js"],
+    "manifest": {
+      "path": "dist/mf-manifest.json",
+      "valid": true,
+      "name": "web_remote",
+      "remoteEntry": {
+        "name": "remoteEntry.js",
+        "path": "",
+        "type": "global"
+      },
+      "exposes": [
+        {
+          "key": "./Widget",
+          "assets": ["assets/Widget.js"]
+        }
+      ],
+      "shared": [
+        {
+          "name": "react",
+          "assets": ["assets/shared.js"]
+        },
+        {
+          "name": "react-dom",
+          "assets": ["assets/shared.js"]
+        }
+      ]
+    }
+  },
+  "builds": [
+    {
+      "id": "web",
+      "adapter": "rspack",
+      "bundler": "rspack",
+      "emittedAssets": ["remoteEntry.js", "assets/Widget.js"],
+      "artifacts": [],
+      "target": "web",
+      "targetKind": "web",
+      "capabilities": {
+        "outputRoot": { "state": "exact", "reason": "fixture" },
+        "emittedAssets": { "state": "exact", "reason": "fixture" },
+        "artifacts": { "state": "exact", "reason": "fixture" },
+        "effectiveMode": { "state": "exact", "reason": "fixture" },
+        "target": { "state": "exact", "reason": "fixture" }
+      },
+      "sourceHook": "fixture"
+    }
+  ]
+}

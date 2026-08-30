@@ -14,6 +14,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`artifact/manifest-remote-entry-missing`](./artifact/manifest-remote-entry-missing.md) | error | Consumers follow manifest metadata to a remote entry that was not emitted. |
 | [`artifact/public-path-non-string-manifest`](./artifact/public-path-non-string-manifest.md) | warning | Module Federation skips manifest generation when bundler `output.publicPath` is not a string. |
 | [`artifact/public-path-suspicious`](./artifact/public-path-suspicious.md) | warning | A malformed asset base makes remote chunks and styles resolve from the wrong URL. |
+| [`artifact/react-dom-server-in-web`](./artifact/react-dom-server-in-web.md) | error | react-dom/server (and related server entries) in a web/client Module Federation bundle crash or mis-target the browser runtime — a common MF/SSR boundary failure. |
 | [`artifact/remote-entry-missing`](./artifact/remote-entry-missing.md) | error | A producer has no executable container at its configured filename. |
 | [`bridge/lazy-plugin-unregistered`](./bridge/lazy-plugin-unregistered.md) | error | Lazy Bridge React loading requires `@module-federation/bridge-react/plugin` in `runtimePlugins` or Bridge remotes fail at runtime. |
 | [`bridge/provider-shape-invalid`](./bridge/provider-shape-invalid.md) | error | Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or root component contracts and break Bridge remotes. |

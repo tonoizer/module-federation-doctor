@@ -72,6 +72,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "shared/subpath-version-unresolved",
   "artifact/public-path-suspicious",
   "artifact/types-missing",
+  "artifact/react-dom-server-in-web",
   "bridge/react-version-entry-prefer",
   "bridge/react-dom-prefix-missing",
   "bridge/lazy-plugin-unregistered",

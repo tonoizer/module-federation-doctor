@@ -42,6 +42,7 @@ const ids = [
   "artifact/manifest-shared-version-mismatch",
   "artifact/public-path-non-string-manifest",
   "artifact/public-path-suspicious",
+  "artifact/react-dom-server-in-web",
   "artifact/remote-entry-missing",
   "artifact/types-metadata-missing",
   "artifact/types-missing",
@@ -213,6 +214,7 @@ export const MIGRATED_GROUP2_RULE_IDS = [
   "artifact/remote-entry-missing",
   "artifact/expose-missing",
   "artifact/public-path-suspicious",
+  "artifact/react-dom-server-in-web",
   "artifact/types-missing",
 ] as const;
 
@@ -996,6 +998,15 @@ const plans: Record<string, RulePlan> = {
     "high",
     "Artifact public-path evidence is exact when the artifact is complete.",
   ),
+  "artifact/react-dom-server-in-web": plan(
+    2,
+    "error",
+    "artifact.web + source.scan",
+    "artifact",
+    "artifact",
+    "high",
+    "Web-target and react-dom/server import/shared/artifact signals are exact when source and artifact facts are complete.",
+  ),
   "artifact/types-missing": plan(
     2,
     "warning",
@@ -1367,6 +1378,14 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "bundler.outputPublicPathKind",
   ],
   "artifact/public-path-suspicious": ["project.scope", "artifacts.manifest"],
+  "artifact/react-dom-server-in-web": [
+    "project.scope",
+    "moduleFederation",
+    "imports.specifiers",
+    "imports.deepImports",
+    "artifacts.manifest",
+    "artifacts.emittedAssets",
+  ],
   "artifact/remote-entry-missing": [
     "project.scope",
     "moduleFederation",

@@ -107,6 +107,7 @@ const EXPECTED_GROUP2_RULE_IDS = [
   "artifact/remote-entry-missing",
   "artifact/expose-missing",
   "artifact/public-path-suspicious",
+  "artifact/react-dom-server-in-web",
   "artifact/types-missing",
 ] as const;
 

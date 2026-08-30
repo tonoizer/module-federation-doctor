@@ -1256,6 +1256,20 @@ describe("built-in rules", () => {
         }),
     ],
     [
+      "artifact/react-dom-server-in-web",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.experiments = {
+          asyncStartup: false,
+          externalRuntime: false,
+          provideExternalRuntime: false,
+          target: "web",
+        };
+        facts.imports.specifiers = ["react-dom/server"];
+        facts.imports.deepImports = ["react-dom/server"];
+        facts.imports.packages = ["react-dom"];
+      },
+    ],
+    [
       "artifact/types-missing",
       (facts: ProjectFacts) => {
         facts.artifacts.manifest = {

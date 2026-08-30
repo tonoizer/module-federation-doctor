@@ -541,6 +541,16 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Enable DTS output and fail CI when type generation fails.",
     sources: ["https://module-federation.io/configure/dts.html"],
   },
+  "artifact/react-dom-server-in-web": {
+    category: "correctness",
+    impact:
+      "react-dom/server (and related server entries) in a web/client Module Federation bundle crash or mis-target the browser runtime — a common MF/SSR boundary failure.",
+    fix: 'Keep `react-dom/server` (and `react-dom/server.*`) on the SSR/server build only. Use a client entry such as `react-dom/client` for web remotes/hosts, or mark the target with `ssrMode: "node"` / `experiments.target: "node"` when the artifact is server-only. Set `rules["artifact/react-dom-server-in-web"]` to `"off"` when intentional.',
+    sources: [
+      "https://react.dev/reference/react-dom/server",
+      "https://module-federation.io/guide/framework/react",
+    ],
+  },
   "federation/name-conflict": {
     category: "correctness",
     impact: "Duplicate container names collide in runtime data and global chunk storage.",

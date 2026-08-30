@@ -29,6 +29,7 @@ import {
 } from "./mf-toolkit-shapes.js";
 import { lookupAssetSize } from "./collect.js";
 import { ruleGuidance } from "./rule-guidance.js";
+import { collectReactDomServerSignals, isWebClientArtifactTarget } from "./react-dom-server.js";
 import {
   hasNodeRuntimePlugin,
   isBrowserOnlyManifestRemoteEntry,
@@ -2177,6 +2178,36 @@ export const builtInRules: DoctorRule[] = [
         undefined,
         findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, {}),
       );
+  }),
+  createRule("artifact/react-dom-server-in-web", "error", (context) => {
+    const ssrMode = optionSsrMode(context.options);
+    if (!isWebClientArtifactTarget(context.facts, ssrMode)) return;
+    const config = mf(context);
+    const hits = collectReactDomServerSignals({
+      specifiers: context.facts.imports.specifiers,
+      deepImports: context.facts.imports.deepImports,
+      shared: config?.shared,
+      manifest: context.facts.artifacts.manifest,
+      emittedAssets: context.facts.artifacts.emittedAssets,
+    });
+    if (hits.length === 0) return;
+    report(
+      context,
+      "react-dom/server (or a server entry) is present in a web/client Module Federation artifact.",
+      {
+        entries: hits,
+        ssrMode: ssrMode ?? null,
+        experimentsTarget: config?.experiments?.target ?? null,
+        viteTarget: config?.vite?.target ?? null,
+        builds: (context.facts.builds ?? []).map((build) => ({
+          id: build.id,
+          target: build.target ?? null,
+          targetKind: build.targetKind ?? null,
+        })),
+      },
+      'Move `react-dom/server` (and `react-dom/server.*`) behind an SSR/server boundary, or set `ssrMode: "node"` / `experiments.target: "node"` when this build is server-only. Set `rules["artifact/react-dom-server-in-web"]` to `"off"` when intentional.',
+      findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { entries: hits }),
+    );
   }),
   createRule("bridge/react-version-entry-prefer", "warning", (context) => {
     if (!isReactBridgeProject(context.facts)) return;
