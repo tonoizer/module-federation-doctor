@@ -4,10 +4,10 @@
 
 # Report schemas
 
-> Host-Teams benötigen in der Regel die Build-Artefakte unten und den Pfad
-> [Setup](./setup.md) / [CI](./production-readiness.md). Additive 1.1.0+-
-> Bibliotheksverträge (Identity-, Waiver-, Graph- und Capture-Schemas) stehen
-> in der Tabelle für Autorinnen und Autoren, die Doctor erweitern — siehe auch
+> Host teams usually need the build artifacts below and the
+> [Setup](./setup.md) / [CI](./production-readiness.md) path. Additive 1.1.0+
+> library contracts (identity, waivers, graph, capture schemas) are listed in
+> the table for authors extending Doctor — see also
 > [Library / extension](./capabilities.md#library-contracts-110).
 
 MFDoctor writes:
@@ -153,7 +153,7 @@ Findings may include `suppressed` / `suppressionReason` when a
 [fingerprint baseline](./baselines.md) matches. Report `summary.suppressed`
 counts those findings when present.
 
-## Run-Status (`status.incompleteReasons`)
+## Run status (`status.incompleteReasons`)
 
 Reports include an additive `status` object so agents and CI can see **why** a
 run was incomplete without scraping findings:

@@ -71,13 +71,12 @@ or false unused finding.
 
 ## Library contracts (1.1.0+)
 
-Die folgenden Abschnitte dokumentieren additive Bibliotheks-APIs für Autorinnen
-und Autoren, die Doctor erweitern (Identity, Ownership, Lineage, Waivers und
-den semantischen Graphen). Host-Teams, die MFDoctor integrieren, bleiben bei
-[Setup](./setup.md), [CI](./production-readiness.md), [Rules](./rules/) und
-[Limitations](./limitations.md). Capture steht auf der eigenen Seite
-[Runtime capture](./runtime-capture.md); JSON-Schema-Exporte sind unter
-[Report schemas](./report-schemas.md) aufgeführt.
+The sections below document additive library APIs for authors extending Doctor
+(identity, ownership, lineage, waivers, and the semantic graph). Host teams
+integrating MFDoctor can stay on [Setup](./setup.md), [CI](./production-readiness.md),
+[Rules](./rules/), and [Limitations](./limitations.md). Capture lives on the
+separate [runtime capture](./runtime-capture.md) page; JSON Schema exports are
+listed under [report schemas](./report-schemas.md).
 
 ## Korrelation semantischer Identitäten
 
