@@ -159,6 +159,7 @@
     "fixtures/compatibility-matrix.json",
     "skills",
     "AGENTS.md",
+    "examples/ci/github-actions-mfdoctor.yml",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
