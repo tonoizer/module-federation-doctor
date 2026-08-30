@@ -121,6 +121,7 @@ const EXPECTED_GROUP3_RULE_IDS = [
   "shared/react-host-missing",
   "shared/deep-import-bypass",
   "shared/prefix-share-recommended",
+  "shared/subpath-version-unresolved",
 ] as const;
 
 const EXPECTED_GROUP4_RULE_IDS = [
@@ -323,6 +324,7 @@ const quietRules = {
   "shared/deep-import-bypass": "off",
   "shared/eager-without-singleton": "off",
   "shared/prefix-share-recommended": "off",
+  "shared/subpath-version-unresolved": "off",
   "shared/react-host-missing": "off",
   "shared/singleton-risk": "off",
   "shared/unused": "off",

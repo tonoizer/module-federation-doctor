@@ -18,6 +18,8 @@
   input used by the packaged semantic graph verifier.
 - `shared-inspector-mf2`: minimal MF2 shared-array / inherited-shared evidence
   JSON shaped like `@mf-toolkit/shared-inspector` stress fixtures (#145).
+- `shared-subpath-version`: Vite prefix/subpath shared keys whose provider
+  `version` did or did not resolve from the parent package (#326).
 - `workspaces`: portable multi-app `.mf/doctor/project.json` trees for the
   workspace federation gate (`clean` exit 0, `conflict` exit 1).
 - `compatibility-matrix.json`: the release-facing contract for local production

@@ -49,10 +49,12 @@ import {
   findingDetails,
   type FindingDetailsAttachment,
 } from "./finding-details.js";
+import { packageName as npmPackageName } from "./normalize.js";
 import { findShareRewriteOverlaps } from "./share-rewrite.js";
 import type {
   DoctorRule,
   NormalizedMFConfig,
+  NormalizedShared,
   ProjectFacts,
   RuleContext,
   Severity,
@@ -575,6 +577,41 @@ function bridgeOwnsReactDomPrefixContract(context: RuleContext): boolean {
   if (!isReactBridgeProject(context.facts)) return false;
   const entry = reactBridgeEntryMajor(context.facts);
   return entry === 18 || entry === 19;
+}
+
+/**
+ * Trailing-slash prefix keys (`react/`) and exact package subpaths
+ * (`react/jsx-runtime`, `@scope/pkg/sub`) are the Vite shared keys that
+ * inherit provider `version` from the parent package via normalizeSharedKey /
+ * searchPackageVersion. Bare package names are not in scope for this rule.
+ */
+function isViteSharedSubpathOrPrefixKey(key: string): boolean {
+  if (key.endsWith("/")) return key.length > 1;
+  return npmPackageName(key) !== key;
+}
+
+function parentPackageForViteSharedKey(key: string): string {
+  const trimmed = key.endsWith("/") ? key.slice(0, -1) : key;
+  return npmPackageName(trimmed);
+}
+
+/** Mirror Vite `inferVersionFromRequiredVersion` — concrete semver only. */
+function canInferSharedVersionFromRequiredVersion(
+  requiredVersion: NormalizedShared["requiredVersion"],
+): boolean {
+  return (
+    typeof requiredVersion === "string" &&
+    /\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?/.test(requiredVersion)
+  );
+}
+
+function viteSharedSubpathVersionResolvable(
+  entry: NormalizedShared,
+  parentInstalled: string | undefined,
+): boolean {
+  if (typeof entry.version === "string") return true;
+  if (canInferSharedVersionFromRequiredVersion(entry.requiredVersion)) return true;
+  return typeof parentInstalled === "string" && parentInstalled.length > 0;
 }
 
 const SSR_FRAMEWORK_DEPS = ["nuxt", "nitropack", "@nuxt/kit", "@nuxt/schema"] as const;
@@ -2082,6 +2119,32 @@ export const builtInRules: DoctorRule[] = [
           sharedKeys: [...analysis.sharedKeys].sort(),
         },
         `Add "${prefixKey}" to shared (or add the exact observed subpaths), or set rules["shared/prefix-share-recommended"] to "off" when the deep imports are intentional.`,
+      );
+    }
+  }),
+  createRule("shared/subpath-version-unresolved", "error", (context) => {
+    // Vite-only: @module-federation/vite resolves provider `version` for
+    // prefix/subpath share keys from the parent package (normalizeSharedKey /
+    // searchPackageVersion). An unresolved version ships as undefined and can
+    // break singleton / requiredVersion matching at runtime.
+    if (context.facts.bundler.name !== "vite") return;
+    if (!context.facts.capabilities.installedVersions) return;
+
+    const shared = mf(context)?.shared ?? {};
+    const installed = context.facts.dependencies.installed;
+    for (const [key, entry] of Object.entries(shared)) {
+      if (!isViteSharedSubpathOrPrefixKey(key)) continue;
+      const parent = parentPackageForViteSharedKey(key);
+      if (viteSharedSubpathVersionResolvable(entry, installed[parent])) continue;
+      report(
+        context,
+        `Shared subpath "${key}" has no resolvable version from parent package "${parent}".`,
+        {
+          package: key,
+          parentPackage: parent,
+          ...(entry.shareKey ? { shareKey: entry.shareKey } : {}),
+        },
+        `Set an explicit \`version\` (or a concrete \`requiredVersion\`) on "${key}", or install "${parent}" so Vite can inherit the parent package version.`,
       );
     }
   }),

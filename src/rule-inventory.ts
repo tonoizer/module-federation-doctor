@@ -131,6 +131,7 @@ const ids = [
   "shared/react-host-missing",
   "shared/deep-import-bypass",
   "shared/prefix-share-recommended",
+  "shared/subpath-version-unresolved",
   "shared/eager-without-singleton",
   "shared/singleton-mismatch",
   "shared/singleton-risk",
@@ -227,6 +228,7 @@ export const MIGRATED_GROUP3_RULE_IDS = [
   "shared/react-host-missing",
   "shared/deep-import-bypass",
   "shared/prefix-share-recommended",
+  "shared/subpath-version-unresolved",
 ] as const;
 
 /** Group 4 federation workspace topology rules promoted by the staged V1 rollout. */
@@ -975,6 +977,16 @@ const plans: Record<string, RulePlan> = {
     "high",
     "Observed deep-import and declared shared-key facts are exact when source collection is complete.",
   ),
+  "shared/subpath-version-unresolved": plan(
+    3,
+    "error",
+    "config.declared + dependency.package",
+    "declared",
+    "project",
+    "high",
+    "Vite prefix/subpath share keys plus installed parent-package versions are exact when installedVersions collection completed.",
+    VITE,
+  ),
   "artifact/public-path-suspicious": plan(
     2,
     "warning",
@@ -1644,6 +1656,11 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "moduleFederation",
     "imports.deepImports",
     "imports.deepImportFiles",
+  ],
+  "shared/subpath-version-unresolved": [
+    "project.scope",
+    "moduleFederation",
+    "dependencies.installed",
   ],
   "shared/eager-without-singleton": ["project.scope", "moduleFederation"],
   "shared/singleton-mismatch": ["project.scope", "federation.graph"],
