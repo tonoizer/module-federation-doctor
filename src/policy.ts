@@ -117,7 +117,6 @@ export const productionPreset: DoctorPolicyPack = definePolicyPack({
     "artifact/dts-disabled": "warning",
     "bridge/router-implicit-enable": "warning",
     "config/observability-plugin-recommended": ["warning", { recommendWithoutPackage: true }],
-    "shared/prefix-share-recommended": "warning",
   },
 });
 

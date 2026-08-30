@@ -6,6 +6,7 @@ import { resolveOptions } from "../../src/config.js";
 import { analyze, analyzeFederation } from "../../src/engine.js";
 import { definePolicyPack } from "../../src/policy.js";
 import { builtInRules } from "../../src/rules.js";
+import { DEFAULT_DEEP_IMPORT_ALLOWLIST } from "../../src/shared-policy.js";
 import type { DoctorFinding, ProjectFacts } from "../../src/types.js";
 
 const roots: string[] = [];
@@ -93,7 +94,7 @@ describe("shared/deep-import-bypass", () => {
     );
   });
 
-  it("suppresses via rules off and allowlists jsx-runtime by default", async () => {
+  it("routes React deep imports to prefix-share and still flags lodash bypass", async () => {
     const root = await tempProject({
       "src/Widget.ts": `
         import { jsx } from "react/jsx-runtime";
@@ -153,7 +154,9 @@ describe("shared/deep-import-bypass", () => {
       options: {},
       report: (finding) => findings.push(finding),
     });
-    // Defaults allowlist jsx-runtime; lodash still fires.
+    // Prefix-share owns React/React DOM gaps; jsx-runtime is not allowlisted.
+    expect(DEFAULT_DEEP_IMPORT_ALLOWLIST).not.toContain("react/jsx-runtime");
+    expect(DEFAULT_DEEP_IMPORT_ALLOWLIST).not.toContain("react-dom/client");
     expect(findings.some((item) => String(item.evidence.package) === "react")).toBe(false);
     expect(findings.some((item) => String(item.evidence.package) === "lodash")).toBe(true);
   });

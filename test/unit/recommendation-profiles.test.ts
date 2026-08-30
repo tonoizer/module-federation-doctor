@@ -208,7 +208,7 @@ describe("issue #133 recommendation nudges", () => {
     ).toHaveLength(0);
   });
 
-  it("keeps default recommendation infos out of the CI error gate", async () => {
+  it("fails CI on React prefix-share errors while soft recommendations stay informational", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-issue-133-"));
     try {
       await fs.mkdir(path.join(root, "src"));
@@ -248,7 +248,7 @@ describe("issue #133 recommendation nudges", () => {
         },
       });
 
-      expect(result.exitCode).toBe(0);
+      expect(result.exitCode).toBe(1);
       expect(result.report.findings).toContainEqual(
         expect.objectContaining({
           ruleId: "config/observability-plugin-recommended",
@@ -256,7 +256,7 @@ describe("issue #133 recommendation nudges", () => {
         }),
       );
       expect(result.report.findings).toContainEqual(
-        expect.objectContaining({ ruleId: "shared/prefix-share-recommended", severity: "info" }),
+        expect.objectContaining({ ruleId: "shared/prefix-share-recommended", severity: "error" }),
       );
 
       const production = await analyze({
@@ -286,9 +286,9 @@ describe("issue #133 recommendation nudges", () => {
         }),
       );
       expect(production.report.findings).toContainEqual(
-        expect.objectContaining({ ruleId: "shared/prefix-share-recommended", severity: "warning" }),
+        expect.objectContaining({ ruleId: "shared/prefix-share-recommended", severity: "error" }),
       );
-      expect(production.exitCode).toBe(0);
+      expect(production.exitCode).toBe(1);
 
       await fs.writeFile(
         path.join(root, "package.json"),
@@ -331,7 +331,10 @@ describe("issue #133 recommendation nudges", () => {
       expect(wildcardProduction.report.findings).not.toContainEqual(
         expect.objectContaining({ ruleId: "config/observability-plugin-recommended" }),
       );
-      expect(wildcardProduction.exitCode).toBe(0);
+      expect(wildcardProduction.report.findings).toContainEqual(
+        expect.objectContaining({ ruleId: "shared/prefix-share-recommended", severity: "error" }),
+      );
+      expect(wildcardProduction.exitCode).toBe(1);
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }
@@ -352,6 +355,10 @@ describe("issue #133 recommendation nudges", () => {
 
     const findings = await run("shared/prefix-share-recommended", facts);
     expect(findings).toHaveLength(2);
+    expect(
+      builtInRules.find((rule) => rule.meta.id === "shared/prefix-share-recommended")?.meta
+        .defaultSeverity,
+    ).toBe("error");
     expect(findings.map((finding) => finding.evidence.package)).toEqual(["react", "react-dom"]);
     expect(await run("shared/deep-import-bypass", facts)).toHaveLength(0);
 

@@ -70,7 +70,6 @@ describe("built-in presets", () => {
       "artifact/dts-disabled": "warning",
       "bridge/router-implicit-enable": "warning",
       "config/observability-plugin-recommended": ["warning", { recommendWithoutPackage: true }],
-      "shared/prefix-share-recommended": "warning",
     });
   });
 });

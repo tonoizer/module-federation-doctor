@@ -968,7 +968,7 @@ const plans: Record<string, RulePlan> = {
   ),
   "shared/prefix-share-recommended": plan(
     3,
-    "info",
+    "error",
     "config.declared + source.scan",
     "declared",
     "project",
