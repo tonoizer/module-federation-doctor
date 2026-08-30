@@ -106,8 +106,7 @@ export function HomePage() {
         {
           href: "/production-readiness",
           title: "CI",
-          detail:
-            "Builds mit fail-on-error, SARIF, Workspace-Prüfungen und Baselines absichern.",
+          detail: "Builds mit fail-on-error, SARIF, Workspace-Prüfungen und Baselines absichern.",
         },
         {
           href: "/rules/",
@@ -208,8 +207,8 @@ export function HomePage() {
         </div>
         {isGerman ? (
           <p className="kb-note">
-            Bibliotheksautorinnen und -autoren, die Doctor erweitern: Identity-, Waiver-, Graph-
-            und Capture-Verträge stehen unter{" "}
+            Bibliotheksautorinnen und -autoren, die Doctor erweitern: Identity-, Waiver-, Graph- und
+            Capture-Verträge stehen unter{" "}
             <a href={localizeHref("/capabilities#library-contracts-110")}>
               Bibliothek / Erweiterung
             </a>
@@ -219,10 +218,7 @@ export function HomePage() {
           <p className="kb-note">
             Extending Doctor as a library author? Identity, waivers, graph, and capture contracts
             live under{" "}
-            <a href={localizeHref("/capabilities#library-contracts-110")}>
-              Library / extension
-            </a>
-            .
+            <a href={localizeHref("/capabilities#library-contracts-110")}>Library / extension</a>.
           </p>
         )}
       </section>
