@@ -14,11 +14,12 @@ Choose the adapter owned by the build tool. In every example, the same
 the federation plugin so it can inspect the completed output.
 
 - **Vite, Rolldown-integrated Vite, or Vite Plus:** `@tonoizer/mfdoctor/vite`
-- **Nuxt 3 or Nuxt 4:** `@tonoizer/mfdoctor/nuxt`
+  (Rolldown / Vite Plus: **partial**)
+- **Nuxt 3 or Nuxt 4:** `@tonoizer/mfdoctor/nuxt` (**partial**)
 - **Rspack:** `@tonoizer/mfdoctor/rspack`
 - **Rsbuild:** `@tonoizer/mfdoctor/rsbuild`
 - **Webpack:** `@tonoizer/mfdoctor/webpack`
-- **Modern.js:** `@tonoizer/mfdoctor/modern` (partial support)
+- **Modern.js:** `@tonoizer/mfdoctor/modern` (**partial**)
 
 ## Vite
 
