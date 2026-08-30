@@ -87,6 +87,7 @@ const ids = [
   "config/remote-localhost-in-production",
   "config/remote-manifest-recommended",
   "config/observability-plugin-recommended",
+  "config/rsbuild-mf-api-generation",
   "config/runtime-plugin-missing",
   "config/share-scope-undeclared",
   "config/shared-capability-disabled",
@@ -170,6 +171,7 @@ export const MIGRATED_GROUP1_CONFIG_RULE_IDS = [
   "config/eager-tree-shaking-conflict",
   "config/async-boundary-missing",
   "config/tree-shaking-server-calc-injection",
+  "config/rsbuild-mf-api-generation",
 ] as const;
 
 /** Group 1 Bridge, SSR, and runtime-plugin rules promoted by the staged V1 rollout. */
@@ -319,6 +321,7 @@ type RulePlan = {
 
 const ALL = ["vite", "rspack", "rsbuild", "webpack", "modern"] as const;
 const VITE = ["vite"] as const;
+const RSBUILD = ["rsbuild"] as const;
 const plan = (
   group: RuleMigrationGroup,
   severity: RulePlan["severity"],
@@ -938,6 +941,16 @@ const plans: Record<string, RulePlan> = {
     "project",
     "medium",
     "Package metadata is exact only after provenance and version resolution are verified.",
+  ),
+  "config/rsbuild-mf-api-generation": plan(
+    1,
+    "error",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Declared Rsbuild MF option keys are exact for the 1.5 vs plugin v2 surface check.",
+    RSBUILD,
   ),
   "shared/singleton-risk": plan(
     3,
@@ -1566,6 +1579,14 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
   "config/library-remote-type-mismatch": ["project.scope", "moduleFederation"],
   "config/name-required": ["project.scope", "project.moduleFederation"],
   "config/plugin-package-mismatch": ["project.scope", "bundler.name", "dependencies.declared"],
+  "config/rsbuild-mf-api-generation": [
+    "project.scope",
+    "bundler.name",
+    "moduleFederation",
+    "canonicalConfig",
+    "dependencies.declared",
+    "dependencies.installed",
+  ],
   "config/remote-alias-prefix-collision": ["project.scope", "moduleFederation"],
   "config/remote-capability-disabled": ["project.scope", "moduleFederation"],
   "config/remote-entry-invalid": ["project.scope", "moduleFederation"],
@@ -1789,6 +1810,7 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
     "vite/server-origin": ["bundler.viteConfig"],
     "vite/remote-hmr-dev": ["builds"],
     "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
+    "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
   };
   const optional = optionalPluginFacts[id];
   if (optional) {

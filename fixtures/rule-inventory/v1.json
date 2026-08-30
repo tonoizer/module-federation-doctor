@@ -4722,6 +4722,75 @@
       "migrationNote": "Group 1; Declared package versions and static runtime registrations are exact when dependency and source facts are complete. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
+      "id": "config/rsbuild-mf-api-generation",
+      "version": "1",
+      "group": 1,
+      "status": "migrated",
+      "defaultSeverity": "error",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "Rsbuild Module Federation 1.5 (`moduleFederation.options`) and `@module-federation/rsbuild-plugin` v2 use different option surfaces. Copied or nested keys are ignored or crash during generate/runtime instead of emitting the expected MF API, types, or manifest.",
+        "documentation": "/rules/config/rsbuild-mf-api-generation",
+        "fix": "Use `@module-federation/rsbuild-plugin` with a flat `pluginModuleFederation({ ... })` config for MF 2.0 generation options (`dts`, `manifest`, `getPublicPath`, …). Keep Rsbuild `moduleFederation.options` for MF 1.5 only. Pass `target` / `environment` / `ssrDir` as the plugin second argument, never under a nested `options` bag."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "bundler.name",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "dependencies.declared",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "rsbuild"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "rsbuild"
+          }
+        ]
+      },
+      "evidenceReads": [
+        "project.scope",
+        "bundler.name",
+        "moduleFederation",
+        "canonicalConfig",
+        "dependencies.declared",
+        "dependencies.installed"
+      ],
+      "migrationNote": "Group 1; Declared Rsbuild MF option keys are exact for the 1.5 vs plugin v2 surface check. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
       "id": "config/runtime-plugin-missing",
       "version": "1",
       "group": 1,

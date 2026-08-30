@@ -498,6 +498,17 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Use the official package for Vite, Rspack, Rsbuild, Webpack, or Modern.js.",
     sources: ["https://module-federation.io/integrations/index.html"],
   },
+  "config/rsbuild-mf-api-generation": {
+    category: "correctness",
+    impact:
+      "Rsbuild Module Federation 1.5 (`moduleFederation.options`) and `@module-federation/rsbuild-plugin` v2 use different option surfaces. Copied or nested keys are ignored or crash during generate/runtime instead of emitting the expected MF API, types, or manifest.",
+    fix: "Use `@module-federation/rsbuild-plugin` with a flat `pluginModuleFederation({ ... })` config for MF 2.0 generation options (`dts`, `manifest`, `getPublicPath`, …). Keep Rsbuild `moduleFederation.options` for MF 1.5 only. Pass `target` / `environment` / `ssrDir` as the plugin second argument, never under a nested `options` bag.",
+    sources: [
+      "https://module-federation.io/integrations/build-tool/rsbuild",
+      "https://rsbuild.rs/guide/advanced/module-federation",
+      "https://module-federation.io/configure/index.html",
+    ],
+  },
   "shared/singleton-risk": {
     category: "reliability",
     impact: "Multiple framework runtimes can split global state, contexts, hooks, or renderers.",

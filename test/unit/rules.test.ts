@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { analyze } from "../../src/engine.js";
+import { readCanonicalModuleFederationConfig } from "../../src/canonical-config.js";
 import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "../../src/rules.js";
 import type { DoctorFinding, ProjectFacts } from "../../src/types.js";
 
@@ -1192,6 +1193,22 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/rsbuild-mf-api-generation",
+      (facts: ProjectFacts) => {
+        facts.bundler.name = "rsbuild";
+        facts.dependencies.declared["@module-federation/rsbuild-plugin"] = "2.8.2";
+        const canonical = readCanonicalModuleFederationConfig({
+          name: "fixture",
+          options: {
+            name: "fixture",
+            exposes: { "./Widget": "./src/Widget.ts" },
+          },
+          exposes: { "./Widget": "./src/Widget.ts" },
+        });
+        if (canonical) facts.canonicalConfig = canonical;
+      },
+    ],
+    [
       "shared/singleton-risk",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.shared.react!.singleton = false;
@@ -2157,6 +2174,139 @@ describe("doctor/partial-analysis suggestions", () => {
     const rule = builtInRules.find((item) => item.meta.id === "config/runtime-plugin-missing")!;
     await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
     expect(findings).toEqual([]);
+  });
+});
+
+describe("config/rsbuild-mf-api-generation", () => {
+  async function rsbuildRoot(deps: Record<string, string>) {
+    const root = await fixture();
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "fixture", dependencies: deps }),
+    );
+    await fs.writeFile(path.join(root, "src/Widget.ts"), "export {};\n");
+    return root;
+  }
+
+  it("flags a nested Rsbuild 1.5 options bag on plugin v2", async () => {
+    const root = await rsbuildRoot({ "@module-federation/rsbuild-plugin": "2.3.1" });
+    const result = await analyze({
+      root,
+      bundler: "rsbuild",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        options: {
+          name: "host",
+          exposes: { "./Widget": "./src/Widget.ts" },
+        },
+        exposes: { "./Widget": "./src/Widget.ts" },
+      } as never,
+      rules: {
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+        "artifact/remote-entry-missing": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+        "artifact/manifest-disabled": "off",
+      },
+    });
+    const finding = result.report.findings.find(
+      (item) => item.ruleId === "config/rsbuild-mf-api-generation",
+    );
+    expect(finding).toMatchObject({
+      severity: "error",
+      evidence: {
+        api: "rsbuild-plugin-v2",
+        offendingKeys: ["options"],
+      },
+    });
+  });
+
+  it("flags MF 2.0 generation options on Rsbuild moduleFederation.options (1.5)", async () => {
+    const root = await rsbuildRoot({ "@rsbuild/core": "1.5.0" });
+    const result = await analyze({
+      root,
+      bundler: "rsbuild",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        exposes: { "./Widget": "./src/Widget.ts" },
+        dts: true,
+        manifest: true,
+        getPublicPath: "function(){return '/';}",
+      },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+        "artifact/remote-entry-missing": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+      },
+    });
+    const finding = result.report.findings.find(
+      (item) => item.ruleId === "config/rsbuild-mf-api-generation",
+    );
+    expect(finding?.evidence.offendingKeys).toEqual(
+      expect.arrayContaining(["dts", "getPublicPath", "manifest"]),
+    );
+    expect(finding?.evidence.api).toBe("rsbuild-moduleFederation-options-1.5");
+  });
+
+  it("stays quiet on a valid rsbuild-plugin v2 config", async () => {
+    const root = await rsbuildRoot({ "@module-federation/rsbuild-plugin": "2.3.1" });
+    const result = await analyze({
+      root,
+      bundler: "rsbuild",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        exposes: { "./Widget": "./src/Widget.ts" },
+        dts: true,
+        manifest: true,
+        remotes: {
+          shop: "shop@https://example.test/mf-manifest.json",
+        },
+      },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+        "artifact/remote-entry-missing": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+      },
+    });
+    expect(result.report.findings.map((item) => item.ruleId)).not.toContain(
+      "config/rsbuild-mf-api-generation",
+    );
+  });
+
+  it("ignores non-rsbuild bundlers", async () => {
+    const root = await rsbuildRoot({ "@module-federation/vite": "2.8.0" });
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        options: { name: "host" },
+        exposes: { "./Widget": "./src/Widget.ts" },
+      } as never,
+      rules: {
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+        "artifact/remote-entry-missing": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+      },
+    });
+    expect(result.report.findings.map((item) => item.ruleId)).not.toContain(
+      "config/rsbuild-mf-api-generation",
+    );
   });
 });
 

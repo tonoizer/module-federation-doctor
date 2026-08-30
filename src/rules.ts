@@ -498,6 +498,62 @@ const OBSERVABILITY_PACKAGE = "@module-federation/observability-plugin";
 const OBSERVABILITY_SUPPORT_FLOOR = "2.5.0";
 const OBSERVABILITY_SUPPORT_RANGE = `>=${OBSERVABILITY_SUPPORT_FLOOR}`;
 const OBSERVABILITY_PACKAGE_PATH = `/node_modules/${OBSERVABILITY_PACKAGE}/`;
+const RSBUILD_PLUGIN_PACKAGE = "@module-federation/rsbuild-plugin";
+/** MF 2.0 generation / enhanced options that Rsbuild `moduleFederation.options` (1.5) ignores. */
+const MF2_ONLY_ON_RSBUILD_15 = [
+  "dts",
+  "manifest",
+  "getPublicPath",
+  "shareStrategy",
+  "virtualRuntimeEntry",
+  "experiments",
+  "bridge",
+  "async",
+  "dev",
+  "implementation",
+  "injectTreeShakingUsedExports",
+  "treeShakingDir",
+  "treeShakingSharedPlugins",
+  "treeShakingSharedExcludePlugins",
+] as const;
+const MF2_OPTION_CURRENT: Record<(typeof MF2_ONLY_ON_RSBUILD_15)[number], string> = {
+  dts: "`dts` on `pluginModuleFederation({ ... })`",
+  manifest: "`manifest` on `pluginModuleFederation({ ... })`",
+  getPublicPath: "`getPublicPath` on `pluginModuleFederation({ ... })`",
+  shareStrategy: "`shareStrategy` on `pluginModuleFederation({ ... })`",
+  virtualRuntimeEntry: "`virtualRuntimeEntry` on `pluginModuleFederation({ ... })`",
+  experiments: "`experiments` on `pluginModuleFederation({ ... })`",
+  bridge: "`bridge` on `pluginModuleFederation({ ... })`",
+  async: "`async` on `pluginModuleFederation({ ... })`",
+  dev: "`dev` on `pluginModuleFederation({ ... })`",
+  implementation: "`implementation` on `pluginModuleFederation({ ... })`",
+  injectTreeShakingUsedExports:
+    "`injectTreeShakingUsedExports` on `pluginModuleFederation({ ... })`",
+  treeShakingDir: "`treeShakingDir` on `pluginModuleFederation({ ... })`",
+  treeShakingSharedPlugins: "`treeShakingSharedPlugins` on `pluginModuleFederation({ ... })`",
+  treeShakingSharedExcludePlugins:
+    "`treeShakingSharedExcludePlugins` on `pluginModuleFederation({ ... })`",
+};
+/** Rsbuild 1.5 nested bag / plugin second-arg keys wrongly placed on the v2 options object. */
+const RSBUILD_V2_MISPLACED_KEYS: Record<string, string> = {
+  options:
+    "Flatten into `pluginModuleFederation({ name, ... })` (Rsbuild 1.5 used `moduleFederation.options`)",
+  ssr: 'Pass `{ target: "dual" }` or `{ target: "node" }` as the second argument; `ssr` was removed',
+  ssrDir: "Pass `{ ssrDir }` as the second argument to `pluginModuleFederation`",
+  environment: "Pass `{ environment }` as the second argument to `pluginModuleFederation`",
+};
+
+function declaredRsbuildMfKeys(facts: ProjectFacts): Set<string> {
+  const keys = new Set<string>();
+  const canonical = facts.canonicalConfig;
+  if (!canonical) return keys;
+  for (const field of canonical.declared.fields) keys.add(field.key);
+  if (canonical.declared.collections.exposes.length > 0) keys.add("exposes");
+  if (canonical.declared.collections.remotes.length > 0) keys.add("remotes");
+  if (canonical.declared.collections.shared.length > 0) keys.add("shared");
+  return keys;
+}
+
 const MF2_VERSION_PACKAGES = new Set([
   "@module-federation/enhanced",
   "@module-federation/manifest",
@@ -2056,6 +2112,67 @@ export const builtInRules: DoctorRule[] = [
           ? { evidenceSources: context.facts.imports.evidenceSources }
           : {}),
       }),
+    );
+  }),
+  createRule("config/rsbuild-mf-api-generation", "error", (context) => {
+    if (context.facts.bundler.name !== "rsbuild") return;
+    if (!mf(context)) return;
+    const declaredKeys = declaredRsbuildMfKeys(context.facts);
+    // Without a declared canonical view we cannot tell user-supplied MF 2.0
+    // keys from normalize defaults, so pass rather than invent a mismatch.
+    if (!context.facts.canonicalConfig || declaredKeys.size === 0) return;
+
+    const usesRsbuildPlugin = Boolean(
+      context.facts.dependencies.declared[RSBUILD_PLUGIN_PACKAGE] ||
+      context.facts.dependencies.installed[RSBUILD_PLUGIN_PACKAGE],
+    );
+    if (usesRsbuildPlugin) {
+      const offenders = [...declaredKeys]
+        .filter((key) => key in RSBUILD_V2_MISPLACED_KEYS)
+        .sort((left, right) => left.localeCompare(right));
+      if (offenders.length === 0) return;
+      report(
+        context,
+        "Rsbuild Module Federation plugin v2 received Module Federation 1.5 / misplaced option keys that break generate or are ignored.",
+        {
+          api: "rsbuild-plugin-v2",
+          offendingKeys: offenders,
+          currentOptions: Object.fromEntries(
+            offenders.map((key) => [key, RSBUILD_V2_MISPLACED_KEYS[key]!]),
+          ),
+        },
+        "Pass a flat `pluginModuleFederation({ name, ... })` object. Move `target` / `environment` / `ssrDir` to the second argument; do not nest a Rsbuild `moduleFederation.options` bag.",
+      );
+      return;
+    }
+
+    // Inverse: MF 2.0 generation keys on the built-in Rsbuild 1.5 surface.
+    // Require `@rsbuild/core` so CLI fixtures that only set `bundler: "rsbuild"`
+    // with MF 2.0-shaped options (and silence plugin-package-mismatch) stay quiet.
+    const usesRsbuildCore = Boolean(
+      context.facts.dependencies.declared["@rsbuild/core"] ||
+      context.facts.dependencies.installed["@rsbuild/core"],
+    );
+    if (!usesRsbuildCore) return;
+
+    const offenders = [...declaredKeys]
+      .filter((key) => (MF2_ONLY_ON_RSBUILD_15 as readonly string[]).includes(key))
+      .sort((left, right) => left.localeCompare(right));
+    if (offenders.length === 0) return;
+    report(
+      context,
+      "Rsbuild `moduleFederation.options` (Module Federation 1.5) includes Module Federation 2.0 generation options that this surface ignores.",
+      {
+        api: "rsbuild-moduleFederation-options-1.5",
+        offendingKeys: offenders,
+        currentOptions: Object.fromEntries(
+          offenders.map((key) => [
+            key,
+            MF2_OPTION_CURRENT[key as (typeof MF2_ONLY_ON_RSBUILD_15)[number]] ?? key,
+          ]),
+        ),
+      },
+      `Install \`${RSBUILD_PLUGIN_PACKAGE}\` and move these keys onto \`pluginModuleFederation({ ... })\`. Keep \`moduleFederation.options\` only for MF 1.5.`,
     );
   }),
   createRule("config/plugin-package-mismatch", "warning", (context) => {

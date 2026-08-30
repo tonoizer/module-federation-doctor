@@ -38,6 +38,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`config/remote-alias-prefix-collision`](./config/remote-alias-prefix-collision.md) | error | An alias that prefixes another remote name/alias makes multi-level path references ambiguous and is rejected by the runtime. |
 | [`config/remote-capability-disabled`](./config/remote-capability-disabled.md) | error | Tree-shaken remote-consumption code cannot load configured remotes. |
 | [`config/remote-entry-invalid`](./config/remote-entry-invalid.md) | error | The runtime cannot resolve a remote without a usable entry or manifest address. |
+| [`config/rsbuild-mf-api-generation`](./config/rsbuild-mf-api-generation.md) | error | Rsbuild Module Federation 1.5 (`moduleFederation.options`) and `@module-federation/rsbuild-plugin` v2 use different option surfaces. Copied or nested keys are ignored or crash during generate/runtime instead of emitting the expected MF API, types, or manifest. |
 | [`config/runtime-plugin-missing`](./config/runtime-plugin-missing.md) | error | A missing runtime plugin stops injected runtime behavior from loading. |
 | [`config/share-scope-undeclared`](./config/share-scope-undeclared.md) | error | A dependency placed in a scope the container does not initialize cannot be reused there. |
 | [`config/shared-capability-disabled`](./config/shared-capability-disabled.md) | error | Tree-shaken sharing code cannot register or consume configured shared packages. |

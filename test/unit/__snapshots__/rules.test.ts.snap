@@ -63,6 +63,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "artifact/remote-entry-missing",
   "artifact/expose-missing",
   "doctor/partial-analysis",
+  "config/rsbuild-mf-api-generation",
   "config/plugin-package-mismatch",
   "shared/singleton-risk",
   "shared/eager-without-singleton",
