@@ -649,6 +649,7 @@ describe("evidence-aware rule contract", () => {
         "vite/server-origin": ["bundler.viteConfig"],
         "vite/remote-hmr-dev": ["builds"],
         "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
+        "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
       };
       const optionalReads = optionalPluginFacts[entry.id] ?? [];
       expect(requirements.length).toBeGreaterThanOrEqual(2);
@@ -824,6 +825,11 @@ describe("evidence-aware rule contract", () => {
         id,
       ).toEqual(["vite"]);
     }
+    expect(
+      ruleInventory
+        .find((entry) => entry.id === "config/rsbuild-mf-api-generation")
+        ?.applicability.bundlers?.map((item) => item.name),
+    ).toEqual(["rsbuild"]);
   });
 
   it("keeps declared reads aligned with the current built-in rule source", () => {

@@ -78,6 +78,11 @@ const cases = [
     expectedExit: 0,
   },
   {
+    dir: "examples/showcase/config/rsbuild-mf-api-generation",
+    ruleId: "config/rsbuild-mf-api-generation",
+    expectedExit: 1,
+  },
+  {
     dir: "examples/showcase/shared/eager-without-singleton",
     ruleId: "shared/eager-without-singleton",
     expectedExit: 0,
