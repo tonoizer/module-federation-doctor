@@ -342,7 +342,7 @@ assert.equal(rspackChain[0][0], "module-federation-doctor");
   assert.equal(typeof capabilities.completeness?.check, "string");
   assert.equal(capabilities.githubAction?.name, "workspace-federation-gate");
   assert.equal(capabilities.networkPolicy?.offlineByDefault, true);
-  assert.deepEqual(capabilities.networkPolicy?.networkCommands, ["probe"]);
+  assert.deepEqual(capabilities.networkPolicy?.networkCommands, ["compare", "probe"]);
   assert.equal(capabilities.bundlerMatrix?.source, "./fixtures/compatibility-matrix.json");
   assert.ok(capabilities.bundlerMatrix?.supported.includes("vite"));
   assert.ok(capabilities.bundlerMatrix?.partial.includes("modern"));

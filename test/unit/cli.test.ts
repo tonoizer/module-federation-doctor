@@ -110,6 +110,7 @@ describe("CLI arguments", () => {
       patterns: [],
       roots: [],
       globs: [],
+      urls: [],
       workspace: false,
       ci: false,
       verbose: false,
@@ -628,7 +629,8 @@ describe("CLI arguments", () => {
     expect(capabilities.completeness).toHaveProperty("check");
     expect(capabilities.githubAction.name).toBe("workspace-federation-gate");
     expect(capabilities.networkPolicy.offlineByDefault).toBe(true);
-    expect(capabilities.networkPolicy.networkCommands).toEqual(["probe"]);
+    expect(capabilities.networkPolicy.networkCommands).toEqual(["compare", "probe"]);
+    expect(capabilities.commands).toHaveProperty("compare");
     expect(capabilities.bundlerMatrix.source).toBe("./fixtures/compatibility-matrix.json");
     expect(capabilities.bundlerMatrix.supported).toContain("vite");
     expect(capabilities.bundlerMatrix.partial).toContain("modern");

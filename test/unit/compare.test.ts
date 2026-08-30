@@ -212,6 +212,9 @@ describe("manifest compare", () => {
     const sarif = JSON.parse(await fs.readFile(path.join(dir, "compare.sarif"), "utf8"));
     expect(json.equal).toBe(true);
     expect(sarif.version).toBe("2.1.0");
+    // Atomic writers leave no temp siblings beside the final report paths.
+    const leftover = (await fs.readdir(dir)).filter((name) => name.includes(".mfdoctor-"));
+    expect(leftover).toEqual([]);
   });
 });
 

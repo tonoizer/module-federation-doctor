@@ -6,6 +6,7 @@ import {
   type ManifestContractShared,
   type ProbeOptions,
 } from "./probe.js";
+import { writeFileAtomic } from "./reporters.js";
 import type { OutputFormat } from "./types.js";
 import { stableStringify } from "./utils.js";
 
@@ -281,9 +282,9 @@ export async function writeCompareReports(
 ): Promise<void> {
   await fs.mkdir(directory, { recursive: true });
   if (formats.includes("json"))
-    await fs.writeFile(path.join(directory, "compare.json"), stableStringify(result, 2) + "\n");
+    await writeFileAtomic(path.join(directory, "compare.json"), stableStringify(result, 2) + "\n");
   if (formats.includes("sarif"))
-    await fs.writeFile(
+    await writeFileAtomic(
       path.join(directory, "compare.sarif"),
       stableStringify(compareToSarif(result), 2) + "\n",
     );
