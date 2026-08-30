@@ -187,9 +187,10 @@ rules, `doctor/*` advisories, and baseline-suppressed findings. Bands: **≥75
 Great**, **≥50 OK**, else **Needs work**. The score does not change `failOn`
 semantics. Terminal printing can be disabled with `--no-score` / `score: false`
 while JSON still includes the fields. After the score footer, MFDoctor prints
-[top-3 agent fix prompts](./cli.md) (`--no-prompt` to hide; `mfdoctor prompt`
-and `--diagnostics-dir` for offline handoff; `--diagnostics-prompts` /
-`MFDOCTOR_DIAGNOSTICS_PROMPTS` to dump more than top-3, capped at 25).
+[top-3 agent fix prompts](./cli.md) (`--no-prompt` to hide; CI hides by default;
+`mfdoctor prompt` and `--diagnostics-dir` for offline handoff;
+`--diagnostics-prompts` / `MFDOCTOR_DIAGNOSTICS_PROMPTS` to dump more than top-3,
+capped at 25).
 
 ## Versioned finding details (`detailsSchema` + `details`)
 

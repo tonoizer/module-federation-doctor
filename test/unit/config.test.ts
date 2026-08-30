@@ -6,6 +6,7 @@ import {
   DEFAULT_INCLUDE,
   isCiEnvironment,
   resolveOptions,
+  resolvePrompt,
 } from "../../src/config.js";
 
 /**
@@ -53,6 +54,22 @@ describe("isCiEnvironment", () => {
   });
 });
 
+describe("resolvePrompt", () => {
+  it("defaults on for local runs and off in CI", () => {
+    stubLocalEnv();
+    expect(resolvePrompt({}, { CI: "" })).toBe(true);
+    expect(resolvePrompt({}, { CI: "true" })).toBe(false);
+    expect(resolvePrompt({}, { GITHUB_ACTIONS: "true" })).toBe(false);
+  });
+
+  it("honors explicit prompt and mode overrides", () => {
+    expect(resolvePrompt({ prompt: true }, { CI: "true" })).toBe(true);
+    expect(resolvePrompt({ prompt: false }, { CI: "" })).toBe(false);
+    expect(resolvePrompt({ mode: "ci" }, { CI: "" })).toBe(false);
+    expect(resolvePrompt({ mode: "development" }, { CI: "true" })).toBe(true);
+  });
+});
+
 describe("resolveOptions", () => {
   it("uses safe development defaults", async () => {
     stubLocalEnv();
@@ -60,6 +77,7 @@ describe("resolveOptions", () => {
     expect(await resolveOptions({ root })).toMatchObject({
       mode: "development",
       failOn: "never",
+      prompt: true,
       quiet: true,
       printLog: { success: false },
       include: DEFAULT_INCLUDE,
@@ -130,6 +148,7 @@ describe("resolveOptions", () => {
     expect(await resolveOptions({ root: "fixture" })).toMatchObject({
       mode: "ci",
       failOn: "error",
+      prompt: false,
       output: { formats: ["terminal", "json", "sarif"] },
     });
   });
@@ -143,6 +162,7 @@ describe("resolveOptions", () => {
     expect(await resolveOptions({ root: "fixture" })).toMatchObject({
       mode: "ci",
       failOn: "error",
+      prompt: false,
     });
   });
 
@@ -152,11 +172,13 @@ describe("resolveOptions", () => {
     expect(await resolveOptions({ root: "fixture", mode: "development" })).toMatchObject({
       mode: "development",
       failOn: "never",
+      prompt: true,
     });
     stubLocalEnv();
     expect(await resolveOptions({ root: "fixture", mode: "ci" })).toMatchObject({
       mode: "ci",
       failOn: "error",
+      prompt: false,
     });
   });
 

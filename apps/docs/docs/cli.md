@@ -110,7 +110,11 @@ mfdoctor check --prompt
 - `--no-score` hides the terminal health score. Report JSON still contains
   `summary.score` and `summary.scoreLabel`.
 - `--no-prompt` hides the copy-paste fix prompts printed after findings.
-- `--prompt` force-enables those prompts, including when config disables them.
+- `--prompt` force-enables those prompts, including when config disables them or CI
+  would hide them.
+- In CI (standard `CI` / provider env vars, or `mode: "ci"`), prompts are hidden by
+  default. Local runs still show them. Opt in with `--prompt`, or dump prompts to
+  disk with `--diagnostics-dir` without printing them.
 
 You can also set `MFDOCTOR_QUIET=0` to show successful checks or
 `MFDOCTOR_QUIET=1` to force quiet success. Environment configuration wins over

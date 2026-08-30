@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import pc from "picocolors";
-import { resolvePrintLog, resolveQuiet } from "./config.js";
+import { resolvePrintLog, resolveQuiet, resolvePrompt } from "./config.js";
 import { formatTopAgentPrompts } from "./agent-prompt.js";
 import { ruleGuidance } from "./rule-guidance.js";
 import type {
@@ -61,7 +61,8 @@ export interface TerminalReportOptions {
   score?: boolean;
   /**
    * When false, omit top-N agent prompts after the score footer.
-   * Defaults to true when omitted. Skipped automatically for quiet empty success.
+   * Defaults to true locally and false in CI when omitted.
+   * Skipped automatically for quiet empty success.
    */
   prompt?: boolean;
 }
@@ -157,7 +158,7 @@ export function formatTerminalReport(
     if (footer) lines.push(footer);
     else if (report.summary.score === null) lines.push(pc.dim("Score: n/a (partial analysis)"));
   }
-  if (options.prompt !== false) {
+  if (resolvePrompt(options)) {
     const prompts = formatTopAgentPrompts(report.findings);
     if (prompts) lines.push("", prompts);
   }
