@@ -80,8 +80,47 @@ function runForStatus(command, args, cwd = temporary) {
   };
 }
 
+function assertAgentPlaybook(files) {
+  assert(files.has("AGENTS.md"), "published package must include AGENTS.md");
+  assert(
+    files.has("skills/mfdoctor/SKILL.md"),
+    "published package must include skills/mfdoctor/SKILL.md",
+  );
+}
+
+async function assertAgentPlaybookContent() {
+  const agents = await fs.readFile(path.join(root, "AGENTS.md"), "utf8");
+  const skill = await fs.readFile(path.join(root, "skills/mfdoctor/SKILL.md"), "utf8");
+  for (const [label, source] of [
+    ["AGENTS.md", agents],
+    ["skills/mfdoctor/SKILL.md", skill],
+  ]) {
+    assert.match(source, /capabilities/i, `${label} must document capabilities`);
+    assert.match(source, /mfdoctor check/i, `${label} must document check`);
+    assert.match(source, /mfdoctor prompt/i, `${label} must document prompt`);
+    assert.match(
+      source,
+      /No suppressions unless the user asked/i,
+      `${label} must hard-rule suppressions as opt-in`,
+    );
+    assert.match(
+      source,
+      /No probe unless the user asked/i,
+      `${label} must hard-rule probe as opt-in`,
+    );
+    assert.match(
+      source,
+      /Do not claim green from [`']?check[`']? alone/i,
+      `${label} must forbid claiming green from check alone`,
+    );
+  }
+}
+
 try {
-  await assertPortableReadme(packedFiles());
+  const files = packedFiles();
+  await assertPortableReadme(files);
+  assertAgentPlaybook(files);
+  await assertAgentPlaybookContent();
   run(packageManager, [...packageManagerArgs, "pack", "--pack-destination", temporary], root);
   const archive = (await fs.readdir(temporary)).find((file) => file.endsWith(".tgz"));
   assert(archive, "pnpm pack did not create a tarball");
@@ -220,6 +259,15 @@ for (const [name, title] of Object.entries(schemaTitles)) {
   assert.equal(typeof schema.default.$id, "string");
 }
 assert.equal(packageJson.default.bin.mfdoctor, "dist/cli.js");
+const { createRequire } = await import("node:module");
+const { readFileSync } = await import("node:fs");
+const { dirname, join } = await import("node:path");
+const require = createRequire(import.meta.url);
+const packageRoot = dirname(require.resolve("@tonoizer/mfdoctor/package.json"));
+const agents = readFileSync(join(packageRoot, "AGENTS.md"), "utf8");
+const skill = readFileSync(join(packageRoot, "skills/mfdoctor/SKILL.md"), "utf8");
+assert.match(agents, /No suppressions unless the user asked/);
+assert.match(skill, /No probe unless the user asked/);
 `,
   );
   const doctorOptions =
