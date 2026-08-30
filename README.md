@@ -36,13 +36,13 @@ collected. Clean builds stay quiet by default.
 
 ### Bundler matrix
 
-| Bundler                         | Status        | Notes                                                                 |
-| ------------------------------- | ------------- | --------------------------------------------------------------------- |
-| Vite / Vite 5 CommonJS          | **supported** | Primary CI cells in `fixtures/compatibility-matrix.json`              |
-| Rspack / Rsbuild / Webpack      | **supported** | First-class adapters; production build+MFDoctor gates                 |
-| Rolldown / Vite Plus            | **partial**   | Same `@tonoizer/mfdoctor/vite` entry; no dedicated Rolldown CI smoke  |
-| Modern.js                       | **partial**   | Adapter + Rspack-under-the-hood smoke; not full `@modern-js/app-tools` |
-| Nuxt 3/4                        | **partial**   | Adapter + unit contract; upstream app build baseline-blocked          |
+| Bundler                    | Status        | Notes                                                                  |
+| -------------------------- | ------------- | ---------------------------------------------------------------------- |
+| Vite / Vite 5 CommonJS     | **supported** | Primary CI cells in `fixtures/compatibility-matrix.json`               |
+| Rspack / Rsbuild / Webpack | **supported** | First-class adapters; production build+MFDoctor gates                  |
+| Rolldown / Vite Plus       | **partial**   | Same `@tonoizer/mfdoctor/vite` entry; no dedicated Rolldown CI smoke   |
+| Modern.js                  | **partial**   | Adapter + Rspack-under-the-hood smoke; not full `@modern-js/app-tools` |
+| Nuxt 3/4                   | **partial**   | Adapter + unit contract; upstream app build baseline-blocked           |
 
 **Partial** means an adapter exists and some coverage is present, but rule depth,
 fixtures, and CI evidence are not on par with the supported cells — a green
