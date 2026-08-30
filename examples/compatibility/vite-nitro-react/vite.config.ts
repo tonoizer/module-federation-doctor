@@ -13,12 +13,14 @@ const mfOptions = {
   name: "vite_nitro_react",
   filename: "remoteEntry.js",
   manifest: true,
-  // Nitro runs the server entry through react-dom/server.edge. Share that
-  // explicit subpath so SSR does not bypass the negotiated singleton.
+  // Nitro SSR uses react-dom/server.edge; the client hydrates via
+  // react-dom/client. Share the react-dom/ prefix so both negotiate one copy,
+  // and keep the explicit server.edge key for the SSR contract.
   exposes: { "./App": "./src/app.tsx" },
   shared: {
     react: { singleton: true, requiredVersion: "^19.2.0" },
     "react-dom": { singleton: true, requiredVersion: "^19.2.0" },
+    "react-dom/": { singleton: true, requiredVersion: "^19.2.0" },
     "react-dom/server.edge": { singleton: true, requiredVersion: "^19.2.0" },
   },
   // The current dts plugin accepts outputDir at runtime. Keep generated

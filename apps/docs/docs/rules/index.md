@@ -107,7 +107,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`shared/candidate`](./shared/candidate.md) | info | A stateful framework dependency may be bundled separately by host and remote. |
 | [`shared/deep-import-bypass`](./shared/deep-import-bypass.md) | warning | Subpath imports bypass Module Federation shared-scope negotiation when only the root package is declared in `shared`, so each microfrontend may bundle its own copy. |
 | [`shared/eager-without-singleton`](./shared/eager-without-singleton.md) | warning | An eager non-singleton can add copies to initial chunks without guaranteeing reuse. |
-| [`shared/prefix-share-recommended`](./shared/prefix-share-recommended.md) | info | Observed `react/...` or `react-dom/...` imports are not covered by the root shared key, so framework subpaths can bypass shared-scope negotiation and create duplicate renderer/runtime modules. Bridge projects use the focused `bridge/react-dom-prefix-missing` contract instead of this nudge. |
+| [`shared/prefix-share-recommended`](./shared/prefix-share-recommended.md) | error | Observed `react/...` or `react-dom/...` imports are not covered by the root shared key, so framework subpaths can bypass shared-scope negotiation and create duplicate renderer/runtime modules. Bridge projects use the focused `bridge/react-dom-prefix-missing` contract instead of this rule. |
 | [`shared/unused`](./shared/unused.md) | warning | Unused shared declarations add runtime bookkeeping and can signal stale config. |
 
 ## Security

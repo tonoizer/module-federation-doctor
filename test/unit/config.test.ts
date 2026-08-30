@@ -169,6 +169,6 @@ describe("resolveOptions", () => {
     expect(resolved.appliedPolicies).toEqual(["production"]);
     expect(resolved.mode).toBe("ci");
     expect(resolved.failOn).toBe("error");
-    expect(resolved.rules["shared/prefix-share-recommended"]).toBe("warning");
+    expect(resolved.rules["shared/prefix-share-recommended"]).toBeUndefined();
   });
 });

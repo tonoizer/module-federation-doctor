@@ -21,7 +21,7 @@ type RecommendationScenario = {
   mode?: "development" | "ci";
   ci?: boolean;
   expectedObservability: "absent" | "warning";
-  expectedPrefix: "absent" | "info" | "warning";
+  expectedPrefix: "absent" | "error";
   expectedOfflineRemotes: "absent" | "warning";
   observabilityPackage?: "missing" | "unregistered" | "registered";
   shareSubpaths?: boolean;
@@ -44,7 +44,7 @@ const scenarios: RecommendationScenario[] = [
     profile: "demo",
     mode: "development",
     expectedObservability: "absent",
-    expectedPrefix: "info",
+    expectedPrefix: "error",
     expectedOfflineRemotes: "absent",
   },
   {
@@ -52,15 +52,15 @@ const scenarios: RecommendationScenario[] = [
     profile: "production",
     mode: "development",
     expectedObservability: "warning",
-    expectedPrefix: "warning",
+    expectedPrefix: "error",
     expectedOfflineRemotes: "warning",
   },
   {
-    name: "production CI elevates missing observability and React prefix advice",
+    name: "production CI elevates missing observability and keeps React prefix as error",
     profile: "production",
     mode: "ci",
     expectedObservability: "warning",
-    expectedPrefix: "warning",
+    expectedPrefix: "error",
     expectedOfflineRemotes: "warning",
   },
   {
@@ -68,7 +68,7 @@ const scenarios: RecommendationScenario[] = [
     profile: "demo",
     ci: true,
     expectedObservability: "warning",
-    expectedPrefix: "warning",
+    expectedPrefix: "error",
     expectedOfflineRemotes: "warning",
   },
   {
@@ -76,7 +76,7 @@ const scenarios: RecommendationScenario[] = [
     profile: "production",
     mode: "ci",
     expectedObservability: "warning",
-    expectedPrefix: "warning",
+    expectedPrefix: "error",
     expectedOfflineRemotes: "warning",
     observabilityPackage: "unregistered",
   },
@@ -85,7 +85,7 @@ const scenarios: RecommendationScenario[] = [
     profile: "production",
     mode: "ci",
     expectedObservability: "absent",
-    expectedPrefix: "warning",
+    expectedPrefix: "error",
     expectedOfflineRemotes: "warning",
     observabilityPackage: "registered",
   },
@@ -116,7 +116,7 @@ const adapterScenarios: RecommendationScenario[] = [
     profile: "demo",
     mode: "development",
     expectedObservability: "absent",
-    expectedPrefix: "info",
+    expectedPrefix: "error",
     expectedOfflineRemotes: "absent",
   },
   {
@@ -124,7 +124,7 @@ const adapterScenarios: RecommendationScenario[] = [
     profile: "production",
     mode: "ci",
     expectedObservability: "warning",
-    expectedPrefix: "warning",
+    expectedPrefix: "error",
     expectedOfflineRemotes: "warning",
   },
 ];
@@ -177,6 +177,7 @@ function observabilityDependency(scenario: RecommendationScenario): Record<strin
 function doctorConfig(scenario: RecommendationScenario, root?: string): Record<string, unknown> {
   const config: Record<string, unknown> = {
     profile: scenario.profile,
+    failOn: "never",
     output: {
       formats: ["json"],
       ...(root ? { directory: path.join(root, ".mf/doctor") } : {}),
@@ -322,7 +323,10 @@ export default defineConfig({
 }
 
 function assertRecommendationReport(report: Report, scenario: RecommendationScenario): void {
-  expect(report.summary.errors, "recommendations must not become CI errors").toBe(0);
+  const expectedPrefixErrors = scenario.expectedPrefix === "absent" ? 0 : 2;
+  expect(report.summary.errors, "only React prefix-share gaps should be CI errors").toBe(
+    expectedPrefixErrors,
+  );
 
   const observability = report.findings.find(
     (finding) => finding.ruleId === "config/observability-plugin-recommended",
@@ -334,7 +338,7 @@ function assertRecommendationReport(report: Report, scenario: RecommendationScen
   const prefixFindings = report.findings.filter(
     (finding) => finding.ruleId === "shared/prefix-share-recommended",
   );
-  expect(prefixFindings).toHaveLength(scenario.expectedPrefix === "absent" ? 0 : 2);
+  expect(prefixFindings).toHaveLength(expectedPrefixErrors);
   if (scenario.expectedPrefix !== "absent") {
     expect(new Set(prefixFindings.map((finding) => finding.severity))).toEqual(
       new Set([scenario.expectedPrefix]),

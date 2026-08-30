@@ -72,11 +72,9 @@ export const DEFAULT_SHARE_CANDIDATE_PACKAGES: readonly string[] = [
   "@emotion/styled",
 ];
 
-/** Subpath specifiers excluded from deep-import bypass (JSX + React DOM entries). */
+/** Subpath specifiers excluded from deep-import bypass (dev/server React entries). */
 export const DEFAULT_DEEP_IMPORT_ALLOWLIST: readonly string[] = [
-  "react/jsx-runtime",
   "react/jsx-dev-runtime",
-  "react-dom/client",
   "react-dom/server",
 ];
 

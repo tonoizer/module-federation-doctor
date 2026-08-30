@@ -2018,10 +2018,10 @@ export const builtInRules: DoctorRule[] = [
       const root = specifier.startsWith("@")
         ? specifier.split("/").slice(0, 2).join("/")
         : (specifier.split("/")[0] ?? specifier);
-      // React subpaths have a focused recommendation with the correct
-      // info-level severity. Bridge React DOM v18/v19 has its dedicated error
-      // rule. Keep the generic warning only when neither focused rule applies
-      // (for example a custom package or a non-gap React import).
+      // React subpaths have a focused error-level prefix rule. Bridge React DOM
+      // v18/v19 has its dedicated error rule. Keep the generic warning only when
+      // neither focused rule applies (for example a custom package or a non-gap
+      // React import).
       const reactPackage = root === "react" || root === "react-dom" ? root : undefined;
       if (
         reactPackage &&
@@ -2054,7 +2054,7 @@ export const builtInRules: DoctorRule[] = [
       );
     }
   }),
-  createRule("shared/prefix-share-recommended", "info", (context) => {
+  createRule("shared/prefix-share-recommended", "error", (context) => {
     // Bridge has a focused error for the React DOM contract; the package-level
     // loop below suppresses only that duplicate while retaining React advice.
     const config = mf(context);
@@ -2065,9 +2065,8 @@ export const builtInRules: DoctorRule[] = [
     for (const packageName of ["react", "react-dom"] as const) {
       const analysis = reactPrefixAnalysis(config, packageName, deepImports);
       if (!analysis || analysis.uncovered.length === 0) continue;
-      // Bridge owns the error-level react-dom prefix contract. React itself
-      // still uses this advisory because Bridge has no equivalent rule for
-      // arbitrary React deep imports.
+      // Bridge owns the react-dom prefix contract. React itself still uses this
+      // rule because Bridge has no equivalent for arbitrary React deep imports.
       if (packageName === "react-dom" && bridgeOwnsReactDomPrefixContract(context)) continue;
 
       const prefixKey = `${packageName}/`;

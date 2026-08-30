@@ -85,7 +85,7 @@ test.describe("mixed-federation intentional findings path", () => {
       expect.arrayContaining([
         expect.objectContaining({
           ruleId: "shared/prefix-share-recommended",
-          severity: "info",
+          severity: "error",
           evidence: expect.objectContaining({
             package: "react-dom",
             specifiers: ["react-dom/client"],

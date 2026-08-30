@@ -71,9 +71,9 @@ stays loud even when `demo` is present. It also hides manifest and implicit
 Bridge-router nudges only during local development, while keeping them visible
 in CI, and softens disabled DTS to `info`. The `production` overlay makes
 manifest, disabled DTS, implicit Bridge-router, and version-first offline-
-remote nudges `warning`; it also elevates the Observability and prefix-share
-recommendations. These overlays only change recommendation severities and
-bounded rule options; they do not change default runs or correctness rules.
+remote nudges `warning`; it also elevates the Observability recommendation.
+These overlays only change recommendation severities and bounded rule
+options; they do not change default runs or correctness rules.
 Use `rules: { "<rule-id>": "off" }` or a baseline when a production team
 intentionally accepts a recommendation.
 
@@ -84,8 +84,8 @@ while `production` raises both to `warning`. A local `rules` entry wins over
 either profile, including `"off"`. The Observability nudge is conservative by
 default: it requires a supported MF 2.5+ package and an installed or declared
 `@module-federation/observability-plugin`; production can opt into the wider
-recommendation. The prefix-share nudge uses observed `react/...` and
-`react-dom/...` imports and remains independently suppressible.
+recommendation. React and React DOM prefix-share gaps are errors by default
+(`shared/prefix-share-recommended`) and remain independently suppressible.
 
 ## Teilbare Pakete
 

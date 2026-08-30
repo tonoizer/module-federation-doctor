@@ -1,11 +1,11 @@
 # `shared/prefix-share-recommended`
 
 - Category: **performance**
-- Default severity: **info**
+- Default severity: **error**
 
 ## Issue
 
-Observed `react/...` or `react-dom/...` imports are not covered by the root shared key, so framework subpaths can bypass shared-scope negotiation and create duplicate renderer/runtime modules. Bridge projects use the focused `bridge/react-dom-prefix-missing` contract instead of this nudge.
+Observed `react/...` or `react-dom/...` imports are not covered by the root shared key, so framework subpaths can bypass shared-scope negotiation and create duplicate renderer/runtime modules. Bridge projects use the focused `bridge/react-dom-prefix-missing` contract instead of this rule.
 
 ## How to fix it
 
