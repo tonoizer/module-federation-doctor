@@ -61,6 +61,7 @@ const cliSidebar = [
   { text: "Agent loop", link: "/agent-loop" },
   { text: "CI", link: "/production-readiness" },
   { text: "Fingerprint baselines", link: "/baselines" },
+  { text: "Observability → runtime", link: "/observability-runtime" },
 ];
 
 const exampleSidebar = [
@@ -79,6 +80,7 @@ const referenceSidebar = [
   { text: "Capability matrix", link: "/capabilities" },
   { text: "Documentation lifecycle", link: "/docs-lifecycle" },
   { text: "Runtime and manifests", link: "/runtime-manifests" },
+  { text: "Observability → runtime", link: "/observability-runtime" },
   { text: "Performance", link: "/performance" },
 ];
 
@@ -153,6 +155,7 @@ const sidebar = {
   "/capabilities": referenceSidebar,
   "/docs-lifecycle": referenceSidebar,
   "/runtime-manifests": referenceSidebar,
+  "/observability-runtime": cliSidebar,
   "/performance": referenceSidebar,
   "/api": librarySidebar,
   "/runtime-capture": librarySidebar,
@@ -197,7 +200,7 @@ const nav: MenuNode[] = [
   {
     text: "CLI",
     link: "/cli",
-    activeMatch: "^/(cli|agent-loop)",
+    activeMatch: "^/(cli|agent-loop|observability-runtime)",
   },
   {
     text: "Rules",
@@ -244,6 +247,8 @@ const germanLabels: Record<string, string> = {
   CLI: "CLI",
   "Command reference": "Befehlsreferenz",
   "Agent loop": "Agenten-Schleife",
+  "Production and CI": "Produktion und CI",
+  "Observability → runtime": "Observability → runtime",
   "Runtime capture": "Laufzeitaufzeichnung",
   "Report schemas": "Report-Schemas",
   Examples: "Beispiele",

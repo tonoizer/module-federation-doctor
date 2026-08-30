@@ -279,7 +279,8 @@ pass. Missing shared lifecycle data on partial/old/preview runtimes is marked
 `sharedCompleteness: unknown`, not healthy. Unknown future shapes and build
 reports fail with a typed error. The general evidence reader
 (`readEvidenceDocument`) rejects Observability reports and points callers at
-`parseRuntimeTraces` / `loadRuntimeTraceFile`.
+`parseRuntimeTraces` / `loadRuntimeTraceFile`. Docs:
+[Observability latest.json → mfdoctor runtime](https://mfdoctor.kevinbeier.com/observability-runtime).
 
 Runtime imports are opt-in and local only. MFDoctor does not fetch, upload, open
 a browser, or execute report contents. Stored/output evidence is bounded and
@@ -313,7 +314,8 @@ MF `runtimePlugins` in bundler config are checked at build time. **Runtime-only*
 apps (`createInstance` / runtime plugins without a Vite/Rspack/Rsbuild/Webpack MF
 **build** plugin) are out of scope for first-class support — use Observability +
 `mfdoctor runtime` instead of shipping MFDoctor into the browser. See
-[limitations](https://mfdoctor.kevinbeier.com/limitations) and
+[Observability → runtime](https://mfdoctor.kevinbeier.com/observability-runtime),
+[limitations](https://mfdoctor.kevinbeier.com/limitations), and
 [#34](https://github.com/tonoizer/module-federation-doctor/issues/34).
 
 Every built-in rule has an issue, impact, fix, category, and source link. See

@@ -127,6 +127,7 @@ Modern.js `modifyBundlerChain` → `afterEmit`). Adapters never register
 
 Do **not** ship MFDoctor into the browser to close that gap. Prefer Observability
 exports + `mfdoctor runtime`, or add a bundler MF plugin + MFDoctor adapter. See
+[Observability latest.json → mfdoctor runtime](./observability-runtime.md) and
 [setup](./setup.md).
 
 ## Shared-usage governance (non-goals)

@@ -122,7 +122,9 @@ federation globs, baselines, runtime traces, deployed probes, and a
 
 Runtime-only apps that call `@module-federation/runtime` without a supported
 build plugin are not first-class MFDoctor targets. MFDoctor does not parse runtime
-initialization from source or inject a runtime agent. See [Limitations](./limitations.md).
+initialization from source or inject a runtime agent. See
+[Observability latest.json → mfdoctor runtime](./observability-runtime.md) and
+[Limitations](./limitations.md).
 
 ## Nächste Schritte
 

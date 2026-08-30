@@ -222,9 +222,14 @@ every CI run, because that would silently accept new debt.
 
 ## Correlate a runtime trace
 
+Feed an Observability export such as `.mf/observability/latest.json` into the
+offline CLI. See
+[Observability latest.json → mfdoctor runtime](./observability-runtime.md) for
+the full path (inputs, CI, and why there is no in-browser agent).
+
 ```bash
-mfdoctor runtime ./trace.json
-mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
+mfdoctor runtime ./.mf/observability/latest.json
+mfdoctor runtime ./.mf/observability/latest.json ".mf/doctor/**/project.json" --format terminal,json
 ```
 
 `runtime` reads a user-supplied Module Federation Observability export and
@@ -235,6 +240,7 @@ correlates it with local MFDoctor project facts. Project files default to
 MFDoctor never fetches URLs found in a trace and never executes remote
 JavaScript. It collapses trace URLs to origin plus basename and redacts token,
 cookie, authorization, password, and secret fields before emitting findings.
+There is no HTML doctor UI and no in-browser MFDoctor agent.
 
 ## Inspect the rule catalog
 
