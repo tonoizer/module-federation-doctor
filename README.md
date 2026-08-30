@@ -178,7 +178,12 @@ canonical `examples/mixed-federation` host pattern. Full rule catalog:
 ## CLI (complementary)
 
 Use the CLI when you are not running a bundler build, or for cross-project and
-deployed checks:
+deployed checks.
+
+**Name clash:** `npx mf-doctor` is a different package (tiagocastro070), not this
+project. This package is `@tonoizer/mfdoctor` (CLI binary `mfdoctor`). Install as
+a dependency and run via package-manager exec (`pnpm exec mfdoctor`,
+`npx mfdoctor`, etc.) — not `npx mf-doctor`.
 
 ```bash
 pnpm add -D @tonoizer/mfdoctor
