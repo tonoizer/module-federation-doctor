@@ -806,6 +806,21 @@ importers:
 
   fixtures/policy-packs/bridge: {}
 
+  fixtures/shared-subpath-version/resolved:
+    dependencies:
+      '@module-federation/vite':
+        specifier: 1.20.4
+        version: 1.20.4(@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.23)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39))(typescript@5.9.3)
+      react:
+        specifier: 19.1.1
+        version: 19.1.1
+
+  fixtures/shared-subpath-version/unresolved:
+    dependencies:
+      '@module-federation/vite':
+        specifier: 1.20.4
+        version: 1.20.4(@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.23)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39))(typescript@5.9.3)
+
 packages:
 
   '@andrewbranch/untar.js@1.0.3':
@@ -6039,6 +6054,18 @@ snapshots:
   '@module-federation/sdk@2.8.2': {}
 
   '@module-federation/third-party-dts-extractor@2.8.2': {}
+
+  '@module-federation/vite@1.20.4(@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.23)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39))(typescript@5.9.3)':
+    dependencies:
+      '@module-federation/dts-plugin': 2.8.2(typescript@5.9.3)
+      '@module-federation/runtime': 2.8.2
+      '@module-federation/sdk': 2.8.2
+      vite: '@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.23)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39)'
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - vue-tsc
 
   '@module-federation/vite@1.20.4(typescript@5.9.3)(vite@5.4.19(@types/node@26.2.0)(lightningcss@1.33.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0))':
     dependencies:
