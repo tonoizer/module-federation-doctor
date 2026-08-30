@@ -31,6 +31,7 @@ import {
   reportFromV2Evaluations,
 } from "./evidence-reader.js";
 import { probeManifest } from "./probe.js";
+import { compareManifests, formatCompareTerminal, writeCompareReports } from "./compare.js";
 import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
 import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "./rules.js";
 import { loadCliCapabilities } from "./capabilities.js";
@@ -52,6 +53,7 @@ interface Parsed {
     | "federation"
     | "workspace"
     | "probe"
+    | "compare"
     | "runtime"
     | "rules"
     | "baseline"
@@ -61,6 +63,7 @@ interface Parsed {
   baselineAction?: "generate" | "update" | "prune";
   root?: string;
   url?: string;
+  urls: string[];
   trace?: string;
   patterns: string[];
   roots: string[];
@@ -127,6 +130,8 @@ Usage:
   mfdoctor capabilities [--format json]
   mfdoctor probe https://host.example/mf-manifest.json
   mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
+  mfdoctor compare https://a.example/mf-manifest.json https://b.example/mf-manifest.json
+  mfdoctor compare https://a.example/mf-manifest.json https://b.example/mf-manifest.json --format json,sarif --remote-entry
 
 Workspace: after each app builds with the MFDoctor plugin, \`workspace\` (or
 \`federation --workspace\`) auto-discovers \`.mf/doctor/project.json\` under the
@@ -163,6 +168,11 @@ paths, non-goals, completeness, GitHub Action identity, network policy, and the
 bundler matrix derived from fixtures/compatibility-matrix.json. It does not load
 project configuration or access the network.
 
+Compare: \`mfdoctor compare\` diffs one baseline manifest URL against zero or
+more candidates using the same HTTPS / SSRF / size guards as \`probe\`. It
+never downloads or executes remote JavaScript. Exit 0 = no material diff,
+1 = diffs found, 2 = usage or fetch error.
+
 Baselines: use fingerprint baselines for incremental adoption. Suppressed
 findings still appear in reports but do not fail policy unless
 baseline.failOnSuppressed is set. Baselines are tracked debt — shrink them.`;
@@ -175,6 +185,7 @@ export function parseArgs(argv: string[]): Parsed {
     command !== "federation" &&
     command !== "workspace" &&
     command !== "probe" &&
+    command !== "compare" &&
     command !== "runtime" &&
     command !== "rules" &&
     command !== "baseline" &&
@@ -186,6 +197,7 @@ export function parseArgs(argv: string[]): Parsed {
       patterns: [],
       roots: [],
       globs: [],
+      urls: [],
       workspace: false,
       ci: false,
       verbose: false,
@@ -198,6 +210,7 @@ export function parseArgs(argv: string[]): Parsed {
     patterns: [],
     roots: [],
     globs: [],
+    urls: [],
     workspace: command === "workspace",
     ci: false,
     verbose: false,
@@ -290,8 +303,12 @@ export function parseArgs(argv: string[]): Parsed {
       if (!group) throw new Error("--group needs a group name.");
       parsed.group = group;
       parsed.workspace = true;
-    } else if (value === "--remote-entry" && command === "probe") parsed.remoteEntry = true;
-    else if ((value === "--timeout" || value === "--max-bytes") && command === "probe") {
+    } else if (value === "--remote-entry" && (command === "probe" || command === "compare"))
+      parsed.remoteEntry = true;
+    else if (
+      (value === "--timeout" || value === "--max-bytes") &&
+      (command === "probe" || command === "compare")
+    ) {
       const next = argv[index + 1];
       if (!next) throw new Error(`${value} needs an integer value.`);
       const parsedNumber = Number(next);
@@ -327,8 +344,13 @@ export function parseArgs(argv: string[]): Parsed {
     } else if (command === "runtime") {
       if (!parsed.trace && value) parsed.trace = value;
       else if (value) parsed.patterns.push(value);
-    } else if (command === "probe" && !parsed.url && value) parsed.url = value;
-    else if (command === "rules" && !parsed.ruleId && value) parsed.ruleId = value;
+    } else if (command === "probe" && !parsed.url && value) {
+      parsed.url = value;
+      parsed.urls.push(value);
+    } else if (command === "compare" && value) {
+      parsed.urls.push(value);
+      if (!parsed.url) parsed.url = value;
+    } else if (command === "rules" && !parsed.ruleId && value) parsed.ruleId = value;
     else if (command === "baseline" && !parsed.reportPath && value) parsed.reportPath = value;
     else if (command === "prompt" && !parsed.reportPath && value) parsed.reportPath = value;
     else if (!parsed.root && value) parsed.root = value;
@@ -599,6 +621,30 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (parsed.command === "baseline") return runBaseline(parsed);
   if (parsed.command === "prompt") return runPrompt(parsed);
   if (parsed.command === "capabilities") return runCapabilities(parsed);
+  if (parsed.command === "compare") {
+    if (parsed.urls.length === 0) {
+      process.stderr.write("compare needs at least one manifest URL.\n");
+      return 2;
+    }
+    try {
+      const result = await compareManifests(parsed.urls, {
+        ...(parsed.timeoutMs === undefined ? {} : { timeoutMs: parsed.timeoutMs }),
+        ...(parsed.maxBytes === undefined ? {} : { maxBytes: parsed.maxBytes }),
+        ...(parsed.remoteEntry === undefined ? {} : { remoteEntry: parsed.remoteEntry }),
+      });
+      const formats = parsed.formats;
+      if (formats) {
+        const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
+        await writeCompareReports(result, outputDirectory, formats);
+      } else {
+        process.stdout.write(formatCompareTerminal(result) + "\n");
+      }
+      return result.equal ? 0 : 1;
+    } catch (error) {
+      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+      return 2;
+    }
+  }
   if (parsed.command === "probe") {
     if (!parsed.url) {
       process.stderr.write("probe needs a manifest URL.\n");

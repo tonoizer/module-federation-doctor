@@ -137,7 +137,13 @@ export {
   isMfSsrFragmentRemoteEntry,
   toolkitRecognitionEnabled,
 } from "./mf-toolkit-shapes.js";
-export { ProbeError, probeManifest } from "./probe.js";
+export { ProbeError, loadManifestContract, probeManifest } from "./probe.js";
+export {
+  compareManifests,
+  compareToSarif,
+  formatCompareTerminal,
+  writeCompareReports,
+} from "./compare.js";
 export {
   RuntimeTraceError,
   analyzeRuntime,
@@ -172,7 +178,19 @@ export type {
   RolloutScope,
   ScopedRolloutModes,
 } from "./evidence-rollout.js";
-export type { ManifestProbeResult, ProbeOptions } from "./probe.js";
+export type {
+  ManifestProbeResult,
+  ManifestContract,
+  ManifestContractShared,
+  ProbeOptions,
+} from "./probe.js";
+export type {
+  CompareManifestsOptions,
+  ManifestCompareDiff,
+  ManifestCompareField,
+  ManifestCompareResult,
+  ManifestCompareSide,
+} from "./compare.js";
 export type { ApplyBaselineResult, ResolvedBaselineOptions } from "./baseline.js";
 export {
   DEFAULT_ALWAYS_SHARED,

@@ -38,7 +38,7 @@ describe("CLI capabilities discovery contract", () => {
     });
     expect(capabilities.networkPolicy).toMatchObject({
       offlineByDefault: true,
-      networkCommands: ["probe"],
+      networkCommands: ["compare", "probe"],
       probe: {
         httpsRequired: true,
         ssrfProtection: true,
@@ -46,6 +46,7 @@ describe("CLI capabilities discovery contract", () => {
         neverExecutesRemoteEntry: true,
       },
     });
+    expect(capabilities.commands).toHaveProperty("compare");
     await validatePayload("capabilities.schema.json", capabilities, "live CLI capabilities");
   });
 

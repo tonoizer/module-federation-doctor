@@ -59,6 +59,37 @@ export interface ManifestProbeResult {
   };
 }
 
+export interface ManifestContractShared {
+  name: string;
+  version?: string;
+}
+
+/** Richer manifest snapshot used by compare; still fetched via probe safety. */
+export interface ManifestContract {
+  url: string;
+  status: number;
+  bytes: number;
+  name?: string;
+  id?: string;
+  publicPath?: string;
+  remoteEntry?: string;
+  /** Unique expose keys (path/key/name), sorted. */
+  exposes: string[];
+  /** Unique shared packages, sorted by name. */
+  shared: ManifestContractShared[];
+  /** Raw remotes array length from the manifest. */
+  remotes: number;
+  /** Raw exposes / shared array lengths (probe summary counts). */
+  exposeCount: number;
+  sharedCount: number;
+  remoteEntryProbe?: {
+    url: string;
+    status: number;
+    contentType?: string;
+    contentLength?: number;
+  };
+}
+
 export class ProbeError extends Error {
   constructor(message: string) {
     super(message);
@@ -185,6 +216,39 @@ function string(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
+function exposeKeys(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const keys = new Set<string>();
+  for (const item of value) {
+    const entry = record(item);
+    const key = string(entry?.path) ?? string(entry?.key) ?? string(entry?.name);
+    if (key) keys.add(key);
+  }
+  return [...keys].sort();
+}
+
+function sharedEntries(value: unknown): ManifestContractShared[] {
+  if (!Array.isArray(value)) return [];
+  const byName = new Map<string, ManifestContractShared>();
+  for (const item of value) {
+    const entry =
+      item && typeof item === "object"
+        ? (item as Record<string, unknown>)
+        : typeof item === "string"
+          ? { name: item }
+          : undefined;
+    const name = string(entry?.name);
+    if (!name) continue;
+    const shared: ManifestContractShared = { name };
+    const version = string(entry?.version);
+    if (version) shared.version = version;
+    byName.set(name, shared);
+  }
+  return [...byName.values()].sort((left, right) =>
+    left.name < right.name ? -1 : left.name > right.name ? 1 : 0,
+  );
+}
+
 function manifestSummary(value: unknown, manifestUrl: URL) {
   const root = record(value);
   if (!root) throw new ProbeError("Manifest must be a JSON object.");
@@ -210,16 +274,23 @@ function manifestSummary(value: unknown, manifestUrl: URL) {
     id,
     publicPath,
     remoteEntry,
+    exposeKeys: exposeKeys(root.exposes),
+    sharedEntries: sharedEntries(root.shared),
     exposes: arrayLength(root.exposes),
     shared: arrayLength(root.shared),
     remotes: arrayLength(root.remotes),
   };
 }
 
-export async function probeManifest(
+/**
+ * Load a deployed MF manifest through the same SSRF / HTTPS / size / redirect
+ * guards as {@link probeManifest}, returning expose and shared detail for compare.
+ * Does not download or execute remote JavaScript; `--remote-entry` only HEADs.
+ */
+export async function loadManifestContract(
   value: string,
   options: ProbeOptions = {},
-): Promise<ManifestProbeResult> {
+): Promise<ManifestContract> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120_000)
@@ -252,22 +323,19 @@ export async function probeManifest(
       throw new ProbeError("Manifest response is not valid JSON.");
     }
     const summary = manifestSummary(body, url);
-    const result: ManifestProbeResult = {
-      schemaVersion: 1,
-      manifest: {
-        url: publicUrl(url),
-        status: response.status,
-        bytes: bytes.byteLength,
-        exposes: summary.exposes,
-        shared: summary.shared,
-        remotes: summary.remotes,
-        ...(summary.name ? { name: summary.name } : {}),
-        ...(summary.id ? { id: summary.id } : {}),
-        ...(summary.publicPath ? { publicPath: publicUrl(new URL(summary.publicPath, url)) } : {}),
-        ...(summary.remoteEntry
-          ? { remoteEntry: publicUrl(new URL(summary.remoteEntry, url)) }
-          : {}),
-      },
+    const contract: ManifestContract = {
+      url: publicUrl(url),
+      status: response.status,
+      bytes: bytes.byteLength,
+      exposes: summary.exposeKeys,
+      shared: summary.sharedEntries,
+      remotes: summary.remotes,
+      exposeCount: summary.exposes,
+      sharedCount: summary.shared,
+      ...(summary.name ? { name: summary.name } : {}),
+      ...(summary.id ? { id: summary.id } : {}),
+      ...(summary.publicPath ? { publicPath: publicUrl(new URL(summary.publicPath, url)) } : {}),
+      ...(summary.remoteEntry ? { remoteEntry: publicUrl(new URL(summary.remoteEntry, url)) } : {}),
     };
 
     if (options.remoteEntry && summary.remoteEntry) {
@@ -283,7 +351,7 @@ export async function probeManifest(
         fetcher,
         urlOptions,
       );
-      result.remoteEntry = {
+      contract.remoteEntryProbe = {
         url: publicUrl(remote.url),
         status: remote.response.status,
         ...(remote.response.headers.get("content-type")
@@ -294,7 +362,7 @@ export async function probeManifest(
           : { contentLength: numberHeader(remote.response.headers.get("content-length"))! }),
       };
     }
-    return result;
+    return contract;
   } catch (error) {
     if (error instanceof ProbeError) throw error;
     if (error instanceof Error && error.name === "AbortError")
@@ -303,6 +371,30 @@ export async function probeManifest(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function probeManifest(
+  value: string,
+  options: ProbeOptions = {},
+): Promise<ManifestProbeResult> {
+  const contract = await loadManifestContract(value, options);
+  const result: ManifestProbeResult = {
+    schemaVersion: 1,
+    manifest: {
+      url: contract.url,
+      status: contract.status,
+      bytes: contract.bytes,
+      exposes: contract.exposeCount,
+      shared: contract.sharedCount,
+      remotes: contract.remotes,
+      ...(contract.name ? { name: contract.name } : {}),
+      ...(contract.id ? { id: contract.id } : {}),
+      ...(contract.publicPath ? { publicPath: contract.publicPath } : {}),
+      ...(contract.remoteEntry ? { remoteEntry: contract.remoteEntry } : {}),
+    },
+  };
+  if (contract.remoteEntryProbe) result.remoteEntry = contract.remoteEntryProbe;
+  return result;
 }
 
 function numberHeader(value: string | null): number | undefined {

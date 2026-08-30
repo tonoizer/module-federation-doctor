@@ -41,6 +41,7 @@ The examples below use the shorter `mfdoctor` form.
 | [`rules`](#inspect-the-rule-catalog)         | Inspect all built-in rules or one rule's metadata                                          | No             |
 | [`capabilities`](#discover-cli-capabilities) | Print the versioned machine-readable CLI contract                                          | No             |
 | [`probe`](#probe-a-deployed-manifest)        | Validate a deployed manifest and optionally its remote entry                               | **Yes**        |
+| [`compare`](#compare-deployed-manifests)     | Diff two or more deployed manifests (name, exposes, shared, publicPath, remoteEntry)       | **Yes**        |
 
 MFDoctor loads an optional `mfdoctor.config.ts`; command-line flags override its
 values. Use `extends` for [named presets and shareable policy packs](./policy-packs.md).
@@ -253,7 +254,7 @@ mfdoctor probe https://cdn.example.com/mf-manifest.json
 mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
 ```
 
-`probe` is the only command that makes a network request. It downloads the
+`probe` and `compare` are the only commands that make a network request. It downloads the
 manifest, validates that it looks like a federation manifest, and prints a
 small JSON summary. Query strings are removed from output so signed URLs do not
 leak into logs.
@@ -275,13 +276,24 @@ Safety defaults:
 An unreachable or invalid target exits `2`. A valid manifest whose requested
 remote entry returns an HTTP error exits `1`.
 
+## Compare deployed manifests
+
+```bash
+mfdoctor compare https://cdn.example.com/mf-manifest.json https://canary.example.com/mf-manifest.json
+mfdoctor compare https://a.example/mf-manifest.json https://b.example/mf-manifest.json --remote-entry --format json,sarif
+```
+
+`compare` uses the same network policy as `probe` and never downloads or executes
+remote JavaScript. Exit `0` = no material diff, `1` = diffs found, `2` = usage or
+fetch error.
+
 ## Exit codes
 
-| Code | Meaning                                                                                           |
-| ---- | ------------------------------------------------------------------------------------------------- |
-| `0`  | Analysis completed and the active policy passed.                                                  |
-| `1`  | Findings failed policy, or a requested remote entry returned an HTTP error.                       |
-| `2`  | Invalid arguments, missing inputs, incomplete analysis, an unknown rule, or another hard failure. |
+| Code | Meaning                                                                                          |
+| ---- | ------------------------------------------------------------------------------------------------ |
+| `0`  | Analysis completed and the active policy passed, or compare found no material diff.              |
+| `1`  | Findings failed policy, a requested remote entry returned an HTTP error, or compare found diffs. |
+| `2`  | Usage arguments, missing inputs, incomplete analysis, an unknown rule, or another hard failure.  |
 
 ## GitHub Actions
 
