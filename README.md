@@ -9,8 +9,14 @@
 [![documentation](https://img.shields.io/badge/docs-mfdoctor.kevinbeier.com-000000?style=flat)](https://mfdoctor.kevinbeier.com)
 
 `@tonoizer/mfdoctor` finds config, sharing, runtime, manifest, and output
-problems in Module Federation projects built with Vite, Rspack, Rsbuild,
-Webpack, Modern.js, and Nuxt 3/4.
+problems in Module Federation projects. **Supported** bundlers (first-class
+adapter + real build+MFDoctor CI gate): Vite, Rspack, Rsbuild, and Webpack.
+**Partial** (adapter present, limited rules/fixtures, not a full CI gate):
+Modern.js, Nuxt 3/4, and Rolldown-integrated Vite / Vite Plus. Machine-readable
+status:
+[`fixtures/compatibility-matrix.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/fixtures/compatibility-matrix.json);
+human matrix:
+[compatibility](https://mfdoctor.kevinbeier.com/compatibility).
 
 Install as a **devDependency**. MFDoctor is **build/CI-only**: adapters run after
 emit in Node and are not part of the browser bundle. They add CI time, not
@@ -28,7 +34,23 @@ prints **all** findings once at the end of the build (severity, rule, message,
 fix, docs links), then fails when policy says so — only after every finding is
 collected. Clean builds stay quiet by default.
 
-**Vite** (also Rolldown-integrated Vite and Vite Plus — same entry)
+### Bundler matrix
+
+| Bundler                    | Status        | Notes                                                                  |
+| -------------------------- | ------------- | ---------------------------------------------------------------------- |
+| Vite / Vite 5 CommonJS     | **supported** | Primary CI cells in `fixtures/compatibility-matrix.json`               |
+| Rspack / Rsbuild / Webpack | **supported** | First-class adapters; production build+MFDoctor gates                  |
+| Rolldown / Vite Plus       | **partial**   | Same `@tonoizer/mfdoctor/vite` entry; no dedicated Rolldown CI smoke   |
+| Modern.js                  | **partial**   | Adapter + Rspack-under-the-hood smoke; not full `@modern-js/app-tools` |
+| Nuxt 3/4                   | **partial**   | Adapter + unit contract; upstream app build baseline-blocked           |
+
+**Partial** means an adapter exists and some coverage is present, but rule depth,
+fixtures, and CI evidence are not on par with the supported cells — a green
+`mfdoctor check` / plugin emit on a partial stack is not as trustworthy as on
+Vite / Rspack / Rsbuild / Webpack. See the matrix fixture and
+[compatibility](https://mfdoctor.kevinbeier.com/compatibility) for the live rows.
+
+**Vite** (**supported**; Rolldown-integrated Vite and Vite Plus are **partial** — same entry)
 
 ```ts
 import { federation } from "@module-federation/vite";
@@ -37,7 +59,7 @@ import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 plugins: [federation(mfOptions), federationDoctor({ moduleFederation: mfOptions })];
 ```
 
-**Nuxt 3/4** (public `vite:extendConfig` adapter)
+**Nuxt 3/4** (**partial** — public `vite:extendConfig` adapter; limited CI evidence)
 
 ```ts
 import moduleFederationDoctor from "@tonoizer/mfdoctor/nuxt";
@@ -73,7 +95,7 @@ registrations separately. Workspace and UI federation graphs include the
 instance scope in every affected edge and node; Nuxt client/SSR outputs are
 aggregated deterministically.
 
-**Rspack** (direct `@rspack/core` — first-class; not replaced by Modern.js)
+**Rspack** (**supported** — direct `@rspack/core`; not replaced by Modern.js)
 
 ```ts
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
@@ -85,7 +107,7 @@ plugins: [
 ];
 ```
 
-**Rsbuild**
+**Rsbuild** (**supported**)
 
 ```ts
 import { pluginModuleFederation } from "@module-federation/rsbuild-plugin";
@@ -97,7 +119,7 @@ plugins: [
 ];
 ```
 
-**Webpack**
+**Webpack** (**supported**)
 
 ```ts
 import { ModuleFederationPlugin } from "@module-federation/enhanced/webpack";
@@ -268,8 +290,10 @@ Requires Node `>=22.12.0`. [Vite+](https://viteplus.dev/guide/) manages the
 repository's Node.js, package manager, build, test, lint, and format toolchain. The
 workspace policy pins pnpm to `11.17.0`, delays new dependency releases by ten days,
 and requires explicit approval for dependency build scripts. See the
-[compatibility matrix](https://mfdoctor.kevinbeier.com/compatibility) for supported /
-partial / unsupported cells (Vite, Rspack, Rsbuild, Webpack, Modern.js; npm / yarn
+[compatibility matrix](https://mfdoctor.kevinbeier.com/compatibility) and
+[`fixtures/compatibility-matrix.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/fixtures/compatibility-matrix.json)
+for supported / partial / unsupported cells (Vite, Rspack, Rsbuild, Webpack
+**supported**; Modern.js, Nuxt, Rolldown / Vite Plus **partial**; npm / yarn
 consumer notes; terminal / JSON / SARIF on CI).
 
 ```bash
