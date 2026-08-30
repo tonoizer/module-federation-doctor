@@ -209,10 +209,7 @@ const frontmatterTranslations = new Map([
     "Run MFDoctor locally and in CI, across a workspace, against runtime traces, or against a deployed manifest.",
     "MFDoctor lokal und in der CI ausführen, für einen Workspace, gegen Laufzeitspuren oder gegen ein bereitgestelltes Manifest.",
   ],
-  [
-    "Observability latest.json → mfdoctor runtime",
-    "Observability latest.json → mfdoctor runtime",
-  ],
+  ["Observability latest.json → mfdoctor runtime", "Observability latest.json → mfdoctor runtime"],
   [
     "Feed Module Federation Observability latest.json into mfdoctor runtime offline — no in-browser agent.",
     "Module-Federation-Observability-latest.json offline in mfdoctor runtime einlesen — kein In-Browser-Agent.",

@@ -42,10 +42,10 @@ der Kommandozeile weg. Unterstützte Report-Formate sind nur **terminal**,
 
 ## Erwartete Eingaben
 
-| Eingabe | Rolle |
-| ------- | ----- |
+| Eingabe                                                                     | Rolle                                                |
+| --------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `.mf/observability/latest.json` (oder ein anderer Observability-Exportpfad) | Laufzeitbericht vom offiziellen Observability Plugin |
-| `.mf/doctor/**/project.json` (Standard-Glob) | Build-/Check-Projektdaten von MFDoctor |
+| `.mf/doctor/**/project.json` (Standard-Glob)                                | Build-/Check-Projektdaten von MFDoctor               |
 
 `mfdoctor runtime` akzeptiert:
 

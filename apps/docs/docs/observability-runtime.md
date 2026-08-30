@@ -36,10 +36,10 @@ there is no HTML report or `--ui` dashboard.
 
 ## Expected inputs
 
-| Input | Role |
-| ----- | ---- |
+| Input                                                                  | Role                                                  |
+| ---------------------------------------------------------------------- | ----------------------------------------------------- |
 | `.mf/observability/latest.json` (or another Observability export path) | Runtime report from the official Observability Plugin |
-| `.mf/doctor/**/project.json` (default glob) | Build/check project facts from MFDoctor |
+| `.mf/doctor/**/project.json` (default glob)                            | Build/check project facts from MFDoctor               |
 
 `mfdoctor runtime` accepts:
 
