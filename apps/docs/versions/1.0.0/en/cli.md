@@ -252,7 +252,8 @@ remote entry returns an HTTP error exits `1`.
 ## GitHub Actions
 
 Run the workspace gate after the federated apps have emitted their MFDoctor
-project facts:
+project facts. Pin the Action to a **release tag** (not `@main`) so CI stays
+reproducible:
 
 ```yaml
 permissions:
@@ -269,12 +270,16 @@ jobs:
           node-version: 26
           cache: true
       - run: pnpm --filter './apps/docs' build
-      - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@main
+      - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@1.0.0
         with:
           roots: .
           cli: pnpm exec mfdoctor
           formats: terminal,json,sarif
 ```
+
+The Action requires a runnable `mfdoctor` CLI (`cli` input); missing CLI is a
+hard failure. `upload-sarif` needs `permissions.security-events: write` and fails
+loudly when that permission is missing.
 
 Optional action inputs are `build-command`, `globs`, `upload-sarif`, and
 `upload-artifact`. You can also run the CLI directly and upload

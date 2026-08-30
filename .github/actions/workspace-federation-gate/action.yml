@@ -39,6 +39,18 @@ inputs:
       `vp exec mfdoctor`, or `node dist/cli.js`).
     required: false
     default: "mfdoctor"
+  install:
+    description: >-
+      When true, install package-spec with npm before requiring the CLI. Use when
+      the job has not already installed @tonoizer/mfdoctor.
+    required: false
+    default: "false"
+  package-spec:
+    description: >-
+      npm package specifier installed when install is true (for example
+      @tonoizer/mfdoctor@1.1.0).
+    required: false
+    default: "@tonoizer/mfdoctor"
   upload-sarif:
     description: Upload .mf/doctor/results.sarif with github/codeql-action/upload-sarif.
     required: false
@@ -75,6 +87,15 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: ${{ inputs.build-command }}
+
+    - name: Ensure mfdoctor CLI
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        MFDOCTOR_CLI: ${{ inputs.cli }}
+        MFDOCTOR_INSTALL: ${{ inputs.install }}
+        MFDOCTOR_PACKAGE_SPEC: ${{ inputs.package-spec }}
+      run: bash "${{ github.action_path }}/ensure-cli.sh"
 
     - name: Run workspace federation gate
       id: gate
@@ -128,9 +149,18 @@ runs:
         if-no-files-found: ignore
 
     - name: Upload SARIF
+      id: upload-sarif
       if: ${{ always() && inputs.upload-sarif == 'true' && hashFiles(format('{0}/.mf/doctor/results.sarif', inputs.working-directory)) != '' }}
       continue-on-error: true
       uses: github/codeql-action/upload-sarif@3b0bd1d116c0bde30213346b22d4f634d96a2fb0 # v3
       with:
         sarif_file: ${{ inputs.working-directory }}/.mf/doctor/results.sarif
         category: ${{ inputs.sarif-category }}
+
+    - name: Require successful SARIF upload
+      if: ${{ always() && inputs.upload-sarif == 'true' && hashFiles(format('{0}/.mf/doctor/results.sarif', inputs.working-directory)) != '' }}
+      shell: bash
+      env:
+        MFDOCTOR_UPLOAD_SARIF: ${{ inputs.upload-sarif }}
+        MFDOCTOR_SARIF_OUTCOME: ${{ steps.upload-sarif.outcome }}
+      run: bash "${{ github.action_path }}/require-sarif-upload.sh"
