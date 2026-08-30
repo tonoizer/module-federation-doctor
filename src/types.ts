@@ -822,6 +822,13 @@ export interface DoctorOptions {
    */
   diagnosticsDir?: string;
   /**
+   * How many agent prompts to write under `--diagnostics-dir` (default 3).
+   * Opt-in beyond top-3 for noisy workspaces; hard-capped at 25.
+   * Does not change terminal top-3. CLI: `--diagnostics-prompts`.
+   * Env: `MFDOCTOR_DIAGNOSTICS_PROMPTS` (CLI / this option win).
+   */
+  diagnosticsPromptLimit?: number;
+  /**
    * When true (default), skip terminal output on zero findings.
    * Override with `printLog.success: true`, `quiet: false`, CLI `--verbose`,
    * or `MFDOCTOR_QUIET=0`. Force quiet with `MFDOCTOR_QUIET=1`.
@@ -902,6 +909,11 @@ export interface ResolvedDoctorOptions {
   prompt: boolean;
   /** Absolute path for optional diagnostics dump, when configured. */
   diagnosticsDir?: string;
+  /**
+   * Resolved diagnostics dump prompt count (1–25). Defaults to 3.
+   * Terminal top-3 is independent.
+   */
+  diagnosticsPromptLimit: number;
   /** Resolved quiet-success gate for the terminal reporter. */
   quiet: boolean;
   printLog: Required<DoctorPrintLog>;

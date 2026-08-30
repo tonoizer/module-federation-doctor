@@ -93,6 +93,29 @@ describe("CLI arguments", () => {
       },
     );
     expect(
+      parseArgs([
+        "check",
+        "--diagnostics-dir",
+        ".mf/doctor/diagnostics",
+        "--diagnostics-prompts",
+        "10",
+      ]),
+    ).toEqual({
+      command: "check",
+      patterns: [],
+      roots: [],
+      globs: [],
+      workspace: false,
+      ci: false,
+      verbose: false,
+      score: true,
+      prompt: true,
+      forcePrompt: false,
+      diagnosticsDir: ".mf/doctor/diagnostics",
+      diagnosticsPromptLimit: 10,
+    });
+    expect(() => parseArgs(["check", "--diagnostics-prompts", "99"])).toThrow(/dump budget of 25/);
+    expect(
       parseArgs(["prompt", "--finding", "config/name-required", ".mf/doctor/report.json"]),
     ).toEqual({
       command: "prompt",
@@ -607,6 +630,24 @@ describe("CLI arguments", () => {
     const dumpDir = path.join(root, ".mf/doctor/diagnostics");
     await expect(fs.access(path.join(dumpDir, "summary.md"))).resolves.toBeUndefined();
     await expect(fs.access(path.join(dumpDir, "report.json"))).resolves.toBeUndefined();
+    const defaultPrompts = await fs.readdir(path.join(dumpDir, "prompts"));
+    expect(defaultPrompts.length).toBeLessThanOrEqual(3);
+
+    await expect(
+      main([
+        "check",
+        root,
+        "--diagnostics-dir",
+        ".mf/doctor/diagnostics",
+        "--diagnostics-prompts",
+        "10",
+        "--no-prompt",
+      ]),
+    ).resolves.toBe(0);
+    const widerPrompts = await fs.readdir(path.join(dumpDir, "prompts"));
+    expect(widerPrompts.length).toBeGreaterThanOrEqual(defaultPrompts.length);
+    expect(widerPrompts.length).toBeLessThanOrEqual(10);
+
     const cwd = process.cwd();
     process.chdir(root);
     try {

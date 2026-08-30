@@ -83,6 +83,23 @@ describe("resolveOptions", () => {
     expect((await resolveOptions({ root })).quiet).toBe(false);
   });
 
+  it("resolves diagnosticsPromptLimit with env override and hard cap", async () => {
+    stubLocalEnv();
+    const root = path.resolve("fixture");
+    expect((await resolveOptions({ root })).diagnosticsPromptLimit).toBe(3);
+    expect((await resolveOptions({ root, diagnosticsPromptLimit: 8 })).diagnosticsPromptLimit).toBe(
+      8,
+    );
+    vi.stubEnv("MFDOCTOR_DIAGNOSTICS_PROMPTS", "15");
+    expect((await resolveOptions({ root })).diagnosticsPromptLimit).toBe(15);
+    expect((await resolveOptions({ root, diagnosticsPromptLimit: 4 })).diagnosticsPromptLimit).toBe(
+      4,
+    );
+    await expect(resolveOptions({ root, diagnosticsPromptLimit: 99 })).rejects.toThrow(
+      /dump budget of 25/,
+    );
+  });
+
   it("resolves recognizeMfToolkit when set", async () => {
     stubLocalEnv();
     const root = path.resolve("fixture");

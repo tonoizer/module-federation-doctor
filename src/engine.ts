@@ -440,7 +440,10 @@ async function runAnalysis(
       score: resolved.score,
       prompt: resolved.prompt,
     });
-    if (resolved.diagnosticsDir) await writeDiagnosticsDump(report, resolved.diagnosticsDir);
+    if (resolved.diagnosticsDir)
+      await writeDiagnosticsDump(report, resolved.diagnosticsDir, {
+        limit: resolved.diagnosticsPromptLimit,
+      });
     return {
       facts: safeFacts,
       report,

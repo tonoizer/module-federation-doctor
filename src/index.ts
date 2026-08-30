@@ -76,9 +76,14 @@ export { computeHealthScore, isExcludedFromScore, labelForScore } from "./health
 export type { HealthScoreResult } from "./health-score.js";
 export {
   buildAgentPrompt,
+  DEFAULT_PROMPT_FINDINGS,
+  DIAGNOSTICS_PROMPTS_ENV,
   findPromptTarget,
   formatTopAgentPrompts,
+  MAX_DIAGNOSTICS_PROMPT_FINDINGS,
   resolveDiagnosticsDir,
+  resolveDiagnosticsPromptLimit,
+  resolveDiagnosticsPromptLimitFromEnv,
   selectTopFindings,
   writeDiagnosticsDump,
 } from "./agent-prompt.js";

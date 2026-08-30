@@ -116,10 +116,18 @@ the file configuration.
 
 ```bash
 mfdoctor check --diagnostics-dir .mf/doctor/diagnostics
+mfdoctor check --diagnostics-dir .mf/doctor/diagnostics --diagnostics-prompts 10
 ```
 
 Writes `report.json`, `summary.md`, and `prompts/*.md` to a directory inside the
 project root. MFDoctor rejects a diagnostics path that escapes the project.
+
+By default the dump includes the same top-3 prompts as the terminal. Pass
+`--diagnostics-prompts <n>` (integer `1`–`25`) or set
+`MFDOCTOR_DIAGNOSTICS_PROMPTS` to dump more for agent/CI handoff. Values above
+`25` are rejected so the dump stays bounded. Terminal output stays at top-3
+regardless of this flag. You can also set `diagnosticsPromptLimit` in
+DoctorOptions / config; CLI and that option win over the env var.
 
 ## Agenten-Lösungsprompts ausgeben
 

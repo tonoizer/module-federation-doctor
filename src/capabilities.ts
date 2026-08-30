@@ -166,7 +166,14 @@ const DISCOVERY_CONTRACT = {
     "2": "usage-or-incomplete-analysis",
   },
   nonInteractive: {
-    flags: ["--ci", "--diagnostics-dir", "--format", "--no-prompt", "--no-score"],
+    flags: [
+      "--ci",
+      "--diagnostics-dir",
+      "--diagnostics-prompts",
+      "--format",
+      "--no-prompt",
+      "--no-score",
+    ],
     commands: {
       discover: "mfdoctor capabilities",
       check: "mfdoctor check --ci --format json,sarif --diagnostics-dir .mf/doctor/diagnostics",
