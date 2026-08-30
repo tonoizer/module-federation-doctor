@@ -691,6 +691,13 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/copied-webpack-options-on-vite",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.remoteType = "script";
+        facts.moduleFederation!.virtualRuntimeEntry = true;
+      },
+    ],
+    [
       "config/share-scope-undeclared",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.shareScope = ["default"];
@@ -3102,5 +3109,241 @@ describe("Group 6 evidence bridge", () => {
     );
     expect(evaluation).toMatchObject({ outcome: "fail", confidence: "unknown" });
     expect(evaluation?.reasonCode).not.toBe("prerequisite-missing");
+  });
+});
+
+describe("config/copied-webpack-options-on-vite", () => {
+  function baseFacts(bundler: ProjectFacts["bundler"]["name"] = "vite"): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: bundler, mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "src/Widget.ts" },
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/remoteEntry.js",
+            type: "module",
+            shareScope: ["default"],
+          },
+        },
+        shared: {
+          react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+        },
+        shareStrategy: "version-first",
+        vite: {
+          bundleAllCSS: false,
+          ignoreOrigin: false,
+          ssrExternals: [],
+          target: "web",
+          disableRemote: false,
+        },
+      },
+      dependencies: { declared: { "@module-federation/vite": "1.19.1" }, installed: {} },
+      imports: {
+        sourceFiles: ["src/Widget.ts"],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  async function run(facts: ProjectFacts) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find(
+      (item) => item.meta.id === "config/copied-webpack-options-on-vite",
+    )!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  it("stays quiet on a valid Vite MF config", async () => {
+    expect(await run(baseFacts())).toHaveLength(0);
+  });
+
+  it("stays quiet on webpack even when webpack-only keys are present", async () => {
+    const facts = baseFacts("webpack");
+    facts.moduleFederation!.remoteType = "script";
+    facts.moduleFederation!.virtualRuntimeEntry = true;
+    facts.moduleFederation!.runtime = false;
+    facts.moduleFederation!.async = true;
+    facts.moduleFederation!.experiments = {
+      asyncStartup: true,
+      externalRuntime: false,
+      provideExternalRuntime: false,
+      disableRemote: true,
+      target: "node",
+    };
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("flags webpack-only keys and lists Vite equivalents", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remoteType = "script";
+    facts.moduleFederation!.virtualRuntimeEntry = true;
+    facts.moduleFederation!.runtime = false;
+    facts.moduleFederation!.async = { eager: /./ };
+    facts.moduleFederation!.experiments = {
+      asyncStartup: true,
+      externalRuntime: false,
+      provideExternalRuntime: false,
+      disableRemote: true,
+      disableShared: false,
+      disableSnapshot: true,
+      target: "node",
+    };
+    const findings = await run(facts);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      message: expect.stringContaining("remoteType"),
+      evidence: {
+        keys: expect.arrayContaining([
+          "remoteType",
+          "virtualRuntimeEntry",
+          "runtime",
+          "async",
+          "experiments.asyncStartup",
+          "experiments.optimization.disableRemote",
+          "experiments.optimization.disableShared",
+          "experiments.optimization.disableSnapshot",
+          "experiments.optimization.target",
+        ]),
+        equivalents: {
+          remoteType: "remotes.<name>.type",
+          virtualRuntimeEntry: null,
+          runtime: null,
+          async: null,
+          "experiments.asyncStartup": null,
+          "experiments.optimization.disableRemote": "disableRemote",
+          "experiments.optimization.disableShared": "disableShared",
+          "experiments.optimization.disableSnapshot": "disableSnapshot",
+          "experiments.optimization.target": "target",
+        },
+      },
+    });
+  });
+
+  it("fires through analyze when webpack options are pasted onto Vite", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "./src/index.ts" },
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/mf-manifest.json",
+            type: "module",
+          },
+        },
+        remoteType: "script",
+        virtualRuntimeEntry: true,
+        runtime: false,
+        async: true,
+        experiments: {
+          asyncStartup: true,
+          optimization: {
+            disableRemote: true,
+            target: "node",
+          },
+        },
+        publicPath: "auto",
+        target: "web",
+      },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+        "artifact/remote-entry-missing": "off",
+        "config/plugin-package-mismatch": "off",
+        "config/remote-capability-disabled": "off",
+        "config/remote-localhost-in-production": "off",
+        "vite/host-init-inject-ssr": "off",
+        "reliability/async-startup-library-promise": "off",
+      },
+    });
+    const finding = result.report.findings.find(
+      (item) => item.ruleId === "config/copied-webpack-options-on-vite",
+    );
+    expect(finding).toMatchObject({
+      severity: "warning",
+      evidence: {
+        keys: expect.arrayContaining([
+          "remoteType",
+          "virtualRuntimeEntry",
+          "runtime",
+          "async",
+          "experiments.asyncStartup",
+          "experiments.optimization.disableRemote",
+          "experiments.optimization.target",
+        ]),
+      },
+    });
+  });
+
+  it("stays quiet through analyze for a valid Vite config", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "./src/index.ts" },
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/mf-manifest.json",
+            type: "module",
+          },
+        },
+        publicPath: "auto",
+        target: "web",
+        disableRemote: false,
+        manifest: true,
+      },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+        "artifact/remote-entry-missing": "off",
+        "artifact/manifest-invalid": "off",
+        "artifact/manifest-name-mismatch": "off",
+        "artifact/manifest-remote-entry-missing": "off",
+        "artifact/manifest-expose-assets-empty": "off",
+        "config/plugin-package-mismatch": "off",
+        "config/remote-localhost-in-production": "off",
+      },
+    });
+    expect(
+      result.report.findings.some(
+        (item) => item.ruleId === "config/copied-webpack-options-on-vite",
+      ),
+    ).toBe(false);
   });
 });

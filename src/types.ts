@@ -161,6 +161,16 @@ export interface NormalizedMFConfig {
   dts?: NormalizedToggle;
   shareStrategy?: "version-first" | "loaded-first";
   virtualRuntimeEntry?: boolean;
+  /**
+   * Webpack `runtime` (EntryRuntime). Preserved so Vite dialect rules can flag
+   * copied webpack-only options; `@module-federation/vite` does not use it.
+   */
+  runtime?: false | string;
+  /**
+   * Webpack async-boundary option. Preserved so Vite dialect rules can flag
+   * copied webpack-only options; `@module-federation/vite` does not use it.
+   */
+  async?: boolean | Record<string, unknown>;
   experiments?: {
     asyncStartup: boolean;
     externalRuntime: boolean;
@@ -616,6 +626,10 @@ export interface ModuleFederationConfigLike {
   dts?: boolean | Record<string, unknown>;
   shareStrategy?: "version-first" | "loaded-first";
   virtualRuntimeEntry?: boolean;
+  /** Webpack EntryRuntime (`false` | chunk name). Ignored by `@module-federation/vite`. */
+  runtime?: false | string;
+  /** Webpack async-boundary option. Ignored by `@module-federation/vite`. */
+  async?: boolean | Record<string, unknown>;
   experiments?: {
     asyncStartup?: boolean;
     externalRuntime?: boolean;

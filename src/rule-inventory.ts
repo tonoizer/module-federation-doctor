@@ -63,6 +63,7 @@ const ids = [
   "bridge/vue-server-entry",
   "bridge/vue-share-missing",
   "bridge/vue-ssr-fresh-context",
+  "config/copied-webpack-options-on-vite",
   "config/dts-output-dir-mismatch",
   "config/duplicate-plugin-registration",
   "config/eager-tree-shaking-conflict",
@@ -275,6 +276,7 @@ export const MIGRATED_GROUP6_RULE_IDS = [
   "vite/alias-share-bypass",
   "vite/server-origin",
   "config/transform-import-share-conflict",
+  "config/copied-webpack-options-on-vite",
   "doctor/partial-analysis",
 ] as const;
 
@@ -787,6 +789,16 @@ const plans: Record<string, RulePlan> = {
     "project",
     "high",
     "Requires transformImport library facts from options/adapters; skips when unknown.",
+  ),
+  "config/copied-webpack-options-on-vite": plan(
+    6,
+    "warning",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Declared webpack-only options on Vite federation config are exact; quiet when none are present.",
+    VITE,
   ),
   "artifact/manifest-assets-disabled": plan(
     2,
@@ -1495,6 +1507,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "imports.sourceScan",
   ],
   "config/dts-output-dir-mismatch": ["project.scope", "moduleFederation"],
+  "config/copied-webpack-options-on-vite": ["project.scope", "moduleFederation", "bundler.name"],
   "config/duplicate-plugin-registration": [
     "project.scope",
     "bundler.moduleFederationPluginCount",

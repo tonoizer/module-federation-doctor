@@ -118,6 +118,18 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
       "https://module-federation.io/configure/remotetype.html",
     ],
   },
+  "config/copied-webpack-options-on-vite": {
+    category: "correctness",
+    impact:
+      "Webpack ModuleFederationPlugin-only options pasted onto `@module-federation/vite` are ignored or misinterpreted, which leads to silent mis-shares or runtime crashes after a webpack-to-Vite migration.",
+    fix: "Remove the listed webpack-only keys. Prefer the Vite equivalent when one exists (`remotes.<name>.type` for `remoteType`; top-level `disableRemote` / `disableShared` / `disableSnapshot` / `target` for `experiments.optimization.*`). Keys without a Vite equivalent are not applicable and should be deleted.",
+    sources: [
+      vite,
+      "https://module-federation.io/configure/remotetype.html",
+      "https://module-federation.io/configure/experiments.html",
+      core,
+    ],
+  },
   "config/share-scope-undeclared": {
     category: "correctness",
     impact:

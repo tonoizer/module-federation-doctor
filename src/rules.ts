@@ -249,6 +249,51 @@ function hasFederatedSurface(config: NormalizedMFConfig): boolean {
   return Object.keys(config.exposes).length > 0 || Object.keys(config.remotes).length > 0;
 }
 
+/** Webpack-only MF keys commonly pasted onto `@module-federation/vite`. */
+type CopiedWebpackOptionHit = {
+  key: string;
+  /** Vite replacement, or `null` when the option is not applicable on Vite. */
+  viteEquivalent: string | null;
+};
+
+/**
+ * Detect webpack ModuleFederationPlugin-shaped options that Vite ignores or
+ * remaps. Normalized `experiments.disable*` / `experiments.target` come from
+ * webpack's `experiments.optimization.*`; Vite uses the same names at the
+ * top level of the federation options instead.
+ */
+function copiedWebpackOptionsOnVite(config: NormalizedMFConfig): CopiedWebpackOptionHit[] {
+  const hits: CopiedWebpackOptionHit[] = [];
+  if (config.remoteType !== undefined)
+    hits.push({ key: "remoteType", viteEquivalent: "remotes.<name>.type" });
+  if (config.virtualRuntimeEntry !== undefined)
+    hits.push({ key: "virtualRuntimeEntry", viteEquivalent: null });
+  if (config.runtime !== undefined) hits.push({ key: "runtime", viteEquivalent: null });
+  if (config.async !== undefined) hits.push({ key: "async", viteEquivalent: null });
+  // Normalize defaults `asyncStartup` to false when omitted; only an explicit
+  // true is a copied webpack experiment on Vite (Vite's experiments type omits it).
+  if (config.experiments?.asyncStartup === true)
+    hits.push({ key: "experiments.asyncStartup", viteEquivalent: null });
+  if (config.experiments?.disableRemote !== undefined)
+    hits.push({
+      key: "experiments.optimization.disableRemote",
+      viteEquivalent: "disableRemote",
+    });
+  if (config.experiments?.disableShared !== undefined)
+    hits.push({
+      key: "experiments.optimization.disableShared",
+      viteEquivalent: "disableShared",
+    });
+  if (config.experiments?.disableSnapshot !== undefined)
+    hits.push({
+      key: "experiments.optimization.disableSnapshot",
+      viteEquivalent: "disableSnapshot",
+    });
+  if (config.experiments?.target !== undefined)
+    hits.push({ key: "experiments.optimization.target", viteEquivalent: "target" });
+  return hits;
+}
+
 function report(
   context: RuleContext,
   message: string,
@@ -975,6 +1020,23 @@ export const builtInRules: DoctorRule[] = [
         { libraryType, remoteType: config.remoteType },
         "Make the producer library format and consumer remote type agree.",
       );
+  }),
+  createRule("config/copied-webpack-options-on-vite", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const config = mf(context);
+    if (!config) return;
+    const offending = copiedWebpackOptionsOnVite(config);
+    if (offending.length === 0) return;
+    const keys = offending.map((item) => item.key);
+    const equivalents = Object.fromEntries(
+      offending.map((item) => [item.key, item.viteEquivalent]),
+    );
+    report(
+      context,
+      `Webpack-only Module Federation options on a Vite config: ${keys.map((key) => `\`${key}\``).join(", ")}.`,
+      { keys, equivalents },
+      "Remove the listed keys. Use the Vite equivalent when one is listed; otherwise the option is not applicable on `@module-federation/vite`.",
+    );
   }),
   createRule("config/share-scope-undeclared", "error", (context) => {
     const config = mf(context);

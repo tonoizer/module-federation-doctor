@@ -785,6 +785,7 @@ describe("evidence-aware rule contract", () => {
       "vite/alias-share-bypass",
       "vite/server-origin",
       "config/transform-import-share-conflict",
+      "config/copied-webpack-options-on-vite",
       "doctor/partial-analysis",
     ]);
     for (const id of [

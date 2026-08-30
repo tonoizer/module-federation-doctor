@@ -65,6 +65,31 @@ describe("normalization", () => {
     expect(normalized?.bridge).toEqual({ enableBridgeRouter: true, disableAlias: false });
     expect(normalizeModuleFederation({ name: "host" })?.bridge).toBeUndefined();
   });
+
+  it("preserves webpack-only runtime and async options for Vite dialect detection", () => {
+    const normalized = normalizeModuleFederation({
+      name: "host",
+      runtime: false,
+      async: true,
+      remoteType: "script",
+      virtualRuntimeEntry: true,
+      experiments: {
+        asyncStartup: true,
+        optimization: { disableRemote: true, target: "node" },
+      },
+    });
+    expect(normalized).toMatchObject({
+      runtime: false,
+      async: true,
+      remoteType: "script",
+      virtualRuntimeEntry: true,
+      experiments: {
+        asyncStartup: true,
+        disableRemote: true,
+        target: "node",
+      },
+    });
+  });
 });
 
 describe("artifact/manifest-disabled evidence", () => {
