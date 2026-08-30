@@ -287,9 +287,20 @@ mfdoctor compare https://cdn.example.com/mf-manifest.json https://canary.example
 mfdoctor compare https://a.example/mf-manifest.json https://b.example/mf-manifest.json --remote-entry --format json,sarif
 ```
 
-`compare` uses the same network policy as `probe` and never downloads or executes
-remote JavaScript. Exit `0` = no material diff, `1` = diffs found, `2` = usage or
-fetch error.
+`compare` reuses the same network policy as [`probe`](#probe-a-deployed-manifest):
+HTTPS (loopback HTTP only for the initial URL), SSRF blocking, redirect
+revalidation, timeout, and size limits. It never downloads or executes remote
+JavaScript. `--remote-entry` adds a `HEAD` check so remote entry HTTP status is
+part of the diff.
+
+The first URL is the baseline. Each remaining URL is a candidate. Diffs cover
+`name`, `exposes`, `shared` (name and version), `publicPath`, `remoteEntry`, and
+optional `remoteEntryStatus`.
+
+Exit codes: `0` no material diff, `1` diffs found, `2` usage or fetch error.
+With `--format`, JSON lands at `.mf/doctor/compare.json` and SARIF at
+`.mf/doctor/compare.sarif`. Without `--format`, a human summary prints to
+stdout.
 
 ## Exit codes
 

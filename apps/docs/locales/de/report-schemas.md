@@ -86,6 +86,7 @@ opening punctuation such as `(`, `[` or `{`. Other strings are left unchanged.
 | `@tonoizer/mfdoctor/schemas/report.schema.json`                       | Analyze → `report.json`                          | Persisted artifact            |
 | `@tonoizer/mfdoctor/schemas/baseline.schema.json`                     | Baseline generate / update                       | Persisted artifact            |
 | `@tonoizer/mfdoctor/schemas/probe.schema.json`                        | `mfdoctor probe` / `probeManifest`               | CLI / API result              |
+| `@tonoizer/mfdoctor/schemas/compare.schema.json`                      | `mfdoctor compare` / `compareManifests`          | CLI / API result              |
 | `@tonoizer/mfdoctor/schemas/runtime-trace.schema.json`                | `analyzeRuntime` summary                         | Correlation summary           |
 | `@tonoizer/mfdoctor/schemas/identity-correlation.schema.json`         | `correlateSemanticIdentity` / capability helpers | Additive correlation contract |
 | `@tonoizer/mfdoctor/schemas/identity-governance.schema.json`          | `resolveIdentityGovernance`                      | Additive governance contract  |
