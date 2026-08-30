@@ -5,8 +5,8 @@
   "recordedAt": "2026-08-10",
   "summary": "V1 evidence-aware built-in migration closeout for the rules and federation-workspace rollout scopes.",
   "inventory": {
-    "ruleCount": 109,
-    "migratedCount": 109,
+    "ruleCount": 110,
+    "migratedCount": 110,
     "compatibilityExceptionCount": 0,
     "fixture": "fixtures/rule-inventory/v1.json",
     "schema": "schemas/rule-inventory.schema.json"
