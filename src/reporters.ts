@@ -67,6 +67,34 @@ export interface TerminalReportOptions {
   prompt?: boolean;
 }
 
+/** Destination controls for report artifacts and stdout JSON. */
+export interface ReportDestinationOptions extends TerminalReportOptions {
+  /**
+   * When false, skip writing report artifacts to disk.
+   * Defaults to true.
+   */
+  write?: boolean;
+  /**
+   * When true, emit the JSON report on stdout.
+   * Terminal findings move to stderr so stdout stays pipe-clean.
+   * Agent prompts are omitted from that stdout stream.
+   */
+  stdoutJson?: boolean;
+}
+
+function emitStdoutJson(formats: OutputFormat[], options: ReportDestinationOptions): boolean {
+  if (options.stdoutJson) return true;
+  return options.write === false && formats.includes("json");
+}
+
+function writeJsonFile(formats: OutputFormat[], options: ReportDestinationOptions): boolean {
+  if (!formats.includes("json")) return false;
+  if (options.write === false) return false;
+  // `--output -` replaces the report.json destination with stdout.
+  if (options.stdoutJson) return false;
+  return true;
+}
+
 function doctorRuleDocUrl(finding: DoctorFinding): string {
   const docPath = finding.documentation?.startsWith("/")
     ? finding.documentation
@@ -165,9 +193,13 @@ export function formatTerminalReport(
   return lines.join("\n");
 }
 
-function writeTerminal(report: DoctorReport, options: TerminalReportOptions = {}): void {
+function writeTerminal(
+  report: DoctorReport,
+  options: TerminalReportOptions = {},
+  stream: NodeJS.WritableStream = process.stdout,
+): void {
   const text = formatTerminalReport(report, options);
-  if (text) process.stdout.write(text + "\n");
+  if (text) stream.write(text + "\n");
 }
 
 function sarif(report: DoctorReport): Record<string, unknown> {
@@ -229,16 +261,26 @@ async function writeReportFormats(
   report: DoctorReport,
   directory: string,
   formats: OutputFormat[],
-  terminal: TerminalReportOptions,
+  options: ReportDestinationOptions = {},
 ): Promise<void> {
-  if (formats.includes("json"))
+  const write = options.write !== false;
+  const jsonOnStdout = emitStdoutJson(formats, options);
+  if (jsonOnStdout) process.stdout.write(stableStringify(report, 2) + "\n");
+  if (writeJsonFile(formats, options))
     await writeFileAtomic(path.join(directory, "report.json"), stableStringify(report, 2) + "\n");
-  if (formats.includes("sarif"))
+  if (write && formats.includes("sarif"))
     await writeFileAtomic(
       path.join(directory, "results.sarif"),
       stableStringify(sarif(report), 2) + "\n",
     );
-  if (formats.includes("terminal")) writeTerminal(report, terminal);
+  if (formats.includes("terminal")) {
+    // Keep the JSON stdout stream free of agent prompts and terminal noise.
+    writeTerminal(
+      report,
+      jsonOnStdout ? { ...options, prompt: false } : options,
+      jsonOnStdout ? process.stderr : process.stdout,
+    );
+  }
 }
 
 export async function writeReports(
@@ -246,47 +288,50 @@ export async function writeReports(
   report: DoctorReport,
   directory: string,
   formats: OutputFormat[],
-  terminal: TerminalReportOptions = {},
+  options: ReportDestinationOptions = {},
 ): Promise<void> {
-  await fs.mkdir(directory, { recursive: true });
-  const persistedFacts =
-    facts.schemaVersion === 1
-      ? (() => {
-          const { canonicalConfig: _rootCanonicalConfig, analysis, ...legacyFacts } = facts;
-          return {
-            ...legacyFacts,
-            ...(analysis && (analysis.status !== "complete" || analysis.exceeded.length > 0)
-              ? { analysis }
-              : {}),
-            artifacts: { ...facts.artifacts, records: undefined },
-            ...(facts.federationInstances
-              ? {
-                  federationInstances: facts.federationInstances.map((instance) => {
-                    const { canonicalConfig: _instanceCanonicalConfig, ...persistedInstance } =
-                      instance;
-                    return {
-                      ...persistedInstance,
-                      artifacts: { ...instance.artifacts, records: undefined },
-                    };
-                  }),
-                }
-              : {}),
-          };
-        })()
-      : facts;
-  await writeFileAtomic(
-    path.join(directory, "project.json"),
-    stableStringify(persistedFacts, 2) + "\n",
-  );
-  await writeReportFormats(report, directory, formats, terminal);
+  const write = options.write !== false;
+  if (write) {
+    await fs.mkdir(directory, { recursive: true });
+    const persistedFacts =
+      facts.schemaVersion === 1
+        ? (() => {
+            const { canonicalConfig: _rootCanonicalConfig, analysis, ...legacyFacts } = facts;
+            return {
+              ...legacyFacts,
+              ...(analysis && (analysis.status !== "complete" || analysis.exceeded.length > 0)
+                ? { analysis }
+                : {}),
+              artifacts: { ...facts.artifacts, records: undefined },
+              ...(facts.federationInstances
+                ? {
+                    federationInstances: facts.federationInstances.map((instance) => {
+                      const { canonicalConfig: _instanceCanonicalConfig, ...persistedInstance } =
+                        instance;
+                      return {
+                        ...persistedInstance,
+                        artifacts: { ...instance.artifacts, records: undefined },
+                      };
+                    }),
+                  }
+                : {}),
+            };
+          })()
+        : facts;
+    await writeFileAtomic(
+      path.join(directory, "project.json"),
+      stableStringify(persistedFacts, 2) + "\n",
+    );
+  }
+  await writeReportFormats(report, directory, formats, options);
 }
 
 export async function writeFederationReports(
   report: DoctorReport,
   directory: string,
   formats: OutputFormat[],
-  terminal: TerminalReportOptions = {},
+  options: ReportDestinationOptions = {},
 ): Promise<void> {
-  await fs.mkdir(directory, { recursive: true });
-  await writeReportFormats(report, directory, formats, terminal);
+  if (options.write !== false) await fs.mkdir(directory, { recursive: true });
+  await writeReportFormats(report, directory, formats, options);
 }

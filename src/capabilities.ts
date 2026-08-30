@@ -180,11 +180,14 @@ const DISCOVERY_CONTRACT = {
       "--format",
       "--no-prompt",
       "--no-score",
+      "--no-write",
+      "--output",
     ],
     commands: {
       discover: "mfdoctor capabilities",
       check: "mfdoctor check --ci --format json,sarif --diagnostics-dir .mf/doctor/diagnostics",
       prompt: "mfdoctor prompt --finding <ruleId> .mf/doctor/report.json",
+      "stdout-json": "mfdoctor check --output - --no-write",
     },
   },
   schemas: {

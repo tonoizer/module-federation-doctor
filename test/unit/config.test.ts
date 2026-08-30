@@ -85,6 +85,8 @@ describe("resolveOptions", () => {
       output: {
         directory: path.join(root, ".mf/doctor"),
         formats: ["terminal", "json"],
+        write: true,
+        stdout: false,
       },
     });
     expect((await resolveOptions({ root })).baseline).toBeUndefined();

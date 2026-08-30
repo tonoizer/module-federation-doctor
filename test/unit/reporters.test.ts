@@ -398,4 +398,113 @@ describe("reporters", () => {
     expect(formatTerminalReport(report)).not.toContain("Agent prompts");
     expect(formatTerminalReport(report, { prompt: true })).toContain("Agent prompts (top 1)");
   });
+
+  it("emits JSON on stdout for --output - without writing report.json", async () => {
+    const output = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-reporters-stdout-"));
+    roots.push(output);
+    const facts = {
+      schemaVersion: 1,
+      project: { name: "demo", root: "." },
+      bundler: { name: "vite", mode: "development" },
+      capabilities: {
+        config: true,
+        sourceImports: false,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: false,
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
+      artifacts: { emittedAssets: [] },
+    } satisfies ProjectFacts;
+    const report = emptyReport([
+      {
+        schemaVersion: 1,
+        ruleId: "config/name-required",
+        severity: "error",
+        message: "name is required",
+        project: "demo",
+        evidence: {},
+        fingerprint: "abc",
+        documentation: "/rules/config/name-required",
+      },
+    ]);
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const stdoutWrite = process.stdout.write;
+    const stderrWrite = process.stderr.write;
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      stdout.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      stderr.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    try {
+      await writeReports(facts, report, output, ["terminal", "json"], { stdoutJson: true });
+    } finally {
+      process.stdout.write = stdoutWrite;
+      process.stderr.write = stderrWrite;
+    }
+    const payload = JSON.parse(stdout.join("")) as DoctorReport;
+    expect(payload.findings[0]?.ruleId).toBe("config/name-required");
+    expect(stdout.join("")).not.toContain("Agent prompts");
+    expect(stderr.join("")).toContain("config/name-required");
+    expect(stderr.join("")).not.toContain("Agent prompts");
+    await expect(fs.access(path.join(output, "project.json"))).resolves.toBeUndefined();
+    await expect(fs.access(path.join(output, "report.json"))).rejects.toThrow();
+  });
+
+  it("skips all report files with write: false and still emits JSON on stdout", async () => {
+    const output = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-reporters-nowrite-"));
+    roots.push(output);
+    const facts = {
+      schemaVersion: 1,
+      project: { name: "demo", root: "." },
+      bundler: { name: "vite", mode: "development" },
+      capabilities: {
+        config: true,
+        sourceImports: false,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: false,
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
+      artifacts: { emittedAssets: [] },
+    } satisfies ProjectFacts;
+    const report = emptyReport();
+    const stdout: string[] = [];
+    const stdoutWrite = process.stdout.write;
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      stdout.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      await writeReports(facts, report, output, ["json", "sarif"], { write: false });
+    } finally {
+      process.stdout.write = stdoutWrite;
+    }
+    expect(JSON.parse(stdout.join(""))).toMatchObject({ schemaVersion: 1, findings: [] });
+    await expect(fs.readdir(output)).resolves.toEqual([]);
+  });
 });

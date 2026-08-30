@@ -171,6 +171,8 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
       directory: path.resolve(root, options.output?.directory ?? ".mf/doctor"),
       formats:
         options.output?.formats ?? (ci ? ["terminal", "json", "sarif"] : ["terminal", "json"]),
+      write: options.output?.write !== false,
+      stdout: options.output?.stdout === true,
     },
     failOn: options.failOn ?? (ci ? "error" : "never"),
     score: options.score !== false,

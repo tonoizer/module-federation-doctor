@@ -79,6 +79,10 @@ interface Parsed {
   prompt: boolean;
   /** Force printing prompts after check (alias of keeping prompt on). */
   forcePrompt: boolean;
+  /** Emit JSON report on stdout (`--output -`). */
+  stdoutJson: boolean;
+  /** Skip writing report artifacts to disk (`--no-write`). */
+  noWrite: boolean;
   finding?: string;
   diagnosticsDir?: string;
   /** Opt-in dump size for `--diagnostics-dir` (1–25). Terminal top-3 unchanged. */
@@ -105,6 +109,8 @@ Usage:
   mfdoctor check [root]
   mfdoctor check --ci
   mfdoctor check --format terminal,json,sarif
+  mfdoctor check --output -
+  mfdoctor check --no-write
   mfdoctor check --baseline ./mfdoctor.baseline.json
   mfdoctor check --verbose
   mfdoctor check --no-score
@@ -150,6 +156,10 @@ pass --verbose, printLog.success, or MFDOCTOR_QUIET=0 for the old success line.
 
 Score: terminal footer shows Score: N/100 (Great|OK|Needs work) after counts.
 Pass --no-score or score: false to hide it (report JSON still includes score).
+
+Stdout JSON: \`--output -\` prints the report JSON on stdout without agent
+prompts on that stream (terminal findings move to stderr). \`--no-write\` skips
+report files on disk; with JSON formats it still emits JSON on stdout.
 
 Agent prompts: after the score, terminal prints up to three copy-paste fix
 prompts (severity then impact) for local runs. CI hides them by default —
@@ -204,6 +214,8 @@ export function parseArgs(argv: string[]): Parsed {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
     };
   const parsed: Parsed = {
     command,
@@ -217,6 +229,8 @@ export function parseArgs(argv: string[]): Parsed {
     score: true,
     prompt: true,
     forcePrompt: false,
+    stdoutJson: false,
+    noWrite: false,
   };
   let index = 1;
   if (command === "baseline") {
@@ -323,6 +337,17 @@ export function parseArgs(argv: string[]): Parsed {
       index += 1;
     } else if (value?.startsWith("--format=")) {
       parsed.formats = parseFormats(value.slice("--format=".length));
+    } else if (value === "--output") {
+      const next = argv[index + 1];
+      if (next !== "-") throw new Error('--output only supports "-" for stdout JSON.');
+      parsed.stdoutJson = true;
+      index += 1;
+    } else if (value?.startsWith("--output=")) {
+      const target = value.slice("--output=".length);
+      if (target !== "-") throw new Error('--output only supports "-" for stdout JSON.');
+      parsed.stdoutJson = true;
+    } else if (value === "--no-write") {
+      parsed.noWrite = true;
     } else if (value === "--baseline") {
       const next = argv[index + 1];
       if (!next || next.startsWith("-")) throw new Error("--baseline needs a file path.");
@@ -570,6 +595,8 @@ async function runFederationAnalysis(
   analysis?: import("./analysis-budgets.js").AnalysisBudgetReport,
   workspaceDiagnostics?: import("./workspace.js").WorkspaceProjectDiagnostic[],
   ci = false,
+  stdoutJson = false,
+  noWrite = false,
 ): Promise<number> {
   if (files.length === 0 && !workspaceDiagnostics?.length && !isAnalysisIncomplete(analysis)) {
     process.stderr.write("No project reports matched.\n");
@@ -580,11 +607,19 @@ async function runFederationAnalysis(
   const showScore = score !== false && config.score !== false;
   const showPrompt = resolveCliPrompt({ prompt, forcePrompt, ci }, config);
   const result = await analyzeFederation(files, {
-    ...(formats ? { formats, outputDirectory } : {}),
+    ...(formats || stdoutJson
+      ? {
+          formats: formats ?? ["json"],
+          outputDirectory,
+          ...(noWrite ? { write: false } : {}),
+          ...(stdoutJson ? { stdoutJson: true } : {}),
+        }
+      : {}),
     ...(baseline ? { baseline } : {}),
     ...(verbose ? { quiet: false, printLog: { success: true } } : {}),
     score: showScore,
-    prompt: showPrompt,
+    // Keep stdout JSON free of agent prompts unless --prompt was forced.
+    prompt: stdoutJson && !forcePrompt ? false : showPrompt,
     ...(config.rules ? { rules: config.rules } : {}),
     ...(config.alwaysShared ? { alwaysShared: config.alwaysShared } : {}),
     ...(analysis ? { analysis } : {}),
@@ -599,7 +634,7 @@ async function runFederationAnalysis(
     );
     await writeDiagnosticsDump(result.report, absolute, { limit });
   }
-  if (!formats)
+  if (!formats && !stdoutJson)
     process.stdout.write(
       stableStringify({ schemaVersion: 1, findings: result.findings }, 2) + "\n",
     );
@@ -711,6 +746,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           discovery.budget,
           discovery.diagnostics,
           parsed.ci,
+          parsed.stdoutJson,
+          parsed.noWrite,
         );
       }
       if (parsed.patterns.length === 0) {
@@ -734,6 +771,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         undefined,
         undefined,
         parsed.ci,
+        parsed.stdoutJson,
+        parsed.noWrite,
       );
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
@@ -759,10 +798,17 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       const result = await analyzeRuntime({
         tracePath: path.resolve(root, tracePath),
         projectFiles: files,
-        ...(formats ? { formats, outputDirectory } : {}),
+        ...(formats || parsed.stdoutJson
+          ? {
+              formats: formats ?? ["json"],
+              outputDirectory,
+              ...(parsed.noWrite ? { write: false } : {}),
+              ...(parsed.stdoutJson ? { stdoutJson: true } : {}),
+            }
+          : {}),
         ...(parsed.verbose ? { quiet: false, printLog: { success: true } } : {}),
         score: parsed.score !== false && config.score !== false,
-        prompt: resolveCliPrompt(parsed, config),
+        prompt: parsed.stdoutJson && !parsed.forcePrompt ? false : resolveCliPrompt(parsed, config),
       });
       if (parsed.diagnosticsDir || config.diagnosticsDir) {
         const dump = resolveDiagnosticsDir(root, parsed.diagnosticsDir ?? config.diagnosticsDir!);
@@ -771,7 +817,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         );
         await writeDiagnosticsDump(result.report, dump, { limit });
       }
-      if (!formats)
+      if (!formats && !parsed.stdoutJson)
         process.stdout.write(
           stableStringify(
             {
@@ -807,7 +853,15 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       options.diagnosticsPromptLimit = parsed.diagnosticsPromptLimit;
     else if (config.diagnosticsPromptLimit !== undefined)
       options.diagnosticsPromptLimit = config.diagnosticsPromptLimit;
-    if (parsed.formats) options.output = { ...config.output, formats: parsed.formats };
+    if (parsed.formats || parsed.stdoutJson || parsed.noWrite) {
+      options.output = {
+        ...config.output,
+        ...(parsed.formats ? { formats: parsed.formats } : {}),
+        ...(parsed.stdoutJson ? { stdout: true } : {}),
+        ...(parsed.noWrite ? { write: false } : {}),
+      };
+    }
+    if (parsed.stdoutJson && !parsed.forcePrompt) options.prompt = false;
     if (parsed.baseline) options.baseline = parsed.baseline;
     const result = await analyze(options);
     return result.exitCode;

@@ -441,6 +441,8 @@ async function runAnalysis(
       printLog: resolved.printLog,
       score: resolved.score,
       prompt: resolved.prompt,
+      write: resolved.output.write,
+      stdoutJson: resolved.output.stdout,
     });
     if (resolved.diagnosticsDir)
       await writeDiagnosticsDump(report, resolved.diagnosticsDir, {
@@ -649,6 +651,10 @@ export async function analyzeFederation(
   options: {
     outputDirectory?: string;
     formats?: OutputFormat[];
+    /** When false, skip writing report artifacts to disk. Defaults to true. */
+    write?: boolean;
+    /** When true, emit the JSON report on stdout. */
+    stdoutJson?: boolean;
     failOn?: "never" | "warning" | "error";
     baseline?: string | { path: string; failOnSuppressed?: boolean; reportStale?: boolean };
     root?: string;
@@ -883,13 +889,21 @@ export async function analyzeFederation(
   );
   const ui = buildUiPayload(projects, report);
   const formats = options.formats ?? [];
-  if (options.outputDirectory && formats.length > 0)
-    await writeFederationReports(report, options.outputDirectory, formats, {
-      ...(options.quiet !== undefined ? { quiet: options.quiet } : {}),
-      ...(options.printLog !== undefined ? { printLog: options.printLog } : {}),
-      ...(options.score !== undefined ? { score: options.score } : {}),
-      ...(options.prompt !== undefined ? { prompt: options.prompt } : {}),
-    });
+  const stdoutJson = options.stdoutJson === true;
+  if (options.outputDirectory && (formats.length > 0 || stdoutJson))
+    await writeFederationReports(
+      report,
+      options.outputDirectory,
+      formats.length > 0 ? formats : ["json"],
+      {
+        ...(options.quiet !== undefined ? { quiet: options.quiet } : {}),
+        ...(options.printLog !== undefined ? { printLog: options.printLog } : {}),
+        ...(options.score !== undefined ? { score: options.score } : {}),
+        ...(options.prompt !== undefined ? { prompt: options.prompt } : {}),
+        ...(options.write !== undefined ? { write: options.write } : {}),
+        ...(stdoutJson ? { stdoutJson: true } : {}),
+      },
+    );
   const failOn = options.failOn ?? "error";
   const evidence: EvidenceAnalysisMetadata | undefined =
     rolloutMode === "legacy"
