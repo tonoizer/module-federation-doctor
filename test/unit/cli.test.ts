@@ -57,6 +57,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
     });
   });
 
@@ -73,6 +75,8 @@ describe("CLI arguments", () => {
       score: false,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
     });
   });
 
@@ -89,6 +93,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: false,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
     });
     expect(parseArgs(["check", "--prompt", "--no-prompt"])).toEqual({
       command: "check",
@@ -102,6 +108,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: false,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
     });
     expect(parseArgs(["check", "--prompt", "--diagnostics-dir", ".mf/doctor/diagnostics"])).toEqual(
       {
@@ -116,6 +124,8 @@ describe("CLI arguments", () => {
         score: true,
         prompt: true,
         forcePrompt: true,
+        stdoutJson: false,
+        noWrite: false,
         diagnosticsDir: ".mf/doctor/diagnostics",
       },
     );
@@ -139,6 +149,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
       diagnosticsDir: ".mf/doctor/diagnostics",
       diagnosticsPromptLimit: 10,
     });
@@ -157,6 +169,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
       finding: "config/name-required",
       reportPath: ".mf/doctor/report.json",
     });
@@ -176,8 +190,46 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
       formats: ["terminal", "json", "sarif"],
     });
+  });
+
+  it("parses --output - and --no-write", () => {
+    expect(parseArgs(["check", "--output", "-"])).toEqual({
+      command: "check",
+      patterns: [],
+      roots: [],
+      globs: [],
+      urls: [],
+      workspace: false,
+      ci: false,
+      verbose: false,
+      score: true,
+      prompt: true,
+      forcePrompt: false,
+      stdoutJson: true,
+      noWrite: false,
+    });
+    expect(parseArgs(["check", "--output=-", "--no-write"])).toEqual({
+      command: "check",
+      patterns: [],
+      roots: [],
+      globs: [],
+      urls: [],
+      workspace: false,
+      ci: false,
+      verbose: false,
+      score: true,
+      prompt: true,
+      forcePrompt: false,
+      stdoutJson: true,
+      noWrite: true,
+    });
+    expect(() => parseArgs(["check", "--output", ".mf/doctor"])).toThrow(
+      '--output only supports "-" for stdout JSON.',
+    );
   });
 
   it("parses baseline flags and subcommands", () => {
@@ -193,6 +245,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
       baseline: "./mfdoctor.baseline.json",
     });
     expect(
@@ -216,6 +270,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
       reportPath: ".mf/doctor/report.json",
       outPath: "mfdoctor.baseline.json",
     });
@@ -235,6 +291,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
     });
   });
 
@@ -251,6 +309,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
     });
     expect(
       parseArgs([
@@ -274,6 +334,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
       formats: ["json", "sarif"],
     });
     expect(parseArgs(["federation", "apps", "--workspace"])).toEqual({
@@ -288,6 +350,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
     });
   });
 
@@ -305,6 +369,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
     });
     expect(() => parseArgs(["federation", "--workspace", "--group"])).toThrow(
       "--group needs a group name",
@@ -333,6 +399,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
       formats: ["terminal", "json"],
     });
   });
@@ -368,6 +436,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
       timeoutMs: 5000,
       maxBytes: 100000,
       remoteEntry: true,
@@ -387,6 +457,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
     });
   });
 
@@ -608,6 +680,8 @@ describe("CLI arguments", () => {
       score: true,
       prompt: true,
       forcePrompt: false,
+      stdoutJson: false,
+      noWrite: false,
     });
     const chunks: string[] = [];
     const write = process.stdout.write;
@@ -646,6 +720,9 @@ describe("CLI arguments", () => {
     expect(capabilities.formats).toEqual(["terminal", "json", "sarif"]);
     expect(capabilities.exitCodes).toMatchObject({ "0": "success", "1": "policy-fail" });
     expect(capabilities.nonInteractive.commands.discover).toBe("mfdoctor capabilities");
+    expect(capabilities.nonInteractive.commands["stdout-json"]).toBe(
+      "mfdoctor check --output - --no-write",
+    );
     expect(capabilities.schemas.capabilities).toBe("./schemas/capabilities.schema.json");
     expect(capabilities.nonGoals.length).toBeGreaterThan(0);
     expect(capabilities.completeness).toHaveProperty("check");
@@ -681,6 +758,79 @@ describe("CLI arguments", () => {
     const localDefault = await captureStdout(() => main(["check", root]));
     expect(localDefault.code).toBe(0);
     expect(localDefault.text).toContain("Agent prompts");
+  });
+
+  it("emits report JSON on stdout for --output - without agent prompts", async () => {
+    const root = await temporaryProject(`export default {
+      moduleFederation: { name: "host", remotes: {}, exposes: {}, shared: {} },
+      output: { formats: ["terminal", "json"] },
+      failOn: "never",
+      rules: { "doctor/partial-analysis": "off", "config/plugin-package-mismatch": "off" },
+    };`);
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const stdoutWrite = process.stdout.write;
+    const stderrWrite = process.stderr.write;
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      stdout.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      stderr.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    try {
+      await expect(main(["check", root, "--output", "-"])).resolves.toBe(0);
+    } finally {
+      process.stdout.write = stdoutWrite;
+      process.stderr.write = stderrWrite;
+    }
+    const report = JSON.parse(stdout.join("")) as {
+      schemaVersion: number;
+      findings: unknown[];
+      summary: unknown;
+    };
+    expect(report.schemaVersion).toBe(1);
+    expect(report).toHaveProperty("findings");
+    expect(report).toHaveProperty("summary");
+    expect(stdout.join("")).not.toContain("Agent prompts");
+    expect(stderr.join("")).not.toContain("Agent prompts");
+    await expect(fs.access(path.join(root, ".mf/doctor/project.json"))).resolves.toBeUndefined();
+    await expect(fs.access(path.join(root, ".mf/doctor/report.json"))).rejects.toThrow();
+  });
+
+  it("skips report files with --no-write and keeps JSON on stdout", async () => {
+    const root = await temporaryProject(`export default {
+      moduleFederation: { name: "host", remotes: {}, exposes: {}, shared: {} },
+      output: { formats: ["json"] },
+      failOn: "never",
+      rules: { "doctor/partial-analysis": "off", "config/plugin-package-mismatch": "off" },
+    };`);
+    const stdout: string[] = [];
+    const stdoutWrite = process.stdout.write;
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      stdout.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      await expect(main(["check", root, "--no-write"])).resolves.toBe(0);
+    } finally {
+      process.stdout.write = stdoutWrite;
+    }
+    expect(JSON.parse(stdout.join(""))).toMatchObject({ schemaVersion: 1 });
+    await expect(fs.access(path.join(root, ".mf/doctor"))).rejects.toThrow();
+  });
+
+  it("keeps default file output when stdout flags are absent", async () => {
+    const root = await temporaryProject(`export default {
+      moduleFederation: { name: "host", remotes: {}, exposes: {}, shared: {} },
+      output: { formats: ["json"] },
+      failOn: "never",
+      rules: { "doctor/partial-analysis": "off", "config/plugin-package-mismatch": "off" },
+    };`);
+    await expect(main(["check", root])).resolves.toBe(0);
+    await expect(fs.access(path.join(root, ".mf/doctor/report.json"))).resolves.toBeUndefined();
+    await expect(fs.access(path.join(root, ".mf/doctor/project.json"))).resolves.toBeUndefined();
   });
 
   it("prints offline agent prompts from report.json and dumps diagnostics", async () => {

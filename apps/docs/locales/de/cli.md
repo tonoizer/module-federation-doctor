@@ -91,6 +91,22 @@ Accepted formats are `terminal`, `json`, and `sarif`. JSON and SARIF artifacts
 are written below `.mf/doctor/`. A format list containing only `json` or `sarif`
 does not add human-readable terminal output.
 
+### JSON auf stdout ohne Dateien
+
+```bash
+mfdoctor check --output -
+mfdoctor check --no-write
+mfdoctor check --output - --no-write
+```
+
+- `--output -` prints the report JSON on stdout. Agent prompts are not written
+  to that stream; terminal findings move to stderr.
+- `--no-write` skips report artifacts on disk (`project.json`, `report.json`,
+  `results.sarif`). When JSON formats are active, the report still goes to
+  stdout.
+- Default file output under `.mf/doctor/` is unchanged when these flags are
+  omitted.
+
 ### Akzeptierte technische Schulden anwenden
 
 ```bash

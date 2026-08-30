@@ -816,6 +816,16 @@ export interface DoctorOptions {
   output?: {
     directory?: string;
     formats?: OutputFormat[];
+    /**
+     * When false, skip writing report artifacts (`project.json`, `report.json`,
+     * `results.sarif`) to disk. CLI: `--no-write`.
+     */
+    write?: boolean;
+    /**
+     * When true, emit the JSON report on stdout. CLI: `--output -`.
+     * Keeps stdout free of agent prompts; terminal findings go to stderr.
+     */
+    stdout?: boolean;
   };
   failOn?: "never" | "warning" | "error";
   /**
@@ -911,6 +921,10 @@ export interface ResolvedDoctorOptions {
   output: {
     directory: string;
     formats: OutputFormat[];
+    /** When false, skip writing report artifacts to disk. */
+    write: boolean;
+    /** When true, emit the JSON report on stdout. */
+    stdout: boolean;
   };
   failOn: "never" | "warning" | "error";
   /**
