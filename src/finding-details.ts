@@ -46,6 +46,7 @@ export const TYPED_DETAILS_RULE_IDS = [
   "artifact/remote-entry-missing",
   "artifact/expose-missing",
   "artifact/public-path-suspicious",
+  "artifact/react-dom-server-in-web",
   "artifact/types-missing",
   "doctor/partial-analysis",
 ] as const;
@@ -95,6 +96,8 @@ export interface ArtifactDetailsV1 {
   outputPublicPathKind?: string;
   exposes?: string[];
   remoteEntry?: unknown;
+  /** Specifiers or asset paths that triggered an artifact shape finding. */
+  entries?: string[];
 }
 
 export interface DoctorPartialAnalysisDetailsV1 {

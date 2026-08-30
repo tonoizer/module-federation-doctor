@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 109,
-  "migratedCount": 109,
+  "ruleCount": 110,
+  "migratedCount": 110,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
@@ -885,6 +885,113 @@
       },
       "evidenceReads": ["project.scope", "artifacts.manifest"],
       "migrationNote": "Group 2; Artifact public-path evidence is exact when the artifact is complete. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
+      "id": "artifact/react-dom-server-in-web",
+      "version": "1",
+      "group": 2,
+      "status": "migrated",
+      "defaultSeverity": "error",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "react-dom/server (and related server entries) in a web/client Module Federation bundle crash or mis-target the browser runtime — a common MF/SSR boundary failure.",
+        "documentation": "/rules/artifact/react-dom-server-in-web",
+        "fix": "Keep `react-dom/server` (and `react-dom/server.*`) on the SSR/server build only. Use a client entry such as `react-dom/client` for web remotes/hosts, or mark the target with `ssrMode: \"node\"` / `experiments.target: \"node\"` when the artifact is server-only. Set `rules[\"artifact/react-dom-server-in-web\"]` to `\"off\"` when intentional."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "artifact",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "artifact",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "imports.specifiers",
+            "layer": "effective",
+            "subjectKind": "artifact",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "imports.deepImports",
+            "layer": "effective",
+            "subjectKind": "artifact",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "artifacts.manifest",
+            "layer": "artifact",
+            "subjectKind": "artifact",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "artifacts.emittedAssets",
+            "layer": "artifact",
+            "subjectKind": "artifact",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ]
+      },
+      "evidenceReads": [
+        "project.scope",
+        "moduleFederation",
+        "imports.specifiers",
+        "imports.deepImports",
+        "artifacts.manifest",
+        "artifacts.emittedAssets"
+      ],
+      "migrationNote": "Group 2; Web-target and react-dom/server import/shared/artifact signals are exact when source and artifact facts are complete. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
       "id": "artifact/remote-entry-missing",
