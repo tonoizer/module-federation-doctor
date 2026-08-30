@@ -1,5 +1,11 @@
 # Report schemas
 
+> Host teams usually need the build artifacts below and the
+> [Setup](./setup.md) / [CI](./production-readiness.md) path. Additive 1.1.0+
+> library contracts (identity, waivers, graph, capture schemas) are listed in
+> the table for authors extending Doctor — see also
+> [Library / extension](./capabilities.md#library-contracts-110).
+
 MFDoctor writes:
 
 - `.mf/doctor/project.json`: portable, schema-versioned project facts.

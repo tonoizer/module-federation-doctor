@@ -67,6 +67,16 @@ When unresolved package-capable dynamics exist, `shared/unused` does **not**
 claim a package is unused — prefer `doctor/partial-analysis` over a false pass
 or false unused finding.
 
+## Library contracts (1.1.0+)
+
+Die folgenden Abschnitte dokumentieren additive Bibliotheks-APIs für Autorinnen
+und Autoren, die Doctor erweitern (Identity, Ownership, Lineage, Waivers und
+den semantischen Graphen). Host-Teams, die MFDoctor integrieren, bleiben bei
+[Setup](./setup.md), [CI](./production-readiness.md), [Rules](./rules/) und
+[Limitations](./limitations.md). Capture steht auf der eigenen Seite
+[Runtime capture](./runtime-capture.md); JSON-Schema-Exporte sind unter
+[Report schemas](./report-schemas.md) aufgeführt.
+
 ## Korrelation semantischer Identitäten
 
 Der additive Identitätsvertrag ermöglicht deterministische Offline-Korrelation,

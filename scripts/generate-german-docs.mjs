@@ -36,6 +36,8 @@ const headingTranslations = new Map([
   ["## Getting started", "## Erste Schritte"],
   ["## Configuration", "## Konfiguration"],
   ["## Configuration audit", "## Konfigurationsprüfung"],
+  ["## Library contracts (1.1.0+)", "## Library contracts (1.1.0+)"],
+  ["## Next steps", "## Nächste Schritte"],
   ["## Production readiness", "## Produktionsbereitschaft"],
   ["## Runtime capture", "## Laufzeitaufzeichnung"],
   ["## Runtime entry points", "## Laufzeit-Einstiegspunkte"],

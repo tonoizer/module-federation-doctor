@@ -1,5 +1,10 @@
 # External runtime capture contract
 
+> Library / extension docs for authors wiring an external capture tool. Host
+> teams integrating MFDoctor should start with [Setup](./setup.md),
+> [CI](./production-readiness.md), [Rules](./rules/), and
+> [Limitations](./limitations.md).
+
 The runtime capture contract is an explicit handoff boundary for an external
 capture/export tool. It is not a MFDoctor runtime agent.
 

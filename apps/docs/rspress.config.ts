@@ -23,14 +23,16 @@ const guideSidebar = [
     text: "Getting started",
     items: [
       { text: "Setup", link: "/setup" },
-      { text: "Bundler integrations", link: "/integrations" },
+      { text: "CI", link: "/production-readiness" },
+      { text: "Rules", link: "/rules/" },
+      { text: "Limitations", link: "/limitations" },
     ],
   },
   {
     text: "Adoption",
     items: [
+      { text: "Bundler integrations", link: "/integrations" },
       { text: "Monorepos", link: "/monorepos" },
-      { text: "Production readiness", link: "/production-readiness" },
     ],
   },
 ];
@@ -56,10 +58,8 @@ const configurationSidebar = [
 const cliSidebar = [
   { sectionHeaderText: "CLI" },
   { text: "Command reference", link: "/cli" },
-  { text: "Production and CI", link: "/production-readiness" },
+  { text: "CI", link: "/production-readiness" },
   { text: "Fingerprint baselines", link: "/baselines" },
-  { text: "Runtime capture", link: "/runtime-capture" },
-  { text: "Report schemas", link: "/report-schemas" },
 ];
 
 const exampleSidebar = [
@@ -74,15 +74,21 @@ const exampleSidebar = [
 
 const referenceSidebar = [
   { sectionHeaderText: "Reference" },
-  { text: "Public API surface", link: "/api" },
   { text: "Compatibility", link: "/compatibility" },
-  { text: "Capabilities", link: "/capabilities" },
+  { text: "Capability matrix", link: "/capabilities" },
   { text: "Documentation lifecycle", link: "/docs-lifecycle" },
   { text: "Runtime and manifests", link: "/runtime-manifests" },
-  { text: "Runtime capture", link: "/runtime-capture" },
-  { text: "Report schemas", link: "/report-schemas" },
   { text: "Performance", link: "/performance" },
-  { text: "Limitations", link: "/limitations" },
+];
+
+// 1.1.0+ additive library contracts for authors extending Doctor — not the
+// host-team onboarding path (Setup / CI / Rules / Limitations).
+const librarySidebar = [
+  { sectionHeaderText: "Library / extension" },
+  { text: "Identity, waivers, and graph", link: "/capabilities#library-contracts-110" },
+  { text: "Report schemas", link: "/report-schemas" },
+  { text: "Runtime capture", link: "/runtime-capture" },
+  { text: "Public API surface", link: "/api" },
 ];
 
 const ruleCategoryOrder = [
@@ -142,15 +148,14 @@ const sidebar = {
   "/nested-example": exampleSidebar,
   "/standalone-findings": exampleSidebar,
   "/showcase": exampleSidebar,
-  "/api": referenceSidebar,
   "/compatibility": referenceSidebar,
   "/capabilities": referenceSidebar,
   "/docs-lifecycle": referenceSidebar,
   "/runtime-manifests": referenceSidebar,
-  "/runtime-capture": referenceSidebar,
-  "/report-schemas": referenceSidebar,
   "/performance": referenceSidebar,
-  "/limitations": referenceSidebar,
+  "/api": librarySidebar,
+  "/runtime-capture": librarySidebar,
+  "/report-schemas": librarySidebar,
   "/cli": cliSidebar,
   "/configuration-audit": configurationSidebar,
   "/vite-integration": configurationSidebar,
@@ -159,6 +164,11 @@ const sidebar = {
   "/suppressions": configurationSidebar,
   "/baselines": configurationSidebar,
   "/policy-packs": configurationSidebar,
+  "/setup": guideSidebar,
+  "/production-readiness": guideSidebar,
+  "/limitations": guideSidebar,
+  "/integrations": guideSidebar,
+  "/monorepos": guideSidebar,
   "/": guideSidebar,
 };
 
@@ -174,7 +184,7 @@ const nav: MenuNode[] = [
   {
     text: "Guide",
     link: "/setup",
-    activeMatch: "^/(setup|integrations|monorepos|production-readiness)",
+    activeMatch: "^/(setup|integrations|monorepos|production-readiness|limitations)",
   },
   {
     text: "Configuration",
@@ -197,7 +207,11 @@ const nav: MenuNode[] = [
     items: [
       { text: "Examples", link: "/examples" },
       { text: "Compatibility", link: "/compatibility" },
-      { text: "Report schemas", link: "/report-schemas" },
+      { text: "Limitations", link: "/limitations" },
+      {
+        text: "Library / extension",
+        link: "/capabilities#library-contracts-110",
+      },
       { text: `MFDoctor v${docsRelease.version}`, link: docsRelease.releaseUrl },
       {
         text: "Module Federation",
@@ -211,6 +225,7 @@ const germanLabels: Record<string, string> = {
   Guide: "Anleitung",
   "Getting started": "Erste Schritte",
   Setup: "Einrichtung",
+  CI: "CI",
   "Bundler integrations": "Bundler-Integrationen",
   Adoption: "Einführung",
   Monorepos: "Monorepos",
@@ -240,11 +255,14 @@ const germanLabels: Record<string, string> = {
   Resources: "Ressourcen",
   Compatibility: "Kompatibilität",
   Capabilities: "Fähigkeiten",
+  "Capability matrix": "Fähigkeitenmatrix",
   "Documentation lifecycle": "Lebenszyklus der Dokumentation",
   "Public API surface": "Öffentliche API-Oberfläche",
   "Runtime and manifests": "Laufzeit und Manifeste",
   Performance: "Leistung",
   Limitations: "Einschränkungen",
+  "Library / extension": "Bibliothek / Erweiterung",
+  "Identity, waivers, and graph": "Identity, Waivers und Graph",
   Config: "Konfiguration",
   Shared: "Shared",
   Reliability: "Zuverlässigkeit",
