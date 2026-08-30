@@ -251,6 +251,22 @@ Fingerprint baselines keep known debt visible in reports without failing policy
 by default — see [baselines](https://mfdoctor.kevinbeier.com/baselines) and
 [governance](https://mfdoctor.kevinbeier.com/suppressions).
 
+## Consumer CI (no Vite Plus)
+
+Host teams do not need this repository's Vite Plus / `setup-vp` toolchain.
+Install `@tonoizer/mfdoctor`, register a bundler adapter, build, then gate:
+
+```bash
+pnpm add -D @tonoizer/mfdoctor
+# register @tonoizer/mfdoctor/{vite,webpack,rspack,rsbuild} next to your MF plugin
+pnpm run build
+pnpm exec mfdoctor workspace --format terminal,json,sarif
+```
+
+Copy-paste GitHub Actions (Node + pnpm/npm/yarn + the workspace-federation-gate
+Action): [CLI / GitHub Actions](https://mfdoctor.kevinbeier.com/cli#github-actions)
+and [`examples/ci/github-actions-mfdoctor.yml`](./examples/ci/github-actions-mfdoctor.yml).
+
 `runtime` accepts one JSON Observability report, an array of reports, or a
 `{"report": ...}` / `{"reports": [...]}` envelope. Current upstream
 Observability 2.5.3 reports are supported, along with the legacy MFDoctor v1
@@ -334,6 +350,8 @@ Examples:
   cells that emit visible MFDoctor findings; run `vp run demo:standalone`
 - `examples/showcase` — one-rule CLI fixtures + runtime green/fail demos; run
   `vp run demo:showcase`
+- `examples/ci/github-actions-mfdoctor.yml` — copy-paste consumer CI (no Vite Plus /
+  `setup-vp`); see [CLI / GitHub Actions](https://mfdoctor.kevinbeier.com/cli#github-actions)
 - From `examples/`: `vp run demo` runs showcase + standalone + mixed-issues +
   nested (or `vp run demo:examples` from the repo root)
 - See [Examples](https://mfdoctor.kevinbeier.com/examples) for the full catalog. The

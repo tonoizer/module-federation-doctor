@@ -13,6 +13,10 @@ MFDoctor runs after your Module Federation build, while the bundler still has th
 configuration and emitted files needed to explain a problem. It adds nothing to
 the browser bundle.
 
+This first-run path uses the published `@tonoizer/mfdoctor` package and your
+existing bundler (Vite, Webpack, Rspack, or Rsbuild). It does **not** require
+Vite Plus, `vp`, or this repository's `setup-vp` GitHub Action.
+
 ## Installation
 
 Add MFDoctor as a development dependency:
@@ -103,7 +107,8 @@ mfdoctor workspace apps packages --format terminal,json,sarif
 
 The command exits `0` when policy passes, `1` for policy failures, and `2` when
 analysis cannot finish. See the [CLI command reference](./cli.md) for explicit
-federation globs, baselines, runtime traces, and deployed probes.
+federation globs, baselines, runtime traces, deployed probes, and a
+[Plus-free GitHub Actions snippet](./cli.md#github-actions).
 
 ## Was MFDoctor abdeckt
 

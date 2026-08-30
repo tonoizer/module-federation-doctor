@@ -285,11 +285,21 @@ remote entry returns an HTTP error exits `1`.
 
 ## GitHub Actions
 
-Run the workspace gate after the federated apps have emitted their MFDoctor
-project facts. Pin the Action to a **release tag** (not `@main`) so CI stays
-reproducible:
+Host teams copy this consumer workflow — ordinary Node + your package manager.
+It does **not** use Vite Plus, `vp`, or this repository's `setup-vp` action.
+
+Run the workspace gate only after every federated app that registers an
+MFDoctor adapter has built (so `.mf/doctor/project.json` facts exist). Pin the
+Action to a **release tag** (not `@main`) so CI stays reproducible:
 
 ```yaml
+name: MFDoctor
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
 permissions:
   contents: read
   security-events: write
@@ -299,18 +309,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: voidzero-dev/setup-vp@v1.17.0
+
+      - uses: pnpm/action-setup@v4
         with:
-          node-version: 26
-          cache: true
-      - run: vp pack
-      - run: vp run --filter './apps/docs' build
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      # Production build for each host/remote that registers an MFDoctor adapter.
+      - run: pnpm run build
+
       - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@1.1.0
         with:
           roots: .
-          cli: vp exec mfdoctor
+          cli: pnpm exec mfdoctor
           formats: terminal,json,sarif
 ```
+
+npm or Yarn work the same way: install with `npm ci` / `yarn install --frozen-lockfile`,
+build with your usual script, then set `cli: npx mfdoctor` or `cli: yarn mfdoctor`.
 
 The Action **requires** a runnable `mfdoctor` / `@tonoizer/mfdoctor` CLI (via the
 `cli` input). Missing CLI is a hard failure. If the job has not installed the
@@ -322,7 +343,16 @@ If that permission is missing, the Action fails with an actionable error instead
 of a quiet upload miss. Set `upload-sarif: "false"` when you do not want code
 scanning upload.
 
+A ready-to-copy file lives at
+[`examples/ci/github-actions-mfdoctor.yml`](https://github.com/tonoizer/module-federation-doctor/blob/main/examples/ci/github-actions-mfdoctor.yml).
+
 Optional action inputs are `build-command`, `globs`, `install`, `package-spec`,
-`upload-sarif`, and `upload-artifact`. You can also run the CLI directly and
-upload `.mf/doctor/results.sarif` with `github/codeql-action/upload-sarif` when
+`upload-sarif`, and `upload-artifact`. You can also skip the Action and run the
+CLI directly:
+
+```bash
+pnpm exec mfdoctor workspace --format terminal,json,sarif
+```
+
+Upload `.mf/doctor/results.sarif` with `github/codeql-action/upload-sarif` when
 code scanning is enabled.

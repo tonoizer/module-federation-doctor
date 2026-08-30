@@ -1,0 +1,63 @@
+# Consumer copy-paste: MFDoctor workspace gate without Vite Plus / setup-vp.
+#
+# Paste into your host repo as `.github/workflows/mfdoctor.yml` (or merge the
+# job into an existing workflow). Adjust install/build to match your package
+# manager and monorepo layout. This file is documentation only — it is not a
+# live workflow in the MFDoctor repository.
+#
+# Pin workspace-federation-gate to a release tag (for example @1.1.0), not @main.
+#
+# Prerequisites:
+# 1. `@tonoizer/mfdoctor` is a devDependency
+# 2. Each federated app registers a bundler adapter
+#    (`@tonoizer/mfdoctor/{vite,webpack,rspack,rsbuild}`)
+# 3. `build` (below) emits `.mf/doctor/project.json` for every host/remote
+
+name: MFDoctor
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  federation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      # Production build for each host/remote that registers an MFDoctor adapter.
+      - run: pnpm run build
+
+      - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@1.1.0
+        with:
+          roots: .
+          cli: pnpm exec mfdoctor
+          formats: terminal,json,sarif
+
+      # npm alternative (replace the pnpm steps + cli above):
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: 22
+      #     cache: npm
+      # - run: npm ci
+      # - run: npm run build
+      # - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@1.1.0
+      #   with:
+      #     roots: .
+      #     cli: npx mfdoctor
+      #     formats: terminal,json,sarif
