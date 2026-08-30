@@ -210,6 +210,11 @@ pnpm exec mfdoctor check --ci --format terminal,json,sarif \
 pnpm exec mfdoctor prompt --finding config/name-required .mf/doctor/report.json
 ```
 
+The published package ships the same playbook as [`AGENTS.md`](./AGENTS.md) and
+the Cursor/agent skill at [`skills/mfdoctor/SKILL.md`](./skills/mfdoctor/SKILL.md)
+(capabilities → check JSON → prompt → rebuild). Hard rules: no suppressions and
+no `probe` unless the user asked; do not claim green from `check` alone.
+
 `capabilities` is versioned JSON and does not load project configuration or use
 the network. A check exits `0` when policy passes, `1` when policy fails, and
 `2` when analysis is incomplete. The diagnostics directory contains bounded
@@ -334,9 +339,12 @@ MFDoctor docs URL, official MF sources, exit codes) plus an offline health score
 footer (`Score: N/100`) and top-3 copy-paste agent prompts. Use `--no-score` /
 `--no-prompt` to hide terminal footers; JSON reports still include
 `summary.score`. Offline: `mfdoctor prompt --finding <id>` and
-`--diagnostics-dir` for handoff dumps. For Module Federation concepts, use
-`.agents/skills/mf`. Upstream evidence for rule work lives in
-the [contribution guide](https://github.com/tonoizer/module-federation-doctor/blob/main/CONTRIBUTING.md#research-sources).
+`--diagnostics-dir` for handoff dumps. After install, agents should read
+[`AGENTS.md`](./AGENTS.md) or `skills/mfdoctor/SKILL.md` from the package. For
+Module Federation concepts, use the upstream `mf` skill (this repository vendors
+it under `.agents/skills/mf` for maintainers). Upstream evidence for rule work
+lives in the
+[contribution guide](https://github.com/tonoizer/module-federation-doctor/blob/main/CONTRIBUTING.md#research-sources).
 
 ## Contribution
 
