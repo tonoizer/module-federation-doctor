@@ -173,6 +173,51 @@ export async function validateFixturePayloads(): Promise<void> {
         capabilities: "./schemas/capabilities.schema.json",
         report: "./schemas/report.schema.json",
       },
+      nonGoals: ["HTML report UI or interactive web dashboard"],
+      completeness: {
+        check: "One-project offline analysis.",
+        emit: "Post-emit adapter facts.",
+        workspace: "Cross-project federation gate.",
+        probe: "Explicit deployed-manifest validation.",
+        runtime: "Offline Observability correlation.",
+      },
+      githubAction: {
+        name: "workspace-federation-gate",
+        uses: "tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate",
+        pinToTag: "Pin uses: to a release tag, not @main.",
+      },
+      networkPolicy: {
+        offlineByDefault: true,
+        networkCommands: ["probe"],
+        probe: {
+          httpsRequired: true,
+          httpAllowedForLoopbackInitialUrl: true,
+          ssrfProtection: true,
+          blockPrivateLinkLocalMetadataHosts: true,
+          maxRedirects: 5,
+          defaultTimeoutMs: 10000,
+          defaultMaxBytes: 2097152,
+          neverExecutesRemoteEntry: true,
+          rejectEmbeddedCredentials: true,
+        },
+      },
+      bundlerMatrix: {
+        source: "./fixtures/compatibility-matrix.json",
+        supported: ["vite"],
+        partial: ["modern"],
+        bundlers: [
+          { id: "vite", status: "supported", adapter: "@tonoizer/mfdoctor/vite" },
+          { id: "modern", status: "partial", adapter: "@tonoizer/mfdoctor/modern" },
+        ],
+        localCi: [
+          {
+            id: "vite",
+            bundler: "vite",
+            fixture: "examples/mixed-federation/host-vite",
+            coverage: ["Vite 8"],
+          },
+        ],
+      },
     },
     "representative CLI capabilities",
   );

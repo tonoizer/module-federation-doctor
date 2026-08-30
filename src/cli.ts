@@ -146,8 +146,10 @@ offline. \`--diagnostics-dir\` writes report.json, prompts/*.md, and summary.md
 inside the project root only.
 
 Capabilities: \`mfdoctor capabilities\` prints the versioned JSON contract for
-commands, formats, exit codes, noninteractive handoff commands, and public
-schema paths. It does not load project configuration or access the network.
+commands, formats, exit codes, noninteractive handoff commands, public schema
+paths, non-goals, completeness, GitHub Action identity, network policy, and the
+bundler matrix derived from fixtures/compatibility-matrix.json. It does not load
+project configuration or access the network.
 
 Baselines: use fingerprint baselines for incremental adoption. Suppressed
 findings still appear in reports but do not fail policy unless

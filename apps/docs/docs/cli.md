@@ -46,8 +46,12 @@ mfdoctor capabilities
 This command prints a versioned JSON contract without loading project
 configuration or accessing the network. Agents and wrappers can use it to
 discover supported commands, output formats, public schema paths, exit-code
-meanings, and noninteractive handoff commands. Validate the payload with the
-shipped [`capabilities.schema.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/schemas/capabilities.schema.json)
+meanings, noninteractive handoff commands, explicit non-goals, analysis
+completeness boundaries, GitHub Action identity, network policy, and the
+bundler matrix derived from
+[`fixtures/compatibility-matrix.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/fixtures/compatibility-matrix.json).
+Validate the payload with the shipped
+[`capabilities.schema.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/schemas/capabilities.schema.json)
 when integrating across package versions.
 
 ## Check one project

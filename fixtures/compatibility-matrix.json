@@ -1,5 +1,37 @@
 {
   "schemaVersion": 1,
+  "bundlers": [
+    {
+      "id": "vite",
+      "status": "supported",
+      "adapter": "@tonoizer/mfdoctor/vite"
+    },
+    {
+      "id": "rolldown",
+      "status": "partial",
+      "adapter": "@tonoizer/mfdoctor/vite"
+    },
+    {
+      "id": "rspack",
+      "status": "supported",
+      "adapter": "@tonoizer/mfdoctor/rspack"
+    },
+    {
+      "id": "rsbuild",
+      "status": "supported",
+      "adapter": "@tonoizer/mfdoctor/rsbuild"
+    },
+    {
+      "id": "webpack",
+      "status": "supported",
+      "adapter": "@tonoizer/mfdoctor/webpack"
+    },
+    {
+      "id": "modern",
+      "status": "partial",
+      "adapter": "@tonoizer/mfdoctor/modern"
+    }
+  ],
   "localCi": [
     {
       "id": "vite",

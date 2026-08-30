@@ -12,7 +12,12 @@
     "schemaVersions",
     "exitCodes",
     "nonInteractive",
-    "schemas"
+    "schemas",
+    "nonGoals",
+    "completeness",
+    "githubAction",
+    "networkPolicy",
+    "bundlerMatrix"
   ],
   "properties": {
     "schemaVersion": { "const": 1 },
@@ -78,6 +83,102 @@
         "type": "string",
         "pattern": "^\\./schemas/[a-z0-9.-]+\\.schema\\.json$"
       }
+    },
+    "nonGoals": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "completeness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check", "emit", "workspace", "probe", "runtime"],
+      "properties": {
+        "check": { "type": "string", "minLength": 1 },
+        "emit": { "type": "string", "minLength": 1 },
+        "workspace": { "type": "string", "minLength": 1 },
+        "probe": { "type": "string", "minLength": 1 },
+        "runtime": { "type": "string", "minLength": 1 }
+      }
+    },
+    "githubAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "uses", "pinToTag"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "uses": { "type": "string", "minLength": 1 },
+        "pinToTag": { "type": "string", "minLength": 1 }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offlineByDefault", "networkCommands", "probe"],
+      "properties": {
+        "offlineByDefault": { "type": "boolean" },
+        "networkCommands": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "probe": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "httpsRequired",
+            "httpAllowedForLoopbackInitialUrl",
+            "ssrfProtection",
+            "blockPrivateLinkLocalMetadataHosts",
+            "maxRedirects",
+            "defaultTimeoutMs",
+            "defaultMaxBytes",
+            "neverExecutesRemoteEntry",
+            "rejectEmbeddedCredentials"
+          ],
+          "properties": {
+            "httpsRequired": { "type": "boolean" },
+            "httpAllowedForLoopbackInitialUrl": { "type": "boolean" },
+            "ssrfProtection": { "type": "boolean" },
+            "blockPrivateLinkLocalMetadataHosts": { "type": "boolean" },
+            "maxRedirects": { "type": "integer", "minimum": 0 },
+            "defaultTimeoutMs": { "type": "integer", "minimum": 1 },
+            "defaultMaxBytes": { "type": "integer", "minimum": 1 },
+            "neverExecutesRemoteEntry": { "type": "boolean" },
+            "rejectEmbeddedCredentials": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "bundlerMatrix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "supported", "partial", "bundlers", "localCi"],
+      "properties": {
+        "source": { "const": "./fixtures/compatibility-matrix.json" },
+        "supported": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "partial": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "bundlers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/bundlerEntry" }
+        },
+        "localCi": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/localCiCell" }
+        }
+      }
     }
   },
   "$defs": {
@@ -92,6 +193,30 @@
           "type": "array",
           "uniqueItems": true,
           "items": { "enum": ["terminal", "json", "sarif"] }
+        }
+      }
+    },
+    "bundlerEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "adapter"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["supported", "partial"] },
+        "adapter": { "type": "string", "minLength": 1 }
+      }
+    },
+    "localCiCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "bundler", "fixture"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "bundler": { "type": "string", "minLength": 1 },
+        "fixture": { "type": "string", "minLength": 1 },
+        "coverage": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
         }
       }
     }

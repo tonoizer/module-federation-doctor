@@ -156,6 +156,7 @@
   "files": [
     "dist",
     "schemas",
+    "fixtures/compatibility-matrix.json",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
