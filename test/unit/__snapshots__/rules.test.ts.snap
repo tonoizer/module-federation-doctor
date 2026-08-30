@@ -16,6 +16,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "config/remote-manifest-recommended",
   "config/observability-plugin-recommended",
   "config/library-remote-type-mismatch",
+  "config/copied-webpack-options-on-vite",
   "config/share-scope-undeclared",
   "config/runtime-plugin-missing",
   "config/get-public-path-invalid",

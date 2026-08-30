@@ -34,7 +34,7 @@ the old controller is unchanged.
 
 ## V1 rules closeout (#232)
 
-All 108 current built-ins are `migrated` in `src/rule-inventory.ts` and exported
+All 110 current built-ins are `migrated` in `src/rule-inventory.ts` and exported
 to `fixtures/rule-inventory/v1.json`. There are no undocumented legacy built-ins.
 
 | Scope                  | Bridge                                          | Parity evidence                                    |

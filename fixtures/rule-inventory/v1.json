@@ -2973,6 +2973,61 @@
       "migrationNote": "Group 1; SSR target plus source heuristics for fresh Vue Bridge context; pass-unknown when sources are thin. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
+      "id": "config/copied-webpack-options-on-vite",
+      "version": "1",
+      "group": 6,
+      "status": "migrated",
+      "defaultSeverity": "warning",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "Webpack ModuleFederationPlugin-only options pasted onto `@module-federation/vite` are ignored or misinterpreted, which leads to silent mis-shares or runtime crashes after a webpack-to-Vite migration.",
+        "documentation": "/rules/config/copied-webpack-options-on-vite",
+        "fix": "Remove the listed webpack-only keys. Prefer the Vite equivalent when one exists (`remotes.<name>.type` for `remoteType`; top-level `disableRemote` / `disableShared` / `disableSnapshot` / `target` for `experiments.optimization.*`). Keys without a Vite equivalent are not applicable and should be deleted."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "bundler.name",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "vite"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "vite"
+          }
+        ]
+      },
+      "evidenceReads": ["project.scope", "moduleFederation", "bundler.name"],
+      "migrationNote": "Group 6; Declared webpack-only options on Vite federation config are exact; quiet when none are present. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
       "id": "config/dts-output-dir-mismatch",
       "version": "1",
       "group": 1,

@@ -166,6 +166,7 @@ const EXPECTED_GROUP6_RULE_IDS = [
   "vite/alias-share-bypass",
   "vite/server-origin",
   "config/transform-import-share-conflict",
+  "config/copied-webpack-options-on-vite",
   "doctor/partial-analysis",
 ] as const;
 
