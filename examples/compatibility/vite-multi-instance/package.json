@@ -12,6 +12,6 @@
   },
   "devDependencies": {
     "@tonoizer/mfdoctor": "workspace:*",
-    "vite": "5.4.19"
+    "vite": "5.4.21"
   }
 }

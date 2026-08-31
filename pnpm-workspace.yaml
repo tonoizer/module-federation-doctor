@@ -63,6 +63,13 @@ minimumReleaseAgeExclude:
   - "@module-federation/webpack-bundler-runtime@2.8.2"
 # Reject releases whose npm trust evidence is weaker than an earlier release.
 trustPolicy: no-downgrade
+# Vite 5.4.21 is the security backport for intentional Vite 5 compatibility cells.
+# It was published after Vite 7.1.11 adopted OIDC trusted publishing, so pnpm's
+# publish-date-based trust check treats the backport as a downgrade (provenance
+# vs trusted publisher) even though it is the correct Vite 5 patch line.
+# Keep this exact; do not broaden by package name or wildcard.
+trustPolicyExclude:
+  - vite@5.4.21
 # Re-check the lockfile against the registry; do not treat it as implicitly trusted.
 trustLockfile: false
 # Transitive dependencies must not come from arbitrary git repositories or URLs.
