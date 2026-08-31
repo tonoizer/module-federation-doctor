@@ -46,7 +46,7 @@ minimumReleaseAgeExclude:
   - "@module-federation/dts-plugin@2.8.2"
   - "@module-federation/enhanced@2.8.2"
   - "@module-federation/rsbuild-plugin@2.8.2"
-  - "@module-federation/vite@1.20.4"
+  - "@module-federation/vite@1.20.7"
   - "@module-federation/bridge-react-webpack-plugin@2.8.2"
   - "@module-federation/cli@2.8.2"
   - "@module-federation/error-codes@2.8.2"
