@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@module-federation/vite": "1.20.4",
+    "@module-federation/vite": "1.20.7",
     "@mfdoctor-example/shared-ui": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
