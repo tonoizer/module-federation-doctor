@@ -1,0 +1,44 @@
+{
+  "capabilities": {
+    "config": true,
+    "emittedAssets": false,
+    "installedVersions": true,
+    "manifest": false,
+    "sourceImports": true,
+    "stats": false
+  },
+  "findings": [
+    {
+      "details": {
+        "entry": "http://cdn.example.com/remoteEntry.js",
+        "remote": "shop"
+      },
+      "detailsSchema": "remotes.config.v1",
+      "documentation": "/rules/config/remote-http-insecure",
+      "evidence": {
+        "entry": "http://cdn.example.com/remoteEntry.js",
+        "name": "shop"
+      },
+      "fingerprint": "aad0eafc068fda2276d500d41467e3aff6e518386627d6d6f1803602c6d19e7d",
+      "message": "Remote \"shop\" uses plain HTTP outside localhost.",
+      "project": "@mfdoctor-showcase/remote-http-insecure",
+      "ruleId": "config/remote-http-insecure",
+      "schemaVersion": 1,
+      "severity": "warning",
+      "suggestion": "Use HTTPS so remote code cannot be changed in transit."
+    }
+  ],
+  "schemaVersion": 1,
+  "status": {
+    "complete": false,
+    "incompleteReasons": ["missing-emit"]
+  },
+  "summary": {
+    "errors": 0,
+    "info": 0,
+    "projects": 1,
+    "score": 99,
+    "scoreLabel": "Great",
+    "warnings": 1
+  }
+}
