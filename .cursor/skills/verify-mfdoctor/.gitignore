@@ -1,0 +1,4 @@
+# Scratch temps for local verification runs (never commit).
+scratch/
+tmp/
+*.log

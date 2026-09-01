@@ -1,0 +1,275 @@
+{
+  "bundlerMatrix": {
+    "bundlers": [
+      {
+        "adapter": "@tonoizer/mfdoctor/vite",
+        "id": "vite",
+        "status": "supported"
+      },
+      {
+        "adapter": "@tonoizer/mfdoctor/vite",
+        "id": "rolldown",
+        "status": "partial"
+      },
+      {
+        "adapter": "@tonoizer/mfdoctor/rspack",
+        "id": "rspack",
+        "status": "supported"
+      },
+      {
+        "adapter": "@tonoizer/mfdoctor/rsbuild",
+        "id": "rsbuild",
+        "status": "supported"
+      },
+      {
+        "adapter": "@tonoizer/mfdoctor/webpack",
+        "id": "webpack",
+        "status": "supported"
+      },
+      {
+        "adapter": "@tonoizer/mfdoctor/modern",
+        "id": "modern",
+        "status": "partial"
+      }
+    ],
+    "localCi": [
+      {
+        "bundler": "vite",
+        "coverage": ["Vite 8", "ESM config", "manifest", "stats", "production"],
+        "fixture": "examples/mixed-federation/host-vite",
+        "id": "vite"
+      },
+      {
+        "bundler": "vite",
+        "coverage": ["Vite 5", "CommonJS config", "async ESM bridge", "manifest", "production"],
+        "fixture": "examples/compatibility/vite-cjs",
+        "id": "vite-cjs-v5"
+      },
+      {
+        "bundler": "vite",
+        "coverage": [
+          "Vite 8",
+          "Nitro 3",
+          "React SSR",
+          ".output/public client artifacts",
+          ".output/server SSR artifacts",
+          "production"
+        ],
+        "fixture": "examples/compatibility/vite-nitro-react",
+        "id": "vite-nitro-react"
+      },
+      {
+        "bundler": "rspack",
+        "coverage": ["Rspack", "Enhanced", "manifest", "stats", "production"],
+        "fixture": "examples/mixed-federation/remote-rspack",
+        "id": "rspack"
+      },
+      {
+        "bundler": "rsbuild",
+        "coverage": ["Rsbuild", "nested manifest path", "production"],
+        "fixture": "examples/mixed-federation/remote-rsbuild",
+        "id": "rsbuild"
+      },
+      {
+        "bundler": "webpack",
+        "coverage": [
+          "Webpack",
+          "CommonJS adapter",
+          "two federation plugin instances",
+          "per-instance artifact ownership",
+          "production"
+        ],
+        "fixture": "examples/compatibility/webpack",
+        "id": "webpack"
+      },
+      {
+        "bundler": "vite",
+        "coverage": [
+          "Vite 5",
+          "ESM config",
+          "two federation plugin instances",
+          "per-instance manifest and stats ownership",
+          "production"
+        ],
+        "fixture": "examples/compatibility/vite-multi-instance",
+        "id": "vite-multi-instance"
+      },
+      {
+        "bundler": "rspack",
+        "coverage": [
+          "Rspack",
+          "Enhanced",
+          "single-instance adapter",
+          "manifest",
+          "stats",
+          "production"
+        ],
+        "fixture": "examples/compatibility/rspack-adapter",
+        "id": "rspack-adapter"
+      },
+      {
+        "bundler": "rsbuild",
+        "coverage": ["Rsbuild", "single-instance adapter", "manifest", "stats", "production"],
+        "fixture": "examples/compatibility/rsbuild-adapter",
+        "id": "rsbuild-adapter"
+      },
+      {
+        "bundler": "modern",
+        "coverage": ["Modern.js adapter", "Rspack lifecycle", "production"],
+        "fixture": "examples/compatibility/modern",
+        "id": "modern"
+      }
+    ],
+    "partial": ["rolldown", "modern"],
+    "source": "./fixtures/compatibility-matrix.json",
+    "supported": ["vite", "rspack", "rsbuild", "webpack"]
+  },
+  "commands": {
+    "baseline": {
+      "description": "Generate, update, or prune a finding fingerprint baseline.",
+      "network": false
+    },
+    "capabilities": {
+      "description": "Print this machine-readable CLI discovery contract.",
+      "formats": ["json"],
+      "network": false
+    },
+    "check": {
+      "description": "Analyze one project and apply its finding policy.",
+      "formats": ["terminal", "json", "sarif"],
+      "network": false
+    },
+    "compare": {
+      "description": "Diff deployed MF manifests for name, exposes, shared, publicPath, and remoteEntry.",
+      "formats": ["terminal", "json", "sarif"],
+      "network": true
+    },
+    "federation": {
+      "description": "Analyze explicit project facts or a discovered workspace.",
+      "formats": ["terminal", "json", "sarif"],
+      "network": false
+    },
+    "help": {
+      "description": "Print CLI usage and command guidance.",
+      "network": false
+    },
+    "probe": {
+      "description": "Validate a deployed manifest and optionally its remote entry.",
+      "network": true
+    },
+    "prompt": {
+      "description": "Print offline fix prompts from a saved report.",
+      "network": false
+    },
+    "rules": {
+      "description": "Print built-in rule metadata or one rule.",
+      "network": false
+    },
+    "runtime": {
+      "description": "Correlate a runtime trace with local project facts.",
+      "formats": ["terminal", "json", "sarif"],
+      "network": false
+    },
+    "workspace": {
+      "description": "Discover project facts and gate a federation workspace.",
+      "formats": ["terminal", "json", "sarif"],
+      "network": false
+    }
+  },
+  "completeness": {
+    "check": "One-project offline analysis of config, imports, and on-disk artifacts; weaker without emit/manifest facts.",
+    "emit": "Post-emit adapter facts (manifest, stats, emitted assets) when MFDoctor runs in the bundler after build.",
+    "probe": "Explicit deployed-manifest validation and optional remoteEntry HEAD; never downloads or executes remote JS.",
+    "runtime": "Offline correlation of a user-supplied Observability export with local project facts; never fetches URLs from the trace.",
+    "workspace": "Cross-project federation gate over discovered .mf/doctor/project.json facts; does not invent missing emit evidence."
+  },
+  "exitCodes": {
+    "0": "success",
+    "1": "policy-fail",
+    "2": "usage-or-incomplete-analysis"
+  },
+  "formats": ["terminal", "json", "sarif"],
+  "githubAction": {
+    "name": "workspace-federation-gate",
+    "pinToTag": "Pin uses: to a release tag (for example @v1.1.0). Do not pin to @main for production workflows.",
+    "uses": "tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate"
+  },
+  "networkPolicy": {
+    "networkCommands": ["compare", "probe"],
+    "offlineByDefault": true,
+    "probe": {
+      "blockPrivateLinkLocalMetadataHosts": true,
+      "defaultMaxBytes": 2097152,
+      "defaultTimeoutMs": 10000,
+      "httpAllowedForLoopbackInitialUrl": true,
+      "httpsRequired": true,
+      "maxRedirects": 5,
+      "neverExecutesRemoteEntry": true,
+      "rejectEmbeddedCredentials": true,
+      "ssrfProtection": true
+    }
+  },
+  "nonGoals": [
+    "HTML report UI or interactive web dashboard",
+    "In-browser MFDoctor runtime agent or client-bundle injection",
+    "MCP server schema or tool surface",
+    "General --fix autofix for arbitrary findings",
+    "Unsolicited network probe or compare (both are explicit-only)",
+    "Unsolicited suppressions or auto-waiving findings",
+    "Scraping private Module Federation plugin internals",
+    "Runtime-only Module Federation without a bundler MF build plugin"
+  ],
+  "nonInteractive": {
+    "commands": {
+      "check": "mfdoctor check --ci --format json,sarif --diagnostics-dir .mf/doctor/diagnostics",
+      "discover": "mfdoctor capabilities",
+      "prompt": "mfdoctor prompt --finding <ruleId> .mf/doctor/report.json",
+      "stdout-json": "mfdoctor check --output - --no-write"
+    },
+    "flags": [
+      "--ci",
+      "--diagnostics-dir",
+      "--diagnostics-prompts",
+      "--format",
+      "--no-prompt",
+      "--no-score",
+      "--no-write",
+      "--output"
+    ]
+  },
+  "package": {
+    "name": "@tonoizer/mfdoctor",
+    "version": "1.1.0"
+  },
+  "schemaVersion": 1,
+  "schemaVersions": {
+    "baseline": 1,
+    "capabilities": 1,
+    "compare": 1,
+    "config": 1,
+    "evidence": 2,
+    "identity": 1,
+    "probe": 1,
+    "project": 1,
+    "report": 1,
+    "rule-inventory": 1,
+    "runtime-capture": 1,
+    "runtime-trace": 1,
+    "ui": 1
+  },
+  "schemas": {
+    "baseline": "./schemas/baseline.schema.json",
+    "capabilities": "./schemas/capabilities.schema.json",
+    "compare": "./schemas/compare.schema.json",
+    "config": "./schemas/config.schema.json",
+    "evidence": "./schemas/evidence.schema.json",
+    "identity": "./schemas/identity.schema.json",
+    "probe": "./schemas/probe.schema.json",
+    "project": "./schemas/project.schema.json",
+    "report": "./schemas/report.schema.json",
+    "rule-inventory": "./schemas/rule-inventory.schema.json",
+    "runtime-capture": "./schemas/runtime-capture.schema.json",
+    "runtime-trace": "./schemas/runtime-trace.schema.json",
+    "ui": "./schemas/ui.schema.json"
+  }
+}
