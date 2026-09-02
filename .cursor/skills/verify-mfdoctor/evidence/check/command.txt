@@ -1,1 +1,1 @@
-node /workspace/dist/cli.js check /tmp/mfdoctor-verify-3283/fixture --ci --format json --output - --no-write 
+node /workspace/dist/cli.js check /tmp/mfdoctor-verify-2552/fixture --ci --format json --output - --no-write 

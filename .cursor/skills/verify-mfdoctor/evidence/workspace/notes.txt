@@ -1,0 +1,5 @@
+feature-id: workspace
+conflict-exit: 1
+conflict-rule-ids: ['federation/version-conflict']
+clean-exit: 0
+clean-rule-ids: []

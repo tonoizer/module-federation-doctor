@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "ruleCount": 113,
+  "sampleRuleIds": [
+    "artifact/dts-disabled",
+    "artifact/expose-missing",
+    "artifact/manifest-assets-disabled",
+    "artifact/manifest-disabled",
+    "artifact/manifest-expose-assets-empty",
+    "artifact/manifest-invalid",
+    "artifact/manifest-name-mismatch",
+    "artifact/manifest-remote-entry-missing",
+    "artifact/manifest-shared-version-mismatch",
+    "artifact/public-path-non-string-manifest",
+    "artifact/public-path-suspicious",
+    "artifact/react-dom-server-in-web",
+    "artifact/remote-entry-missing",
+    "artifact/types-metadata-missing",
+    "artifact/types-missing"
+  ]
+}

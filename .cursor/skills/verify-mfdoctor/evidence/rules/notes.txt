@@ -1,0 +1,6 @@
+feature-id: rules
+schemaVersion: 1
+ruleCount: 113
+sample: config/remote-http-insecure severity=warning
+unknown-exit: 2
+catalog-truncated: stdout-catalog-excerpt.json (full catalog omitted from commit)

@@ -1,0 +1,4 @@
+feature-id: capabilities
+package: @tonoizer/mfdoctor
+commands-ok: true
+exit: 0
