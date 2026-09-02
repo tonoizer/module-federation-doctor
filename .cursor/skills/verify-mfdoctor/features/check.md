@@ -28,7 +28,7 @@ Preconditions:
 - **Run offline check.** From repo root:
   `node dist/cli.js check "$FIXTURE" --ci --format json --output - --no-write`.
 - **Observe findings.** Stdout JSON includes `findings` (e.g. `config/remote-http-insecure` or `config/expose-key-invalid`) and `status` (`complete` / `incompleteReasons`).
-- **Observe exit.** Warning-only fixtures may exit `0` under default CI `failOn: error`; error-severity fixtures exit `1`. Incomplete analysis uses exit `2` when applicable.
+- **Observe exit.** Warning-only fixtures may exit `0` under default CI `failOn: error`; error-severity fixtures exit `1`. Exit `2` is for analysis-budget incompleteness or usage/hard failure — `status.incompleteReasons` such as `missing-emit` can still appear with exit `0`/`1` and must not be treated as a full green claim.
 - **Confirm no-write.** Assert `$FIXTURE/.mf` was **not** created when `--no-write` was used.
 - **Optional write path.** On a temp copy only: omit `--no-write`, use `--format terminal,json,sarif` and optionally `--diagnostics-dir .mf/doctor/diagnostics`. Confirm `.mf/doctor/report.json` exists afterward.
 - **Proof.** Store command, cwd, stdout JSON, stderr, exit code under
@@ -43,8 +43,8 @@ Helper:
 
 ## Gotchas
 
-- Do **not** claim the project is green from check alone — showcase/static check often reports `status.incompleteReasons` including `missing-emit`.
+- Do **not** claim the project is green from check alone — showcase/static check often reports `status.incompleteReasons` including `missing-emit` even when the process exits `0` or `1`.
 - `--diagnostics-dir` must stay inside the project root.
 - Prefer JSON over ANSI; with `--output -`, terminal findings move to stderr.
 - Copying fixtures into `/tmp` avoids dirtying tracked `examples/` trees.
-- `doctor/partial-analysis` is incomplete, not a pass.
+- Showcase fixtures often turn `doctor/partial-analysis` **off**; rely on `status.incompleteReasons` / exit `2` (budget) rather than expecting that ruleId on every check.

@@ -11,6 +11,7 @@
 ## How to get to it (user POV)
 
 - After building a monorepo: `mfdoctor workspace` or `mfdoctor workspace apps packages`.
+- `mfdoctor federation --workspace` is the same discovery + gate path (use `workspace` for normal monorepo proofs; use bare `federation` only for explicit `project.json` globs).
 - This repo already dogfoods: `pnpm test:nested` builds `examples/nested-federation/**` then runs `node dist/cli.js workspace examples/nested-federation`.
 - Offline fixture trees: `fixtures/workspaces/clean` (exit `0`) and `fixtures/workspaces/conflict` (exit `1` under `--ci`).
 
