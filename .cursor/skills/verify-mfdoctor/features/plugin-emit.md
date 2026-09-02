@@ -1,17 +1,23 @@
 # Plugin emit
 
-The post-emit build plugin (`federationDoctor` from `@tonoizer/mfdoctor/vite` and sibling adapters) is the primary MFDoctor DX. A production-style example build writes `.mf/doctor/project.json` (and usually `report.json`) after the bundler emit so CLI `check` / `workspace` can consume real facts.
+The post-emit build plugin is the primary MFDoctor DX. Vite registers
+`federationDoctor` from `@tonoizer/mfdoctor/vite`; sibling adapters export
+bundler-idiomatic names (`ModuleFederationDoctorPlugin` / webpack,
+`moduleFederationDoctorPlugin` / rspack+modern,
+`pluginModuleFederationDoctor` / rsbuild). A production-style example build
+writes `.mf/doctor/project.json` (and usually `report.json`) after the bundler
+emit so CLI `check` / `workspace` can consume real facts.
 
 ## Sub-features
 
-- `emit-register` registers `federationDoctor({ moduleFederation, … })` beside the Module Federation plugin.
+- `emit-register` registers the matching adapter beside the Module Federation plugin (Vite: `federationDoctor({ moduleFederation, … })`).
 - `emit-project-json` writes `.mf/doctor/project.json` after a successful build.
 - `emit-findings` can leave intentional findings in `.mf/doctor/report.json` (red cells use `failOn: "never"` so the build still finishes).
 
 ## How to get to it (user POV)
 
-- Add the matching adapter in a Vite/Rspack/Rsbuild/Webpack/Modern config (see `examples/standalone-findings/*/`).
-- Build the example package, e.g. `vp run --filter @mfdoctor-standalone/vite build`.
+- Add the matching adapter in a Vite/Rspack/Rsbuild/Webpack config under `examples/standalone-findings/{vite,webpack,rspack,rsbuild}/` (four cells — Modern lives under `examples/compatibility/modern/`, not this tree).
+- Build the example package, e.g. `pnpm exec vp run --filter @mfdoctor-standalone/vite build` (bare `vp` needs `node_modules/.bin` on `PATH`).
 - Or run the catalog script: `pnpm demo:standalone` (builds all four standalone cells).
 
 ## Driving it with the post-emit plugin
@@ -22,7 +28,7 @@ Preconditions:
 - Example dependencies installed (`pnpm install` at repo root covers workspace packages).
 - Start the build as a child process you own; record its PID.
 
-- **Build one red cell.** Run `vp run --filter @mfdoctor-standalone/vite build` from the repo root (or an equivalent `pnpm`/`vp` filter build for another standalone cell).
+- **Build one red cell.** Run `pnpm exec vp run --filter @mfdoctor-standalone/vite build` from the repo root (or an equivalent filter build for another standalone cell).
 - **Observe emit.** Confirm `examples/standalone-findings/vite/.mf/doctor/project.json` exists after the build exits.
 - **Observe findings.** Read `.mf/doctor/report.json` and expect rule IDs such as `config/remote-http-insecure`, `config/remote-manifest-recommended`, and `reliability/version-first-offline-remotes` (see `examples/standalone-findings/README.md`).
 - **Optional follow-up.** Run `node dist/cli.js check examples/standalone-findings/vite --format json --output -` and confirm findings align with the emitted report.

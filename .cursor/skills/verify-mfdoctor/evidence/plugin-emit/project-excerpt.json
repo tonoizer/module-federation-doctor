@@ -1,0 +1,37 @@
+{
+  "project": {
+    "name": "@mfdoctor-standalone/vite",
+    "root": "."
+  },
+  "bundler": {
+    "federationInstances": [
+      {
+        "configDigest": "sha256:fef951ae9834496f6319a9a8d142000630f2d2ef0323cbfc520958a8b94ac742",
+        "id": "mfid:v1:federation-instance:3c1c5b8d75d2dae14e5af213",
+        "pluginName": "module-federation-vite",
+        "registrationGroup": "sha256:0e6a9edb41674cc5787d93a661f44717b079f8343cc40c360c0765cc1558cfb2"
+      }
+    ],
+    "lifecycle": {
+      "engine": "rolldown",
+      "evidence": ["meta.rolldownVersion"],
+      "flavor": "rolldown-vite",
+      "postEmitHook": "closeBundle"
+    },
+    "mode": "development",
+    "name": "vite",
+    "version": "8.1.5",
+    "viteConfig": {
+      "serverOrigin": null,
+      "serverPort": 5173
+    }
+  },
+  "capabilities": {
+    "config": true,
+    "emittedAssets": true,
+    "installedVersions": true,
+    "manifest": true,
+    "sourceImports": true,
+    "stats": true
+  }
+}

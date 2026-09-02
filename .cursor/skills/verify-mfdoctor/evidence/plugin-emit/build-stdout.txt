@@ -1,0 +1,177 @@
+~/examples/standalone-findings/vite$ vite build ⊘ cache disabled
+vite v8.1.5 building client environment for production...
+[2Ktransforming...✓ 94 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                                                                                             1.31 kB │ gzip:  0.44 kB
+dist/mf-manifest.json                                                                                                                       1.86 kB │ gzip:  0.52 kB
+dist/assets/mf-entry-bootstrap-0-72f772fe.js                                                                                                2.45 kB
+dist/mf-stats.json                                                                                                                          4.95 kB │ gzip:  1.03 kB
+dist/.vite/manifest.json                                                                                                                    8.30 kB │ gzip:  1.01 kB
+dist/assets/virtual_mf-exposes___mfe_internal__standalone_vite__remoteEntry-_hash_-ChiJXsfH.js                                              0.02 kB │ gzip:  0.04 kB
+dist/assets/virtualExposes-DTnBLWy_.js                                                                                                      0.12 kB │ gzip:  0.12 kB
+dist/assets/remoteEntry-DWSUdhJO.js                                                                                                         0.14 kB │ gzip:  0.14 kB
+dist/assets/ssrEntryLoader-C9HkUeYf.js                                                                                                      0.17 kB │ gzip:  0.15 kB
+dist/assets/rolldown-runtime-CNC7AqOf.js                                                                                                    0.87 kB │ gzip:  0.50 kB
+dist/assets/vite-preload-helper-Czpn1I53.js                                                                                                 1.19 kB │ gzip:  0.67 kB
+dist/assets/index-BbZiyqfF.js                                                                                                               1.32 kB │ gzip:  0.68 kB
+dist/assets/hostInit-BVHJEfmY.js                                                                                                            2.26 kB │ gzip:  1.09 kB
+dist/assets/_virtual_mf___mfe_internal__standalone_vite__mf_owner__1__loadShare__react_mf_1_jsx_mf_2_runtime__loadShare__.js-oK697DDE.js    2.57 kB │ gzip:  1.07 kB
+dist/assets/_virtual_mf-localSharedImportMap___mfe_internal__standalone_vite__mf_owner__1-Cj803GBR.js                                       2.70 kB │ gzip:  0.71 kB
+dist/assets/ssrVmStrategy-B0fCaHs5-OpuX3r7X.js                                                                                              3.80 kB │ gzip:  1.76 kB
+dist/assets/_virtual_mf___mfe_internal__standalone_vite__mf_owner__1__loadShare__react_mf_2_dom__loadShare__.js-CrYgB5AR.js                 7.05 kB │ gzip:  2.53 kB
+dist/assets/ssrEntryLoader-0NnTjWR1-D_yWDSSj.js                                                                                            11.79 kB │ gzip:  4.74 kB
+dist/assets/_virtual_mf___mfe_internal__standalone_vite__mf_owner__1__loadShare__react__loadShare__.js-BcBJlz_X.js                         13.29 kB │ gzip:  4.73 kB
+dist/assets/virtual_mf-REMOTE_ENTRY_ID___mfe_internal__standalone_vite__remoteEntry-_hash_-wgy6xnrw.js                                     17.06 kB │ gzip:  5.72 kB
+dist/assets/dist-C5gBqcps.js                                                                                                               62.60 kB │ gzip: 18.84 kB
+dist/assets/_virtual_mf___mfe_internal__standalone_vite__mf_owner__1__loadShare__react_mf_2_dom_mf_1_client__loadShare__.js-FK4HFy0O.js   181.37 kB │ gzip: 57.30 kB
+
+✓ built in 484ms
+MFDoctor
+
+@mfdoctor-standalone/vite
+  error config/async-boundary-missing
+    Host entry "src/main.tsx" synchronously imports shared package "react-dom", which can crash with RUNTIME-005 without an async boundary.
+    fix: Move application startup behind `import('./bootstrap')` (or another dynamic app-shell import), enable `experiments.asyncStartup`, or set `eager: true` on those shared packages when intentional.
+    docs: https://mfdoctor.kevinbeier.com/rules/config/async-boundary-missing
+    source: https://module-federation.io/guide/troubleshooting/runtime.html#runtime-005
+    source: https://module-federation.io/configure/experiments.html
+    source: https://module-federation.io/configure/shared.html
+  error shared/prefix-share-recommended
+    Deep imports from "react-dom" are not covered by a prefix share key.
+    fix: Add "react-dom/" to shared (or add the exact observed subpaths), or set rules["shared/prefix-share-recommended"] to "off" when the deep imports are intentional.
+    docs: https://mfdoctor.kevinbeier.com/rules/shared/prefix-share-recommended
+    source: https://module-federation.io/configure/shared.html
+    source: https://module-federation.io/guide/bridge/react-bridge
+  warning config/remote-http-insecure
+    Remote "shop" uses plain HTTP outside localhost.
+    fix: Use HTTPS so remote code cannot be changed in transit.
+    docs: https://mfdoctor.kevinbeier.com/rules/config/remote-http-insecure
+    source: https://module-federation.io/configure/remotes.html
+  warning reliability/version-first-offline-remotes
+    `version-first` can fail startup when a remote is offline and no retry/`errorLoadRemote` recovery plugin is configured.
+    fix: Add `@module-federation/retry-plugin` or an `errorLoadRemote` runtime plugin, or use `loaded-first` when delayed failure is acceptable.
+    docs: https://mfdoctor.kevinbeier.com/rules/reliability/version-first-offline-remotes
+    source: https://module-federation.io/configure/shareStrategy.html
+    source: https://module-federation.io/configure/runtimeplugins.html
+  info config/remote-manifest-recommended
+    Remote "shop" points straight to a remote entry.
+    fix: Prefer `mf-manifest.json` when you need dynamic type hints, preloading, and DevTools metadata.
+    docs: https://mfdoctor.kevinbeier.com/rules/config/remote-manifest-recommended
+    source: https://module-federation.io/configure/remotes.html
+    source: https://module-federation.io/configure/manifest.html
+  info vite/server-origin
+    `server.origin` is missing while this app consumes remotes.
+    fix: Set `server.origin` to `http://localhost:5173` (or the public origin remote consumers should use in development). Override the recommendation with the `recommendedOrigin` rule option, or set `requireServerOrigin: false` when the dev server is intentionally not consumed remotely.
+    docs: https://mfdoctor.kevinbeier.com/rules/vite/server-origin
+
+2 error(s), 2 warning(s), 2 info
+Score: 96/100 (Great)
+
+Agent prompts (top 3)
+
+--- prompt 1/3 ---
+# Fix: config/async-boundary-missing
+
+Fix exactly this MFDoctor finding. Do not change unrelated rules.
+Do not suggest suppressions or baseline entries unless the user asks.
+
+## Finding
+- Rule: `config/async-boundary-missing`
+- Severity: error
+- Project: @mfdoctor-standalone/vite
+- Fingerprint: `618334148f177368e6ba0e091f71da67be21a1c646c0806de6bcf39ace444d3f`
+- Message: Host entry "src/main.tsx" synchronously imports shared package "react-dom", which can crash with RUNTIME-005 without an async boundary.
+
+## Impact
+A host entry that synchronously imports non-eager shared packages can hit RUNTIME-005 (`loadShareSync`) because Module Federation needs an async boundary before shared negotiation finishes.
+
+## Fix
+Move application startup behind `import('./bootstrap')` (or another dynamic app-shell import), enable `experiments.asyncStartup`, or set `eager: true` on those shared packages when intentional.
+
+## Evidence
+- asyncStartup: false
+- entry: src/main.tsx
+- errorCode: RUNTIME-005
+- packages: ["react-dom"]
+- remotes: ["shop"]
+
+## Docs
+- MFDoctor: https://mfdoctor.kevinbeier.com/rules/config/async-boundary-missing
+- Source: https://module-federation.io/guide/troubleshooting/runtime.html#runtime-005
+- Source: https://module-federation.io/configure/experiments.html
+- Source: https://module-federation.io/configure/shared.html
+
+## Verify
+```bash
+mfdoctor check
+```
+
+--- prompt 2/3 ---
+# Fix: shared/prefix-share-recommended
+
+Fix exactly this MFDoctor finding. Do not change unrelated rules.
+Do not suggest suppressions or baseline entries unless the user asks.
+
+## Finding
+- Rule: `shared/prefix-share-recommended`
+- Severity: error
+- Project: @mfdoctor-standalone/vite
+- Fingerprint: `e8049c19c84332c0c6a74da314d775b0c69518e4c967f65cb69470decb3322f9`
+- Message: Deep imports from "react-dom" are not covered by a prefix share key.
+
+## Impact
+Observed `react/...` or `react-dom/...` imports are not covered by the root shared key, so framework subpaths can bypass shared-scope negotiation and create duplicate renderer/runtime modules. Bridge projects use the focused `bridge/react-dom-prefix-missing` contract instead of this rule.
+
+## Fix
+Add "react-dom/" to shared (or add the exact observed subpaths), or set rules["shared/prefix-share-recommended"] to "off" when the deep imports are intentional.
+
+## Evidence
+- fileCount: 1
+- files: ["src/main.tsx"]
+- package: react-dom
+- sharedKeys: ["react-dom"]
+- specifiers: ["react-dom/client"]
+
+## Docs
+- MFDoctor: https://mfdoctor.kevinbeier.com/rules/shared/prefix-share-recommended
+- Source: https://module-federation.io/configure/shared.html
+- Source: https://module-federation.io/guide/bridge/react-bridge
+
+## Verify
+```bash
+mfdoctor check
+```
+
+--- prompt 3/3 ---
+# Fix: config/remote-http-insecure
+
+Fix exactly this MFDoctor finding. Do not change unrelated rules.
+Do not suggest suppressions or baseline entries unless the user asks.
+
+## Finding
+- Rule: `config/remote-http-insecure`
+- Severity: warning
+- Project: @mfdoctor-standalone/vite
+- Fingerprint: `f7e4087a28e6a69144eef04d29021e0f8c96b2e32323d554052a1222b1a7645f`
+- Message: Remote "shop" uses plain HTTP outside localhost.
+
+## Impact
+Remote code fetched over plain HTTP can be changed in transit.
+
+## Fix
+Use HTTPS so remote code cannot be changed in transit.
+
+## Evidence
+- entry: http://cdn.example.com/remoteEntry.js
+- name: shop
+
+## Docs
+- MFDoctor: https://mfdoctor.kevinbeier.com/rules/config/remote-http-insecure
+- Source: https://module-federation.io/configure/remotes.html
+
+## Verify
+```bash
+mfdoctor check
+```
+

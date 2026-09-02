@@ -1,0 +1,6 @@
+feature-id: plugin-emit
+build-exit: 0
+project-json: present
+report-rule-ids: ['config/async-boundary-missing', 'shared/prefix-share-recommended', 'config/remote-http-insecure', 'reliability/version-first-offline-remotes', 'config/remote-manifest-recommended', 'vite/server-origin']
+expected-ok: true
+invocation: pnpm exec vp (PATH harness fix)

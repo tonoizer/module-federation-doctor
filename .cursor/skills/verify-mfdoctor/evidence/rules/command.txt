@@ -1,0 +1,3 @@
+node dist/cli.js rules
+node dist/cli.js rules config/remote-http-insecure
+node dist/cli.js rules definitely/not-a-rule

@@ -1,0 +1,10 @@
+{
+  "ruleIds": [
+    "config/async-boundary-missing",
+    "shared/prefix-share-recommended",
+    "config/remote-http-insecure",
+    "reliability/version-first-offline-remotes",
+    "config/remote-manifest-recommended",
+    "vite/server-origin"
+  ]
+}

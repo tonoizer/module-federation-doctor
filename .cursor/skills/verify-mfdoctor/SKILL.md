@@ -41,7 +41,8 @@ For **plugin-emit** proofs only: start the example build as a **child process yo
 own** (record its PID). Example:
 
 ```bash
-vp run --filter @mfdoctor-standalone/vite build
+pnpm exec vp run --filter @mfdoctor-standalone/vite build
+# or: PATH="$(pwd)/node_modules/.bin:$PATH" vp run --filter @mfdoctor-standalone/vite build
 ```
 
 Temp fixture copies live under paths listed in Cleanup (typically

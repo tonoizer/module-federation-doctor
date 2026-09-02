@@ -1,0 +1,1 @@
+pnpm exec vp run --filter @mfdoctor-standalone/vite build

@@ -1,0 +1,10 @@
+{
+  "category": "security",
+  "defaultSeverity": "warning",
+  "documentation": "/rules/config/remote-http-insecure",
+  "fix": "Serve non-local remotes over HTTPS and keep HTTP only for local development.",
+  "id": "config/remote-http-insecure",
+  "impact": "Remote code fetched over plain HTTP can be changed in transit.",
+  "sources": ["https://module-federation.io/configure/remotes.html"],
+  "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"]
+}

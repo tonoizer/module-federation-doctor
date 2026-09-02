@@ -72,3 +72,5 @@ handles, required state, commands, and observable proof.
 - In-browser runtime agent
 - Docs site (`docs:dev`)
 - Network `probe` / `compare` (not default proof; network-required if added later)
+- `federation` without `--workspace` (explicit `project.json` globs) — same gate as workspace when using `--workspace`; covered by [Workspace](./workspace.md)
+- `prompt` / `baseline` / `runtime` — offline CLI exists (`apps/docs/docs/cli.md`); out of this skill’s default green-gate map (check → emit → workspace). Add a feature file only when proving those surfaces.
