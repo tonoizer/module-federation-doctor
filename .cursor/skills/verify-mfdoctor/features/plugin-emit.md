@@ -30,8 +30,8 @@ Preconditions:
 
 - **Build one red cell.** Run `pnpm exec vp run --filter @mfdoctor-standalone/vite build` from the repo root (or an equivalent filter build for another standalone cell).
 - **Observe emit.** Confirm `examples/standalone-findings/vite/.mf/doctor/project.json` exists after the build exits.
-- **Observe findings.** Read `.mf/doctor/report.json` and expect rule IDs such as `config/remote-http-insecure`, `config/remote-manifest-recommended`, and `reliability/version-first-offline-remotes` (see `examples/standalone-findings/README.md`).
-- **Optional follow-up.** Run `node dist/cli.js check examples/standalone-findings/vite --format json --output -` and confirm findings align with the emitted report.
+- **Observe findings.** Read `.mf/doctor/report.json` and expect rule IDs such as `config/remote-http-insecure`, `config/remote-manifest-recommended`, and `reliability/version-first-offline-remotes` (see `examples/standalone-findings/README.md`). The emit report is the source of truth for this feature.
+- **Optional follow-up.** Run `node dist/cli.js check examples/standalone-findings/vite --format json --output -`. Static CLI `check` re-analyzes config/source; it does **not** replay the plugin report. Expect `status.incompleteReasons` to still include `missing-emit`, and remote findings may differ (e.g. `config/remote-entry-invalid` instead of `config/remote-http-insecure` / `config/remote-manifest-recommended`). Do not require an identical `ruleId` set.
 - **Proof.** Capture build command, exit code, and copies (or excerpts) of `project.json` / `report.json` keys under
   `.cursor/skills/verify-mfdoctor/evidence/plugin-emit/`. Prefer text excerpts over huge binaries.
 
@@ -41,3 +41,4 @@ Preconditions:
 - Killing by process name is forbidden; only signal the PID you started if you must abort.
 - Example builds can dirty `examples/**/.mf/` (gitignored). Clean those trees after proof if you want a pristine worktree; never delete skill `evidence/`.
 - Do not invent new bundler adapters or scrape private MF plugin fields for verification.
+- A green or overlapping CLI `check` after the build is not required to prove emit — prefer `.mf/doctor/report.json` from the adapter build.

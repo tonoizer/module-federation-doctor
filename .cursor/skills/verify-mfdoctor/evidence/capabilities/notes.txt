@@ -1,4 +1,6 @@
 feature-id: capabilities
-package: @tonoizer/mfdoctor
-commands-ok: true
-exit: 0
+package.name: @tonoizer/mfdoctor
+schemaVersion: 1
+commands-missing: []
+exitCodes: {'0': 'success', '1': 'policy-fail', '2': 'usage-or-incomplete-analysis'}
+extra-commands: ['help']

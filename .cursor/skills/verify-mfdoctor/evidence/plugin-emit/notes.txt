@@ -1,6 +1,7 @@
 feature-id: plugin-emit
-build-exit: 0
-project-json: present
+entry-point: pnpm exec vp run --filter @mfdoctor-standalone/vite build
+project.json: present
 report-rule-ids: ['config/async-boundary-missing', 'shared/prefix-share-recommended', 'config/remote-http-insecure', 'reliability/version-first-offline-remotes', 'config/remote-manifest-recommended', 'vite/server-origin']
-expected-ok: true
-invocation: pnpm exec vp (PATH harness fix)
+expected-core-present: config/remote-http-insecure, config/remote-manifest-recommended, reliability/version-first-offline-remotes
+build-exit: 0
+note: optional post-emit CLI check re-analyzes statically (still missing-emit); remote ruleIds can differ from emit report — emit report is authoritative
