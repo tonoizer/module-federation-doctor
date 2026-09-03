@@ -1,2 +1,2 @@
-node /workspace/dist/cli.js workspace fixtures/workspaces/conflict --ci --format json --output - --no-write 
-node /workspace/dist/cli.js workspace fixtures/workspaces/clean --ci --format json --output - --no-write 
+node dist/cli.js workspace fixtures/workspaces/conflict --ci --format json --output - --no-write
+node dist/cli.js workspace fixtures/workspaces/clean --ci --format json --output - --no-write

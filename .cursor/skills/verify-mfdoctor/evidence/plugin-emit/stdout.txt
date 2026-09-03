@@ -1,1 +1,1 @@
-see build-stdout.txt / project-excerpt.json / report-rule-ids.json
+see build-stdout.txt
