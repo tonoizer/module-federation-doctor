@@ -1,5 +1,28 @@
 # @tonoizer/mfdoctor
 
+## 1.2.0
+
+### Minor Changes
+
+- 075b009: Add `artifact/react-dom-server-in-web` to flag `react-dom/server` (and server entry variants) landing in web/client Module Federation artifacts.
+- 266449d: Add `config/async-boundary-missing` to flag host sync entries that import non-eager shared packages (RUNTIME-005).
+- fdeb8c9: Extend `mfdoctor capabilities` with agent-facing nonGoals, completeness, githubAction, networkPolicy, and a bundler matrix derived from `fixtures/compatibility-matrix.json`.
+- 3010ade: Add `mfdoctor compare` to diff deployed Module Federation manifests for name, exposes, shared, publicPath, and remoteEntry using the same probe network safety, with JSON and SARIF output.
+- 3380d93: Add `config/copied-webpack-options-on-vite` to flag webpack-only ModuleFederationPlugin options pasted onto a Vite federation config.
+- 600aa2d: Allow `--diagnostics-dir` dumps to include more than the default top-3 agent prompts via `--diagnostics-prompts` / `diagnosticsPromptLimit` / `MFDOCTOR_DIAGNOSTICS_PROMPTS`, hard-capped at 25. Terminal top-3 output is unchanged.
+- 4b3c96a: Promote `shared/prefix-share-recommended` to error for React and React DOM deep imports, and stop allowlisting `react/jsx-runtime` and `react-dom/client` by default so singleton/version crashes fail CI instead of staying silent.
+
+### Patch Changes
+
+- f3c5d6b: Write JSON, SARIF, and project report files atomically (temp file then rename) so a crash never leaves a truncated final path.
+- 31a7be4: Hide agent fix prompts in CI by default (standard CI env vars / `mode: "ci"`). Local runs still print them; opt in with `--prompt` or dump via `--diagnostics-dir`.
+- 569cd5f: Add additive `report.status` with stable `incompleteReasons[]` codes (`missing-emit`, `partial-bundler`, `probe-skipped`, `evidence-unknown`). Complete runs use an empty list. Does not change rule evaluation or exit codes.
+- 9a35d9e: Add `config/rsbuild-mf-api-generation` to flag Rsbuild Module Federation 1.5 vs `@module-federation/rsbuild-plugin` v2 option mismatches that break generate/runtime.
+- 0680431: Tighten reliability/shared-import-false vs federation/missing-provider so workspace provider presence and absence map to one attributable finding.
+- b23c9b0: Add `shared/subpath-version-unresolved` for Vite prefix/subpath shared keys whose provider version did not resolve from the parent package.
+- a047afa: Ship AGENTS.md and skills/mfdoctor playbook in the published package so installed agents get the capabilities → check → prompt → rebuild loop.
+- 9347212: Pin workspace-federation-gate docs to a release tag, require or install the mfdoctor CLI in the Action, and fail loudly when SARIF upload lacks `security-events`.
+
 ## 1.1.0
 
 ### Minor Changes
