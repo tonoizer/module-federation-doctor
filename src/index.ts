@@ -95,8 +95,8 @@ export {
   DEFAULT_WORKSPACE_PROJECT_GLOBS,
   WORKSPACE_IGNORE,
   discoverWorkspaceProjects,
+  discoverWorkspaceProjectsWithBudget,
 } from "./workspace.js";
-export { discoverWorkspaceProjectsWithBudget } from "./workspace.js";
 export type { DiscoverWorkspaceProjectsOptions, WorkspaceProjectDiscovery } from "./workspace.js";
 export type { WorkspaceProjectDiagnostic, WorkspaceProjectDiagnosticKind } from "./workspace.js";
 export {
@@ -480,8 +480,9 @@ export {
   normalizeEvidenceGraph,
   redactEvidenceValue,
   stableEvidenceId,
+  EvidenceIntegrityError,
+  EvidenceResourceError,
 } from "./evidence.js";
-export { EvidenceIntegrityError, EvidenceResourceError } from "./evidence.js";
 export { EvidenceBudgetExceededError, reserveEvidenceBudget } from "./evidence-budget.js";
 export {
   assertDriftLedgerEntry,

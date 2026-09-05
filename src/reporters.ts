@@ -1,9 +1,10 @@
-import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import pc from "picocolors";
+import { writeFileAtomic as writeFileAtomicBase } from "./atomic-write.js";
 import { resolvePrintLog, resolveQuiet, resolvePrompt } from "./config.js";
 import { formatTopAgentPrompts } from "./agent-prompt.js";
+import { doctorRuleDocUrl } from "./docs-url.js";
 import { ruleGuidance } from "./rule-guidance.js";
 import type {
   DoctorFinding,
@@ -14,38 +15,14 @@ import type {
 } from "./types.js";
 import { stableStringify } from "./utils.js";
 
-/**
- * Write `contents` via a same-directory temp file and rename so a crash never
- * leaves a truncated final path. On failure the previous file (if any) is kept
- * and the temp file is removed.
- */
-export async function writeFileAtomic(filePath: string, contents: string): Promise<void> {
-  const resolved = path.resolve(filePath);
-  const directory = path.dirname(resolved);
-  const temporary = path.join(
-    directory,
-    `.${path.basename(resolved)}.mfdoctor-${process.pid}-${randomUUID()}.tmp`,
-  );
-  let handle: fs.FileHandle | undefined;
-  let renamed = false;
-  try {
-    handle = await fs.open(temporary, "wx");
-    await handle.writeFile(contents, "utf8");
-    await handle.sync();
-    await handle.close();
-    handle = undefined;
-    await fs.rename(temporary, resolved);
-    renamed = true;
-  } catch (error) {
-    throw new Error(`Unable to atomically write report file: ${resolved}`, { cause: error });
-  } finally {
-    await handle?.close().catch(() => undefined);
-    if (!renamed) await fs.rm(temporary, { force: true }).catch(() => undefined);
-  }
-}
+export { DOCTOR_DOCS_ORIGIN } from "./docs-url.js";
 
-/** Published MFDoctor docs origin. */
-export const DOCTOR_DOCS_ORIGIN = "https://mfdoctor.kevinbeier.com";
+/** Atomically replace a report artifact; previous contents stay if the write fails. */
+export async function writeFileAtomic(filePath: string, contents: string): Promise<void> {
+  await writeFileAtomicBase(filePath, contents, {
+    errorMessage: (resolved) => `Unable to atomically write report file: ${resolved}`,
+  });
+}
 
 /** Hosts allowed when printing official Module Federation source links. */
 const OFFICIAL_SOURCE_HOSTS = new Set(["module-federation.io", "www.module-federation.io"]);
@@ -93,13 +70,6 @@ function writeJsonFile(formats: OutputFormat[], options: ReportDestinationOption
   // `--output -` replaces the report.json destination with stdout.
   if (options.stdoutJson) return false;
   return true;
-}
-
-function doctorRuleDocUrl(finding: DoctorFinding): string {
-  const docPath = finding.documentation?.startsWith("/")
-    ? finding.documentation
-    : `/rules/${finding.ruleId}`;
-  return `${DOCTOR_DOCS_ORIGIN}${docPath}`;
 }
 
 function isOfficialSourceUrl(urlString: string): boolean {

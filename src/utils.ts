@@ -21,7 +21,7 @@ export function relativePath(root: string, value: string): string {
   return result.startsWith("../") ? "[external]/" + path.basename(value) : result || ".";
 }
 
-export function stableValue(value: unknown): unknown {
+function stableValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stableValue);
   if (value && typeof value === "object") {
     return Object.fromEntries(

@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import nodePath from "node:path";
 import {
@@ -10,6 +10,7 @@ import {
   type EvidenceValue,
 } from "./evidence.js";
 import type { RuntimeTraceReport } from "./types.js";
+import { writeFileAtomic } from "./atomic-write.js";
 
 /** Version of the external runtime-capture document, independent of MF runtime version. */
 export const RUNTIME_CAPTURE_CONTRACT_VERSION = 1 as const;
@@ -3474,17 +3475,8 @@ export async function writeRuntimeCaptureExportFile(
     );
 
   const directory = nodePath.dirname(resolved);
-  const temporary = `${nodePath.join(directory, `.${nodePath.basename(resolved)}.mfdoctor-${process.pid}-${randomUUID()}.tmp`)}`;
-  let handle: fs.FileHandle | undefined;
-  let renamed = false;
   try {
-    handle = await fs.open(temporary, "wx", 0o600);
-    await handle.writeFile(serialized, "utf8");
-    await handle.sync();
-    await handle.close();
-    handle = undefined;
-    await fs.rename(temporary, resolved);
-    renamed = true;
+    await writeFileAtomic(resolved, serialized, { mode: 0o600 });
     await syncRuntimeCaptureDirectory(directory).catch(() => undefined);
     return { path: resolved, bytes };
   } catch (error) {
@@ -3493,9 +3485,6 @@ export async function writeRuntimeCaptureExportFile(
       `Unable to atomically write runtime capture export: ${resolved}`,
       resolved,
     );
-  } finally {
-    await handle?.close().catch(() => undefined);
-    if (!renamed) await fs.rm(temporary, { force: true }).catch(() => undefined);
   }
 }
 

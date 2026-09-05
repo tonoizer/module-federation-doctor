@@ -52,7 +52,7 @@ import {
 } from "./finding-details.js";
 import { packageName as npmPackageName } from "./normalize.js";
 import { findShareRewriteOverlaps } from "./share-rewrite.js";
-import { packageName as specifierPackageName } from "./normalize.js";
+import { duplicateFederationInstanceGroups } from "./federation-instance.js";
 import type {
   DoctorRule,
   NormalizedMFConfig,
@@ -413,7 +413,7 @@ function syncSharedPackagesInSource(
   for (const match of cleaned.matchAll(staticSpecifier)) {
     const specifier = match[1];
     if (!specifier || specifier.startsWith(".") || specifier.startsWith("/")) continue;
-    const pkg = specifierPackageName(specifier);
+    const pkg = npmPackageName(specifier);
     for (const [key, shared] of nonEagerShared) {
       const sharedPkg = shared.package || key.replace(/\/$/, "");
       if (
@@ -942,15 +942,7 @@ export const builtInRules: DoctorRule[] = [
   createRule("config/duplicate-plugin-registration", "error", (context) => {
     const registrations = context.facts.bundler.federationInstances;
     if (registrations?.length) {
-      const groups = new Map<string, typeof registrations>();
-      for (const registration of registrations)
-        groups.set(registration.registrationGroup, [
-          ...(groups.get(registration.registrationGroup) ?? []),
-          registration,
-        ]);
-      for (const group of groups.values()) {
-        if (group.length <= 1) continue;
-        const affected = group.slice().sort((left, right) => left.id.localeCompare(right.id));
+      for (const affected of duplicateFederationInstanceGroups(registrations)) {
         // One finding per duplicate registration group keeps the actionable
         // signal stable while the evidence names every affected instance.
         if (
@@ -960,7 +952,7 @@ export const builtInRules: DoctorRule[] = [
           continue;
         report(
           context,
-          `Module Federation plugin "${affected[0]?.pluginName ?? "ModuleFederationPlugin"}" is registered ${group.length} times with the same configuration.`,
+          `Module Federation plugin "${affected[0]?.pluginName ?? "ModuleFederationPlugin"}" is registered ${affected.length} times with the same configuration.`,
           {
             moduleFederationPluginCount: registrations.length,
             federationInstanceIds: affected.map((registration) => registration.id),

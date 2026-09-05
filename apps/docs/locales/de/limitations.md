@@ -63,7 +63,7 @@ No open post-v1 adapter gaps right now. Rolldown / Vite Plus (#11) and Modern.js
 | -------------------------------------------------------------------------------------- | --------------------------------------------- |
 | Bundler MF plugin + MFDoctor adapter + shared `mfOptions` (including `runtimePlugins`) | Yes — primary                                 |
 | CLI `check` with explicit `moduleFederation` / `module-federation.config`              | Partial (config/imports; weaker without emit) |
-| On-disk / deployed `mf-manifest.json` (`check` discover / `probe`)                     | Producer/deploy evidence only                 |
+| On-disk / deployed `mf-manifest.json` (`check` on-disk manifests / `probe`)            | Producer/deploy evidence only                 |
 | `mfdoctor runtime` + Observability export                                              | Opt-in live correlation, offline              |
 
 MF `runtimePlugins` declared in bundler MF config **are** first-class: MFDoctor

@@ -1873,3 +1873,9 @@ export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
 });
 
 export const ruleInventoryIds = ids;
+
+export function requireRuleInventoryEntry(id: string): RuleInventoryEntry {
+  const entry = ruleInventory.find((item) => item.id === id);
+  if (!entry) throw new Error(`Missing evidence-aware inventory entry for ${id}`);
+  return entry;
+}
