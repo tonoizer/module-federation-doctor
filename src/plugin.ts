@@ -199,6 +199,17 @@ function compilerTargetKind(
   return "unknown";
 }
 
+function prefixedEmittedAssets(output: {
+  outputRoot?: string;
+  emittedAssets: string[];
+  buildWrite?: boolean;
+}): string[] {
+  if (output.buildWrite === false) return [];
+  return output.outputRoot
+    ? output.emittedAssets.map((asset) => `${output.outputRoot}/${asset}`)
+    : output.emittedAssets;
+}
+
 function compilerOutputRoot(compiler: CompilerLike): string | undefined {
   const outputPath = compiler.options?.output?.path;
   if (!outputPath) return undefined;
@@ -398,9 +409,7 @@ export function attachDoctorAfterEmit(
       configured.bundler ?? "webpack",
       modernContext,
     );
-    const emittedAssets = output.outputRoot
-      ? output.emittedAssets.map((asset) => `${output.outputRoot}/${asset}`)
-      : output.emittedAssets;
+    const emittedAssets = prefixedEmittedAssets(output);
     const result = await analyzeBuild(configured, emittedAssets, diagnostics, [output]);
     if (result.exitCode === 0) return;
     const ErrorCtor = compiler.webpack?.WebpackError ?? Error;
@@ -778,13 +787,7 @@ function createViteFamilyHooks(configured: DoctorOptions) {
       const withNuxtClient = await includeNuxtClientOutput(root, outputs);
       const withNitroClient = await includeNitroClientOutput(root, withNuxtClient);
       const buildOutputs = await includeNitroGeneratedOutputAssets(root, withNitroClient);
-      const allAssets = buildOutputs.flatMap((item) =>
-        item.buildWrite === false
-          ? []
-          : item.outputRoot
-            ? item.emittedAssets.map((asset) => `${item.outputRoot}/${asset}`)
-            : item.emittedAssets,
-      );
+      const allAssets = buildOutputs.flatMap((item) => prefixedEmittedAssets(item));
       const result = await analyzeBuild(configured, allAssets, undefined, buildOutputs);
       failAfterCollect(result);
     } finally {
@@ -896,13 +899,7 @@ function createDoctorPlugin(bundler: BundlerName) {
                       )
                     : [];
                   const assets = [
-                    ...new Set(
-                      outputs.flatMap((output) =>
-                        output.outputRoot
-                          ? output.emittedAssets.map((asset) => `${output.outputRoot}/${asset}`)
-                          : output.emittedAssets,
-                      ),
-                    ),
+                    ...new Set(outputs.flatMap((output) => prefixedEmittedAssets(output))),
                   ];
                   const result = await analyzeBuild(
                     configured,

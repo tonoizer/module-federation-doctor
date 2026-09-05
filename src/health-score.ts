@@ -34,7 +34,7 @@ function uniqueRuleIds(findings: DoctorFinding[], severity: Severity): Set<strin
 }
 
 /**
- * Label bands (settled Wave 4 design; overrides the issue’s 90/70 sketch):
+ * Label bands:
  * - ≥75 Great
  * - ≥50 OK
  * - else Needs work

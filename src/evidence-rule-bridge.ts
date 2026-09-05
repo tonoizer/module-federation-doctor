@@ -1,11 +1,5 @@
 import type { AnalysisBudgetTracker } from "./analysis-budgets.js";
-import type {
-  EvidenceGraphV2,
-  EvidenceRuleEvaluation,
-  EvidenceScope,
-  EvidenceSubject,
-  EvidenceValue,
-} from "./evidence.js";
+import type { EvidenceGraphV2, EvidenceScope, EvidenceSubject, EvidenceValue } from "./evidence.js";
 import { migrateProjectFacts } from "./evidence-reader.js";
 import { builtInRules } from "./rules.js";
 import {
@@ -15,7 +9,7 @@ import {
   MIGRATED_GROUP3_RULE_IDS,
   MIGRATED_GROUP5_RULE_IDS,
   MIGRATED_GROUP6_RULE_IDS,
-  ruleInventory,
+  requireRuleInventoryEntry,
 } from "./rule-inventory.js";
 import {
   runEvidenceAwareRules,
@@ -25,7 +19,6 @@ import {
   type EvidenceRuleRunnerOutput,
   type EvidenceRuleScope,
   type RuleEvaluationResult,
-  type RuleExecutionState,
 } from "./rule-contract.js";
 import type {
   BuildRecord,
@@ -34,10 +27,15 @@ import type {
   RuleContext,
   RuleSetting,
   RuntimeTraceReport,
-  Severity,
 } from "./types.js";
 import { shouldSkipMf2SharedUnused } from "./mf-toolkit-shapes.js";
 import { fingerprint, redact } from "./utils.js";
+import {
+  disabledRuleExecution,
+  graphEvaluationFor,
+  graphScopeFor,
+  severityFor,
+} from "./evidence-graph-projection.js";
 import {
   attachRuntimeTraceEvidence,
   classifyRuntimeAttribution,
@@ -50,14 +48,6 @@ type LegacyFindingInput = Omit<
   "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint"
 >;
 
-export type MigratedEvidenceRuleId =
-  | (typeof MIGRATED_GROUP1_CONFIG_RULE_IDS)[number]
-  | (typeof MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS)[number]
-  | (typeof MIGRATED_GROUP2_RULE_IDS)[number]
-  | (typeof MIGRATED_GROUP3_RULE_IDS)[number]
-  | (typeof MIGRATED_GROUP5_RULE_IDS)[number]
-  | (typeof MIGRATED_GROUP6_RULE_IDS)[number];
-
 export type MigratedRuntimeEvidenceRuleId = (typeof MIGRATED_GROUP5_RULE_IDS)[number];
 
 const MIGRATED_STATIC_EVIDENCE_RULE_IDS = [
@@ -67,12 +57,6 @@ const MIGRATED_STATIC_EVIDENCE_RULE_IDS = [
   ...MIGRATED_GROUP3_RULE_IDS,
   ...MIGRATED_GROUP6_RULE_IDS,
 ] as const;
-
-function inventoryEntry(id: string) {
-  const entry = ruleInventory.find((item) => item.id === id);
-  if (!entry) throw new Error(`Missing evidence-aware inventory entry for ${id}`);
-  return entry;
-}
 
 function toEvidenceValue(value: unknown): EvidenceValue {
   return value as EvidenceValue;
@@ -195,7 +179,7 @@ function legacyEvidenceRule(
   const legacy = builtInRules.find((rule) => rule.meta.id === id);
   if (!legacy) throw new Error(`Missing built-in rule implementation for ${id}`);
   return {
-    meta: inventoryEntry(id),
+    meta: requireRuleInventoryEntry(id),
     async evaluate(context: EvidenceRuleContext) {
       const inconclusiveReason = inconclusive?.(context);
       if (inconclusiveReason) {
@@ -231,7 +215,7 @@ function legacyEvidenceRule(
  */
 function runtimeEvidenceRule(id: MigratedRuntimeEvidenceRuleId): EvidenceAwareRule {
   return {
-    meta: inventoryEntry(id),
+    meta: requireRuleInventoryEntry(id),
     evaluate(context: EvidenceRuleContext) {
       const traces = context.options.runtimeTraces as RuntimeTraceReport[] | undefined;
       const projects = context.options.runtimeProjects as ProjectFacts[] | undefined;
@@ -441,35 +425,6 @@ function factsForBuild(facts: ProjectFacts, build: BuildRecord): ProjectFacts {
   return scoped;
 }
 
-const GRAPH_TARGETS = new Set<EvidenceScope["target"]>([
-  "web",
-  "node",
-  "browser",
-  "ssr",
-  "unknown",
-]);
-
-function graphScopeFor(graphScope: EvidenceScope, scope: EvidenceRuleScope): EvidenceScope {
-  const target = GRAPH_TARGETS.has(scope.target as EvidenceScope["target"])
-    ? (scope.target as EvidenceScope["target"])
-    : graphScope.target;
-  return {
-    ...graphScope,
-    ...(scope.adapter ? { adapter: scope.adapter } : {}),
-    ...(scope.adapterVersion ? { adapterVersion: scope.adapterVersion } : {}),
-    bundler: {
-      ...graphScope.bundler,
-      ...scope.bundler,
-    },
-    target,
-    ...(scope.buildMode ? { buildMode: scope.buildMode } : {}),
-    ...(scope.projectRole ? { projectRole: scope.projectRole } : {}),
-    ...(scope.buildId ? { buildId: scope.buildId } : {}),
-    ...(scope.compilationId ? { compilationId: scope.compilationId } : {}),
-    ...(scope.federationInstanceId ? { federationInstanceId: scope.federationInstanceId } : {}),
-  };
-}
-
 function applyGraphScope(graph: EvidenceGraphV2, scope: EvidenceRuleScope): EvidenceScope {
   const graphScope = graphScopeFor(graph.scope, scope);
   graph.scope = graphScope;
@@ -484,30 +439,6 @@ function applyGraphScope(graph: EvidenceGraphV2, scope: EvidenceRuleScope): Evid
     scope: { ...graphScope, bundler: { ...graphScope.bundler } },
   }));
   return graphScope;
-}
-
-function graphEvaluationFor(
-  evaluation: RuleEvaluationResult,
-  graphScope: EvidenceScope,
-): EvidenceRuleEvaluation {
-  const result: EvidenceRuleEvaluation = {
-    id: evaluation.id,
-    rule: evaluation.rule,
-    subject: evaluation.subject,
-    outcome: evaluation.outcome,
-    evidenceIds: evaluation.evidenceIds.slice(),
-    reason: evaluation.reason,
-    reasonCode: evaluation.reasonCode,
-    confidence: evaluation.confidence,
-    scope: graphScopeFor(graphScope, evaluation.scope),
-    completeness: {
-      status: evaluation.completeness,
-      reason: evaluation.reason,
-    },
-  };
-  if ("missingRequirements" in evaluation)
-    result.missingRequirements = evaluation.missingRequirements as unknown as EvidenceValue[];
-  return result;
 }
 
 function factsForEvidence(facts: ProjectFacts): ProjectFacts {
@@ -597,13 +528,7 @@ export async function runMigratedEvidenceRules(
   const scope = evidenceRuleScopeFor(scopedFacts, selectedBuild);
   const graphScope = applyGraphScope(graph, scope);
   const rules = migratedEvidenceRules.filter((rule) => settings[rule.meta.id] !== "off");
-  const disabled: RuleExecutionState[] = migratedEvidenceRules
-    .filter((rule) => settings[rule.meta.id] === "off")
-    .map((rule) => ({
-      state: "disabled" as const,
-      rule: { id: rule.meta.id, version: rule.meta.version },
-      reason: 'Rule is disabled by configuration (setting is "off").',
-    }));
+  const disabled = disabledRuleExecution(migratedEvidenceRules, settings);
   const output = await runEvidenceAwareRules({
     graph,
     rules,
@@ -640,13 +565,7 @@ export async function runMigratedRuntimeEvidenceRules(
   const scope = evidenceRuleScopeFor(facts);
   const graphScope = applyGraphScope(graph, scope);
   const rules = migratedRuntimeEvidenceRules.filter((rule) => settings[rule.meta.id] !== "off");
-  const disabled: RuleExecutionState[] = migratedRuntimeEvidenceRules
-    .filter((rule) => settings[rule.meta.id] === "off")
-    .map((rule) => ({
-      state: "disabled" as const,
-      rule: { id: rule.meta.id, version: rule.meta.version },
-      reason: 'Rule is disabled by configuration (setting is "off").',
-    }));
+  const disabled = disabledRuleExecution(migratedRuntimeEvidenceRules, settings);
   const output = await runEvidenceAwareRules({
     graph,
     rules,
@@ -664,12 +583,6 @@ export async function runMigratedRuntimeEvidenceRules(
     .map((evaluation) => graphEvaluationFor(evaluation, graphScope))
     .sort((left, right) => left.id.localeCompare(right.id));
   return { graph, output: { ...output, execution: [...disabled, ...output.execution] } };
-}
-
-function severityFor(setting: RuleSetting | undefined, fallback: Severity): Severity | undefined {
-  if (setting === "off") return undefined;
-  if (setting && typeof setting !== "string") return setting[0];
-  return setting ?? fallback;
 }
 
 function attributedProjectFor(

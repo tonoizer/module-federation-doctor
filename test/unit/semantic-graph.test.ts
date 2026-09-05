@@ -4,8 +4,10 @@ import {
   createContainerIdentity,
   createIdentityCapabilityEdge,
   createOrganizationIdentity,
+  buildSemanticGraph,
+  buildSemanticUiPayload,
+  querySemanticGraph,
 } from "../../src/index.js";
-import { buildSemanticGraph, buildSemanticUiPayload, querySemanticGraph } from "../../src/index.js";
 import { buildUiPayload, reportFromFindings } from "../../src/ui-graph.js";
 import type { ProjectFacts } from "../../src/types.js";
 

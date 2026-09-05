@@ -1,11 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { writeFileAtomic } from "./atomic-write.js";
+import { doctorRuleDocUrl } from "./docs-url.js";
 import { ruleGuidance, type RuleCategory } from "./rule-guidance.js";
 import type { DoctorFinding, DoctorReport, Severity } from "./types.js";
 import { stableStringify } from "./utils.js";
-
-/** Same origin as reporters.DOCTOR_DOCS_ORIGIN (avoid circular import). */
-const DOCTOR_DOCS_ORIGIN = "https://mfdoctor.kevinbeier.com";
 
 const SEVERITY_RANK: Record<Severity, number> = { error: 3, warning: 2, info: 1 };
 const CATEGORY_RANK: Record<RuleCategory, number> = {
@@ -128,13 +127,6 @@ function locationLine(finding: DoctorFinding): string | undefined {
   return filePath;
 }
 
-function docsUrl(finding: DoctorFinding): string {
-  const docPath = finding.documentation?.startsWith("/")
-    ? finding.documentation
-    : `/rules/${finding.ruleId}`;
-  return `${DOCTOR_DOCS_ORIGIN}${docPath}`;
-}
-
 /**
  * Build a stable, copy-paste markdown prompt for exactly one finding.
  * Patterns only — no licensed React Doctor source. Does not suggest suppressions.
@@ -172,7 +164,7 @@ export function buildAgentPrompt(finding: DoctorFinding, options: AgentPromptOpt
     ...(evidenceLines.length > 0 ? evidenceLines : ["- (none)"]),
     "",
     "## Docs",
-    `- MFDoctor: ${docsUrl(finding)}`,
+    `- MFDoctor: ${doctorRuleDocUrl(finding)}`,
     ...sources.map((source) => `- Source: ${source}`),
     "",
     "## Verify",
@@ -260,7 +252,7 @@ export async function writeDiagnosticsDump(
   await fs.rm(promptsDir, { recursive: true, force: true });
   await fs.mkdir(promptsDir, { recursive: true });
   const reportPath = path.join(diagnosticsDir, "report.json");
-  await fs.writeFile(reportPath, stableStringify(report, 2) + "\n");
+  await writeFileAtomic(reportPath, stableStringify(report, 2) + "\n");
 
   const limit = resolveDiagnosticsPromptLimit(options.limit ?? DEFAULT_PROMPT_FINDINGS);
   const top = selectTopFindings(report.findings, limit);
@@ -268,7 +260,7 @@ export async function writeDiagnosticsDump(
   for (const [index, finding] of top.entries()) {
     const name = safePromptFilename(finding, index);
     const filePath = path.join(promptsDir, name);
-    await fs.writeFile(filePath, buildAgentPrompt(finding, options));
+    await writeFileAtomic(filePath, buildAgentPrompt(finding, options));
     promptFiles.push(path.join("prompts", name));
   }
 
@@ -305,7 +297,7 @@ export async function writeDiagnosticsDump(
     "",
   ];
   const summaryPath = path.join(diagnosticsDir, "summary.md");
-  await fs.writeFile(summaryPath, summaryLines.join("\n"));
+  await writeFileAtomic(summaryPath, summaryLines.join("\n"));
 
   return { directory: diagnosticsDir, promptFiles, summaryPath, reportPath };
 }

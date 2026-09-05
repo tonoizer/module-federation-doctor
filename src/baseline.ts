@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { writeFileAtomic } from "./atomic-write.js";
 import type { BaselineEntry, BaselineFile, BaselineOptions, DoctorFinding } from "./types.js";
 import { fingerprint, stableStringify } from "./utils.js";
 
@@ -151,6 +152,14 @@ export function applyBaseline(
   return { findings: withStale, matched, stale };
 }
 
+function compareBaselineEntries(left: BaselineEntry, right: BaselineEntry): number {
+  return (
+    (left.project ?? "").localeCompare(right.project ?? "") ||
+    (left.ruleId ?? "").localeCompare(right.ruleId ?? "") ||
+    left.fingerprint.localeCompare(right.fingerprint)
+  );
+}
+
 export function generateBaseline(findings: DoctorFinding[]): BaselineFile {
   const entries: BaselineEntry[] = [];
   const seen = new Set<string>();
@@ -164,12 +173,7 @@ export function generateBaseline(findings: DoctorFinding[]): BaselineFile {
       project: finding.project,
     });
   }
-  entries.sort(
-    (a, b) =>
-      (a.project ?? "").localeCompare(b.project ?? "") ||
-      (a.ruleId ?? "").localeCompare(b.ruleId ?? "") ||
-      a.fingerprint.localeCompare(b.fingerprint),
-  );
+  entries.sort(compareBaselineEntries);
   return { schemaVersion: BASELINE_SCHEMA_VERSION, entries };
 }
 
@@ -189,12 +193,7 @@ export function updateBaseline(existing: BaselineFile, findings: DoctorFinding[]
     const key = entryKey(entry);
     if (!byKey.has(key)) byKey.set(key, entry);
   }
-  const entries = [...byKey.values()].sort(
-    (a, b) =>
-      (a.project ?? "").localeCompare(b.project ?? "") ||
-      (a.ruleId ?? "").localeCompare(b.ruleId ?? "") ||
-      a.fingerprint.localeCompare(b.fingerprint),
-  );
+  const entries = [...byKey.values()].sort(compareBaselineEntries);
   return { schemaVersion: BASELINE_SCHEMA_VERSION, entries };
 }
 
@@ -241,5 +240,5 @@ export function summarizeFindings(findings: DoctorFinding[]): {
 
 export async function writeBaselineFile(filePath: string, baseline: BaselineFile): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, stableStringify(baseline, 2) + "\n");
+  await writeFileAtomic(filePath, stableStringify(baseline, 2) + "\n");
 }

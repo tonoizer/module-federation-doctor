@@ -408,7 +408,7 @@ async function runAnalysis(
         ),
       ),
     );
-    const exactRuntimeAttribution = (finding: DoctorFinding) => finding.project !== "runtime";
+    const isProjectScopedFinding = (finding: DoctorFinding) => finding.project !== "runtime";
     const findingsForParity = (findings: readonly DoctorFinding[]) =>
       [...findings].sort(
         (left, right) =>
@@ -422,7 +422,7 @@ async function runAnalysis(
               ...legacyRuntimeFindings.filter(
                 (finding) =>
                   migratedRuntimeEvidenceRuleIds.has(finding.ruleId) &&
-                  exactRuntimeAttribution(finding),
+                  isProjectScopedFinding(finding),
               ),
             ]),
             findingsForParity(migratedFindings),

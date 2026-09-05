@@ -1790,10 +1790,6 @@ function orderBuildOutputs(outputs: BuildOutputInput[]): BuildOutputInput[] {
     );
 }
 
-function orderBuildRecords(builds: BuildRecord[]): BuildRecord[] {
-  return builds;
-}
-
 function outputArtifacts(
   facts: ProjectFacts,
   output: BuildOutputInput,
@@ -2023,8 +2019,8 @@ export async function addBuildFacts(
     facts.bundler.outputPublicPathKind = diagnostics.outputPublicPathKind;
   if (outputs) {
     const orderedOutputs = orderBuildOutputs(outputs);
-    const builds = orderBuildRecords(
-      orderedOutputs.map((output, index) => buildRecordForOutput(facts, output, root, index)),
+    const builds = orderedOutputs.map((output, index) =>
+      buildRecordForOutput(facts, output, root, index),
     );
     facts.builds = builds;
     projectLegacyBuildFacts(facts, builds);

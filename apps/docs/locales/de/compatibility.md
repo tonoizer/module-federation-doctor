@@ -68,13 +68,13 @@ Runtime-only Module Federation (no bundler MF **build** plugin) is
 
 ## Analysetiefe (ehrliche Teilergebnisse)
 
-| Path                                                                | Status      | Behavior when incomplete                                                       |
-| ------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
-| Bundler MF plugin + MFDoctor adapter + shared `mfOptions`           | supported   | Full post-emit facts; CI defaults to terminal + JSON + SARIF                   |
-| CLI `check` with explicit MF config, no emit                        | partial     | Config/imports only; weaker without artifacts                                  |
-| Unresolved dynamic `import(expr)` / non-literal `loadRemote` / etc. | partial     | Records `imports.unresolvedDynamic`; prefers `doctor/partial-analysis`         |
-| Opt-in Observability `runtimeTrace` / `mfdoctor runtime`            | supported\* | Offline correlation when a valid export is supplied; invalid/missing → partial |
-| On-disk / deployed `mf-manifest.json` (`check` discover / `probe`)  | partial     | Producer/deploy evidence only                                                  |
+| Path                                                                        | Status      | Behavior when incomplete                                                       |
+| --------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
+| Bundler MF plugin + MFDoctor adapter + shared `mfOptions`                   | supported   | Full post-emit facts; CI defaults to terminal + JSON + SARIF                   |
+| CLI `check` with explicit MF config, no emit                                | partial     | Config/imports only; weaker without artifacts                                  |
+| Unresolved dynamic `import(expr)` / non-literal `loadRemote` / etc.         | partial     | Records `imports.unresolvedDynamic`; prefers `doctor/partial-analysis`         |
+| Opt-in Observability `runtimeTrace` / `mfdoctor runtime`                    | supported\* | Offline correlation when a valid export is supplied; invalid/missing → partial |
+| On-disk / deployed `mf-manifest.json` (`check` on-disk manifests / `probe`) | partial     | Producer/deploy evidence only                                                  |
 
 \*Runtime traces are opt-in and never fetch remote URLs or execute remote JS.
 

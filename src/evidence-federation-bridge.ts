@@ -1,11 +1,5 @@
 import type { AnalysisBudgetTracker, AnalysisBudgetReport } from "./analysis-budgets.js";
-import type {
-  EvidenceGraphV2,
-  EvidenceRuleEvaluation,
-  EvidenceScope,
-  EvidenceSubject,
-  EvidenceValue,
-} from "./evidence.js";
+import type { EvidenceGraphV2, EvidenceSubject, EvidenceValue } from "./evidence.js";
 import {
   evaluateFederationWorkspaceOracle,
   type FederationOracleFinding,
@@ -13,7 +7,7 @@ import {
 } from "./federation-workspace-oracle.js";
 import { migrateFederationWorkspace } from "./evidence-reader.js";
 import { federationRuleMeta } from "./rules.js";
-import { MIGRATED_GROUP4_RULE_IDS, ruleInventory } from "./rule-inventory.js";
+import { MIGRATED_GROUP4_RULE_IDS, requireRuleInventoryEntry } from "./rule-inventory.js";
 import {
   runEvidenceAwareRules,
   type EvidenceAwareRule,
@@ -22,18 +16,16 @@ import {
   type EvidenceRuleRunnerOutput,
   type EvidenceRuleScope,
   type RuleEvaluationResult,
-  type RuleExecutionState,
 } from "./rule-contract.js";
-import type { DoctorFinding, RuleSetting, Severity } from "./types.js";
+import type { DoctorFinding, RuleSetting } from "./types.js";
 import { fingerprint, redact } from "./utils.js";
+import {
+  disabledRuleExecution,
+  graphEvaluationFor,
+  severityFor,
+} from "./evidence-graph-projection.js";
 
 export type MigratedFederationEvidenceRuleId = (typeof MIGRATED_GROUP4_RULE_IDS)[number];
-
-function inventoryEntry(id: string) {
-  const entry = ruleInventory.find((item) => item.id === id);
-  if (!entry) throw new Error(`Missing evidence-aware inventory entry for ${id}`);
-  return entry;
-}
 
 function toEvidenceFinding(value: FederationOracleFinding): EvidenceRuleFinding {
   const finding: EvidenceRuleFinding = {
@@ -107,7 +99,7 @@ function filterOracleFindingsForSubject(
 
 function federationEvidenceRule(id: MigratedFederationEvidenceRuleId): EvidenceAwareRule {
   return {
-    meta: inventoryEntry(id),
+    meta: requireRuleInventoryEntry(id),
     async evaluate(context: EvidenceRuleContext) {
       const oracleFindings =
         (context.options.oracleFindings as readonly FederationOracleFinding[] | undefined) ?? [];
@@ -142,60 +134,6 @@ export interface FederationEvidenceBridgeInput {
 export interface MigratedFederationEvidenceRun {
   graph: EvidenceGraphV2;
   output: EvidenceRuleRunnerOutput;
-}
-
-const GRAPH_TARGETS = new Set<EvidenceScope["target"]>([
-  "web",
-  "node",
-  "browser",
-  "ssr",
-  "unknown",
-]);
-
-function graphScopeFor(graphScope: EvidenceScope, scope: EvidenceRuleScope): EvidenceScope {
-  const target = GRAPH_TARGETS.has(scope.target as EvidenceScope["target"])
-    ? (scope.target as EvidenceScope["target"])
-    : graphScope.target;
-  return {
-    ...graphScope,
-    ...(scope.adapter ? { adapter: scope.adapter } : {}),
-    ...(scope.adapterVersion ? { adapterVersion: scope.adapterVersion } : {}),
-    bundler: {
-      ...graphScope.bundler,
-      ...scope.bundler,
-    },
-    target,
-    ...(scope.buildMode ? { buildMode: scope.buildMode } : {}),
-    ...(scope.projectRole ? { projectRole: scope.projectRole } : {}),
-    ...(scope.buildId ? { buildId: scope.buildId } : {}),
-    ...(scope.compilationId ? { compilationId: scope.compilationId } : {}),
-    ...(scope.federationInstanceId ? { federationInstanceId: scope.federationInstanceId } : {}),
-    ...(scope.edgeId ? { edgeId: scope.edgeId } : {}),
-  };
-}
-
-function graphEvaluationFor(
-  evaluation: RuleEvaluationResult,
-  graphScope: EvidenceScope,
-): EvidenceRuleEvaluation {
-  const result: EvidenceRuleEvaluation = {
-    id: evaluation.id,
-    rule: evaluation.rule,
-    subject: evaluation.subject,
-    outcome: evaluation.outcome,
-    evidenceIds: evaluation.evidenceIds.slice(),
-    reason: evaluation.reason,
-    reasonCode: evaluation.reasonCode,
-    confidence: evaluation.confidence,
-    scope: graphScopeFor(graphScope, evaluation.scope),
-    completeness: {
-      status: evaluation.completeness,
-      reason: evaluation.reason,
-    },
-  };
-  if ("missingRequirements" in evaluation)
-    result.missingRequirements = evaluation.missingRequirements as unknown as EvidenceValue[];
-  return result;
 }
 
 function ruleOptionsFor(
@@ -251,13 +189,7 @@ export async function runMigratedFederationRules(
   };
   const oracleFindings = evaluateFederationWorkspaceOracle(oracleInput);
   const rules = migratedFederationEvidenceRules.filter((rule) => settings[rule.meta.id] !== "off");
-  const disabled: RuleExecutionState[] = migratedFederationEvidenceRules
-    .filter((rule) => settings[rule.meta.id] === "off")
-    .map((rule) => ({
-      state: "disabled" as const,
-      rule: { id: rule.meta.id, version: rule.meta.version },
-      reason: 'Rule is disabled by configuration (setting is "off").',
-    }));
+  const disabled = disabledRuleExecution(migratedFederationEvidenceRules, settings);
   const evaluationSubjectIds = graph.subjects
     .filter(
       (subject) =>
@@ -278,12 +210,6 @@ export async function runMigratedFederationRules(
     .map((evaluation) => graphEvaluationFor(evaluation, graph.scope))
     .sort((left, right) => left.id.localeCompare(right.id));
   return { graph, output: { ...output, execution: [...disabled, ...output.execution] } };
-}
-
-function severityFor(setting: RuleSetting | undefined, fallback: Severity): Severity | undefined {
-  if (setting === "off") return undefined;
-  if (setting && typeof setting !== "string") return setting[0];
-  return setting ?? fallback;
 }
 
 /** Project conclusive v2 federation failures into the existing V1 finding shape. */

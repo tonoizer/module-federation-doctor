@@ -456,9 +456,6 @@ export interface ModernContextFacts {
   target?: string;
 }
 
-/** @deprecated Use {@link BuildOutputInput}. Kept as an alias for the Vite slice. */
-export type ViteBuildOutputInput = BuildOutputInput;
-
 export type RuntimePluginContractFinding =
   | {
       plugin: string;
