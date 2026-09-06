@@ -267,60 +267,33 @@ export type {
   CanonicalMFConfigV1,
   CanonicalUnknownField,
 } from "./canonical-config.js";
+
+/**
+ * @experimental Library-only identity helpers (ADR 0086). Not wired into CLI
+ * reports, fingerprints, or exit codes. Engine/workspace use
+ * `createWorkspaceApplicationIdentity`; remaining identity factories stay on
+ * `src/identity.ts` for tests and are not re-exported from this root entry.
+ */
 export {
-  canonicalIdentityKey,
-  createAdapterTargetIdentity,
   createApplicationIdentity,
-  createArtifactIdentity,
-  createBuildIdentity,
-  createBuildLineageIdentity,
-  createContainerIdentity,
-  createDeploymentIdentity,
-  createEnvironmentIdentity,
-  createIdentity,
-  createOrganizationIdentity,
-  createRuntimeInstanceIdentity,
-  createRuntimeRealmIdentity,
   IDENTITY_SCHEMA_VERSION,
   IdentityValidationError,
   unknownIdentity,
 } from "./identity.js";
 export type {
-  AdapterTargetIdentity,
-  AdapterTargetDimensions,
-  AnySemanticIdentity,
   ApplicationDimensions,
   ApplicationIdentity,
-  ArtifactDimensions,
-  ArtifactIdentity,
-  BuildDimensions,
-  BuildIdentity,
-  BuildLineageDimensions,
-  BuildLineageIdentity,
-  ContainerDimensions,
-  ContainerIdentity,
-  CreateIdentityOptions,
-  DeploymentIdentity,
-  DeploymentDimensions,
-  EnvironmentDimensions,
-  EnvironmentIdentity,
+  IdentityChildOptions,
   IdentityCompleteness,
   IdentityConfidence,
-  IdentityChildOptions,
-  IdentityDimensions,
   IdentityKind,
-  IdentityDimensionsByKind,
   IdentityOptions,
-  IdentityRealm,
-  IdentityTarget,
-  OrganizationDimensions,
   IdentityProvenance,
+  IdentityRealm,
   IdentitySchemaVersion,
-  OrganizationIdentity,
+  IdentityTarget,
   RuntimeInstanceIdentity,
   RuntimeRealmIdentity,
-  RuntimeRealmDimensions,
-  RuntimeInstanceDimensions,
   SemanticIdentity,
 } from "./identity.js";
 export {

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   createApplicationIdentity,
   createContainerIdentity,
-  createIdentityCapabilityEdge,
   createOrganizationIdentity,
+} from "../../src/identity.js";
+import {
+  createIdentityCapabilityEdge,
   buildSemanticGraph,
   buildSemanticUiPayload,
   querySemanticGraph,

@@ -79,6 +79,12 @@ integrating MFDoctor can stay on [Setup](./setup.md), [CI](./production-readines
 separate [runtime capture](./runtime-capture.md) page; JSON Schema exports are
 listed under [report schemas](./report-schemas.md).
 
+The `@tonoizer/mfdoctor` root re-exports **experimental** identity helpers
+`createApplicationIdentity` and `unknownIdentity` (ADR 0086, library-only).
+Other identity factories remain in source for tests and are **not** advertised
+on `.`. Engine/workspace code uses `createWorkspaceApplicationIdentity`. These
+helpers do not change V1 reports, fingerprints, or exit codes.
+
 ## Semantic identity correlation
 
 The additive identity contract provides deterministic offline correlation without

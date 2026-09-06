@@ -200,6 +200,29 @@ for (const capabilityPackExport of [
     undefined,
     "default package entry must not expose unused capability-pack export " + capabilityPackExport,
   );
+assert.equal(typeof api.createApplicationIdentity, "function");
+assert.equal(typeof api.unknownIdentity, "function");
+assert.equal(api.IDENTITY_SCHEMA_VERSION, 1);
+assert.equal(typeof api.IdentityValidationError, "function");
+for (const identityFactoryExport of [
+  "canonicalIdentityKey",
+  "createAdapterTargetIdentity",
+  "createArtifactIdentity",
+  "createBuildIdentity",
+  "createBuildLineageIdentity",
+  "createContainerIdentity",
+  "createDeploymentIdentity",
+  "createEnvironmentIdentity",
+  "createIdentity",
+  "createOrganizationIdentity",
+  "createRuntimeInstanceIdentity",
+  "createRuntimeRealmIdentity",
+])
+  assert.equal(
+    api[identityFactoryExport],
+    undefined,
+    "default package entry must not expose unused identity factory " + identityFactoryExport,
+  );
 assert.equal(typeof vite.federationDoctor, "function");
 assert.equal(vite.doctor, undefined, "vite adapter must not export unused doctor alias");
 assert.equal(typeof nuxt.moduleFederationDoctor.setup, "function");
