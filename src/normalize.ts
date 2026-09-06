@@ -16,7 +16,9 @@ import type {
 export const KNOWN_EXPOSE_CONFIG_KEYS = new Set(["import", "name"]);
 
 /** Public expose keys after normalize (confirmed `import` targets only). */
-export function publicExposeKeys(config: Pick<NormalizedMFConfig, "exposes"> | undefined): string[] {
+export function publicExposeKeys(
+  config: Pick<NormalizedMFConfig, "exposes"> | undefined,
+): string[] {
   return Object.keys(config?.exposes ?? {});
 }
 
