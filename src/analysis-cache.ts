@@ -115,6 +115,7 @@ export function createAnalysisCacheIdentity(
     | "sharedPolicy"
     | "viteLifecycle"
     | "viteConfigFacts"
+    | "splitChunksFacts"
     | "transformImportLibraries"
     | "externals"
     | "resolveAliases"
@@ -136,6 +137,7 @@ export function createAnalysisCacheIdentity(
     sharedPolicy: options.sharedPolicy,
     viteLifecycle: options.viteLifecycle ?? null,
     viteConfigFacts: options.viteConfigFacts ?? null,
+    splitChunksFacts: options.splitChunksFacts ?? null,
     transformImportLibraries: options.transformImportLibraries ?? null,
     externals: options.externals ?? null,
     resolveAliases: options.resolveAliases ?? null,

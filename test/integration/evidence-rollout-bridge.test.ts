@@ -171,6 +171,7 @@ const EXPECTED_GROUP6_RULE_IDS = [
   "config/shared-externals-conflict",
   "config/copied-webpack-options-on-vite",
   "config/copied-vite-options-on-webpack",
+  "config/split-chunks-mf-runtime",
   "doctor/partial-analysis",
 ] as const;
 

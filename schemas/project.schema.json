@@ -119,6 +119,26 @@
         },
         "resolveAliasFunction": {
           "type": "boolean"
+        },
+        "splitChunks": {
+          "type": "object",
+          "properties": {
+            "chunks": { "type": "string" },
+            "cacheGroups": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1 },
+                  "chunkName": { "type": "string", "minLength": 1 },
+                  "test": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

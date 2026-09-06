@@ -645,6 +645,7 @@ describe("evidence-aware rule contract", () => {
         "vite/host-init-inject-ssr": ["builds"],
         "vite/ssr-nitro-externals": ["builds"],
         "vite/manual-chunks-conflict": ["bundler.viteConfig"],
+        "config/split-chunks-mf-runtime": ["bundler.splitChunks"],
         "vite/alias-share-bypass": ["bundler.viteConfig"],
         "vite/server-origin": ["bundler.viteConfig"],
         "vite/remote-hmr-dev": ["builds"],
@@ -794,6 +795,7 @@ describe("evidence-aware rule contract", () => {
       "config/shared-externals-conflict",
       "config/copied-webpack-options-on-vite",
       "config/copied-vite-options-on-webpack",
+      "config/split-chunks-mf-runtime",
       "doctor/partial-analysis",
     ]);
     for (const id of [
@@ -862,6 +864,11 @@ describe("evidence-aware rule contract", () => {
         .find((entry) => entry.id === "config/copied-vite-options-on-webpack")
         ?.applicability.bundlers?.map((item) => item.name),
     ).toEqual(["rspack", "rsbuild", "webpack", "modern"]);
+    expect(
+      ruleInventory
+        .find((entry) => entry.id === "config/split-chunks-mf-runtime")
+        ?.applicability.bundlers?.map((item) => item.name),
+    ).toEqual(["webpack", "rspack", "rsbuild"]);
   });
 
   it("drives catalog supportedBundlers from inventory adapters", () => {
@@ -917,7 +924,7 @@ describe("evidence-aware rule contract", () => {
       "bundler.outputPublicPathKind": "context.facts.bundler.outputPublicPathKind",
       "bundler.externals": "context.facts.bundler.externals",
       "bundler.outputFilename": "context.facts.bundler.outputFilename",
-
+      "bundler.splitChunks": "context.facts.bundler.splitChunks",
       "imports.sourceFiles": "context.facts.imports.sourceFiles",
       "imports.packages": "context.facts.imports.packages",
       "imports.dynamicPackages": "context.facts.imports.dynamicPackages",

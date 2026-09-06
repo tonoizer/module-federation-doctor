@@ -407,6 +407,17 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Keep federation runtime chunks isolated; move general splitting outside that graph or allowlist a proven layout. Treat the finding as informational until a production build or runtime trace confirms an ordering problem.",
     sources: [vite],
   },
+  "config/split-chunks-mf-runtime": {
+    category: "reliability",
+    impact:
+      'User cacheGroups that target mf-* / remoteEntry / shared-runtime chunks can steal Module Federation runtime and shared ownership, breaking init order or duplicate-share isolation. This is an advisory for observed public splitChunks only; MFDoctor does not nag every project to set chunks: "async".',
+    fix: "Exclude federation runtime chunks from cacheGroups (name, test, and filename). Leave MF-owned remoteEntry and shared-runtime chunks to the federation plugin, or allowlist a proven layout with `allowSplitChunks: true`.",
+    sources: [
+      "https://webpack.js.org/plugins/split-chunks-plugin/",
+      "https://rspack.rs/config/optimization#optimizationsplitchunks",
+      "https://rsbuild.rs/config/performance/chunk-split",
+    ],
+  },
   "vite/hashed-remote-filename": {
     category: "reliability",
     impact:

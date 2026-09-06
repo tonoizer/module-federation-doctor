@@ -86,6 +86,12 @@ export interface BundlerFacts {
    */
   viteConfig?: ViteBundlerConfigFacts;
   /**
+   * Public webpack/rspack `optimization.splitChunks` (or Rsbuild chunkSplit)
+   * snapshot from the adapter. Absent on CLI-only runs — the splitChunks
+   * advisory skips when this field is missing rather than inventing defaults.
+   */
+  splitChunks?: SplitChunksFacts;
+  /**
    * Library names from `transformImport` / equivalent rewrite plugins when known.
    * Absent means unknown (honest skip for conflict rules).
    */
@@ -124,6 +130,26 @@ export interface ViteBundlerConfigFacts {
   serverOrigin?: string | null;
   /** Resolved Vite dev-server port when the adapter observed it. */
   serverPort?: number;
+}
+
+/** Public cacheGroup snapshot (string name/test only; functions omitted). */
+export interface SplitChunksCacheGroupFacts {
+  /** Object key in `cacheGroups`. */
+  name: string;
+  /** String `name` / `filename` / `idHint` when present. */
+  chunkName?: string;
+  /** String or `RegExp.source` for `test` when serializable. */
+  test?: string;
+}
+
+/**
+ * Observed bundler splitChunks. Presence of this object means optimization was
+ * seen (including empty / disabled). Omit the field when unobserved.
+ */
+export interface SplitChunksFacts {
+  /** Public `chunks` when it is a string (`all` / `async` / `initial`). */
+  chunks?: string;
+  cacheGroups?: SplitChunksCacheGroupFacts[];
 }
 
 export interface AnalysisCapabilities {
@@ -827,6 +853,11 @@ export interface DoctorOptions {
    */
   viteConfigFacts?: ViteBundlerConfigFacts;
   /**
+   * Additive webpack/rspack/rsbuild splitChunks facts from the adapter.
+   * Not available on CLI-only runs.
+   */
+  splitChunksFacts?: SplitChunksFacts;
+  /**
    * Library names from bundler/framework `transformImport` (Modern/Rsbuild).
    * Omit when unknown — rules skip rather than inventing rewrite lists.
    */
@@ -956,6 +987,7 @@ export interface ResolvedDoctorOptions {
   };
   viteLifecycle?: ViteLifecycleFacts;
   viteConfigFacts?: ViteBundlerConfigFacts;
+  splitChunksFacts?: SplitChunksFacts;
   /** Normalized transformImport library names when provided by adapters/options. */
   transformImportLibraries?: string[];
   /** Normalized public bundler externals names when provided by adapters/options. */

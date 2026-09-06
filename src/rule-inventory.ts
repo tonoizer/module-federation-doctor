@@ -101,6 +101,7 @@ const ids = [
   "config/runtime-plugin-missing",
   "config/share-scope-undeclared",
   "config/shared-capability-disabled",
+  "config/split-chunks-mf-runtime",
   "config/tree-shaking-server-calc-injection",
   "doctor/partial-analysis",
   "federation/circular-remote-graph",
@@ -231,6 +232,7 @@ const demoByRule = {
   "config/share-scope-undeclared": "showcase",
   "config/shared-capability-disabled": "unit",
   "config/shared-externals-conflict": "showcase",
+  "config/split-chunks-mf-runtime": "unit",
   "config/tree-shaking-server-calc-injection": "unit",
   "doctor/partial-analysis": "showcase",
   "federation/circular-remote-graph": "showcase",
@@ -431,6 +433,7 @@ export const MIGRATED_GROUP6_RULE_IDS = [
   "config/shared-externals-conflict",
   "config/copied-webpack-options-on-vite",
   "config/copied-vite-options-on-webpack",
+  "config/split-chunks-mf-runtime",
   "doctor/partial-analysis",
 ] as const;
 
@@ -936,6 +939,16 @@ const plans: Record<string, RulePlan> = {
     "high",
     "Absent plugin viteConfig facts → unknown; observed empty manualChunks/codeSplittingGroups → pass.",
     VITE,
+  ),
+  "config/split-chunks-mf-runtime": plan(
+    6,
+    "warning",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    'Absent plugin splitChunks facts → unknown; observed cacheGroups that do not target MF runtime/remoteEntry names → pass. Does not nag on chunks: "async" alone.',
+    ENHANCED_ALIAS_FAMILY,
   ),
   "vite/hashed-remote-filename": plan(
     6,
@@ -1911,6 +1924,12 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "bundler.name",
     "bundler.viteConfig",
   ],
+  "config/split-chunks-mf-runtime": [
+    "project.scope",
+    "moduleFederation",
+    "bundler.name",
+    "bundler.splitChunks",
+  ],
   "vite/hashed-remote-filename": ["project.scope", "moduleFederation", "bundler.name"],
   "vite/remote-hmr-dev": [
     "project.scope",
@@ -2049,6 +2068,7 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
     "vite/host-init-inject-ssr": ["builds"],
     "vite/ssr-nitro-externals": ["builds"],
     "vite/manual-chunks-conflict": ["bundler.viteConfig"],
+    "config/split-chunks-mf-runtime": ["bundler.splitChunks"],
     "vite/alias-share-bypass": ["bundler.viteConfig"],
     "vite/server-origin": ["bundler.viteConfig"],
     "vite/remote-hmr-dev": ["builds"],

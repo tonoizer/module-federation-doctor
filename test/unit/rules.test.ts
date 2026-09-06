@@ -1076,6 +1076,17 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/split-chunks-mf-runtime",
+      (facts: ProjectFacts) => {
+        facts.bundler.name = "webpack";
+        facts.bundler.splitChunks = {
+          chunks: "all",
+          cacheGroups: [{ name: "mf-runtime", chunkName: "mf-runtime", test: "mf-" }],
+        };
+        facts.moduleFederation!.filename = "remoteEntry.js";
+      },
+    ],
+    [
       "vite/hashed-remote-filename",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.filename = "remoteEntry.[hash].js";
@@ -3629,6 +3640,151 @@ describe("config/alias-share-bypass", () => {
   });
 });
 
+describe("config/split-chunks-mf-runtime", () => {
+  const rule = builtInRules.find((item) => item.meta.id === "config/split-chunks-mf-runtime")!;
+
+  function webpackFacts(splitChunks?: ProjectFacts["bundler"]["splitChunks"]): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "webpack", mode: "ci", ...(splitChunks ? { splitChunks } : {}) },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "shop",
+        filename: "remoteEntry.js",
+        exposes: {},
+        remotes: {},
+        shared: {},
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  async function run(
+    facts: ProjectFacts,
+    options: Record<string, unknown> = {},
+  ): Promise<
+    Array<Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">>
+  > {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    await rule.check({ facts, options, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  it("skips when optimization is unobserved", async () => {
+    expect(await run(webpackFacts())).toHaveLength(0);
+  });
+
+  it("does not nag on chunks: all without MF cacheGroups", async () => {
+    expect(
+      await run(
+        webpackFacts({
+          chunks: "all",
+          cacheGroups: [{ name: "defaultVendors", test: String.raw`[\\/]node_modules[\\/]` }],
+        }),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("warns when a cacheGroup is named for the MF runtime", async () => {
+    const findings = await run(
+      webpackFacts({
+        chunks: "all",
+        cacheGroups: [{ name: "mf-runtime", chunkName: "mf-runtime" }],
+      }),
+    );
+    expect(findings).toMatchObject([
+      {
+        message: "splitChunks cacheGroups target Module Federation runtime chunks.",
+        evidence: { chunks: "all", cacheGroups: ["mf-runtime"], chunkNames: ["mf-runtime"] },
+      },
+    ]);
+  });
+
+  it("warns when a cacheGroup test matches remoteEntry", async () => {
+    const findings = await run(
+      webpackFacts({
+        cacheGroups: [{ name: "container", test: "remoteEntry" }],
+      }),
+    );
+    expect(findings[0]?.evidence).toMatchObject({ cacheGroups: ["container"] });
+  });
+
+  it("warns when a cacheGroup matches the observed remoteEntry filename", async () => {
+    const facts = webpackFacts({
+      cacheGroups: [{ name: "container", chunkName: "shopContainer" }],
+    });
+    facts.moduleFederation!.filename = "shopContainer.js";
+    expect(await run(facts)).not.toHaveLength(0);
+  });
+
+  it("honors allowSplitChunks", async () => {
+    expect(
+      await run(webpackFacts({ cacheGroups: [{ name: "mf-runtime" }] }), {
+        allowSplitChunks: true,
+      }),
+    ).toHaveLength(0);
+  });
+
+  it("skips Vite projects", async () => {
+    const facts = webpackFacts({ cacheGroups: [{ name: "mf-runtime" }] });
+    facts.bundler.name = "vite";
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("analyzes through the CLI option snapshot for webpack, rspack, and rsbuild", async () => {
+    const root = await fixture();
+    for (const bundler of ["webpack", "rspack", "rsbuild"] as const) {
+      const result = await analyze({
+        root,
+        bundler,
+        mode: "ci",
+        output: { formats: [] },
+        splitChunksFacts: {
+          cacheGroups: [{ name: "remoteEntry", chunkName: "remoteEntry" }],
+        },
+        moduleFederation: {
+          name: "shop",
+          filename: "remoteEntry.js",
+          exposes: { "./Widget": "./src/index.ts" },
+        },
+        rules: {
+          "artifact/remote-entry-missing": "off",
+          "artifact/types-missing": "off",
+          "artifact/expose-missing": "off",
+          "config/plugin-package-mismatch": "off",
+          "doctor/partial-analysis": "off",
+        },
+      });
+      expect(
+        result.report.findings.some(
+          (finding) => finding.ruleId === "config/split-chunks-mf-runtime",
+        ),
+        bundler,
+      ).toBe(true);
+    }
+  });
+});
+
 describe("Group 6 evidence bridge", () => {
   async function runMigrated(
     facts: ProjectFacts,
@@ -3769,6 +3925,17 @@ describe("Group 6 evidence bridge", () => {
         (evaluation) => evaluation.rule.id === "config/alias-share-bypass",
       ),
     ).toMatchObject({ outcome: "fail" });
+  });
+
+  it("returns unknown for absent webpack splitChunks facts", async () => {
+    const facts = viteFacts();
+    facts.bundler.name = "webpack";
+    const migrated = await runMigrated(facts);
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/split-chunks-mf-runtime",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
   });
 
   it("evaluates SSR Vite rules without adapter builds evidence", async () => {

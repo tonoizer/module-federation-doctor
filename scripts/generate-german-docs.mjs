@@ -58,6 +58,7 @@ const headingTranslations = new Map([
   ["## Gate all apps", "## Alle Apps absichern"],
   ["## Add an adapter", "## Einen Adapter hinzufügen"],
   ["## Vite-only options", "## Vite-spezifische Optionen"],
+  ["## Vite-specific costs", "## Vite-spezifische Kosten"],
   ["## Rolldown and Vite Plus", "## Rolldown und Vite Plus"],
   ["## Manifest asset analysis", "## Analyse von Manifest-Assets"],
   [
@@ -65,6 +66,7 @@ const headingTranslations = new Map([
     "## Dialekt-Faktenmatrix (nur Konfiguration vs. Plugin-Auflösung)",
   ],
   ["## Chunk ownership", "## Chunk-Zuordnung"],
+  ["## Webpack, Rspack, and Rsbuild `splitChunks`", "## Webpack, Rspack und Rsbuild `splitChunks`"],
   ["## What v1 does not include", "## Was v1 nicht enthält"],
   ["## Policy presets and packs", "## Richtlinien-Voreinstellungen und Pakete"],
   [

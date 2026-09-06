@@ -173,7 +173,7 @@ MFDoctor reports a hard error when a removed capability is still configured. It
 reports snapshot loss as reliability risk because the build may run while
 important tooling silently disappears.
 
-## Vite-specific costs
+## Vite-spezifische Kosten
 
 - `bundleAllCSS: true` attaches all CSS to every expose. Use it only when each
   expose needs the full style set.
@@ -182,6 +182,14 @@ important tooling silently disappears.
 - User `manualChunks` and custom `codeSplitting.groups` are ignored by the
   official plugin because they can break federation initialization order. Let
   the plugin isolate `loadShare` and runtime-init chunks.
+
+## Webpack, Rspack und Rsbuild `splitChunks`
+
+Aggressive `optimization.splitChunks.cacheGroups` can steal Module Federation
+runtime, `remoteEntry`, and shared-runtime chunks. MFDoctor warns when a public
+cacheGroup **name or test** targets those chunks
+([`config/split-chunks-mf-runtime`](./rules/config/split-chunks-mf-runtime.md)).
+It does **not** nag every project to set `chunks: "async"`.
 
 Source:
 [Vite plugin source](https://github.com/module-federation/vite/blob/321d7db8a4b2a1764b3a7cdc16246222d97231ac/src/index.ts).
