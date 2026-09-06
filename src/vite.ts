@@ -25,7 +25,4 @@ export function federationDoctor(options?: DoctorOptions): ViteDoctorPlugin {
   return viteDoctor.vite(options) as unknown as ViteDoctorPlugin;
 }
 
-/** @deprecated Use `federationDoctor`. */
-export const doctor = federationDoctor;
-
 export default federationDoctor;

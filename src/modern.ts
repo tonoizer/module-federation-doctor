@@ -113,7 +113,4 @@ export function appendModuleFederationDoctor(
   chain.plugin("module-federation-doctor").use(rspackModuleFederationDoctorPlugin(options));
 }
 
-/** @deprecated Use `moduleFederationDoctorPlugin`. */
-export const doctor = moduleFederationDoctorPlugin;
-
 export default moduleFederationDoctorPlugin;
