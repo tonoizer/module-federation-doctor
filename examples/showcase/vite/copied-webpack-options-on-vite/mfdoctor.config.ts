@@ -22,7 +22,6 @@ export default {
       asyncStartup: true,
       optimization: {
         disableRemote: true,
-        target: "node",
       },
     },
   },

@@ -8,6 +8,7 @@ export default {
     "artifact/remote-entry-missing": "off",
     "config/remote-manifest-recommended": "off",
     "config/remote-localhost-in-production": "off",
+    "reliability/version-first-offline-remotes": "off",
   },
   moduleFederation: {
     name: "remotes_prefer_module",
