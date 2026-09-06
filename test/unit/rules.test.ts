@@ -166,6 +166,30 @@ describe("built-in rules", () => {
     );
   });
 
+  it("runs shared rules when bundler is unknown and still skips Vite-only rules", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "unknown",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "",
+        remotes: {
+          shop: { name: "shop", entry: "http://localhost:4174/remoteEntry.js" },
+        },
+      },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+        "artifact/remote-entry-missing": "off",
+      },
+    });
+    const ids = result.report.findings.map((item) => item.ruleId);
+    expect(ids).toContain("config/name-required");
+    expect(ids).not.toContain("vite/remotes-prefer-module");
+  });
+
   it("accepts the Vite/Core root expose key and extensionless expose paths", async () => {
     const root = await fixture();
     const result = await analyze({

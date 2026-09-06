@@ -98,7 +98,14 @@ async function runRule(
   recognizeMfToolkit?: boolean,
 ): Promise<DoctorFinding[]> {
   const resolved = parseSetting(setting, rule.meta.defaultSeverity);
-  if (!resolved || !rule.meta.supportedBundlers.includes(facts.bundler.name)) return [];
+  // Unknown bundler means detection failed. Keep shared rules running; Vite-only
+  // (and other restricted) rules still skip via supportedBundlers on known names
+  // and via their existing imperative bundler checks.
+  if (
+    !resolved ||
+    (facts.bundler.name !== "unknown" && !rule.meta.supportedBundlers.includes(facts.bundler.name))
+  )
+    return [];
   const findings: DoctorFinding[] = [];
   const add = (
     value: Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">,
