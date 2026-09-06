@@ -72,8 +72,14 @@ describe("CLI capabilities discovery contract", () => {
       expect.arrayContaining(["vite", "rspack", "rsbuild", "webpack"]),
     );
     expect(capabilities.bundlerMatrix.partial).toEqual(
-      expect.arrayContaining(["modern", "rolldown"]),
+      expect.arrayContaining(["modern", "rolldown", "nuxt"]),
     );
+    expect(capabilities.bundlerMatrix.bundlers).toEqual(
+      expect.arrayContaining([
+        { id: "nuxt", status: "partial", adapter: "@tonoizer/mfdoctor/nuxt" },
+      ]),
+    );
+    expect(capabilities.bundlerMatrix.supported).not.toContain("nuxt");
   });
 
   it("rejects localCi cells that invent bundlers outside the matrix", () => {

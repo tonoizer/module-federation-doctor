@@ -346,6 +346,16 @@ assert.equal(rspackChain[0][0], "module-federation-doctor");
   assert.equal(capabilities.bundlerMatrix?.source, "./fixtures/compatibility-matrix.json");
   assert.ok(capabilities.bundlerMatrix?.supported.includes("vite"));
   assert.ok(capabilities.bundlerMatrix?.partial.includes("modern"));
+  assert.ok(capabilities.bundlerMatrix?.partial.includes("nuxt"));
+  assert.ok(!capabilities.bundlerMatrix?.supported.includes("nuxt"));
+  assert.ok(
+    capabilities.bundlerMatrix?.bundlers?.some(
+      (entry) =>
+        entry.id === "nuxt" &&
+        entry.status === "partial" &&
+        entry.adapter === "@tonoizer/mfdoctor/nuxt",
+    ),
+  );
 
   const repairLoop = path.join(consumer, "repair-loop");
   await fs.mkdir(repairLoop, { recursive: true });
