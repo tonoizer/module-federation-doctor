@@ -18,9 +18,10 @@ export type {
   TypedDetailsRuleId,
 } from "./finding-details.js";
 export { analyze, analyzeFederation } from "./engine.js";
+// DEFAULT_ANALYSIS_CACHE_OPTIONS stays in src/analysis-cache.ts for collect
+// and benchmarks. It is not re-exported from this root entry (BL-58).
 export {
   AnalysisContentCache,
-  DEFAULT_ANALYSIS_CACHE_OPTIONS,
   analysisCacheKey,
   contentDigest,
   createAnalysisCacheIdentity,

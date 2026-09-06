@@ -62,12 +62,12 @@ gate uses knip with `includeEntryExports` and a preprocessor that reports only
 the published `.` barrel.
 
 Library-only symbols that stay on `.` until a slim PR (identity helpers,
-correlation/governance, migrated-group lists, analysis-cache defaults) are
-listed in `scripts/knip-index-export-allowlist.mjs`. Finding lineage,
-governance waivers, and V1 compatibility helpers are **not** on `.` (BL-39,
-BL-49). Do not add names there to land a new export — import it from a test
-via `src/index.js` (see `test/unit/root-entry-exports.test.ts`) or omit it from
-the root entry.
+correlation/governance, migrated-group lists) are listed in
+`scripts/knip-index-export-allowlist.mjs`. Finding lineage, governance
+waivers, and V1 compatibility helpers are **not** on `.` (BL-39, BL-49).
+Analysis-cache defaults are **not** on `.` (BL-58). Do not add names there
+to land a new export — import it from a test via `src/index.js` (see
+`test/unit/root-entry-exports.test.ts`) or omit it from the root entry.
 
 ## Adapter contract
 
