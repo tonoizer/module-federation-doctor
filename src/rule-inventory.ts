@@ -271,7 +271,6 @@ const demoByRule = {
   "shared/prefix-share-recommended": "unit",
   "shared/package-path-missing": "unit",
   "shared/subpath-version-unresolved": "unit",
-
   "shared/eager-without-singleton": "showcase",
   "shared/singleton-mismatch": "showcase",
   "shared/singleton-risk": "showcase",

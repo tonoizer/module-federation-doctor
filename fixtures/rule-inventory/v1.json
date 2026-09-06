@@ -3844,6 +3844,7 @@
       "version": "1",
       "group": 1,
       "status": "migrated",
+      "demo": "showcase",
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
@@ -3882,13 +3883,13 @@
       "applicability": {
         "adapters": [
           {
-            "name": "webpack"
-          },
-          {
             "name": "rspack"
           },
           {
             "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
           },
           {
             "name": "modern"
@@ -3896,13 +3897,13 @@
         ],
         "bundlers": [
           {
-            "name": "webpack"
-          },
-          {
             "name": "rspack"
           },
           {
             "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
           },
           {
             "name": "modern"
