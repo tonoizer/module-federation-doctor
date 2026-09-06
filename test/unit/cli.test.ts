@@ -733,6 +733,8 @@ describe("CLI arguments", () => {
     expect(capabilities.bundlerMatrix.source).toBe("./fixtures/compatibility-matrix.json");
     expect(capabilities.bundlerMatrix.supported).toContain("vite");
     expect(capabilities.bundlerMatrix.partial).toContain("modern");
+    expect(capabilities.bundlerMatrix.partial).toContain("nuxt");
+    expect(capabilities.bundlerMatrix.supported).not.toContain("nuxt");
   });
 
   it("hides agent prompts in CI by default and keeps them locally", async () => {

@@ -30,6 +30,11 @@
       "id": "modern",
       "status": "partial",
       "adapter": "@tonoizer/mfdoctor/modern"
+    },
+    {
+      "id": "nuxt",
+      "status": "partial",
+      "adapter": "@tonoizer/mfdoctor/nuxt"
     }
   ],
   "localCi": [
