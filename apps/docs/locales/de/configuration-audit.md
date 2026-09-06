@@ -18,6 +18,7 @@ Use it as a review checklist even when a rule does not yet automate the check.
 | `shareScope`                    | Isolated pools cannot reuse packages               | Align top-level, remote, and item scopes                       |
 | `exposes`                       | Bad public key or missing source                   | Use `./Name` keys and exact paths                              |
 | `shared`                        | Duplicate frameworks or unsatisfied versions       | Align singleton, versions, scope, strictness, and fallback     |
+| `shared[].packagePath`          | Wrong path redirects version/singleton resolution  | Point at an existing package directory or entry file           |
 | `runtimePlugins`                | Missing plugin or unsafe recovery                  | Resolve every plugin and test each hook path                   |
 | `getPublicPath`                 | Dynamic-code and asset-base risk                   | Keep the stringified function small, static, and reviewed      |
 | `implementation`                | Runtime/plugin version skew                        | Resolve a compatible `runtime-tools` implementation            |

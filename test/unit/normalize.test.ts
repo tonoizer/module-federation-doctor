@@ -76,6 +76,31 @@ describe("normalization", () => {
     expect(normalizeModuleFederation({ name: "host" })?.bridge).toBeUndefined();
   });
 
+  it("preserves shared.packagePath through normalize", () => {
+    const normalized = normalizeModuleFederation({
+      name: "host",
+      shared: {
+        react: {
+          singleton: true,
+          packagePath: "./vendor/react",
+        },
+        "react-dom": "^19.0.0",
+      },
+    });
+    expect(normalized?.shared.react).toMatchObject({
+      package: "react",
+      singleton: true,
+      packagePath: "./vendor/react",
+    });
+    expect(normalized?.shared["react-dom"]?.packagePath).toBeUndefined();
+    expect(
+      normalizeModuleFederation({
+        name: "host",
+        shared: ["react"],
+      })?.shared.react?.packagePath,
+    ).toBeUndefined();
+  });
+
   it("preserves webpack-only runtime and async options for Vite dialect detection", () => {
     const normalized = normalizeModuleFederation({
       name: "host",

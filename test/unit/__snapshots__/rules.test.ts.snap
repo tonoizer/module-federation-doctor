@@ -74,6 +74,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "shared/deep-import-bypass",
   "shared/prefix-share-recommended",
   "shared/subpath-version-unresolved",
+  "shared/package-path-missing",
   "artifact/public-path-suspicious",
   "artifact/types-missing",
   "artifact/react-dom-server-in-web",
