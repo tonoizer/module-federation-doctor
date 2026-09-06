@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // BL-25: unused-export gate for the published `.` surface (`src/index.ts`).
+  // Other workspaces are docs/examples/fixtures and are out of this gate.
+  // The CI script runs knip with --preprocessor scripts/knip-index-export-allowlist.mjs
+  // so only unused value exports from src/index.ts can fail the job.
+  "ignoreWorkspaces": ["apps/**", "examples", "examples/**", "fixtures/**"],
+  // Value exports only. Type-only re-exports on `.` stay a documentation
+  // concern until a later slim; they are unused in-repo by design.
+  "include": ["exports"],
+  "includeEntryExports": true,
+  "ignoreBinaries": ["vp"],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/index.ts",
+        "src/cli.ts",
+        "src/vite.ts",
+        "src/nuxt.ts",
+        "src/rspack.ts",
+        "src/rsbuild.ts",
+        "src/webpack.ts",
+        "src/modern.ts",
+        "src/rules.ts",
+        "src/policy.ts",
+        "src/capture.ts",
+        "test/**/*.{ts,mjs}",
+        "scripts/**/*.{mjs,ts}",
+      ],
+      "project": ["src/**/*.ts"],
+    },
+  },
+}

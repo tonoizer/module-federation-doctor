@@ -22,6 +22,7 @@ jobs:
           node-version: 24
       - run: vp run fmt:check
       - run: vp run lint
+      - run: vp run knip
       - run: vp run changeset:check
       # Examples resolve @tonoizer/mfdoctor/* from dist/; build before typecheck.
       - run: vp run --filter . build

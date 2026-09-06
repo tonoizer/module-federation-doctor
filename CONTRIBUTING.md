@@ -55,6 +55,18 @@ is missing or if a `showcase` / `emit` tag does not match the demo catalogs.
 Existing rules may stay `unit` until a later showcase or emit leaf; do not add
 a new rule without one of those three tags.
 
+## Unused public exports
+
+`vp run knip` fails when `src/index.ts` grows a new unused value export. The
+gate uses knip with `includeEntryExports` and a preprocessor that reports only
+the published `.` barrel.
+
+Library-only symbols that stay on `.` until a slim PR (identity factories,
+waivers, lineage, migrated-group lists, analysis-cache defaults) are listed in
+`scripts/knip-index-export-allowlist.mjs`. Do not add names there to land a new
+export — import it from a test via `src/index.js` (see
+`test/unit/root-entry-exports.test.ts`) or omit it from the root entry.
+
 ## Adapter contract
 
 MFDoctor is plugin-primary and CLI-complementary. Bundler adapters run after emit
