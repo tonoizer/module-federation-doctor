@@ -902,6 +902,18 @@ importers:
 
   fixtures/policy-packs/bridge: {}
 
+  fixtures/shared-subpath-version/enhanced-rspack:
+    dependencies:
+      '@module-federation/enhanced':
+        specifier: 2.8.2
+        version: 2.8.2(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.2)(@swc/helpers@0.5.23))(typescript@5.9.3)(webpack@5.109.0)
+
+  fixtures/shared-subpath-version/enhanced-webpack:
+    dependencies:
+      '@module-federation/enhanced':
+        specifier: 2.8.2
+        version: 2.8.2(@rspack/core@2.1.5(@module-federation/runtime-tools@2.8.2)(@swc/helpers@0.5.23))(typescript@5.9.3)(webpack@5.109.0)
+
   fixtures/shared-subpath-version/resolved:
     dependencies:
       '@module-federation/vite':
