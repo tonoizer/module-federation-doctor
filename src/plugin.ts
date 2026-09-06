@@ -17,7 +17,11 @@ import type {
 } from "./types.js";
 import { normalizePath, relativePath } from "./utils.js";
 import { detectViteLifecycle, withPostEmitHook, type ViteHookMeta } from "./vite-lifecycle.js";
-import { observeResolveAlias, type ResolveAliasObservation } from "./share-rewrite.js";
+import {
+  observeResolveAlias,
+  observeSourceTransformImportFromConfigs,
+  type ResolveAliasObservation,
+} from "./share-rewrite.js";
 import { extractCompilerSplitChunksFacts, extractRsbuildSplitChunksFacts } from "./split-chunks.js";
 
 /**
@@ -699,10 +703,14 @@ export function attachDoctorAfterEmit(
   compiler: CompilerLike,
   configured: DoctorOptions,
   modernContext?: ModernContextFacts,
+  extraDiagnostics?: BuildDiagnostics,
 ): void {
   if (!configured.root) configured.root = compiler.context;
   compiler.hooks.afterEmit.tapPromise("ModuleFederationDoctor", async (compilation) => {
-    const diagnostics = collectCompilerDiagnostics(compiler);
+    const diagnostics = {
+      ...collectCompilerDiagnostics(compiler),
+      ...extraDiagnostics,
+    };
     const output = compilerBuildOutput(
       compiler,
       compilation,
@@ -1233,6 +1241,10 @@ function createDoctorPlugin(bundler: BundlerName) {
                   const assets = [
                     ...new Set(outputs.flatMap((output) => prefixedEmittedAssets(output))),
                   ];
+                  const transformImportLibraries = observeSourceTransformImportFromConfigs(
+                    callPublicConfig(rsbuildApi.getNormalizedConfig),
+                    callPublicConfig(rsbuildApi.getRsbuildConfig),
+                  );
                   const diagnostics: BuildDiagnostics = {
                     ...collectRsbuildPublicPathDiagnostics(rsbuildApi, stats),
                     ...applyViteFamilyPluginDiagnostics(
@@ -1241,6 +1253,7 @@ function createDoctorPlugin(bundler: BundlerName) {
                     ),
                     ...(observedExternals !== undefined ? { externals: observedExternals } : {}),
                     ...aliasDiagnostics,
+                    ...(transformImportLibraries !== undefined ? { transformImportLibraries } : {}),
                   };
                   attachRsbuildSplitChunks(diagnostics, rsbuildApi);
                   const result = await analyzeBuild(

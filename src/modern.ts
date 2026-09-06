@@ -1,5 +1,7 @@
+import type { BuildDiagnostics } from "./collect.js";
 import { attachDoctorAfterEmit, type CompilerLike } from "./plugin.js";
 import { moduleFederationDoctorPlugin as rspackModuleFederationDoctorPlugin } from "./rspack.js";
+import { observeSourceTransformImportFromConfigs } from "./share-rewrite.js";
 import type { DoctorOptions } from "./types.js";
 import type { ModernContextFacts } from "./types.js";
 
@@ -27,6 +29,10 @@ type ModernChainUtils = {
 /** Duck-typed Modern.js / App Tools plugin API (no hard dependency on app-tools). */
 export type ModernDoctorApi = {
   getAppContext?: () => ModernAppContext;
+  /** Public CLI plugin API: user `modern.config.*`. */
+  getConfig?: () => unknown;
+  /** Public CLI plugin API: normalized config (onPrepare and later). */
+  getNormalizedConfig?: () => unknown;
   modifyBundlerChain?: (
     handler: (chain: BundlerChainLike, utils?: ModernChainUtils) => void | Promise<void>,
   ) => void;
@@ -42,14 +48,24 @@ type AfterEmitDoctorPlugin = {
   apply: (compiler: CompilerLike) => void;
 };
 
+function callPublicConfig<T>(fn: (() => T) | undefined): T | undefined {
+  if (typeof fn !== "function") return undefined;
+  try {
+    return fn();
+  } catch {
+    return undefined;
+  }
+}
+
 function createAfterEmitPlugin(
   options: DoctorOptions,
   modernContext?: ModernContextFacts,
+  extraDiagnostics?: BuildDiagnostics,
 ): AfterEmitDoctorPlugin {
   return {
     name: "ModuleFederationDoctor",
     apply(compiler) {
-      attachDoctorAfterEmit(compiler, options, modernContext);
+      attachDoctorAfterEmit(compiler, options, modernContext, extraDiagnostics);
     },
   };
 }
@@ -92,9 +108,19 @@ export function moduleFederationDoctorPlugin(options: DoctorOptions = {}): Moder
         if (typeof utils?.target === "string" && utils.target.length > 0)
           modernContext.target = utils.target;
         const immutableContext = Object.freeze(modernContext);
+        const transformImportLibraries = observeSourceTransformImportFromConfigs(
+          callPublicConfig(api.getNormalizedConfig),
+          callPublicConfig(api.getConfig),
+        );
         chain
           .plugin("module-federation-doctor")
-          .use(createAfterEmitPlugin(configured, immutableContext));
+          .use(
+            createAfterEmitPlugin(
+              configured,
+              immutableContext,
+              transformImportLibraries !== undefined ? { transformImportLibraries } : undefined,
+            ),
+          );
       });
     },
   };

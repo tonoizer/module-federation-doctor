@@ -227,4 +227,14 @@ describe("resolveOptions", () => {
     expect(fromArray.externals).toEqual(["react-dom", "vue"]);
     expect((await resolveOptions({ root: "fixture" })).externals).toBeUndefined();
   });
+
+  it("normalizes public transformImport library names from DoctorOptions", async () => {
+    stubLocalEnv();
+    const resolved = await resolveOptions({
+      root: "fixture",
+      transformImport: [{ libraryName: "antd" }, "@arco-design/web-react", { libraryName: "antd" }],
+    });
+    expect(resolved.transformImportLibraries).toEqual(["@arco-design/web-react", "antd"]);
+    expect((await resolveOptions({ root: "fixture" })).transformImportLibraries).toBeUndefined();
+  });
 });

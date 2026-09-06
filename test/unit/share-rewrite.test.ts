@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   findShareRewriteOverlaps,
   observeResolveAlias,
+  observeSourceTransformImportFromConfigs,
+  observeTransformImportLibraries,
   rewriteOverlapsShareKey,
 } from "../../src/share-rewrite.js";
 
@@ -47,5 +49,46 @@ describe("observeResolveAlias", () => {
       functionAlias: true,
     });
     expect(observeResolveAlias(undefined)).toBeUndefined();
+  });
+});
+
+describe("observeTransformImportLibraries", () => {
+  it("reads string and libraryName entries and sorts uniquely", () => {
+    expect(
+      observeTransformImportLibraries([
+        { libraryName: "antd", libraryDirectory: "es", style: true },
+        "@arco-design/web-react",
+        { libraryName: "antd" },
+      ]),
+    ).toEqual(["@arco-design/web-react", "antd"]);
+  });
+
+  it("treats false as observed empty and skips functions", () => {
+    expect(observeTransformImportLibraries(false)).toEqual([]);
+    expect(observeTransformImportLibraries(() => [{ libraryName: "antd" }])).toBeUndefined();
+    expect(observeTransformImportLibraries(undefined)).toBeUndefined();
+    expect(observeTransformImportLibraries({ libraryName: "antd" })).toBeUndefined();
+  });
+});
+
+describe("observeSourceTransformImportFromConfigs", () => {
+  it("reads public source.transformImport and prefers the first defined config", () => {
+    expect(
+      observeSourceTransformImportFromConfigs({
+        source: { transformImport: [{ libraryName: "antd" }] },
+      }),
+    ).toEqual(["antd"]);
+    expect(observeSourceTransformImportFromConfigs({ source: {} })).toBeUndefined();
+    expect(
+      observeSourceTransformImportFromConfigs(
+        { source: { transformImport: false } },
+        { source: { transformImport: [{ libraryName: "antd" }] } },
+      ),
+    ).toEqual([]);
+    expect(
+      observeSourceTransformImportFromConfigs(undefined, {
+        source: { transformImport: [{ libraryName: "@arco-design/web-react" }] },
+      }),
+    ).toEqual(["@arco-design/web-react"]);
   });
 });
