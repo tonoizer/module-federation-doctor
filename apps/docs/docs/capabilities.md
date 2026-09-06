@@ -166,7 +166,8 @@ snapshots. They report new, persistent, resolved, regressed, improved, and
 unknown/unconfirmed changes. A missing or partial later snapshot cannot prove a
 finding resolved; only complete comparable evidence can do that. The contract is
 offline and library-only: it adds no telemetry service, hosted history store,
-default CLI behavior, or rule suppression.
+default CLI behavior, or rule suppression. Helpers are **not** re-exported from
+`@tonoizer/mfdoctor` until the CLI uses them; JSON Schema stays published.
 
 ## Governance waivers and audit decisions
 
@@ -186,6 +187,8 @@ missing dimension, and conflict. Multiple overlapping approvals with different
 owner/reason/ticket metadata remain `ambiguous` instead of selecting a winner.
 This contract is additive and library-only: it does not change finding lineage,
 the V1 fingerprint, `baseline.schema.json`, report projections, or exit codes.
+Helpers are **not** re-exported from `@tonoizer/mfdoctor` and do not add CLI
+flags.
 
 ## V1 compatibility bridge
 

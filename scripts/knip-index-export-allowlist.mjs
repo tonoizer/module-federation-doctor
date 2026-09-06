@@ -14,30 +14,21 @@ export const INDEX_UNUSED_EXPORT_ALLOWLIST = Object.freeze([
   "IDENTITY_SCHEMA_VERSION",
   "IdentityValidationError",
   "unknownIdentity",
-  // BL-39 / ADR 0086 — correlation, governance, lineage, waivers (library-only).
+  // ADR 0086 — correlation, ownership, build/deployment, runtime identity
+  // still on `.` until later slim PRs. Lineage/waiver value exports were
+  // dropped from `.` in BL-39.
   "BUILD_ARTIFACT_DEPLOYMENT_SCHEMA_VERSION",
-  "FINDING_LINEAGE_SCHEMA_VERSION",
-  "FindingLineageValidationError",
-  "GOVERNANCE_WAIVER_SCHEMA_VERSION",
   "IDENTITY_CORRELATION_SCHEMA_VERSION",
   "IDENTITY_GOVERNANCE_SCHEMA_VERSION",
   "RUNTIME_IDENTITY_CORRELATION_SCHEMA_VERSION",
-  "assertFindingLineageRecord",
   "assessIdentityCapabilityCoverage",
   "correlateBuildArtifactDeployment",
   "correlateDeploymentRelationship",
   "correlateSemanticIdentity",
-  "createFindingHistorySnapshot",
-  "createFindingLineage",
-  "defineGovernanceWaiver",
   "defineIdentityGovernanceRule",
-  "diffFindingHistory",
-  "diffFindingHistorySeries",
-  "evaluateGovernanceWaiver",
   "isIdentityCapabilityEdgeId",
   "isSemanticIdentityKey",
   "projectRuntimeCaptureIdentity",
-  "resolveGovernanceWaivers",
   "resolveIdentityGovernance",
   // BL-49 — V1 suppression projection is unused on the CLI path.
   "V1_COMPATIBILITY_SCHEMA_VERSION",

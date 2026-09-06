@@ -3,7 +3,11 @@ import type { IdentityRealm, IdentityTarget } from "./identity.js";
 import { isSemanticIdentityKey } from "./identity-correlation.js";
 import { compareCodePoint } from "./utils.js";
 
-/** Version of the additive finding lineage and history contract. */
+/**
+ * @experimental Library-only finding lineage and history (ADR 0086). Not
+ * re-exported from `@tonoizer/mfdoctor` and not wired into CLI reports,
+ * fingerprints, baselines, or exit codes.
+ */
 export const FINDING_LINEAGE_SCHEMA_VERSION = 1 as const;
 export type FindingLineageSchemaVersion = typeof FINDING_LINEAGE_SCHEMA_VERSION;
 

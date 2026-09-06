@@ -13,7 +13,12 @@ import { assertFindingLineageRecord, type FindingLineageRecord } from "./finding
 import { isSemanticIdentityKey } from "./identity-correlation.js";
 import { compareCodePoint } from "./utils.js";
 
-/** Version of the additive governance-waiver and audit contract. */
+/**
+ * @experimental Library-only governance waivers and audit decisions (ADR 0086).
+ * Not re-exported from `@tonoizer/mfdoctor` and not wired into CLI reports,
+ * fingerprints, baselines, or exit codes. Do not invent CLI flags for this
+ * module.
+ */
 export const GOVERNANCE_WAIVER_SCHEMA_VERSION = 1 as const;
 export type GovernanceWaiverSchemaVersion = typeof GOVERNANCE_WAIVER_SCHEMA_VERSION;
 

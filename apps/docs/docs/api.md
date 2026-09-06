@@ -53,3 +53,8 @@ regenerated.
 The package's declaration files are published alongside the runtime targets.
 Use the [CLI capabilities contract](./cli.md#discover-cli-capabilities) for
 machine-readable command, format, exit-code, and schema discovery.
+
+Finding lineage (`finding-lineage.schema.json`) and governance waivers
+(`governance-waiver.schema.json`) are **experimental** library-only contracts
+(ADR 0086). Their TypeScript helpers are not re-exported from
+`@tonoizer/mfdoctor` and are not wired into the baseline CLI.

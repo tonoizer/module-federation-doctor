@@ -93,8 +93,8 @@ opening punctuation such as `(`, `[` or `{`. Other strings are left unchanged.
 | `@tonoizer/mfdoctor/schemas/runtime-capture.schema.json`              | `@tonoizer/mfdoctor/capture`                     | External capture contract     |
 | `@tonoizer/mfdoctor/schemas/runtime-identity-correlation.schema.json` | `projectRuntimeCaptureIdentity`                  | Runtime identity projection   |
 | `@tonoizer/mfdoctor/schemas/build-artifact-deployment.schema.json`    | `correlateBuildArtifactDeployment`               | Build/deployment correlation  |
-| `@tonoizer/mfdoctor/schemas/finding-lineage.schema.json`              | `createFindingLineage` / history helpers         | Finding lineage and history   |
-| `@tonoizer/mfdoctor/schemas/governance-waiver.schema.json`            | `resolveGovernanceWaivers`                       | Waiver and audit decision     |
+| `@tonoizer/mfdoctor/schemas/finding-lineage.schema.json`              | Library-only history helpers (not on `.` / CLI)  | Finding lineage and history   |
+| `@tonoizer/mfdoctor/schemas/governance-waiver.schema.json`            | Library-only waiver helpers (not on `.` / CLI)   | Waiver and audit decision     |
 | `@tonoizer/mfdoctor/schemas/semantic-graph.schema.json`               | `buildSemanticGraph` / `querySemanticGraph`      | Additive semantic graph       |
 | `@tonoizer/mfdoctor/schemas/ui.schema.json`                           | `buildUiPayload`                                 | Programmatic graph only       |
 
@@ -102,6 +102,11 @@ opening punctuation such as `(`, `[` or `{`. Other strings are left unchanged.
 HTML dashboard). It remains the published shape for programmatic consumers of
 `buildUiPayload` / graph payloads — see below. Do not treat it as an HTML report
 format.
+
+`finding-lineage.schema.json` and `governance-waiver.schema.json` are
+**experimental** library-only contracts. Their TypeScript helpers are not
+re-exported from `@tonoizer/mfdoctor` and are not wired into `mfdoctor baseline`
+or other CLI commands.
 
 ## Laufzeit-Observability-Quell-Fixtures
 
