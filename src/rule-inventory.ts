@@ -143,6 +143,7 @@ const ids = [
   "shared/react-host-missing",
   "shared/deep-import-bypass",
   "shared/prefix-share-recommended",
+  "shared/package-path-missing",
   "shared/subpath-version-unresolved",
   "shared/eager-without-singleton",
   "shared/singleton-mismatch",
@@ -367,6 +368,7 @@ export const MIGRATED_GROUP3_RULE_IDS = [
   "shared/deep-import-bypass",
   "shared/prefix-share-recommended",
   "shared/subpath-version-unresolved",
+  "shared/package-path-missing",
 ] as const;
 
 /** Group 4 federation workspace topology rules promoted by the staged V1 rollout. */
@@ -1169,6 +1171,15 @@ const plans: Record<string, RulePlan> = {
     "high",
     "Observed deep-import and declared shared-key facts are exact when source collection is complete.",
   ),
+  "shared/package-path-missing": plan(
+    3,
+    "error",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Declared shared.packagePath is exact when the path can be stat'd; missing disk path is a fail; unknown bundlers and unreadable paths skip rather than invent a finding.",
+  ),
   "shared/subpath-version-unresolved": plan(
     3,
     "error",
@@ -1889,6 +1900,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "imports.deepImports",
     "imports.deepImportFiles",
   ],
+  "shared/package-path-missing": ["project.scope", "moduleFederation"],
   "shared/subpath-version-unresolved": [
     "project.scope",
     "moduleFederation",

@@ -577,6 +577,13 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: 'Add `"react/"` / `"react-dom/"` to `shared`, or add only the exact observed subpaths. Turn `rules["shared/prefix-share-recommended"]` off or baseline the fingerprint when the import boundary is intentional.',
     sources: [shared, "https://module-federation.io/guide/bridge/react-bridge"],
   },
+  "shared/package-path-missing": {
+    category: "correctness",
+    impact:
+      "`shared[pkg].packagePath` redirects where the bundler reads the shared package (version, singleton fallback). A path that is missing on disk makes version/singleton negotiation fail at build or runtime with no other MFDoctor finding.",
+    fix: "Point `packagePath` at an existing package directory or entry file (relative to the project root, or an absolute path). Remove the field when Node module resolution should be used instead. Unknown bundlers skip this check rather than inventing a disk finding.",
+    sources: [shared, "https://github.com/originjs/vite-plugin-federation/blob/main/README.md"],
+  },
   "shared/subpath-version-unresolved": {
     category: "correctness",
     impact:

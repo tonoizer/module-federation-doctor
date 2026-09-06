@@ -139,6 +139,11 @@ export interface NormalizedShared {
   import?: string | false;
   shareKey?: string;
   request?: string;
+  /**
+   * Filesystem path that redirects shared resolution (Enhanced / originjs
+   * `shared[pkg].packagePath`). Relative paths are project-root relative.
+   */
+  packagePath?: string;
   allowNodeModulesSuffixMatch?: boolean;
   shareScope: string | string[];
   treeShaking?: {
@@ -613,6 +618,8 @@ export interface ModuleFederationConfigLike {
             import?: string | false;
             shareKey?: string;
             request?: string;
+            /** Path that redirects shared package resolution. */
+            packagePath?: string;
             allowNodeModulesSuffixMatch?: boolean;
             shareScope?: string | string[];
             treeShaking?:

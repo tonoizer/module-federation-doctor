@@ -861,6 +861,27 @@ function mergeOverlappingAssetGroups(
   groups.push(merged);
 }
 
+function looksLikeUrlPackagePath(value: string): boolean {
+  return /^[a-z][a-z\d+.-]*:/i.test(value) && !path.win32.isAbsolute(value);
+}
+
+/** Stat a declared shared.packagePath. URL-like and unreadable paths stay unknown. */
+async function sharedPackagePathExistence(
+  root: string,
+  packagePath: string,
+): Promise<"yes" | "no" | "unknown"> {
+  if (looksLikeUrlPackagePath(packagePath)) return "unknown";
+  const resolved = path.isAbsolute(packagePath) ? packagePath : path.resolve(root, packagePath);
+  try {
+    await fs.stat(resolved);
+    return "yes";
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return "no";
+    return "unknown";
+  }
+}
+
 export const builtInRules: DoctorRule[] = [
   createRule("config/name-required", "error", (context) => {
     if (mf(context) && !mf(context)?.name?.trim())
@@ -2498,6 +2519,41 @@ export const builtInRules: DoctorRule[] = [
           ...(entry.shareKey ? { shareKey: entry.shareKey } : {}),
         },
         `Set an explicit \`version\` (or a concrete \`requiredVersion\`) on "${key}", or install "${parent}" so Vite can inherit the parent package version.`,
+      );
+    }
+  }),
+  createRule("shared/package-path-missing", "error", async (context) => {
+    // Unknown bundler means we cannot tell whether packagePath is honored.
+    // Skip rather than inventing a disk finding.
+    if (context.facts.bundler.name === "unknown") return;
+    const shared = mf(context)?.shared ?? {};
+    const entries = Object.entries(shared).filter(
+      (entry): entry is [string, NormalizedShared & { packagePath: string }] =>
+        typeof entry[1].packagePath === "string",
+    );
+    if (entries.length === 0) return;
+    const root = context.root ?? context.facts.project.root;
+    if (!root) return;
+
+    for (const [name, entry] of entries) {
+      const packagePath = entry.packagePath.trim();
+      if (!packagePath) {
+        report(
+          context,
+          `Shared package "${name}" has an empty packagePath.`,
+          { package: name, packagePath: entry.packagePath },
+          `Set \`shared["${name}"].packagePath\` to an existing package directory or entry file, or omit the field.`,
+        );
+        continue;
+      }
+      const existence = await sharedPackagePathExistence(root, packagePath);
+      if (existence === "unknown") continue;
+      if (existence === "yes") continue;
+      report(
+        context,
+        `Shared package "${name}" packagePath does not exist on disk.`,
+        { package: name, packagePath },
+        `Point \`shared["${name}"].packagePath\` at an existing path, or remove it so the bundler resolves the package from node_modules.`,
       );
     }
   }),

@@ -144,6 +144,9 @@ export function normalizeModuleFederation(
           : {}),
         ...(typeof value === "object" && value.shareKey ? { shareKey: value.shareKey } : {}),
         ...(typeof value === "object" && value.request ? { request: value.request } : {}),
+        ...(typeof value === "object" && typeof value.packagePath === "string"
+          ? { packagePath: value.packagePath }
+          : {}),
         ...(typeof value === "object" && value.allowNodeModulesSuffixMatch !== undefined
           ? { allowNodeModulesSuffixMatch: value.allowNodeModulesSuffixMatch }
           : {}),

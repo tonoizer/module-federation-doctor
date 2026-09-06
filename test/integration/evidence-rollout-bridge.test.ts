@@ -123,6 +123,7 @@ const EXPECTED_GROUP3_RULE_IDS = [
   "shared/deep-import-bypass",
   "shared/prefix-share-recommended",
   "shared/subpath-version-unresolved",
+  "shared/package-path-missing",
 ] as const;
 
 const EXPECTED_GROUP4_RULE_IDS = [

@@ -1342,6 +1342,13 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "shared/package-path-missing",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.shared.react!.packagePath =
+          "./mfdoctor-missing-shared-package-path";
+      },
+    ],
+    [
       "artifact/public-path-suspicious",
       (facts: ProjectFacts) =>
         (facts.artifacts.manifest = {
@@ -4215,5 +4222,145 @@ describe("config/async-startup-rspack-version", () => {
         expect.objectContaining({ ruleId: "config/async-startup-rspack-version" }),
       ]),
     );
+  });
+});
+
+describe("shared/package-path-missing", () => {
+  const quietRules = {
+    "doctor/partial-analysis": "off" as const,
+    "config/plugin-package-mismatch": "off" as const,
+    "artifact/remote-entry-missing": "off" as const,
+    "artifact/types-missing": "off" as const,
+    "artifact/types-metadata-missing": "off" as const,
+    "artifact/dts-disabled": "off" as const,
+    "artifact/manifest-disabled": "off" as const,
+    "shared/candidate": "off" as const,
+    "shared/unused": "off" as const,
+  };
+
+  it("flags a packagePath that is missing on disk", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        shared: {
+          react: { singleton: true, packagePath: "./vendor/react" },
+        },
+      },
+      rules: quietRules,
+    });
+    expect(result.facts.moduleFederation?.shared.react?.packagePath).toBe("./vendor/react");
+    expect(result.report.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ruleId: "shared/package-path-missing",
+          evidence: expect.objectContaining({
+            package: "react",
+            packagePath: "./vendor/react",
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it("stays quiet when packagePath exists on disk", async () => {
+    const root = await fixture();
+    await fs.mkdir(path.join(root, "vendor", "react"), { recursive: true });
+    await fs.writeFile(
+      path.join(root, "vendor", "react", "package.json"),
+      JSON.stringify({ name: "react", version: "19.1.1" }),
+    );
+    const result = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        shared: {
+          react: { singleton: true, packagePath: "./vendor/react" },
+        },
+      },
+      rules: quietRules,
+    });
+    expect(result.facts.moduleFederation?.shared.react?.packagePath).toBe("./vendor/react");
+    expect(
+      result.report.findings.some((item) => item.ruleId === "shared/package-path-missing"),
+    ).toBe(false);
+  });
+
+  it("skips unknown bundlers instead of inventing a disk finding", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "unknown",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        shared: {
+          react: { singleton: true, packagePath: "./vendor/react" },
+        },
+      },
+      rules: quietRules,
+    });
+    expect(
+      result.report.findings.some((item) => item.ruleId === "shared/package-path-missing"),
+    ).toBe(false);
+  });
+
+  it("skips URL-like packagePath rather than claiming a missing file", async () => {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find((item) => item.meta.id === "shared/package-path-missing")!;
+    await rule.check({
+      facts: {
+        schemaVersion: 1,
+        project: { name: "fixture", root: "." },
+        bundler: { name: "webpack", mode: "ci" },
+        capabilities: {
+          config: true,
+          sourceImports: true,
+          manifest: false,
+          stats: false,
+          emittedAssets: false,
+          installedVersions: true,
+        },
+        moduleFederation: {
+          name: "host",
+          exposes: {},
+          remotes: {},
+          shared: {
+            react: {
+              package: "react",
+              singleton: true,
+              eager: false,
+              shareScope: ["default"],
+              packagePath: "virtual:shared/react",
+            },
+          },
+        },
+        dependencies: { declared: {}, installed: {} },
+        imports: {
+          sourceFiles: [],
+          specifiers: [],
+          packages: [],
+          dynamicPackages: [],
+          remotes: [],
+          unresolvedDynamic: [],
+          evidenceSources: [],
+        },
+        artifacts: { emittedAssets: [] },
+      },
+      options: {},
+      root: "/tmp",
+      report: (finding) => findings.push(finding),
+    });
+    expect(findings).toHaveLength(0);
   });
 });
