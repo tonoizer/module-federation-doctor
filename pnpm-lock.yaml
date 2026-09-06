@@ -633,6 +633,8 @@ importers:
 
   examples/showcase/bridge/vue-share-missing: {}
 
+  examples/showcase/config/alias-share-bypass: {}
+
   examples/showcase/config/async-boundary-missing: {}
 
   examples/showcase/config/async-boundary-missing-ok: {}

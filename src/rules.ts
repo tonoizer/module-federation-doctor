@@ -1877,6 +1877,29 @@ export const builtInRules: DoctorRule[] = [
       "Remove the alias, exclude the package from shared, or allowlist intentional bypasses via `allowPackages`.",
     );
   }),
+  createRule("config/alias-share-bypass", "warning", (context) => {
+    const bundler = context.facts.bundler.name;
+    if (bundler !== "webpack" && bundler !== "rspack" && bundler !== "rsbuild") return;
+    if (context.options["aliasShareBypassMode"] === "off") return;
+    const functionAlias = context.facts.bundler.resolveAliasFunction === true;
+    const aliases = context.facts.bundler.resolveAliases;
+    if (functionAlias && aliases === undefined) return;
+    if (!aliases) return;
+    const sharedKeys = Object.keys(mf(context)?.shared ?? {});
+    if (sharedKeys.length === 0) return;
+    const overlaps = findShareRewriteOverlaps(
+      Object.keys(aliases),
+      sharedKeys,
+      optionStringList(context.options, "allowPackages"),
+    );
+    if (overlaps.length === 0) return;
+    report(
+      context,
+      "resolve.alias rewrites packages that are also listed in shared.",
+      { overlaps, aliases: Object.fromEntries(overlaps.map((key) => [key, aliases[key]])) },
+      "Remove the alias, exclude the package from shared, or allowlist intentional bypasses via `allowPackages`.",
+    );
+  }),
   createRule("vite/server-origin", "info", (context) => {
     if (context.facts.bundler.name !== "vite") return;
     if (optionBoolean(context.options, "requireServerOrigin") === false) return;
@@ -1914,7 +1937,7 @@ export const builtInRules: DoctorRule[] = [
       context,
       "transformImport rewrites packages that are also listed in shared.",
       { overlaps, transformImport: libraries, shared: sharedKeys },
-      "Remove the transformImport entry, exclude the package from shared, or allowlist via `allowPackages`. See also vite/alias-share-bypass for Vite resolve.alias.",
+      "Remove the transformImport entry, exclude the package from shared, or allowlist via `allowPackages`. See also vite/alias-share-bypass for Vite resolve.alias and config/alias-share-bypass for webpack/rspack/rsbuild.",
     );
   }),
   createRule("config/shared-externals-conflict", "warning", (context) => {

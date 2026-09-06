@@ -166,6 +166,7 @@ const EXPECTED_GROUP6_RULE_IDS = [
   "vite/remote-hmr-dev",
   "vite/alias-share-bypass",
   "vite/server-origin",
+  "config/alias-share-bypass",
   "config/transform-import-share-conflict",
   "config/shared-externals-conflict",
   "config/copied-webpack-options-on-vite",
@@ -1227,6 +1228,11 @@ describe("evidence-aware rule rollout bridge", () => {
         migrated.output.evaluations.find((evaluation) => evaluation.rule.id === id),
       ).toMatchObject({ outcome: "not-applicable", reasonCode: "not-applicable" });
     }
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/alias-share-bypass",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
   });
 
   it("uses build effectiveMode only for vite/remote-hmr-dev", async () => {

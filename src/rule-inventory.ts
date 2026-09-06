@@ -129,6 +129,7 @@ const ids = [
   "vite/remote-hmr-dev",
   "vite/alias-share-bypass",
   "vite/server-origin",
+  "config/alias-share-bypass",
   "config/transform-import-share-conflict",
   "config/shared-externals-conflict",
   "runtime/error-correlated",
@@ -200,6 +201,7 @@ const demoByRule = {
   "config/duplicate-plugin-registration": "unit",
   "config/async-boundary-missing": "showcase",
   "config/async-startup-rspack-version": "showcase",
+  "config/alias-share-bypass": "showcase",
   "config/eager-tree-shaking-conflict": "unit",
   "config/expose-key-invalid": "showcase",
   "config/expose-path-missing": "showcase",
@@ -419,6 +421,7 @@ export const MIGRATED_GROUP6_RULE_IDS = [
   "vite/remote-hmr-dev",
   "vite/alias-share-bypass",
   "vite/server-origin",
+  "config/alias-share-bypass",
   "config/transform-import-share-conflict",
   "config/shared-externals-conflict",
   "config/copied-webpack-options-on-vite",
@@ -463,6 +466,7 @@ const VITE = ["vite"] as const;
 const RSBUILD = ["rsbuild"] as const;
 const RSPACK_FAMILY = ["rspack", "rsbuild"] as const;
 const WEBPACK_FAMILY = ["rspack", "rsbuild", "webpack", "modern"] as const;
+const ENHANCED_ALIAS_FAMILY = ["webpack", "rspack", "rsbuild"] as const;
 const plan = (
   group: RuleMigrationGroup,
   severity: RulePlan["severity"],
@@ -947,6 +951,16 @@ const plans: Record<string, RulePlan> = {
     "high",
     "Absent plugin viteConfig facts → unknown; observed empty or no shared overlap → pass.",
     VITE,
+  ),
+  "config/alias-share-bypass": plan(
+    6,
+    "warning",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Absent public resolve.alias facts → unknown; function aliases stay unknown; observed object overlap → warning.",
+    ENHANCED_ALIAS_FAMILY,
   ),
   "vite/server-origin": plan(
     6,
@@ -1884,6 +1898,13 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "bundler.name",
     "bundler.viteConfig",
   ],
+  "config/alias-share-bypass": [
+    "project.scope",
+    "moduleFederation",
+    "bundler.name",
+    "bundler.resolveAliases",
+    "bundler.resolveAliasFunction",
+  ],
   "vite/server-origin": ["project.scope", "moduleFederation", "bundler.name", "bundler.viteConfig"],
   "config/transform-import-share-conflict": [
     "project.scope",
@@ -2004,6 +2025,7 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
     "vite/alias-share-bypass": ["bundler.viteConfig"],
     "vite/server-origin": ["bundler.viteConfig"],
     "vite/remote-hmr-dev": ["builds"],
+    "config/alias-share-bypass": ["bundler.resolveAliases", "bundler.resolveAliasFunction"],
     "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
     "config/shared-externals-conflict": ["bundler.externals"],
     "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],

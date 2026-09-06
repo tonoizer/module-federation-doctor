@@ -17,6 +17,7 @@ import type {
 } from "./types.js";
 import { normalizePath, relativePath } from "./utils.js";
 import { detectViteLifecycle, withPostEmitHook, type ViteHookMeta } from "./vite-lifecycle.js";
+import { observeResolveAlias, type ResolveAliasObservation } from "./share-rewrite.js";
 
 /**
  * Fail only after every finding has already been collected and reported.
@@ -60,6 +61,7 @@ export type CompilerLike = {
     plugins?: unknown[];
     output?: { path?: string; publicPath?: unknown; filename?: unknown };
     externals?: unknown;
+    resolve?: { alias?: unknown };
   };
 };
 
@@ -272,6 +274,9 @@ type RsbuildExternalsObserver = (config: { externals?: unknown }) => { externals
 type RsbuildPluginApiLike = {
   context: { rootPath: string };
   onAfterBuild: (fn: (args: { stats?: RsbuildStatsLike | null }) => Promise<void> | void) => void;
+  onBeforeCreateCompiler?: (
+    fn: (args: { bundlerConfigs?: Array<{ resolve?: { alias?: unknown } }> }) => void,
+  ) => void;
   getNormalizedConfig?: () => unknown;
   getRsbuildConfig?: () => unknown;
   modifyRspackConfig?: (fn: RsbuildExternalsObserver) => void;
@@ -335,6 +340,16 @@ function collectRsbuildPublicPathDiagnostics(
   return publicPathDiagnostics(observation);
 }
 
+function mergeResolveAliasObservation(
+  diagnostics: BuildDiagnostics,
+  observed: ResolveAliasObservation | undefined,
+): void {
+  if (!observed) return;
+  if (observed.functionAlias) diagnostics.resolveAliasFunction = true;
+  if (Object.keys(observed.aliases).length === 0) return;
+  diagnostics.resolveAliases = { ...diagnostics.resolveAliases, ...observed.aliases };
+}
+
 function collectCompilerDiagnostics(compiler: CompilerLike): BuildDiagnostics {
   const diagnostics: BuildDiagnostics = {};
   const count = countModuleFederationPlugins(compiler);
@@ -347,6 +362,7 @@ function collectCompilerDiagnostics(compiler: CompilerLike): BuildDiagnostics {
   if (compiler.options) diagnostics.externals = extractPublicExternals(compiler.options.externals);
   const outputFilename = readOutputFilename(compiler.options?.output?.filename);
   if (outputFilename) diagnostics.outputFilename = outputFilename;
+  mergeResolveAliasObservation(diagnostics, observeResolveAlias(compiler.options?.resolve?.alias));
   return diagnostics;
 }
 
@@ -631,19 +647,8 @@ function extractViteConfigFacts(
   Object.assign(facts, extractViteChunkingFacts(config));
 
   const aliases: Record<string, string> = {};
-  const alias = config.resolve?.alias;
-  if (alias && typeof alias === "object" && !Array.isArray(alias)) {
-    for (const [key, value] of Object.entries(alias as Record<string, unknown>)) {
-      if (typeof value === "string") aliases[key] = value;
-    }
-  } else if (Array.isArray(alias)) {
-    for (const entry of alias) {
-      if (!entry || typeof entry !== "object") continue;
-      const find = (entry as { find?: unknown }).find;
-      const replacement = (entry as { replacement?: unknown }).replacement;
-      if (typeof find === "string" && typeof replacement === "string") aliases[find] = replacement;
-    }
-  }
+  const observed = observeResolveAlias(config.resolve?.alias);
+  if (observed) Object.assign(aliases, observed.aliases);
   if (Object.keys(aliases).length > 0) facts.resolveAliases = aliases;
 
   // Record origin observation whenever `server` is present on the resolved config.
@@ -1084,6 +1089,19 @@ function createDoctorPlugin(bundler: BundlerName) {
                   rsbuildApi.modifyRspackConfig(observeExternals);
                 if (typeof rsbuildApi.modifyWebpackConfig === "function")
                   rsbuildApi.modifyWebpackConfig(observeExternals);
+                const aliasDiagnostics: BuildDiagnostics = {};
+                const recordRsbuildAliases = (alias: unknown) => {
+                  mergeResolveAliasObservation(aliasDiagnostics, observeResolveAlias(alias));
+                };
+                const rsbuildConfig = callPublicConfig(rsbuildApi.getRsbuildConfig) as
+                  | { source?: { alias?: unknown }; resolve?: { alias?: unknown } }
+                  | undefined;
+                recordRsbuildAliases(rsbuildConfig?.resolve?.alias);
+                recordRsbuildAliases(rsbuildConfig?.source?.alias);
+                rsbuildApi.onBeforeCreateCompiler?.(({ bundlerConfigs }) => {
+                  for (const bundlerConfig of bundlerConfigs ?? [])
+                    recordRsbuildAliases(bundlerConfig.resolve?.alias);
+                });
                 rsbuildApi.onAfterBuild(async ({ stats }) => {
                   const outputs = stats
                     ? await collectRsbuildBuildOutputs(
@@ -1097,6 +1115,7 @@ function createDoctorPlugin(bundler: BundlerName) {
                   const diagnostics: BuildDiagnostics = {
                     ...collectRsbuildPublicPathDiagnostics(rsbuildApi, stats),
                     ...(observedExternals !== undefined ? { externals: observedExternals } : {}),
+                    ...aliasDiagnostics,
                   };
                   const result = await analyzeBuild(
                     configured,

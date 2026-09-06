@@ -50,6 +50,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "vite/hashed-remote-filename",
   "vite/remote-hmr-dev",
   "vite/alias-share-bypass",
+  "config/alias-share-bypass",
   "vite/server-origin",
   "config/transform-import-share-conflict",
   "config/shared-externals-conflict",

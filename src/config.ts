@@ -213,6 +213,8 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   }
   if (options.externals !== undefined)
     resolved.externals = extractPublicExternals(options.externals);
+  if (options.resolveAliases !== undefined) resolved.resolveAliases = { ...options.resolveAliases };
+  if (options.resolveAliasFunction === true) resolved.resolveAliasFunction = true;
   if (options.runtimeTrace !== undefined)
     resolved.runtimeTrace = path.resolve(root, options.runtimeTrace);
   if (options.recognizeMfToolkit !== undefined)

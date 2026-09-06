@@ -648,6 +648,7 @@ describe("evidence-aware rule contract", () => {
         "vite/alias-share-bypass": ["bundler.viteConfig"],
         "vite/server-origin": ["bundler.viteConfig"],
         "vite/remote-hmr-dev": ["builds"],
+        "config/alias-share-bypass": ["bundler.resolveAliases", "bundler.resolveAliasFunction"],
         "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
         "config/shared-externals-conflict": ["bundler.externals"],
         "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
@@ -788,6 +789,7 @@ describe("evidence-aware rule contract", () => {
       "vite/remote-hmr-dev",
       "vite/alias-share-bypass",
       "vite/server-origin",
+      "config/alias-share-bypass",
       "config/transform-import-share-conflict",
       "config/shared-externals-conflict",
       "config/copied-webpack-options-on-vite",
@@ -849,6 +851,11 @@ describe("evidence-aware rule contract", () => {
         .find((entry) => entry.id === "config/hashed-remote-filename")
         ?.applicability.bundlers?.map((item) => item.name),
     ).toEqual(["rspack", "rsbuild", "webpack", "modern"]);
+    expect(
+      ruleInventory
+        .find((entry) => entry.id === "config/alias-share-bypass")
+        ?.applicability.bundlers?.map((item) => item.name),
+    ).toEqual(["webpack", "rspack", "rsbuild"]);
   });
 
   it("drives catalog supportedBundlers from inventory adapters", () => {
@@ -874,6 +881,11 @@ describe("evidence-aware rule contract", () => {
       "rsbuild",
       "webpack",
       "modern",
+    ]);
+    expect(catalog.get("config/alias-share-bypass")?.supportedBundlers).toEqual([
+      "webpack",
+      "rspack",
+      "rsbuild",
     ]);
   });
 
