@@ -2181,6 +2181,32 @@ export const builtInRules: DoctorRule[] = [
       `Set \`server.origin\` to \`${recommendedOrigin}\` (or the public origin remote consumers should use in development). Override the recommendation with the \`recommendedOrigin\` rule option, or set \`requireServerOrigin: false\` when the dev server is intentionally not consumed remotely.`,
     );
   }),
+  createRule("vite/virtual-module-dir", "warning", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    const virtualModuleDir = mf(context)?.vite?.virtualModuleDir;
+    if (!virtualModuleDir) return;
+    if (!/[\\/]/.test(virtualModuleDir)) return;
+    report(
+      context,
+      `Vite \`virtualModuleDir\` "${virtualModuleDir}" is not a simple directory name.`,
+      { virtualModuleDir },
+      "Use one simple directory name without slashes, for example `__mf__`. Nested paths collide with virtual module IDs.",
+    );
+  }),
+  createRule("vite/ignore-origin", "info", (context) => {
+    if (context.facts.bundler.name !== "vite") return;
+    if (mf(context)?.vite?.ignoreOrigin !== true) return;
+    const viteConfig = context.facts.bundler.viteConfig;
+    // Origin fact absent (CLI partial) → skip; evidence bridge marks unknown.
+    if (!viteConfig || !("serverOrigin" in viteConfig)) return;
+    if (typeof viteConfig.serverOrigin === "string" && viteConfig.serverOrigin.length > 0) return;
+    report(
+      context,
+      "`ignoreOrigin` is enabled without a tested Vite `server.origin`.",
+      { ignoreOrigin: true, serverOrigin: viteConfig.serverOrigin ?? null },
+      "Set Vite `server.origin` to the public deployment base you tested, or turn `ignoreOrigin` off. Without an origin fact, proxy entry URLs can resolve against the wrong host.",
+    );
+  }),
   createRule("config/transform-import-share-conflict", "warning", (context) => {
     const libraries = context.facts.bundler.transformImportLibraries;
     if (!libraries || libraries.length === 0) return;

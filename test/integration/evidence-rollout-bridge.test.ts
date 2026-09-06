@@ -166,6 +166,8 @@ const EXPECTED_GROUP6_RULE_IDS = [
   "vite/remote-hmr-dev",
   "vite/alias-share-bypass",
   "vite/server-origin",
+  "vite/virtual-module-dir",
+  "vite/ignore-origin",
   "config/alias-share-bypass",
   "config/transform-import-share-conflict",
   "config/shared-externals-conflict",
@@ -1140,6 +1142,9 @@ describe("evidence-aware rule rollout bridge", () => {
         (evaluation) => evaluation.rule.id === "config/shared-externals-conflict",
       ),
     ).toMatchObject({ outcome: "not-applicable" });
+    expect(
+      migrated.output.evaluations.find((evaluation) => evaluation.rule.id === "vite/ignore-origin"),
+    ).toMatchObject({ outcome: "pass" });
   });
 
   it("evaluates SSR Vite rules from CLI facts without adapter builds", async () => {

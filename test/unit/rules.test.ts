@@ -1355,6 +1355,28 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "vite/virtual-module-dir",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.vite = {
+          bundleAllCSS: false,
+          ignoreOrigin: false,
+          ssrExternals: [],
+          virtualModuleDir: "nested/mf",
+        };
+      },
+    ],
+    [
+      "vite/ignore-origin",
+      (facts: ProjectFacts) => {
+        facts.bundler.viteConfig = { serverOrigin: null };
+        facts.moduleFederation!.vite = {
+          bundleAllCSS: false,
+          ignoreOrigin: true,
+          ssrExternals: [],
+        };
+      },
+    ],
+    [
       "config/transform-import-share-conflict",
       (facts: ProjectFacts) => {
         facts.bundler.transformImportLibraries = ["lodash"];
@@ -3724,6 +3746,152 @@ describe("vite dialect follow-ons", () => {
   });
 });
 
+describe("vite/virtual-module-dir and vite/ignore-origin", () => {
+  async function run(id: string, facts: ProjectFacts) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const selected = builtInRules.find((item) => item.meta.id === id)!;
+    await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  function viteFacts(overrides: Partial<ProjectFacts> = {}): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: { "./Widget": "src/Widget.ts" },
+        remotes: {},
+        shared: {},
+        vite: { bundleAllCSS: false, ignoreOrigin: false, ssrExternals: [] },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: ["src/Widget.ts"],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+      ...overrides,
+    };
+  }
+
+  it("warns when virtualModuleDir contains a slash", async () => {
+    const facts = viteFacts();
+    facts.moduleFederation!.vite!.virtualModuleDir = "nested/mf";
+    expect(await run("vite/virtual-module-dir", facts)).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining("virtualModuleDir"),
+        evidence: { virtualModuleDir: "nested/mf" },
+      }),
+    ]);
+  });
+
+  it("warns when virtualModuleDir contains a backslash", async () => {
+    const facts = viteFacts();
+    facts.moduleFederation!.vite!.virtualModuleDir = "nested\\mf";
+    expect(await run("vite/virtual-module-dir", facts)).not.toHaveLength(0);
+  });
+
+  it("stays quiet for a simple virtualModuleDir name", async () => {
+    const facts = viteFacts();
+    facts.moduleFederation!.vite!.virtualModuleDir = "__mf__";
+    expect(await run("vite/virtual-module-dir", facts)).toHaveLength(0);
+  });
+
+  it("stays quiet on webpack even when virtualModuleDir has slashes", async () => {
+    const facts = viteFacts();
+    facts.bundler.name = "webpack";
+    facts.moduleFederation!.vite!.virtualModuleDir = "nested/mf";
+    expect(await run("vite/virtual-module-dir", facts)).toHaveLength(0);
+  });
+
+  it("reports info when ignoreOrigin is true without a server.origin fact", async () => {
+    const facts = viteFacts();
+    facts.bundler.viteConfig = { serverOrigin: null };
+    facts.moduleFederation!.vite!.ignoreOrigin = true;
+    expect(await run("vite/ignore-origin", facts)).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining("ignoreOrigin"),
+        evidence: { ignoreOrigin: true, serverOrigin: null },
+      }),
+    ]);
+  });
+
+  it("stays quiet when ignoreOrigin is true with a tested server.origin", async () => {
+    const facts = viteFacts();
+    facts.bundler.viteConfig = { serverOrigin: "http://localhost:5173" };
+    facts.moduleFederation!.vite!.ignoreOrigin = true;
+    expect(await run("vite/ignore-origin", facts)).toHaveLength(0);
+  });
+
+  it("skips ignoreOrigin when the plugin origin fact is unobserved", async () => {
+    const facts = viteFacts();
+    facts.moduleFederation!.vite!.ignoreOrigin = true;
+    expect(await run("vite/ignore-origin", facts)).toHaveLength(0);
+  });
+
+  it("stays quiet when ignoreOrigin is false", async () => {
+    const facts = viteFacts();
+    facts.bundler.viteConfig = { serverOrigin: null };
+    expect(await run("vite/ignore-origin", facts)).toHaveLength(0);
+  });
+
+  it("surfaces both findings through analyze", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      viteConfigFacts: { serverOrigin: null },
+      moduleFederation: {
+        name: "host",
+        ignoreOrigin: true,
+        virtualModuleDir: "nested/mf",
+        exposes: { "./Widget": "./src/index.ts" },
+      },
+      output: { formats: [] },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+        "artifact/remote-entry-missing": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+        "artifact/manifest-disabled": "off",
+        "artifact/dts-disabled": "off",
+      },
+    });
+    const ids = result.report.findings.map((item) => item.ruleId);
+    expect(ids).toContain("vite/virtual-module-dir");
+    expect(ids).toContain("vite/ignore-origin");
+    expect(
+      result.report.findings.find((item) => item.ruleId === "vite/virtual-module-dir"),
+    ).toMatchObject({
+      severity: "warning",
+    });
+    expect(
+      result.report.findings.find((item) => item.ruleId === "vite/ignore-origin"),
+    ).toMatchObject({
+      severity: "info",
+    });
+  });
+});
+
 describe("config/transform-import-share-conflict", () => {
   async function run(facts: ProjectFacts) {
     const findings: Array<
@@ -4475,6 +4643,37 @@ describe("Group 6 evidence bridge", () => {
         (evaluation) => evaluation.rule.id === "config/shared-externals-conflict",
       ),
     ).toMatchObject({ outcome: "not-applicable" });
+    expect(
+      migrated.output.evaluations.find((evaluation) => evaluation.rule.id === "vite/ignore-origin"),
+    ).toMatchObject({ outcome: "pass" });
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/virtual-module-dir",
+      ),
+    ).toMatchObject({ outcome: "pass" });
+  });
+
+  it("returns unknown for ignoreOrigin true without a server.origin fact", async () => {
+    const facts = viteFacts();
+    facts.moduleFederation!.vite!.ignoreOrigin = true;
+    const migrated = await runMigrated(facts);
+    expect(
+      migrated.output.evaluations.find((evaluation) => evaluation.rule.id === "vite/ignore-origin"),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
+
+    facts.bundler.viteConfig = { serverOrigin: null };
+    const observed = await runMigrated(facts, { "vite/ignore-origin": "info" });
+    expect(
+      observed.output.evaluations.find((evaluation) => evaluation.rule.id === "vite/ignore-origin"),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+
+    facts.moduleFederation!.vite!.virtualModuleDir = "nested/mf";
+    const slash = await runMigrated(facts, { "vite/virtual-module-dir": "warning" });
+    expect(
+      slash.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "vite/virtual-module-dir",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
   });
 
   it("returns unknown for unobserved webpack externals and fails on overlap", async () => {
