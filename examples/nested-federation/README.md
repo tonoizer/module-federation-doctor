@@ -22,6 +22,7 @@ both expose and consume remotes enable `dts.generateTypes.extractRemoteTypes` so
 `remoteEntry.js` intentionally suppress:
 
 - `config/remote-manifest-recommended`
+- `config/js-remote-without-type-urls`
 - `reliability/version-first-offline-remotes` (Vite consumers)
 
 Comments in each config explain why. For intentional red findings, use

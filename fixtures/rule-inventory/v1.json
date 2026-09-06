@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 121,
-  "migratedCount": 121,
+  "ruleCount": 122,
+  "migratedCount": 122,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
@@ -3280,6 +3280,79 @@
       },
       "evidenceReads": ["project.scope", "moduleFederation"],
       "migrationNote": "Group 1; Declared exposes, remotes, and dts.generateTypes.extractRemoteTypes are exact for this shape check. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
+      "id": "config/js-remote-without-type-urls",
+      "version": "1",
+      "group": 1,
+      "status": "migrated",
+      "demo": "showcase",
+      "defaultSeverity": "warning",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "Hosts that consume types cannot resolve a stable type archive URL from a direct `.js` remote entry. Manifest remotes publish type metadata; otherwise `consumeTypes.remoteTypeUrls` must name the zip/api URLs.",
+        "documentation": "/rules/config/js-remote-without-type-urls",
+        "fix": "Point remotes at `mf-manifest.json`, or set `dts.consumeTypes.remoteTypeUrls` for each direct `.js` remote. Disable `dts.consumeTypes` when the host does not consume federated types."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ]
+      },
+      "evidenceReads": ["project.scope", "moduleFederation"],
+      "migrationNote": "Group 1; Declared config is exact for this shape check. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
       "id": "config/duplicate-plugin-registration",

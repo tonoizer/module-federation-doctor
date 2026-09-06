@@ -56,6 +56,43 @@ function toggle(value: boolean | Record<string, unknown> | undefined, defaultEna
   };
 }
 
+function recordWithRemoteTypeUrlsPresence(
+  options: Record<string, unknown>,
+  urls: unknown,
+): Record<string, unknown> {
+  if (typeof urls !== "function") return options;
+  return { ...options, remoteTypeUrls: true };
+}
+
+/** Keep `dts.consumeTypes.remoteTypeUrls` visible when it is an async function. */
+function dtsToggle(value: boolean | Record<string, unknown> | undefined) {
+  const result = toggle(value, true);
+  if (!value || typeof value !== "object") return result;
+  const consume = value.consumeTypes;
+  if (consume && typeof consume === "object" && !Array.isArray(consume)) {
+    const existing =
+      result.options.consumeTypes &&
+      typeof result.options.consumeTypes === "object" &&
+      !Array.isArray(result.options.consumeTypes)
+        ? (result.options.consumeTypes as Record<string, unknown>)
+        : {};
+    return {
+      ...result,
+      options: {
+        ...result.options,
+        consumeTypes: recordWithRemoteTypeUrlsPresence(
+          existing,
+          (consume as Record<string, unknown>).remoteTypeUrls,
+        ),
+      },
+    };
+  }
+  return {
+    ...result,
+    options: recordWithRemoteTypeUrlsPresence(result.options, value.remoteTypeUrls),
+  };
+}
+
 /** Enhanced family emits mf-manifest unless `manifest === false`; Vite omits unless opted in. */
 export function defaultManifestEnabled(bundler: BundlerName | undefined): boolean {
   switch (bundler) {
@@ -164,7 +201,7 @@ export function normalizeModuleFederation(
     ),
     manifest: toggle(input.manifest, defaultManifestEnabled(options?.bundler)),
     dev: toggle(input.dev, true),
-    dts: toggle(input.dts, true),
+    dts: dtsToggle(input.dts),
     experiments: {
       asyncStartup: input.experiments?.asyncStartup ?? false,
       externalRuntime: input.experiments?.externalRuntime ?? false,

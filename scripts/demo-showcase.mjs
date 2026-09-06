@@ -94,6 +94,11 @@ const cases = [
     expectedExit: 0,
   },
   {
+    dir: "examples/showcase/config/js-remote-without-type-urls",
+    ruleId: "config/js-remote-without-type-urls",
+    expectedExit: 0,
+  },
+  {
     dir: "examples/showcase/config/async-startup-rspack-version",
     ruleId: "config/async-startup-rspack-version",
     expectedExit: 0,

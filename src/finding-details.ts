@@ -32,6 +32,7 @@ export const TYPED_DETAILS_RULE_IDS = [
   "config/remote-localhost-in-production",
   "config/remote-alias-prefix-collision",
   "config/remote-manifest-recommended",
+  "config/js-remote-without-type-urls",
   "config/remote-capability-disabled",
   "artifact/public-path-non-string-manifest",
   "artifact/manifest-assets-disabled",

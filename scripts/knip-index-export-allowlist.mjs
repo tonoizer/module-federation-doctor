@@ -10,19 +10,9 @@
 /** @typedef {import("knip").ReporterOptions} ReporterOptions */
 
 export const INDEX_UNUSED_EXPORT_ALLOWLIST = Object.freeze([
-  // BL-27 — identity factories not required by engine/CLI (keep module).
+  // BL-27 — identity schema helpers still on `.` after #399 dropped factories.
   "IDENTITY_SCHEMA_VERSION",
   "IdentityValidationError",
-  "canonicalIdentityKey",
-  "createAdapterTargetIdentity",
-  "createArtifactIdentity",
-  "createBuildIdentity",
-  "createBuildLineageIdentity",
-  "createDeploymentIdentity",
-  "createEnvironmentIdentity",
-  "createIdentity",
-  "createRuntimeInstanceIdentity",
-  "createRuntimeRealmIdentity",
   "unknownIdentity",
   // BL-39 / ADR 0086 — correlation, governance, lineage, waivers (library-only).
   "BUILD_ARTIFACT_DEPLOYMENT_SCHEMA_VERSION",
@@ -104,7 +94,8 @@ export default function knipPublicIndexAllowlist(options) {
   for (const [filePath, symbols] of Object.entries(exportFiles)) {
     if (!isPublicIndexFile(filePath)) continue;
     for (const [name, issue] of Object.entries(symbols)) {
-      if (!allowlist.has(name)) remaining[name] = issue;
+      const exportName = issue.symbol ?? name.replace(/^root\./, "");
+      if (!allowlist.has(exportName)) remaining[name] = issue;
     }
   }
 

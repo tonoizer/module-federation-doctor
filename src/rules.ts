@@ -866,6 +866,56 @@ function hashedFilenameAllowed(options: RuleContext["options"]): boolean {
   return options["hashedFilenameMode"] === "allow";
 }
 
+function consumeTypesOptions(
+  config: NormalizedMFConfig | undefined,
+): Record<string, unknown> | false {
+  if (!config || config.dts?.enabled === false) return false;
+  const options = dtsOptions(config);
+  if (options.consumeTypes === false) return false;
+  if (options.consumeTypes && typeof options.consumeTypes === "object")
+    return options.consumeTypes as Record<string, unknown>;
+  return options;
+}
+
+const JS_REMOTE_ENTRY_RE = /\.[cm]?js(?:[?#]|$)/i;
+const MANIFEST_REMOTE_ENTRY_RE = /\.json(?:[?#]|$)/i;
+
+function isDirectJsRemoteEntry(entry: string): boolean {
+  const trimmed = entry.trim();
+  if (!trimmed || MANIFEST_REMOTE_ENTRY_RE.test(trimmed)) return false;
+  return JS_REMOTE_ENTRY_RE.test(trimmed);
+}
+
+function remoteTypeUrlCoverage(remoteTypeUrls: unknown): "all" | "none" | Set<string> {
+  if (remoteTypeUrls === undefined) return "none";
+  if (typeof remoteTypeUrls === "function" || remoteTypeUrls === true) return "all";
+  if (
+    typeof remoteTypeUrls !== "object" ||
+    remoteTypeUrls === null ||
+    Array.isArray(remoteTypeUrls)
+  )
+    return "none";
+  const keys = new Set<string>();
+  for (const [name, value] of Object.entries(remoteTypeUrls as Record<string, unknown>)) {
+    keys.add(name);
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const alias = (value as Record<string, unknown>).alias;
+      if (typeof alias === "string" && alias.trim()) keys.add(alias.trim());
+    }
+  }
+  return keys.size === 0 ? "none" : keys;
+}
+
+function remoteHasTypeUrls(
+  alias: string,
+  remoteName: string,
+  coverage: "all" | "none" | Set<string>,
+): boolean {
+  if (coverage === "all") return true;
+  if (coverage === "none") return false;
+  return coverage.has(alias) || coverage.has(remoteName);
+}
+
 const DEFAULT_REMOTE_ENTRY_MAX_BYTES = 524_288;
 const DEFAULT_SHARED_MAX_BYTES = 524_288;
 const DEFAULT_EXPOSE_MAX_BYTES = 358_400;
@@ -1157,6 +1207,26 @@ export const builtInRules: DoctorRule[] = [
           remotes,
         },
         "Enable `dts.generateTypes.extractRemoteTypes` so this producer's type archive includes types from nested remotes.",
+      );
+    }
+  }),
+  createRule("config/js-remote-without-type-urls", "warning", (context) => {
+    const config = mf(context);
+    const consume = consumeTypesOptions(config);
+    if (consume === false) return;
+    const coverage = remoteTypeUrlCoverage(consume.remoteTypeUrls);
+    for (const [alias, remote] of Object.entries(config?.remotes ?? {})) {
+      if (!isDirectJsRemoteEntry(remote.entry)) continue;
+      if (remoteHasTypeUrls(alias, remote.name, coverage)) continue;
+      report(
+        context,
+        `Remote "${alias}" points at a .js entry while dts consumeTypes is on and remoteTypeUrls does not cover it.`,
+        { alias, remote: remote.name, entry: remote.entry },
+        "Point the remote at `mf-manifest.json` so type URLs come from the manifest, or set `dts.consumeTypes.remoteTypeUrls` for this remote.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
+          remote: alias,
+          entry: remote.entry,
+        }),
       );
     }
   }),

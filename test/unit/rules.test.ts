@@ -706,6 +706,19 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/js-remote-without-type-urls",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.dts = { enabled: true, options: {} };
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/remoteEntry.js",
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
       "artifact/public-path-non-string-manifest",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.manifest = { enabled: true, options: {} };
@@ -3376,6 +3389,195 @@ describe("config/transform-import-share-conflict", () => {
       lodash: { package: "lodash", singleton: false, eager: false, shareScope: ["default"] },
     };
     expect(await run(missing)).toHaveLength(0);
+  });
+});
+
+describe("config/js-remote-without-type-urls", () => {
+  async function run(facts: ProjectFacts) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const selected = builtInRules.find(
+      (item) => item.meta.id === "config/js-remote-without-type-urls",
+    )!;
+    await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  function host(remotes: NonNullable<ProjectFacts["moduleFederation"]>["remotes"]): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "rspack", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes,
+        shared: {},
+        dts: { enabled: true, options: {} },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  const jsRemote = {
+    shop: {
+      name: "shop",
+      entry: "https://cdn.example.test/remoteEntry.js",
+      shareScope: "default" as const,
+    },
+  };
+  const manifestRemote = {
+    shop: {
+      name: "shop",
+      entry: "https://cdn.example.test/mf-manifest.json",
+      shareScope: "default" as const,
+    },
+  };
+
+  it("warns when a host consumes types from a .js remote without remoteTypeUrls", async () => {
+    expect(await run(host(jsRemote))).toMatchObject([
+      {
+        message:
+          'Remote "shop" points at a .js entry while dts consumeTypes is on and remoteTypeUrls does not cover it.',
+        evidence: {
+          alias: "shop",
+          remote: "shop",
+          entry: "https://cdn.example.test/remoteEntry.js",
+        },
+      },
+    ]);
+  });
+
+  it("skips manifest remotes, disabled consumeTypes, and covered .js remotes", async () => {
+    expect(await run(host(manifestRemote))).toHaveLength(0);
+
+    const consumeOff = host(jsRemote);
+    consumeOff.moduleFederation!.dts = { enabled: true, options: { consumeTypes: false } };
+    expect(await run(consumeOff)).toHaveLength(0);
+
+    const dtsOff = host(jsRemote);
+    dtsOff.moduleFederation!.dts = { enabled: false, options: {} };
+    expect(await run(dtsOff)).toHaveLength(0);
+
+    const covered = host(jsRemote);
+    covered.moduleFederation!.dts = {
+      enabled: true,
+      options: {
+        consumeTypes: {
+          remoteTypeUrls: {
+            shop: {
+              alias: "shop",
+              api: "https://cdn.example.test/@mf-types.d.ts",
+              zip: "https://cdn.example.test/@mf-types.zip",
+            },
+          },
+        },
+      },
+    };
+    expect(await run(covered)).toHaveLength(0);
+
+    const functionUrls = host(jsRemote);
+    functionUrls.moduleFederation!.dts = {
+      enabled: true,
+      options: { consumeTypes: { remoteTypeUrls: true } },
+    };
+    expect(await run(functionUrls)).toHaveLength(0);
+  });
+
+  it("flags only uncovered .js remotes in a mixed host", async () => {
+    const mixed = host({
+      shop: {
+        name: "shop",
+        entry: "https://cdn.example.test/remoteEntry.js",
+        shareScope: "default",
+      },
+      catalog: {
+        name: "catalog",
+        entry: "https://cdn.example.test/mf-manifest.json",
+        shareScope: "default",
+      },
+      cart: {
+        name: "cart_app",
+        entry: "https://cdn.example.test/cart/remoteEntry.mjs",
+        shareScope: "default",
+      },
+    });
+    mixed.moduleFederation!.dts = {
+      enabled: true,
+      options: {
+        consumeTypes: {
+          remoteTypeUrls: {
+            cart_app: { alias: "cart", zip: "https://cdn.example.test/cart/@mf-types.zip" },
+          },
+        },
+      },
+    };
+    expect(await run(mixed)).toMatchObject([
+      { evidence: { alias: "shop", entry: "https://cdn.example.test/remoteEntry.js" } },
+    ]);
+  });
+
+  it("reports through analyze and stays quiet for a manifest host", async () => {
+    const quiet = {
+      "doctor/partial-analysis": "off" as const,
+      "config/plugin-package-mismatch": "off" as const,
+      "artifact/remote-entry-missing": "off" as const,
+      "config/remote-manifest-recommended": "off" as const,
+      "reliability/version-first-offline-remotes": "off" as const,
+      "vite/remotes-prefer-module": "off" as const,
+    };
+    const root = await fixture();
+    const failing = await analyze({
+      root,
+      bundler: "rspack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        remotes: { shop: "https://cdn.example.test/remoteEntry.js" },
+      },
+      rules: quiet,
+    });
+    expect(
+      failing.report.findings.find((item) => item.ruleId === "config/js-remote-without-type-urls"),
+    ).toMatchObject({
+      severity: "warning",
+      evidence: { alias: "shop", entry: "https://cdn.example.test/remoteEntry.js" },
+    });
+
+    const passing = await analyze({
+      root,
+      bundler: "rspack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        remotes: { shop: "https://cdn.example.test/mf-manifest.json" },
+      },
+      rules: quiet,
+    });
+    expect(
+      passing.report.findings.some((item) => item.ruleId === "config/js-remote-without-type-urls"),
+    ).toBe(false);
   });
 });
 
