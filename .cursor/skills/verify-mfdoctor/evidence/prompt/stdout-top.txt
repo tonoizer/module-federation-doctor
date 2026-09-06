@@ -1,0 +1,33 @@
+Agent prompts (top 1)
+
+--- prompt 1/1 ---
+# Fix: config/remote-http-insecure
+
+Fix exactly this MFDoctor finding. Do not change unrelated rules.
+Do not suggest suppressions or baseline entries unless the user asks.
+
+## Finding
+- Rule: `config/remote-http-insecure`
+- Severity: warning
+- Project: @mfdoctor-showcase/remote-http-insecure
+- Fingerprint: `aad0eafc068fda2276d500d41467e3aff6e518386627d6d6f1803602c6d19e7d`
+- Message: Remote "shop" uses plain HTTP outside localhost.
+
+## Impact
+Remote code fetched over plain HTTP can be changed in transit.
+
+## Fix
+Use HTTPS so remote code cannot be changed in transit.
+
+## Evidence
+- entry: http://cdn.example.com/remoteEntry.js
+- name: shop
+
+## Docs
+- MFDoctor: https://mfdoctor.kevinbeier.com/rules/config/remote-http-insecure
+- Source: https://module-federation.io/configure/remotes.html
+
+## Verify
+```bash
+mfdoctor check
+```

@@ -1,0 +1,50 @@
+{
+  "capabilities": {
+    "config": true,
+    "emittedAssets": false,
+    "installedVersions": true,
+    "manifest": false,
+    "sourceImports": true,
+    "stats": false
+  },
+  "findings": [
+    {
+      "documentation": "/rules/federation/version-conflict",
+      "evidence": {
+        "package": "react",
+        "versions": [
+          {
+            "project": "host",
+            "range": "^19.1.0",
+            "version": "19.2.8"
+          },
+          {
+            "project": "remote",
+            "range": "^18.3.0",
+            "version": "18.3.1"
+          }
+        ]
+      },
+      "fingerprint": "13493ba6536cea8b970a465f07655bb67ab0931c99698fa345fb64b535b082f4",
+      "message": "\"react\" versions do not satisfy all consumer ranges.",
+      "project": "host",
+      "ruleId": "federation/version-conflict",
+      "schemaVersion": 1,
+      "severity": "error",
+      "suggestion": "Align lockfiles and compatible `requiredVersion` ranges."
+    }
+  ],
+  "schemaVersion": 1,
+  "status": {
+    "complete": false,
+    "incompleteReasons": ["missing-emit"]
+  },
+  "summary": {
+    "errors": 1,
+    "info": 0,
+    "projects": 2,
+    "score": 99,
+    "scoreLabel": "Great",
+    "warnings": 0
+  }
+}

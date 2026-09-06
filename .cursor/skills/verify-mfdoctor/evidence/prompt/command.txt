@@ -1,0 +1,4 @@
+node dist/cli.js prompt --finding config/remote-http-insecure <temp-report.json>
+node dist/cli.js prompt <temp-report.json>
+node dist/cli.js prompt --finding definitely/not-a-finding <temp-report.json>
+node dist/cli.js prompt --finding <fingerprint> <temp-report.json>

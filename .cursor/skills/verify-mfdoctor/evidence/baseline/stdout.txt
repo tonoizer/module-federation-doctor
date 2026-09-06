@@ -1,0 +1,1 @@
+Wrote 1 baseline entry to /tmp/mfdoctor-verify-prompt-som13mpl/mfdoctor.baseline.json

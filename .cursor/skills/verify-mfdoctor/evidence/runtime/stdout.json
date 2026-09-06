@@ -1,0 +1,82 @@
+{
+  "capabilities": {
+    "config": true,
+    "emittedAssets": true,
+    "installedVersions": true,
+    "manifest": true,
+    "sourceImports": true,
+    "stats": false
+  },
+  "findings": [
+    {
+      "documentation": "/rules/runtime/error-correlated",
+      "evidence": {
+        "errorCode": "RUNTIME-021",
+        "manifest": {
+          "id": "host",
+          "name": "host",
+          "publicPath": "https://cdn.example.com/host"
+        },
+        "outcome": "failed",
+        "phases": ["shared"],
+        "projects": ["host"],
+        "remote": "checkout",
+        "traceId": "mf-shared-fail-003"
+      },
+      "fingerprint": "0b872b959b4c31dc8a4d5048673fd3f4d8f40c190c03d542190b2e7db4025a85",
+      "message": "Runtime error RUNTIME-021 correlated with MFDoctor project evidence.",
+      "project": "runtime",
+      "ruleId": "runtime/error-correlated",
+      "schemaVersion": 1,
+      "severity": "error",
+      "suggestion": "Use the stable RUNTIME code with the matched build facts; do not infer browser behavior from static analysis alone."
+    },
+    {
+      "documentation": "/rules/runtime/shared-mismatch",
+      "evidence": {
+        "consumersWithoutFallback": [],
+        "identity": {
+          "candidates": ["host"],
+          "matchReason": "selected version does not satisfy required or installed version",
+          "producer": "checkout",
+          "provider": "checkout",
+          "roles": {
+            "consumer": [],
+            "host": [],
+            "moduleInfo": ["host"],
+            "producer": [],
+            "provider": []
+          }
+        },
+        "installedVersion": "19.1.1",
+        "package": "react",
+        "provider": "checkout",
+        "providers": ["host"],
+        "reason": "version-unsatisfied",
+        "requiredVersion": "^19.0.0",
+        "selectedVersion": "18.3.1",
+        "traceId": "mf-shared-fail-003"
+      },
+      "fingerprint": "c6817d38a4871211fdedf6079e3aca8086a1028f8e1a021a1392b447b9125125",
+      "message": "Runtime shared resolution for \"react\" does not match project evidence.",
+      "project": "runtime",
+      "ruleId": "runtime/shared-mismatch",
+      "schemaVersion": 1,
+      "severity": "error",
+      "suggestion": "Align shared versions, singleton/import settings, and providers across hosts and remotes."
+    }
+  ],
+  "schemaVersion": 1,
+  "status": {
+    "complete": true,
+    "incompleteReasons": []
+  },
+  "summary": {
+    "errors": 2,
+    "info": 0,
+    "projects": 1,
+    "score": 97,
+    "scoreLabel": "Great",
+    "warnings": 0
+  }
+}

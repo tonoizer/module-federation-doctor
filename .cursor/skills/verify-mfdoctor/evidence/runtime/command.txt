@@ -1,0 +1,3 @@
+node dist/cli.js runtime examples/showcase/runtime/shared-mismatch/trace.json "examples/showcase/runtime/shared-mismatch/*.project.json" --format json --output - --no-write
+node dist/cli.js runtime examples/showcase/runtime/green/trace.json "examples/showcase/runtime/green/*.project.json" --format json --output - --no-write
+node dist/cli.js runtime /tmp/mfdoctor-verify-missing-trace.json "examples/showcase/runtime/green/*.project.json"

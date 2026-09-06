@@ -1,0 +1,11 @@
+feature-id: prompt
+entry-point: node dist/cli.js prompt --finding <ruleId|fingerprint> <report.json>
+fixture-src: examples/showcase/config/remote-http-insecure
+finding-exit: 0
+top-exit: 0
+unknown-exit: 2
+fingerprint-exit: 0
+rule-id: config/remote-http-insecure
+fingerprint: aad0eafc068fda2276d500d41467e3aff6e518386627d6d6f1803602c6d19e7d
+stdout-starts-with: # Fix: config/remote-http-insecure
+top-starts-with: Agent prompts (top 1)

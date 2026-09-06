@@ -1,0 +1,10 @@
+{
+  "entries": [
+    {
+      "fingerprint": "aad0eafc068fda2276d500d41467e3aff6e518386627d6d6f1803602c6d19e7d",
+      "project": "@mfdoctor-showcase/remote-http-insecure",
+      "ruleId": "config/remote-http-insecure"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -1,0 +1,10 @@
+feature-id: runtime
+entry-point: node dist/cli.js runtime <trace.json> <quoted-project.json-glob> --format json --output - --no-write
+mismatch-exit: 1
+mismatch-rule-ids: ['runtime/error-correlated', 'runtime/shared-mismatch']
+green-exit: 0
+green-rule-ids: []
+missing-exit: 2
+no-write-side-effect: repo-root .mf absent (observed)
+mismatch-status: {'complete': True, 'incompleteReasons': []}
+green-status: {'complete': True, 'incompleteReasons': []}

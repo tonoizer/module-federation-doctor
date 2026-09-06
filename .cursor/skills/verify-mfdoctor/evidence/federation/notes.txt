@@ -1,0 +1,7 @@
+feature-id: federation
+entry-point: node dist/cli.js federation <quoted-project.json-glob> --ci --format json --output - --no-write
+conflict-exit: 1
+conflict-rule-ids: ['federation/version-conflict']
+unmatched-exit: 2
+no-write-side-effect: repo-root .mf absent (observed)
+status: {'complete': False, 'incompleteReasons': ['missing-emit']}
