@@ -13,6 +13,10 @@ lockfile; see [compatibility](./compatibility.md)).
 Gaps below are tracked as GitHub issues and milestones so each one can be
 removed from this page when it ships.
 
+Next.js Module Federation (`@module-federation/nextjs-mf` /
+`NextFederationPlugin`) is **unsupported**. No MFDoctor adapter is planned.
+Prefer Rsbuild or Modern.js. See [compatibility](./compatibility.md).
+
 Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1)
 · [post-v1](https://github.com/tonoizer/module-federation-doctor/milestone/2)
 · epic [#30](https://github.com/tonoizer/module-federation-doctor/issues/30).
@@ -59,7 +63,8 @@ No open post-v1 adapter gaps right now. Rolldown / Vite Plus (#11) and Modern.js
 (#12) shipped as **partial** matrix cells — see
 [compatibility](./compatibility.md). A real `@modern-js/app-tools` CI emit remains
 blocked by lockfile `trustPolicy: no-downgrade` (last provenance-attested stable
-is `2.63.3`); the upstream core-demo re-soak is #130.
+is `2.63.3`); the upstream core-demo re-soak is #130. Next.js is a **permanent
+non-goal**, not a deferred adapter.
 
 ## Was MFDoctor abdeckt
 
@@ -137,6 +142,12 @@ Do **not** ship MFDoctor into the browser to close that gap. Prefer Observabilit
 exports + `mfdoctor runtime`, or add a bundler MF plugin + MFDoctor adapter. See
 [Observability latest.json → mfdoctor runtime](./observability-runtime.md) and
 [setup](./setup.md).
+
+**Next.js** Module Federation (`@module-federation/nextjs-mf` /
+`NextFederationPlugin`) is **out of scope**. Upstream support is Pages Router
+only and is no longer actively maintained. MFDoctor does **not** ship a Next.js
+adapter, and **no Next adapter is planned**. Prefer **Rsbuild** or **Modern.js**
+for new Module Federation apps. Do not start a Next.js adapter.
 
 ## Governance der Shared-Nutzung (keine Ziele)
 

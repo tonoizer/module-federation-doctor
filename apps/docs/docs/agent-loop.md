@@ -91,6 +91,8 @@ MFDoctor does not ship, and agents must not invent:
 - In-browser doctor or runtime agent injection
 - A general `--fix` that mutates the project without a finding-driven change
 - MCP servers, VS Code problem matchers, or `check --watch` (tracked separately)
+- A Next.js (`@module-federation/nextjs-mf`) adapter — **unsupported**; prefer
+  Rsbuild or Modern.js ([limitations](./limitations.md#permanent-guarantees--non-goals))
 
 For Module Federation concepts (shared, remotes, Bridge, observability), use the
 upstream `mf` skill. For MFDoctor commands, formats, and exit codes, see the
