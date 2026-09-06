@@ -20,18 +20,25 @@ semver tags such as `1.0.0-rc.0`, never a `v` prefix.
    ```
 
 5. Merge the version PR only after explicit release approval. The
-   `Create GitHub release` workflow then creates the plain-semver tag and GitHub
-   release, then dispatches the release-file and npm staging workflows on
-   `main`. The tag input is validated against that trusted checkout and is never
-   used as an executable ref. It does not run for other branches.
+   `Create GitHub release` workflow then creates the plain-semver tag and a
+   **draft** GitHub Release, then dispatches the release-file and npm staging
+   workflows on `main` with `tag=$VERSION`. The tag input is validated against
+   that trusted checkout and is never used as an executable ref. It does not
+   run for other branches. The GitHub Release stays draft until npm stage
+   succeeds, so a public release cannot exist when Verify fails or Stage never
+   runs.
 
 ## Publish a release
 
-Publishing a GitHub release runs `publish-on-release.yml`. It verifies that the
-checkout is an immutable plain-semver tag matching `package.json`, runs release
-gates on Node 22, 24, and 26, and submits the package with `npm stage publish`.
-Prereleases use npm tag `next`; stable versions use `latest`. A maintainer must
-approve the staged package with npm account 2FA.
+`publish-on-release.yml` is dispatched with the immutable tag. It also listens
+for `release: published` from a human (GITHUB_TOKEN undrafting does not recurse,
+and `github-actions[bot]` `release` events are ignored so the workflow cannot
+double-stage). It verifies that the checkout is an immutable plain-semver tag
+matching `package.json`, runs release gates on Node 22, 24, and 26, and submits
+the package with `npm stage publish`. After that stage job succeeds, the
+workflow promotes the draft GitHub Release to published. Prereleases use npm
+tag `next`; stable versions use `latest`. A maintainer must approve the staged
+package with npm account 2FA.
 
 The job uses GitHub OIDC and npm provenance, not `NPM_TOKEN`. The repository
 `npm` environment requires approval and accepts deployments only from `main` or
@@ -62,7 +69,9 @@ releases use npm tag `latest`. Never reuse or move a public release tag.
 ## Release artifacts and failures
 
 `Generate release files` attaches the npm tarball, `SHA256SUMS`, and a release
-manifest to the GitHub release. It does not publish to npm.
+manifest to the GitHub release. `create-release.yml` dispatches it with
+`tag=$VERSION` so uploads land on the draft; it does not wait for the GitHub
+Release to be published. It does not publish to npm.
 
 Never reuse or overwrite a published version. Reject a bad staged package
 before approval. If an approved version is bad, fix the cause and release a new
