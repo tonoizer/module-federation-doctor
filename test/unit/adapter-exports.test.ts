@@ -21,7 +21,7 @@ describe("adapter public exports", () => {
     expect(rsbuild).not.toHaveProperty("doctor");
 
     expect(typeof webpack.ModuleFederationDoctorPlugin).toBe("function");
-    expect(webpack.moduleFederationDoctorPlugin).toBe(webpack.ModuleFederationDoctorPlugin);
+    expect(webpack).not.toHaveProperty("moduleFederationDoctorPlugin");
     expect(webpack.default).toBe(webpack.ModuleFederationDoctorPlugin);
     expect(webpack).not.toHaveProperty("doctor");
 
