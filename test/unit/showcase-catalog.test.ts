@@ -27,18 +27,20 @@ function showcaseLeavesFromDemo(source: string): ShowcaseLeaf[] {
       throw new Error(`demo-showcase case is missing dir/pattern:\n${block}`);
     }
     const leaf = location.replace(/^examples\/showcase\//, "").replace(/\/\*\.project\.json$/, "");
-    return {
+    const item: ShowcaseLeaf = {
       leaf,
-      ruleId: block.match(/ruleId:\s*"([^"]+)"/)?.[1],
       expectNoFindings: /expectNoFindings:\s*true/.test(block),
     };
+    const ruleId = block.match(/ruleId:\s*"([^"]+)"/)?.[1];
+    if (ruleId) item.ruleId = ruleId;
+    return item;
   });
 }
 
 function showcaseLeavesFromReadme(source: string): Array<{ leaf: string; row: string }> {
   return source.split("\n").flatMap((line) => {
-    const match = line.match(/^\| `([^`]+)`\s+\|/);
-    return match ? [{ leaf: match[1], row: line }] : [];
+    const leaf = line.match(/^\| `([^`]+)`\s+\|/)?.[1];
+    return leaf ? [{ leaf, row: line }] : [];
   });
 }
 
