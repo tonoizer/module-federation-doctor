@@ -188,7 +188,9 @@ export function normalizeModuleFederation(
       excludePlugins: [...(input.treeShakingSharedExcludePlugins ?? [])].sort(),
     },
     vite: {
-      ...(input.publicPath ? { publicPath: input.publicPath } : {}),
+      ...(typeof input.publicPath === "string" && input.publicPath
+        ? { publicPath: input.publicPath }
+        : {}),
       bundleAllCSS: input.bundleAllCSS ?? false,
       ignoreOrigin: input.ignoreOrigin ?? false,
       ...(input.virtualModuleDir ? { virtualModuleDir: input.virtualModuleDir } : {}),

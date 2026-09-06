@@ -69,8 +69,10 @@ export interface BundlerFacts {
    */
   federationInstances?: FederationInstanceRef[];
   /**
-   * Classification of bundler `output.publicPath` from the compiler (webpack/rspack).
-   * Absent when MFDoctor did not observe compiler output options.
+   * Classification of bundler `output.publicPath` (webpack/rspack/rsbuild) or
+   * Vite MF `publicPath` from public adapter config. Absent when MFDoctor did
+   * not observe those public surfaces (CLI-only, or adapter emit that could not
+   * read them — Vite/Rsbuild then emit `doctor/partial-analysis`).
    */
   outputPublicPathKind?: OutputPublicPathKind;
   /**

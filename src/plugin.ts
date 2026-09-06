@@ -175,6 +175,155 @@ export function classifyOutputPublicPath(publicPath: unknown): OutputPublicPathK
   return "string";
 }
 
+const OUTPUT_PUBLIC_PATH_KIND_RANK: Record<OutputPublicPathKind, number> = {
+  unknown: 0,
+  string: 1,
+  auto: 2,
+  "non-string": 3,
+};
+
+function mergeOutputPublicPathKind(
+  current: OutputPublicPathKind | undefined,
+  next: OutputPublicPathKind,
+): OutputPublicPathKind {
+  if (!current) return next;
+  return OUTPUT_PUBLIC_PATH_KIND_RANK[next] > OUTPUT_PUBLIC_PATH_KIND_RANK[current]
+    ? next
+    : current;
+}
+
+function publicPathField(value: object): { present: boolean; value: unknown } {
+  if (!("publicPath" in value)) return { present: false, value: undefined };
+  return { present: true, value: (value as { publicPath?: unknown }).publicPath };
+}
+
+/** Read Vite MF `publicPath` from public plugin/doctor config objects only. */
+function observeMfPublicPathKind(configs: Array<object | undefined | null>): {
+  observed: boolean;
+  kind?: OutputPublicPathKind;
+} {
+  let seenConfig = false;
+  let kind: OutputPublicPathKind | undefined;
+  for (const config of configs) {
+    if (!config || typeof config !== "object") continue;
+    seenConfig = true;
+    const field = publicPathField(config);
+    if (!field.present) continue;
+    kind = mergeOutputPublicPathKind(kind, classifyOutputPublicPath(field.value));
+  }
+  if (!seenConfig) return { observed: false };
+  return { observed: true, kind: kind ?? "unknown" };
+}
+
+function mergePublicPathObservations(
+  current: { observed: boolean; kind?: OutputPublicPathKind },
+  next: { observed: boolean; kind?: OutputPublicPathKind },
+): { observed: boolean; kind?: OutputPublicPathKind } {
+  if (!current.observed) return next;
+  if (!next.observed) return current;
+  return {
+    observed: true,
+    kind: mergeOutputPublicPathKind(current.kind ?? "unknown", next.kind ?? "unknown"),
+  };
+}
+
+function doctorOptionMfConfigs(configured: DoctorOptions): object[] {
+  const configs: object[] = [];
+  if (configured.moduleFederation && typeof configured.moduleFederation === "object") {
+    configs.push(configured.moduleFederation);
+  }
+  for (const instance of configured.moduleFederationInstances ?? []) {
+    if (!instance || typeof instance !== "object") continue;
+    if ("config" in instance && instance.config && typeof instance.config === "object") {
+      configs.push(instance.config);
+      continue;
+    }
+    configs.push(instance);
+  }
+  return configs;
+}
+
+function publicPathDiagnostics(observation: {
+  observed: boolean;
+  kind?: OutputPublicPathKind;
+}): BuildDiagnostics {
+  if (!observation.observed) return {};
+  return { outputPublicPathKind: observation.kind ?? "unknown" };
+}
+
+function callPublicConfig<T>(fn: (() => T) | undefined): T | undefined {
+  if (typeof fn !== "function") return undefined;
+  try {
+    return fn();
+  } catch {
+    return undefined;
+  }
+}
+
+type RsbuildPluginApiLike = {
+  context: { rootPath: string };
+  onAfterBuild: (fn: (args: { stats?: RsbuildStatsLike | null }) => Promise<void> | void) => void;
+  getNormalizedConfig?: () => unknown;
+  getRsbuildConfig?: () => unknown;
+};
+
+function observeRsbuildConfigPublicPath(api: {
+  getNormalizedConfig?: () => unknown;
+  getRsbuildConfig?: () => unknown;
+}): { observed: boolean; kind?: OutputPublicPathKind } {
+  const config =
+    callPublicConfig(api.getNormalizedConfig) ?? callPublicConfig(api.getRsbuildConfig);
+  if (!config || typeof config !== "object") return { observed: false };
+  const output = (config as { output?: unknown }).output;
+  if (!output || typeof output !== "object") return { observed: true, kind: "unknown" };
+  if (!("publicPath" in output)) return { observed: true, kind: "unknown" };
+  return {
+    observed: true,
+    kind: classifyOutputPublicPath((output as { publicPath?: unknown }).publicPath),
+  };
+}
+
+function observeStatsPublicPathKind(value: unknown): {
+  observed: boolean;
+  kind?: OutputPublicPathKind;
+} {
+  let observed = false;
+  let kind: OutputPublicPathKind | undefined;
+  const visit = (node: unknown): void => {
+    if (!node || typeof node !== "object") return;
+    const data = node as { publicPath?: unknown; children?: unknown[] };
+    if ("publicPath" in data) {
+      observed = true;
+      kind = mergeOutputPublicPathKind(kind, classifyOutputPublicPath(data.publicPath));
+    }
+    if (Array.isArray(data.children)) for (const child of data.children) visit(child);
+  };
+  visit(value);
+  if (!observed) return { observed: false };
+  return { observed: true, kind: kind ?? "unknown" };
+}
+
+function collectRsbuildPublicPathDiagnostics(
+  api: {
+    getNormalizedConfig?: () => unknown;
+    getRsbuildConfig?: () => unknown;
+  },
+  stats: RsbuildStatsLike | null | undefined,
+): BuildDiagnostics {
+  let observation = observeRsbuildConfigPublicPath(api);
+  if (stats) {
+    try {
+      observation = mergePublicPathObservations(
+        observation,
+        observeStatsPublicPathKind(stats.toJson({ assets: true } as never)),
+      );
+    } catch {
+      // Stats serialization is optional evidence; keep config observation.
+    }
+  }
+  return publicPathDiagnostics(observation);
+}
+
 function collectCompilerDiagnostics(compiler: CompilerLike): BuildDiagnostics {
   const diagnostics: BuildDiagnostics = {};
   const count = countModuleFederationPlugins(compiler);
@@ -719,6 +868,9 @@ function createViteFamilyHooks(configured: DoctorOptions) {
   let userChunkingFacts: ViteChunkingFacts | undefined;
   let outputs: BuildOutputInput[] = [];
   let pendingCloseFinalization: number | undefined;
+  let vitePublicPathObservation: { observed: boolean; kind?: OutputPublicPathKind } = {
+    observed: false,
+  };
 
   const run = async (
     hook: "writeBundle" | "closeBundle",
@@ -788,7 +940,17 @@ function createViteFamilyHooks(configured: DoctorOptions) {
       const withNitroClient = await includeNitroClientOutput(root, withNuxtClient);
       const buildOutputs = await includeNitroGeneratedOutputAssets(root, withNitroClient);
       const allAssets = buildOutputs.flatMap((item) => prefixedEmittedAssets(item));
-      const result = await analyzeBuild(configured, allAssets, undefined, buildOutputs);
+      const result = await analyzeBuild(
+        configured,
+        allAssets,
+        publicPathDiagnostics(
+          mergePublicPathObservations(
+            vitePublicPathObservation,
+            observeMfPublicPathKind(doctorOptionMfConfigs(configured)),
+          ),
+        ),
+        buildOutputs,
+      );
       failAfterCollect(result);
     } finally {
       outputs = [];
@@ -810,6 +972,13 @@ function createViteFamilyHooks(configured: DoctorOptions) {
       resolvedConfig = config;
       if (!configured.root && config.root) configured.root = config.root;
       const federationInstances = collectViteModuleFederationPluginInstances(config.plugins);
+      vitePublicPathObservation = mergePublicPathObservations(
+        vitePublicPathObservation,
+        observeMfPublicPathKind([
+          configured.moduleFederation,
+          ...federationInstances.map((instance) => instance.config),
+        ]),
+      );
       if (federationInstances.length > 0 && configured.moduleFederationInstances === undefined)
         configured.moduleFederationInstances = resolveViteFederationInstances(
           federationInstances,
@@ -890,12 +1059,13 @@ function createDoctorPlugin(bundler: BundlerName) {
         ? {
             rsbuild: {
               setup(api) {
-                if (!configured.root) configured.root = api.context.rootPath;
-                api.onAfterBuild(async ({ stats }) => {
+                const rsbuildApi = api as RsbuildPluginApiLike;
+                if (!configured.root) configured.root = rsbuildApi.context.rootPath;
+                rsbuildApi.onAfterBuild(async ({ stats }) => {
                   const outputs = stats
                     ? await collectRsbuildBuildOutputs(
                         stats,
-                        configured.root ?? api.context.rootPath,
+                        configured.root ?? rsbuildApi.context.rootPath,
                       )
                     : [];
                   const assets = [
@@ -904,7 +1074,7 @@ function createDoctorPlugin(bundler: BundlerName) {
                   const result = await analyzeBuild(
                     configured,
                     assets,
-                    undefined,
+                    collectRsbuildPublicPathDiagnostics(rsbuildApi, stats),
                     outputs.length > 0 ? outputs : undefined,
                   );
                   failAfterCollect(result);

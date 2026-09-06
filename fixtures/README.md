@@ -15,6 +15,8 @@
 - `mf-ssr-fragment`: in-repo mf-toolkit **mf-ssr** fragment URL remotes (not
   classic `remoteEntry.js`) with golden project facts (#145 → unlocks #127).
 - `policy-packs`: shareable MFDoctor policy pack example (`@acme/mfdoctor-policy`).
+- `public-path-non-string`: Vite MF / Rsbuild `output.publicPath` function values for
+  `artifact/public-path-non-string-manifest` adapter tests.
 - `runtime-traces`: Observability-style exports for `mfdoctor runtime` correlation.
 - `semantic-graph/mixed-v1-v2.json`: mixed V1 project facts and V2 identity/capability
   input used by the packaged semantic graph verifier.

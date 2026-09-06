@@ -66,6 +66,7 @@ remotes, or configure producer `varFilename` for var-host interop
 | `remoteHmr`                             | Yes when set on MF options | Yes                                  |
 | `resolve.alias` ∩ shared                | Skip                       | Yes                                  |
 | `server.origin`                         | Skip                       | Yes                                  |
+| `publicPath` kind (manifest skip)       | Skip                       | Yes (`bundler.outputPublicPathKind`) |
 
 The full current surface is in the official
 [normalizer](https://github.com/module-federation/vite/blob/321d7db8a4b2a1764b3a7cdc16246222d97231ac/src/utils/normalizeModuleFederationOptions.ts).

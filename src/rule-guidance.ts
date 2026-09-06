@@ -90,8 +90,8 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "artifact/public-path-non-string-manifest": {
     category: "correctness",
     impact:
-      "Module Federation skips manifest generation when bundler `output.publicPath` is not a string.",
-    fix: "Set `output.publicPath` to a string URL, root-relative path, or `auto` when manifests are required.",
+      "Module Federation skips manifest generation when bundler `output.publicPath` (or Vite MF `publicPath`) is not a string.",
+    fix: "Set `output.publicPath` or Vite MF `publicPath` to a string URL, root-relative path, or `auto` when manifests are required.",
     sources: [manifest, core],
   },
   "config/remote-manifest-recommended": {
