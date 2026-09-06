@@ -70,7 +70,7 @@ MF `runtimePlugins` declared in bundler MF config **are** first-class: MFDoctor
 reads them from the shared `mfOptions` object at build time. That is not the
 same as analyzing a runtime-only host.
 
-## SSR-Host-Init-Inject (nur Vite)
+## SSR host-init inject (Vite-only)
 
 [`vite/host-init-inject-ssr`](./rules/vite/host-init-inject-ssr.md) is a Vite
 dialect check. It reads `@module-federation/vite`'s public
