@@ -738,6 +738,21 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/copied-vite-options-on-webpack",
+      (facts: ProjectFacts) => {
+        facts.bundler.name = "webpack";
+        facts.moduleFederation!.vite = {
+          bundleAllCSS: true,
+          ignoreOrigin: false,
+          ssrExternals: [],
+          virtualModuleDir: "__mf__",
+          hostInitInjectLocation: "entry",
+          remoteHmr: true,
+          varFilename: "remoteEntry.js",
+        };
+      },
+    ],
+    [
       "config/share-scope-undeclared",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.shareScope = ["default"];
@@ -4230,6 +4245,297 @@ describe("config/copied-webpack-options-on-vite", () => {
     expect(
       result.report.findings.some(
         (item) => item.ruleId === "config/copied-webpack-options-on-vite",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("config/copied-vite-options-on-webpack", () => {
+  const webpackFamily = ["webpack", "rspack", "rsbuild", "modern"] as const;
+  const viteOnlyKeys = {
+    bundleAllCSS: true,
+    ignoreOrigin: false,
+    ssrExternals: [] as string[],
+    virtualModuleDir: "__mf__",
+    hostInitInjectLocation: "entry" as const,
+    remoteHmr: true,
+    varFilename: "remoteEntry.js",
+  };
+
+  function baseFacts(bundler: ProjectFacts["bundler"]["name"] = "webpack"): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: bundler, mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "src/Widget.ts" },
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/remoteEntry.js",
+            type: "module",
+            shareScope: ["default"],
+          },
+        },
+        shared: {
+          react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+        },
+        shareStrategy: "version-first",
+        vite: {
+          bundleAllCSS: false,
+          ignoreOrigin: false,
+          ssrExternals: [],
+          target: "web",
+          disableRemote: false,
+        },
+      },
+      dependencies: { declared: { "@module-federation/enhanced": "2.8.2" }, installed: {} },
+      imports: {
+        sourceFiles: ["src/Widget.ts"],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  async function run(facts: ProjectFacts) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find(
+      (item) => item.meta.id === "config/copied-vite-options-on-webpack",
+    )!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  const analyzeQuietRules = {
+    "doctor/partial-analysis": "off" as const,
+    "artifact/types-missing": "off" as const,
+    "artifact/types-metadata-missing": "off" as const,
+    "artifact/remote-entry-missing": "off" as const,
+    "config/plugin-package-mismatch": "off" as const,
+    "config/remote-localhost-in-production": "off" as const,
+    "performance/vite-bundle-all-css": "off" as const,
+    "vite/host-init-inject-ssr": "off" as const,
+    "vite/remote-hmr-dev": "off" as const,
+    "vite/var-filename-interop": "off" as const,
+    "vite/remotes-prefer-module": "off" as const,
+  };
+
+  it.each(webpackFamily)(
+    "stays quiet on %s when no Vite-only keys are present",
+    async (bundler) => {
+      expect(await run(baseFacts(bundler))).toHaveLength(0);
+    },
+  );
+
+  it("stays quiet on Vite even when Vite-only keys are present", async () => {
+    const facts = baseFacts("vite");
+    facts.moduleFederation!.vite = { ...viteOnlyKeys };
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("stays quiet when bundler detection is unknown", async () => {
+    const facts = baseFacts("unknown");
+    facts.moduleFederation!.vite = { ...viteOnlyKeys };
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it.each(webpackFamily)("flags Vite-only keys on %s and lists them", async (bundler) => {
+    const facts = baseFacts(bundler);
+    facts.moduleFederation!.vite = { ...viteOnlyKeys };
+    const findings = await run(facts);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      message: expect.stringContaining("virtualModuleDir"),
+      evidence: {
+        keys: [
+          "virtualModuleDir",
+          "hostInitInjectLocation",
+          "bundleAllCSS",
+          "remoteHmr",
+          "varFilename",
+        ],
+      },
+    });
+  });
+
+  it("lists only the Vite-only keys that are present", async () => {
+    const facts = baseFacts("webpack");
+    facts.moduleFederation!.vite = {
+      bundleAllCSS: false,
+      ignoreOrigin: false,
+      ssrExternals: [],
+      virtualModuleDir: "__mf__",
+      remoteHmr: false,
+    };
+    const findings = await run(facts);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.evidence).toEqual({
+      keys: ["virtualModuleDir", "remoteHmr"],
+    });
+  });
+
+  it("does not treat defaulted bundleAllCSS false as a copied Vite key", async () => {
+    const facts = baseFacts("webpack");
+    facts.moduleFederation!.vite = {
+      bundleAllCSS: false,
+      ignoreOrigin: false,
+      ssrExternals: [],
+    };
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("fires through analyze when Vite keys are pasted onto webpack", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "./src/index.ts" },
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/mf-manifest.json",
+          },
+        },
+        virtualModuleDir: "__mf__",
+        hostInitInjectLocation: "entry",
+        bundleAllCSS: true,
+        remoteHmr: true,
+        varFilename: "remoteEntry.js",
+      },
+      rules: analyzeQuietRules,
+    });
+    const finding = result.report.findings.find(
+      (item) => item.ruleId === "config/copied-vite-options-on-webpack",
+    );
+    expect(finding).toMatchObject({
+      severity: "warning",
+      evidence: {
+        keys: [
+          "virtualModuleDir",
+          "hostInitInjectLocation",
+          "bundleAllCSS",
+          "remoteHmr",
+          "varFilename",
+        ],
+      },
+    });
+  });
+
+  it("fires through analyze on rspack when Vite keys are present", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "rspack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "./src/index.ts" },
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/mf-manifest.json",
+          },
+        },
+        virtualModuleDir: "__mf__",
+        bundleAllCSS: true,
+      },
+      rules: analyzeQuietRules,
+    });
+    expect(
+      result.report.findings.find((item) => item.ruleId === "config/copied-vite-options-on-webpack")
+        ?.evidence,
+    ).toEqual({ keys: ["virtualModuleDir", "bundleAllCSS"] });
+  });
+
+  it("stays quiet through analyze on webpack when no Vite-only keys are present", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "./src/index.ts" },
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/mf-manifest.json",
+          },
+        },
+        remoteType: "script",
+      },
+      rules: analyzeQuietRules,
+    });
+    expect(result.report.findings.map((item) => item.ruleId)).not.toContain(
+      "config/copied-vite-options-on-webpack",
+    );
+  });
+
+  it("stays quiet through analyze for a Vite config that uses Vite-only keys", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "./src/index.ts" },
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/mf-manifest.json",
+            type: "module",
+          },
+        },
+        virtualModuleDir: "__mf__",
+        hostInitInjectLocation: "entry",
+        bundleAllCSS: true,
+        remoteHmr: true,
+        varFilename: "remoteEntry.js",
+        publicPath: "auto",
+        target: "web",
+        manifest: true,
+      },
+      rules: {
+        ...analyzeQuietRules,
+        "artifact/manifest-invalid": "off",
+        "artifact/manifest-name-mismatch": "off",
+        "artifact/manifest-remote-entry-missing": "off",
+        "artifact/manifest-expose-assets-empty": "off",
+      },
+    });
+    expect(
+      result.report.findings.some(
+        (item) => item.ruleId === "config/copied-vite-options-on-webpack",
       ),
     ).toBe(false);
   });

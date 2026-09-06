@@ -325,6 +325,30 @@ function copiedWebpackOptionsOnVite(config: NormalizedMFConfig): CopiedWebpackOp
   return hits;
 }
 
+/** Enhanced / webpack-family bundlers that ignore `@module-federation/vite` option keys. */
+function isWebpackFamilyBundler(
+  name: ProjectFacts["bundler"]["name"],
+): name is "webpack" | "rspack" | "rsbuild" | "modern" {
+  return name === "webpack" || name === "rspack" || name === "rsbuild" || name === "modern";
+}
+
+/**
+ * Vite-only federation keys commonly pasted onto Enhanced / webpack-family
+ * configs. Normalized `bundleAllCSS` defaults to false when omitted, so only an
+ * explicit true is treated as a copied Vite option.
+ */
+function copiedViteOptionsOnWebpack(config: NormalizedMFConfig): string[] {
+  const vite = config.vite;
+  if (!vite) return [];
+  const keys: string[] = [];
+  if (vite.virtualModuleDir) keys.push("virtualModuleDir");
+  if (vite.hostInitInjectLocation) keys.push("hostInitInjectLocation");
+  if (vite.bundleAllCSS) keys.push("bundleAllCSS");
+  if (vite.remoteHmr !== undefined) keys.push("remoteHmr");
+  if (vite.varFilename) keys.push("varFilename");
+  return keys;
+}
+
 function report(
   context: RuleContext,
   message: string,
@@ -1243,6 +1267,19 @@ export const builtInRules: DoctorRule[] = [
       `Webpack-only Module Federation options on a Vite config: ${keys.map((key) => `\`${key}\``).join(", ")}.`,
       { keys, equivalents },
       "Remove the listed keys. Use the Vite equivalent when one is listed; otherwise the option is not applicable on `@module-federation/vite`.",
+    );
+  }),
+  createRule("config/copied-vite-options-on-webpack", "warning", (context) => {
+    if (!isWebpackFamilyBundler(context.facts.bundler.name)) return;
+    const config = mf(context);
+    if (!config) return;
+    const keys = copiedViteOptionsOnWebpack(config);
+    if (keys.length === 0) return;
+    report(
+      context,
+      `Vite-only Module Federation options on a webpack-family config: ${keys.map((key) => `\`${key}\``).join(", ")}.`,
+      { keys },
+      "Remove the listed keys. They apply to `@module-federation/vite` and are ignored by Enhanced / webpack, Rspack, Rsbuild, and Modern.js.",
     );
   }),
   createRule("config/share-scope-undeclared", "error", (context) => {

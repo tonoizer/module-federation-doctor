@@ -70,6 +70,7 @@ const ids = [
   "bridge/vue-server-entry",
   "bridge/vue-share-missing",
   "bridge/vue-ssr-fresh-context",
+  "config/copied-vite-options-on-webpack",
   "config/copied-webpack-options-on-vite",
   "config/dts-output-dir-mismatch",
   "config/nested-producer-dts-extract",
@@ -197,6 +198,7 @@ const demoByRule = {
   "bridge/vue-server-entry": "unit",
   "bridge/vue-share-missing": "showcase",
   "bridge/vue-ssr-fresh-context": "unit",
+  "config/copied-vite-options-on-webpack": "unit",
   "config/copied-webpack-options-on-vite": "showcase",
   "config/dts-output-dir-mismatch": "showcase",
   "config/nested-producer-dts-extract": "showcase",
@@ -428,6 +430,7 @@ export const MIGRATED_GROUP6_RULE_IDS = [
   "config/transform-import-share-conflict",
   "config/shared-externals-conflict",
   "config/copied-webpack-options-on-vite",
+  "config/copied-vite-options-on-webpack",
   "doctor/partial-analysis",
 ] as const;
 
@@ -1012,6 +1015,16 @@ const plans: Record<string, RulePlan> = {
     "high",
     "Declared webpack-only options on Vite federation config are exact; quiet when none are present.",
     VITE,
+  ),
+  "config/copied-vite-options-on-webpack": plan(
+    6,
+    "warning",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Declared Vite-only options on webpack-family federation config are exact; quiet when none are present.",
+    WEBPACK_FAMILY,
   ),
   "artifact/manifest-assets-disabled": plan(
     2,
@@ -1758,6 +1771,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
   "config/dts-output-dir-mismatch": ["project.scope", "moduleFederation"],
   "config/nested-producer-dts-extract": ["project.scope", "moduleFederation"],
   "config/copied-webpack-options-on-vite": ["project.scope", "moduleFederation", "bundler.name"],
+  "config/copied-vite-options-on-webpack": ["project.scope", "moduleFederation", "bundler.name"],
   "config/duplicate-plugin-registration": [
     "project.scope",
     "bundler.moduleFederationPluginCount",
