@@ -188,6 +188,18 @@ for (const captureOnlyExport of [
     undefined,
     "default package entry must not expose capture-only export " + captureOnlyExport,
   );
+for (const capabilityPackExport of [
+  "BUILT_IN_CAPABILITY_PACKS",
+  "ENHANCED_WEBPACK_V5_BROWSER_PACK",
+  "assertCapabilityPacks",
+  "queryCapability",
+  "resolveCapabilityPack",
+])
+  assert.equal(
+    api[capabilityPackExport],
+    undefined,
+    "default package entry must not expose unused capability-pack export " + capabilityPackExport,
+  );
 assert.equal(typeof vite.federationDoctor, "function");
 assert.equal(vite.doctor, undefined, "vite adapter must not export unused doctor alias");
 assert.equal(typeof nuxt.moduleFederationDoctor.setup, "function");

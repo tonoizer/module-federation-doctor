@@ -31,6 +31,12 @@ Adapters must not scrape private Module Federation plugin fields to invent
 coverage — see
 [permanent guarantees / non-goals](./limitations.md#permanent-guarantees--non-goals).
 
+`mfdoctor capabilities` ist der versionierte CLI-Vertrag (Befehle, Formate,
+Exit-Codes). Der Befehl lädt **keine** Module-Federation-Capability-Pack-Tabellen.
+Diese Tabellen gehören nicht zum öffentlichen Root-Export von
+`@tonoizer/mfdoctor` und werden weder von Engine, Adaptern noch anderen
+CLI-Befehlen abgefragt.
+
 ## Vollständigkeit dynamischer Imports (v1)
 
 MFDoctor’s import/shared analysis is **not** “static only.” Offline `check` /
