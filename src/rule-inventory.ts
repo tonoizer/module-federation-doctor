@@ -12,19 +12,7 @@ export type RuleMigrationStatus = "legacy" | "migrated";
 export const RULE_DEMO_COVERAGE = ["showcase", "unit", "emit"] as const;
 export type RuleDemoCoverage = (typeof RULE_DEMO_COVERAGE)[number];
 
-/** Documented compatibility-only built-ins that intentionally stay off the evidence bridge. */
-export interface RuleCompatibilityException {
-  id: string;
-  owner: { name: string; contact?: string };
-  reason: string;
-  scope: string;
-  deprecationPlan: string;
-}
-
-/** Empty by design for V1 closeout — every current built-in is migrated. */
-export const RULE_COMPATIBILITY_EXCEPTIONS: readonly RuleCompatibilityException[] = Object.freeze(
-  [],
-);
+/** V1 closeout: every current built-in is migrated; no compatibility exceptions. */
 
 export interface RuleInventoryEntry extends EvidenceAwareRuleMeta {
   group: RuleMigrationGroup;
@@ -458,7 +446,6 @@ export const ALL_MIGRATED_RULE_IDS = Object.freeze([
 ] as const);
 
 const MIGRATED_RULE_IDS: ReadonlySet<string> = new Set(ALL_MIGRATED_RULE_IDS);
-const COMPATIBILITY_EXCEPTION_IDS = new Set(RULE_COMPATIBILITY_EXCEPTIONS.map((entry) => entry.id));
 
 type RulePlan = {
   group: RuleMigrationGroup;
@@ -2145,17 +2132,11 @@ function applicabilityFor(spec: RulePlan): RuleApplicability {
 }
 
 function inventoryStatusFor(id: string): RuleMigrationStatus {
-  if (COMPATIBILITY_EXCEPTION_IDS.has(id)) return "legacy";
   if (MIGRATED_RULE_IDS.has(id)) return "migrated";
-  throw new Error(`Built-in ${id} is neither migrated nor documented as a compatibility exception`);
+  throw new Error(`Built-in ${id} is missing from ALL_MIGRATED_RULE_IDS`);
 }
 
-function migrationNoteFor(id: string, spec: RulePlan): string {
-  if (COMPATIBILITY_EXCEPTION_IDS.has(id)) {
-    const exception = RULE_COMPATIBILITY_EXCEPTIONS.find((entry) => entry.id === id);
-    if (!exception) throw new Error(`Missing compatibility exception metadata for ${id}`);
-    return `Group ${spec.group}; compatibility-only exception (${exception.reason}). ${exception.deprecationPlan}`;
-  }
+function migrationNoteFor(spec: RulePlan): string {
   return `Group ${spec.group}; ${spec.confidenceReason} Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes.`;
 }
 
@@ -2184,7 +2165,7 @@ export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
     status: inventoryStatusFor(id),
     demo,
     evidenceReads,
-    migrationNote: migrationNoteFor(id, spec),
+    migrationNote: migrationNoteFor(spec),
   };
 });
 

@@ -17,9 +17,9 @@ not include messages, timestamps, array order, or absolute paths. Existing v1 fi
 remain a separate compatibility identity.
 
 The migration inventory records every current built-in as `migrated` with machine-checked
-prerequisites, applicability, and confidence ceilings. Compatibility-only exceptions must be
-documented explicitly in `RULE_COMPATIBILITY_EXCEPTIONS` with owner, reason, scope, and a
-deprecation plan. There are no silent legacy built-ins after the #232 closeout.
+prerequisites, applicability, and confidence ceilings. V1 closeout (#232) left no
+compatibility-only exceptions; the public empty `RULE_COMPATIBILITY_EXCEPTIONS` list was
+later removed. There are no silent legacy built-ins after the #232 closeout.
 
 ## Consequences
 
