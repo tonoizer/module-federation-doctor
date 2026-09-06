@@ -23,7 +23,9 @@
 - `shared-inspector-mf2`: minimal MF2 shared-array / inherited-shared evidence
   JSON shaped like `@mf-toolkit/shared-inspector` stress fixtures (#145).
 - `shared-subpath-version`: Vite prefix/subpath shared keys whose provider
-  `version` did or did not resolve from the parent package (#326).
+  `version` did or did not resolve from the parent package (#326), plus webpack
+  and rspack Enhanced negative controls (`enhanced-webpack/`, `enhanced-rspack/`)
+  so agents do not copy Vite parent-version inheritance onto prefix shares.
 - `workspaces`: portable multi-app `.mf/doctor/project.json` trees for the
   workspace federation gate (`clean` exit 0, `conflict` exit 1).
 - `compatibility-matrix.json`: the release-facing contract for bundler

@@ -183,15 +183,17 @@ describe("shared/subpath-version-unresolved", () => {
       },
     };
 
-    expect(
-      await runRule(
-        baseFacts({
-          bundler: { name: "rspack", mode: "ci" },
-          moduleFederation: { name: "fixture", exposes: {}, remotes: {}, shared },
-          dependencies: { declared: {}, installed: {} },
-        }),
-      ),
-    ).toHaveLength(0);
+    for (const bundler of ["webpack", "rspack"] as const) {
+      expect(
+        await runRule(
+          baseFacts({
+            bundler: { name: bundler, mode: "ci" },
+            moduleFederation: { name: "fixture", exposes: {}, remotes: {}, shared },
+            dependencies: { declared: {}, installed: {} },
+          }),
+        ),
+      ).toHaveLength(0);
+    }
 
     expect(
       await runRule(

@@ -1,0 +1,8 @@
+{
+  "name": "@mfdoctor-fixture/prefix-share-enhanced-rspack",
+  "private": true,
+  "version": "0.0.0",
+  "dependencies": {
+    "@module-federation/enhanced": "2.8.2"
+  }
+}
