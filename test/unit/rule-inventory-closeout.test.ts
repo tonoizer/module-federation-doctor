@@ -122,6 +122,12 @@ describe("V1 rule inventory closeout (#232)", () => {
     expect(fixture.rules.map((entry: { id: string }) => entry.id).sort()).toEqual(
       [...ruleInventoryIds].sort(),
     );
+    expect(
+      fixture.rules.every(
+        (entry: { demo?: unknown }) =>
+          entry.demo === "showcase" || entry.demo === "unit" || entry.demo === "emit",
+      ),
+    ).toBe(true);
   });
 
   it("records release evidence for the rules closeout gate", async () => {

@@ -45,6 +45,9 @@ when the rule may apply, or `not-applicable` only when known evidence proves it 
 
 Built-in inventory entries also record `evidenceReads`: the fact paths the legacy
 compatibility oracle still touches. Prerequisites must cover every non-optional read.
+Each entry also has `demo`: `showcase` (one-rule CLI fixture in `demo:showcase`),
+`emit` (plugin-emit cell in `demo:standalone`), or `unit` (tests only).
+`vp run inventory:check` fails when a rule has no `demo` tag.
 
 ## V1 compatibility and rollout
 

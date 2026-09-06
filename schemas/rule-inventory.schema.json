@@ -58,6 +58,7 @@
         "version",
         "group",
         "status",
+        "demo",
         "defaultSeverity",
         "confidenceCeiling",
         "owner",
@@ -72,6 +73,7 @@
         "version": { "type": "string", "minLength": 1 },
         "group": { "type": "integer", "minimum": 0, "maximum": 6 },
         "status": { "enum": ["legacy", "migrated"] },
+        "demo": { "enum": ["showcase", "unit", "emit"] },
         "defaultSeverity": { "enum": ["error", "warning", "info"] },
         "confidenceCeiling": {
           "enum": ["exact", "high", "medium", "low", "unknown"]

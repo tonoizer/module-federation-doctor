@@ -554,11 +554,16 @@ export {
   MIGRATED_GROUP5_RULE_IDS,
   MIGRATED_GROUP6_RULE_IDS,
   RULE_COMPATIBILITY_EXCEPTIONS,
+  RULE_DEMO_COVERAGE,
+  assertInventoryDemoCoverage,
   ruleInventory,
   ruleInventoryIds,
 } from "./rule-inventory.js";
 export type {
+  InventoryDemoCatalogSources,
+  InventoryDemoEntry,
   RuleCompatibilityException,
+  RuleDemoCoverage,
   RuleInventoryEntry,
   RuleMigrationGroup,
   RuleMigrationStatus,

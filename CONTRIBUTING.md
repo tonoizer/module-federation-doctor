@@ -49,6 +49,12 @@ vp run check
 `examples/standalone-findings`; keep them current when adapter wiring or
 catchable configuration rules change.
 
+When adding a built-in, tag it in `src/rule-inventory.ts` with
+`demo: "showcase" | "unit" | "emit"`. `vp run inventory:check` fails if the tag
+is missing or if a `showcase` / `emit` tag does not match the demo catalogs.
+Existing rules may stay `unit` until a later showcase or emit leaf; do not add
+a new rule without one of those three tags.
+
 ## Adapter contract
 
 MFDoctor is plugin-primary and CLI-complementary. Bundler adapters run after emit
