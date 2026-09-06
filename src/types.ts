@@ -1220,6 +1220,7 @@ export interface RuntimeAnalysisResult {
  */
 export type IncompleteReasonCode =
   | "missing-emit"
+  | "missing-stats"
   | "partial-bundler"
   | "probe-skipped"
   | "evidence-unknown";

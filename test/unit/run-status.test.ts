@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ANALYSIS_BUDGETS } from "../../src/analysis-budgets.js";
 import { computeRunStatus, emptyRunStatus, INCOMPLETE_REASON_CODES } from "../../src/run-status.js";
@@ -58,6 +61,21 @@ function project(
   };
 }
 
+function hostWithRemote(): NonNullable<ProjectFacts["moduleFederation"]> {
+  return {
+    name: "host",
+    exposes: {},
+    remotes: {
+      app1: {
+        name: "app1",
+        entry: "http://localhost:3001/remoteEntry.js",
+        shareScope: "default",
+      },
+    },
+    shared: {},
+  };
+}
+
 describe("computeRunStatus", () => {
   it("returns an empty list when the run is complete", () => {
     expect(computeRunStatus([project()])).toEqual({
@@ -71,6 +89,89 @@ describe("computeRunStatus", () => {
     expect(computeRunStatus([project({ capabilities: { emittedAssets: false } })])).toEqual({
       complete: false,
       incompleteReasons: ["missing-emit"],
+    });
+  });
+
+  it.each(["webpack", "rspack", "rsbuild"] as const)(
+    "reports missing-stats for %s emit with remotes when stats are off",
+    (bundler) => {
+      expect(
+        computeRunStatus([
+          project({
+            bundler: { name: bundler, mode: "production" },
+            capabilities: { stats: false },
+            moduleFederation: hostWithRemote(),
+          }),
+        ]),
+      ).toEqual({
+        complete: false,
+        incompleteReasons: ["missing-stats"],
+      });
+    },
+  );
+
+  it("does not treat Vite missing stats with remotes as missing-stats", () => {
+    expect(
+      computeRunStatus([
+        project({
+          bundler: { name: "vite", mode: "production" },
+          capabilities: { stats: false, manifest: false },
+          moduleFederation: hostWithRemote(),
+        }),
+      ]),
+    ).toEqual({
+      complete: true,
+      incompleteReasons: [],
+    });
+  });
+
+  it("does not add missing-stats on CLI-only Enhanced checks (missing-emit covers them)", () => {
+    expect(
+      computeRunStatus([
+        project({
+          bundler: { name: "webpack", mode: "production" },
+          capabilities: { emittedAssets: false, stats: false },
+          moduleFederation: hostWithRemote(),
+        }),
+      ]),
+    ).toEqual({
+      complete: false,
+      incompleteReasons: ["missing-emit"],
+    });
+  });
+
+  it("does not add missing-stats when Enhanced remotes explicitly disable manifest", () => {
+    expect(
+      computeRunStatus([
+        project({
+          bundler: { name: "webpack", mode: "production" },
+          capabilities: { stats: false, manifest: false },
+          moduleFederation: { ...hostWithRemote(), manifest: { enabled: false, options: {} } },
+        }),
+      ]),
+    ).toEqual({
+      complete: true,
+      incompleteReasons: [],
+    });
+  });
+
+  it("does not add missing-stats for Enhanced emit without remotes", () => {
+    expect(
+      computeRunStatus([
+        project({
+          bundler: { name: "rspack", mode: "production" },
+          capabilities: { stats: false },
+          moduleFederation: {
+            name: "producer",
+            exposes: { "./Widget": "./src/Widget.ts" },
+            remotes: {},
+            shared: {},
+          },
+        }),
+      ]),
+    ).toEqual({
+      complete: true,
+      incompleteReasons: [],
     });
   });
 
@@ -175,6 +276,12 @@ describe("computeRunStatus", () => {
             unresolvedDynamic: [{ api: "import", file: "a.ts" }],
           },
         }),
+        project({
+          project: { name: "enhanced-host" },
+          bundler: { name: "webpack", mode: "production" },
+          capabilities: { stats: false },
+          moduleFederation: hostWithRemote(),
+        }),
       ],
       {
         workspaceDiagnostics: [
@@ -185,9 +292,28 @@ describe("computeRunStatus", () => {
     );
     expect(status).toEqual({
       complete: false,
-      incompleteReasons: ["missing-emit", "partial-bundler", "probe-skipped", "evidence-unknown"],
+      incompleteReasons: [
+        "missing-emit",
+        "missing-stats",
+        "partial-bundler",
+        "probe-skipped",
+        "evidence-unknown",
+      ],
     });
     expect(status.incompleteReasons).toEqual([...INCOMPLETE_REASON_CODES]);
+  });
+
+  it("keeps report.schema.json incompleteReasons enum in sync", async () => {
+    const schemaPath = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../schemas/report.schema.json",
+    );
+    const schema = JSON.parse(await fs.readFile(schemaPath, "utf8")) as {
+      properties: { status: { properties: { incompleteReasons: { items: { enum: string[] } } } } };
+    };
+    expect(schema.properties.status.properties.incompleteReasons.items.enum).toEqual([
+      ...INCOMPLETE_REASON_CODES,
+    ]);
   });
 
   it("attaches status on reportFromFindings", () => {

@@ -286,6 +286,35 @@ describe("artifact/manifest-disabled evidence", () => {
     expect(await runRule(facts)).toHaveLength(0);
   });
 
+  it("does not fire for Vite omitted manifest when remotes exist", async () => {
+    const facts = base();
+    facts.bundler.name = "vite";
+    facts.moduleFederation!.exposes = {};
+    facts.moduleFederation!.remotes = {
+      app1: {
+        name: "app1",
+        entry: "http://localhost:3001/remoteEntry.js",
+        shareScope: "default",
+      },
+    };
+    delete facts.moduleFederation!.manifest;
+    expect(await runRule(facts)).toHaveLength(0);
+  });
+
+  it("fires for Enhanced remotes with explicit manifest: false", async () => {
+    const facts = base();
+    facts.bundler.name = "rspack";
+    facts.moduleFederation!.exposes = {};
+    facts.moduleFederation!.remotes = {
+      app1: {
+        name: "app1",
+        entry: "http://localhost:3001/remoteEntry.js",
+        shareScope: "default",
+      },
+    };
+    expect(await runRule(facts)).not.toHaveLength(0);
+  });
+
   it("fires for Vite false manifest without emit", async () => {
     const facts = base();
     facts.bundler.name = "vite";

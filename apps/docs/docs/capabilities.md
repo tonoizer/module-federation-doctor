@@ -21,7 +21,10 @@ Agents must not claim green while that finding (or exit code `2`) remains —
 see the [agent loop](./agent-loop.md).
 The “Manifest and stats” row is **not** a blanket Yes: Vite/Rolldown omit
 `mf-manifest.json` / `mf-stats.json` unless `manifest: true`, and missing
-webpack compilation stats on those bundlers is expected. See the
+webpack compilation stats on those bundlers is expected. Enhanced
+Webpack/Rspack/Rsbuild builds with remotes and `capabilities.stats: false`
+are incomplete (`missing-stats` or `artifact/manifest-disabled`) — not the
+Vite opt-in path. See the
 [per-bundler matrix](./runtime-manifests.md#per-bundler-expectations).
 Adapters must not scrape private Module Federation plugin fields to invent
 coverage — see
