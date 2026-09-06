@@ -328,6 +328,55 @@ describe("federation host-gaps and ghost-shares", () => {
     expect(ghost?.evidence.package).toBe("lodash");
   });
 
+  it("does not treat omitted shareStrategy as version-first when comparing hosts", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-fed-strategy-omitted-"));
+    roots.push(root);
+
+    const omittedVsOmitted = [path.join(root, "omit-a.json"), path.join(root, "omit-b.json")];
+    await fs.writeFile(omittedVsOmitted[0]!, JSON.stringify(projectFacts("omit-a", {}, [])));
+    await fs.writeFile(omittedVsOmitted[1]!, JSON.stringify(projectFacts("omit-b", {}, [])));
+    expect(
+      (await analyzeFederation(omittedVsOmitted)).findings.some(
+        (item) => item.ruleId === "federation/share-strategy-mismatch",
+      ),
+    ).toBe(false);
+
+    const omitted = projectFacts("omitted", {}, []);
+    const versionFirst = projectFacts("version-first", {}, []);
+    versionFirst.moduleFederation!.shareStrategy = "version-first";
+    const omittedVsVersion = [
+      path.join(root, "omitted.json"),
+      path.join(root, "version-first.json"),
+    ];
+    await fs.writeFile(omittedVsVersion[0]!, JSON.stringify(omitted));
+    await fs.writeFile(omittedVsVersion[1]!, JSON.stringify(versionFirst));
+    const omittedVsVersionFinding = (await analyzeFederation(omittedVsVersion)).findings.find(
+      (item) => item.ruleId === "federation/share-strategy-mismatch",
+    );
+    expect(omittedVsVersionFinding?.severity).toBe("warning");
+    expect(omittedVsVersionFinding?.evidence.strategies).toEqual({
+      omitted: ["omitted"],
+      "version-first": ["version-first"],
+    });
+
+    const loadedFirst = projectFacts("loaded-first", {}, []);
+    loadedFirst.moduleFederation!.shareStrategy = "loaded-first";
+    const omittedVsLoaded = [
+      path.join(root, "omitted-loaded.json"),
+      path.join(root, "loaded-first.json"),
+    ];
+    await fs.writeFile(omittedVsLoaded[0]!, JSON.stringify(omitted));
+    await fs.writeFile(omittedVsLoaded[1]!, JSON.stringify(loadedFirst));
+    const omittedVsLoadedFinding = (await analyzeFederation(omittedVsLoaded)).findings.find(
+      (item) => item.ruleId === "federation/share-strategy-mismatch",
+    );
+    expect(omittedVsLoadedFinding?.severity).toBe("warning");
+    expect(omittedVsLoadedFinding?.evidence.strategies).toEqual({
+      "loaded-first": ["loaded-first"],
+      omitted: ["omitted"],
+    });
+  });
+
   it("honors off and severity overrides for federation strategy mismatch", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-fed-strategy-"));
     roots.push(root);
@@ -441,6 +490,32 @@ describe("federation host-gaps and ghost-shares", () => {
       retargeted.findings.find((item) => item.ruleId === "federation/circular-remote-graph")
         ?.severity,
     ).toBe("error");
+  });
+
+  it("still treats omitted shareStrategy as eager-startup cycle risk", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-fed-omitted-cycle-"));
+    roots.push(root);
+    const first = projectFacts("first", {}, []);
+    const second = projectFacts("second", {}, []);
+    first.moduleFederation!.name = "app_a";
+    first.moduleFederation!.remotes = {
+      b: { name: "app_b", entry: "https://example.test/b/remoteEntry.js", shareScope: ["default"] },
+    };
+    second.moduleFederation!.name = "app_b";
+    second.moduleFederation!.remotes = {
+      a: { name: "app_a", entry: "https://example.test/a/remoteEntry.js", shareScope: ["default"] },
+    };
+    const files = [path.join(root, "first.json"), path.join(root, "second.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(first));
+    await fs.writeFile(files[1]!, JSON.stringify(second));
+
+    const result = await analyzeFederation(files);
+    expect(result.findings.some((item) => item.ruleId === "federation/circular-remote-graph")).toBe(
+      true,
+    );
+    expect(
+      result.findings.some((item) => item.ruleId === "federation/share-strategy-mismatch"),
+    ).toBe(false);
   });
 });
 

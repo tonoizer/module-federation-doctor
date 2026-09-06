@@ -284,7 +284,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "federation/share-strategy-mismatch": {
     category: "reliability",
     impact:
-      "Hosts and remotes that disagree on `version-first` vs `loaded-first` negotiate shared versions differently at startup.",
+      "Hosts and remotes that disagree on `version-first` vs `loaded-first` (or omitted vs an explicit strategy) negotiate shared versions differently at startup.",
     fix: "Pick one federation-wide `shareStrategy`, or document intentional per-app exceptions.",
     sources: ["https://module-federation.io/configure/shareStrategy.html"],
   },

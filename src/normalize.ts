@@ -162,7 +162,6 @@ export function normalizeModuleFederation(
     manifest: toggle(input.manifest, defaultManifestEnabled(options?.bundler)),
     dev: toggle(input.dev, true),
     dts: toggle(input.dts, true),
-    shareStrategy: input.shareStrategy ?? "version-first",
     experiments: {
       asyncStartup: input.experiments?.asyncStartup ?? false,
       externalRuntime: input.experiments?.externalRuntime ?? false,
@@ -214,6 +213,8 @@ export function normalizeModuleFederation(
   };
   if (input.name !== undefined) normalized.name = input.name;
   if (input.filename !== undefined) normalized.filename = input.filename;
+  // Omitted stays unset so federation compare cannot fake version-first alignment.
+  if (input.shareStrategy !== undefined) normalized.shareStrategy = input.shareStrategy;
   if (input.library !== undefined) normalized.library = input.library;
   if (input.remoteType !== undefined) normalized.remoteType = input.remoteType;
   if (input.getPublicPath !== undefined) normalized.getPublicPath = input.getPublicPath;

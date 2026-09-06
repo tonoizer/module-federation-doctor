@@ -5,7 +5,7 @@
 
 ## Issue
 
-Hosts and remotes that disagree on `version-first` vs `loaded-first` negotiate shared versions differently at startup.
+Hosts and remotes that disagree on `version-first` vs `loaded-first` (or omitted vs an explicit strategy) negotiate shared versions differently at startup.
 
 ## How to fix it
 

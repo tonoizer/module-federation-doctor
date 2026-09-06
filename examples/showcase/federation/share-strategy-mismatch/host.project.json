@@ -18,7 +18,6 @@
   },
   "moduleFederation": {
     "name": "host",
-    "shareStrategy": "version-first",
     "exposes": {},
     "remotes": {
       "shop": {

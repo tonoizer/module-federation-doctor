@@ -144,7 +144,6 @@
             "remotes": {},
             "runtimePlugins": [],
             "shareScope": ["default"],
-            "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
               "excludePlugins": [],
@@ -171,9 +170,9 @@
             "status": "complete",
             "usage": {
               "artifacts": 0,
-              "evidenceNodes": 69,
+              "evidenceNodes": 68,
               "files": 0,
-              "serializedBytes": 1651,
+              "serializedBytes": 1613,
               "sourceBytes": 0
             }
           }
@@ -323,7 +322,6 @@
             "remotes": {},
             "runtimePlugins": [],
             "shareScope": ["default"],
-            "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
               "excludePlugins": [],
@@ -350,9 +348,9 @@
             "status": "complete",
             "usage": {
               "artifacts": 0,
-              "evidenceNodes": 69,
+              "evidenceNodes": 68,
               "files": 0,
-              "serializedBytes": 1651,
+              "serializedBytes": 1613,
               "sourceBytes": 0
             }
           }
@@ -502,7 +500,6 @@
             "remotes": {},
             "runtimePlugins": [],
             "shareScope": ["default"],
-            "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
               "excludePlugins": [],
@@ -529,9 +526,9 @@
             "status": "complete",
             "usage": {
               "artifacts": 0,
-              "evidenceNodes": 69,
+              "evidenceNodes": 68,
               "files": 0,
-              "serializedBytes": 1651,
+              "serializedBytes": 1613,
               "sourceBytes": 0
             }
           }
@@ -681,7 +678,6 @@
             "remotes": {},
             "runtimePlugins": [],
             "shareScope": ["default"],
-            "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
               "excludePlugins": [],
@@ -708,9 +704,9 @@
             "status": "complete",
             "usage": {
               "artifacts": 0,
-              "evidenceNodes": 73,
+              "evidenceNodes": 72,
               "files": 0,
-              "serializedBytes": 1720,
+              "serializedBytes": 1682,
               "sourceBytes": 0
             }
           }
@@ -860,7 +856,6 @@
             "remotes": {},
             "runtimePlugins": [],
             "shareScope": ["default"],
-            "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
               "excludePlugins": [],
@@ -887,9 +882,9 @@
             "status": "complete",
             "usage": {
               "artifacts": 0,
-              "evidenceNodes": 73,
+              "evidenceNodes": 72,
               "files": 0,
-              "serializedBytes": 1720,
+              "serializedBytes": 1682,
               "sourceBytes": 0
             }
           }
@@ -1039,7 +1034,6 @@
             "remotes": {},
             "runtimePlugins": [],
             "shareScope": ["default"],
-            "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
               "excludePlugins": [],
@@ -1066,9 +1060,9 @@
             "status": "complete",
             "usage": {
               "artifacts": 0,
-              "evidenceNodes": 73,
+              "evidenceNodes": 72,
               "files": 0,
-              "serializedBytes": 1720,
+              "serializedBytes": 1682,
               "sourceBytes": 0
             }
           }
@@ -1225,7 +1219,6 @@
             "remotes": {},
             "runtimePlugins": [],
             "shareScope": ["default"],
-            "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
               "excludePlugins": [],
@@ -1252,9 +1245,9 @@
             "status": "complete",
             "usage": {
               "artifacts": 0,
-              "evidenceNodes": 79,
+              "evidenceNodes": 78,
               "files": 0,
-              "serializedBytes": 1810,
+              "serializedBytes": 1772,
               "sourceBytes": 0
             }
           }
@@ -1411,7 +1404,6 @@
             "remotes": {},
             "runtimePlugins": [],
             "shareScope": ["default"],
-            "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
               "excludePlugins": [],
@@ -1438,9 +1430,9 @@
             "status": "complete",
             "usage": {
               "artifacts": 0,
-              "evidenceNodes": 79,
+              "evidenceNodes": 78,
               "files": 0,
-              "serializedBytes": 1810,
+              "serializedBytes": 1772,
               "sourceBytes": 0
             }
           }
@@ -1597,7 +1589,6 @@
             "remotes": {},
             "runtimePlugins": [],
             "shareScope": ["default"],
-            "shareStrategy": "version-first",
             "shared": {},
             "treeShaking": {
               "excludePlugins": [],
@@ -1624,9 +1615,9 @@
             "status": "complete",
             "usage": {
               "artifacts": 0,
-              "evidenceNodes": 79,
+              "evidenceNodes": 78,
               "files": 0,
-              "serializedBytes": 1810,
+              "serializedBytes": 1772,
               "sourceBytes": 0
             }
           }
