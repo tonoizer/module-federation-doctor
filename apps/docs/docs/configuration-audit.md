@@ -72,6 +72,10 @@ Webpack, Rspack, Rsbuild, and Modern.js ignore Vite-only keys such as
 `virtualModuleDir`, `hostInitInjectLocation`, `bundleAllCSS`, `remoteHmr`,
 and `varFilename`. MFDoctor reports them as
 [`config/copied-vite-options-on-webpack`](./rules/config/copied-vite-options-on-webpack.md).
+There is no Rsbuild or Modern.js analogue of
+[`vite/host-init-inject-ssr`](./rules/vite/host-init-inject-ssr.md) until those
+plugins expose a public host-init inject switch — see
+[Limitations](./limitations.md#ssr-host-init-inject-vite-only).
 
 ## Output verification
 

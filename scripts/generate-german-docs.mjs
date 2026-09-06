@@ -54,6 +54,7 @@ const headingTranslations = new Map([
   ["## Performance", "## Leistung"],
   ["## Suppressions and allowlists", "## Unterdrückungen und Allow-Listen"],
   ["## What MFDoctor covers", "## Was MFDoctor abdeckt"],
+  ["## SSR host-init inject (Vite-only)", "## SSR-Host-Init-Inject (nur Vite)"],
   ["## Run the first check", "## Die erste Prüfung ausführen"],
   ["## Gate all apps", "## Alle Apps absichern"],
   ["## Add an adapter", "## Einen Adapter hinzufügen"],

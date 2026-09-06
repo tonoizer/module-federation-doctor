@@ -47,6 +47,15 @@ dropped built-in Module Federation in favor of the Vite plugin.
 | `target` / `ssrExternals` / `ssrEntryLoader` | Changes server remote output / React instance ownership | Keep SSR contracts aligned ([`vite/ssr-nitro-externals`](./rules/vite/ssr-nitro-externals.md)) |
 | `disableRemote/shared/snapshot`              | Removes runtime capabilities                            | Reject config that still uses them                                                             |
 
+`hostInitInjectLocation` is a `@module-federation/vite` control.
+[`vite/host-init-inject-ssr`](./rules/vite/host-init-inject-ssr.md) does **not**
+run on Rsbuild, Modern.js, Rspack, or Webpack. Those SSR hosts inject
+federation bootstrap through different public APIs, and MFDoctor does not invent
+a sibling finding without a documented option and fixture. Copied Vite keys on
+webpack-family configs are
+[`config/copied-vite-options-on-webpack`](./rules/config/copied-vite-options-on-webpack.md).
+See [Limitations](./limitations.md#ssr-host-init-inject-vite-only).
+
 ### Remotes typing
 
 Vite string remotes and object remotes without `type` default to **`var`**. MFDoctor warns via
