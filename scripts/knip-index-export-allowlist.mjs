@@ -32,15 +32,9 @@ export const INDEX_UNUSED_EXPORT_ALLOWLIST = Object.freeze([
   "resolveIdentityGovernance",
   // BL-52 — semantic-graph stays experimental on `.`; schema const is unused.
   "SEMANTIC_GRAPH_SCHEMA_VERSION",
-  // BL-55 — migrated-group inventory lists are not a product API.
+  // BL-55 dropped MIGRATED_GROUP* from `.`. ALL_MIGRATED_RULE_IDS stays
+  // until a later slim (`generate-rule-inventory.mjs` still reads it).
   "ALL_MIGRATED_RULE_IDS",
-  "MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS",
-  "MIGRATED_GROUP1_CONFIG_RULE_IDS",
-  "MIGRATED_GROUP2_RULE_IDS",
-  "MIGRATED_GROUP3_RULE_IDS",
-  "MIGRATED_GROUP4_RULE_IDS",
-  "MIGRATED_GROUP5_RULE_IDS",
-  "MIGRATED_GROUP6_RULE_IDS",
 ]);
 
 const allowlist = new Set(INDEX_UNUSED_EXPORT_ALLOWLIST);
