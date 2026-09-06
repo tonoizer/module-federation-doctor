@@ -23,7 +23,9 @@ vp run demo:nested
 vp run test:nested
 ```
 
-This path stays green. Consumers that use `remoteEntry.js` turn off
+This path stays green. Nested remotes that both expose and consume remotes set
+`dts.generateTypes.extractRemoteTypes` so `config/nested-producer-dts-extract`
+does not fire. Consumers that use `remoteEntry.js` turn off
 `config/remote-manifest-recommended` (and Vite consumers also turn off
 `reliability/version-first-offline-remotes`) with comments — same suppression
 pattern as the [mixed example](./mixed-example.md).

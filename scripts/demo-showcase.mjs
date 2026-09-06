@@ -83,6 +83,17 @@ const cases = [
     expectedExit: 0,
   },
   {
+    dir: "examples/showcase/config/nested-producer-dts-extract",
+    ruleId: "config/nested-producer-dts-extract",
+    expectedExit: 0,
+  },
+  {
+    dir: "examples/showcase/config/nested-producer-dts-extract-ok",
+    expectNoFindings: true,
+    forbiddenRuleIds: ["config/nested-producer-dts-extract"],
+    expectedExit: 0,
+  },
+  {
     dir: "examples/showcase/config/async-startup-rspack-version",
     ruleId: "config/async-startup-rspack-version",
     expectedExit: 0,

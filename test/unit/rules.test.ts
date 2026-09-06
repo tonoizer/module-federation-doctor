@@ -692,6 +692,20 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/nested-producer-dts-extract",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.exposes = { "./Widget": "src/Widget.ts" };
+        facts.moduleFederation!.remotes = {
+          leaf: {
+            name: "leaf",
+            entry: "https://example.test/leaf/mf-manifest.json",
+            shareScope: "default",
+          },
+        };
+        facts.moduleFederation!.dts = { enabled: true, options: {} };
+      },
+    ],
+    [
       "artifact/public-path-non-string-manifest",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.manifest = { enabled: true, options: {} };
@@ -4635,5 +4649,202 @@ describe("config/hashed-remote-filename", () => {
     const facts = baseFacts("webpack");
     facts.moduleFederation!.filename = "remoteEntry.[contenthash].js";
     expect(await run(facts, { hashedFilenameMode: "allow" })).toHaveLength(0);
+  });
+});
+
+describe("config/nested-producer-dts-extract", () => {
+  const quietRules = {
+    "doctor/partial-analysis": "off" as const,
+    "config/plugin-package-mismatch": "off" as const,
+    "artifact/remote-entry-missing": "off" as const,
+    "artifact/types-missing": "off" as const,
+    "artifact/types-metadata-missing": "off" as const,
+    "artifact/manifest-invalid": "off" as const,
+    "artifact/manifest-name-mismatch": "off" as const,
+    "artifact/manifest-remote-entry-missing": "off" as const,
+    "artifact/manifest-expose-assets-empty": "off" as const,
+    "config/remote-localhost-in-production": "off" as const,
+    "reliability/version-first-offline-remotes": "off" as const,
+    "shared/candidate": "off" as const,
+  };
+
+  function baseFacts(): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "nested_remote",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "src/Widget.ts" },
+        remotes: {
+          leaf: {
+            name: "leaf",
+            entry: "https://example.test/leaf/mf-manifest.json",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+        dts: { enabled: true, options: {} },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: ["src/Widget.ts"],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  async function run(facts: ProjectFacts) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find(
+      (item) => item.meta.id === "config/nested-producer-dts-extract",
+    )!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  it("warns when a remote exposes and consumes remotes with dts on and extractRemoteTypes false", async () => {
+    const findings = await run(baseFacts());
+    expect(findings).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining("extractRemoteTypes"),
+        evidence: expect.objectContaining({
+          extractRemoteTypes: false,
+          exposes: ["./Widget"],
+          remotes: ["leaf"],
+        }),
+      }),
+    ]);
+  });
+
+  it("skips host-only consumers that do not expose", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.exposes = {};
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("skips leaf producers that do not consume remotes", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = {};
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("skips when extractRemoteTypes is enabled", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.dts = {
+      enabled: true,
+      options: { generateTypes: { extractRemoteTypes: true } },
+    };
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("skips when dts is disabled", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.dts = { enabled: false, options: {} };
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("skips when generateTypes is explicitly false", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.dts = { enabled: true, options: { generateTypes: false } };
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("fires through analyze for a nested producer without extractRemoteTypes", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "nested_remote",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "./src/index.ts" },
+        remotes: {
+          leaf: {
+            name: "leaf",
+            entry: "https://example.test/leaf/mf-manifest.json",
+          },
+        },
+        dts: true,
+      },
+      rules: quietRules,
+    });
+    expect(result.report.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ruleId: "config/nested-producer-dts-extract",
+          severity: "warning",
+        }),
+      ]),
+    );
+  });
+
+  it("stays quiet through analyze for a host-only consumer", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        remotes: {
+          leaf: {
+            name: "leaf",
+            entry: "https://example.test/leaf/mf-manifest.json",
+          },
+        },
+        dts: true,
+      },
+      rules: quietRules,
+    });
+    expect(
+      result.report.findings.some((item) => item.ruleId === "config/nested-producer-dts-extract"),
+    ).toBe(false);
+  });
+
+  it("stays quiet through analyze when extractRemoteTypes is enabled", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "nested_remote",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "./src/index.ts" },
+        remotes: {
+          leaf: {
+            name: "leaf",
+            entry: "https://example.test/leaf/mf-manifest.json",
+          },
+        },
+        dts: { generateTypes: { extractRemoteTypes: true } },
+      },
+      rules: quietRules,
+    });
+    expect(
+      result.report.findings.some((item) => item.ruleId === "config/nested-producer-dts-extract"),
+    ).toBe(false);
   });
 });

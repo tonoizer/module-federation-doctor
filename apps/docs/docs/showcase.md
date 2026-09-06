@@ -31,6 +31,8 @@ stay as rules, not showcases.
 | Alias prefix collision   | `node dist/cli.js check examples/showcase/config/remote-alias-prefix-collision --ci`        | `config/remote-alias-prefix-collision` (error)    |
 | DTS outputDir mismatch   | `node dist/cli.js check examples/showcase/config/dts-output-dir-mismatch --ci`              | `config/dts-output-dir-mismatch` (warning)        |
 | Alias overlapping shared | `node dist/cli.js check examples/showcase/config/alias-share-bypass --ci`                   | `config/alias-share-bypass` (warning)             |
+| Nested producer DTS      | `node dist/cli.js check examples/showcase/config/nested-producer-dts-extract --ci`          | `config/nested-producer-dts-extract` (warning)    |
+| Nested producer DTS ok   | `node dist/cli.js check examples/showcase/config/nested-producer-dts-extract-ok --ci`       | no findings (`extractRemoteTypes: true`)          |
 
 ## Shared
 
