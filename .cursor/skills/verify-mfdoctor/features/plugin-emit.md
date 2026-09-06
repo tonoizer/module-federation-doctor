@@ -16,7 +16,7 @@ emit so CLI `check` / `workspace` can consume real facts.
 
 ## How to get to it (user POV)
 
-- Add the matching adapter in a Vite/Rspack/Rsbuild/Webpack config under `examples/standalone-findings/{vite,webpack,rspack,rsbuild}/` (four cells — Modern lives under `examples/compatibility/modern/`, not this tree).
+- Add the matching adapter in a Vite/Rspack/Rsbuild/Webpack config under `examples/standalone-findings/{vite,webpack,rspack,rsbuild}/` (four cells — Modern lives under `examples/compatibility/modern/`, Nuxt under `examples/compatibility/nuxt/`).
 - Build the example package, e.g. `pnpm exec vp run --filter @mfdoctor-standalone/vite build` (bare `vp` needs `node_modules/.bin` on `PATH`).
 - Or run the catalog script: `pnpm demo:standalone` (builds all four standalone cells).
 

@@ -229,6 +229,18 @@
       "package": "@mfdoctor-example/modern-smoke",
       "expectedErrors": 0,
       "coverage": ["Modern.js adapter", "Rspack lifecycle", "production"]
+    },
+    {
+      "id": "nuxt",
+      "fixture": "examples/compatibility/nuxt",
+      "bundler": "vite",
+      "package": "@mfdoctor-example/nuxt-smoke",
+      "expectedErrors": 0,
+      "coverage": [
+        "Nuxt module adapter",
+        "vite:extendConfig",
+        "Vite-under-the-hood production emit"
+      ]
     }
   ],
   "unitContracts": [

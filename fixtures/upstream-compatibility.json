@@ -27,7 +27,7 @@
       "repository": "module-federation/nuxt",
       "validatedRef": "6f145fb",
       "surface": "Nuxt 3/4 public Vite-hook adapter contract",
-      "localFixtures": ["test/unit/nuxt.test.ts"]
+      "localFixtures": ["examples/compatibility/nuxt", "test/unit/nuxt.test.ts"]
     },
     {
       "repository": "module-federation/module-federation-examples",

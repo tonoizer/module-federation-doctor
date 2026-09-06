@@ -151,6 +151,7 @@ for (const dir of [
   "examples/compatibility/rspack-adapter",
   "examples/compatibility/rsbuild-adapter",
   "examples/compatibility/modern",
+  "examples/compatibility/nuxt",
 ]) {
   assertReport(dir, { errors: 0 });
 }
