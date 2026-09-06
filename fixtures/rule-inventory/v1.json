@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 122,
-  "migratedCount": 122,
+  "ruleCount": 123,
+  "migratedCount": 123,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
@@ -9639,6 +9639,61 @@
       },
       "evidenceReads": ["project.scope", "moduleFederation"],
       "migrationNote": "Group 1; Declared runtimePlugins and node/SSR target facts are exact for this check. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
+      "id": "ssr/remote-entry-target-mismatch",
+      "version": "1",
+      "group": 1,
+      "status": "migrated",
+      "demo": "unit",
+      "defaultSeverity": "error",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "A browser host that loads `remoteEntry.ssr.js` (or an SSR-specific path) executes the server container in the client. The reverse — an SSR host loading a browser `remoteEntry.js` — misses the server runtime contract. Dual-env Nitro pairing of client+server outputs is not this check.",
+        "documentation": "/rules/ssr/remote-entry-target-mismatch",
+        "fix": "Point browser remotes at `remoteEntry.js` (or the client `mf-manifest.json`) and node/SSR remotes at `remoteEntry.ssr.js` or `/ssr/...`. Requires `experiments.target` / `vite.target` / unambiguous `builds.targetKind` on the consumer; missing targetKind skips. Set `ssrMode: \"browser-only\"` or `\"node\"` to force a side, or turn the rule `\"off\"`."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          }
+        ]
+      },
+      "evidenceReads": ["project.scope", "moduleFederation", "builds"],
+      "migrationNote": "Group 1; Consumer targetKind (experiments.target, vite.target, or unambiguous builds.targetKind) plus a classifiable remoteEntry suffix are exact for this pairing check. Missing targetKind skips. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     }
   ]
 }

@@ -33,12 +33,14 @@ import { ruleGuidance } from "./rule-guidance.js";
 import { supportedBundlersFromInventory } from "./rule-inventory.js";
 import { collectReactDomServerSignals, isWebClientArtifactTarget } from "./react-dom-server.js";
 import {
+  consumerRemoteTargetKind,
   hasNodeRuntimePlugin,
   isBrowserOnlyManifestRemoteEntry,
   isSsrNodeEnvApplicable,
   NODE_RUNTIME_PLUGIN,
   nodeLibraryDtsProblems,
   optionSsrMode,
+  remoteEntryImpliedTarget,
 } from "./ssr-detect.js";
 import {
   DEFAULT_ALWAYS_SHARED,
@@ -3245,6 +3247,39 @@ export const builtInRules: DoctorRule[] = [
         ssrMode: ssrMode ?? null,
       },
       'Set `library: { type: "commonjs-module" }` (or another commonjs-like type) and `dts: false` for node/SSR producers, set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
+    );
+  }),
+  createRule("ssr/remote-entry-target-mismatch", "error", (context) => {
+    const ssrMode = optionSsrMode(context.options);
+    const consumer = consumerRemoteTargetKind(context.facts, ssrMode);
+    if (!consumer) return;
+    const remotes = mf(context)?.remotes ?? {};
+    const offenders = Object.entries(remotes).flatMap(([name, remote]) => {
+      if (isMfSsrFragmentRemoteEntry(remote.entry)) return [];
+      const impliedTarget = remoteEntryImpliedTarget(remote.entry);
+      if (!impliedTarget || impliedTarget === consumer) return [];
+      return [{ name, entry: remote.entry, impliedTarget }];
+    });
+    if (offenders.length === 0) return;
+    const browserPointingAtSsr = consumer === "web";
+    report(
+      context,
+      browserPointingAtSsr
+        ? "Browser remotes point at an SSR remoteEntry (or SSR-specific path) instead of the client container."
+        : "Node/SSR remotes point at a browser remoteEntry instead of an SSR-suffixed entry.",
+      {
+        consumerTarget: consumer,
+        remotes: Object.fromEntries(
+          offenders.map((item) => [
+            item.name,
+            { entry: item.entry, impliedTarget: item.impliedTarget },
+          ]),
+        ),
+        ssrMode: ssrMode ?? null,
+      },
+      browserPointingAtSsr
+        ? 'Point browser remotes at `remoteEntry.js` (or the client `mf-manifest.json`), not `remoteEntry.ssr.js` / `/ssr/` paths. Set `ssrMode: "node"` when this build is server-only, or turn the rule `"off"`.'
+        : 'Point node/SSR remotes at `remoteEntry.ssr.js` (or `/ssr/...`). Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
     );
   }),
   createRule("runtime-plugins/invalid-factory", "warning", (context) => {

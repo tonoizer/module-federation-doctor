@@ -159,6 +159,7 @@ const ids = [
   "ssr/node-library-dts",
   "ssr/node-remote-manifest",
   "ssr/node-runtime-plugin-missing",
+  "ssr/remote-entry-target-mismatch",
 ] as const;
 
 /**
@@ -289,6 +290,7 @@ const demoByRule = {
   "ssr/node-library-dts": "unit",
   "ssr/node-remote-manifest": "unit",
   "ssr/node-runtime-plugin-missing": "showcase",
+  "ssr/remote-entry-target-mismatch": "unit",
 } as const satisfies { [K in (typeof ids)[number]]: RuleDemoCoverage };
 
 /** Group 1 core-configuration rules promoted by the staged V1 rollout. */
@@ -346,6 +348,7 @@ export const MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS = [
   "ssr/node-remote-manifest",
   "ssr/node-runtime-plugin-missing",
   "ssr/node-library-dts",
+  "ssr/remote-entry-target-mismatch",
   "runtime-plugins/invalid-factory",
   "runtime-plugins/create-script-cors-parity",
   "runtime-plugins/create-script-without-link",
@@ -475,6 +478,7 @@ type RulePlan = {
 
 const ALL = ["vite", "rspack", "rsbuild", "webpack", "modern"] as const;
 const VITE = ["vite"] as const;
+const VITE_RSPACK = ["vite", "rspack"] as const;
 const RSBUILD = ["rsbuild"] as const;
 const RSPACK_FAMILY = ["rspack", "rsbuild"] as const;
 const WEBPACK_FAMILY = ["rspack", "rsbuild", "webpack", "modern"] as const;
@@ -1584,6 +1588,16 @@ const plans: Record<string, RulePlan> = {
     "high",
     "Declared library/dts options on node/SSR producers are exact for this advisory.",
   ),
+  "ssr/remote-entry-target-mismatch": plan(
+    1,
+    "error",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Consumer targetKind (experiments.target, vite.target, or unambiguous builds.targetKind) plus a classifiable remoteEntry suffix are exact for this pairing check. Missing targetKind skips.",
+    VITE_RSPACK,
+  ),
   "bridge/vue-share-missing": plan(
     1,
     "error",
@@ -1763,6 +1777,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
   "ssr/node-remote-manifest": ["project.scope", "moduleFederation"],
   "ssr/node-runtime-plugin-missing": ["project.scope", "moduleFederation"],
   "ssr/node-library-dts": ["project.scope", "moduleFederation"],
+  "ssr/remote-entry-target-mismatch": ["project.scope", "moduleFederation", "builds"],
   "bridge/vue-share-missing": [
     "project.scope",
     "moduleFederation",
@@ -2091,6 +2106,7 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
     "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
     "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
     "config/hashed-remote-filename": ["bundler.outputFilename"],
+    "ssr/remote-entry-target-mismatch": ["builds"],
   };
   const optional = optionalPluginFacts[id];
   if (optional) {
