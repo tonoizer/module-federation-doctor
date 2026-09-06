@@ -223,6 +223,12 @@ for (const identityFactoryExport of [
     undefined,
     "default package entry must not expose unused identity factory " + identityFactoryExport,
   );
+for (const v1CompatibilityExport of ["projectV1Suppression", "V1_COMPATIBILITY_SCHEMA_VERSION"])
+  assert.equal(
+    api[v1CompatibilityExport],
+    undefined,
+    "default package entry must not expose unused v1-compatibility export " + v1CompatibilityExport,
+  );
 assert.equal(typeof vite.federationDoctor, "function");
 assert.equal(vite.doctor, undefined, "vite adapter must not export unused doctor alias");
 assert.equal(typeof nuxt.createNuxtDoctorModule, "function");

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { applyBaseline } from "../../src/baseline.js";
-import { projectV1Suppression } from "../../src/v1-compatibility.js";
+import * as root from "../../src/index.js";
+import {
+  projectV1Suppression,
+  V1_COMPATIBILITY_SCHEMA_VERSION,
+} from "../../src/v1-compatibility.js";
 import type { DoctorFinding } from "../../src/types.js";
 
 const finding: DoctorFinding = {
@@ -122,5 +126,13 @@ describe("V1 suppression compatibility projection", () => {
     projectV1Suppression({ finding, baseline });
     expect(finding).toEqual(findingBefore);
     expect(baseline).toEqual(baselineBefore);
+  });
+
+  it("is not re-exported from the public root entry", () => {
+    for (const name of ["projectV1Suppression", "V1_COMPATIBILITY_SCHEMA_VERSION"] as const) {
+      expect(root, name).not.toHaveProperty(name);
+    }
+    expect(typeof projectV1Suppression).toBe("function");
+    expect(V1_COMPATIBILITY_SCHEMA_VERSION).toBe(1);
   });
 });

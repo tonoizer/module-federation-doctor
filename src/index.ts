@@ -359,18 +359,11 @@ export type {
   DeploymentRelationshipInput,
   DeploymentRelationshipKind,
 } from "./build-artifact-deployment-correlation.js";
-// Finding lineage and governance waivers stay in src/finding-lineage.ts and
-// src/governance-waivers.ts (ADR 0086, library-only). They are not re-exported
+// Finding lineage, governance waivers, and the V1 suppression projection stay
+// in src/finding-lineage.ts, src/governance-waivers.ts, and
+// src/v1-compatibility.ts (ADR 0086, library-only). They are not re-exported
 // from this root entry until the CLI uses them. JSON Schema contracts remain
 // published. Baseline CLI is unchanged.
-export { projectV1Suppression, V1_COMPATIBILITY_SCHEMA_VERSION } from "./v1-compatibility.js";
-export type {
-  V1CompatibilitySchemaVersion,
-  V1SuppressionProjection,
-  V1SuppressionProjectionInput,
-  V1SuppressionSource,
-  V1WaiverDecisionState,
-} from "./v1-compatibility.js";
 export {
   buildSemanticGraph,
   buildSemanticUiPayload,

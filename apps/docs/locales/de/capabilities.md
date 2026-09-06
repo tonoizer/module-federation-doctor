@@ -199,12 +199,15 @@ Die Helfer gehören **nicht** zum öffentlichen Root-Export von
 
 ## V1-Kompatibilitätsbrücke
 
-`projectV1Suppression` is the explicit compatibility seam for consumers that
+`projectV1Suppression` is the explicit compatibility seam for ADR tests that
 have both a legacy `DoctorFinding` and additive lineage/waiver evidence. It
 delegates baseline matching to the existing V1 matcher, records whether the
 baseline, a governed waiver, or both supplied suppression, and exposes the
 waiver outcome without changing the finding, baseline file, fingerprint,
 terminal/JSON/SARIF projection, or exit policy.
+Die Helfer gehören **nicht** zum öffentlichen Root-Export von
+`@tonoizer/mfdoctor` und werden nicht von der Baseline-CLI verwendet; sie
+bleiben in `src/v1-compatibility.ts` für relative Imports.
 
 Waiver suppression is accepted only when its resolution is `suppressed` and its
 finding lineage ID exactly matches the supplied lineage. Ambiguous, unknown, or
