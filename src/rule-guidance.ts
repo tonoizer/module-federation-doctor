@@ -77,7 +77,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     category: "correctness",
     impact:
       "Registering Module Federation more than once on the same compiler breaks the core singleton contract.",
-    fix: "Keep a single Module Federation plugin instance per compiler.",
+    fix: "Keep a single Module Federation plugin instance per compiler, or give independently configured federation instances distinct plugin configurations.",
     sources: [core, "https://module-federation.io/guide/installation.html"],
   },
   "config/remote-alias-prefix-collision": {

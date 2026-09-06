@@ -562,6 +562,16 @@ describe("multiple Module Federation instances", () => {
         { name: "ModuleFederationPlugin", _options: instanceConfig("enhanced", "enhanced.js") },
       ]),
     ).toMatchObject([{ config: { name: "enhanced" } }]);
+    expect(
+      collectViteModuleFederationPluginInstances([
+        [
+          {
+            name: "module-federation-vite",
+            _options: instanceConfig("nested", "nested.js"),
+          },
+        ],
+      ]).map((item) => item.config.name),
+    ).toEqual(["nested"]);
   });
 
   it("keeps explicit Vite MFDoctor config ahead of resolved plugin defaults", () => {

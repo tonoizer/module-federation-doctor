@@ -118,6 +118,47 @@ export function collectModuleFederationPluginInstances(
 }
 
 /**
+ * Flatten nested plugin arrays from public Vite/Rsbuild config lists.
+ * Resolved Vite plugins are usually already flat; Rsbuild user config may nest.
+ */
+function flattenPluginList(plugins: unknown[] | undefined): object[] {
+  if (!Array.isArray(plugins)) return [];
+  const flattened: object[] = [];
+  const visit = (item: unknown): void => {
+    if (Array.isArray(item)) {
+      for (const child of item) visit(child);
+      return;
+    }
+    if (item && typeof item === "object") flattened.push(item);
+  };
+  for (const item of plugins) visit(item);
+  return flattened;
+}
+
+function isViteFamilyFederationPluginName(name: string): boolean {
+  return /federation/i.test(name) && !/doctor/i.test(name);
+}
+
+/**
+ * Public top-level Vite/Rsbuild federation plugin names. Internal helper
+ * plugins from `@module-federation/vite` also contain "federation" in their
+ * name (`vite:module-federation-config`, …) and must not inflate the count.
+ */
+const VITE_FAMILY_MF_PLUGIN_NAMES = new Set([
+  "module-federation-vite",
+  "module-federation",
+  "@module-federation/vite",
+  "rsbuild:module-federation-enhanced",
+]);
+
+function isViteFamilyFederationRegistration(plugin: object): boolean {
+  const name = moduleFederationPluginName(plugin);
+  if (!name || /doctor/i.test(name)) return false;
+  if (MF_PLUGIN_NAMES.has(name) || VITE_FAMILY_MF_PLUGIN_NAMES.has(name)) return true;
+  return isViteFamilyFederationPluginName(name) && publicPluginConfig(plugin) !== undefined;
+}
+
+/**
  * Read Vite-family federation plugin instances from the public resolved
  * plugin list. Vite integrations use a family-specific plugin name rather
  * than webpack's constructor name, so the adapter only accepts names that
@@ -126,11 +167,9 @@ export function collectModuleFederationPluginInstances(
 export function collectViteModuleFederationPluginInstances(
   plugins: unknown[] | undefined,
 ): ModuleFederationInstanceInput[] {
-  if (!Array.isArray(plugins)) return [];
-  return plugins.flatMap((plugin) => {
-    if (!plugin || typeof plugin !== "object") return [];
+  return flattenPluginList(plugins).flatMap((plugin) => {
     const name = moduleFederationPluginName(plugin);
-    if (!name || !/federation/i.test(name) || /doctor/i.test(name)) return [];
+    if (!name || !isViteFamilyFederationPluginName(name)) return [];
     const config = publicPluginConfig(plugin);
     return config ? [{ config, pluginName: name }] : [];
   });
@@ -171,6 +210,18 @@ export function countModuleFederationPlugins(compiler: {
     const name = moduleFederationPluginName(plugin);
     return typeof name === "string" && MF_PLUGIN_NAMES.has(name);
   }).length;
+}
+
+/**
+ * Count public Vite/Rsbuild federation plugin registrations.
+ *
+ * Counts plugins with a known top-level public name, or with `federation` in
+ * the public name plus a readable public config. Internal helper plugins and
+ * the MFDoctor adapter are excluded so one `federation()` / `pluginModuleFederation()`
+ * call stays a single registration.
+ */
+export function countViteFamilyFederationPlugins(plugins: unknown[] | undefined): number {
+  return flattenPluginList(plugins).filter(isViteFamilyFederationRegistration).length;
 }
 
 /** Record webpack/rspack `output.filename` only when it is a public string template. */
@@ -281,9 +332,59 @@ type RsbuildPluginApiLike = {
   ) => void;
   getNormalizedConfig?: () => unknown;
   getRsbuildConfig?: () => unknown;
+  getPlugins?: () => unknown;
   modifyRspackConfig?: (fn: RsbuildExternalsObserver) => void;
   modifyWebpackConfig?: (fn: RsbuildExternalsObserver) => void;
 };
+
+function pluginsFromPublicConfig(config: unknown): unknown[] | undefined {
+  if (!config || typeof config !== "object") return undefined;
+  const plugins = (config as { plugins?: unknown }).plugins;
+  return Array.isArray(plugins) ? plugins : undefined;
+}
+
+/**
+ * Read the public Rsbuild plugin list: `api.getPlugins()` when present, else
+ * `plugins` on the public Rsbuild / normalized config. Nested arrays flatten.
+ */
+function collectRsbuildPluginList(api: RsbuildPluginApiLike): unknown[] | undefined {
+  if (typeof api.getPlugins === "function") {
+    try {
+      const plugins = api.getPlugins();
+      if (Array.isArray(plugins)) return plugins;
+    } catch {
+      // A public getter may throw before the plugin list is ready.
+    }
+  }
+  return (
+    pluginsFromPublicConfig(callPublicConfig(api.getRsbuildConfig)) ??
+    pluginsFromPublicConfig(callPublicConfig(api.getNormalizedConfig))
+  );
+}
+
+/**
+ * Record the public Vite/Rsbuild federation plugin count. When every
+ * registration exposes a public config and the caller did not set
+ * `moduleFederationInstances`, keep those instances for duplicate vs
+ * intentional multi-instance detection.
+ */
+function applyViteFamilyPluginDiagnostics(
+  plugins: unknown[] | undefined,
+  configured: DoctorOptions,
+): BuildDiagnostics {
+  if (!Array.isArray(plugins)) return {};
+  const diagnostics: BuildDiagnostics = {
+    moduleFederationPluginCount: countViteFamilyFederationPlugins(plugins),
+  };
+  const instances = collectViteModuleFederationPluginInstances(plugins);
+  if (instances.length > 0 && configured.moduleFederationInstances === undefined) {
+    configured.moduleFederationInstances = resolveViteFederationInstances(
+      instances,
+      configured.moduleFederation,
+    );
+  }
+  return diagnostics;
+}
 
 function observeRsbuildConfigPublicPath(api: {
   getNormalizedConfig?: () => unknown;
@@ -908,6 +1009,7 @@ function createViteFamilyHooks(configured: DoctorOptions) {
   let vitePublicPathObservation: { observed: boolean; kind?: OutputPublicPathKind } = {
     observed: false,
   };
+  let vitePluginDiagnostics: BuildDiagnostics = {};
 
   const run = async (
     hook: "writeBundle" | "closeBundle",
@@ -980,12 +1082,15 @@ function createViteFamilyHooks(configured: DoctorOptions) {
       const result = await analyzeBuild(
         configured,
         allAssets,
-        publicPathDiagnostics(
-          mergePublicPathObservations(
-            vitePublicPathObservation,
-            observeMfPublicPathKind(doctorOptionMfConfigs(configured)),
+        {
+          ...publicPathDiagnostics(
+            mergePublicPathObservations(
+              vitePublicPathObservation,
+              observeMfPublicPathKind(doctorOptionMfConfigs(configured)),
+            ),
           ),
-        ),
+          ...vitePluginDiagnostics,
+        },
         buildOutputs,
       );
       failAfterCollect(result);
@@ -1008,6 +1113,7 @@ function createViteFamilyHooks(configured: DoctorOptions) {
     configResolved(config: ViteResolvedConfigLike) {
       resolvedConfig = config;
       if (!configured.root && config.root) configured.root = config.root;
+      vitePluginDiagnostics = applyViteFamilyPluginDiagnostics(config.plugins, configured);
       const federationInstances = collectViteModuleFederationPluginInstances(config.plugins);
       vitePublicPathObservation = mergePublicPathObservations(
         vitePublicPathObservation,
@@ -1016,11 +1122,6 @@ function createViteFamilyHooks(configured: DoctorOptions) {
           ...federationInstances.map((instance) => instance.config),
         ]),
       );
-      if (federationInstances.length > 0 && configured.moduleFederationInstances === undefined)
-        configured.moduleFederationInstances = resolveViteFederationInstances(
-          federationInstances,
-          configured.moduleFederation,
-        );
       const facts = extractViteConfigFacts(config);
       if (userChunkingFacts) {
         if (userChunkingFacts.manualChunks) facts.manualChunks = true;
@@ -1132,6 +1233,10 @@ function createDoctorPlugin(bundler: BundlerName) {
                   ];
                   const diagnostics: BuildDiagnostics = {
                     ...collectRsbuildPublicPathDiagnostics(rsbuildApi, stats),
+                    ...applyViteFamilyPluginDiagnostics(
+                      collectRsbuildPluginList(rsbuildApi),
+                      configured,
+                    ),
                     ...(observedExternals !== undefined ? { externals: observedExternals } : {}),
                     ...aliasDiagnostics,
                   };
