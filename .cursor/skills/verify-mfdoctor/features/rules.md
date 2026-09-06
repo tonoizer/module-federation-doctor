@@ -6,6 +6,7 @@
 
 - `rules-catalog` lists all built-in rules when no ID is passed.
 - `rules-one` prints metadata for a single rule ID.
+- `rules-supported-bundlers` reports inventory adapters on each rule (`supportedBundlers`); Vite-only IDs are `["vite"]`, not every bundler.
 - `rules-unknown` exits `2` for an unknown rule ID.
 
 ## How to get to it (user POV)
@@ -22,13 +23,15 @@ Preconditions:
 - Offline; no project path required for the catalog.
 
 - **List catalog.** Run `node dist/cli.js rules`. Exit `0`. Stdout JSON includes `schemaVersion` and a `rules` collection.
-- **Inspect one rule.** Run `node dist/cli.js rules config/remote-http-insecure`. Exit `0`. Output describes that rule’s severity/category/docs.
+- **Inspect one rule.** Run `node dist/cli.js rules config/remote-http-insecure`. Exit `0`. Output describes that rule’s severity/category/docs. `supportedBundlers` is the shared inventory set (`vite`, `rspack`, `rsbuild`, `webpack`, `modern`) and does **not** include `unknown`.
+- **Inspect a Vite-only rule.** Run `node dist/cli.js rules vite/server-origin`. Exit `0`. `supportedBundlers` is `["vite"]`.
 - **Unknown ID.** Run `node dist/cli.js rules definitely/not-a-rule`. Exit `2`.
 - **Proof.** Save catalog or single-rule stdout under
-  `.cursor/skills/verify-mfdoctor/evidence/rules/` (truncate huge catalogs if needed, but keep schemaVersion + a sample rule ID).
+  `.cursor/skills/verify-mfdoctor/evidence/rules/` (truncate huge catalogs if needed, but keep schemaVersion + a sample rule ID). Keep the Vite-only `supportedBundlers` assertion in notes or `stdout-vite-only.json`.
 
 ## Gotchas
 
 - Catalog output can be large — evidence may store a head excerpt plus `ruleCount` if full JSON is unwieldy, but prefer full JSON when practical.
 - `rules` does not analyze a project; pairing with `check` is a separate feature proof.
 - Do not confuse suppressed showcase cases (`rules["…"] = "off"` in fixture config) with catalog defaults.
+- Do not treat `supportedBundlers` as “all bundlers including `unknown`”. After inventory-driven catalog metadata, Vite-only rules must stay Vite-only.

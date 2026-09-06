@@ -30,6 +30,11 @@
         "adapter": "@tonoizer/mfdoctor/modern",
         "id": "modern",
         "status": "partial"
+      },
+      {
+        "adapter": "@tonoizer/mfdoctor/nuxt",
+        "id": "nuxt",
+        "status": "partial"
       }
     ],
     "localCi": [
@@ -120,7 +125,7 @@
         "id": "modern"
       }
     ],
-    "partial": ["rolldown", "modern"],
+    "partial": ["rolldown", "modern", "nuxt"],
     "source": "./fixtures/compatibility-matrix.json",
     "supported": ["vite", "rspack", "rsbuild", "webpack"]
   },

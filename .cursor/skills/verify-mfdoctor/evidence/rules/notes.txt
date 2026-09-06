@@ -1,6 +1,10 @@
 feature-id: rules
 catalog-exit: 0
 ruleCount: 113
+schemaVersion: 1
 one-exit: 0
 one-id: config/remote-http-insecure
+one-supportedBundlers: ['vite', 'rspack', 'rsbuild', 'webpack', 'modern']
+vite-only-id: vite/server-origin
+vite-only-supportedBundlers: ['vite']
 unknown-exit: 2

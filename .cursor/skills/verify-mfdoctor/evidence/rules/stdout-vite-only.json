@@ -1,0 +1,10 @@
+{
+  "category": "reliability",
+  "defaultSeverity": "info",
+  "documentation": "/rules/vite/server-origin",
+  "fix": "Set Vite `server.origin` to the URL remotes should publish for consumers. MFDoctor recommends `http://localhost:<server.port>` (default port 5173); configure `rules[\"vite/server-origin\"].recommendedOrigin` or turn off `requireServerOrigin` when your topology differs.",
+  "id": "vite/server-origin",
+  "impact": "Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development.",
+  "sources": ["https://github.com/module-federation/vite"],
+  "supportedBundlers": ["vite"]
+}

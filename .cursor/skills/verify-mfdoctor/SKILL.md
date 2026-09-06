@@ -63,6 +63,7 @@ Assert:
 - stdout is JSON with `schemaVersion`, `package.name` = `@tonoizer/mfdoctor`,
   and `commands` containing at least `capabilities`, `check`, `workspace`,
   `federation`, `baseline`, `runtime`, `prompt`, `rules`, `probe`, `compare`
+- optional: `bundlerMatrix.partial` includes `nuxt`, `modern`, and `rolldown`
 - optional: `test -f dist/cli.js`
 
 If Doctor fails, do **not** Drive. Rebuild (`pnpm build`) and re-run Doctor.

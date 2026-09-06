@@ -6,6 +6,7 @@
 
 - `capabilities-json` prints a JSON document on stdout.
 - `capabilities-commands` lists supported commands including `check`, `workspace`, and `probe`.
+- `capabilities-bundler-matrix` lists `bundlerMatrix.supported` and `bundlerMatrix.partial` from the public compatibility matrix (Nuxt is `partial`).
 - `capabilities-exit` exits `0` when the binary is healthy.
 
 ## How to get to it (user POV)
@@ -22,6 +23,7 @@ Preconditions:
 
 - **Print contract.** Run `node dist/cli.js capabilities`. Exit code is `0`. Stdout is JSON with `schemaVersion`, `package.name` = `@tonoizer/mfdoctor`, and a `commands` object.
 - **Assert command list.** Confirm `commands` includes `capabilities`, `check`, `workspace`, `federation`, `baseline`, `runtime`, `prompt`, `rules`, `probe`, and `compare`.
+- **Assert bundler matrix.** Confirm `bundlerMatrix.supported` is `vite`, `rspack`, `rsbuild`, `webpack` and `bundlerMatrix.partial` includes `rolldown`, `modern`, and `nuxt`.
 - **Assert exit semantics.** Confirm `exitCodes` maps `0` / `1` / `2` (success / policy-fail / usage-or-incomplete-analysis).
 - **Proof.** Save stdout to `.cursor/skills/verify-mfdoctor/evidence/capabilities/stdout.json` with `exit-code.txt` containing `0`.
 
