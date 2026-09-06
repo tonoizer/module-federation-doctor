@@ -51,6 +51,18 @@ failure—such as a missing `name`—stay in the catalog but are not demoed here
 | `reliability/version-first-offline-remotes` | `reliability/version-first-offline-remotes` | warning  |
 | `reliability/shared-import-false`           | `reliability/shared-import-false`           | warning  |
 
+## Vite
+
+CLI/config-only dialect fixtures (not full Vite apps). `vite/alias-share-bypass`
+seeds `viteConfigFacts.resolveAliases` the way a plugin `configResolved` snapshot would.
+
+| Directory                             | Expected rule                           | Severity |
+| ------------------------------------- | --------------------------------------- | -------- |
+| `vite/hashed-remote-filename`         | `vite/hashed-remote-filename`           | warning  |
+| `vite/remotes-prefer-module`          | `vite/remotes-prefer-module`            | warning  |
+| `vite/copied-webpack-options-on-vite` | `config/copied-webpack-options-on-vite` | warning  |
+| `vite/alias-share-bypass`             | `vite/alias-share-bypass`               | warning  |
+
 ## Federation
 
 Committed `.project.json` facts for `mfdoctor federation`:

@@ -139,6 +139,26 @@ const cases = [
     expectedExit: 0,
   },
   {
+    dir: "examples/showcase/vite/hashed-remote-filename",
+    ruleId: "vite/hashed-remote-filename",
+    expectedExit: 0,
+  },
+  {
+    dir: "examples/showcase/vite/remotes-prefer-module",
+    ruleId: "vite/remotes-prefer-module",
+    expectedExit: 0,
+  },
+  {
+    dir: "examples/showcase/vite/copied-webpack-options-on-vite",
+    ruleId: "config/copied-webpack-options-on-vite",
+    expectedExit: 0,
+  },
+  {
+    dir: "examples/showcase/vite/alias-share-bypass",
+    ruleId: "vite/alias-share-bypass",
+    expectedExit: 0,
+  },
+  {
     command: "federation",
     pattern: "examples/showcase/federation/version-conflict/*.project.json",
     ruleId: "federation/version-conflict",
