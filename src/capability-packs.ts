@@ -1,3 +1,9 @@
+/**
+ * Version-aware Module Federation capability-pack tables.
+ *
+ * Kept for review and unit tests. Not re-exported from the package root, and
+ * not queried by the engine, CLI, or adapters.
+ */
 import semver from "semver";
 
 export type CapabilityVersionSelector = "unknown" | string;

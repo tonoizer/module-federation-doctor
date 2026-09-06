@@ -234,4 +234,17 @@ describe("capability pack resolver", () => {
       ]),
     ).toThrow(/invalid version selector/);
   });
+
+  it("is not re-exported from the public root entry", async () => {
+    const root = await import("../../src/index.js");
+    for (const name of [
+      "BUILT_IN_CAPABILITY_PACKS",
+      "ENHANCED_WEBPACK_V5_BROWSER_PACK",
+      "assertCapabilityPacks",
+      "queryCapability",
+      "resolveCapabilityPack",
+    ] as const) {
+      expect(root).not.toHaveProperty(name);
+    }
+  });
 });
