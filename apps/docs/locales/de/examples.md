@@ -8,16 +8,17 @@ Runnable fixtures that show how MFDoctor behaves on real Module Federation
 graphs. Start here, then open a specific page for commands and expected
 findings.
 
-| Example                            | What it shows                                              | Docs                                                 |
-| ---------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------- |
-| `examples/mixed-federation`        | Green Vite + Rspack + Rsbuild host/remotes (e2e path)      | [Mixed federation](./mixed-example.md)               |
-| `examples/nested-federation`       | Nested Vite host → Vite/Rsbuild → Rspack/Webpack           | [Nested federation](./nested-example.md)             |
-| `examples/mixed-federation-issues` | Same flat topology, intentional red findings               | [Mixed federation issues](./mixed-issues-example.md) |
-| `examples/standalone-findings`     | Per-bundler Vite/Webpack/Rspack/Rsbuild + Modern (partial) | [Standalone findings](./standalone-findings.md)      |
-| `examples/showcase`                | One-rule CLI demos by category                             | [One-rule showcase](./showcase.md)                   |
-| `examples/compatibility/webpack`   | Webpack adapter smoke for the compatibility matrix         | [Compatibility](./compatibility.md)                  |
-| `examples/compatibility/nuxt`      | Nuxt module adapter smoke (partial, Vite-under-the-hood)   | [Compatibility](./compatibility.md)                  |
-| `examples/compatibility/rolldown`  | Vite Plus / Rolldown adapter smoke (partial)               | [Compatibility](./compatibility.md)                  |
+| Example                            | What it shows                                                                        | Docs                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| `examples/mixed-federation`        | Green Vite + Rspack + Rsbuild host/remotes (e2e path)                                | [Mixed federation](./mixed-example.md)               |
+| `examples/nested-federation`       | Nested Vite host → Vite/Rsbuild → Rspack/Webpack                                     | [Nested federation](./nested-example.md)             |
+| `examples/mixed-federation-issues` | Same flat topology, intentional red findings                                         | [Mixed federation issues](./mixed-issues-example.md) |
+| `examples/standalone-findings`     | Per-bundler Vite/Webpack/Rspack/Rsbuild + Modern (partial)                           | [Standalone findings](./standalone-findings.md)      |
+| `examples/showcase`                | One-rule CLI demos by category                                                       | [One-rule showcase](./showcase.md)                   |
+| `examples/compatibility/webpack`   | Webpack adapter smoke for the compatibility matrix                                   | [Compatibility](./compatibility.md)                  |
+| `examples/compatibility/modern`    | Modern.js adapter smoke (partial, Rspack-under-the-hood; App Tools lockfile-blocked) | [Compatibility](./compatibility.md)                  |
+| `examples/compatibility/nuxt`      | Nuxt module adapter smoke (partial, Vite-under-the-hood)                             | [Compatibility](./compatibility.md)                  |
+| `examples/compatibility/rolldown`  | Vite Plus / Rolldown adapter smoke (partial)                                         | [Compatibility](./compatibility.md)                  |
 
 Root helpers: `vp run demo:showcase`, `vp run demo:standalone`, `vp run demo:mixed-issues`,
 `vp run demo:nested`, and `vp run demo:examples` (showcase + standalone + mixed-issues +

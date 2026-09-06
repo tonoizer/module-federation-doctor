@@ -4,7 +4,8 @@ MVP supports Vite (including Rolldown-integrated Vite and Vite Plus as a
 **partial** matrix cell — Vite Plus production smoke plus unit lifecycle
 hooks; not a full **supported** claim yet), direct Rspack, Rsbuild, Webpack,
 and Modern.js as a **partial** matrix cell — adapter API plus an
-Rspack-under-the-hood smoke (not a full `@modern-js/app-tools` build yet).
+Rspack-under-the-hood smoke (not a full `@modern-js/app-tools` build in this
+lockfile; see [compatibility](./compatibility.md)).
 Gaps below are tracked as GitHub issues and milestones so each one can be
 removed from this page when it ships.
 
@@ -15,7 +16,7 @@ Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1
 ## v1.0 (governance-ready)
 
 The v1 [compatibility matrix](./compatibility.md) for Vite / Rolldown /
-Vite Plus / Rspack / Rsbuild / Webpack / Modern.js (partial), Node engines,
+Vite Plus / Rspack / Rsbuild / Webpack / Modern.js (**partial**), Node engines,
 package managers, and report surfaces has shipped
 ([#15](https://github.com/tonoizer/module-federation-doctor/issues/15),
 `MFDOCTOR-106`).
@@ -52,7 +53,9 @@ closed as not planned.
 
 No open post-v1 adapter gaps right now. Rolldown / Vite Plus (#11) and Modern.js
 (#12) shipped as **partial** matrix cells — see
-[compatibility](./compatibility.md).
+[compatibility](./compatibility.md). A real `@modern-js/app-tools` CI emit remains
+blocked by lockfile `trustPolicy: no-downgrade` (last provenance-attested stable
+is `2.63.3`); the upstream core-demo re-soak is #130.
 
 ## What MFDoctor covers
 

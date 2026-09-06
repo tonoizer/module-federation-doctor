@@ -31,7 +31,7 @@ Related: [capabilities](./capabilities.md) ·
 | Rspack               | **supported** | `@tonoizer/mfdoctor/rspack`  | `compatibility` workflow → `remote-rspack` build + MFDoctor                            | Direct `@module-federation/enhanced/rspack` (first-class)                                                                                                                                                                                            |
 | Rsbuild              | **supported** | `@tonoizer/mfdoctor/rsbuild` | `compatibility` workflow → `remote-rsbuild` build + MFDoctor                           | `@module-federation/rsbuild-plugin`                                                                                                                                                                                                                  |
 | Webpack              | **supported** | `@tonoizer/mfdoctor/webpack` | `compatibility` workflow → `webpack-smoke` build + MFDoctor                            | `@module-federation/enhanced/webpack` (#10 shipped)                                                                                                                                                                                                  |
-| Modern.js            | **partial**   | `@tonoizer/mfdoctor/modern`  | `compatibility` workflow → `modern-smoke` (Rspack stub)                                | Adapter API + Rspack-under-the-hood smoke; the package export is fixed in [#4897](https://github.com/module-federation/core/pull/4897), but the core-demo unblock remains unverified and this is not full `@modern-js/app-tools` evidence yet (#130) |
+| Modern.js            | **partial**   | `@tonoizer/mfdoctor/modern`  | `compatibility` workflow → `modern-smoke` (Rspack-under-the-hood stub)                 | Adapter API + Rspack stub in CI. A real `@modern-js/app-tools@3.8.2` + `@module-federation/modern-js-v3@2.8.2` production emit works outside this lockfile, but current App Tools releases fail `trustPolicy: no-downgrade` (last provenance-attested stable is `2.63.3`). Status stays **partial**. Upstream core-demo re-soak remains #130 |
 | Nuxt 3/4             | **partial**   | `@tonoizer/mfdoctor/nuxt`    | `compatibility` workflow → `nuxt-smoke` (Vite-under-the-hood) + pinned upstream record | Public `vite:extendConfig` adapter + local emit cell; full `@module-federation/nuxt` app build remains baseline-blocked upstream ([nuxt/nuxt#36009](https://github.com/nuxt/nuxt/issues/36009))                                                      |
 
 ## Variantenabdeckung
@@ -45,7 +45,8 @@ upstream validation records:
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------- |
 | Vite current ESM + Vite 5 CommonJS                       | Production build + project/report/SARIF assertions on Node 22, 24, and 26            | CI               |
 | Rolldown / Vite Plus (`examples/compatibility/rolldown`) | Production Vite Plus build via `@tonoizer/mfdoctor/vite`                             | CI (partial)     |
-| Rspack, Rsbuild, Webpack, Modern.js adapter              | Production build + MFDoctor report assertions                                        | CI               |
+| Rspack, Rsbuild, Webpack, Modern.js adapter stub         | Production build + MFDoctor report assertions                                        | CI               |
+| Modern.js App Tools (`@modern-js/app-tools`)             | Blocked by lockfile `trustPolicy: no-downgrade` (last provenance `2.63.3`)           | blocked          |
 | Nuxt 3/4 local emit (`examples/compatibility/nuxt`)      | Production Vite-under-the-hood build via `@tonoizer/mfdoctor/nuxt`                   | CI (partial)     |
 | Svelte and SvelteKit SSR                                 | Pinned upstream app reports plus SvelteKit SSR-entry regression test                 | validated        |
 | Angular                                                  | Pinned upstream validation; the example's existing package baseline blocks the build | baseline-blocked |
@@ -59,8 +60,7 @@ changing a row's status.
 Nuxt 3 / Nuxt 4 use the **partial** adapter `@tonoizer/mfdoctor/nuxt`.
 It hooks the public `vite:extendConfig` API. The local emit cell at
 [`examples/compatibility/nuxt`](https://github.com/tonoizer/module-federation-doctor/tree/main/examples/compatibility/nuxt)
-registers that module and production-builds (Vite-under-the-hood, same shape as
-the Modern.js smoke). A full `@module-federation/nuxt` application build remains
+registers that module and production-builds (Vite-under-the-hood). A full `@module-federation/nuxt` application build remains
 dependent on the upstream package-resolution issue tracked in
 [nuxt/nuxt#36009](https://github.com/nuxt/nuxt/issues/36009) — so Nuxt is not a
 first-class **supported** CI gate.
@@ -172,8 +172,9 @@ Reds that **do not** block other cells:
 3. Rolldown / Vite Plus — documented **partial** (Vite Plus production smoke
    plus unit lifecycle hooks; not a **supported** release gate).
 4. Modern.js — documented **partial** (adapter API + Rspack-under-the-hood
-   smoke; no full **supported** claim until a real `@modern-js/app-tools`
-   build is in `compatibility.yml`).
+   smoke in `compatibility.yml`). A real `@modern-js/app-tools` cell is blocked
+   by this repo's `trustPolicy: no-downgrade` (current App Tools dropped npm
+   provenance after `2.63.3`). Upstream core-demo re-soak remains #130.
 5. Nuxt 3/4 — documented **partial** (adapter + local emit smoke; upstream
    `@module-federation/nuxt` app build remains baseline-blocked; not a
    **supported** release gate).

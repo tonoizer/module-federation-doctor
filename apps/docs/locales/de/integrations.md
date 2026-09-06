@@ -19,7 +19,7 @@ the federation plugin so it can inspect the completed output.
 - **Rspack:** `@tonoizer/mfdoctor/rspack`
 - **Rsbuild:** `@tonoizer/mfdoctor/rsbuild`
 - **Webpack:** `@tonoizer/mfdoctor/webpack`
-- **Modern.js:** `@tonoizer/mfdoctor/modern` (**partial**)
+- **Modern.js:** `@tonoizer/mfdoctor/modern` (**partial** — App Tools CI emit blocked by lockfile trust policy)
 
 ## Vite
 
@@ -150,7 +150,7 @@ Register the Modern.js adapter with `@module-federation/modern-js` or
 
 ```ts
 import { appTools, defineConfig } from "@modern-js/app-tools";
-import { moduleFederationPlugin } from "@module-federation/modern-js";
+import { moduleFederationPlugin } from "@module-federation/modern-js-v3";
 import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/modern";
 
 const mfOptions = {
@@ -161,15 +161,21 @@ const mfOptions = {
 export default defineConfig({
   plugins: [
     appTools(),
-    moduleFederationPlugin(),
+    moduleFederationPlugin({ config: mfOptions, ssr: false }),
     moduleFederationDoctorPlugin({ moduleFederation: mfOptions }),
   ],
 });
 ```
 
+For Modern.js 2, import `moduleFederationPlugin` from
+`@module-federation/modern-js` instead of `@module-federation/modern-js-v3`.
+
 This adapter composes a post-emit plugin through `modifyBundlerChain` and
-records the build as Modern.js. Support remains partial until the compatibility
-suite runs a full `@modern-js/app-tools` application build.
+records the build as Modern.js. The in-repo compatibility smoke still uses
+Rspack-under-the-hood. A real `@modern-js/app-tools` cell cannot enter this
+lockfile today: current App Tools releases fail `trustPolicy: no-downgrade`
+because `2.63.x` published npm provenance and later versions dropped it.
+Support stays **partial**. The upstream core-demo re-soak remains #130.
 
 For a direct Rspack path inside `tools.bundlerChain`, use the public Rspack
 adapter instead:
