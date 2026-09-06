@@ -49,6 +49,15 @@ as a Cursor/agent skill at `skills/mfdoctor/SKILL.md`.
   workspace/federation gate. Treat exit code `2` and `doctor/partial-analysis`
   as incomplete analysis — not a pass.
 
+## Evidence v2 stays legacy by default
+
+All 112 built-in rules are `migrated` to the evidence-aware contract, but
+default rollout is still `legacy` until #87. Do not treat
+`apps/docs/docs/evidence-aware-rules.md` or ADR 0083 as the live report: CLI,
+JSON, SARIF, fingerprints, and custom rules remain V1. Do not change env
+defaults, promote scopes to `v2-compat`, or merge the dual rule/federation
+bridges. See `EVIDENCE_ROLLOUT_V2.md`.
+
 ## Exit codes
 
 | Code | Meaning             |
