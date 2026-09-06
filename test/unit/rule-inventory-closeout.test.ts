@@ -6,10 +6,10 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import {
   ALL_MIGRATED_RULE_IDS,
-  RULE_COMPATIBILITY_EXCEPTIONS,
   ruleInventory,
   ruleInventoryIds,
 } from "../../src/rule-inventory.js";
+import * as mfdoctor from "../../src/index.js";
 import {
   migratedEvidenceRuleIds,
   migratedRuntimeEvidenceRuleIds,
@@ -93,8 +93,9 @@ describe("V1 rule inventory closeout (#232)", () => {
     ].sort();
     expect([...ruleInventoryIds].sort()).toEqual(runtimeIds);
     expect(ruleInventory.filter((entry) => entry.status === "legacy")).toEqual([]);
-    expect(RULE_COMPATIBILITY_EXCEPTIONS).toHaveLength(0);
+    expect(ruleInventory.every((entry) => entry.status === "migrated")).toBe(true);
     expect([...ALL_MIGRATED_RULE_IDS].sort()).toEqual([...ruleInventoryIds].sort());
+    expect(mfdoctor).not.toHaveProperty("RULE_COMPATIBILITY_EXCEPTIONS");
   });
 
   it("wires every migrated built-in through an evidence bridge", () => {
@@ -119,6 +120,8 @@ describe("V1 rule inventory closeout (#232)", () => {
     expect(validate(fixture)).toBe(true);
     expect(fixture.ruleCount).toBe(ruleInventoryIds.length);
     expect(fixture.migratedCount).toBe(ALL_MIGRATED_RULE_IDS.length);
+    expect(fixture.compatibilityExceptionCount).toBe(0);
+    expect(fixture.compatibilityExceptions).toEqual([]);
     expect(fixture.rules.map((entry: { id: string }) => entry.id).sort()).toEqual(
       [...ruleInventoryIds].sort(),
     );

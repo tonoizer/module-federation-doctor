@@ -4,7 +4,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   ALL_MIGRATED_RULE_IDS,
-  RULE_COMPATIBILITY_EXCEPTIONS,
   assertInventoryDemoCoverage,
   ruleInventory,
   ruleInventoryIds,
@@ -20,8 +19,9 @@ const document = {
   generatedFrom: "src/rule-inventory.ts",
   ruleCount: ruleInventoryIds.length,
   migratedCount: ALL_MIGRATED_RULE_IDS.length,
-  compatibilityExceptionCount: RULE_COMPATIBILITY_EXCEPTIONS.length,
-  compatibilityExceptions: RULE_COMPATIBILITY_EXCEPTIONS,
+  // V1 closeout: no compatibility exceptions remain to serialize.
+  compatibilityExceptionCount: 0,
+  compatibilityExceptions: [],
   rules: ruleInventory.map((entry) => ({
     id: entry.id,
     version: entry.version,

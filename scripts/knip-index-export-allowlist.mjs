@@ -53,7 +53,6 @@ export const INDEX_UNUSED_EXPORT_ALLOWLIST = Object.freeze([
   "MIGRATED_GROUP4_RULE_IDS",
   "MIGRATED_GROUP5_RULE_IDS",
   "MIGRATED_GROUP6_RULE_IDS",
-  "RULE_COMPATIBILITY_EXCEPTIONS",
   // BL-58 — cache defaults are internal; keep exporting until that slim.
   "DEFAULT_ANALYSIS_CACHE_OPTIONS",
 ]);
