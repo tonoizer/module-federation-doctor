@@ -70,9 +70,7 @@ describe("release workflow contracts", () => {
     expect(create).not.toContain("--draft=false");
     expect(create.indexOf('git tag --annotate "$VERSION"')).toBeLessThan(create.indexOf("--draft"));
     expect(create).toContain('gh workflow run release-files.yml --ref main -f "tag=$VERSION"');
-    expect(create).toContain(
-      'gh workflow run publish-on-release.yml --ref main -f "tag=$VERSION"',
-    );
+    expect(create).toContain('gh workflow run publish-on-release.yml --ref main -f "tag=$VERSION"');
 
     expect(publish).toContain("types: [published]");
     expect(publish).toContain("workflow_dispatch:");
