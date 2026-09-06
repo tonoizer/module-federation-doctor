@@ -491,6 +491,32 @@ describe("federation host-gaps and ghost-shares", () => {
         ?.severity,
     ).toBe("error");
   });
+
+  it("still treats omitted shareStrategy as eager-startup cycle risk", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-fed-omitted-cycle-"));
+    roots.push(root);
+    const first = projectFacts("first", {}, []);
+    const second = projectFacts("second", {}, []);
+    first.moduleFederation!.name = "app_a";
+    first.moduleFederation!.remotes = {
+      b: { name: "app_b", entry: "https://example.test/b/remoteEntry.js", shareScope: ["default"] },
+    };
+    second.moduleFederation!.name = "app_b";
+    second.moduleFederation!.remotes = {
+      a: { name: "app_a", entry: "https://example.test/a/remoteEntry.js", shareScope: ["default"] },
+    };
+    const files = [path.join(root, "first.json"), path.join(root, "second.json")];
+    await fs.writeFile(files[0]!, JSON.stringify(first));
+    await fs.writeFile(files[1]!, JSON.stringify(second));
+
+    const result = await analyzeFederation(files);
+    expect(result.findings.some((item) => item.ruleId === "federation/circular-remote-graph")).toBe(
+      true,
+    );
+    expect(
+      result.findings.some((item) => item.ruleId === "federation/share-strategy-mismatch"),
+    ).toBe(false);
+  });
 });
 
 describe("shared policy resolveOptions", () => {

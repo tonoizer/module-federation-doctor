@@ -249,8 +249,10 @@ export function findFederationCycleGroups(model: FederationModel): FederationCyc
             memberIds.has(edge.targetId),
         )
         .sort((left, right) => left.id.localeCompare(right.id));
-      // Eager-startup risk is declared version-first only; omitted is unknown here.
-      const riskMembers = members.filter((member) => member.shareStrategy === "version-first");
+      // Cycle risk uses the runtime default. Host compare does not (omitted stays unknown).
+      const riskMembers = members.filter(
+        (member) => (member.shareStrategy ?? "version-first") === "version-first",
+      );
       const riskMemberIds = new Set(riskMembers.map((member) => member.id));
       const riskEdges = edges.filter((edge) => riskMemberIds.has(edge.fromId));
       return { members, edges, riskMembers, riskEdges };
