@@ -223,8 +223,9 @@
     "evidence:drift": "vp run --filter . build && node scripts/evidence-drift-check.mjs",
     "inventory:generate": "vp run --filter . build && node scripts/generate-rule-inventory.mjs",
     "inventory:check": "vp run --filter . build && node scripts/generate-rule-inventory.mjs --check",
+    "knip": "vp exec knip --preprocessor ./scripts/knip-index-export-allowlist.mjs",
     "benchmark:analysis": "vp run --filter . build && node scripts/benchmark-analysis-cost.mjs",
-    "check": "vp run --filter . fmt:check && vp run --filter . lint && vp run --filter . changeset:check && vp run --filter . build && vp run --filter . typecheck && vp run --filter . test:unit && vp run --filter . test:integration && vp run --filter . inventory:check && vp run --filter . demo:showcase && vp run --filter . test:e2e && vp run --filter . docs:build && vp run --filter . pack:check",
+    "check": "vp run --filter . fmt:check && vp run --filter . lint && vp run --filter . knip && vp run --filter . changeset:check && vp run --filter . build && vp run --filter . typecheck && vp run --filter . test:unit && vp run --filter . test:integration && vp run --filter . inventory:check && vp run --filter . demo:showcase && vp run --filter . test:e2e && vp run --filter . docs:build && vp run --filter . pack:check",
     "changeset": "changeset",
     "version": "changeset version",
     "release:dry-run": "vp run --filter . pack:check && npm publish --dry-run --provenance --access public"
@@ -246,6 +247,7 @@
     "@types/semver": "7.8.0",
     "ajv-formats": "3.0.1",
     "husky": "9.1.7",
+    "knip": "6.32.3",
     "playwright": "1.62.1",
     "publint": "0.3.23",
     "typescript": "5.9.3",
