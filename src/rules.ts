@@ -29,6 +29,7 @@ import {
 } from "./mf-toolkit-shapes.js";
 import { lookupAssetSize } from "./collect.js";
 import { ruleGuidance } from "./rule-guidance.js";
+import { supportedBundlersFromInventory } from "./rule-inventory.js";
 import { collectReactDomServerSignals, isWebClientArtifactTarget } from "./react-dom-server.js";
 import {
   hasNodeRuntimePlugin,
@@ -59,6 +60,7 @@ import type {
   NormalizedShared,
   ProjectFacts,
   RuleContext,
+  RuleMeta,
   Severity,
 } from "./types.js";
 
@@ -77,7 +79,7 @@ function createRule(
     meta: {
       id,
       defaultSeverity,
-      supportedBundlers: ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"],
+      supportedBundlers: supportedBundlersFromInventory(id),
       documentation: `/rules/${id}`,
       ...guidance,
     },
@@ -3026,3 +3028,29 @@ export const runtimeRuleMeta = [
     ...ruleGuidance["runtime/error-correlated"]!,
   },
 ] as const;
+
+function catalogRuleMeta(
+  rule: (typeof federationRuleMeta)[number] | (typeof runtimeRuleMeta)[number],
+): RuleMeta {
+  return {
+    id: rule.id,
+    defaultSeverity: rule.severity,
+    supportedBundlers: supportedBundlersFromInventory(rule.id),
+    documentation: `/rules/${rule.id}`,
+    category: rule.category,
+    impact: rule.impact,
+    fix: rule.fix,
+    sources: rule.sources,
+  };
+}
+
+/** Built-in + federation + runtime catalog for `mfdoctor rules`. */
+export function ruleCatalog(): RuleMeta[] {
+  const catalog: RuleMeta[] = [
+    ...builtInRules.map((rule) => rule.meta),
+    ...federationRuleMeta.map(catalogRuleMeta),
+    ...runtimeRuleMeta.map(catalogRuleMeta),
+  ];
+  catalog.sort((left, right) => left.id.localeCompare(right.id));
+  return catalog;
+}

@@ -4,6 +4,7 @@ import type {
   RuleApplicability,
 } from "./rule-contract.js";
 import { ruleGuidance } from "./rule-guidance.js";
+import type { BundlerName } from "./types.js";
 
 export type RuleMigrationGroup = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 export type RuleMigrationStatus = "legacy" | "migrated";
@@ -1878,4 +1879,28 @@ export function requireRuleInventoryEntry(id: string): RuleInventoryEntry {
   const entry = ruleInventory.find((item) => item.id === id);
   if (!entry) throw new Error(`Missing evidence-aware inventory entry for ${id}`);
   return entry;
+}
+
+const BUNDLER_NAMES = [
+  "vite",
+  "rspack",
+  "rsbuild",
+  "webpack",
+  "modern",
+  "unknown",
+] as const satisfies readonly BundlerName[];
+
+function isBundlerName(value: string): value is BundlerName {
+  return (BUNDLER_NAMES as readonly string[]).includes(value);
+}
+
+/** Catalog/engine bundler gate derived from inventory adapters (not a hardcoded all-bundler list). */
+export function supportedBundlersFromInventory(id: string): BundlerName[] {
+  const adapters = requireRuleInventoryEntry(id).applicability.adapters;
+  if (!adapters || adapters.length === 0) throw new Error(`Missing inventory adapters for ${id}`);
+  return adapters.map((adapter) => {
+    if (!isBundlerName(adapter.name))
+      throw new Error(`Inventory adapter ${adapter.name} for ${id} is not a known bundler`);
+    return adapter.name;
+  });
 }

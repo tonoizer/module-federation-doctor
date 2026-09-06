@@ -166,6 +166,30 @@ describe("built-in rules", () => {
     );
   });
 
+  it("runs shared rules when bundler is unknown and still skips Vite-only rules", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "unknown",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "",
+        remotes: {
+          shop: { name: "shop", entry: "http://localhost:4174/remoteEntry.js" },
+        },
+      },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+        "artifact/remote-entry-missing": "off",
+      },
+    });
+    const ids = result.report.findings.map((item) => item.ruleId);
+    expect(ids).toContain("config/name-required");
+    expect(ids).not.toContain("vite/remotes-prefer-module");
+  });
+
   it("accepts the Vite/Core root expose key and extensionless expose paths", async () => {
     const root = await fixture();
     const result = await analyze({
@@ -3655,6 +3679,50 @@ describe("config/copied-webpack-options-on-vite", () => {
         ]),
       },
     });
+  });
+
+  it("skips through analyze on webpack even when webpack-only keys are present", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "./src/index.ts" },
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/mf-manifest.json",
+          },
+        },
+        remoteType: "script",
+        virtualRuntimeEntry: true,
+        runtime: false,
+        async: true,
+        experiments: {
+          asyncStartup: true,
+          optimization: {
+            disableRemote: true,
+            target: "node",
+          },
+        },
+      },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+        "artifact/remote-entry-missing": "off",
+        "config/plugin-package-mismatch": "off",
+        "config/remote-capability-disabled": "off",
+        "config/remote-localhost-in-production": "off",
+      },
+    });
+    expect(result.report.findings.map((item) => item.ruleId)).not.toContain(
+      "config/copied-webpack-options-on-vite",
+    );
   });
 
   it("stays quiet through analyze for a valid Vite config", async () => {

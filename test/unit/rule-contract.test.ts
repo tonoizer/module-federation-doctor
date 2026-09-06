@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
-import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "../../src/rules.js";
+import { builtInRules, federationRuleMeta, runtimeRuleMeta, ruleCatalog } from "../../src/rules.js";
 import { ruleGuidance } from "../../src/rule-guidance.js";
 import { capConfidence, stableEvaluationId, weakestConfidence } from "../../src/rule-contract.js";
 import type { EvidenceRequirement, RuleEvaluationResult } from "../../src/rule-contract.js";
@@ -830,6 +830,20 @@ describe("evidence-aware rule contract", () => {
         .find((entry) => entry.id === "config/rsbuild-mf-api-generation")
         ?.applicability.bundlers?.map((item) => item.name),
     ).toEqual(["rsbuild"]);
+  });
+
+  it("drives catalog supportedBundlers from inventory adapters", () => {
+    const catalog = new Map(ruleCatalog().map((rule) => [rule.id, rule]));
+    expect([...catalog.keys()].sort()).toEqual([...ruleInventoryIds].sort());
+    for (const entry of ruleInventory) {
+      const adapters = (entry.applicability.adapters ?? []).map((item) => item.name);
+      expect(catalog.get(entry.id)?.supportedBundlers, entry.id).toEqual(adapters);
+    }
+    expect(catalog.get("vite/remotes-prefer-module")?.supportedBundlers).toEqual(["vite"]);
+    expect(catalog.get("config/copied-webpack-options-on-vite")?.supportedBundlers).toEqual([
+      "vite",
+    ]);
+    expect(catalog.get("config/rsbuild-mf-api-generation")?.supportedBundlers).toEqual(["rsbuild"]);
   });
 
   it("keeps declared reads aligned with the current built-in rule source", () => {

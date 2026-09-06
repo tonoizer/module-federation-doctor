@@ -667,6 +667,28 @@ describe("CLI arguments", () => {
     await expect(main(["rules", "not/a-rule"])).resolves.toBe(2);
   });
 
+  it("reports inventory adapters as supportedBundlers from mfdoctor rules", async () => {
+    const viteOnly = await captureStdout(() => main(["rules", "vite/remotes-prefer-module"]));
+    expect(viteOnly.code).toBe(0);
+    expect(JSON.parse(viteOnly.text).supportedBundlers).toEqual(["vite"]);
+
+    const rsbuildOnly = await captureStdout(() =>
+      main(["rules", "config/rsbuild-mf-api-generation"]),
+    );
+    expect(rsbuildOnly.code).toBe(0);
+    expect(JSON.parse(rsbuildOnly.text).supportedBundlers).toEqual(["rsbuild"]);
+
+    const shared = await captureStdout(() => main(["rules", "config/name-required"]));
+    expect(shared.code).toBe(0);
+    expect(JSON.parse(shared.text).supportedBundlers).toEqual([
+      "vite",
+      "rspack",
+      "rsbuild",
+      "webpack",
+      "modern",
+    ]);
+  });
+
   it("prints the versioned machine-readable CLI capabilities contract", async () => {
     expect(parseArgs(["capabilities"])).toEqual({
       command: "capabilities",
