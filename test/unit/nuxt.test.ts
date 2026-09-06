@@ -2,7 +2,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { createNuxtDoctorModule, moduleFederationDoctor, nuxtDoctor } from "../../src/nuxt.js";
+import createNuxtDoctorModuleDefault, {
+  createNuxtDoctorModule,
+  moduleFederationDoctor,
+} from "../../src/nuxt.js";
 import type { NuxtModuleContext } from "../../src/nuxt.js";
 
 const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -61,8 +64,10 @@ describe("Nuxt adapter", () => {
     expect(config.plugins).toHaveLength(1);
   });
 
-  it("keeps the pre-release Nuxt export as an alias", () => {
-    expect(nuxtDoctor).toBe(moduleFederationDoctor);
+  it("exposes one factory and a default module instance", () => {
+    expect(typeof createNuxtDoctorModule).toBe("function");
+    expect(createNuxtDoctorModuleDefault).toBe(moduleFederationDoctor);
+    expect(typeof moduleFederationDoctor.setup).toBe("function");
   });
 
   it("ships a copyable compatibility smoke that registers the Nuxt module", async () => {
