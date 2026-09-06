@@ -57,6 +57,8 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "vite/alias-share-bypass",
   "config/alias-share-bypass",
   "vite/server-origin",
+  "vite/virtual-module-dir",
+  "vite/ignore-origin",
   "config/transform-import-share-conflict",
   "config/shared-externals-conflict",
   "artifact/manifest-assets-disabled",

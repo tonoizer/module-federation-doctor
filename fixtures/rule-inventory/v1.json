@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 124,
-  "migratedCount": 124,
+  "ruleCount": 126,
+  "migratedCount": 126,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
@@ -7681,6 +7681,118 @@
       },
       "evidenceReads": ["project.scope", "moduleFederation", "bundler.name", "bundler.viteConfig"],
       "migrationNote": "Group 6; Absent plugin server.origin fact → unknown; observed matching origin → pass. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
+      "id": "vite/virtual-module-dir",
+      "version": "1",
+      "group": 6,
+      "status": "migrated",
+      "demo": "unit",
+      "defaultSeverity": "warning",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "A `virtualModuleDir` with slashes is not a single virtual folder. Nested names collide with virtual module IDs and break Vite federation bootstrap.",
+        "documentation": "/rules/vite/virtual-module-dir",
+        "fix": "Use one simple directory name without slashes, for example `__mf__`."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "bundler.name",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "vite"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "vite"
+          }
+        ]
+      },
+      "evidenceReads": ["project.scope", "moduleFederation", "bundler.name"],
+      "migrationNote": "Group 6; Declared virtualModuleDir is exact; slashes fail, a simple name passes, absence skips. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
+      "id": "vite/ignore-origin",
+      "version": "1",
+      "group": 6,
+      "status": "migrated",
+      "demo": "unit",
+      "defaultSeverity": "info",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "`ignoreOrigin` changes proxy entry origin behavior. Without a tested Vite `server.origin`, remote URLs can resolve against the wrong host.",
+        "documentation": "/rules/vite/ignore-origin",
+        "fix": "Set Vite `server.origin` to the public deployment base you tested, or turn `ignoreOrigin` off. CLI/config-only analysis without a plugin origin fact stays unknown rather than claiming a pass."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "bundler.name",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "vite"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "vite"
+          }
+        ]
+      },
+      "evidenceReads": ["project.scope", "moduleFederation", "bundler.name", "bundler.viteConfig"],
+      "migrationNote": "Group 6; Absent plugin server.origin fact → unknown; ignoreOrigin false or observed origin → pass. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
       "id": "config/alias-share-bypass",

@@ -46,16 +46,18 @@ until emit evidence is enough to promote.
 
 ## Vite-spezifische Optionen
 
-| Option                                       | Risk or opportunity                                     | MFDoctor guidance                                                                              |
-| -------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `publicPath`                                 | Wrong base breaks remote chunks and CSS                 | Compare with manifest output                                                                   |
-| `bundleAllCSS`                               | Full CSS set can repeat for every expose                | Warn for multi-expose producers                                                                |
-| `hostInitInjectLocation`                     | HTML and entry injection serve different app shapes     | SSR needs `entry` ([`vite/host-init-inject-ssr`](./rules/vite/host-init-inject-ssr.md))        |
-| `moduleParseTimeout`                         | Fixed timer can end a busy large parse                  | Prefer idle timeout                                                                            |
-| `moduleParseIdleTimeout`                     | Resets while modules are active                         | Better for large builds                                                                        |
-| `varFilename`                                | Adds a synchronous global-format entry                  | Verify filename and deployment; intentional mixed-bundler escape hatch                         |
-| `target` / `ssrExternals` / `ssrEntryLoader` | Changes server remote output / React instance ownership | Keep SSR contracts aligned ([`vite/ssr-nitro-externals`](./rules/vite/ssr-nitro-externals.md)) |
-| `disableRemote/shared/snapshot`              | Removes runtime capabilities                            | Reject config that still uses them                                                             |
+| Option                                       | Risk or opportunity                                     | MFDoctor guidance                                                                                     |
+| -------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `publicPath`                                 | Wrong base breaks remote chunks and CSS                 | Compare with manifest output                                                                          |
+| `bundleAllCSS`                               | Full CSS set can repeat for every expose                | Warn for multi-expose producers                                                                       |
+| `ignoreOrigin`                               | Proxy entry origin without a tested base                | Info when true without `server.origin` ([`vite/ignore-origin`](./rules/vite/ignore-origin.md))        |
+| `virtualModuleDir`                           | Nested virtual folder collides                          | Warn when the name contains slashes ([`vite/virtual-module-dir`](./rules/vite/virtual-module-dir.md)) |
+| `hostInitInjectLocation`                     | HTML and entry injection serve different app shapes     | SSR needs `entry` ([`vite/host-init-inject-ssr`](./rules/vite/host-init-inject-ssr.md))               |
+| `moduleParseTimeout`                         | Fixed timer can end a busy large parse                  | Prefer idle timeout                                                                                   |
+| `moduleParseIdleTimeout`                     | Resets while modules are active                         | Better for large builds                                                                               |
+| `varFilename`                                | Adds a synchronous global-format entry                  | Verify filename and deployment; intentional mixed-bundler escape hatch                                |
+| `target` / `ssrExternals` / `ssrEntryLoader` | Changes server remote output / React instance ownership | Keep SSR contracts aligned ([`vite/ssr-nitro-externals`](./rules/vite/ssr-nitro-externals.md))        |
+| `disableRemote/shared/snapshot`              | Removes runtime capabilities                            | Reject config that still uses them                                                                    |
 
 ### Typisierung von Remotes
 
@@ -67,16 +69,18 @@ remotes, or configure producer `varFilename` for var-host interop
 
 ## Dialekt-Faktenmatrix (nur Konfiguration vs. Plugin-Auflösung)
 
-| Check                                   | CLI config-only            | Plugin `configResolved`              |
-| --------------------------------------- | -------------------------- | ------------------------------------ |
-| Remotes typing / `varFilename`          | Yes                        | Yes                                  |
-| `hostInitInjectLocation` / SSR          | Yes (MF options + deps)    | Yes (+ builds when `targetKind=ssr`) |
-| `manualChunks` / `codeSplitting.groups` | Skip                       | Yes (`bundler.viteConfig`)           |
-| Hashed `filename`                       | Yes                        | Yes                                  |
-| `remoteHmr`                             | Yes when set on MF options | Yes                                  |
-| `resolve.alias` ∩ shared                | Skip                       | Yes                                  |
-| `server.origin`                         | Skip                       | Yes                                  |
-| `publicPath` kind (manifest skip)       | Skip                       | Yes (`bundler.outputPublicPathKind`) |
+| Check                                   | CLI config-only            | Plugin `configResolved`                 |
+| --------------------------------------- | -------------------------- | --------------------------------------- |
+| Remotes typing / `varFilename`          | Yes                        | Yes                                     |
+| `hostInitInjectLocation` / SSR          | Yes (MF options + deps)    | Yes (+ builds when `targetKind=ssr`)    |
+| `manualChunks` / `codeSplitting.groups` | Skip                       | Yes (`bundler.viteConfig`)              |
+| Hashed `filename`                       | Yes                        | Yes                                     |
+| `remoteHmr`                             | Yes when set on MF options | Yes                                     |
+| `virtualModuleDir` slashes              | Yes                        | Yes                                     |
+| `ignoreOrigin` without `server.origin`  | Skip                       | Yes (info when origin observed missing) |
+| `resolve.alias` ∩ shared                | Skip                       | Yes                                     |
+| `server.origin`                         | Skip                       | Yes                                     |
+| `publicPath` kind (manifest skip)       | Skip                       | Yes (`bundler.outputPublicPathKind`)    |
 
 The full current surface is in the official
 [normalizer](https://github.com/module-federation/vite/blob/321d7db8a4b2a1764b3a7cdc16246222d97231ac/src/utils/normalizeModuleFederationOptions.ts).

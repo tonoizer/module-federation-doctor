@@ -64,6 +64,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`vite/alias-share-bypass`](./vite/alias-share-bypass.md) | warning | resolve.alias can rewrite imports around the share scope and duplicate singleton packages. |
 | [`vite/host-init-inject-ssr`](./vite/host-init-inject-ssr.md) | error | SSR and HTML-less frameworks need host init injected into the entry, not the HTML document, or federation bootstrap never runs on the server. |
 | [`vite/remotes-prefer-module`](./vite/remotes-prefer-module.md) | warning | Vite string remotes and missing/`var` type default to script-style loading. Vite↔Vite ESM remotes need explicit `type: 'module'`; mixed bundlers should declare an explicit non-default type (for example `global`) or document a `varFilename` producer interop path. |
+| [`vite/virtual-module-dir`](./vite/virtual-module-dir.md) | warning | A `virtualModuleDir` with slashes is not a single virtual folder. Nested names collide with virtual module IDs and break Vite federation bootstrap. |
 
 ## Reliability
 
@@ -107,6 +108,7 @@ Browse by folder in the sidebar: Config, Shared, Artifact, Bridge, SSR, Reliabil
 | [`shared/singleton-risk`](./shared/singleton-risk.md) | warning | Multiple framework runtimes can split global state, contexts, hooks, or renderers. |
 | [`ssr/node-library-dts`](./ssr/node-library-dts.md) | warning | Node/SSR producers that keep ESM-style `library.type` or enabled `dts` diverge from the commonjs dual-env contract used by server remotes. |
 | [`vite/hashed-remote-filename`](./vite/hashed-remote-filename.md) | warning | Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds. |
+| [`vite/ignore-origin`](./vite/ignore-origin.md) | info | `ignoreOrigin` changes proxy entry origin behavior. Without a tested Vite `server.origin`, remote URLs can resolve against the wrong host. |
 | [`vite/manual-chunks-conflict`](./vite/manual-chunks-conflict.md) | info | Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles. This is an advisory signal because static config cannot prove a runtime cycle for every framework. |
 | [`vite/server-origin`](./vite/server-origin.md) | info | Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development. |
 | [`vite/ssr-nitro-externals`](./vite/ssr-nitro-externals.md) | warning | Shared React (or react-dom) can conflict with Nitro/SSR externals and `ssrEntryLoader` when the server expects a different module instance. |

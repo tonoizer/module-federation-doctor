@@ -478,6 +478,20 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: 'Set Vite `server.origin` to the URL remotes should publish for consumers. MFDoctor recommends `http://localhost:<server.port>` (default port 5173); configure `rules["vite/server-origin"].recommendedOrigin` or turn off `requireServerOrigin` when your topology differs.',
     sources: [vite],
   },
+  "vite/virtual-module-dir": {
+    category: "correctness",
+    impact:
+      "A `virtualModuleDir` with slashes is not a single virtual folder. Nested names collide with virtual module IDs and break Vite federation bootstrap.",
+    fix: "Use one simple directory name without slashes, for example `__mf__`.",
+    sources: [vite],
+  },
+  "vite/ignore-origin": {
+    category: "reliability",
+    impact:
+      "`ignoreOrigin` changes proxy entry origin behavior. Without a tested Vite `server.origin`, remote URLs can resolve against the wrong host.",
+    fix: "Set Vite `server.origin` to the public deployment base you tested, or turn `ignoreOrigin` off. CLI/config-only analysis without a plugin origin fact stays unknown rather than claiming a pass.",
+    sources: [vite],
+  },
   "config/transform-import-share-conflict": {
     category: "correctness",
     impact:

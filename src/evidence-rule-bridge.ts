@@ -165,6 +165,12 @@ function viteServerOriginEvidenceInconclusive(context: EvidenceRuleContext): str
   return undefined;
 }
 
+function viteIgnoreOriginEvidenceInconclusive(context: EvidenceRuleContext): string | undefined {
+  if (!context.facts || context.facts.bundler.name !== "vite") return undefined;
+  if (context.facts.moduleFederation?.vite?.ignoreOrigin !== true) return undefined;
+  return viteServerOriginEvidenceInconclusive(context);
+}
+
 function transformImportEvidenceInconclusive(context: EvidenceRuleContext): string | undefined {
   if (!context.facts) return undefined;
   if (context.facts.bundler.transformImportLibraries === undefined)
@@ -200,6 +206,7 @@ const GROUP6_INCONCLUSIVE: Partial<
   "config/split-chunks-mf-runtime": splitChunksEvidenceInconclusive,
   "vite/alias-share-bypass": vitePluginConfigEvidenceInconclusive,
   "vite/server-origin": viteServerOriginEvidenceInconclusive,
+  "vite/ignore-origin": viteIgnoreOriginEvidenceInconclusive,
   "config/alias-share-bypass": aliasShareBypassEvidenceInconclusive,
   "config/transform-import-share-conflict": transformImportEvidenceInconclusive,
   "config/shared-externals-conflict": sharedExternalsEvidenceInconclusive,
