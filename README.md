@@ -350,6 +350,7 @@ Examples:
   run `vp run demo:nested` or `vp run test:nested`
 - `examples/compatibility/webpack` — Webpack build+MFDoctor smoke for the matrix
 - `examples/compatibility/nuxt` — Nuxt module adapter smoke (partial; Vite-under-the-hood)
+- `examples/compatibility/rolldown` — Vite Plus / Rolldown smoke (partial; same Vite entry)
 - `examples/mixed-federation-issues` — same flat topology with intentional MFDoctor
   findings; run `vp run demo:mixed-issues`
 - `examples/standalone-findings` — per-bundler Vite/Webpack/Rspack/Rsbuild

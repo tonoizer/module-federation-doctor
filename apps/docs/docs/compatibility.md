@@ -23,7 +23,7 @@ Related: [capabilities](./capabilities.md) ·
 | -------------------- | ------------- | ---------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Vite                 | **supported** | `@tonoizer/mfdoctor/vite`    | `compatibility` workflow → `host-vite` build + MFDoctor                                | Primary host path in `examples/mixed-federation`                                                                                                                                                                                                     |
 | Vite 5 + CommonJS    | **supported** | `@tonoizer/mfdoctor/vite`    | `compatibility` workflow → `vite-cjs-v5` build + MFDoctor                              | Async ESM bridge for the Vite MF plugin; validates MFDoctor's published CommonJS adapter                                                                                                                                                             |
-| Rolldown / Vite Plus | **partial**   | `@tonoizer/mfdoctor/vite`    | unit lifecycle hooks + honest `doctor/partial-analysis`                                | Same Vite entry; usable with gaps until a real Rolldown/Vite Plus smoke build lands in CI (#11)                                                                                                                                                      |
+| Rolldown / Vite Plus | **partial**   | `@tonoizer/mfdoctor/vite`    | `compatibility` workflow → `rolldown-smoke` (Vite Plus) + unit lifecycle hooks         | Same Vite entry; Vite Plus production smoke exists; not a **supported** claim until emit evidence is complete (#11)                                                                                                                                  |
 | Rspack               | **supported** | `@tonoizer/mfdoctor/rspack`  | `compatibility` workflow → `remote-rspack` build + MFDoctor                            | Direct `@module-federation/enhanced/rspack` (first-class)                                                                                                                                                                                            |
 | Rsbuild              | **supported** | `@tonoizer/mfdoctor/rsbuild` | `compatibility` workflow → `remote-rsbuild` build + MFDoctor                           | `@module-federation/rsbuild-plugin`                                                                                                                                                                                                                  |
 | Webpack              | **supported** | `@tonoizer/mfdoctor/webpack` | `compatibility` workflow → `webpack-smoke` build + MFDoctor                            | `@module-federation/enhanced/webpack` (#10 shipped)                                                                                                                                                                                                  |
@@ -37,14 +37,15 @@ The machine-readable contract lives in
 It distinguishes reproducible local CI cells from unit contracts and pinned
 upstream validation records:
 
-| Surface                                             | Current evidence                                                                     | Matrix status    |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------- |
-| Vite current ESM + Vite 5 CommonJS                  | Production build + project/report/SARIF assertions on Node 22, 24, and 26            | CI               |
-| Rspack, Rsbuild, Webpack, Modern.js adapter         | Production build + MFDoctor report assertions                                        | CI               |
-| Nuxt 3/4 local emit (`examples/compatibility/nuxt`) | Production Vite-under-the-hood build via `@tonoizer/mfdoctor/nuxt`                   | CI (partial)     |
-| Svelte and SvelteKit SSR                            | Pinned upstream app reports plus SvelteKit SSR-entry regression test                 | validated        |
-| Angular                                             | Pinned upstream validation; the example's existing package baseline blocks the build | baseline-blocked |
-| Nuxt 3/4 upstream `@module-federation/nuxt`         | Pinned upstream validation; package-resolution baseline still blocks the full app    | baseline-blocked |
+| Surface                                                  | Current evidence                                                                     | Matrix status    |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------- |
+| Vite current ESM + Vite 5 CommonJS                       | Production build + project/report/SARIF assertions on Node 22, 24, and 26            | CI               |
+| Rolldown / Vite Plus (`examples/compatibility/rolldown`) | Production Vite Plus build via `@tonoizer/mfdoctor/vite`                             | CI (partial)     |
+| Rspack, Rsbuild, Webpack, Modern.js adapter              | Production build + MFDoctor report assertions                                        | CI               |
+| Nuxt 3/4 local emit (`examples/compatibility/nuxt`)      | Production Vite-under-the-hood build via `@tonoizer/mfdoctor/nuxt`                   | CI (partial)     |
+| Svelte and SvelteKit SSR                                 | Pinned upstream app reports plus SvelteKit SSR-entry regression test                 | validated        |
+| Angular                                                  | Pinned upstream validation; the example's existing package baseline blocks the build | baseline-blocked |
+| Nuxt 3/4 upstream `@module-federation/nuxt`              | Pinned upstream validation; package-resolution baseline still blocks the full app    | baseline-blocked |
 
 The upstream rows are evidence records, not release claims: CI uses pinned
 local fixtures so a moving external repository cannot silently change the
@@ -59,6 +60,12 @@ the Modern.js smoke). A full `@module-federation/nuxt` application build remains
 dependent on the upstream package-resolution issue tracked in
 [nuxt/nuxt#36009](https://github.com/nuxt/nuxt/issues/36009) — so Nuxt is not a
 first-class **supported** CI gate.
+
+Rolldown / Vite Plus use the **same** `@tonoizer/mfdoctor/vite` entry as classic
+Vite. The local emit cell at
+[`examples/compatibility/rolldown`](https://github.com/tonoizer/module-federation-doctor/tree/main/examples/compatibility/rolldown)
+aliases `vite` to Vite Plus and production-builds. Reports keep
+`partial-bundler` for this lifecycle, so the matrix cell stays **partial**.
 
 Runtime-only Module Federation (no bundler MF **build** plugin) is
 **unsupported** as a first-class path — see
@@ -158,8 +165,8 @@ Reds that **do not** block other cells:
    pnpm.
 2. Expected `doctor/partial-analysis` warnings on partial analysis paths —
    honest gaps, not matrix failures.
-3. Rolldown / Vite Plus — documented **partial** (unit lifecycle coverage only;
-   no release claim until a real smoke build is in `compatibility.yml`).
+3. Rolldown / Vite Plus — documented **partial** (Vite Plus production smoke
+   plus unit lifecycle hooks; not a **supported** release gate).
 4. Modern.js — documented **partial** (adapter API + Rspack-under-the-hood
    smoke; no full **supported** claim until a real `@modern-js/app-tools`
    build is in `compatibility.yml`).

@@ -10,6 +10,7 @@ const fixtures = [
   "examples/compatibility/rsbuild-adapter",
   "examples/compatibility/modern",
   "examples/compatibility/nuxt",
+  "examples/compatibility/rolldown",
 ];
 
 await Promise.all(

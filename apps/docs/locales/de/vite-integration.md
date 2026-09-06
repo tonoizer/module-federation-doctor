@@ -38,6 +38,12 @@ honestly.
 Direct Rolldown **without** `@module-federation/vite` is unsupported — Rolldown
 dropped built-in Module Federation in favor of the Vite plugin.
 
+A copyable production smoke lives in
+[`examples/compatibility/rolldown`](https://github.com/tonoizer/module-federation-doctor/tree/main/examples/compatibility/rolldown).
+It aliases `vite` to Vite Plus and registers the same `@tonoizer/mfdoctor/vite`
+entry. The matrix cell stays **partial** (`partial-bundler` on `report.status`)
+until emit evidence is enough to promote.
+
 ## Vite-spezifische Optionen
 
 | Option                                       | Risk or opportunity                                     | MFDoctor guidance                                                                              |

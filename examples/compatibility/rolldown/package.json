@@ -1,0 +1,18 @@
+{
+  "name": "@mfdoctor-example/rolldown-smoke",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\""
+  },
+  "dependencies": {
+    "@module-federation/vite": "1.20.7"
+  },
+  "devDependencies": {
+    "@tonoizer/mfdoctor": "workspace:*",
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9",
+    "vite-plus": "0.2.9"
+  }
+}

@@ -1,11 +1,12 @@
 # Limitations
 
 MVP supports Vite (including Rolldown-integrated Vite and Vite Plus as a
-**partial** matrix cell — lifecycle coverage without a dedicated CI smoke
-build yet), direct Rspack, Rsbuild, Webpack, and Modern.js as a **partial**
-matrix cell — adapter API plus an Rspack-under-the-hood smoke (not a full
-`@modern-js/app-tools` build yet). Gaps below are tracked as GitHub issues and
-milestones so each one can be removed from this page when it ships.
+**partial** matrix cell — Vite Plus production smoke plus unit lifecycle
+hooks; not a full **supported** claim yet), direct Rspack, Rsbuild, Webpack,
+and Modern.js as a **partial** matrix cell — adapter API plus an
+Rspack-under-the-hood smoke (not a full `@modern-js/app-tools` build yet).
+Gaps below are tracked as GitHub issues and milestones so each one can be
+removed from this page when it ships.
 
 Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1)
 · [post-v1](https://github.com/tonoizer/module-federation-doctor/milestone/2)

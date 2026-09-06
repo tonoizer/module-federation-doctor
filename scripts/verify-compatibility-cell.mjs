@@ -132,13 +132,30 @@ function assertRuntimeContract(cell, value) {
   }
 }
 
+function assertLifecycleContract(cell, value) {
+  if (!cell.lifecycle) return;
+  assert.equal(
+    value.bundler?.lifecycle?.flavor,
+    cell.lifecycle.flavor,
+    `${cell.id}: lifecycle.flavor changed`,
+  );
+  assert.equal(
+    value.bundler?.lifecycle?.engine,
+    cell.lifecycle.engine,
+    `${cell.id}: lifecycle.engine changed`,
+  );
+}
+
 assertRuntimeContract(matrixCell, project);
+assertLifecycleContract(matrixCell, project);
+const lifecycle = project.bundler?.lifecycle;
 process.stdout.write(
   [
     `compatibility-cell ok cell=${cellId} bundler=${bundlerId} project=${project.project.name}`,
     `  artifacts=project.json,report.json,results.sarif${terminalLog ? ",terminal" : ""}`,
     `  summary=errors:${report.summary.errors},warnings:${report.summary.warnings},findings:${report.findings.length}`,
     `  capabilities=${JSON.stringify(capabilities)}`,
+    ...(lifecycle ? [`  lifecycle=flavor:${lifecycle.flavor},engine:${lifecycle.engine}`] : []),
     "",
   ].join("\n"),
 );

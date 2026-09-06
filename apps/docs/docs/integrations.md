@@ -39,6 +39,10 @@ avoids duplicate analysis when a build exposes more than one lifecycle hook.
 See [Vite integration](./vite-integration.md) for lifecycle and configuration
 details.
 
+A copyable Vite Plus production smoke lives in
+[`examples/compatibility/rolldown`](https://github.com/tonoizer/module-federation-doctor/tree/main/examples/compatibility/rolldown).
+The matrix cell stays **partial**.
+
 ## Nuxt 3 and Nuxt 4
 
 Register MFDoctor next to the official Module Federation Nuxt module:

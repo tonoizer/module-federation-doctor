@@ -241,6 +241,18 @@
         "vite:extendConfig",
         "Vite-under-the-hood production emit"
       ]
+    },
+    {
+      "id": "rolldown",
+      "fixture": "examples/compatibility/rolldown",
+      "bundler": "vite",
+      "package": "@mfdoctor-example/rolldown-smoke",
+      "expectedErrors": 0,
+      "coverage": ["Vite Plus", "Rolldown emit lifecycle", "closeBundle post-emit", "production"],
+      "lifecycle": {
+        "flavor": "vite-plus",
+        "engine": "rolldown"
+      }
     }
   ],
   "unitContracts": [
