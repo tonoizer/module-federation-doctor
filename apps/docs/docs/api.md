@@ -62,3 +62,7 @@ Finding lineage (`finding-lineage.schema.json`) and governance waivers
 (`governance-waiver.schema.json`) are **experimental** library-only contracts
 (ADR 0086). Their TypeScript helpers are not re-exported from
 `@tonoizer/mfdoctor` and are not wired into the baseline CLI.
+
+`@experimental` identity correlation (`identity-correlation.schema.json`) and
+semantic-graph (`semantic-graph.schema.json`) helpers on `@tonoizer/mfdoctor`
+are library-only (ADR 0086); they are not CLI product surface.

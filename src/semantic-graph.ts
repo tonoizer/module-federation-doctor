@@ -22,7 +22,11 @@ import { buildUiPayload } from "./ui-graph.js";
 import type { DoctorReport, DoctorUiPayload, ProjectFacts } from "./types.js";
 import { compareCodePoint, stableStringify } from "./utils.js";
 
-/** Version of the additive semantic graph/query contract. */
+/**
+ * @experimental Library-only semantic graph (ADR 0086). Not wired into CLI
+ * reports, fingerprints, or exit codes. Not an HTML UI or in-browser agent;
+ * do not treat this as productized graph integration.
+ */
 export const SEMANTIC_GRAPH_SCHEMA_VERSION = 1 as const;
 export type SemanticGraphSchemaVersion = typeof SEMANTIC_GRAPH_SCHEMA_VERSION;
 

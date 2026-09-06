@@ -10,7 +10,10 @@ import type {
 import { IdentityValidationError } from "./identity.js";
 import { compareCodePoint } from "./utils.js";
 
-/** Version of the additive semantic-correlation contract. */
+/**
+ * @experimental Library-only identity correlation (ADR 0086). Not wired into
+ * CLI reports, fingerprints, or exit codes.
+ */
 export const IDENTITY_CORRELATION_SCHEMA_VERSION = 1 as const;
 export type IdentityCorrelationSchemaVersion = typeof IDENTITY_CORRELATION_SCHEMA_VERSION;
 

@@ -298,6 +298,11 @@ export type {
   RuntimeRealmIdentity,
   SemanticIdentity,
 } from "./identity.js";
+
+/**
+ * @experimental Library-only identity correlation (ADR 0086). Not wired into
+ * CLI reports, fingerprints, or exit codes.
+ */
 export {
   assessIdentityCapabilityCoverage,
   correlateSemanticIdentity,
@@ -365,6 +370,12 @@ export type {
 // src/v1-compatibility.ts (ADR 0086, library-only). They are not re-exported
 // from this root entry until the CLI uses them. JSON Schema contracts remain
 // published. Baseline CLI is unchanged.
+
+/**
+ * @experimental Library-only semantic graph (ADR 0086). Not wired into CLI
+ * reports, fingerprints, or exit codes. Not an HTML UI or in-browser agent;
+ * do not treat this as productized graph integration.
+ */
 export {
   buildSemanticGraph,
   buildSemanticUiPayload,
