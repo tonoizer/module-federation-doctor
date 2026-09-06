@@ -14,6 +14,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "config/remote-alias-prefix-collision",
   "config/dts-output-dir-mismatch",
   "config/nested-producer-dts-extract",
+  "config/js-remote-without-type-urls",
   "artifact/public-path-non-string-manifest",
   "config/remote-manifest-recommended",
   "config/observability-plugin-recommended",

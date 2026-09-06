@@ -674,6 +674,8 @@ importers:
 
   examples/showcase/config/implementation-suspicious-suppressed: {}
 
+  examples/showcase/config/js-remote-without-type-urls: {}
+
   examples/showcase/config/nested-producer-dts-extract: {}
 
   examples/showcase/config/nested-producer-dts-extract-ok: {}

@@ -17,23 +17,24 @@ stay as rules, not showcases.
 
 ## Config
 
-| Setup                    | Command                                                                                     | Finding                                           |
-| ------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Expose key without `./`  | `node dist/cli.js check examples/showcase/config/expose-key-invalid --ci`                   | `config/expose-key-invalid` (error)               |
-| Missing expose path      | `node dist/cli.js check examples/showcase/config/expose-path-missing --ci`                  | `config/expose-path-missing` (error)              |
-| Invalid remote entry     | `node dist/cli.js check examples/showcase/config/remote-entry-invalid --ci`                 | `config/remote-entry-invalid` (error)             |
-| Invalid filename         | `node dist/cli.js check examples/showcase/config/filename-invalid --ci`                     | `config/filename-invalid` (error)                 |
-| Hashed remote filename   | `node dist/cli.js check examples/showcase/config/hashed-remote-filename --ci`               | `config/hashed-remote-filename` (warning)         |
-| Undeclared share scope   | `node dist/cli.js check examples/showcase/config/share-scope-undeclared --ci`               | `config/share-scope-undeclared` (error)           |
-| Insecure remote HTTP     | `node dist/cli.js check examples/showcase/config/remote-http-insecure --ci`                 | `config/remote-http-insecure` (warning)           |
-| Local implementation     | `node dist/cli.js check examples/showcase/config/implementation-local --ci`                 | no findings (heuristic does not fire)             |
-| Suspicious impl muted    | `node dist/cli.js check examples/showcase/config/implementation-suspicious-suppressed --ci` | no findings (`"off"`)                             |
-| Localhost remotes in CI  | `node dist/cli.js check examples/showcase/config/remote-localhost-in-production --ci`       | `config/remote-localhost-in-production` (warning) |
-| Alias prefix collision   | `node dist/cli.js check examples/showcase/config/remote-alias-prefix-collision --ci`        | `config/remote-alias-prefix-collision` (error)    |
-| DTS outputDir mismatch   | `node dist/cli.js check examples/showcase/config/dts-output-dir-mismatch --ci`              | `config/dts-output-dir-mismatch` (warning)        |
-| Alias overlapping shared | `node dist/cli.js check examples/showcase/config/alias-share-bypass --ci`                   | `config/alias-share-bypass` (warning)             |
-| Nested producer DTS      | `node dist/cli.js check examples/showcase/config/nested-producer-dts-extract --ci`          | `config/nested-producer-dts-extract` (warning)    |
-| Nested producer DTS ok   | `node dist/cli.js check examples/showcase/config/nested-producer-dts-extract-ok --ci`       | no findings (`extractRemoteTypes: true`)          |
+| Setup                      | Command                                                                                     | Finding                                           |
+| -------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Expose key without `./`    | `node dist/cli.js check examples/showcase/config/expose-key-invalid --ci`                   | `config/expose-key-invalid` (error)               |
+| Missing expose path        | `node dist/cli.js check examples/showcase/config/expose-path-missing --ci`                  | `config/expose-path-missing` (error)              |
+| Invalid remote entry       | `node dist/cli.js check examples/showcase/config/remote-entry-invalid --ci`                 | `config/remote-entry-invalid` (error)             |
+| Invalid filename           | `node dist/cli.js check examples/showcase/config/filename-invalid --ci`                     | `config/filename-invalid` (error)                 |
+| Hashed remote filename     | `node dist/cli.js check examples/showcase/config/hashed-remote-filename --ci`               | `config/hashed-remote-filename` (warning)         |
+| Undeclared share scope     | `node dist/cli.js check examples/showcase/config/share-scope-undeclared --ci`               | `config/share-scope-undeclared` (error)           |
+| Insecure remote HTTP       | `node dist/cli.js check examples/showcase/config/remote-http-insecure --ci`                 | `config/remote-http-insecure` (warning)           |
+| Local implementation       | `node dist/cli.js check examples/showcase/config/implementation-local --ci`                 | no findings (heuristic does not fire)             |
+| Suspicious impl muted      | `node dist/cli.js check examples/showcase/config/implementation-suspicious-suppressed --ci` | no findings (`"off"`)                             |
+| Localhost remotes in CI    | `node dist/cli.js check examples/showcase/config/remote-localhost-in-production --ci`       | `config/remote-localhost-in-production` (warning) |
+| Alias prefix collision     | `node dist/cli.js check examples/showcase/config/remote-alias-prefix-collision --ci`        | `config/remote-alias-prefix-collision` (error)    |
+| DTS outputDir mismatch     | `node dist/cli.js check examples/showcase/config/dts-output-dir-mismatch --ci`              | `config/dts-output-dir-mismatch` (warning)        |
+| Alias overlapping shared   | `node dist/cli.js check examples/showcase/config/alias-share-bypass --ci`                   | `config/alias-share-bypass` (warning)             |
+| Nested producer DTS        | `node dist/cli.js check examples/showcase/config/nested-producer-dts-extract --ci`          | `config/nested-producer-dts-extract` (warning)    |
+| Nested producer DTS ok     | `node dist/cli.js check examples/showcase/config/nested-producer-dts-extract-ok --ci`       | no findings (`extractRemoteTypes: true`)          |
+| Direct `.js` remotes + DTS | `node dist/cli.js check examples/showcase/config/js-remote-without-type-urls --ci`          | `config/js-remote-without-type-urls` (warning)    |
 
 ## Shared
 

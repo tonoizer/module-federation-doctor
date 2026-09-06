@@ -101,6 +101,26 @@ describe("normalization", () => {
     ).toBeUndefined();
   });
 
+  it("preserves consumeTypes.remoteTypeUrls when it is an async function", () => {
+    const normalized = normalizeModuleFederation({
+      name: "host",
+      dts: {
+        consumeTypes: {
+          remoteTypeUrls: async () => ({
+            shop: {
+              alias: "shop",
+              zip: "https://cdn.example.test/@mf-types.zip",
+            },
+          }),
+        },
+      },
+    });
+    expect(normalized?.dts).toMatchObject({
+      enabled: true,
+      options: { consumeTypes: { remoteTypeUrls: true } },
+    });
+  });
+
   it("preserves webpack-only runtime and async options for Vite dialect detection", () => {
     const normalized = normalizeModuleFederation({
       name: "host",

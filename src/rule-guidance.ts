@@ -104,6 +104,16 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Enable `dts.generateTypes.extractRemoteTypes` on nested producers. Host-only consumers do not need this flag.",
     sources: ["https://module-federation.io/configure/dts.html"],
   },
+  "config/js-remote-without-type-urls": {
+    category: "reliability",
+    impact:
+      "Hosts that consume types cannot resolve a stable type archive URL from a direct `.js` remote entry. Manifest remotes publish type metadata; otherwise `consumeTypes.remoteTypeUrls` must name the zip/api URLs.",
+    fix: "Point remotes at `mf-manifest.json`, or set `dts.consumeTypes.remoteTypeUrls` for each direct `.js` remote. Disable `dts.consumeTypes` when the host does not consume federated types.",
+    sources: [
+      "https://module-federation.io/configure/dts.html",
+      "https://module-federation.io/configure/remotes.html",
+    ],
+  },
   "artifact/public-path-non-string-manifest": {
     category: "correctness",
     impact:
