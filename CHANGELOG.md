@@ -1,5 +1,54 @@
 # @tonoizer/mfdoctor
 
+## 2.0.0
+
+### Major Changes
+
+- 0ac5abb: Stop exporting the empty V1 closeout `RULE_COMPATIBILITY_EXCEPTIONS` list and `RuleCompatibilityException` type from `@tonoizer/mfdoctor`. Every current built-in stays `migrated`; closeout tests still prove that without a public empty array. This is a breaking change for anyone who imported those symbols from the public package root.
+- 1e0f5c3: Stop re-exporting finding-lineage and governance-waiver helpers (`createFindingLineage`, `defineGovernanceWaiver`, history diffs, and related types) from the `@tonoizer/mfdoctor` root entry. The modules and JSON Schema contracts remain in source for tests and library consumers; the CLI, including `mfdoctor baseline`, is unchanged. This is a breaking change for anyone who imported those symbols from the public package root.
+- 118b266: Stop re-exporting unused identity factories (`createOrganizationIdentity`, `createIdentity`, `canonicalIdentityKey`, and the other per-kind helpers) from the `@tonoizer/mfdoctor` root entry. Keep `createApplicationIdentity`, `unknownIdentity`, `IDENTITY_SCHEMA_VERSION`, and `IdentityValidationError` plus the runtime-identity types used by the engine/CLI path. Remaining factories stay in `src/identity.ts` for tests. This is a breaking change for anyone who imported the dropped symbols from the public package root.
+- ed8a150: Stop re-exporting unused capability-pack helpers (`queryCapability`, `resolveCapabilityPack`, `BUILT_IN_CAPABILITY_PACKS`, and related types) from the `@tonoizer/mfdoctor` root entry. The tables remain in source for review and unit tests; the engine, CLI, and adapters never queried them. This is a breaking change for anyone who imported those symbols from the public package root.
+- 9cf0dd8: Stop re-exporting migrated rule-group id arrays (`MIGRATED_GROUP1_*` … `MIGRATED_GROUP6_RULE_IDS`) from the `@tonoizer/mfdoctor` root entry. The arrays remain in `src/rule-inventory.ts` for evidence bridges and tests. This is a breaking change for anyone who imported those symbols from the public package root.
+
+### Minor Changes
+
+- b163c7b: Add `config/alias-share-bypass` to warn when webpack/rspack/rsbuild `resolve.alias` object entries overlap Module Federation `shared` keys. Function aliases stay unknown. Vite keeps `vite/alias-share-bypass`.
+- 075b009: Add `artifact/react-dom-server-in-web` to flag `react-dom/server` (and server entry variants) landing in web/client Module Federation artifacts.
+- 266449d: Add `config/async-boundary-missing` to flag host sync entries that import non-eager shared packages (RUNTIME-005).
+- ad25374: Add `config/async-startup-rspack-version` to warn when `experiments.asyncStartup` is enabled on Rspack ≤ 1.7.4.
+- fdeb8c9: Extend `mfdoctor capabilities` with agent-facing nonGoals, completeness, githubAction, networkPolicy, and a bundler matrix derived from `fixtures/compatibility-matrix.json`.
+- 3010ade: Add `mfdoctor compare` to diff deployed Module Federation manifests for name, exposes, shared, publicPath, and remoteEntry using the same probe network safety, with JSON and SARIF output.
+- 3380d93: Add `config/copied-webpack-options-on-vite` to flag webpack-only ModuleFederationPlugin options pasted onto a Vite federation config.
+- 600aa2d: Allow `--diagnostics-dir` dumps to include more than the default top-3 agent prompts via `--diagnostics-prompts` / `diagnosticsPromptLimit` / `MFDOCTOR_DIAGNOSTICS_PROMPTS`, hard-capped at 25. Terminal top-3 output is unchanged.
+- 216fcb7: Add `config/hashed-remote-filename` to warn when webpack/rspack Module Federation `filename` (or observed `output.filename` when the container name is unset) uses `[hash]` / `[contenthash]` templates that break stable remote URLs.
+- e8d4dd0: Add `config/js-remote-without-type-urls` to warn when a host consumes types from a direct `.js` remote without `dts.consumeTypes.remoteTypeUrls`. Manifest remotes skip.
+- 576d0b5: Warn when Rspack declares leftover `@module-federation/rspack` without `@module-federation/enhanced`, or mixed with it. Enhanced-only stays quiet.
+- 7d8a087: Add `config/nested-producer-dts-extract` to warn when a nested remote producer leaves `dts.generateTypes.extractRemoteTypes` off.
+- 4b3c96a: Promote `shared/prefix-share-recommended` to error for React and React DOM deep imports, and stop allowlisting `react/jsx-runtime` and `react-dom/client` by default so singleton/version crashes fail CI instead of staying silent.
+- c40c810: Preserve unknown expose object keys through normalize and canonical unknown fields. Confirmed SDK `ExposesConfig` remains `import` and `name`; extra keys are not treated as a hide API for `config/expose-key-invalid`.
+- 575c1de: Remove unused deprecated `doctor` aliases from the Vite, Rspack, Rsbuild, Webpack, and Modern.js adapters. Use the idiomatic factories (`federationDoctor`, `moduleFederationDoctorPlugin`, `pluginModuleFederationDoctor`, `ModuleFederationDoctorPlugin`) instead.
+- 436b023: Remove unused deprecated Nuxt adapter aliases (`nuxtDoctor`, `federationDoctorNuxt`). Use `createNuxtDoctorModule` or the default `moduleFederationDoctor` export instead.
+- 8ac5eeb: Remove the deprecated webpack adapter alias `moduleFederationDoctorPlugin`. Import `ModuleFederationDoctorPlugin` from `@tonoizer/mfdoctor/webpack` instead. The Rspack and Modern.js entries still export `moduleFederationDoctorPlugin` as their canonical factory.
+- 839737d: Add `config/shared-externals-conflict` to warn when a shared package is also listed in public bundler `externals` (webpack, rspack, rsbuild, modern).
+- cfbab11: Preserve Enhanced `shared[pkg].packagePath` through normalize and add `shared/package-path-missing` when the path is absent on disk.
+- 6acecde: Warn when webpack/Rspack/Rsbuild `splitChunks` cacheGroups target Module Federation runtime chunks (`config/split-chunks-mf-runtime`).
+- dfb1f1e: Collect public `source.transformImport` library names from the Modern.js and Rsbuild adapters so `config/transform-import-share-conflict` can fire on antd/arco-style overlaps instead of skipping when facts are unknown. Function-form transformImport is not invoked.
+- 2623b9c: Add `vite/virtual-module-dir` and `vite/ignore-origin` to warn on slashed Vite virtual folders and `ignoreOrigin` without a tested `server.origin`.
+
+### Patch Changes
+
+- f3c5d6b: Write JSON, SARIF, and project report files atomically (temp file then rename) so a crash never leaves a truncated final path.
+- 31a7be4: Hide agent fix prompts in CI by default (standard CI env vars / `mode: "ci"`). Local runs still print them; opt in with `--prompt` or dump via `--diagnostics-dir`.
+- 569cd5f: Add additive `report.status` with stable `incompleteReasons[]` codes (`missing-emit`, `partial-bundler`, `probe-skipped`, `evidence-unknown`). Complete runs use an empty list. Does not change rule evaluation or exit codes.
+- 0b3928c: Document the remaining Modern.js App Tools CI blocker: current `@modern-js/app-tools` releases fail this repo's `trustPolicy: no-downgrade` (last provenance-attested stable is `2.63.3`). Matrix status stays **partial**; the in-repo cell remains the Rspack-under-the-hood smoke.
+- 9a35d9e: Add `config/rsbuild-mf-api-generation` to flag Rsbuild Module Federation 1.5 vs `@module-federation/rsbuild-plugin` v2 option mismatches that break generate/runtime.
+- 7c33ea8: Do not default omitted `shareStrategy` to `version-first` when comparing federation hosts. Omitted vs omitted stays quiet; omitted vs an explicit strategy is a mismatch. Single-project version-first rules still use the runtime default.
+- 0680431: Tighten reliability/shared-import-false vs federation/missing-provider so workspace provider presence and absence map to one attributable finding.
+- b23c9b0: Add `shared/subpath-version-unresolved` for Vite prefix/subpath shared keys whose provider version did not resolve from the parent package.
+- a047afa: Ship AGENTS.md and skills/mfdoctor playbook in the published package so installed agents get the capabilities → check → prompt → rebuild loop.
+- 283f690: Drive `supportedBundlers` in the rule catalog and engine from inventory adapters so Vite-only rules report `["vite"]` from `mfdoctor rules`. Shared rules still run when bundler detection is `unknown`.
+- 9347212: Pin workspace-federation-gate docs to a release tag, require or install the mfdoctor CLI in the Action, and fail loudly when SARIF upload lacks `security-events`.
+
 ## 1.1.0
 
 ### Minor Changes
