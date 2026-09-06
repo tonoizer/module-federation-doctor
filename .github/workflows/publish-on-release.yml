@@ -86,11 +86,35 @@ jobs:
         with:
           ref: main
           path: .release-tooling
-          sparse-checkout: scripts/pack-check.mjs
-          sparse-checkout-cone-mode: false
+          # Cone mode only accepts directory prefixes. File paths such as
+          # scripts/pack-check.mjs are not fetched.
+          sparse-checkout: |
+            scripts
+            test/e2e
+            examples/mixed-federation
+            examples/mixed-federation-issues
+            examples/nested-federation
+            examples/compatibility/vite-nitro-react
           persist-credentials: false
       - name: Refresh release pack harness
-        run: cp .release-tooling/scripts/pack-check.mjs scripts/pack-check.mjs
+        run: |
+          # Examples and the mixed-federation Playwright spec are not published.
+          # Overlay them from main so Verify can pick up runtime-smoke fixes
+          # without rewriting an immutable release tag.
+          test -f .release-tooling/scripts/pack-check.mjs
+          test -f .release-tooling/test/e2e/mixed-federation.spec.ts
+          cp .release-tooling/scripts/pack-check.mjs scripts/pack-check.mjs
+          cp .release-tooling/test/e2e/mixed-federation.spec.ts test/e2e/mixed-federation.spec.ts
+          for tree in \
+            examples/mixed-federation \
+            examples/mixed-federation-issues \
+            examples/nested-federation \
+            examples/compatibility/vite-nitro-react
+          do
+            test -d ".release-tooling/${tree}"
+            rm -rf "${tree}"
+            cp -a ".release-tooling/${tree}" "${tree}"
+          done
       - uses: ./.github/actions/setup-vp
         with:
           node-version: ${{ matrix.node-version }}
