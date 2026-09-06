@@ -102,6 +102,42 @@ describe("normalization", () => {
     ).toBeUndefined();
   });
 
+  it("preserves shared.layer and issuerLayer through normalize", () => {
+    const normalized = normalizeModuleFederation({
+      name: "host",
+      shared: {
+        react: {
+          singleton: true,
+          layer: "client",
+          issuerLayer: "ssr",
+        },
+        "react-dom": "^19.0.0",
+        lodash: { singleton: false },
+      },
+    });
+    expect(normalized?.shared.react).toMatchObject({
+      package: "react",
+      singleton: true,
+      layer: "client",
+      issuerLayer: "ssr",
+    });
+    expect(normalized?.shared["react-dom"]?.layer).toBeUndefined();
+    expect(normalized?.shared["react-dom"]?.issuerLayer).toBeUndefined();
+    expect(normalized?.shared.lodash?.layer).toBeUndefined();
+    expect(
+      normalizeModuleFederation({
+        name: "host",
+        shared: ["react"],
+      })?.shared.react?.layer,
+    ).toBeUndefined();
+    expect(
+      normalizeModuleFederation({
+        name: "host",
+        shared: { react: { layer: 1 as unknown as string } },
+      })?.shared.react?.layer,
+    ).toBeUndefined();
+  });
+
   it("preserves consumeTypes.remoteTypeUrls when it is an async function", () => {
     const normalized = normalizeModuleFederation({
       name: "host",

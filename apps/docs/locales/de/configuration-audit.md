@@ -19,6 +19,7 @@ Use it as a review checklist even when a rule does not yet automate the check.
 | `exposes`                       | Bad public key or missing source                   | Use `./Name` keys and exact paths                                                    |
 | `shared`                        | Duplicate frameworks or unsatisfied versions       | Align singleton, versions, scope, strictness, and fallback                           |
 | `shared[].packagePath`          | Wrong path redirects version/singleton resolution  | Point at an existing package directory or entry file                                 |
+| `shared[].layer` / `issuerLayer` | Webpack layer sharing isolates share pools; host/remote mismatch duplicates modules | Align `layer` and `issuerLayer` across webpack-family projects that declare them. Not checked automatically (SDK confirms the keys; public shared docs and Vite omit them — low confidence). |
 | `runtimePlugins`                | Missing plugin or unsafe recovery                  | Resolve every plugin and test each hook path                                         |
 | `getPublicPath`                 | Dynamic-code and asset-base risk                   | Keep the stringified function small, static, and reviewed                            |
 | `implementation`                | Runtime/plugin version skew                        | Resolve a compatible `runtime-tools` implementation                                  |

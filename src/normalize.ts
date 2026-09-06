@@ -238,6 +238,12 @@ export function normalizeModuleFederation(
         ...(typeof value === "object" && typeof value.packagePath === "string"
           ? { packagePath: value.packagePath }
           : {}),
+        ...(typeof value === "object" && typeof value.layer === "string"
+          ? { layer: value.layer }
+          : {}),
+        ...(typeof value === "object" && typeof value.issuerLayer === "string"
+          ? { issuerLayer: value.issuerLayer }
+          : {}),
         ...(typeof value === "object" && value.allowNodeModulesSuffixMatch !== undefined
           ? { allowNodeModulesSuffixMatch: value.allowNodeModulesSuffixMatch }
           : {}),

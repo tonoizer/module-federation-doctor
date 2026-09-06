@@ -73,6 +73,36 @@ describe("canonical config boundary", () => {
     expect(config?.extensions.some((field) => field.path.endsWith("/name"))).toBe(false);
   });
 
+  it("records unknown shared object keys and keeps confirmed layer fields known", () => {
+    const config = readCanonicalModuleFederationConfig({
+      shared: {
+        react: {
+          singleton: true,
+          layer: "client",
+          issuerLayer: "ssr",
+          packagePath: "./vendor/react",
+          customShareFlag: true,
+        },
+      },
+    });
+    expect(config?.declared.collections.shared[0]?.value.value).toEqual({
+      singleton: true,
+      layer: "client",
+      issuerLayer: "ssr",
+      packagePath: "./vendor/react",
+      customShareFlag: true,
+    });
+    expect(config?.extensions).toEqual([
+      {
+        path: "/shared/react/customShareFlag",
+        value: true,
+        reason: "extension",
+      },
+    ]);
+    expect(config?.extensions.some((field) => field.path.endsWith("/layer"))).toBe(false);
+    expect(config?.extensions.some((field) => field.path.endsWith("/issuerLayer"))).toBe(false);
+  });
+
   it("does not apply defaults and marks executable values opaque", () => {
     const config = readCanonicalModuleFederationConfig({
       shared: { react: {} },
