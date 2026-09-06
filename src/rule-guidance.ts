@@ -147,6 +147,13 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
       core,
     ],
   },
+  "config/copied-vite-options-on-webpack": {
+    category: "correctness",
+    impact:
+      "Vite-only Module Federation options pasted onto Enhanced / webpack-family configs (`virtualModuleDir`, `hostInitInjectLocation`, `bundleAllCSS`, `remoteHmr`, `varFilename`) are ignored, so a copied Vite config silently no-ops.",
+    fix: "Remove the listed Vite-only keys from webpack, Rspack, Rsbuild, or Modern.js federation options. They are `@module-federation/vite` controls and have no Enhanced equivalent.",
+    sources: [vite, core, configure],
+  },
   "config/share-scope-undeclared": {
     category: "correctness",
     impact:

@@ -58,6 +58,7 @@ and
 | `hostInitInjectLocation` | HTML-less/SSR app misses init                | Use `entry` when no usable HTML transform exists              |
 | parser timeouts          | Partial dependency discovery                 | Use an idle timeout for large active builds                   |
 | `varFilename`            | Sync script contract differs from ESM entry  | Load it through a synchronous script and test the global name |
+| `remoteHmr`              | Dev-only remote reload is Vite-plugin-only   | Keep on Vite hosts; ignored on Enhanced / webpack-family      |
 | `target`                 | Browser and Node output rules mix            | Set the real execution environment                            |
 | `ssrExternals`           | Server-only package gets bundled             | Externalize explicit Node-only dependencies                   |
 | direct capability flags  | Useful runtime feature is removed            | Match flags to actual remotes/shared/snapshot use             |
@@ -66,6 +67,11 @@ Vite source:
 [option normalizer](https://github.com/module-federation/vite/blob/321d7db8a4b2a1764b3a7cdc16246222d97231ac/src/utils/normalizeModuleFederationOptions.ts)
 and
 [plugin integration](https://github.com/module-federation/vite/blob/321d7db8a4b2a1764b3a7cdc16246222d97231ac/src/index.ts).
+
+Webpack, Rspack, Rsbuild, and Modern.js ignore Vite-only keys such as
+`virtualModuleDir`, `hostInitInjectLocation`, `bundleAllCSS`, `remoteHmr`,
+and `varFilename`. MFDoctor reports them as
+[`config/copied-vite-options-on-webpack`](./rules/config/copied-vite-options-on-webpack.md).
 
 ## Output verification
 

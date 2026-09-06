@@ -170,6 +170,7 @@ const EXPECTED_GROUP6_RULE_IDS = [
   "config/transform-import-share-conflict",
   "config/shared-externals-conflict",
   "config/copied-webpack-options-on-vite",
+  "config/copied-vite-options-on-webpack",
   "doctor/partial-analysis",
 ] as const;
 

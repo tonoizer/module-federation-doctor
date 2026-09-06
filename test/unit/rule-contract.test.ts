@@ -793,6 +793,7 @@ describe("evidence-aware rule contract", () => {
       "config/transform-import-share-conflict",
       "config/shared-externals-conflict",
       "config/copied-webpack-options-on-vite",
+      "config/copied-vite-options-on-webpack",
       "doctor/partial-analysis",
     ]);
     for (const id of [
@@ -856,6 +857,11 @@ describe("evidence-aware rule contract", () => {
         .find((entry) => entry.id === "config/alias-share-bypass")
         ?.applicability.bundlers?.map((item) => item.name),
     ).toEqual(["webpack", "rspack", "rsbuild"]);
+    expect(
+      ruleInventory
+        .find((entry) => entry.id === "config/copied-vite-options-on-webpack")
+        ?.applicability.bundlers?.map((item) => item.name),
+    ).toEqual(["rspack", "rsbuild", "webpack", "modern"]);
   });
 
   it("drives catalog supportedBundlers from inventory adapters", () => {
@@ -868,6 +874,12 @@ describe("evidence-aware rule contract", () => {
     expect(catalog.get("vite/remotes-prefer-module")?.supportedBundlers).toEqual(["vite"]);
     expect(catalog.get("config/copied-webpack-options-on-vite")?.supportedBundlers).toEqual([
       "vite",
+    ]);
+    expect(catalog.get("config/copied-vite-options-on-webpack")?.supportedBundlers).toEqual([
+      "rspack",
+      "rsbuild",
+      "webpack",
+      "modern",
     ]);
     expect(catalog.get("config/rsbuild-mf-api-generation")?.supportedBundlers).toEqual(["rsbuild"]);
     expect(catalog.get("config/shared-externals-conflict")?.supportedBundlers).toEqual([
