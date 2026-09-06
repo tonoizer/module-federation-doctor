@@ -1,0 +1,9 @@
+feature-id: baseline
+entry-point: node dist/cli.js baseline generate <report.json> --out <baseline.json>
+fixture-src: examples/showcase/config/remote-http-insecure
+generate-exit: 0
+update-exit: 0
+prune-missing-exit: 2
+schemaVersion: 1
+entry-count: 1
+rule-ids: ['config/remote-http-insecure']

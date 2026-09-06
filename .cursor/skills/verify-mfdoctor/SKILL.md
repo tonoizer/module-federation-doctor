@@ -1,6 +1,6 @@
 ---
 name: verify-mfdoctor
-description: Verify @tonoizer/mfdoctor the way a user does — CLI (mfdoctor) and post-emit build plugin. Use when proving check/workspace/capabilities/plugin-emit behavior, not the docs site or an HTML UI.
+description: Verify @tonoizer/mfdoctor the way a user does — CLI (mfdoctor) and post-emit build plugin. Use when proving check/workspace/federation/prompt/baseline/runtime/capabilities/plugin-emit behavior, not the docs site or an HTML UI.
 ---
 
 # Verify MFDoctor
@@ -81,7 +81,7 @@ Stable handles (prefer these; never coordinates or HTML selectors):
 
 | Handle         | Notes                                                                                               |
 | -------------- | --------------------------------------------------------------------------------------------------- |
-| Command names  | `capabilities`, `check`, `workspace`, `federation`, `rules`, …                                      |
+| Command names  | `capabilities`, `check`, `workspace`, `federation`, `prompt`, `baseline`, `runtime`, `rules`, …     |
 | Exit codes     | `0` pass, `1` policy fail, `2` incomplete / usage                                                   |
 | JSON keys      | `status`, `status.complete`, `status.incompleteReasons`, `findings`, `findings[].ruleId`, `summary` |
 | Artifact paths | `.mf/doctor/report.json`, `.mf/doctor/project.json`, `.mf/doctor/results.sarif`                     |
@@ -99,6 +99,18 @@ node dist/cli.js check <project> --ci --format terminal,json,sarif \
 
 # Cross-project gate after emits (or on fixtures/workspaces/* trees)
 node dist/cli.js workspace <root> --ci --format terminal,json
+
+# Explicit project.json globs (not workspace discovery)
+node dist/cli.js federation "<glob-to-project.json>" --ci --format json --output - --no-write
+
+# Agent fix prompt from a saved report (after check/emit wrote report.json)
+node dist/cli.js prompt --finding <ruleId|fingerprint> .mf/doctor/report.json
+
+# Fingerprint baseline from a saved report (temp copy; do not mute unless asked)
+node dist/cli.js baseline generate .mf/doctor/report.json --out mfdoctor.baseline.json
+
+# Offline Observability correlation (user-supplied trace; no network)
+node dist/cli.js runtime <trace.json> "<glob-to-project.json>" --format json --output - --no-write
 
 # Versioned contract
 node dist/cli.js capabilities

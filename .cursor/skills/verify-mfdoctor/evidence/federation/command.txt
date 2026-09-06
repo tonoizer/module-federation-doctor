@@ -1,0 +1,2 @@
+node dist/cli.js federation "examples/showcase/federation/version-conflict/*.project.json" --ci --format json --output - --no-write
+node dist/cli.js federation "examples/showcase/federation/version-conflict/*.does-not-exist.json" --ci --format json --output - --no-write

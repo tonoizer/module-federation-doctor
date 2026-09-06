@@ -1,0 +1,3 @@
+node dist/cli.js baseline generate <temp-report.json> --out <temp-baseline.json>
+node dist/cli.js baseline update <temp-report.json> --out <temp-baseline.json>
+node dist/cli.js baseline prune <temp-report.json> --out <missing-baseline.json>

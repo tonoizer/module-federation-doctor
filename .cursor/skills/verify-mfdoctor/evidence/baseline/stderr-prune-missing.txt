@@ -1,0 +1,1 @@
+No baseline file at /tmp/mfdoctor-verify-prompt-som13mpl/missing-baseline.json. Run baseline generate first.

@@ -63,6 +63,10 @@ handles, required state, commands, and observable proof.
 - [Capabilities](./capabilities.md) — versioned JSON CLI contract (no config, no network).
 - [Check](./check.md) — one-project offline analysis on a showcase/example fixture.
 - [Workspace](./workspace.md) — cross-project federation gate on nested examples or workspace fixtures.
+- [Federation glob](./federation.md) — explicit `project.json` globs (`mfdoctor federation` without `--workspace`).
+- [Prompt](./prompt.md) — offline fix prompts from a saved report (`mfdoctor prompt --finding`).
+- [Baseline](./baseline.md) — generate / update / prune fingerprint baselines (debt tracking, not a mute).
+- [Runtime](./runtime.md) — offline Observability trace correlation (`mfdoctor runtime`).
 - [Plugin emit](./plugin-emit.md) — build with `federationDoctor` and observe `.mf/doctor/project.json`.
 - [Rules](./rules.md) — built-in rule catalog via `mfdoctor rules`.
 
@@ -72,5 +76,4 @@ handles, required state, commands, and observable proof.
 - In-browser runtime agent
 - Docs site (`docs:dev`)
 - Network `probe` / `compare` (not default proof; network-required if added later)
-- `federation` without `--workspace` (explicit `project.json` globs) — same gate as workspace when using `--workspace`; covered by [Workspace](./workspace.md)
-- `prompt` / `baseline` / `runtime` — offline CLI exists (`apps/docs/docs/cli.md`); out of this skill’s default green-gate map (check → emit → workspace). Add a feature file only when proving those surfaces.
+- `federation --workspace` — same discovery + gate as [Workspace](./workspace.md); prove it there, not via [Federation glob](./federation.md)
