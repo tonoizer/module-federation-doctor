@@ -1,5 +1,5 @@
 import type { AnalysisBudgetTracker, AnalysisBudgetReport } from "./analysis-budgets.js";
-import type { EvidenceGraphV2, EvidenceSubject, EvidenceValue } from "./evidence.js";
+import type { EvidenceSubject } from "./evidence.js";
 import {
   evaluateFederationWorkspaceOracle,
   type FederationOracleFinding,
@@ -12,42 +12,31 @@ import {
   runEvidenceAwareRules,
   type EvidenceAwareRule,
   type EvidenceRuleContext,
-  type EvidenceRuleFinding,
-  type EvidenceRuleRunnerOutput,
   type EvidenceRuleScope,
   type RuleEvaluationResult,
 } from "./rule-contract.js";
 import type { DoctorFinding, RuleSetting } from "./types.js";
-import { fingerprint, redact } from "./utils.js";
+import { redact } from "./utils.js";
 import {
+  completeEvidenceRun,
   disabledRuleExecution,
-  graphEvaluationFor,
-  severityFor,
+  projectConclusiveFailures,
+  ruleOptionsFromSettings,
+  toEvidenceFinding,
+  type EvidenceProjectionRun,
 } from "./evidence-graph-projection.js";
 
 export type MigratedFederationEvidenceRuleId = (typeof MIGRATED_GROUP4_RULE_IDS)[number];
 
-function toEvidenceFinding(value: FederationOracleFinding): EvidenceRuleFinding {
-  const finding: EvidenceRuleFinding = {
-    message: value.message,
-    evidence: {
-      ...Object.fromEntries(
-        Object.entries(value.evidence).map(([key, item]) => [key, item as EvidenceValue]),
-      ),
-      project: value.project,
-    },
-    ...(value.detailsSchema ? { detailsSchema: value.detailsSchema } : {}),
-    ...(value.details
-      ? {
-          details: Object.fromEntries(
-            Object.entries(value.details).map(([key, item]) => [key, item as EvidenceValue]),
-          ),
-        }
-      : {}),
-  };
+function toOracleEvidenceFinding(value: FederationOracleFinding) {
   const suggestion = federationRuleMeta.find((meta) => meta.id === value.ruleId)?.fix;
-  if (suggestion) finding.suggestion = suggestion;
-  return finding;
+  return toEvidenceFinding({
+    message: value.message,
+    evidence: { ...value.evidence, project: value.project },
+    ...(suggestion ? { suggestion } : {}),
+    ...(value.detailsSchema ? { detailsSchema: value.detailsSchema } : {}),
+    ...(value.details ? { details: value.details } : {}),
+  });
 }
 
 function packageNameForSubject(subject: EvidenceSubject): string {
@@ -104,7 +93,7 @@ function federationEvidenceRule(id: MigratedFederationEvidenceRuleId): EvidenceA
       const oracleFindings =
         (context.options.oracleFindings as readonly FederationOracleFinding[] | undefined) ?? [];
       const findings = filterOracleFindingsForSubject(oracleFindings, id, context.subject).map(
-        toEvidenceFinding,
+        toOracleEvidenceFinding,
       );
       return findings.length > 0
         ? { outcome: "fail" as const, reason: findings[0]!.message, findings }
@@ -131,23 +120,7 @@ export interface FederationEvidenceBridgeInput {
   alwaysShared: ReadonlySet<string>;
 }
 
-export interface MigratedFederationEvidenceRun {
-  graph: EvidenceGraphV2;
-  output: EvidenceRuleRunnerOutput;
-}
-
-function ruleOptionsFor(
-  settings: Readonly<Record<string, RuleSetting>>,
-  oracleFindings: readonly FederationOracleFinding[],
-): Readonly<Record<string, Readonly<Record<string, unknown>>>> {
-  return Object.fromEntries(
-    migratedFederationEvidenceRules.map((rule) => {
-      const setting = settings[rule.meta.id];
-      const options = Array.isArray(setting) ? setting[1] : {};
-      return [rule.meta.id, { ...options, oracleFindings }];
-    }),
-  );
-}
+export type MigratedFederationEvidenceRun = EvidenceProjectionRun;
 
 export async function runMigratedFederationRules(
   input: FederationEvidenceBridgeInput,
@@ -203,13 +176,14 @@ export async function runMigratedFederationRules(
     rules,
     subjects: evaluationSubjectIds,
     scope,
-    ruleOptions: ruleOptionsFor(settings, oracleFindings),
+    ruleOptions: ruleOptionsFromSettings(
+      migratedFederationEvidenceRules,
+      settings,
+      (_rule, options) => ({ ...options, oracleFindings }),
+    ),
     ...(analysisBudget ? { analysisBudget } : {}),
   });
-  graph.evaluations = output.evaluations
-    .map((evaluation) => graphEvaluationFor(evaluation, graph.scope))
-    .sort((left, right) => left.id.localeCompare(right.id));
-  return { graph, output: { ...output, execution: [...disabled, ...output.execution] } };
+  return completeEvidenceRun(graph, output, graph.scope, disabled);
 }
 
 /** Project conclusive v2 federation failures into the existing V1 finding shape. */
@@ -219,53 +193,20 @@ export function projectMigratedFederationFailures(
   root: string,
 ): DoctorFinding[] {
   const rules = new Map(migratedFederationEvidenceRules.map((rule) => [rule.meta.id, rule]));
-  const findings: DoctorFinding[] = [];
-  const seenFingerprints = new Set<string>();
-  for (const evaluation of evaluations) {
-    if (evaluation.outcome !== "fail") continue;
-    const rule = rules.get(evaluation.rule.id);
-    if (!rule) continue;
-    const severity = severityFor(settings[evaluation.rule.id], rule.meta.defaultSeverity);
-    if (!severity) continue;
-    const fallbackFinding: EvidenceRuleFinding = {
-      message: evaluation.reason,
-      evidence: {},
-      ...(rule.meta.remediation.fix ? { suggestion: rule.meta.remediation.fix } : {}),
-    };
-    const projected: EvidenceRuleFinding[] = evaluation.findings ?? [fallbackFinding];
-    for (const finding of projected) {
-      const project =
-        typeof finding.evidence.project === "string" ? finding.evidence.project : "federation";
-      const location = finding.location
-        ? {
-            ...finding.location,
-            path: redact(finding.location.path, root) as string,
-          }
-        : undefined;
+  return projectConclusiveFailures({
+    evaluations,
+    rules,
+    settings,
+    root,
+    uniqueFingerprints: true,
+    projectFor: (_evaluation, finding) =>
+      redact(
+        typeof finding.evidence.project === "string" ? finding.evidence.project : "federation",
+        root,
+      ) as string,
+    evidenceFor: (_evaluation, finding) => {
       const { project: _project, ...evidence } = finding.evidence;
-      const base = {
-        schemaVersion: 1 as const,
-        ruleId: evaluation.rule.id,
-        severity,
-        message: redact(finding.message, root) as string,
-        project: redact(project, root) as string,
-        evidence: redact(evidence, root) as Record<string, unknown>,
-        documentation: rule.meta.remediation.documentation,
-        ...(location ? { location } : {}),
-        ...(finding.suggestion ? { suggestion: redact(finding.suggestion, root) as string } : {}),
-      };
-      findings.push({
-        ...base,
-        fingerprint: fingerprint(base),
-        ...(finding.detailsSchema ? { detailsSchema: finding.detailsSchema } : {}),
-        ...(finding.details
-          ? { details: redact(finding.details, root) as Record<string, unknown> }
-          : {}),
-      });
-      const projectedFingerprint = findings[findings.length - 1]!.fingerprint;
-      if (seenFingerprints.has(projectedFingerprint)) findings.pop();
-      else seenFingerprints.add(projectedFingerprint);
-    }
-  }
-  return findings;
+      return evidence;
+    },
+  });
 }
