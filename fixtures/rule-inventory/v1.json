@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 119,
-  "migratedCount": 119,
+  "ruleCount": 120,
+  "migratedCount": 120,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
