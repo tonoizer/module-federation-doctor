@@ -16,10 +16,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 async function catalogSources() {
   return {
     showcaseCatalogSource: await fs.readFile(path.join(root, "scripts/demo-showcase.mjs"), "utf8"),
-    emitCatalogSource: await fs.readFile(
-      path.join(root, "scripts/demo-standalone-findings.mjs"),
-      "utf8",
-    ),
+    emitCatalogSource: [
+      await fs.readFile(path.join(root, "scripts/demo-standalone-findings.mjs"), "utf8"),
+      await fs.readFile(path.join(root, "fixtures/adapters/cases.json"), "utf8"),
+    ].join("\n"),
   };
 }
 
@@ -41,6 +41,17 @@ describe("rule inventory demo coverage (BL-10)", () => {
     );
     expect(emitCatalogRuleIds(catalogs.emitCatalogSource)).toContain(
       "config/remote-manifest-recommended",
+    );
+    expect(
+      emitCatalogRuleIds(
+        await fs.readFile(path.join(root, "fixtures/adapters/cases.json"), "utf8"),
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        "config/remote-manifest-recommended",
+        "shared/eager-without-singleton",
+        "shared/version-unsatisfied",
+      ]),
     );
     expect(
       ruleInventory.find((entry) => entry.id === "config/remote-manifest-recommended")?.demo,
@@ -76,5 +87,6 @@ describe("rule inventory demo coverage (BL-10)", () => {
     expect(generator).toContain("demo: entry.demo");
     expect(generator).toContain("scripts/demo-showcase.mjs");
     expect(generator).toContain("scripts/demo-standalone-findings.mjs");
+    expect(generator).toContain("fixtures/adapters/cases.json");
   });
 });

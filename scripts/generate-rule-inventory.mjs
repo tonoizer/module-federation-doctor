@@ -45,10 +45,10 @@ try {
       path.join(repository, "scripts/demo-showcase.mjs"),
       "utf8",
     ),
-    emitCatalogSource: await fs.readFile(
-      path.join(repository, "scripts/demo-standalone-findings.mjs"),
-      "utf8",
-    ),
+    emitCatalogSource: [
+      await fs.readFile(path.join(repository, "scripts/demo-standalone-findings.mjs"), "utf8"),
+      await fs.readFile(path.join(repository, "fixtures/adapters/cases.json"), "utf8"),
+    ].join("\n"),
   });
 } catch (error) {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);

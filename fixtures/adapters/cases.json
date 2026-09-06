@@ -4,5 +4,42 @@
     "clean": { "expectedExitCode": 0, "expectedSeverity": null },
     "warning": { "expectedExitCode": 0, "expectedSeverity": "warning" },
     "error": { "expectedExitCode": 1, "expectedSeverity": "error" }
-  }
+  },
+  "emit": [
+    {
+      "bundler": "vite",
+      "filter": "@mfdoctor-standalone/vite",
+      "dir": "examples/standalone-findings/vite",
+      "ruleIds": [
+        "config/remote-http-insecure",
+        "config/remote-manifest-recommended",
+        "reliability/version-first-offline-remotes"
+      ]
+    },
+    {
+      "bundler": "webpack",
+      "filter": "@mfdoctor-standalone/webpack",
+      "dir": "examples/standalone-findings/webpack",
+      "ruleIds": ["shared/version-unsatisfied", "shared/singleton-risk"]
+    },
+    {
+      "bundler": "rspack",
+      "filter": "@mfdoctor-standalone/rspack",
+      "dir": "examples/standalone-findings/rspack",
+      "ruleIds": ["shared/version-unsatisfied", "shared/singleton-risk"]
+    },
+    {
+      "bundler": "rsbuild",
+      "filter": "@mfdoctor-standalone/rsbuild",
+      "dir": "examples/standalone-findings/rsbuild",
+      "ruleIds": ["shared/eager-without-singleton", "shared/singleton-risk"]
+    },
+    {
+      "bundler": "modern",
+      "filter": "@mfdoctor-standalone/modern",
+      "dir": "examples/standalone-findings/modern",
+      "ruleIds": ["shared/version-unsatisfied", "shared/singleton-risk"],
+      "incompleteReasons": ["partial-bundler"]
+    }
+  ]
 }

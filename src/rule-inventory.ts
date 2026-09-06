@@ -2188,7 +2188,7 @@ export interface InventoryDemoEntry {
 }
 
 const SHOWCASE_RULE_ID = /ruleId:\s*"([^"]+)"/g;
-const EMIT_RULE_IDS_BLOCK = /ruleIds:\s*\[([^\]]*)\]/g;
+const EMIT_RULE_IDS_BLOCK = /(?:ruleIds|"ruleIds")\s*:\s*\[([^\]]*)\]/g;
 
 function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort();

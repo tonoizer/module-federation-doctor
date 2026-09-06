@@ -7,44 +7,16 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const vitePlus = process.platform === "win32" ? "vp.cmd" : "vp";
 const vitePlusArgs = ["run"];
 
-/** @type {Array<{ label: string; filter: string; dir: string; ruleIds: string[]; bundler?: string }>} */
-const cells = [
-  {
-    label: "examples/standalone-findings/vite",
-    filter: "@mfdoctor-standalone/vite",
-    dir: "examples/standalone-findings/vite",
-    ruleIds: [
-      "config/remote-http-insecure",
-      "config/remote-manifest-recommended",
-      "reliability/version-first-offline-remotes",
-    ],
-  },
-  {
-    label: "examples/standalone-findings/webpack",
-    filter: "@mfdoctor-standalone/webpack",
-    dir: "examples/standalone-findings/webpack",
-    ruleIds: ["shared/version-unsatisfied", "shared/singleton-risk"],
-  },
-  {
-    label: "examples/standalone-findings/rspack",
-    filter: "@mfdoctor-standalone/rspack",
-    dir: "examples/standalone-findings/rspack",
-    ruleIds: ["shared/version-unsatisfied", "shared/singleton-risk"],
-  },
-  {
-    label: "examples/standalone-findings/rsbuild",
-    filter: "@mfdoctor-standalone/rsbuild",
-    dir: "examples/standalone-findings/rsbuild",
-    ruleIds: ["shared/eager-without-singleton", "shared/singleton-risk"],
-  },
-  {
-    label: "examples/standalone-findings/modern",
-    filter: "@mfdoctor-standalone/modern",
-    dir: "examples/standalone-findings/modern",
-    bundler: "modern",
-    ruleIds: ["shared/version-unsatisfied", "shared/singleton-risk"],
-  },
-];
+const adapterCases = JSON.parse(
+  fs.readFileSync(path.join(root, "fixtures/adapters/cases.json"), "utf8"),
+);
+
+/** @type {Array<{ filter: string; dir: string; bundler: string; ruleIds: string[]; incompleteReasons?: string[] }>} */
+const cells = adapterCases.emit ?? [];
+if (cells.length === 0) {
+  process.stdout.write("FAIL fixtures/adapters/cases.json missing emit cells\n");
+  process.exit(1);
+}
 
 function run(command, args) {
   const result = spawnSync(command, args, {
@@ -74,41 +46,41 @@ let failed = false;
 for (const cell of cells) {
   const build = run(vitePlus, [...vitePlusArgs, "--filter", cell.filter, "build"]);
   if (build.exitCode !== 0) {
-    process.stdout.write(`FAIL build ${cell.label}\n${build.output}`);
+    process.stdout.write(`FAIL build ${cell.dir}\n${build.output}`);
     failed = true;
     continue;
   }
-  process.stdout.write(`ok build ${cell.label}\n`);
+  process.stdout.write(`ok build ${cell.dir}\n`);
 
   const reportPath = path.join(root, cell.dir, ".mf/doctor/report.json");
   if (!fs.existsSync(reportPath)) {
-    process.stdout.write(`FAIL ${cell.label} missing ${reportPath}\n`);
+    process.stdout.write(`FAIL ${cell.dir} missing ${reportPath}\n`);
     failed = true;
     continue;
   }
   const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
   const findings = (report.findings ?? []).map((finding) => finding.ruleId);
-  if (!assertRules(cell.label, cell.ruleIds, findings)) failed = true;
+  if (!assertRules(cell.dir, cell.ruleIds, findings)) failed = true;
 
-  if (cell.bundler) {
-    const projectPath = path.join(root, cell.dir, ".mf/doctor/project.json");
-    if (!fs.existsSync(projectPath)) {
-      process.stdout.write(`FAIL ${cell.label} missing ${projectPath}\n`);
-      failed = true;
-      continue;
-    }
-    const project = JSON.parse(fs.readFileSync(projectPath, "utf8"));
-    const recorded = project.bundler?.name;
-    if (recorded !== cell.bundler) {
-      process.stdout.write(
-        `FAIL ${cell.label} bundler ${recorded ?? "(none)"} !== ${cell.bundler}\n`,
-      );
-      failed = true;
-    }
+  const projectPath = path.join(root, cell.dir, ".mf/doctor/project.json");
+  if (!fs.existsSync(projectPath)) {
+    process.stdout.write(`FAIL ${cell.dir} missing ${projectPath}\n`);
+    failed = true;
+    continue;
+  }
+  const project = JSON.parse(fs.readFileSync(projectPath, "utf8"));
+  const recorded = project.bundler?.name;
+  if (recorded !== cell.bundler) {
+    process.stdout.write(`FAIL ${cell.dir} bundler ${recorded ?? "(none)"} !== ${cell.bundler}\n`);
+    failed = true;
+  }
+  const expectedIncomplete = cell.incompleteReasons ?? [];
+  if (expectedIncomplete.length > 0) {
     const incomplete = report.status?.incompleteReasons ?? [];
-    if (!incomplete.includes("partial-bundler")) {
+    const missingIncomplete = expectedIncomplete.filter((reason) => !incomplete.includes(reason));
+    if (missingIncomplete.length > 0) {
       process.stdout.write(
-        `FAIL ${cell.label} missing incompleteReasons partial-bundler (${incomplete.join(", ") || "none"})\n`,
+        `FAIL ${cell.dir} missing incompleteReasons ${missingIncomplete.join(", ")} (${incomplete.join(", ") || "none"})\n`,
       );
       failed = true;
     }
