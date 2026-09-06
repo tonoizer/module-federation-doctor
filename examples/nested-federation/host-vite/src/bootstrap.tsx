@@ -1,5 +1,9 @@
-import { Suspense, lazy } from "react";
+import React from "react";
 import { createRoot } from "react-dom/client";
+
+// Vite 8/Rolldown cannot bind named ESM imports from MF's CJS react loadShare
+// virtual module. Take Suspense/lazy from the default CJS namespace instead.
+const { Suspense, lazy } = React;
 
 const VitePanel = lazy(() => import("viteRemote/Panel"));
 const RsbuildCard = lazy(() => import("rsbuildRemote/Card"));
