@@ -31,9 +31,10 @@ describe("adapter public exports", () => {
     expect(modern).not.toHaveProperty("doctor");
   });
 
-  it("leaves Nuxt compatibility aliases in place", () => {
-    expect(nuxt.nuxtDoctor).toBe(nuxt.moduleFederationDoctor);
-    expect(nuxt.federationDoctorNuxt).toBe(nuxt.moduleFederationDoctor);
+  it("exposes one Nuxt factory and default module", () => {
+    expect(typeof nuxt.createNuxtDoctorModule).toBe("function");
     expect(nuxt.default).toBe(nuxt.moduleFederationDoctor);
+    expect(nuxt).not.toHaveProperty("nuxtDoctor");
+    expect(nuxt).not.toHaveProperty("federationDoctorNuxt");
   });
 });

@@ -225,9 +225,14 @@ for (const identityFactoryExport of [
   );
 assert.equal(typeof vite.federationDoctor, "function");
 assert.equal(vite.doctor, undefined, "vite adapter must not export unused doctor alias");
+assert.equal(typeof nuxt.createNuxtDoctorModule, "function");
 assert.equal(typeof nuxt.moduleFederationDoctor.setup, "function");
-assert.equal(nuxt.nuxtDoctor, nuxt.moduleFederationDoctor);
-assert.equal(nuxt.federationDoctorNuxt, nuxt.moduleFederationDoctor);
+assert.equal(nuxt.nuxtDoctor, undefined, "nuxt adapter must not export unused nuxtDoctor alias");
+assert.equal(
+  nuxt.federationDoctorNuxt,
+  undefined,
+  "nuxt adapter must not export unused federationDoctorNuxt alias",
+);
 assert.equal(nuxt.default, nuxt.moduleFederationDoctor);
 assert.equal(typeof nuxt.default.setup, "function");
 assert.equal(typeof rspack.moduleFederationDoctorPlugin, "function");
