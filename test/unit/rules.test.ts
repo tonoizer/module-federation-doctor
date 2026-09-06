@@ -2389,6 +2389,43 @@ describe("doctor/partial-analysis suggestions", () => {
     expect(findings[0]?.suggestion).not.toBe("Pass explicit MF options.");
   });
 
+  it("keeps Vite remotes without manifest on the documented opt-in path", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = {
+      app1: {
+        name: "app1",
+        entry: "http://localhost:3001/remoteEntry.js",
+        shareScope: "default",
+      },
+    };
+    const findings = await runPartial(facts);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.suggestion).toMatch(/manifest:\s*true/);
+    expect(findings[0]?.suggestion).not.toMatch(/emit `mf-stats\.json` by default/);
+  });
+
+  it.each(["webpack", "rspack", "rsbuild"] as const)(
+    "explains %s remotes with missing stats instead of the Vite opt-in path",
+    async (bundler) => {
+      const facts = baseFacts();
+      facts.bundler.name = bundler;
+      facts.capabilities.emittedAssets = true;
+      facts.moduleFederation!.remotes = {
+        app1: {
+          name: "app1",
+          entry: "http://localhost:3001/remoteEntry.js",
+          shareScope: "default",
+        },
+      };
+      const findings = await runPartial(facts);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.suggestion).toMatch(/mf-stats\.json/);
+      expect(findings[0]?.suggestion).toMatch(/manifest !== false/);
+      expect(findings[0]?.suggestion).not.toMatch(/unless `manifest: true` is set/);
+      expect(findings[0]?.evidence?.missing).toEqual(expect.arrayContaining(["stats"]));
+    },
+  );
+
   it("keeps Pass explicit MF options when config capability is missing", async () => {
     const facts = baseFacts();
     facts.capabilities.config = false;

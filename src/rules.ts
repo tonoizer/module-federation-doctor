@@ -58,6 +58,7 @@ import {
 import { packageName as npmPackageName, publicExposeKeys } from "./normalize.js";
 import { findShareRewriteOverlaps } from "./share-rewrite.js";
 import { duplicateFederationInstanceGroups } from "./federation-instance.js";
+import { enhancedRemotesMissingStats } from "./run-status.js";
 import type {
   DoctorRule,
   NormalizedMFConfig,
@@ -2505,6 +2506,9 @@ export const builtInRules: DoctorRule[] = [
       (missing.includes("manifest") || missing.includes("stats"))
         ? "Vite/@module-federation/vite does not emit `mf-manifest.json` / `mf-stats.json` unless `manifest: true` is set. Enable `manifest: true` for those artifacts; webpack-style compilation `stats.json` is not expected on Vite."
         : undefined;
+    const enhancedStatsSuggestion = enhancedRemotesMissingStats(context.facts)
+      ? "Webpack/Rspack/Rsbuild emit `mf-stats.json` by default when `manifest !== false`. Remotes are configured but stats were not collected. Run the MFDoctor bundler adapter after emit so stats facts exist, or do not set `manifest: false`. Vite without `manifest: true` is a documented opt-in and is not this Enhanced path."
+      : undefined;
     report(
       context,
       sourceReadFailures.length > 0
@@ -2531,7 +2535,8 @@ export const builtInRules: DoctorRule[] = [
             ? "Pass explicit MF options."
             : missing.includes("outputPublicPath")
               ? "Expose public bundler `output.publicPath` (Rsbuild) or Vite MF `publicPath` on the resolved plugin config so MFDoctor can classify it."
-              : (viteArtifactSuggestion ??
+              : (enhancedStatsSuggestion ??
+                viteArtifactSuggestion ??
                 "Run MFDoctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
       findingDetails(FINDING_DETAILS_SCHEMAS.DOCTOR_PARTIAL_ANALYSIS, {
         missing,

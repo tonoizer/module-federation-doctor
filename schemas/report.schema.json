@@ -36,7 +36,13 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["missing-emit", "partial-bundler", "probe-skipped", "evidence-unknown"]
+            "enum": [
+              "missing-emit",
+              "missing-stats",
+              "partial-bundler",
+              "probe-skipped",
+              "evidence-unknown"
+            ]
           }
         }
       },

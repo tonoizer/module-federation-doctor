@@ -1,4 +1,4 @@
-import type { DoctorRunStatus, IncompleteReasonCode, ProjectFacts } from "./types.js";
+import type { BundlerName, DoctorRunStatus, IncompleteReasonCode, ProjectFacts } from "./types.js";
 import type { WorkspaceProjectDiagnostic } from "./workspace.js";
 
 /**
@@ -7,6 +7,7 @@ import type { WorkspaceProjectDiagnostic } from "./workspace.js";
  */
 export const INCOMPLETE_REASON_CODES = [
   "missing-emit",
+  "missing-stats",
   "partial-bundler",
   "probe-skipped",
   "evidence-unknown",
@@ -19,9 +20,45 @@ export interface ComputeRunStatusOptions {
   workspaceDiagnostics?: readonly WorkspaceProjectDiagnostic[];
 }
 
+/**
+ * Bundlers whose MF plugins emit `mf-stats.json` by default (`manifest !== false`).
+ * Vite / Rolldown / Vite Plus are documented opt-in and are not in this set.
+ */
+const ENHANCED_STATS_DEFAULT_ON = new Set<BundlerName>(["webpack", "rspack", "rsbuild", "modern"]);
+
 /** Empty complete status for hand-built reports and evidence projections. */
 export function emptyRunStatus(): DoctorRunStatus {
   return { complete: true, incompleteReasons: [] };
+}
+
+/** True for Webpack/Rspack/Rsbuild/Modern — stats emit by default. */
+function isEnhancedStatsDefaultOn(name: BundlerName): boolean {
+  return ENHANCED_STATS_DEFAULT_ON.has(name);
+}
+
+/** True when config or a federation instance declares at least one remote. */
+function projectHasConfiguredRemotes(project: ProjectFacts): boolean {
+  if (Object.keys(project.moduleFederation?.remotes ?? {}).length > 0) return true;
+  return (project.federationInstances ?? []).some(
+    (instance) => Object.keys(instance.moduleFederation.remotes).length > 0,
+  );
+}
+
+/**
+ * Enhanced family has remotes but `capabilities.stats` is false.
+ * Explicit `manifest: false` is `artifact/manifest-disabled` instead of this gap.
+ * Vite-family missing stats is documented opt-in — not this predicate.
+ */
+export function enhancedRemotesMissingStats(
+  project: ProjectFacts,
+  options: { requireEmit?: boolean } = {},
+): boolean {
+  if (!isEnhancedStatsDefaultOn(project.bundler.name)) return false;
+  if (project.capabilities.stats) return false;
+  if (options.requireEmit && !project.capabilities.emittedAssets) return false;
+  if (!projectHasConfiguredRemotes(project)) return false;
+  if (project.moduleFederation?.manifest?.enabled === false) return false;
+  return true;
 }
 
 /**
@@ -57,6 +94,7 @@ export function computeRunStatus(
 
   for (const project of projects) {
     if (!project.capabilities.emittedAssets) reasons.add("missing-emit");
+    if (enhancedRemotesMissingStats(project, { requireEmit: true })) reasons.add("missing-stats");
     if (isPartialBundler(project)) reasons.add("partial-bundler");
     if (hasEvidenceUnknown(project)) reasons.add("evidence-unknown");
   }

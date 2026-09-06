@@ -164,12 +164,13 @@ run was incomplete without scraping findings:
 - `status.incompleteReasons`: stable reason codes (sorted uniquely); empty when
   the run is complete
 
-| Code               | Meaning                                                                                                     |
-| ------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `missing-emit`     | No emitted-asset facts (`capabilities.emittedAssets` is false) — typically CLI check without a bundler emit |
-| `partial-bundler`  | Bundler cell is partial in the public matrix (`modern`, `unknown`, Rolldown/Vite Plus lifecycle)            |
-| `probe-skipped`    | Workspace group pre-probe could not classify one or more project files (`diagnostics.kind: probe`)          |
-| `evidence-unknown` | Source/budget evidence is partial or unknown (read failures, budget cutoff, unresolved dynamics)            |
+| Code               | Meaning                                                                                                                                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `missing-emit`     | No emitted-asset facts (`capabilities.emittedAssets` is false) — typically CLI check without a bundler emit                                                                                     |
+| `missing-stats`    | Enhanced emit with remotes but `capabilities.stats` is false. Explicit `manifest: false` uses `artifact/manifest-disabled`. Vite without `manifest: true` is opt-in and does not set this code. |
+| `partial-bundler`  | Bundler cell is partial in the public matrix (`modern`, `unknown`, Rolldown/Vite Plus lifecycle)                                                                                                |
+| `probe-skipped`    | Workspace group pre-probe could not classify one or more project files (`diagnostics.kind: probe`)                                                                                              |
+| `evidence-unknown` | Source/budget evidence is partial or unknown (read failures, budget cutoff, unresolved dynamics)                                                                                                |
 
 Current reporters always write `status`. Older reports may omit it. This field
 does not change rule evaluation, fingerprints, or exit codes.

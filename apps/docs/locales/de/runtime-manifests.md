@@ -58,6 +58,13 @@ stats exist.” Emit defaults differ by MF plugin family:
 **Explicit:** absence of webpack compilation `stats.json` on Vite / Rolldown /
 Vite Plus is **expected**. Do not treat it as a MFDoctor or adapter failure.
 
+Enhanced Webpack/Rspack/Rsbuild **builds** (emit collected) with remotes and
+`capabilities.stats: false` record `missing-stats` on
+`status.incompleteReasons`, or `artifact/manifest-disabled` when `manifest:
+false` is explicit. Vite without `manifest: true` stays the documented opt-in
+path — missing `mf-manifest.json` / `mf-stats.json` there is honest
+`doctor/partial-analysis` (enable `manifest: true`), not `missing-stats`.
+
 Related fixes (closed):
 
 - [#116](https://github.com/tonoizer/module-federation-doctor/issues/116) —
