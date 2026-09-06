@@ -1,13 +1,15 @@
 # Modern.js compatibility smoke
 
+**Warning — partial, not supported.** This example is a **Rspack stub**, not a
+full `@modern-js/app-tools` app. Do not treat a green `modern-smoke` / this tree
+as first-class Modern.js App Tools support. Matrix status stays **partial**
+(App Tools CI lockfile-blocked; upstream core-demo re-soak is #130).
+
 Exercises `@tonoizer/mfdoctor/modern` the way Modern.js registers plugins:
 `modifyBundlerChain` attaches the same post-emit MFDoctor hook used by direct
 Rspack. The smoke build uses `@rspack/core` + `@module-federation/enhanced/rspack`
 under the hood (what Modern.js does internally) so CI stays inside this
 repository's lockfile policy.
-
-This is **adapter API + Rspack-under-the-hood** evidence — enough for a
-**partial** matrix cell, not a full **supported** claim.
 
 A real `@modern-js/app-tools@3.8.2` + `@module-federation/modern-js-v3@2.8.2`
 CSR production emit (writes `remoteEntry.js`, `mf-manifest.json`,
