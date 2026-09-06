@@ -113,6 +113,8 @@ const DEFAULT_LIMITS: Required<CanonicalConfigLimits> = {
   maxStringBytes: 262_144,
 };
 const COLLECTIONS = new Set(["exposes", "remotes", "shared"]);
+/** Confirmed SDK `ExposesConfig` keys (module-federation/core@641a0b6). */
+const KNOWN_EXPOSE_CONFIG_KEYS = new Set(["import", "name"]);
 const KNOWN_FIELDS = new Set([
   "name",
   "filename",
@@ -765,6 +767,7 @@ export function readCanonicalModuleFederationConfig(
       reason: "extension",
     });
   }
+  for (const field of exposeUnknownFields(declared)) extensions.push(field);
   return {
     schemaVersion: 1,
     contract: contract(context),
@@ -773,6 +776,25 @@ export function readCanonicalModuleFederationConfig(
     diagnostics,
     extensions,
   };
+}
+
+function exposeUnknownFields(declared: CanonicalConfigSnapshot): CanonicalUnknownField[] {
+  const fields: CanonicalUnknownField[] = [];
+  for (const entry of declared.collections.exposes) {
+    if (entry.value.state !== "known") continue;
+    const value = entry.value.value;
+    if (value === null || typeof value !== "object" || Array.isArray(value)) continue;
+    for (const key of Object.keys(value).sort()) {
+      if (KNOWN_EXPOSE_CONFIG_KEYS.has(key)) continue;
+      const fieldValue = value[key];
+      fields.push({
+        path: `${entry.id}/${pointerSegment(safeKey(key))}`,
+        value: fieldValue === undefined ? null : fieldValue,
+        reason: "extension",
+      });
+    }
+  }
+  return fields;
 }
 
 function contract(context: CanonicalConfigContext): CanonicalMFConfigV1["contract"] {

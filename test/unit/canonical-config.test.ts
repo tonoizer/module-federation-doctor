@@ -40,6 +40,39 @@ describe("canonical config boundary", () => {
     expect(config?.diagnostics.some((diagnostic) => diagnostic.code === "cycle")).toBe(false);
   });
 
+  it("records unknown expose object keys as canonical unknown fields", () => {
+    const config = readCanonicalModuleFederationConfig({
+      exposes: {
+        "./Button": {
+          import: "./src/Button.tsx",
+          name: "button",
+          filter: { request: "./internal" },
+        },
+        Hidden: { dontExpose: true },
+      },
+    });
+    expect(config?.declared.collections.exposes.map((entry) => entry.key)).toEqual([
+      "./Button",
+      "Hidden",
+    ]);
+    expect(config?.extensions).toEqual(
+      expect.arrayContaining([
+        {
+          path: "/exposes/./Button/filter",
+          value: { request: "./internal" },
+          reason: "extension",
+        },
+        {
+          path: "/exposes/Hidden/dontExpose",
+          value: true,
+          reason: "extension",
+        },
+      ]),
+    );
+    expect(config?.extensions.some((field) => field.path.endsWith("/import"))).toBe(false);
+    expect(config?.extensions.some((field) => field.path.endsWith("/name"))).toBe(false);
+  });
+
   it("does not apply defaults and marks executable values opaque", () => {
     const config = readCanonicalModuleFederationConfig({
       shared: { react: {} },

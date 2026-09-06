@@ -208,6 +208,68 @@ describe("built-in rules", () => {
     );
   });
 
+  it("uses the public expose list for config/expose-key-invalid", async () => {
+    const root = await fixture();
+    await fs.writeFile(path.join(root, "src/Widget.ts"), "export default 1;\n");
+    const withImport = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "fixture",
+        exposes: {
+          Widget: { import: "./src/Widget.ts", filter: { request: "./secret" } },
+        },
+      },
+      rules: {
+        "config/plugin-package-mismatch": "off",
+        "doctor/partial-analysis": "off",
+      },
+    });
+    expect(withImport.report.findings.map((item) => item.ruleId)).toContain(
+      "config/expose-key-invalid",
+    );
+    expect(withImport.facts.canonicalConfig?.extensions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "/exposes/Widget/filter",
+          reason: "extension",
+        }),
+      ]),
+    );
+
+    const withoutImport = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "fixture",
+        exposes: {
+          Widget: { dontExpose: true },
+          "./Real": "./src/index.ts",
+        },
+      },
+      rules: {
+        "config/plugin-package-mismatch": "off",
+        "doctor/partial-analysis": "off",
+      },
+    });
+    expect(withoutImport.report.findings.map((item) => item.ruleId)).not.toContain(
+      "config/expose-key-invalid",
+    );
+    expect(Object.keys(withoutImport.facts.moduleFederation?.exposes ?? {})).toEqual(["./Real"]);
+    expect(withoutImport.facts.canonicalConfig?.extensions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "/exposes/Widget/dontExpose",
+          reason: "extension",
+        }),
+      ]),
+    );
+  });
+
   it("keeps function-valued MF options clone-safe for rule execution", async () => {
     const root = await fixture();
     const result = await analyze({

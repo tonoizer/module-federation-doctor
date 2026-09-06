@@ -53,7 +53,7 @@ import {
   findingDetails,
   type FindingDetailsAttachment,
 } from "./finding-details.js";
-import { packageName as npmPackageName } from "./normalize.js";
+import { packageName as npmPackageName, publicExposeKeys } from "./normalize.js";
 import { findShareRewriteOverlaps } from "./share-rewrite.js";
 import { duplicateFederationInstanceGroups } from "./federation-instance.js";
 import type {
@@ -977,7 +977,7 @@ export const builtInRules: DoctorRule[] = [
       report(context, "Module Federation config needs a non-empty name.", {}, "Set `name`.");
   }),
   createRule("config/expose-key-invalid", "error", (context) => {
-    for (const key of Object.keys(mf(context)?.exposes ?? {}))
+    for (const key of publicExposeKeys(mf(context)))
       if ((!key.startsWith("./") || key === "./") && key !== ".")
         report(context, `Expose key "${key}" must start with "./".`, { key });
   }),

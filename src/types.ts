@@ -200,13 +200,37 @@ export interface NormalizedToggle {
   options: Record<string, unknown>;
 }
 
+/**
+ * Object-form expose metadata. Confirmed SDK `ExposesConfig` keys are `import`
+ * and `name` (module-federation/core@641a0b6). Extra keys are preserved as
+ * unknown fields rather than treated as a documented don't-expose / filter API.
+ */
+export interface NormalizedExposeObject {
+  /** First confirmed `import` target when present. */
+  import?: string;
+  /** Custom chunk name (`ExposesConfig.name`), not the public expose key. */
+  name?: string;
+  /** Keys other than confirmed `import` / `name`. */
+  unknownFields?: Record<string, unknown>;
+}
+
 export interface NormalizedMFConfig {
   name?: string;
   filename?: string;
   library?: { type?: string; name?: unknown };
   remoteType?: string;
   shareScope?: string[];
+  /**
+   * Public expose map used by `config/expose-key-invalid` and other rules.
+   * Only confirmed `import` targets appear here. Unconfirmed extra keys stay
+   * on `exposeObjects` and canonical unknown fields.
+   */
   exposes: Record<string, string>;
+  /**
+   * Object-form expose entries that carried chunk names or unknown keys.
+   * Includes declared keys omitted from `exposes` when they had no `import`.
+   */
+  exposeObjects?: Record<string, NormalizedExposeObject>;
   remotes: Record<string, NormalizedRemote>;
   shared: Record<string, NormalizedShared>;
   runtimePlugins?: string[];
@@ -632,7 +656,7 @@ export interface ModuleFederationConfigLike {
   library?: { type?: string; name?: unknown };
   remoteType?: string;
   shareScope?: string | string[];
-  exposes?: Record<string, string | { import: string | string[] }>;
+  exposes?: Record<string, string | string[] | Record<string, unknown>>;
   remotes?: Record<
     string,
     | string

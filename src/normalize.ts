@@ -1,10 +1,26 @@
 import type {
   BundlerName,
   ModuleFederationConfigLike,
+  NormalizedExposeObject,
   NormalizedMFConfig,
   NormalizedRemote,
   NormalizedShared,
 } from "./types.js";
+
+/**
+ * Confirmed `ExposesConfig` keys from
+ * `module-federation/core@641a0b6` `packages/sdk/src/types/plugins/ModuleFederationPlugin.ts`
+ * and webpack `ExposesConfig`. Docs list `import` and optional chunk `name`.
+ * There is no documented don't-expose / filter field at that commit.
+ */
+export const KNOWN_EXPOSE_CONFIG_KEYS = new Set(["import", "name"]);
+
+/** Public expose keys after normalize (confirmed `import` targets only). */
+export function publicExposeKeys(
+  config: Pick<NormalizedMFConfig, "exposes"> | undefined,
+): string[] {
+  return Object.keys(config?.exposes ?? {});
+}
 
 export function packageName(specifier: string): string {
   if (specifier.startsWith("@")) return specifier.split("/").slice(0, 2).join("/");
@@ -44,6 +60,56 @@ function jsonSafeRecord(value: Record<string, unknown> | undefined): Record<stri
   return safe && typeof safe === "object" && !Array.isArray(safe)
     ? (safe as Record<string, unknown>)
     : {};
+}
+
+function firstString(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (typeof item === "string") return item;
+    }
+  }
+  return undefined;
+}
+
+function exposeImportTarget(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return firstString(value);
+  if (typeof value !== "object" || value === null) return undefined;
+  return firstString((value as Record<string, unknown>).import);
+}
+
+function exposeObjectMeta(value: Record<string, unknown>): NormalizedExposeObject | undefined {
+  const unknownFields: Record<string, unknown> = {};
+  for (const key of Object.keys(value).sort()) {
+    if (KNOWN_EXPOSE_CONFIG_KEYS.has(key)) continue;
+    const safe = jsonSafe(value[key]);
+    if (safe !== undefined) unknownFields[key] = safe;
+  }
+  const name = value.name;
+  const meta: NormalizedExposeObject = {};
+  const imported = firstString(value.import);
+  if (imported !== undefined) meta.import = imported;
+  if (typeof name === "string" && name) meta.name = name;
+  if (Object.keys(unknownFields).length > 0) meta.unknownFields = unknownFields;
+  return meta.name !== undefined || meta.unknownFields !== undefined ? meta : undefined;
+}
+
+function normalizeExposes(input: ModuleFederationConfigLike["exposes"]): {
+  exposes: Record<string, string>;
+  exposeObjects: Record<string, NormalizedExposeObject>;
+} {
+  const exposes: Record<string, string> = {};
+  const exposeObjects: Record<string, NormalizedExposeObject> = {};
+  for (const [key, value] of Object.entries(input ?? {}).sort(([a], [b]) => a.localeCompare(b))) {
+    const target = exposeImportTarget(value);
+    if (target !== undefined) exposes[key] = target;
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      const meta = exposeObjectMeta(value);
+      if (meta) exposeObjects[key] = meta;
+    }
+  }
+  return { exposes, exposeObjects };
 }
 
 function toggle(value: boolean | Record<string, unknown> | undefined, defaultEnabled: boolean) {
@@ -113,19 +179,7 @@ export function normalizeModuleFederation(
   options?: { bundler?: BundlerName | undefined },
 ): NormalizedMFConfig | undefined {
   if (!input) return undefined;
-  const exposes = Object.fromEntries(
-    Object.entries(input.exposes ?? {})
-      .map(([key, value]) => {
-        const target =
-          typeof value === "string"
-            ? value
-            : typeof value.import === "string"
-              ? value.import
-              : (value.import[0] ?? "");
-        return [key, target] as const;
-      })
-      .sort(([a], [b]) => a.localeCompare(b)),
-  );
+  const { exposes, exposeObjects } = normalizeExposes(input.exposes);
   const remotes: Record<string, NormalizedRemote> = {};
   for (const [name, value] of Object.entries(input.remotes ?? {}).sort(([a], [b]) =>
     a.localeCompare(b),
@@ -271,5 +325,6 @@ export function normalizeModuleFederation(
       bridge.enableBridgeRouter = input.bridge.enableBridgeRouter;
     normalized.bridge = bridge;
   }
+  if (Object.keys(exposeObjects).length > 0) normalized.exposeObjects = exposeObjects;
   return normalized;
 }

@@ -3,6 +3,7 @@ import {
   defaultManifestEnabled,
   normalizeModuleFederation,
   packageName,
+  publicExposeKeys,
 } from "../../src/normalize.js";
 import { builtInRules } from "../../src/rules.js";
 import type { DoctorFinding, ProjectFacts } from "../../src/types.js";
@@ -144,6 +145,47 @@ describe("normalization", () => {
         target: "node",
       },
     });
+  });
+
+  it("preserves confirmed expose chunk names and records unknown object keys", () => {
+    const normalized = normalizeModuleFederation({
+      name: "remote",
+      exposes: {
+        "./Button": {
+          import: "./src/Button.tsx",
+          name: "button",
+          filter: { request: "./internal" },
+        },
+        "./Plain": "./src/Plain.tsx",
+        Hidden: { dontExpose: true },
+      },
+    });
+    expect(normalized?.exposes).toEqual({
+      "./Button": "./src/Button.tsx",
+      "./Plain": "./src/Plain.tsx",
+    });
+    expect(publicExposeKeys(normalized)).toEqual(["./Button", "./Plain"]);
+    expect(normalized?.exposeObjects).toEqual({
+      "./Button": {
+        import: "./src/Button.tsx",
+        name: "button",
+        unknownFields: { filter: { request: "./internal" } },
+      },
+      Hidden: {
+        unknownFields: { dontExpose: true },
+      },
+    });
+  });
+
+  it("keeps unconfirmed extra keys on public exposes that still have import", () => {
+    const normalized = normalizeModuleFederation({
+      name: "remote",
+      exposes: {
+        Widget: { import: "./src/Widget.ts", filter: true },
+      },
+    });
+    expect(normalized?.exposes).toEqual({ Widget: "./src/Widget.ts" });
+    expect(publicExposeKeys(normalized)).toEqual(["Widget"]);
   });
 });
 
