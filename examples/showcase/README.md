@@ -30,6 +30,7 @@ failure—such as a missing `name`—stay in the catalog but are not demoed here
 | `config/remote-alias-prefix-collision`        | `config/remote-alias-prefix-collision`  | error                                               |
 | `config/dts-output-dir-mismatch`              | `config/dts-output-dir-mismatch`        | warning                                             |
 | `config/async-startup-rspack-version`         | `config/async-startup-rspack-version`   | warning (Rspack ≤ 1.7.4)                            |
+| `config/alias-share-bypass`                   | `config/alias-share-bypass`             | warning (webpack family `resolve.alias`)            |
 | `config/rsbuild-mf-api-generation`            | `config/rsbuild-mf-api-generation`      | error                                               |
 | `config/shared-externals-conflict`            | `config/shared-externals-conflict`      | warning                                             |
 

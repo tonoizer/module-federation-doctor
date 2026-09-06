@@ -96,6 +96,17 @@ export interface BundlerFacts {
    * Empty means observed with no extractable names (functions/regex skipped).
    */
   externals?: string[];
+  /**
+   * Static string `resolve.alias` object entries from webpack/rspack/rsbuild
+   * (plugin compiler options, or explicit DoctorOptions). Absent means unknown.
+   * Function aliases are never invoked — see `resolveAliasFunction`.
+   */
+  resolveAliases?: Record<string, string>;
+  /**
+   * True when public `resolve.alias` was a function (keys cannot be enumerated).
+   * Combined with missing `resolveAliases`, `config/alias-share-bypass` stays unknown.
+   */
+  resolveAliasFunction?: boolean;
 }
 
 /** Static Vite config slices collected for dialect rules (never invent when missing). */
@@ -826,6 +837,15 @@ export interface DoctorOptions {
    * are skipped. Omit when unknown; `config/shared-externals-conflict` skips.
    */
   externals?: string | Array<string | Record<string, unknown>> | Record<string, unknown>;
+  /**
+   * Static string `resolve.alias` object entries (webpack/rspack/rsbuild).
+   * Omit when unknown — `config/alias-share-bypass` skips rather than inventing keys.
+   */
+  resolveAliases?: Record<string, string>;
+  /**
+   * True when public `resolve.alias` was a function. Function aliases stay unknown.
+   */
+  resolveAliasFunction?: boolean;
   mode?: "development" | "ci";
   /**
    * Apply the built-in environment overlay after `extends` and before local
@@ -940,6 +960,10 @@ export interface ResolvedDoctorOptions {
   transformImportLibraries?: string[];
   /** Normalized public bundler externals names when provided by adapters/options. */
   externals?: string[];
+  /** Static string `resolve.alias` object entries when provided by adapters/options. */
+  resolveAliases?: Record<string, string>;
+  /** True when public `resolve.alias` was a function (keys cannot be enumerated). */
+  resolveAliasFunction?: boolean;
   mode: "development" | "ci";
   root: string;
   runtimeTrace?: string;

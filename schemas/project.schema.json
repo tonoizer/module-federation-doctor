@@ -113,6 +113,12 @@
         },
         "externals": {
           "$ref": "#/$defs/stringArray"
+        },
+        "resolveAliases": {
+          "$ref": "#/$defs/stringMap"
+        },
+        "resolveAliasFunction": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false

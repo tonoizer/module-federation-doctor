@@ -170,6 +170,17 @@ function sharedExternalsEvidenceInconclusive(context: EvidenceRuleContext): stri
   return undefined;
 }
 
+function aliasShareBypassEvidenceInconclusive(context: EvidenceRuleContext): string | undefined {
+  if (!context.facts) return undefined;
+  const bundler = context.facts.bundler.name;
+  if (bundler !== "webpack" && bundler !== "rspack" && bundler !== "rsbuild") return undefined;
+  if (context.facts.bundler.resolveAliasFunction === true && !context.facts.bundler.resolveAliases)
+    return "Public resolve.alias is a function; overlapping shared keys cannot be enumerated.";
+  if (context.facts.bundler.resolveAliases === undefined)
+    return "Public resolve.alias facts were not collected for this analysis.";
+  return undefined;
+}
+
 const GROUP6_INCONCLUSIVE: Partial<
   Record<
     (typeof MIGRATED_GROUP6_RULE_IDS)[number],
@@ -179,6 +190,7 @@ const GROUP6_INCONCLUSIVE: Partial<
   "vite/manual-chunks-conflict": vitePluginConfigEvidenceInconclusive,
   "vite/alias-share-bypass": vitePluginConfigEvidenceInconclusive,
   "vite/server-origin": viteServerOriginEvidenceInconclusive,
+  "config/alias-share-bypass": aliasShareBypassEvidenceInconclusive,
   "config/transform-import-share-conflict": transformImportEvidenceInconclusive,
   "config/shared-externals-conflict": sharedExternalsEvidenceInconclusive,
 };

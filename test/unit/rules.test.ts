@@ -1078,6 +1078,13 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/alias-share-bypass",
+      (facts: ProjectFacts) => {
+        facts.bundler.name = "webpack";
+        facts.bundler.resolveAliases = { react: "./src/shims/react.ts" };
+      },
+    ],
+    [
       "vite/server-origin",
       (facts: ProjectFacts) => {
         facts.bundler.viteConfig = { serverOrigin: null };
@@ -3457,6 +3464,142 @@ describe("config/shared-externals-conflict", () => {
   });
 });
 
+describe("config/alias-share-bypass", () => {
+  async function run(facts: ProjectFacts) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const selected = builtInRules.find((item) => item.meta.id === "config/alias-share-bypass")!;
+    await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  function base(bundler: ProjectFacts["bundler"]["name"]): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: bundler, mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {},
+        shared: {
+          react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+        },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  it.each(["webpack", "rspack", "rsbuild"] as const)(
+    "warns when %s resolve.alias overlaps shared",
+    async (bundler) => {
+      const facts = base(bundler);
+      facts.bundler.resolveAliases = { react: "./src/shims/react.ts" };
+      expect(await run(facts)).not.toHaveLength(0);
+    },
+  );
+
+  it("leaves the Vite sibling unchanged and stays quiet on Vite", async () => {
+    const webpack = base("webpack");
+    webpack.bundler.viteConfig = { resolveAliases: { react: "./src/shims/react.ts" } };
+    expect(await run(webpack)).toHaveLength(0);
+
+    const vite = base("vite");
+    vite.bundler.resolveAliases = { react: "./src/shims/react.ts" };
+    expect(await run(vite)).toHaveLength(0);
+  });
+
+  it("stays silent without overlap, without facts, and for function aliases", async () => {
+    const noOverlap = base("webpack");
+    noOverlap.bundler.resolveAliases = { lodash: "./src/shims/lodash.ts" };
+    expect(await run(noOverlap)).toHaveLength(0);
+
+    const missing = base("rspack");
+    expect(await run(missing)).toHaveLength(0);
+
+    const fn = base("rsbuild");
+    fn.bundler.resolveAliasFunction = true;
+    expect(await run(fn)).toHaveLength(0);
+  });
+
+  it.each(["webpack", "rspack", "rsbuild"] as const)(
+    "flags CLI resolveAliases on %s via analyze()",
+    async (bundler) => {
+      const root = await fixture();
+      const result = await analyze({
+        root,
+        bundler,
+        mode: "ci",
+        resolveAliases: { react: "./src/shims/react.ts" },
+        moduleFederation: {
+          name: "host",
+          filename: "remoteEntry.js",
+          shared: { react: { singleton: true } },
+        },
+        output: { formats: [] },
+        rules: {
+          "doctor/partial-analysis": "off",
+          "config/plugin-package-mismatch": "off",
+          "artifact/remote-entry-missing": "off",
+          "artifact/types-missing": "off",
+          "artifact/types-metadata-missing": "off",
+          "artifact/manifest-disabled": "off",
+        },
+      });
+      expect(result.report.findings.map((item) => item.ruleId)).toContain(
+        "config/alias-share-bypass",
+      );
+    },
+  );
+
+  it("does not flag Vite through CLI resolveAliases (vite/alias-share-bypass stays on viteConfig)", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "ci",
+      resolveAliases: { react: "./src/shims/react.ts" },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        shared: { react: { singleton: true } },
+      },
+      output: { formats: [] },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+        "artifact/remote-entry-missing": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+        "artifact/manifest-disabled": "off",
+        "vite/alias-share-bypass": "warning",
+      },
+    });
+    const ids = result.report.findings.map((item) => item.ruleId);
+    expect(ids).not.toContain("config/alias-share-bypass");
+    expect(ids).not.toContain("vite/alias-share-bypass");
+  });
+});
+
 describe("Group 6 evidence bridge", () => {
   async function runMigrated(
     facts: ProjectFacts,
@@ -3566,6 +3709,37 @@ describe("Group 6 evidence bridge", () => {
         (evaluation) => evaluation.rule.id === "config/shared-externals-conflict",
       ),
     ).toMatchObject({ outcome: "fail", completeness: "complete" });
+  });
+
+  it("returns unknown for webpack-family function aliases and absent resolve.alias facts", async () => {
+    const { runMigratedEvidenceRules } = await import("../../src/evidence-rule-bridge.js");
+    const missing = viteFacts({ bundler: { name: "webpack", mode: "ci" } });
+    const missingRun = await runMigratedEvidenceRules(missing, {});
+    expect(
+      missingRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/alias-share-bypass",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
+
+    const fnFacts = viteFacts({
+      bundler: { name: "rsbuild", mode: "ci", resolveAliasFunction: true },
+    });
+    const fnRun = await runMigratedEvidenceRules(fnFacts, {});
+    expect(
+      fnRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/alias-share-bypass",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
+
+    const overlap = viteFacts({
+      bundler: { name: "rspack", mode: "ci", resolveAliases: { react: "./src/shims/react.ts" } },
+    });
+    const overlapRun = await runMigratedEvidenceRules(overlap, {});
+    expect(
+      overlapRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/alias-share-bypass",
+      ),
+    ).toMatchObject({ outcome: "fail" });
   });
 
   it("evaluates SSR Vite rules without adapter builds evidence", async () => {

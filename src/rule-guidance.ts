@@ -413,6 +413,18 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Remove the overlapping alias, drop the package from shared, or allowlist intentional bypasses.",
     sources: [vite, shared],
   },
+  "config/alias-share-bypass": {
+    category: "correctness",
+    impact:
+      "Webpack/Rspack/Rsbuild resolve.alias can rewrite imports around the share scope and duplicate singleton packages.",
+    fix: "Remove the overlapping alias, drop the package from shared, or allowlist intentional bypasses via `allowPackages`. Function aliases stay unknown.",
+    sources: [
+      shared,
+      "https://webpack.js.org/configuration/resolve/#resolvealias",
+      "https://rspack.rs/config/resolve#resolvealias",
+      "https://rsbuild.rs/config/resolve/alias",
+    ],
+  },
   "vite/server-origin": {
     category: "reliability",
     impact:

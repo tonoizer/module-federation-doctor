@@ -1685,6 +1685,8 @@ export async function collectProjectFacts(
         ? { transformImportLibraries: options.transformImportLibraries }
         : {}),
       ...(options.externals !== undefined ? { externals: options.externals } : {}),
+      ...(options.resolveAliases !== undefined ? { resolveAliases: options.resolveAliases } : {}),
+      ...(options.resolveAliasFunction ? { resolveAliasFunction: true } : {}),
     },
     capabilities: {
       config: options.moduleFederation !== undefined || descriptors.length > 0,
@@ -1770,6 +1772,8 @@ export interface BuildDiagnostics {
   /** Public bundler externals names when the adapter observed compiler/config. */
   externals?: string[];
   outputFilename?: string;
+  resolveAliases?: Record<string, string>;
+  resolveAliasFunction?: boolean;
 }
 
 function buildOutputOrderKey(output: BuildOutputInput): string {
@@ -2028,6 +2032,9 @@ export async function addBuildFacts(
     facts.bundler.outputPublicPathKind = diagnostics.outputPublicPathKind;
   if (diagnostics?.externals !== undefined) facts.bundler.externals = diagnostics.externals;
   if (diagnostics?.outputFilename) facts.bundler.outputFilename = diagnostics.outputFilename;
+  if (diagnostics?.resolveAliases !== undefined)
+    facts.bundler.resolveAliases = diagnostics.resolveAliases;
+  if (diagnostics?.resolveAliasFunction) facts.bundler.resolveAliasFunction = true;
   if (outputs) {
     const orderedOutputs = orderBuildOutputs(outputs);
     const builds = orderedOutputs.map((output, index) =>
