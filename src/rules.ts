@@ -249,6 +249,13 @@ function manifestExplicitlyDisabled(context: RuleContext): boolean {
   return true;
 }
 
+/** Vite/Rsbuild adapter emit without a public publicPath surface. */
+function viteOrRsbuildPublicPathUnobserved(facts: ProjectFacts): boolean {
+  if (facts.bundler.outputPublicPathKind !== undefined) return false;
+  if (facts.bundler.name !== "vite" && facts.bundler.name !== "rsbuild") return false;
+  return (facts.builds?.length ?? 0) > 0;
+}
+
 function hasFederatedSurface(config: NormalizedMFConfig): boolean {
   return Object.keys(config.exposes).length > 0 || Object.keys(config.remotes).length > 0;
 }
@@ -2049,6 +2056,7 @@ export const builtInRules: DoctorRule[] = [
       .map(([name]) => name)
       .sort();
     if (!mf(context)) missing.push("moduleFederation");
+    if (viteOrRsbuildPublicPathUnobserved(context.facts)) missing.push("outputPublicPath");
     const unresolvedDynamic = context.facts.imports.unresolvedDynamic ?? [];
     const sourceReadFailures = context.facts.imports.sourceReadFailures ?? [];
     const budget = context.facts.analysis;
@@ -2095,8 +2103,10 @@ export const builtInRules: DoctorRule[] = [
           ? "Prefer string-literal `import()` / `loadRemote` / `loadShare`, or pass an opt-in Observability export via `runtimeTrace` / `mfdoctor runtime`."
           : configMissing
             ? "Pass explicit MF options."
-            : (viteArtifactSuggestion ??
-              "Run MFDoctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
+            : missing.includes("outputPublicPath")
+              ? "Expose public bundler `output.publicPath` (Rsbuild) or Vite MF `publicPath` on the resolved plugin config so MFDoctor can classify it."
+              : (viteArtifactSuggestion ??
+                "Run MFDoctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
       findingDetails(FINDING_DETAILS_SCHEMAS.DOCTOR_PARTIAL_ANALYSIS, {
         missing,
         ...(unresolvedDynamic.length > 0

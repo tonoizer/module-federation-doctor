@@ -2078,6 +2078,60 @@ describe("doctor/partial-analysis suggestions", () => {
     expect(findings[0]?.evidence).toMatchObject({ sourceReadFailures: ["src/unreadable.ts"] });
   });
 
+  it("records unobserved Vite/Rsbuild publicPath after adapter emit", async () => {
+    const facts = baseFacts();
+    facts.capabilities.manifest = true;
+    facts.capabilities.stats = true;
+    facts.capabilities.emittedAssets = true;
+    facts.builds = [
+      {
+        id: "build-0",
+        adapter: "vite",
+        bundler: "vite",
+        emittedAssets: ["dist/remoteEntry.js"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "unavailable", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "unavailable", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+      },
+    ];
+    const findings = await runPartial(facts);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.evidence?.missing).toEqual(["outputPublicPath"]);
+    expect(findings[0]?.suggestion).toMatch(/publicPath/);
+  });
+
+  it("does not treat a recorded publicPath kind as incomplete", async () => {
+    const facts = baseFacts();
+    facts.capabilities.manifest = true;
+    facts.capabilities.stats = true;
+    facts.capabilities.emittedAssets = true;
+    facts.bundler.outputPublicPathKind = "unknown";
+    facts.builds = [
+      {
+        id: "build-0",
+        adapter: "vite",
+        bundler: "vite",
+        emittedAssets: ["dist/remoteEntry.js"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "unavailable", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "unavailable", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+      },
+    ];
+    expect(await runPartial(facts)).toHaveLength(0);
+  });
+
   it.each(["unknown", "partial"] as const)(
     "reports %s analysis status even when no budget limit is listed",
     async (status) => {
