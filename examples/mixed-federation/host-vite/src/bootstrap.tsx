@@ -1,5 +1,10 @@
-import { Suspense, lazy } from "react";
+import React from "react";
 import { createRoot } from "react-dom/client";
+
+// Vite 8/Rolldown does not honor syntheticNamedExports on MF's CJS react
+// loadShare module, so `import { Suspense, lazy } from "react"` fails with
+// MISSING_EXPORT. Read those members from the default CJS namespace instead.
+const { Suspense, lazy } = React;
 
 const RspackCard = lazy(() => import("rspackRemote/Card"));
 const RsbuildCard = lazy(() => import("rsbuildRemote/Card"));
