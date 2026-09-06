@@ -65,6 +65,17 @@ seeds `viteConfigFacts.resolveAliases` the way a plugin `configResolved` snapsho
 | `vite/copied-webpack-options-on-vite` | `config/copied-webpack-options-on-vite` | warning  |
 | `vite/alias-share-bypass`             | `vite/alias-share-bypass`               | warning  |
 
+## Bridge
+
+CLI/config-only Bridge fixtures (not full Bridge apps). React detection uses
+`runtimePlugins` + `bridge.enableBridgeRouter`; Vue detection uses a source import
+of `@module-federation/bridge-vue3`.
+
+| Directory                   | Expected rule               | Severity |
+| --------------------------- | --------------------------- | -------- |
+| `bridge/export-app-missing` | `bridge/export-app-missing` | warning  |
+| `bridge/vue-share-missing`  | `bridge/vue-share-missing`  | error    |
+
 ## Federation
 
 Committed `.project.json` facts for `mfdoctor federation`:
