@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import baseline from "../../benchmarks/analysis-cost-baseline.json";
-import { AnalysisContentCache, analysisCacheKey, contentDigest } from "../../src/analysis-cache.js";
+import type { AnalysisCacheOptions } from "../../src/index.js";
+import {
+  AnalysisContentCache,
+  DEFAULT_ANALYSIS_CACHE_OPTIONS,
+  analysisCacheKey,
+  contentDigest,
+} from "../../src/analysis-cache.js";
 
 describe("analysis content cache", () => {
   it("defines all six budget dimensions for every benchmark fixture", () => {
@@ -43,6 +49,20 @@ describe("analysis content cache", () => {
     expect(cache.set("second", { parsed: true }, 4)).toBe(true);
     expect(cache.get("first")).toBeUndefined();
     expect(cache.stats).toMatchObject({ hits: 1, misses: 2, entries: 1, bytes: 4 });
+  });
+
+  it("applies the internal default bounds when options are omitted", () => {
+    const cache = new AnalysisContentCache();
+    const defaults: AnalysisCacheOptions = DEFAULT_ANALYSIS_CACHE_OPTIONS;
+    expect(cache.stats).toMatchObject({
+      maxEntries: defaults.maxEntries,
+      maxBytes: defaults.maxBytes,
+    });
+  });
+
+  it("is not re-exported from the public root entry", async () => {
+    const root = await import("../../src/index.js");
+    expect(root).not.toHaveProperty("DEFAULT_ANALYSIS_CACHE_OPTIONS");
   });
 
   it("isolates cached parsed values and rejects unsafe values", () => {
