@@ -1976,6 +1976,9 @@ export const builtInRules: DoctorRule[] = [
     );
   }),
   createRule("vite/host-init-inject-ssr", "error", (context) => {
+    // Vite-only public option (`hostInitInjectLocation`). Rsbuild/Modern SSR
+    // hosts inject bootstrap through different public APIs; skip instead of
+    // inventing a sibling finding without a documented option and fixture.
     if (context.facts.bundler.name !== "vite") return;
     const config = mf(context);
     if (!config) return;

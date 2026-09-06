@@ -75,6 +75,30 @@ MF `runtimePlugins` declared in bundler MF config **are** first-class: MFDoctor
 reads them from the shared `mfOptions` object at build time. That is not the
 same as analyzing a runtime-only host.
 
+## SSR host-init inject (Vite-only)
+
+[`vite/host-init-inject-ssr`](./rules/vite/host-init-inject-ssr.md) is a Vite
+dialect check. It reads `@module-federation/vite`'s public
+`hostInitInjectLocation` option and requires `entry` when SSR signals are
+present on a host with remotes. HTML injection never runs on the server, so
+federation bootstrap would otherwise be skipped. See
+[Vite integration](./vite-integration.md#vite-only-options).
+
+Rsbuild and Modern.js SSR hosts inject federation bootstrap through **different
+public APIs**. They do not have Vite's HTML-vs-entry switch:
+
+| Bundler                                              | Public SSR inject surface MFDoctor uses today                                            | Host-init analogue of `hostInitInjectLocation`                                                                                      |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Vite (including Nuxt / Rolldown Vite-under-the-hood) | `hostInitInjectLocation` (`html` vs `entry`)                                             | [`vite/host-init-inject-ssr`](./rules/vite/host-init-inject-ssr.md)                                                                 |
+| Rsbuild                                              | `pluginModuleFederation` second argument (`target` / `environment` / `ssrDir`)           | None. Wrong placement is [`config/rsbuild-mf-api-generation`](./rules/config/rsbuild-mf-api-generation.md), not a host-init sibling |
+| Modern.js                                            | `@module-federation/modern-js` SSR plugin (partial adapter; Rspack-under-the-hood smoke) | None until a documented public option and failing fixture exist                                                                     |
+| Webpack / Rspack (Enhanced)                          | No Vite HTML/entry inject switch                                                         | Copied Vite keys → [`config/copied-vite-options-on-webpack`](./rules/config/copied-vite-options-on-webpack.md)                      |
+
+MFDoctor **skips** `vite/host-init-inject-ssr` on non-Vite bundlers. That skip
+is intentional, not [`doctor/partial-analysis`](./rules/doctor/partial-analysis.md).
+Do not invent an Rsbuild or Modern.js finding for a missing
+`hostInitInjectLocation`. A follow-up rule needs a public option plus a fixture.
+
 ## Permanent guarantees / non-goals
 
 MFDoctor does not rely on undocumented private Module Federation plugin fields.

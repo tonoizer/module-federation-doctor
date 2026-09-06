@@ -3589,6 +3589,24 @@ describe("vite SSR inject dialect", () => {
     expect(await run("vite/host-init-inject-ssr", browser)).toHaveLength(0);
   });
 
+  it.each(["rsbuild", "modern", "webpack", "rspack"] as const)(
+    "skips host-init inject on %s even when SSR signals exist",
+    async (bundler) => {
+      const facts = baseFacts();
+      facts.bundler.name = bundler;
+      facts.moduleFederation!.remotes = {
+        catalog: {
+          name: "catalog",
+          entry: "https://example.test/mf-manifest.json",
+          shareScope: "default",
+        },
+      };
+      facts.moduleFederation!.vite!.target = "node";
+      delete facts.moduleFederation!.vite!.hostInitInjectLocation;
+      expect(await run("vite/host-init-inject-ssr", facts)).toHaveLength(0);
+    },
+  );
+
   it("warns when Nitro shared React overlaps ssrExternals and skips without facts", async () => {
     const facts = baseFacts();
     facts.dependencies.declared.nitropack = "^2";
