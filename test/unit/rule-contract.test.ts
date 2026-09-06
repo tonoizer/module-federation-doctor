@@ -851,7 +851,6 @@ describe("evidence-aware rule contract", () => {
     ).toEqual(["rspack", "rsbuild", "webpack", "modern"]);
   });
 
-
   it("drives catalog supportedBundlers from inventory adapters", () => {
     const catalog = new Map(ruleCatalog().map((rule) => [rule.id, rule]));
     expect([...catalog.keys()].sort()).toEqual([...ruleInventoryIds].sort());
@@ -877,7 +876,6 @@ describe("evidence-aware rule contract", () => {
       "modern",
     ]);
   });
-
 
   it("keeps declared reads aligned with the current built-in rule source", () => {
     const source = fs.readFileSync(new URL("../../src/rules.ts", import.meta.url), "utf8");

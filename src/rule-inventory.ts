@@ -208,7 +208,6 @@ const demoByRule = {
   "config/filename-invalid": "showcase",
   "config/hashed-remote-filename": "showcase",
   "config/get-public-path-invalid": "unit",
-
   "config/get-public-path-unused": "unit",
   "config/implementation-suspicious": "unit",
   "config/library-remote-type-mismatch": "unit",
@@ -257,7 +256,6 @@ const demoByRule = {
   "vite/alias-share-bypass": "showcase",
   "vite/server-origin": "unit",
   "config/transform-import-share-conflict": "unit",
-  "config/shared-externals-conflict": "showcase",
   "runtime/error-correlated": "unit",
   "runtime/init-failed": "unit",
   "runtime/remote-load-failed": "unit",
