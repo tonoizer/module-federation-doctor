@@ -102,8 +102,10 @@ jobs:
           # Overlay them from main so Verify can pick up runtime-smoke fixes
           # without rewriting an immutable release tag.
           test -f .release-tooling/scripts/pack-check.mjs
+          test -f .release-tooling/scripts/giga-smoke.mjs
           test -f .release-tooling/test/e2e/mixed-federation.spec.ts
           cp .release-tooling/scripts/pack-check.mjs scripts/pack-check.mjs
+          cp .release-tooling/scripts/giga-smoke.mjs scripts/giga-smoke.mjs
           cp .release-tooling/test/e2e/mixed-federation.spec.ts test/e2e/mixed-federation.spec.ts
           for tree in \
             examples/mixed-federation \
@@ -114,6 +116,18 @@ jobs:
             test -d ".release-tooling/${tree}"
             rm -rf "${tree}"
             cp -a ".release-tooling/${tree}" "${tree}"
+          done
+          grep -q reactFromLoadShare examples/mixed-federation/host-vite/src/bootstrap.tsx
+          grep -q '"react/"' examples/mixed-federation/host-vite/vite.config.ts
+          for dir in \
+            examples/mixed-federation/host-vite \
+            examples/mixed-federation/remote-rspack \
+            examples/mixed-federation/remote-rsbuild \
+            examples/mixed-federation-issues/host-vite \
+            examples/mixed-federation-issues/remote-rspack \
+            examples/mixed-federation-issues/remote-rsbuild
+          do
+            rm -rf "${dir}/dist" "${dir}/.mf" "${dir}/node_modules/.vite"
           done
       - uses: ./.github/actions/setup-vp
         with:

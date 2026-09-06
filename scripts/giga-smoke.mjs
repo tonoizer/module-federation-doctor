@@ -76,6 +76,27 @@ process.stdout.write(
   `ok provenance ${provenance.upstreamSources.length} upstream surfaces mirrored\n`,
 );
 
+function cleanExampleBuild(relativeDirs) {
+  for (const dir of relativeDirs) {
+    for (const artifact of ["dist", ".mf"]) {
+      fs.rmSync(path.join(root, dir, artifact), { recursive: true, force: true });
+    }
+    fs.rmSync(path.join(root, dir, "node_modules", ".vite"), { recursive: true, force: true });
+  }
+}
+
+// Earlier `vp run check` steps can build these fixtures without the runtime-smoke
+// fixes that Verify overlays from main. Drop stale dist/cache so Playwright always
+// exercises a fresh production build.
+cleanExampleBuild([
+  "examples/mixed-federation/host-vite",
+  "examples/mixed-federation/remote-rspack",
+  "examples/mixed-federation/remote-rsbuild",
+  "examples/mixed-federation-issues/host-vite",
+  "examples/mixed-federation-issues/remote-rspack",
+  "examples/mixed-federation-issues/remote-rsbuild",
+]);
+
 runRequired("production build: mixed green", vitePlus, [
   ...vitePlusArgs,
   "--filter",
