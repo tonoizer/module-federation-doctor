@@ -116,6 +116,7 @@ export function createAnalysisCacheIdentity(
     | "viteLifecycle"
     | "viteConfigFacts"
     | "transformImportLibraries"
+    | "externals"
     | "recognizeMfToolkit"
     | "artifactNames"
     | "include"
@@ -134,6 +135,7 @@ export function createAnalysisCacheIdentity(
     viteLifecycle: options.viteLifecycle ?? null,
     viteConfigFacts: options.viteConfigFacts ?? null,
     transformImportLibraries: options.transformImportLibraries ?? null,
+    externals: options.externals ?? null,
     recognizeMfToolkit: options.recognizeMfToolkit ?? null,
     artifactNames: options.artifactNames,
     include: options.include,

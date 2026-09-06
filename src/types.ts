@@ -85,6 +85,12 @@ export interface BundlerFacts {
    * Absent means unknown (honest skip for conflict rules).
    */
   transformImportLibraries?: string[];
+  /**
+   * Package names from public bundler `externals` (string / array / object keys).
+   * Absent means unobserved (CLI without `externals` and without an adapter).
+   * Empty means observed with no extractable names (functions/regex skipped).
+   */
+  externals?: string[];
 }
 
 /** Static Vite config slices collected for dialect rules (never invent when missing). */
@@ -802,6 +808,12 @@ export interface DoctorOptions {
    * Omit when unknown — rules skip rather than inventing rewrite lists.
    */
   transformImport?: Array<string | { libraryName: string }>;
+  /**
+   * Public bundler `externals` (webpack / rspack / rsbuild `output.externals`).
+   * String, array of strings/objects, or object keys only — functions and regex
+   * are skipped. Omit when unknown; `config/shared-externals-conflict` skips.
+   */
+  externals?: string | Array<string | Record<string, unknown>> | Record<string, unknown>;
   mode?: "development" | "ci";
   /**
    * Apply the built-in environment overlay after `extends` and before local
@@ -914,6 +926,8 @@ export interface ResolvedDoctorOptions {
   viteConfigFacts?: ViteBundlerConfigFacts;
   /** Normalized transformImport library names when provided by adapters/options. */
   transformImportLibraries?: string[];
+  /** Normalized public bundler externals names when provided by adapters/options. */
+  externals?: string[];
   mode: "development" | "ci";
   root: string;
   runtimeTrace?: string;

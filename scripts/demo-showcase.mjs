@@ -88,6 +88,11 @@ const cases = [
     expectedExit: 1,
   },
   {
+    dir: "examples/showcase/config/shared-externals-conflict",
+    ruleId: "config/shared-externals-conflict",
+    expectedExit: 0,
+  },
+  {
     dir: "examples/showcase/shared/eager-without-singleton",
     ruleId: "shared/eager-without-singleton",
     expectedExit: 0,

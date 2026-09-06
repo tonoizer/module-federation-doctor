@@ -166,6 +166,7 @@ const EXPECTED_GROUP6_RULE_IDS = [
   "vite/alias-share-bypass",
   "vite/server-origin",
   "config/transform-import-share-conflict",
+  "config/shared-externals-conflict",
   "config/copied-webpack-options-on-vite",
   "doctor/partial-analysis",
 ] as const;
@@ -1130,6 +1131,11 @@ describe("evidence-aware rule rollout bridge", () => {
       outcome: "unknown",
       reasonCode: "evidence-inconclusive",
     });
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/shared-externals-conflict",
+      ),
+    ).toMatchObject({ outcome: "not-applicable" });
   });
 
   it("evaluates SSR Vite rules from CLI facts without adapter builds", async () => {

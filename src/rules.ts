@@ -1862,6 +1862,25 @@ export const builtInRules: DoctorRule[] = [
       "Remove the transformImport entry, exclude the package from shared, or allowlist via `allowPackages`. See also vite/alias-share-bypass for Vite resolve.alias.",
     );
   }),
+  createRule("config/shared-externals-conflict", "warning", (context) => {
+    const externals = context.facts.bundler.externals;
+    // Unobserved (CLI without `externals` / without an adapter) → silent skip.
+    if (externals === undefined) return;
+    const sharedKeys = Object.keys(mf(context)?.shared ?? {});
+    if (sharedKeys.length === 0) return;
+    const overlaps = findShareRewriteOverlaps(
+      externals,
+      sharedKeys,
+      optionStringList(context.options, "allowPackages"),
+    );
+    if (overlaps.length === 0) return;
+    report(
+      context,
+      "Shared packages are also listed in bundler externals.",
+      { overlaps, externals, shared: sharedKeys },
+      "Remove the package from `shared` or from bundler `externals`. The same library cannot be excluded from the bundle and declared as shared. Allowlist intentional dual listing via `allowPackages`.",
+    );
+  }),
   createRule("artifact/manifest-assets-disabled", "warning", (context) => {
     const config = mf(context);
     if (

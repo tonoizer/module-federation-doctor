@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 114,
-  "migratedCount": 114,
+  "ruleCount": 115,
+  "migratedCount": 115,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
@@ -7222,6 +7222,72 @@
       },
       "evidenceReads": ["project.scope", "moduleFederation", "bundler.transformImportLibraries"],
       "migrationNote": "Group 6; Requires transformImport library facts from options/adapters; skips when unknown. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
+      "id": "config/shared-externals-conflict",
+      "version": "1",
+      "group": 6,
+      "status": "migrated",
+      "defaultSeverity": "warning",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "A library listed in both `shared` and bundler `externals` is excluded from the bundle while still declared as shared, which causes runtime failures.",
+        "documentation": "/rules/config/shared-externals-conflict",
+        "fix": "Remove the package from `shared` or from bundler `externals` (webpack/rspack `externals`, rsbuild `output.externals`). Functions and regex externals are not compared. When externals were not observed (CLI without `externals` and without an adapter), this rule skips."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ]
+      },
+      "evidenceReads": ["project.scope", "moduleFederation", "bundler.externals"],
+      "migrationNote": "Group 6; Requires public bundler externals facts from adapters or DoctorOptions.externals; skips when unobserved. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
       "id": "runtime/error-correlated",

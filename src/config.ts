@@ -4,6 +4,7 @@ import { resolveBaselineOptions } from "./baseline.js";
 import { resolveAnalysisBudgets } from "./analysis-budgets.js";
 import { resolvePolicy } from "./policy.js";
 import { mergeSharedPolicy, serializeSharedPolicy } from "./shared-policy.js";
+import { extractPublicExternals } from "./bundler-externals.js";
 import { coerceFederationInstanceInputs } from "./federation-instance.js";
 import type {
   DoctorExtendEntry,
@@ -210,6 +211,8 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
       ),
     ].sort();
   }
+  if (options.externals !== undefined)
+    resolved.externals = extractPublicExternals(options.externals);
   if (options.runtimeTrace !== undefined)
     resolved.runtimeTrace = path.resolve(root, options.runtimeTrace);
   if (options.recognizeMfToolkit !== undefined)

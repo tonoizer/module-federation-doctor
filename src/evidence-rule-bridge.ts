@@ -163,6 +163,13 @@ function transformImportEvidenceInconclusive(context: EvidenceRuleContext): stri
   return undefined;
 }
 
+function sharedExternalsEvidenceInconclusive(context: EvidenceRuleContext): string | undefined {
+  if (!context.facts) return undefined;
+  if (context.facts.bundler.externals === undefined)
+    return "Bundler externals were not collected for this analysis.";
+  return undefined;
+}
+
 const GROUP6_INCONCLUSIVE: Partial<
   Record<
     (typeof MIGRATED_GROUP6_RULE_IDS)[number],
@@ -173,6 +180,7 @@ const GROUP6_INCONCLUSIVE: Partial<
   "vite/alias-share-bypass": vitePluginConfigEvidenceInconclusive,
   "vite/server-origin": viteServerOriginEvidenceInconclusive,
   "config/transform-import-share-conflict": transformImportEvidenceInconclusive,
+  "config/shared-externals-conflict": sharedExternalsEvidenceInconclusive,
 };
 
 function inconclusiveFor(
