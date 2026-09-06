@@ -1,9 +1,12 @@
-import React from "react";
+import { reactFromLoadShare } from "@mfdoctor-example/shared-ui";
+import reactShare from "react";
 import { createRoot } from "react-dom/client";
+import "react/jsx-runtime";
 
 // Vite 8/Rolldown does not honor syntheticNamedExports on MF's CJS react
 // loadShare module, so `import { Suspense, lazy } from "react"` fails with
-// MISSING_EXPORT. Read those members from the default CJS namespace instead.
+// MISSING_EXPORT. The default export may be React or `{ default: React }`.
+const React = reactFromLoadShare<typeof import("react")>(reactShare);
 const { Suspense, lazy } = React;
 
 const RspackCard = lazy(() => import("rspackRemote/Card"));

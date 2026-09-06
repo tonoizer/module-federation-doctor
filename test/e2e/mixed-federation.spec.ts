@@ -37,13 +37,14 @@ test.describe("mixed-federation green path", () => {
       `host (${FEDERATION_SERVERS[2].entryUrl}) remotes did not finish loading`,
     ).toBeHidden({ timeout: 15_000 });
 
+    const browserErrorNote = errors.length ? `; browser errors: ${errors.join(" | ")}` : "";
     await expect(
       page.getByTestId("rspack-remote"),
-      `rspack remote (${FEDERATION_SERVERS[0].entryUrl}) did not render`,
+      `rspack remote (${FEDERATION_SERVERS[0].entryUrl}) did not render${browserErrorNote}`,
     ).toContainText("Direct Rspack remote");
     await expect(
       page.getByTestId("rsbuild-remote"),
-      `rsbuild remote (${FEDERATION_SERVERS[1].entryUrl}) did not render`,
+      `rsbuild remote (${FEDERATION_SERVERS[1].entryUrl}) did not render${browserErrorNote}`,
     ).toContainText("Rsbuild remote");
 
     expect(errors, "browser console errors while loading remotes").toEqual([]);
@@ -100,6 +101,8 @@ test.describe("mixed-federation intentional findings path", () => {
         timeout: 15_000,
         message: "the intentional React shared-version mismatch did not surface at runtime",
       })
-      .toContain("ReactCurrentDispatcher");
+      // Development React 18/19 mismatch mentions ReactCurrentDispatcher.
+      // Production React 19 minifies that dispatcher to `.S`.
+      .toMatch(/ReactCurrentDispatcher|reading ['"]S['"]/);
   });
 });

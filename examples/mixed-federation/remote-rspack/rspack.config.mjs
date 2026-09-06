@@ -10,6 +10,7 @@ const mfOptions = {
   exposes: { "./Card": "./src/Card.tsx" },
   shared: {
     react: { singleton: true, requiredVersion: "^19.1.0" },
+    "react/": { singleton: true, requiredVersion: "^19.1.0" },
     "react-dom": { singleton: true, requiredVersion: "^19.1.0" },
     "react-dom/": { singleton: true, requiredVersion: "^19.1.0" },
   },
