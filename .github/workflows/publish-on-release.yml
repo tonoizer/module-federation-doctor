@@ -24,6 +24,12 @@ concurrency:
 jobs:
   resolve-ref:
     name: Resolve immutable release tag
+    # GITHUB_TOKEN does not re-trigger this workflow when the later promote
+    # job undrafts the GitHub Release. Still ignore `release: published` from
+    # github-actions[bot] so a PAT or future token change cannot double-stage.
+    # workflow_dispatch from create-release.yml is the intended path and still
+    # runs when the actor is the bot.
+    if: github.event_name != 'release' || github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
@@ -191,6 +197,33 @@ jobs:
           echo "- npm tag: \`${{ steps.npm.outputs.tag || 'unknown' }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Authentication: GitHub OIDC; no long-lived publish token" >> "$GITHUB_STEP_SUMMARY"
           echo "- Next: approve the staged package with npm account 2FA" >> "$GITHUB_STEP_SUMMARY"
+
+  promote-github-release:
+    name: Publish draft GitHub Release
+    # No job-level `if:`: a skipped or failed `stage` (Verify failed, Stage
+    # never ran, Stage failed, or first-package bootstrap) must leave the
+    # GitHub Release as a draft. Any `if:` that stays true when `stage` is
+    # skipped would run this job anyway.
+    needs: [resolve-ref, stage]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Promote draft after successful npm stage
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.resolve-ref.outputs.tag }}
+        run: |
+          is_draft="$(gh release view "$TAG" --json isDraft --jq .isDraft)"
+          if [ "$is_draft" != "true" ]; then
+            echo "Release $TAG is already published"
+            exit 0
+          fi
+          # GITHUB_TOKEN will not emit a recursive `release: published` run.
+          gh release edit "$TAG" --draft=false
+          echo "## GitHub Release published" >> "$GITHUB_STEP_SUMMARY"
+          echo "Promoted draft \`$TAG\` after successful \`npm stage publish\`." >> "$GITHUB_STEP_SUMMARY"
 
   bootstrap-notice:
     name: First-package bootstrap required

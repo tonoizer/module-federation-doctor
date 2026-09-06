@@ -58,6 +58,51 @@ describe("release workflow contracts", () => {
     expect(workflow).not.toContain("NPM_TOKEN");
   });
 
+  it("keeps GitHub Releases draft until npm stage succeeds", async () => {
+    const create = await readFile(".github/workflows/create-release.yml", "utf8");
+    const publish = await readFile(".github/workflows/publish-on-release.yml", "utf8");
+    const releaseFiles = await readFile(".github/workflows/release-files.yml", "utf8");
+
+    expect(create).toContain("--draft");
+    expect(create).toContain(
+      'args=("$VERSION" --draft --verify-tag --generate-notes --title "MFDoctor $VERSION")',
+    );
+    expect(create).not.toContain("--draft=false");
+    expect(create.indexOf('git tag --annotate "$VERSION"')).toBeLessThan(create.indexOf("--draft"));
+    expect(create).toContain('gh workflow run release-files.yml --ref main -f "tag=$VERSION"');
+    expect(create).toContain(
+      'gh workflow run publish-on-release.yml --ref main -f "tag=$VERSION"',
+    );
+
+    expect(publish).toContain("types: [published]");
+    expect(publish).toContain("workflow_dispatch:");
+    expect(publish).toContain(
+      "github.event_name != 'release' || github.actor != 'github-actions[bot]'",
+    );
+    expect(publish).toContain("promote-github-release:");
+    expect(publish).toContain("needs: [resolve-ref, stage]");
+    expect(publish).toContain('gh release edit "$TAG" --draft=false');
+    expect(publish.indexOf("promote-github-release:")).toBeGreaterThan(publish.indexOf("stage:"));
+    expect(publish.indexOf('gh release edit "$TAG" --draft=false')).toBeGreaterThan(
+      publish.indexOf("npm stage publish"),
+    );
+    expect(publish.indexOf("contents: write")).toBeGreaterThan(
+      publish.indexOf("promote-github-release:"),
+    );
+    expect(
+      publish.slice(publish.indexOf("stage:"), publish.indexOf("promote-github-release:")),
+    ).not.toContain("contents: write");
+    const promoteJob = publish
+      .slice(publish.indexOf("promote-github-release:"))
+      .split("bootstrap-notice:")[0];
+    expect(promoteJob).not.toContain("if: always()");
+    expect(promoteJob).not.toMatch(/^\s+if:/m);
+
+    expect(releaseFiles).toContain("workflow_dispatch:");
+    expect(releaseFiles).toContain("gh release upload");
+    expect(releaseFiles).toContain("types: [published]");
+  });
+
   it("builds Pages with least privilege and deploys only from main", async () => {
     const workflow = await readFile(".github/workflows/docs-pages.yml", "utf8");
 
@@ -99,6 +144,7 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain("require('./package.json').version");
     expect(workflow).toContain('git tag --annotate "$VERSION"');
     expect(workflow).toContain("--generate-notes");
+    expect(workflow).toContain("--draft");
     expect(workflow).toContain("actions: write");
     expect(workflow).toContain('gh workflow run release-files.yml --ref main -f "tag=$VERSION"');
     expect(workflow).toContain(

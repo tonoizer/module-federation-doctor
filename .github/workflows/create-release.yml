@@ -58,7 +58,7 @@ jobs:
           git tag --annotate "$VERSION" --message "MFDoctor $VERSION"
           git push origin "refs/tags/$VERSION"
 
-      - name: Create release with generated notes
+      - name: Create draft release with generated notes
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.release.outputs.version }}
@@ -69,13 +69,17 @@ jobs:
             exit 0
           fi
 
-          args=("$VERSION" --verify-tag --generate-notes --title "MFDoctor $VERSION")
+          # Stay draft until publish-on-release.yml stages npm. A public GitHub
+          # Release must not exist when Verify fails or Stage never runs.
+          args=("$VERSION" --draft --verify-tag --generate-notes --title "MFDoctor $VERSION")
           case "$VERSION" in *-*) args+=(--prerelease);; esac
           gh release create "${args[@]}"
 
-      # Events created with GITHUB_TOKEN do not recursively start release
-      # workflows. Dispatch both workflows on main; each treats the tag only as
-      # a value to validate against that trusted checkout, never as executable ref.
+      # Drafts do not emit `release: published`. GITHUB_TOKEN also does not
+      # recursively start release workflows. Dispatch both workflows on main;
+      # each treats the tag only as a value to validate against that trusted
+      # checkout, never as an executable ref. release-files.yml uploads onto
+      # the draft via this dispatch path.
       - name: Dispatch release verification and artifacts
         env:
           GH_TOKEN: ${{ github.token }}
