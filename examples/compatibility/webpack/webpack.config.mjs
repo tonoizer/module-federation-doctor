@@ -28,7 +28,7 @@ export default {
   output: {
     path: path.join(root, "dist"),
     publicPath: "auto",
-    uniqueName: "webpack_smoke",
+    uniqueName: "webpack_smoke_checkout",
     clean: true,
   },
   plugins: [

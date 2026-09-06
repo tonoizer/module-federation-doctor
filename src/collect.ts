@@ -1773,6 +1773,7 @@ export interface BuildDiagnostics {
   /** Public bundler externals names when the adapter observed compiler/config. */
   externals?: string[];
   outputFilename?: string;
+  outputUniqueName?: string;
   resolveAliases?: Record<string, string>;
   resolveAliasFunction?: boolean;
   splitChunks?: import("./types.js").SplitChunksFacts;
@@ -2034,6 +2035,7 @@ export async function addBuildFacts(
     facts.bundler.outputPublicPathKind = diagnostics.outputPublicPathKind;
   if (diagnostics?.externals !== undefined) facts.bundler.externals = diagnostics.externals;
   if (diagnostics?.outputFilename) facts.bundler.outputFilename = diagnostics.outputFilename;
+  if (diagnostics?.outputUniqueName) facts.bundler.outputUniqueName = diagnostics.outputUniqueName;
   if (diagnostics?.resolveAliases !== undefined)
     facts.bundler.resolveAliases = diagnostics.resolveAliases;
   if (diagnostics?.resolveAliasFunction) facts.bundler.resolveAliasFunction = true;

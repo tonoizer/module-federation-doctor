@@ -82,6 +82,12 @@ export interface BundlerFacts {
    */
   outputFilename?: string;
   /**
+   * Webpack/Rspack `output.uniqueName` when the adapter observed a non-empty string.
+   * Absent on CLI-only runs and when uniqueName is unset. Webpack may fill a
+   * default after config resolution; MFDoctor records the value it sees.
+   */
+  outputUniqueName?: string;
+  /**
    * Additive Vite resolved-config snapshot from `configResolved` (plugin path).
    * Absent on CLI-only runs — rules that need these facts skip honestly.
    */

@@ -1146,6 +1146,25 @@ export const builtInRules: DoctorRule[] = [
       "Use a stable Module Federation `filename` such as `remoteEntry.js`. Keep `[contenthash]` / `[hash]` on chunk filenames, not the container entry. When `filename` is unset, a hashed webpack/rspack `output.filename` also hashes the remote entry.",
     );
   }),
+  createRule("config/unique-name-mismatch", "info", (context) => {
+    const bundler = context.facts.bundler.name;
+    if (bundler !== "webpack" && bundler !== "rspack") return;
+    const uniqueName = context.facts.bundler.outputUniqueName;
+    if (typeof uniqueName !== "string" || uniqueName.length === 0) return;
+    const name = mf(context)?.name?.trim();
+    if (!name) return;
+    if (uniqueName === name) return;
+    const pluginCount = context.facts.bundler.moduleFederationPluginCount;
+    // uniqueName is compiler-scoped and cannot equal every container on a
+    // multi-plugin compiler (webpack smoke registers checkout + catalog).
+    if (pluginCount !== undefined && pluginCount > 1) return;
+    report(
+      context,
+      `Bundler \`output.uniqueName\` "${uniqueName}" disagrees with Module Federation \`name\` "${name}".`,
+      { uniqueName, name },
+      "Set `output.uniqueName` to the same value as Module Federation `name` so webpack/rspack globals and the container id stay aligned. Omit uniqueName when you do not need an override.",
+    );
+  }),
   createRule("config/remote-http-insecure", "warning", (context) => {
     for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {})) {
       const url = remoteEntryUrl(remote.entry);

@@ -656,6 +656,10 @@ describe("evidence-aware rule contract", () => {
         "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
         "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
         "config/hashed-remote-filename": ["bundler.outputFilename"],
+        "config/unique-name-mismatch": [
+          "bundler.outputUniqueName",
+          "bundler.moduleFederationPluginCount",
+        ],
         "ssr/remote-entry-target-mismatch": ["builds"],
         "config/promise-remote-async-boundary": ["imports.sourceFiles"],
       };
@@ -863,6 +867,11 @@ describe("evidence-aware rule contract", () => {
     ).toEqual(["rspack", "rsbuild", "webpack", "modern"]);
     expect(
       ruleInventory
+        .find((entry) => entry.id === "config/unique-name-mismatch")
+        ?.applicability.bundlers?.map((item) => item.name),
+    ).toEqual(["webpack", "rspack"]);
+    expect(
+      ruleInventory
         .find((entry) => entry.id === "ssr/remote-entry-target-mismatch")
         ?.applicability.bundlers?.map((item) => item.name),
     ).toEqual(["vite", "rspack"]);
@@ -914,6 +923,10 @@ describe("evidence-aware rule contract", () => {
       "webpack",
       "modern",
     ]);
+    expect(catalog.get("config/unique-name-mismatch")?.supportedBundlers).toEqual([
+      "webpack",
+      "rspack",
+    ]);
     expect(catalog.get("config/alias-share-bypass")?.supportedBundlers).toEqual([
       "webpack",
       "rspack",
@@ -937,6 +950,7 @@ describe("evidence-aware rule contract", () => {
       "bundler.outputPublicPathKind": "context.facts.bundler.outputPublicPathKind",
       "bundler.externals": "context.facts.bundler.externals",
       "bundler.outputFilename": "context.facts.bundler.outputFilename",
+      "bundler.outputUniqueName": "context.facts.bundler.outputUniqueName",
       "bundler.splitChunks": "context.facts.bundler.splitChunks",
       "imports.sourceFiles": "context.facts.imports.sourceFiles",
       "imports.packages": "context.facts.imports.packages",
