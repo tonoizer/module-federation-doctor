@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import type { UnpluginOptions } from "unplugin";
 import { analyze } from "../../src/engine.js";
@@ -130,6 +131,17 @@ describe("detectViteLifecycle", () => {
     expect(lifecycle.flavor).toBe("vite");
     expect(lifecycle.engine).toBe("rollup");
     expect(lifecycle.evidence).toEqual(["rolldown"]);
+  });
+
+  it("classifies the Rolldown compatibility smoke as vite-plus from declared packages", async () => {
+    const fixture = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../examples/compatibility/rolldown",
+    );
+    const lifecycle = await detectViteLifecycle(fixture);
+    expect(lifecycle.flavor).toBe("vite-plus");
+    expect(lifecycle.engine).toBe("rolldown");
+    expect(lifecycle.evidence).toEqual(expect.arrayContaining(["vite-plus"]));
   });
 });
 

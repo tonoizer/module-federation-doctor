@@ -152,6 +152,7 @@ for (const dir of [
   "examples/compatibility/rsbuild-adapter",
   "examples/compatibility/modern",
   "examples/compatibility/nuxt",
+  "examples/compatibility/rolldown",
 ]) {
   assertReport(dir, { errors: 0 });
 }

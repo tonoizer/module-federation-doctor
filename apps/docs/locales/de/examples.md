@@ -17,6 +17,7 @@ findings.
 | `examples/showcase`                | One-rule CLI demos by category                             | [One-rule showcase](./showcase.md)                   |
 | `examples/compatibility/webpack`   | Webpack adapter smoke for the compatibility matrix         | [Compatibility](./compatibility.md)                  |
 | `examples/compatibility/nuxt`      | Nuxt module adapter smoke (partial, Vite-under-the-hood)   | [Compatibility](./compatibility.md)                  |
+| `examples/compatibility/rolldown`  | Vite Plus / Rolldown adapter smoke (partial)               | [Compatibility](./compatibility.md)                  |
 
 Root helpers: `vp run demo:showcase`, `vp run demo:standalone`, `vp run demo:mixed-issues`,
 `vp run demo:nested`, and `vp run demo:examples` (showcase + standalone + mixed-issues +

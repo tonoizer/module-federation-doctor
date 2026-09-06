@@ -47,6 +47,18 @@ for (const cell of matrix.localCi) {
   const report = JSON.parse(fs.readFileSync(path.join(fixture, ".mf/doctor/report.json"), "utf8"));
   const sarif = JSON.parse(fs.readFileSync(path.join(fixture, ".mf/doctor/results.sarif"), "utf8"));
   assert.equal(project.bundler?.name, cell.bundler, `${cell.id}: bundler identity mismatch`);
+  if (cell.lifecycle) {
+    assert.equal(
+      project.bundler?.lifecycle?.flavor,
+      cell.lifecycle.flavor,
+      `${cell.id}: lifecycle.flavor changed`,
+    );
+    assert.equal(
+      project.bundler?.lifecycle?.engine,
+      cell.lifecycle.engine,
+      `${cell.id}: lifecycle.engine changed`,
+    );
+  }
   assert.equal(report.summary?.errors, cell.expectedErrors, `${cell.id}: error budget changed`);
   assert.equal(sarif.version, "2.1.0", `${cell.id}: SARIF version changed`);
   assert.ok(Array.isArray(sarif.runs) && sarif.runs.length > 0, `${cell.id}: SARIF run missing`);
