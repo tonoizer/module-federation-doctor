@@ -885,6 +885,7 @@ describe("evidence-aware rule contract", () => {
       expect(catalog.get(entry.id)?.supportedBundlers, entry.id).toEqual(adapters);
     }
     expect(catalog.get("vite/remotes-prefer-module")?.supportedBundlers).toEqual(["vite"]);
+    expect(catalog.get("vite/server-origin")?.supportedBundlers).toEqual(["vite"]);
     expect(catalog.get("config/copied-webpack-options-on-vite")?.supportedBundlers).toEqual([
       "vite",
     ]);
