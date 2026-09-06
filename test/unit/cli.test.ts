@@ -668,9 +668,15 @@ describe("CLI arguments", () => {
   });
 
   it("reports inventory adapters as supportedBundlers from mfdoctor rules", async () => {
-    const viteOnly = await captureStdout(() => main(["rules", "vite/remotes-prefer-module"]));
+    const viteOnly = await captureStdout(() => main(["rules", "vite/server-origin"]));
     expect(viteOnly.code).toBe(0);
     expect(JSON.parse(viteOnly.text).supportedBundlers).toEqual(["vite"]);
+
+    const viteRemotesPreferModule = await captureStdout(() =>
+      main(["rules", "vite/remotes-prefer-module"]),
+    );
+    expect(viteRemotesPreferModule.code).toBe(0);
+    expect(JSON.parse(viteRemotesPreferModule.text).supportedBundlers).toEqual(["vite"]);
 
     const rsbuildOnly = await captureStdout(() =>
       main(["rules", "config/rsbuild-mf-api-generation"]),
