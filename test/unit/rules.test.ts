@@ -279,6 +279,134 @@ describe("built-in rules", () => {
     expect(findings).toEqual([]);
   });
 
+  it("warns leftover @module-federation/rspack without Enhanced on rspack", async () => {
+    const facts = {
+      bundler: { name: "rspack", mode: "ci" },
+      dependencies: { declared: { "@module-federation/rspack": "0.18.0" } },
+    } as unknown as ProjectFacts;
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/plugin-package-mismatch")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([
+      expect.objectContaining({
+        message:
+          'Expected "@module-federation/enhanced" for rspack, not leftover "@module-federation/rspack".',
+        evidence: {
+          bundler: "rspack",
+          expectedPackage: "@module-federation/enhanced",
+          declaredPackage: "@module-federation/rspack",
+        },
+        suggestion:
+          "Use `@module-federation/enhanced` (or `@module-federation/enhanced/rspack`) and remove leftover `@module-federation/rspack`.",
+      }),
+    ]);
+  });
+
+  it("warns leftover @module-federation/rspack mixed with Enhanced on rspack", async () => {
+    const facts = {
+      bundler: { name: "rspack", mode: "ci" },
+      dependencies: {
+        declared: {
+          "@module-federation/enhanced": "0.18.0",
+          "@module-federation/rspack": "0.18.0",
+        },
+      },
+    } as unknown as ProjectFacts;
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/plugin-package-mismatch")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([
+      expect.objectContaining({
+        message:
+          'Expected "@module-federation/enhanced" for rspack; leftover "@module-federation/rspack" is the legacy adapter.',
+        evidence: {
+          bundler: "rspack",
+          expectedPackage: "@module-federation/enhanced",
+          declaredPackage: "@module-federation/rspack",
+        },
+      }),
+    ]);
+  });
+
+  it("accepts Enhanced-only rspack without leftover @module-federation/rspack", async () => {
+    const facts = {
+      bundler: { name: "rspack", mode: "ci" },
+      dependencies: { declared: { "@module-federation/enhanced": "0.18.0" } },
+    } as unknown as ProjectFacts;
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/plugin-package-mismatch")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([]);
+  });
+
+  it("does not treat leftover @module-federation/rspack as an rsbuild mismatch when the rsbuild plugin is declared", async () => {
+    const facts = {
+      bundler: { name: "rsbuild", mode: "ci" },
+      dependencies: {
+        declared: {
+          "@module-federation/rsbuild-plugin": "0.18.0",
+          "@module-federation/rspack": "0.18.0",
+        },
+      },
+    } as unknown as ProjectFacts;
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/plugin-package-mismatch")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).toEqual([]);
+  });
+
+  it("reads leftover @module-federation/rspack from declared package.json on rspack", async () => {
+    const root = await fixture();
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "fixture",
+        dependencies: {
+          react: "19.1.1",
+          "@module-federation/enhanced": "0.18.0",
+          "@module-federation/rspack": "0.18.0",
+        },
+      }),
+    );
+    const result = await analyze({
+      root,
+      bundler: "rspack",
+      output: { formats: [] },
+      moduleFederation: { name: "host" },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "artifact/remote-entry-missing": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+        "artifact/dts-disabled": "off",
+        "artifact/manifest-disabled": "off",
+        "shared/candidate": "off",
+      },
+    });
+    expect(result.facts.dependencies.declared["@module-federation/rspack"]).toBe("0.18.0");
+    expect(result.facts.dependencies.declared["@module-federation/enhanced"]).toBe("0.18.0");
+    expect(result.report.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ruleId: "config/plugin-package-mismatch",
+          evidence: {
+            bundler: "rspack",
+            expectedPackage: "@module-federation/enhanced",
+            declaredPackage: "@module-federation/rspack",
+          },
+        }),
+      ]),
+    );
+  });
+
   it("accepts a version-only remote resolved through a manifest service", async () => {
     const root = await fixture();
     const result = await analyze({

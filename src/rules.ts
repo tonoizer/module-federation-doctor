@@ -560,6 +560,8 @@ const OBSERVABILITY_SUPPORT_FLOOR = "2.5.0";
 const OBSERVABILITY_SUPPORT_RANGE = `>=${OBSERVABILITY_SUPPORT_FLOOR}`;
 const OBSERVABILITY_PACKAGE_PATH = `/node_modules/${OBSERVABILITY_PACKAGE}/`;
 const RSBUILD_PLUGIN_PACKAGE = "@module-federation/rsbuild-plugin";
+const ENHANCED_MF_PACKAGE = "@module-federation/enhanced";
+const RSPACK_LEGACY_MF_PACKAGE = "@module-federation/rspack";
 /** MF 2.0 generation / enhanced options that Rsbuild `moduleFederation.options` (1.5) ignores. */
 const MF2_ONLY_ON_RSBUILD_15 = [
   "dts",
@@ -2483,9 +2485,9 @@ export const builtInRules: DoctorRule[] = [
   createRule("config/plugin-package-mismatch", "warning", (context) => {
     const expected: Partial<Record<ProjectFacts["bundler"]["name"], string>> = {
       vite: "@module-federation/vite",
-      rspack: "@module-federation/enhanced",
-      rsbuild: "@module-federation/rsbuild-plugin",
-      webpack: "@module-federation/enhanced",
+      rspack: ENHANCED_MF_PACKAGE,
+      rsbuild: RSBUILD_PLUGIN_PACKAGE,
+      webpack: ENHANCED_MF_PACKAGE,
     };
     const bundler = context.facts.bundler.name;
     if (bundler === "modern") {
@@ -2515,6 +2517,23 @@ export const builtInRules: DoctorRule[] = [
     // stronger evidence than package metadata in this case.
     if (bundler === "webpack" && (context.facts.bundler.moduleFederationPluginCount ?? 0) > 0)
       return;
+    // Leftover `@module-federation/rspack` (alone or mixed with Enhanced) is the
+    // upgrade footgun: plugin count still matches `RspackModuleFederationPlugin`.
+    if (bundler === "rspack" && declared[RSPACK_LEGACY_MF_PACKAGE]) {
+      report(
+        context,
+        declared[ENHANCED_MF_PACKAGE]
+          ? `Expected "${ENHANCED_MF_PACKAGE}" for rspack; leftover "${RSPACK_LEGACY_MF_PACKAGE}" is the legacy adapter.`
+          : `Expected "${ENHANCED_MF_PACKAGE}" for rspack, not leftover "${RSPACK_LEGACY_MF_PACKAGE}".`,
+        {
+          bundler,
+          expectedPackage: ENHANCED_MF_PACKAGE,
+          declaredPackage: RSPACK_LEGACY_MF_PACKAGE,
+        },
+        `Use \`${ENHANCED_MF_PACKAGE}\` (or \`${ENHANCED_MF_PACKAGE}/rspack\`) and remove leftover \`${RSPACK_LEGACY_MF_PACKAGE}\`.`,
+      );
+      return;
+    }
     if (packageName && !declared[packageName])
       report(context, `Expected "${packageName}" for ${bundler}.`, {
         bundler,
