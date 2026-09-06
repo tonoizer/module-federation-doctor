@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 115,
-  "migratedCount": 115,
+  "ruleCount": 116,
+  "migratedCount": 116,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
@@ -1462,7 +1462,7 @@
       "version": "1",
       "group": 1,
       "status": "migrated",
-      "demo": "unit",
+      "demo": "showcase",
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
@@ -2810,7 +2810,7 @@
       "version": "1",
       "group": 1,
       "status": "migrated",
-      "demo": "unit",
+      "demo": "showcase",
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
@@ -3010,7 +3010,7 @@
       "version": "1",
       "group": 6,
       "status": "migrated",
-      "demo": "unit",
+      "demo": "showcase",
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
@@ -6704,7 +6704,7 @@
       "version": "1",
       "group": 6,
       "status": "migrated",
-      "demo": "unit",
+      "demo": "showcase",
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
@@ -7010,7 +7010,7 @@
       "version": "1",
       "group": 6,
       "status": "migrated",
-      "demo": "unit",
+      "demo": "showcase",
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
@@ -7135,7 +7135,7 @@
       "version": "1",
       "group": 6,
       "status": "migrated",
-      "demo": "unit",
+      "demo": "showcase",
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
@@ -7320,6 +7320,7 @@
       "version": "1",
       "group": 6,
       "status": "migrated",
+      "demo": "showcase",
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
@@ -8432,6 +8433,7 @@
       "version": "1",
       "group": 3,
       "status": "migrated",
+      "demo": "unit",
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
