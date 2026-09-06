@@ -482,10 +482,10 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     category: "correctness",
     impact:
       "transformImport (or equivalent) can rewrite packages that are also shared, bypassing or duplicating the share scope.",
-    fix: "Remove the rewrite, exclude the package from shared, or allowlist intentional bypasses via `allowPackages`.",
+    fix: "Remove the rewrite, exclude the package from shared, or allowlist intentional bypasses via `allowPackages`. Modern.js and Rsbuild adapters collect public `source.transformImport` library names. Function-form transformImport is not invoked and stays unknown, so this rule skips.",
     sources: [
       shared,
-      "https://modernjs.dev/guides/basic-features/alias.html",
+      "https://modernjs.dev/configure/app/source/transform-import",
       "https://rsbuild.rs/config/source/transform-import",
     ],
   },

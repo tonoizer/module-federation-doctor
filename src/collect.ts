@@ -1776,6 +1776,8 @@ export interface BuildDiagnostics {
   resolveAliases?: Record<string, string>;
   resolveAliasFunction?: boolean;
   splitChunks?: import("./types.js").SplitChunksFacts;
+  /** Public `source.transformImport` library names when the adapter observed config. */
+  transformImportLibraries?: string[];
 }
 
 function buildOutputOrderKey(output: BuildOutputInput): string {
@@ -2038,6 +2040,8 @@ export async function addBuildFacts(
     facts.bundler.resolveAliases = diagnostics.resolveAliases;
   if (diagnostics?.resolveAliasFunction) facts.bundler.resolveAliasFunction = true;
   if (diagnostics?.splitChunks) facts.bundler.splitChunks = diagnostics.splitChunks;
+  if (diagnostics?.transformImportLibraries !== undefined)
+    facts.bundler.transformImportLibraries = diagnostics.transformImportLibraries;
   if (outputs) {
     const orderedOutputs = orderBuildOutputs(outputs);
     const builds = orderedOutputs.map((output, index) =>

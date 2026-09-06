@@ -899,7 +899,9 @@ export interface DoctorOptions {
   splitChunksFacts?: SplitChunksFacts;
   /**
    * Library names from bundler/framework `transformImport` (Modern/Rsbuild).
-   * Omit when unknown — rules skip rather than inventing rewrite lists.
+   * Adapters also collect public `source.transformImport`. Omit when unknown —
+   * rules skip rather than inventing rewrite lists. Function-form values are
+   * not invoked.
    */
   transformImport?: Array<string | { libraryName: string }>;
   /**

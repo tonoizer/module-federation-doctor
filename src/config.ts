@@ -5,6 +5,7 @@ import { resolveAnalysisBudgets } from "./analysis-budgets.js";
 import { resolvePolicy } from "./policy.js";
 import { mergeSharedPolicy, serializeSharedPolicy } from "./shared-policy.js";
 import { extractPublicExternals } from "./bundler-externals.js";
+import { observeTransformImportLibraries } from "./share-rewrite.js";
 import { coerceFederationInstanceInputs } from "./federation-instance.js";
 import type {
   DoctorExtendEntry,
@@ -204,13 +205,8 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   if (options.viteConfigFacts !== undefined) resolved.viteConfigFacts = options.viteConfigFacts;
   if (options.splitChunksFacts !== undefined) resolved.splitChunksFacts = options.splitChunksFacts;
   if (options.transformImport !== undefined) {
-    resolved.transformImportLibraries = [
-      ...new Set(
-        options.transformImport
-          .map((item) => (typeof item === "string" ? item : item.libraryName))
-          .filter((name) => typeof name === "string" && name.length > 0),
-      ),
-    ].sort();
+    const libraries = observeTransformImportLibraries(options.transformImport);
+    if (libraries !== undefined) resolved.transformImportLibraries = libraries;
   }
   if (options.externals !== undefined)
     resolved.externals = extractPublicExternals(options.externals);

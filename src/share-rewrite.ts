@@ -64,6 +64,49 @@ export function observeResolveAlias(alias: unknown): ResolveAliasObservation | u
   return undefined;
 }
 
+/**
+ * Public `source.transformImport` library names (Rsbuild / Modern.js).
+ * Functions are never invoked. `false` is observed as an empty list.
+ * Absent or unknown shapes stay undefined so conflict rules skip honestly.
+ */
+export function observeTransformImportLibraries(value: unknown): string[] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "function") return undefined;
+  if (value === false) return [];
+  if (!Array.isArray(value)) return undefined;
+  const names = new Set<string>();
+  for (const item of value) {
+    if (typeof item === "string") {
+      if (item.length > 0) names.add(item);
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    const libraryName = (item as { libraryName?: unknown }).libraryName;
+    if (typeof libraryName === "string" && libraryName.length > 0) names.add(libraryName);
+  }
+  return [...names].sort();
+}
+
+/** Read `source.transformImport` from a public Rsbuild / Modern.js config object. */
+function observeSourceTransformImport(config: unknown): string[] | undefined {
+  if (!config || typeof config !== "object") return undefined;
+  const source = (config as { source?: unknown }).source;
+  if (!source || typeof source !== "object") return undefined;
+  if (!("transformImport" in source)) return undefined;
+  return observeTransformImportLibraries((source as { transformImport?: unknown }).transformImport);
+}
+
+/** First defined observation wins (normalized config before user config). */
+export function observeSourceTransformImportFromConfigs(
+  ...configs: unknown[]
+): string[] | undefined {
+  for (const config of configs) {
+    const observed = observeSourceTransformImport(config);
+    if (observed !== undefined) return observed;
+  }
+  return undefined;
+}
+
 export function rewriteOverlapsShareKey(rewriteTarget: string, shareKey: string): boolean {
   if (rewriteTarget === shareKey) return true;
   if (shareKey.endsWith("/")) {
