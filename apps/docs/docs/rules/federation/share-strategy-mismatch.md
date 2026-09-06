@@ -5,7 +5,7 @@
 
 ## Issue
 
-Hosts and remotes that disagree on `version-first` vs `loaded-first` negotiate shared versions differently at startup.
+Hosts and remotes that disagree on `version-first` vs `loaded-first` negotiate shared versions differently at startup. An omitted `shareStrategy` is not treated as `version-first` when comparing hosts: two omitted configs stay quiet, but omitted vs an explicit strategy is a mismatch.
 
 ## How to fix it
 

@@ -63,10 +63,9 @@ export function evaluateFederationWorkspaceOracle(
   const strategyOwners = new Map<string, string[]>();
   for (const node of federation.projects) {
     if (!nodeConfig(node)) continue;
-    strategyOwners.set(node.shareStrategy, [
-      ...(strategyOwners.get(node.shareStrategy) ?? []),
-      nodeScope(node),
-    ]);
+    // Omitted is not version-first. Defaulting here would fake alignment across hosts.
+    const strategy = node.shareStrategy ?? "omitted";
+    strategyOwners.set(strategy, [...(strategyOwners.get(strategy) ?? []), nodeScope(node)]);
   }
   if (strategyOwners.size > 1) {
     findings.push({
@@ -99,7 +98,7 @@ export function evaluateFederationWorkspaceOracle(
           project: member.projectName,
           ...(member.instanceId ? { federationInstanceId: member.instanceId } : {}),
           federationName: member.federationName,
-          shareStrategy: member.shareStrategy,
+          ...(member.shareStrategy ? { shareStrategy: member.shareStrategy } : {}),
           asyncStartup: member.asyncStartup,
         })),
         edges: cycle.edges.map((edge) => ({
@@ -116,16 +115,16 @@ export function evaluateFederationWorkspaceOracle(
           const riskMember = {
             project: member.projectName,
             federationName: member.federationName,
-            shareStrategy: member.shareStrategy,
             asyncStartup: member.asyncStartup,
           } as {
             project: string;
             federationInstanceId?: string;
             federationName?: string;
-            shareStrategy: string;
+            shareStrategy?: string;
             asyncStartup: boolean;
           };
           if (member.instanceId) riskMember.federationInstanceId = member.instanceId;
+          if (member.shareStrategy) riskMember.shareStrategy = member.shareStrategy;
           return riskMember;
         }),
       },

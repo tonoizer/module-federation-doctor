@@ -328,6 +328,55 @@ describe("federation host-gaps and ghost-shares", () => {
     expect(ghost?.evidence.package).toBe("lodash");
   });
 
+  it("does not treat omitted shareStrategy as version-first when comparing hosts", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-fed-strategy-omitted-"));
+    roots.push(root);
+
+    const omittedVsOmitted = [path.join(root, "omit-a.json"), path.join(root, "omit-b.json")];
+    await fs.writeFile(omittedVsOmitted[0]!, JSON.stringify(projectFacts("omit-a", {}, [])));
+    await fs.writeFile(omittedVsOmitted[1]!, JSON.stringify(projectFacts("omit-b", {}, [])));
+    expect(
+      (await analyzeFederation(omittedVsOmitted)).findings.some(
+        (item) => item.ruleId === "federation/share-strategy-mismatch",
+      ),
+    ).toBe(false);
+
+    const omitted = projectFacts("omitted", {}, []);
+    const versionFirst = projectFacts("version-first", {}, []);
+    versionFirst.moduleFederation!.shareStrategy = "version-first";
+    const omittedVsVersion = [
+      path.join(root, "omitted.json"),
+      path.join(root, "version-first.json"),
+    ];
+    await fs.writeFile(omittedVsVersion[0]!, JSON.stringify(omitted));
+    await fs.writeFile(omittedVsVersion[1]!, JSON.stringify(versionFirst));
+    const omittedVsVersionFinding = (await analyzeFederation(omittedVsVersion)).findings.find(
+      (item) => item.ruleId === "federation/share-strategy-mismatch",
+    );
+    expect(omittedVsVersionFinding?.severity).toBe("warning");
+    expect(omittedVsVersionFinding?.evidence.strategies).toEqual({
+      omitted: ["omitted"],
+      "version-first": ["version-first"],
+    });
+
+    const loadedFirst = projectFacts("loaded-first", {}, []);
+    loadedFirst.moduleFederation!.shareStrategy = "loaded-first";
+    const omittedVsLoaded = [
+      path.join(root, "omitted-loaded.json"),
+      path.join(root, "loaded-first.json"),
+    ];
+    await fs.writeFile(omittedVsLoaded[0]!, JSON.stringify(omitted));
+    await fs.writeFile(omittedVsLoaded[1]!, JSON.stringify(loadedFirst));
+    const omittedVsLoadedFinding = (await analyzeFederation(omittedVsLoaded)).findings.find(
+      (item) => item.ruleId === "federation/share-strategy-mismatch",
+    );
+    expect(omittedVsLoadedFinding?.severity).toBe("warning");
+    expect(omittedVsLoadedFinding?.evidence.strategies).toEqual({
+      "loaded-first": ["loaded-first"],
+      omitted: ["omitted"],
+    });
+  });
+
   it("honors off and severity overrides for federation strategy mismatch", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-fed-strategy-"));
     roots.push(root);

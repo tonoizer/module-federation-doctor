@@ -1954,6 +1954,51 @@ describe("built-in rules", () => {
     await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
     expect(findings).toHaveLength(0);
   });
+
+  it("still warns version-first-offline-remotes when shareStrategy is omitted", async () => {
+    const facts: ProjectFacts = {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "vite", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: true,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "fixture",
+        exposes: {},
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/mf-manifest.json",
+            shareScope: "default",
+          },
+        },
+        shared: {},
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: [],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+    const findings: Array<unknown> = [];
+    const selected = builtInRules.find(
+      (item) => item.meta.id === "reliability/version-first-offline-remotes",
+    )!;
+    await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    expect(findings).not.toHaveLength(0);
+  });
 });
 
 describe("doctor/partial-analysis suggestions", () => {

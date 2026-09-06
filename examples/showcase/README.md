@@ -55,17 +55,17 @@ failure—such as a missing `name`—stay in the catalog but are not demoed here
 
 Committed `.project.json` facts for `mfdoctor federation`:
 
-| Directory                            | Expected rule                        | Severity |
-| ------------------------------------ | ------------------------------------ | -------- |
-| `federation/version-conflict`        | `federation/version-conflict`        | error    |
-| `federation/share-scope-mismatch`    | `federation/share-scope-mismatch`    | error    |
-| `federation/share-strategy-mismatch` | `federation/share-strategy-mismatch` | warning  |
-| `federation/circular-remote-graph`   | `federation/circular-remote-graph`   | warning  |
-| `federation/singleton-mismatch`      | `shared/singleton-mismatch`          | warning  |
-| `federation/name-conflict`           | `federation/name-conflict`           | error    |
-| `federation/missing-provider`        | `federation/missing-provider`        | error    |
-| `federation/host-gaps`               | `federation/host-gaps`               | warning  |
-| `federation/ghost-shares`            | `federation/ghost-shares`            | info     |
+| Directory                            | Expected rule                        | Severity                                                                                                   |
+| ------------------------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `federation/version-conflict`        | `federation/version-conflict`        | error                                                                                                      |
+| `federation/share-scope-mismatch`    | `federation/share-scope-mismatch`    | error                                                                                                      |
+| `federation/share-strategy-mismatch` | `federation/share-strategy-mismatch` | warning (omitted host `shareStrategy` vs remote `loaded-first`; omitted is not treated as `version-first`) |
+| `federation/circular-remote-graph`   | `federation/circular-remote-graph`   | warning                                                                                                    |
+| `federation/singleton-mismatch`      | `shared/singleton-mismatch`          | warning                                                                                                    |
+| `federation/name-conflict`           | `federation/name-conflict`           | error                                                                                                      |
+| `federation/missing-provider`        | `federation/missing-provider`        | error                                                                                                      |
+| `federation/host-gaps`               | `federation/host-gaps`               | warning                                                                                                    |
+| `federation/ghost-shares`            | `federation/ghost-shares`            | info                                                                                                       |
 
 ## Runtime
 

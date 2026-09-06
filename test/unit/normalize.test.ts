@@ -38,6 +38,16 @@ describe("normalization", () => {
     expect(packageName("react/jsx-runtime")).toBe("react");
   });
 
+  it("does not default omitted shareStrategy to version-first", () => {
+    expect(normalizeModuleFederation({ name: "host" })?.shareStrategy).toBeUndefined();
+    expect(
+      normalizeModuleFederation({ name: "host", shareStrategy: "version-first" })?.shareStrategy,
+    ).toBe("version-first");
+    expect(
+      normalizeModuleFederation({ name: "host", shareStrategy: "loaded-first" })?.shareStrategy,
+    ).toBe("loaded-first");
+  });
+
   it("defaults omitted manifest by bundler family", () => {
     expect(defaultManifestEnabled("webpack")).toBe(true);
     expect(defaultManifestEnabled("rspack")).toBe(true);

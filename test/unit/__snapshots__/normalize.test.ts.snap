@@ -44,7 +44,6 @@ exports[`normalization > normalizes string and object forms in stable order 1`] 
   "shareScope": [
     "default",
   ],
-  "shareStrategy": "version-first",
   "shared": {
     "react": {
       "eager": false,

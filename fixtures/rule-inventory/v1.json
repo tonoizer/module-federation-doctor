@@ -5724,7 +5724,7 @@
         "name": "MFDoctor maintainers"
       },
       "remediation": {
-        "summary": "Hosts and remotes that disagree on `version-first` vs `loaded-first` negotiate shared versions differently at startup.",
+        "summary": "Hosts and remotes that disagree on `version-first` vs `loaded-first` (or omitted vs an explicit strategy) negotiate shared versions differently at startup.",
         "documentation": "/rules/federation/share-strategy-mismatch",
         "fix": "Pick one federation-wide `shareStrategy`, or document intentional per-app exceptions."
       },

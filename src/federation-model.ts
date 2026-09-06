@@ -17,7 +17,8 @@ export interface FederationProjectNode {
   federationName?: string;
   instanceId?: string;
   instance?: FederationInstanceFacts;
-  shareStrategy: "version-first" | "loaded-first";
+  /** Declared only. Omitted stays unset so host compare cannot fake version-first alignment. */
+  shareStrategy?: "version-first" | "loaded-first";
   asyncStartup: boolean;
   exposes: string[];
   remotes: FederationRemoteEdge[];
@@ -111,7 +112,6 @@ export function buildFederationModel(projects: ProjectFacts[]): FederationModel 
           id: projectId(project, instance?.id),
           project,
           projectName: project.project.name,
-          shareStrategy: config?.shareStrategy ?? "version-first",
           asyncStartup: config?.experiments?.asyncStartup ?? false,
           exposes: Object.keys(config?.exposes ?? {}).sort(),
           remotes: [],
@@ -123,6 +123,7 @@ export function buildFederationModel(projects: ProjectFacts[]): FederationModel 
           node.instance = instance;
         }
         if (config?.name) node.federationName = config.name;
+        if (config?.shareStrategy) node.shareStrategy = config.shareStrategy;
         return node;
       });
     }),
@@ -248,6 +249,7 @@ export function findFederationCycleGroups(model: FederationModel): FederationCyc
             memberIds.has(edge.targetId),
         )
         .sort((left, right) => left.id.localeCompare(right.id));
+      // Eager-startup risk is declared version-first only; omitted is unknown here.
       const riskMembers = members.filter((member) => member.shareStrategy === "version-first");
       const riskMemberIds = new Set(riskMembers.map((member) => member.id));
       const riskEdges = edges.filter((edge) => riskMemberIds.has(edge.fromId));

@@ -486,6 +486,13 @@ function isDevelopmentBuild(context: RuleContext): boolean {
   return buildCount === 1 && builds?.[0]?.effectiveMode === "development";
 }
 
+/** Runtime default is version-first. Used by single-project rules, not host compare. */
+function isVersionFirstShareStrategy(
+  config: NormalizedMFConfig | undefined,
+): config is NormalizedMFConfig {
+  return config !== undefined && (config.shareStrategy ?? "version-first") === "version-first";
+}
+
 /** Detect retry / errorLoadRemote recovery plugins from configured paths. */
 function hasRemoteRecoveryPlugin(plugins: string[] | undefined): boolean {
   if (!plugins?.length) return false;
@@ -1395,10 +1402,7 @@ export const builtInRules: DoctorRule[] = [
   createRule("performance/version-first-startup", "info", (context) => {
     const config = mf(context);
     const threshold = Number(context.options["remoteThreshold"] ?? 3);
-    if (
-      config?.shareStrategy === "version-first" &&
-      Object.keys(config.remotes).length >= threshold
-    )
+    if (isVersionFirstShareStrategy(config) && Object.keys(config.remotes).length >= threshold)
       report(
         context,
         "`version-first` loads every configured remote entry during startup.",
@@ -1496,7 +1500,7 @@ export const builtInRules: DoctorRule[] = [
   createRule("reliability/version-first-offline-remotes", "warning", (context) => {
     const config = mf(context);
     if (
-      config?.shareStrategy === "version-first" &&
+      isVersionFirstShareStrategy(config) &&
       Object.keys(config.remotes).length > 0 &&
       !hasRemoteRecoveryPlugin(config.runtimePlugins) &&
       !(

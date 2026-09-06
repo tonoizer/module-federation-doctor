@@ -1444,7 +1444,7 @@ export function migrateFederationWorkspace(
       projectName: node.projectName,
       ...(node.federationName ? { federationName: node.federationName } : {}),
       ...(node.instanceId ? { instanceId: node.instanceId } : {}),
-      shareStrategy: node.shareStrategy,
+      ...(node.shareStrategy ? { shareStrategy: node.shareStrategy } : {}),
       asyncStartup: node.asyncStartup,
     })),
     remoteEdges: federation.remoteEdges.map((edge) => ({
