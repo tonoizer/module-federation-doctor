@@ -6,5 +6,5 @@
   "id": "config/remote-http-insecure",
   "impact": "Remote code fetched over plain HTTP can be changed in transit.",
   "sources": ["https://module-federation.io/configure/remotes.html"],
-  "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern", "unknown"]
+  "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
 }

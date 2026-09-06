@@ -60,7 +60,7 @@ handles, required state, commands, and observable proof.
 
 ## Features
 
-- [Capabilities](./capabilities.md) — versioned JSON CLI contract (no config, no network).
+- [Capabilities](./capabilities.md) — versioned JSON CLI contract (commands, exit codes, bundlerMatrix; no config, no network).
 - [Check](./check.md) — one-project offline analysis on a showcase/example fixture.
 - [Workspace](./workspace.md) — cross-project federation gate on nested examples or workspace fixtures.
 - [Federation glob](./federation.md) — explicit `project.json` globs (`mfdoctor federation` without `--workspace`).
@@ -68,7 +68,7 @@ handles, required state, commands, and observable proof.
 - [Baseline](./baseline.md) — generate / update / prune fingerprint baselines (debt tracking, not a mute).
 - [Runtime](./runtime.md) — offline Observability trace correlation (`mfdoctor runtime`).
 - [Plugin emit](./plugin-emit.md) — build with `federationDoctor` and observe `.mf/doctor/project.json`.
-- [Rules](./rules.md) — built-in rule catalog via `mfdoctor rules`.
+- [Rules](./rules.md) — built-in rule catalog via `mfdoctor rules` (including per-rule `supportedBundlers`).
 
 ## Explicitly not mapped
 
