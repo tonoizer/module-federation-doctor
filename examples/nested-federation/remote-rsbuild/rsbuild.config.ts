@@ -33,6 +33,9 @@ export default defineConfig({
       rules: {
         // Nested demo uses direct remoteEntry URLs (no manifest CDN).
         "config/remote-manifest-recommended": "off",
+        // Direct .js remotes are intentional; this nested producer tests
+        // extractRemoteTypes, not consumeTypes.remoteTypeUrls.
+        "config/js-remote-without-type-urls": "off",
       },
     }),
   ],

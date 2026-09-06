@@ -79,8 +79,8 @@ use baseline `reason` fields (below).
 The green multi-bundler example
 [`examples/mixed-federation/host-vite`](https://github.com/tonoizer/module-federation-doctor/blob/main/examples/mixed-federation/host-vite/vite.config.ts)
 is the canonical pattern for intentional host suppressions. The fixture has no
-manifest server and tests direct Vite→Rspack/Rsbuild remotes, so it turns two
-rules off with comments:
+manifest server and tests direct Vite→Rspack/Rsbuild remotes, so it turns those
+direct-entry rules off with comments:
 
 ```ts
 federationDoctor({
@@ -89,6 +89,9 @@ federationDoctor({
     // This local example has no manifest server. Production apps should
     // prefer manifest URLs so tooling can inspect richer metadata.
     "config/remote-manifest-recommended": "off",
+    // Direct .js remotes are intentional here; this fixture tests runtime
+    // interop, not dts.consumeTypes.remoteTypeUrls.
+    "config/js-remote-without-type-urls": "off",
     // Keep version-first here because this fixture tests direct
     // Vite-to-Rspack/Rsbuild interoperability, not offline recovery.
     "reliability/version-first-offline-remotes": "off",

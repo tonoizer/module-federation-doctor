@@ -40,6 +40,9 @@ export default defineConfig({
       moduleFederation: mfOptions,
       rules: {
         "config/remote-manifest-recommended": "off",
+        // Direct .js remotes are intentional; this nested producer tests
+        // extractRemoteTypes, not consumeTypes.remoteTypeUrls.
+        "config/js-remote-without-type-urls": "off",
         "reliability/version-first-offline-remotes": "off",
         "vite/manual-chunks-conflict": "off",
       },

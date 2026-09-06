@@ -43,6 +43,9 @@ export default defineConfig({
         // This local example has no manifest server. Production apps should
         // prefer manifest URLs so tooling can inspect richer metadata.
         "config/remote-manifest-recommended": "off",
+        // Direct .js remotes are intentional here; this fixture tests runtime
+        // interop, not dts.consumeTypes.remoteTypeUrls.
+        "config/js-remote-without-type-urls": "off",
         // Keep version-first here because this fixture tests direct
         // Vite-to-Rspack/Rsbuild interoperability, not offline recovery.
         "reliability/version-first-offline-remotes": "off",

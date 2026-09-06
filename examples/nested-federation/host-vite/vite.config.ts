@@ -38,6 +38,9 @@ export default defineConfig({
       rules: {
         // Nested demo has no manifest CDN; production apps should prefer manifests.
         "config/remote-manifest-recommended": "off",
+        // Direct .js remotes are intentional; this fixture is runtime interop,
+        // not dts.consumeTypes.remoteTypeUrls.
+        "config/js-remote-without-type-urls": "off",
         // Direct Vite↔Rspack/Rsbuild interoperability fixture, not offline recovery.
         "reliability/version-first-offline-remotes": "off",
         "vite/manual-chunks-conflict": "off",
