@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 123,
-  "migratedCount": 123,
+  "ruleCount": 124,
+  "migratedCount": 124,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
@@ -4582,6 +4582,79 @@
       },
       "evidenceReads": ["project.scope", "bundler.name", "dependencies.declared"],
       "migrationNote": "Group 3; Package metadata is exact only after provenance and version resolution are verified. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
+      "id": "config/promise-remote-async-boundary",
+      "version": "1",
+      "group": 1,
+      "status": "migrated",
+      "demo": "unit",
+      "defaultSeverity": "warning",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "Promise remotes resolve asynchronously. Without `experiments.asyncStartup` or an `import('./bootstrap')` boundary, the host can start before those remotes finish initializing.",
+        "documentation": "/rules/config/promise-remote-async-boundary",
+        "fix": "Enable `experiments.asyncStartup`, or move application startup behind a dynamic `import('./bootstrap')` (or another async app-shell import)."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ]
+      },
+      "evidenceReads": ["project.scope", "moduleFederation", "imports.sourceFiles"],
+      "migrationNote": "Group 1; Declared remote type and asyncStartup are exact; a bootstrap filename in sourceFiles is an optional quiet path. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
       "id": "config/remote-alias-prefix-collision",

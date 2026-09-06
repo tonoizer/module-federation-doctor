@@ -934,6 +934,19 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/promise-remote-async-boundary",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "https://example.test/mf-manifest.json",
+            type: "promise",
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
       "config/copied-webpack-options-on-vite",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.remoteType = "script";
@@ -3310,6 +3323,167 @@ describe("vite remotes typing dialect", () => {
     const empty = baseFacts();
     expect(await run("vite/remotes-prefer-module", empty)).toHaveLength(0);
     expect(await run("vite/var-filename-interop", empty)).toHaveLength(0);
+  });
+});
+
+describe("promise and script remote types", () => {
+  function baseFacts(bundler: ProjectFacts["bundler"]["name"] = "webpack"): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: bundler, mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {},
+        shared: {},
+      },
+      dependencies: { declared: { "@module-federation/enhanced": "0.21.0" }, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  async function run(id: string, facts: ProjectFacts) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const selected = builtInRules.find((item) => item.meta.id === id)!;
+    await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  function promiseRemote(
+    type: string | undefined = "promise",
+  ): NonNullable<ProjectFacts["moduleFederation"]>["remotes"] {
+    return {
+      shop: {
+        name: "shop",
+        entry:
+          type === undefined
+            ? "promise new Promise((resolve) => { resolve({}); })"
+            : "https://example.test/mf-manifest.json",
+        ...(type ? { type } : {}),
+        shareScope: "default",
+      },
+    };
+  }
+
+  it("warns when a promise remote has no asyncStartup or bootstrap", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = promiseRemote();
+    const findings = await run("config/promise-remote-async-boundary", facts);
+    expect(findings).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining("Promise remote"),
+        evidence: expect.objectContaining({
+          asyncStartup: false,
+          bootstrap: false,
+          remotes: [expect.objectContaining({ name: "shop", type: "promise" })],
+        }),
+      }),
+    ]);
+  });
+
+  it("stays quiet when experiments.asyncStartup is enabled", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = promiseRemote();
+    facts.moduleFederation!.experiments = {
+      asyncStartup: true,
+      externalRuntime: false,
+      provideExternalRuntime: false,
+    };
+    expect(await run("config/promise-remote-async-boundary", facts)).toHaveLength(0);
+  });
+
+  it("stays quiet when a bootstrap file is present", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = promiseRemote();
+    facts.imports.sourceFiles = ["src/index.ts", "src/bootstrap.ts"];
+    expect(await run("config/promise-remote-async-boundary", facts)).toHaveLength(0);
+  });
+
+  it("warns on webpack string promise remotes", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.remotes = promiseRemote(undefined);
+    const findings = await run("config/promise-remote-async-boundary", facts);
+    expect(findings).not.toHaveLength(0);
+    expect(findings[0]?.evidence).toMatchObject({
+      remotes: [expect.objectContaining({ name: "shop", type: "promise" })],
+    });
+  });
+
+  it("extends library-remote-type-mismatch for script remotes on an ESM library", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.library = { type: "module" };
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "https://example.test/remoteEntry.js",
+        type: "script",
+        shareScope: "default",
+      },
+    };
+    const findings = await run("config/library-remote-type-mismatch", facts);
+    expect(findings).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('"shop"'),
+        evidence: expect.objectContaining({
+          libraryType: "module",
+          remotes: [expect.objectContaining({ name: "shop", type: "script" })],
+        }),
+      }),
+    ]);
+  });
+
+  it("still flags top-level remoteType script against an ESM library", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.library = { type: "module" };
+    facts.moduleFederation!.remoteType = "script";
+    const findings = await run("config/library-remote-type-mismatch", facts);
+    expect(findings).toEqual([
+      expect.objectContaining({
+        evidence: expect.objectContaining({ libraryType: "module", remoteType: "script" }),
+      }),
+    ]);
+  });
+
+  it("does not crash or warn on unknown remote types", async () => {
+    const facts = baseFacts();
+    facts.moduleFederation!.library = { type: "module" };
+    facts.moduleFederation!.remotes = {
+      shop: {
+        name: "shop",
+        entry: "https://example.test/remoteEntry.js",
+        type: "not-a-real-type",
+        shareScope: "default",
+      },
+      other: {
+        name: "other",
+        entry: "https://example.test/other.js",
+        type: "",
+        shareScope: "default",
+      },
+    };
+    expect(await run("config/library-remote-type-mismatch", facts)).toHaveLength(0);
+    expect(await run("config/promise-remote-async-boundary", facts)).toHaveLength(0);
+    expect(await run("vite/remotes-prefer-module", facts)).toHaveLength(0);
   });
 });
 

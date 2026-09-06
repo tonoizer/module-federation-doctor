@@ -145,6 +145,17 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
       "https://module-federation.io/configure/remotetype.html",
     ],
   },
+  "config/promise-remote-async-boundary": {
+    category: "correctness",
+    impact:
+      "Promise remotes resolve asynchronously. Without `experiments.asyncStartup` or an `import('./bootstrap')` boundary, the host can start before those remotes finish initializing.",
+    fix: "Enable `experiments.asyncStartup`, or move application startup behind a dynamic `import('./bootstrap')` (or another async app-shell import).",
+    sources: [
+      "https://module-federation.io/configure/remotes.html",
+      experiments,
+      "https://module-federation.io/guide/troubleshooting/runtime.html#runtime-005",
+    ],
+  },
   "config/copied-webpack-options-on-vite": {
     category: "correctness",
     impact:
