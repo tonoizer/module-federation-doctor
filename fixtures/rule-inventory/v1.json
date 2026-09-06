@@ -5380,6 +5380,74 @@
       "migrationNote": "Group 1; Declared config is exact for this shape check. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
+      "id": "config/split-chunks-mf-runtime",
+      "version": "1",
+      "group": 6,
+      "status": "migrated",
+      "demo": "unit",
+      "defaultSeverity": "warning",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "User cacheGroups that target mf-* / remoteEntry / shared-runtime chunks can steal Module Federation runtime and shared ownership, breaking init order or duplicate-share isolation. This is an advisory for observed public splitChunks only; MFDoctor does not nag every project to set chunks: \"async\".",
+        "documentation": "/rules/config/split-chunks-mf-runtime",
+        "fix": "Exclude federation runtime chunks from cacheGroups (name, test, and filename). Leave MF-owned remoteEntry and shared-runtime chunks to the federation plugin, or allowlist a proven layout with `allowSplitChunks: true`."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "bundler.name",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          }
+        ]
+      },
+      "evidenceReads": ["project.scope", "moduleFederation", "bundler.name", "bundler.splitChunks"],
+      "migrationNote": "Group 6; Absent plugin splitChunks facts → unknown; observed cacheGroups that do not target MF runtime/remoteEntry names → pass. Does not nag on chunks: \"async\" alone. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
       "id": "config/tree-shaking-server-calc-injection",
       "version": "1",
       "group": 1,

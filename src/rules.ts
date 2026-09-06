@@ -47,6 +47,7 @@ import {
   DEFAULT_SINGLETON_RISK_PACKAGES,
   isShareKeyUsed,
 } from "./shared-policy.js";
+import { conflictingSplitChunksCacheGroups, isSplitChunksBundler } from "./split-chunks.js";
 import {
   FINDING_DETAILS_SCHEMAS,
   findingDetails,
@@ -1884,6 +1885,33 @@ export const builtInRules: DoctorRule[] = [
         codeSplittingGroups: Boolean(viteConfig.codeSplittingGroups),
       },
       "Move general chunk tuning outside the federation runtime graph, or set `allowManualChunks: true` when the layout is proven safe.",
+    );
+  }),
+  createRule("config/split-chunks-mf-runtime", "warning", (context) => {
+    if (!isSplitChunksBundler(context.facts.bundler.name)) return;
+    if (optionBoolean(context.options, "allowSplitChunks") === true) return;
+    const splitChunks = context.facts.bundler.splitChunks;
+    if (!splitChunks) return;
+    const conflicts = conflictingSplitChunksCacheGroups(splitChunks, {
+      ...context.facts,
+      moduleFederation: mf(context) ?? context.facts.moduleFederation,
+    });
+    if (conflicts.length === 0) return;
+    report(
+      context,
+      "splitChunks cacheGroups target Module Federation runtime chunks.",
+      {
+        ...(splitChunks.chunks ? { chunks: splitChunks.chunks } : {}),
+        cacheGroups: conflicts.map((group) => group.name),
+        ...(conflicts.some((group) => group.chunkName)
+          ? {
+              chunkNames: conflicts
+                .map((group) => group.chunkName)
+                .filter((name): name is string => Boolean(name)),
+            }
+          : {}),
+      },
+      "Keep MF runtime / remoteEntry / shared-runtime chunks out of user cacheGroups. Restrict those groups to app code, or set `allowSplitChunks: true` when the layout is proven safe.",
     );
   }),
   createRule("vite/hashed-remote-filename", "warning", (context) => {

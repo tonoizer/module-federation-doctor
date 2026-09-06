@@ -179,5 +179,13 @@ important tooling silently disappears.
   official plugin because they can break federation initialization order. Let
   the plugin isolate `loadShare` and runtime-init chunks.
 
+## Webpack, Rspack, and Rsbuild `splitChunks`
+
+Aggressive `optimization.splitChunks.cacheGroups` can steal Module Federation
+runtime, `remoteEntry`, and shared-runtime chunks. MFDoctor warns when a public
+cacheGroup **name or test** targets those chunks
+([`config/split-chunks-mf-runtime`](./rules/config/split-chunks-mf-runtime.md)).
+It does **not** nag every project to set `chunks: "async"`.
+
 Source:
 [Vite plugin source](https://github.com/module-federation/vite/blob/321d7db8a4b2a1764b3a7cdc16246222d97231ac/src/index.ts).

@@ -202,6 +202,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
   if (options.bundlerVersion !== undefined) resolved.bundlerVersion = options.bundlerVersion;
   if (options.viteLifecycle !== undefined) resolved.viteLifecycle = options.viteLifecycle;
   if (options.viteConfigFacts !== undefined) resolved.viteConfigFacts = options.viteConfigFacts;
+  if (options.splitChunksFacts !== undefined) resolved.splitChunksFacts = options.splitChunksFacts;
   if (options.transformImport !== undefined) {
     resolved.transformImportLibraries = [
       ...new Set(

@@ -147,6 +147,15 @@ function vitePluginConfigEvidenceInconclusive(context: EvidenceRuleContext): str
   return undefined;
 }
 
+function splitChunksEvidenceInconclusive(context: EvidenceRuleContext): string | undefined {
+  if (!context.facts) return undefined;
+  const bundler = context.facts.bundler.name;
+  if (bundler !== "webpack" && bundler !== "rspack" && bundler !== "rsbuild") return undefined;
+  if (!context.facts.bundler.splitChunks)
+    return "Plugin-observed splitChunks / cacheGroups facts were not collected for this analysis.";
+  return undefined;
+}
+
 function viteServerOriginEvidenceInconclusive(context: EvidenceRuleContext): string | undefined {
   const missing = vitePluginConfigEvidenceInconclusive(context);
   if (missing) return missing;
@@ -188,6 +197,7 @@ const GROUP6_INCONCLUSIVE: Partial<
   >
 > = {
   "vite/manual-chunks-conflict": vitePluginConfigEvidenceInconclusive,
+  "config/split-chunks-mf-runtime": splitChunksEvidenceInconclusive,
   "vite/alias-share-bypass": vitePluginConfigEvidenceInconclusive,
   "vite/server-origin": viteServerOriginEvidenceInconclusive,
   "config/alias-share-bypass": aliasShareBypassEvidenceInconclusive,

@@ -18,6 +18,7 @@ import type {
 import { normalizePath, relativePath } from "./utils.js";
 import { detectViteLifecycle, withPostEmitHook, type ViteHookMeta } from "./vite-lifecycle.js";
 import { observeResolveAlias, type ResolveAliasObservation } from "./share-rewrite.js";
+import { extractCompilerSplitChunksFacts, extractRsbuildSplitChunksFacts } from "./split-chunks.js";
 
 /**
  * Fail only after every finding has already been collected and reported.
@@ -62,6 +63,7 @@ export type CompilerLike = {
     output?: { path?: string; publicPath?: unknown; filename?: unknown };
     externals?: unknown;
     resolve?: { alias?: unknown };
+    optimization?: { splitChunks?: unknown };
   };
 };
 
@@ -350,6 +352,20 @@ function mergeResolveAliasObservation(
   diagnostics.resolveAliases = { ...diagnostics.resolveAliases, ...observed.aliases };
 }
 
+function attachRsbuildSplitChunks(
+  diagnostics: BuildDiagnostics,
+  api: {
+    getNormalizedConfig?: () => unknown;
+    getRsbuildConfig?: () => unknown;
+  },
+): void {
+  const config =
+    callPublicConfig(api.getNormalizedConfig) ?? callPublicConfig(api.getRsbuildConfig);
+  const splitChunks = extractRsbuildSplitChunksFacts(config);
+  if (splitChunks) diagnostics.splitChunks = splitChunks;
+  else if (config && typeof config === "object") diagnostics.splitChunks = {};
+}
+
 function collectCompilerDiagnostics(compiler: CompilerLike): BuildDiagnostics {
   const diagnostics: BuildDiagnostics = {};
   const count = countModuleFederationPlugins(compiler);
@@ -363,6 +379,8 @@ function collectCompilerDiagnostics(compiler: CompilerLike): BuildDiagnostics {
   const outputFilename = readOutputFilename(compiler.options?.output?.filename);
   if (outputFilename) diagnostics.outputFilename = outputFilename;
   mergeResolveAliasObservation(diagnostics, observeResolveAlias(compiler.options?.resolve?.alias));
+  if (compiler.options && "optimization" in compiler.options)
+    diagnostics.splitChunks = extractCompilerSplitChunksFacts(compiler.options.optimization) ?? {};
   return diagnostics;
 }
 
@@ -1117,6 +1135,7 @@ function createDoctorPlugin(bundler: BundlerName) {
                     ...(observedExternals !== undefined ? { externals: observedExternals } : {}),
                     ...aliasDiagnostics,
                   };
+                  attachRsbuildSplitChunks(diagnostics, rsbuildApi);
                   const result = await analyzeBuild(
                     configured,
                     assets,
