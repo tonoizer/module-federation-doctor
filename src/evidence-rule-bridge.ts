@@ -1,6 +1,6 @@
 import semver from "semver";
 import type { AnalysisBudgetTracker } from "./analysis-budgets.js";
-import type { EvidenceGraphV2, EvidenceScope, EvidenceSubject, EvidenceValue } from "./evidence.js";
+import type { EvidenceGraphV2, EvidenceScope, EvidenceSubject } from "./evidence.js";
 import { migrateProjectFacts } from "./evidence-reader.js";
 import { builtInRules } from "./rules.js";
 import {
@@ -17,7 +17,6 @@ import {
   type EvidenceAwareRule,
   type EvidenceRuleContext,
   type EvidenceRuleFinding,
-  type EvidenceRuleRunnerOutput,
   type EvidenceRuleScope,
   type RuleEvaluationResult,
 } from "./rule-contract.js";
@@ -30,12 +29,14 @@ import type {
   RuntimeTraceReport,
 } from "./types.js";
 import { shouldSkipMf2SharedUnused } from "./mf-toolkit-shapes.js";
-import { fingerprint, redact } from "./utils.js";
 import {
+  completeEvidenceRun,
   disabledRuleExecution,
-  graphEvaluationFor,
   graphScopeFor,
-  severityFor,
+  projectConclusiveFailures,
+  ruleOptionsFromSettings,
+  toEvidenceFinding,
+  type EvidenceProjectionRun,
 } from "./evidence-graph-projection.js";
 import {
   attachRuntimeTraceEvidence,
@@ -58,25 +59,6 @@ const MIGRATED_STATIC_EVIDENCE_RULE_IDS = [
   ...MIGRATED_GROUP3_RULE_IDS,
   ...MIGRATED_GROUP6_RULE_IDS,
 ] as const;
-
-function toEvidenceValue(value: unknown): EvidenceValue {
-  return value as EvidenceValue;
-}
-
-function toEvidenceFinding(value: LegacyFindingInput): EvidenceRuleFinding {
-  return {
-    message: value.message,
-    evidence: Object.fromEntries(
-      Object.entries(value.evidence ?? {}).map(([key, item]) => [key, toEvidenceValue(item)]),
-    ),
-    ...(value.suggestion ? { suggestion: value.suggestion } : {}),
-    ...(value.location ? { location: value.location } : {}),
-    ...(value.detailsSchema ? { detailsSchema: value.detailsSchema } : {}),
-    ...(value.details
-      ? { details: toEvidenceValue(value.details) as Record<string, EvidenceValue> }
-      : {}),
-  };
-}
 
 function legacyRuleContext(context: EvidenceRuleContext): Omit<RuleContext, "report"> {
   if (!context.facts) throw new Error("Project facts are missing for migrated rule evaluation.");
@@ -505,49 +487,11 @@ export interface EvidenceBridgeContext {
   recognizeMfToolkit?: boolean;
 }
 
-export interface MigratedEvidenceRun {
-  graph: EvidenceGraphV2;
-  output: EvidenceRuleRunnerOutput;
-}
+export type MigratedEvidenceRun = EvidenceProjectionRun;
 
 function unscopedProjectBuildCount(facts: ProjectFacts, selectedBuild?: BuildRecord): number {
   if (facts.builds?.length) return facts.builds.length;
   return selectedBuild ? 1 : 0;
-}
-
-function ruleOptionsFor(
-  settings: Readonly<Record<string, RuleSetting>>,
-  unscopedBuildCount: number,
-): Readonly<Record<string, Readonly<Record<string, unknown>>>> {
-  return Object.fromEntries(
-    migratedEvidenceRules.map((rule) => {
-      const setting = settings[rule.meta.id];
-      const options = Array.isArray(setting) ? setting[1] : {};
-      if (rule.meta.id !== "vite/remote-hmr-dev") return [rule.meta.id, options];
-      return [rule.meta.id, { ...options, unscopedProjectBuildCount: unscopedBuildCount }];
-    }),
-  );
-}
-
-function runtimeRuleOptionsFor(
-  settings: Readonly<Record<string, RuleSetting>>,
-  traces: readonly RuntimeTraceReport[],
-  projects: readonly ProjectFacts[],
-): Readonly<Record<string, Readonly<Record<string, unknown>>>> {
-  return Object.fromEntries(
-    migratedRuntimeEvidenceRules.map((rule) => {
-      const setting = settings[rule.meta.id];
-      const options = Array.isArray(setting) ? setting[1] : {};
-      return [
-        rule.meta.id,
-        {
-          ...options,
-          runtimeTraces: traces,
-          runtimeProjects: projects,
-        },
-      ];
-    }),
-  );
 }
 
 /** Build the v2 view from collected facts and run the migrated slice. */
@@ -573,7 +517,11 @@ export async function runMigratedEvidenceRules(
     rules,
     facts: scopedFacts,
     scope,
-    ruleOptions: ruleOptionsFor(settings, unscopedBuildCount),
+    ruleOptions: ruleOptionsFromSettings(migratedEvidenceRules, settings, (rule, options) =>
+      rule.meta.id === "vite/remote-hmr-dev"
+        ? { ...options, unscopedProjectBuildCount: unscopedBuildCount }
+        : options,
+    ),
     ...(bridgeContext?.root ? { root: bridgeContext.root } : {}),
     ...(bridgeContext?.sharedPolicy ? { sharedPolicy: bridgeContext.sharedPolicy } : {}),
     ...(bridgeContext?.recognizeMfToolkit !== undefined
@@ -581,10 +529,7 @@ export async function runMigratedEvidenceRules(
       : {}),
     ...(analysisBudget ? { analysisBudget } : {}),
   });
-  graph.evaluations = output.evaluations
-    .map((evaluation) => graphEvaluationFor(evaluation, graphScope))
-    .sort((left, right) => left.id.localeCompare(right.id));
-  return { graph, output: { ...output, execution: [...disabled, ...output.execution] } };
+  return completeEvidenceRun(graph, output, graphScope, disabled);
 }
 
 /** Run Group 5 runtime rules when opted-in runtime traces are attached. */
@@ -610,7 +555,11 @@ export async function runMigratedRuntimeEvidenceRules(
     rules,
     facts,
     scope,
-    ruleOptions: runtimeRuleOptionsFor(settings, traces, projects),
+    ruleOptions: ruleOptionsFromSettings(
+      migratedRuntimeEvidenceRules,
+      settings,
+      (_rule, options) => ({ ...options, runtimeTraces: traces, runtimeProjects: projects }),
+    ),
     ...(bridgeContext?.root ? { root: bridgeContext.root } : {}),
     ...(bridgeContext?.sharedPolicy ? { sharedPolicy: bridgeContext.sharedPolicy } : {}),
     ...(bridgeContext?.recognizeMfToolkit !== undefined
@@ -618,10 +567,7 @@ export async function runMigratedRuntimeEvidenceRules(
       : {}),
     ...(analysisBudget ? { analysisBudget } : {}),
   });
-  graph.evaluations = output.evaluations
-    .map((evaluation) => graphEvaluationFor(evaluation, graphScope))
-    .sort((left, right) => left.id.localeCompare(right.id));
-  return { graph, output: { ...output, execution: [...disabled, ...output.execution] } };
+  return completeEvidenceRun(graph, output, graphScope, disabled);
 }
 
 function attributedProjectFor(
@@ -663,49 +609,13 @@ export function projectMigratedFailures(
     ...migratedEvidenceRules.map((rule) => [rule.meta.id, rule] as const),
     ...migratedRuntimeEvidenceRules.map((rule) => [rule.meta.id, rule] as const),
   ]);
-  const findings: DoctorFinding[] = [];
-  for (const evaluation of evaluations) {
-    if (evaluation.outcome !== "fail") continue;
-    const rule = rules.get(evaluation.rule.id);
-    if (!rule) continue;
-    const severity = severityFor(settings[evaluation.rule.id], rule.meta.defaultSeverity);
-    if (!severity) continue;
-    const fallbackFinding: EvidenceRuleFinding = {
-      message: evaluation.reason,
-      evidence: {},
-      ...(rule.meta.remediation.fix ? { suggestion: rule.meta.remediation.fix } : {}),
-    };
-    const projected: EvidenceRuleFinding[] = evaluation.findings ?? [fallbackFinding];
-    const project = attributedProjectFor(evaluation, facts, subjectById);
-    const federationInstanceId = attributedFederationInstanceIdFor(evaluation, facts, subjectById);
-    for (const finding of projected) {
-      const location = finding.location
-        ? {
-            ...finding.location,
-            path: redact(finding.location.path, root) as string,
-          }
-        : undefined;
-      const base = {
-        schemaVersion: 1 as const,
-        ruleId: evaluation.rule.id,
-        severity,
-        message: redact(finding.message, root) as string,
-        project,
-        ...(federationInstanceId ? { federationInstanceId } : {}),
-        evidence: redact(finding.evidence, root) as Record<string, unknown>,
-        documentation: rule.meta.remediation.documentation,
-        ...(location ? { location } : {}),
-        ...(finding.suggestion ? { suggestion: redact(finding.suggestion, root) as string } : {}),
-      };
-      findings.push({
-        ...base,
-        fingerprint: fingerprint(base),
-        ...(finding.detailsSchema ? { detailsSchema: finding.detailsSchema } : {}),
-        ...(finding.details
-          ? { details: redact(finding.details, root) as Record<string, unknown> }
-          : {}),
-      });
-    }
-  }
-  return findings;
+  return projectConclusiveFailures({
+    evaluations,
+    rules,
+    settings,
+    root,
+    projectFor: (evaluation) => attributedProjectFor(evaluation, facts, subjectById),
+    federationInstanceIdFor: (evaluation) =>
+      attributedFederationInstanceIdFor(evaluation, facts, subjectById),
+  });
 }
