@@ -179,6 +179,26 @@ const cases = [
     expectedExit: 1,
   },
   {
+    dir: "examples/showcase/artifact/react-dom-server-in-web",
+    ruleId: "artifact/react-dom-server-in-web",
+    expectedExit: 1,
+  },
+  {
+    dir: "examples/showcase/ssr/node-runtime-plugin-missing",
+    ruleId: "ssr/node-runtime-plugin-missing",
+    expectedExit: 1,
+  },
+  {
+    dir: "examples/showcase/runtime-plugins/invalid-factory",
+    ruleId: "runtime-plugins/invalid-factory",
+    expectedExit: 0,
+  },
+  {
+    dir: "examples/showcase/runtime-plugins/create-script-cors-parity",
+    ruleId: "runtime-plugins/create-script-cors-parity",
+    expectedExit: 0,
+  },
+  {
     command: "federation",
     pattern: "examples/showcase/federation/version-conflict/*.project.json",
     ruleId: "federation/version-conflict",

@@ -627,6 +627,8 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
+  examples/showcase/artifact/react-dom-server-in-web: {}
+
   examples/showcase/bridge/export-app-missing: {}
 
   examples/showcase/bridge/vue-share-missing: {}
@@ -689,6 +691,10 @@ importers:
 
   examples/showcase/reliability/version-first-offline-remotes: {}
 
+  examples/showcase/runtime-plugins/create-script-cors-parity: {}
+
+  examples/showcase/runtime-plugins/invalid-factory: {}
+
   examples/showcase/shared/candidate:
     dependencies:
       react:
@@ -718,6 +724,8 @@ importers:
       react:
         specifier: 18.3.1
         version: 18.3.1
+
+  examples/showcase/ssr/node-runtime-plugin-missing: {}
 
   examples/showcase/vite/alias-share-bypass: {}
 

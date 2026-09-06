@@ -185,6 +185,10 @@ describe("adapter cases", () => {
     expect(stdout).toContain("ok examples/showcase/shared/eager-without-singleton");
     expect(stdout).toContain("ok examples/showcase/bridge/export-app-missing");
     expect(stdout).toContain("ok examples/showcase/bridge/vue-share-missing");
+    expect(stdout).toContain("ok examples/showcase/artifact/react-dom-server-in-web");
+    expect(stdout).toContain("ok examples/showcase/ssr/node-runtime-plugin-missing");
+    expect(stdout).toContain("ok examples/showcase/runtime-plugins/invalid-factory");
+    expect(stdout).toContain("ok examples/showcase/runtime-plugins/create-script-cors-parity");
     expect(stdout).toContain("ok examples/showcase/federation/version-conflict");
     expect(stdout).not.toContain("examples/showcase/config/name-required");
     expect(stdout).not.toContain("examples/showcase/name-required");
