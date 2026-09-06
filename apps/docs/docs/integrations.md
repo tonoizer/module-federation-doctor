@@ -61,6 +61,12 @@ The official Nuxt module still owns Module Federation. If that integration
 already exposes `nuxt.options.moduleFederation.config`, you may omit MFDoctor's
 explicit `moduleFederation` option.
 
+A copyable local emit cell lives in
+[`examples/compatibility/nuxt`](https://github.com/tonoizer/module-federation-doctor/tree/main/examples/compatibility/nuxt).
+It registers `@tonoizer/mfdoctor/nuxt` the same way and production-builds. It
+does **not** pull `@module-federation/nuxt` while that upstream example stays
+baseline-blocked.
+
 ## Rspack
 
 Use this adapter for direct `@rspack/core` projects:

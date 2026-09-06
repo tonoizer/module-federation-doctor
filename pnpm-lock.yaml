@@ -132,6 +132,19 @@ importers:
         specifier: workspace:*
         version: link:../../..
 
+  examples/compatibility/nuxt:
+    dependencies:
+      '@module-federation/vite':
+        specifier: 1.20.7
+        version: 1.20.7(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0))
+    devDependencies:
+      '@tonoizer/mfdoctor':
+        specifier: workspace:*
+        version: link:../../..
+      vite:
+        specifier: 8.1.5
+        version: 8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)
+
   examples/compatibility/rsbuild-adapter:
     dependencies:
       '@module-federation/rsbuild-plugin':

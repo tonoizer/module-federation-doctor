@@ -349,6 +349,7 @@ Examples:
 - `examples/nested-federation` — nested Vite host → Vite/Rsbuild → Rspack/Webpack;
   run `vp run demo:nested` or `vp run test:nested`
 - `examples/compatibility/webpack` — Webpack build+MFDoctor smoke for the matrix
+- `examples/compatibility/nuxt` — Nuxt module adapter smoke (partial; Vite-under-the-hood)
 - `examples/mixed-federation-issues` — same flat topology with intentional MFDoctor
   findings; run `vp run demo:mixed-issues`
 - `examples/standalone-findings` — per-bundler Vite/Webpack/Rspack/Rsbuild

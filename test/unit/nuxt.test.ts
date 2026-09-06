@@ -1,6 +1,11 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createNuxtDoctorModule, moduleFederationDoctor, nuxtDoctor } from "../../src/nuxt.js";
 import type { NuxtModuleContext } from "../../src/nuxt.js";
+
+const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 function nuxtContext(version: "3" | "4") {
   const callbacks: Array<(config: { plugins?: unknown[] }) => void> = [];
@@ -58,6 +63,15 @@ describe("Nuxt adapter", () => {
 
   it("keeps the pre-release Nuxt export as an alias", () => {
     expect(nuxtDoctor).toBe(moduleFederationDoctor);
+  });
+
+  it("ships a copyable compatibility smoke that registers the Nuxt module", async () => {
+    const source = await readFile(
+      path.join(repository, "examples/compatibility/nuxt/nuxt.config.mjs"),
+      "utf8",
+    );
+    expect(source).toContain('"@tonoizer/mfdoctor/nuxt"');
+    expect(source).toContain('name: "nuxt_smoke"');
   });
 
   it("does not duplicate the plugin when Nuxt invokes the hook twice", () => {
