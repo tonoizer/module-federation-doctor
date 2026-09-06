@@ -225,6 +225,57 @@ describe("build-time-only adapter contract", () => {
     expect(registered).toEqual(["onAfterBuild"]);
   });
 
+  it("records public Rsbuild/Rspack externals when modifyRspackConfig is observed", async () => {
+    const root = await fixtureRoot("rsbuild", "clean");
+    const plugin = asSinglePlugin(
+      rsbuildDoctor.raw(
+        {
+          ...doctorOptions(root, "clean"),
+          moduleFederation: {
+            name: "adapter_clean",
+            exposes: { "./Widget": "./src/Widget.ts" },
+            shared: { react: { singleton: true } },
+          },
+          output: { formats: ["json"] },
+        },
+        { framework: "rsbuild", versions: { unplugin: "0.0.0" } } as UnpluginContextMeta,
+      ),
+    );
+    let afterBuild:
+      | ((args: { stats: { toJson: (options: { assets: boolean }) => unknown } }) => Promise<void>)
+      | undefined;
+    let observeExternals:
+      | ((config: { externals?: unknown }) => { externals?: unknown })
+      | undefined;
+    plugin.rsbuild?.setup?.({
+      context: { rootPath: root },
+      modifyRspackConfig(fn: typeof observeExternals) {
+        observeExternals = fn;
+      },
+      onAfterBuild(fn: typeof afterBuild) {
+        afterBuild = fn;
+      },
+    } as never);
+    expect(observeExternals!({ externals: { react: "React" } }).externals).toEqual({
+      react: "React",
+    });
+    await afterBuild!({
+      stats: {
+        toJson: () => ({
+          name: "web",
+          outputPath: path.join(root, "dist"),
+          mode: "production",
+          assets: [{ name: "remoteEntry.js" }],
+        }),
+      },
+    });
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as { bundler: { externals?: string[] } };
+    expect(project.bundler.externals).toEqual(["react"]);
+    await fs.rm(root, { recursive: true, force: true });
+  });
+
   it("keeps Rsbuild parent and child stats as separate build records", async () => {
     const root = await fixtureRoot("rsbuild", "clean");
     const plugin = asSinglePlugin(

@@ -223,4 +223,62 @@ describe("webpack adapter", () => {
       targetKind: "node",
     });
   });
+
+  it("records public compiler.externals names on bundler facts", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-webpack-externals-"));
+    roots.push(root);
+    await fs.mkdir(path.join(root, "dist"));
+    await fs.writeFile(path.join(root, "dist", "remoteEntry.js"), "window.remote = {};\n");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "webpack-externals",
+        dependencies: { "@module-federation/enhanced": "1.0.0", react: "19.1.1" },
+      }),
+    );
+    const taps: Array<
+      (compilation: { assets: Record<string, unknown>; errors: Error[] }) => Promise<void>
+    > = [];
+    const compiler = {
+      context: root,
+      options: {
+        mode: "production",
+        output: { path: path.join(root, "dist") },
+        externals: { react: "React", lodash: "_" },
+      },
+      hooks: {
+        afterEmit: {
+          tapPromise(
+            _name: string,
+            fn: (compilation: {
+              assets: Record<string, unknown>;
+              errors: Error[];
+            }) => Promise<void>,
+          ) {
+            taps.push(fn);
+          },
+        },
+      },
+    };
+    const raw = webpackDoctor.raw(
+      {
+        root,
+        moduleFederation: {
+          name: "webpack_externals",
+          shared: { react: { singleton: true } },
+        },
+        mode: "ci",
+        output: { formats: [] },
+        rules: { "doctor/partial-analysis": "off" },
+      },
+      { framework: "webpack", versions: { unplugin: "3.3.0" }, webpack: { compiler } } as never,
+    );
+    const plugin = Array.isArray(raw) ? raw[0]! : raw;
+    plugin.webpack!(compiler as never);
+    await taps[0]!({ assets: { "remoteEntry.js": {} }, errors: [] });
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as { bundler: { externals?: string[] } };
+    expect(project.bundler.externals).toEqual(["lodash", "react"]);
+  });
 });

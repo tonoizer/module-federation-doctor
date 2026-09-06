@@ -649,6 +649,7 @@ describe("evidence-aware rule contract", () => {
         "vite/server-origin": ["bundler.viteConfig"],
         "vite/remote-hmr-dev": ["builds"],
         "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
+        "config/shared-externals-conflict": ["bundler.externals"],
         "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
         "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
       };
@@ -787,6 +788,7 @@ describe("evidence-aware rule contract", () => {
       "vite/alias-share-bypass",
       "vite/server-origin",
       "config/transform-import-share-conflict",
+      "config/shared-externals-conflict",
       "config/copied-webpack-options-on-vite",
       "doctor/partial-analysis",
     ]);
@@ -836,6 +838,11 @@ describe("evidence-aware rule contract", () => {
         .find((entry) => entry.id === "config/async-startup-rspack-version")
         ?.applicability.bundlers?.map((item) => item.name),
     ).toEqual(["rspack", "rsbuild"]);
+    expect(
+      ruleInventory
+        .find((entry) => entry.id === "config/shared-externals-conflict")
+        ?.applicability.bundlers?.map((item) => item.name),
+    ).toEqual(["rspack", "rsbuild", "webpack", "modern"]);
   });
 
   it("drives catalog supportedBundlers from inventory adapters", () => {
@@ -850,6 +857,12 @@ describe("evidence-aware rule contract", () => {
       "vite",
     ]);
     expect(catalog.get("config/rsbuild-mf-api-generation")?.supportedBundlers).toEqual(["rsbuild"]);
+    expect(catalog.get("config/shared-externals-conflict")?.supportedBundlers).toEqual([
+      "rspack",
+      "rsbuild",
+      "webpack",
+      "modern",
+    ]);
   });
 
   it("keeps declared reads aligned with the current built-in rule source", () => {
@@ -866,6 +879,7 @@ describe("evidence-aware rule contract", () => {
       "bundler.mode": "context.facts.bundler.mode",
       "bundler.moduleFederationPluginCount": "context.facts.bundler.moduleFederationPluginCount",
       "bundler.outputPublicPathKind": "context.facts.bundler.outputPublicPathKind",
+      "bundler.externals": "context.facts.bundler.externals",
       "imports.sourceFiles": "context.facts.imports.sourceFiles",
       "imports.packages": "context.facts.imports.packages",
       "imports.dynamicPackages": "context.facts.imports.dynamicPackages",

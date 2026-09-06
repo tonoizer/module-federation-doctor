@@ -1684,6 +1684,7 @@ export async function collectProjectFacts(
       ...(options.transformImportLibraries
         ? { transformImportLibraries: options.transformImportLibraries }
         : {}),
+      ...(options.externals !== undefined ? { externals: options.externals } : {}),
     },
     capabilities: {
       config: options.moduleFederation !== undefined || descriptors.length > 0,
@@ -1766,6 +1767,8 @@ export interface BuildDiagnostics {
   moduleFederationPluginCount?: number;
   moduleFederationInstances?: import("./types.js").ModuleFederationInstanceInput[];
   outputPublicPathKind?: OutputPublicPathKind;
+  /** Public bundler externals names when the adapter observed compiler/config. */
+  externals?: string[];
 }
 
 function buildOutputOrderKey(output: BuildOutputInput): string {
@@ -2022,6 +2025,7 @@ export async function addBuildFacts(
     facts.bundler.moduleFederationPluginCount = diagnostics.moduleFederationPluginCount;
   if (diagnostics?.outputPublicPathKind)
     facts.bundler.outputPublicPathKind = diagnostics.outputPublicPathKind;
+  if (diagnostics?.externals !== undefined) facts.bundler.externals = diagnostics.externals;
   if (outputs) {
     const orderedOutputs = orderBuildOutputs(outputs);
     const builds = orderedOutputs.map((output, index) =>

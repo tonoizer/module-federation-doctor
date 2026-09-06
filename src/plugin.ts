@@ -2,6 +2,7 @@ import { createUnplugin, type UnpluginOptions } from "unplugin";
 import fs from "node:fs/promises";
 import path from "node:path";
 import fg from "fast-glob";
+import { extractPublicExternals } from "./bundler-externals.js";
 import { analyzeBuild } from "./engine.js";
 import type { BuildDiagnostics } from "./collect.js";
 import type {
@@ -58,6 +59,7 @@ export type CompilerLike = {
     target?: string | string[] | false;
     plugins?: unknown[];
     output?: { path?: string; publicPath?: unknown };
+    externals?: unknown;
   };
 };
 
@@ -260,11 +262,15 @@ function callPublicConfig<T>(fn: (() => T) | undefined): T | undefined {
   }
 }
 
+type RsbuildExternalsObserver = (config: { externals?: unknown }) => { externals?: unknown };
+
 type RsbuildPluginApiLike = {
   context: { rootPath: string };
   onAfterBuild: (fn: (args: { stats?: RsbuildStatsLike | null }) => Promise<void> | void) => void;
   getNormalizedConfig?: () => unknown;
   getRsbuildConfig?: () => unknown;
+  modifyRspackConfig?: (fn: RsbuildExternalsObserver) => void;
+  modifyWebpackConfig?: (fn: RsbuildExternalsObserver) => void;
 };
 
 function observeRsbuildConfigPublicPath(api: {
@@ -333,6 +339,7 @@ function collectCompilerDiagnostics(compiler: CompilerLike): BuildDiagnostics {
     diagnostics.moduleFederationInstances = instances;
   if (compiler.options?.output && "publicPath" in compiler.options.output)
     diagnostics.outputPublicPathKind = classifyOutputPublicPath(compiler.options.output.publicPath);
+  if (compiler.options) diagnostics.externals = extractPublicExternals(compiler.options.externals);
   return diagnostics;
 }
 
@@ -1061,6 +1068,15 @@ function createDoctorPlugin(bundler: BundlerName) {
               setup(api) {
                 const rsbuildApi = api as RsbuildPluginApiLike;
                 if (!configured.root) configured.root = rsbuildApi.context.rootPath;
+                let observedExternals: string[] | undefined;
+                const observeExternals: RsbuildExternalsObserver = (config) => {
+                  observedExternals = extractPublicExternals(config.externals);
+                  return config;
+                };
+                if (typeof rsbuildApi.modifyRspackConfig === "function")
+                  rsbuildApi.modifyRspackConfig(observeExternals);
+                if (typeof rsbuildApi.modifyWebpackConfig === "function")
+                  rsbuildApi.modifyWebpackConfig(observeExternals);
                 rsbuildApi.onAfterBuild(async ({ stats }) => {
                   const outputs = stats
                     ? await collectRsbuildBuildOutputs(
@@ -1071,10 +1087,14 @@ function createDoctorPlugin(bundler: BundlerName) {
                   const assets = [
                     ...new Set(outputs.flatMap((output) => prefixedEmittedAssets(output))),
                   ];
+                  const diagnostics: BuildDiagnostics = {
+                    ...collectRsbuildPublicPathDiagnostics(rsbuildApi, stats),
+                    ...(observedExternals !== undefined ? { externals: observedExternals } : {}),
+                  };
                   const result = await analyzeBuild(
                     configured,
                     assets,
-                    collectRsbuildPublicPathDiagnostics(rsbuildApi, stats),
+                    diagnostics,
                     outputs.length > 0 ? outputs : undefined,
                   );
                   failAfterCollect(result);

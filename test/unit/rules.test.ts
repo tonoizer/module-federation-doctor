@@ -130,12 +130,6 @@ describe("built-in rules", () => {
     expect(ids).toMatchSnapshot();
   });
 
-  it("does not register the synthetic external-conflict rule", () => {
-    expect(builtInRules.find((rule) => rule.meta.id === "config/shared-externals-conflict")).toBe(
-      undefined,
-    );
-  });
-
   it("finds invalid config, removes duplicate findings, and honors overrides", async () => {
     const root = await fixture();
     const result = await analyze({
@@ -1097,6 +1091,13 @@ describe("built-in rules", () => {
         facts.moduleFederation!.shared = {
           lodash: { package: "lodash", singleton: false, eager: false, shareScope: ["default"] },
         };
+      },
+    ],
+    [
+      "config/shared-externals-conflict",
+      (facts: ProjectFacts) => {
+        facts.bundler.name = "webpack";
+        facts.bundler.externals = ["react"];
       },
     ],
     [
@@ -3317,6 +3318,131 @@ describe("config/transform-import-share-conflict", () => {
   });
 });
 
+describe("config/shared-externals-conflict", () => {
+  async function run(facts: ProjectFacts) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const selected = builtInRules.find(
+      (item) => item.meta.id === "config/shared-externals-conflict",
+    )!;
+    await selected.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  function base(): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: "webpack", mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        exposes: {},
+        remotes: {},
+        shared: {
+          react: { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+        },
+      },
+      dependencies: { declared: {}, installed: {} },
+      imports: {
+        sourceFiles: [],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  it("warns when a shared package is also listed in public externals", async () => {
+    const overlap = base();
+    overlap.bundler.externals = ["react", "lodash"];
+    expect(await run(overlap)).toMatchObject([
+      {
+        message: "Shared packages are also listed in bundler externals.",
+        evidence: { overlaps: ["react"] },
+      },
+    ]);
+  });
+
+  it("stays silent without overlap, when unobserved, and for function-only externals", async () => {
+    const noOverlap = base();
+    noOverlap.bundler.externals = ["lodash"];
+    expect(await run(noOverlap)).toHaveLength(0);
+
+    const observedEmpty = base();
+    observedEmpty.bundler.externals = [];
+    expect(await run(observedEmpty)).toHaveLength(0);
+
+    const missing = base();
+    expect(await run(missing)).toHaveLength(0);
+  });
+
+  it("matches prefix shares and honors allowPackages", async () => {
+    const prefix = base();
+    prefix.moduleFederation!.shared = {
+      "react/": { package: "react", singleton: true, eager: false, shareScope: ["default"] },
+    };
+    prefix.bundler.externals = ["react/jsx-runtime"];
+    expect(await run(prefix)).not.toHaveLength(0);
+
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const selected = builtInRules.find(
+      (item) => item.meta.id === "config/shared-externals-conflict",
+    )!;
+    const allow = base();
+    allow.bundler.externals = ["react"];
+    await selected.check({
+      facts: allow,
+      options: { allowPackages: ["react"] },
+      report: (finding) => findings.push(finding),
+    });
+    expect(findings).toHaveLength(0);
+  });
+
+  it("collects DoctorOptions.externals and reports through analyze", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      output: { formats: [] },
+      externals: { react: "React" },
+      moduleFederation: {
+        name: "host",
+        shared: { react: { singleton: true } },
+      },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+        "shared/singleton-risk": "off",
+        "shared/candidate": "off",
+        "shared/unused": "off",
+        "artifact/remote-entry-missing": "off",
+      },
+    });
+    expect(result.facts.bundler.externals).toEqual(["react"]);
+    expect(
+      result.report.findings.find((item) => item.ruleId === "config/shared-externals-conflict"),
+    ).toMatchObject({
+      evidence: { overlaps: ["react"] },
+    });
+  });
+});
+
 describe("Group 6 evidence bridge", () => {
   async function runMigrated(
     facts: ProjectFacts,
@@ -3400,6 +3526,32 @@ describe("Group 6 evidence bridge", () => {
         migrated.output.evaluations.find((evaluation) => evaluation.rule.id === id),
       ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
     }
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/shared-externals-conflict",
+      ),
+    ).toMatchObject({ outcome: "not-applicable" });
+  });
+
+  it("returns unknown for unobserved webpack externals and fails on overlap", async () => {
+    const missing = viteFacts();
+    missing.bundler.name = "webpack";
+    const unknownRun = await runMigrated(missing);
+    expect(
+      unknownRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/shared-externals-conflict",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
+
+    const overlap = viteFacts();
+    overlap.bundler.name = "webpack";
+    overlap.bundler.externals = ["react"];
+    const failRun = await runMigrated(overlap, { "config/shared-externals-conflict": "warning" });
+    expect(
+      failRun.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/shared-externals-conflict",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
   });
 
   it("evaluates SSR Vite rules without adapter builds evidence", async () => {

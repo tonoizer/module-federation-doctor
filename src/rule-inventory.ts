@@ -129,6 +129,7 @@ const ids = [
   "vite/alias-share-bypass",
   "vite/server-origin",
   "config/transform-import-share-conflict",
+  "config/shared-externals-conflict",
   "runtime/error-correlated",
   "runtime/init-failed",
   "runtime/remote-load-failed",
@@ -412,6 +413,7 @@ export const MIGRATED_GROUP6_RULE_IDS = [
   "vite/alias-share-bypass",
   "vite/server-origin",
   "config/transform-import-share-conflict",
+  "config/shared-externals-conflict",
   "config/copied-webpack-options-on-vite",
   "doctor/partial-analysis",
 ] as const;
@@ -453,6 +455,7 @@ const ALL = ["vite", "rspack", "rsbuild", "webpack", "modern"] as const;
 const VITE = ["vite"] as const;
 const RSBUILD = ["rsbuild"] as const;
 const RSPACK_FAMILY = ["rspack", "rsbuild"] as const;
+const WEBPACK_FAMILY = ["rspack", "rsbuild", "webpack", "modern"] as const;
 const plan = (
   group: RuleMigrationGroup,
   severity: RulePlan["severity"],
@@ -946,6 +949,16 @@ const plans: Record<string, RulePlan> = {
     "project",
     "high",
     "Requires transformImport library facts from options/adapters; skips when unknown.",
+  ),
+  "config/shared-externals-conflict": plan(
+    6,
+    "warning",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Requires public bundler externals facts from adapters or DoctorOptions.externals; skips when unobserved.",
+    WEBPACK_FAMILY,
   ),
   "config/copied-webpack-options-on-vite": plan(
     6,
@@ -1845,6 +1858,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "moduleFederation",
     "bundler.transformImportLibraries",
   ],
+  "config/shared-externals-conflict": ["project.scope", "moduleFederation", "bundler.externals"],
   "runtime/error-correlated": ["project.scope", "runtime.trace"],
   "runtime/init-failed": ["project.scope", "runtime.trace"],
   "runtime/remote-load-failed": ["project.scope", "runtime.trace"],
@@ -1958,6 +1972,7 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
     "vite/server-origin": ["bundler.viteConfig"],
     "vite/remote-hmr-dev": ["builds"],
     "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
+    "config/shared-externals-conflict": ["bundler.externals"],
     "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
     "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
   };

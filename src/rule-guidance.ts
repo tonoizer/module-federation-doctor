@@ -421,6 +421,18 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
       "https://rsbuild.rs/config/source/transform-import",
     ],
   },
+  "config/shared-externals-conflict": {
+    category: "correctness",
+    impact:
+      "A library listed in both `shared` and bundler `externals` is excluded from the bundle while still declared as shared, which causes runtime failures.",
+    fix: "Remove the package from `shared` or from bundler `externals` (webpack/rspack `externals`, rsbuild `output.externals`). Functions and regex externals are not compared. When externals were not observed (CLI without `externals` and without an adapter), this rule skips.",
+    sources: [
+      shared,
+      "https://webpack.js.org/configuration/externals/",
+      "https://rspack.rs/config/externals",
+      "https://rsbuild.rs/config/output/externals",
+    ],
+  },
   "artifact/manifest-assets-disabled": {
     category: "reliability",
     impact:

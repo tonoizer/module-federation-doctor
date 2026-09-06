@@ -212,4 +212,19 @@ describe("resolveOptions", () => {
     expect(resolved.failOn).toBe("error");
     expect(resolved.rules["shared/prefix-share-recommended"]).toBeUndefined();
   });
+
+  it("normalizes public bundler externals from DoctorOptions", async () => {
+    stubLocalEnv();
+    const resolved = await resolveOptions({
+      root: "fixture",
+      externals: { react: "React", lodash: "_" },
+    });
+    expect(resolved.externals).toEqual(["lodash", "react"]);
+    const fromArray = await resolveOptions({
+      root: "fixture",
+      externals: ["vue", { "react-dom": "ReactDOM" }],
+    });
+    expect(fromArray.externals).toEqual(["react-dom", "vue"]);
+    expect((await resolveOptions({ root: "fixture" })).externals).toBeUndefined();
+  });
 });

@@ -661,6 +661,8 @@ importers:
 
   examples/showcase/config/share-scope-undeclared: {}
 
+  examples/showcase/config/shared-externals-conflict: {}
+
   examples/showcase/federation/circular-remote-graph: {}
 
   examples/showcase/federation/ghost-shares: {}
