@@ -713,6 +713,14 @@ importers:
         specifier: 18.3.1
         version: 18.3.1
 
+  examples/showcase/vite/alias-share-bypass: {}
+
+  examples/showcase/vite/copied-webpack-options-on-vite: {}
+
+  examples/showcase/vite/hashed-remote-filename: {}
+
+  examples/showcase/vite/remotes-prefer-module: {}
+
   examples/standalone-findings/rsbuild:
     dependencies:
       '@module-federation/rsbuild-plugin':
