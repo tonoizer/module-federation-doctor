@@ -90,14 +90,13 @@ These rules are implemented; a few need compiler-observed facts that CLI-only
 
 | Rule                                       | Evidence                                                                                                                                                                            |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `config/duplicate-plugin-registration`     | Webpack/Rspack adapters count MF plugins via public `.name` (`ModuleFederationPlugin`, `RspackModuleFederationPlugin`) or `constructor.name` when `.name` is missing                |
+| `config/duplicate-plugin-registration`     | Webpack/Rspack adapters count MF plugins via public `.name` (`ModuleFederationPlugin`, `RspackModuleFederationPlugin`) or `constructor.name` when `.name` is missing. Vite/Rsbuild adapters count public federation plugin registrations (`module-federation-vite`, `rsbuild:module-federation-enhanced`, and plugins that expose a public MF config). Distinct `moduleFederationInstances` are not treated as duplicates. |
 | `artifact/public-path-non-string-manifest` | Webpack/Rspack/Rsbuild adapters classify public `output.publicPath`; Vite adapters classify public MF `publicPath`. Unobserved Vite/Rsbuild surfaces emit `doctor/partial-analysis` |
 | Remaining topology rules                   | Config / `project.json` / remotes graph (`mfdoctor federation`)                                                                                                                     |
 
 MFDoctor does **not** scrape private Module Federation plugin fields for these
 checks — only public plugin `name` / `constructor.name`, public bundler
-`output.publicPath`, and Vite MF `publicPath`. Vite/Rsbuild still have no
-plugin-count surface today. When those adapters cannot observe a public
+`output.publicPath`, and Vite MF `publicPath`. When those adapters cannot observe a public
 `publicPath` field, they record `doctor/partial-analysis` instead of a silent skip.
 
 MFDoctor is **build/CI-only**. Install it as a `devDependency`. Adapters run after

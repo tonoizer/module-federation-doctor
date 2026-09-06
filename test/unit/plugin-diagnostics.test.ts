@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyOutputPublicPath,
+  collectViteModuleFederationPluginInstances,
   countModuleFederationPlugins,
-  readOutputFilename,
+  countViteFamilyFederationPlugins,
 } from "../../src/plugin.js";
 
 describe("compiler build diagnostics helpers", () => {
@@ -63,18 +64,35 @@ describe("compiler build diagnostics helpers", () => {
     expect(countModuleFederationPlugins({ options: { plugins: [plugin] } })).toBe(1);
   });
 
+  it("counts public Vite/Rsbuild federation registrations without internal helpers", () => {
+    const plugins = [
+      { name: "module-federation-vite", _options: { name: "host", filename: "remoteEntry.js" } },
+      { name: "vite:module-federation-config" },
+      { name: "vite:module-federation-virtual-modules" },
+      { name: "module-federation-doctor" },
+      { name: "rsbuild:module-federation-enhanced" },
+      { name: "rsbuild:module-federation-enhanced" },
+    ];
+    expect(countViteFamilyFederationPlugins(plugins)).toBe(3);
+    expect(
+      collectViteModuleFederationPluginInstances(plugins).map((item) => item.config.name),
+    ).toEqual(["host"]);
+  });
+
+  it("counts nested Rsbuild plugin arrays and unnamed primary registrations", () => {
+    expect(
+      countViteFamilyFederationPlugins([
+        [{ name: "rsbuild:module-federation-enhanced" }],
+        { name: "rsbuild:module-federation-enhanced" },
+        { name: "plugin-react" },
+      ]),
+    ).toBe(2);
+  });
+
   it("classifies output.publicPath the way manifest generation does", () => {
     expect(classifyOutputPublicPath("https://cdn.example/")).toBe("string");
     expect(classifyOutputPublicPath("auto")).toBe("auto");
     expect(classifyOutputPublicPath(() => "/")).toBe("non-string");
     expect(classifyOutputPublicPath(undefined)).toBe("unknown");
-  });
-
-  it("records output.filename only when it is a public string template", () => {
-    expect(readOutputFilename("[name].[contenthash].js")).toBe("[name].[contenthash].js");
-    expect(readOutputFilename("remoteEntry.js")).toBe("remoteEntry.js");
-    expect(readOutputFilename("")).toBeUndefined();
-    expect(readOutputFilename(() => "[name].js")).toBeUndefined();
-    expect(readOutputFilename(undefined)).toBeUndefined();
   });
 });

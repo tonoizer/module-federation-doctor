@@ -58,8 +58,9 @@ export interface BundlerFacts {
   /** Present for Vite-family adapters when the emit lifecycle is known. */
   lifecycle?: ViteLifecycleFacts;
   /**
-   * Count of Module Federation plugins on the compiler (webpack/rspack adapters).
-   * Absent when MFDoctor did not observe the compiler plugin list (CLI-only runs).
+   * Count of Module Federation plugins observed on the compiler (webpack/rspack)
+   * or the public Vite/Rsbuild federation plugin list. Absent when MFDoctor did
+   * not observe those plugin lists (CLI-only runs).
    */
   moduleFederationPluginCount?: number;
   /**
