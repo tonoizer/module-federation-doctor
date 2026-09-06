@@ -70,6 +70,8 @@ export type CompilerLike = {
 // Public instance names: enhanced webpack sets `.name = "ModuleFederationPlugin"`
 // (not "EnhancedModuleFederationPlugin"); rspack sets `"RspackModuleFederationPlugin"`.
 // Native webpack often omits `.name`, so fall back to `constructor.name`.
+// Legacy `@module-federation/rspack` uses the same public name as Enhanced; leftover
+// package mixing is diagnosed by `config/plugin-package-mismatch`, not a count skip.
 const MF_PLUGIN_NAMES = new Set(["ModuleFederationPlugin", "RspackModuleFederationPlugin"]);
 
 function moduleFederationPluginName(plugin: object): string | undefined {

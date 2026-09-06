@@ -574,9 +574,13 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   },
   "config/plugin-package-mismatch": {
     category: "correctness",
-    impact: "Using the wrong integration can skip required bundler hooks and runtime generation.",
-    fix: "Use the official package for Vite, Rspack, Rsbuild, Webpack, or Modern.js.",
-    sources: ["https://module-federation.io/integrations/index.html"],
+    impact:
+      "Using the wrong integration can skip required bundler hooks and runtime generation. On Rspack, leftover `@module-federation/rspack` (alone or mixed with `@module-federation/enhanced`) misses Enhanced options such as asyncStartup.",
+    fix: "Use the official package for Vite, Rspack, Rsbuild, Webpack, or Modern.js. For Rspack, depend on `@module-federation/enhanced` (or `@module-federation/enhanced/rspack`) and remove leftover `@module-federation/rspack`.",
+    sources: [
+      "https://module-federation.io/integrations/index.html",
+      "https://module-federation.io/integrations/build-tool/rspack",
+    ],
   },
   "config/rsbuild-mf-api-generation": {
     category: "correctness",
