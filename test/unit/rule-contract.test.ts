@@ -656,6 +656,7 @@ describe("evidence-aware rule contract", () => {
         "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
         "config/hashed-remote-filename": ["bundler.outputFilename"],
         "ssr/remote-entry-target-mismatch": ["builds"],
+        "config/promise-remote-async-boundary": ["imports.sourceFiles"],
       };
       const optionalReads = optionalPluginFacts[entry.id] ?? [];
       expect(requirements.length).toBeGreaterThanOrEqual(2);

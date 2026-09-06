@@ -61,6 +61,7 @@ import { duplicateFederationInstanceGroups } from "./federation-instance.js";
 import type {
   DoctorRule,
   NormalizedMFConfig,
+  NormalizedRemote,
   NormalizedShared,
   ProjectFacts,
   RuleContext,
@@ -99,6 +100,75 @@ function viteDefaultVarRemotes(remotes: NormalizedMFConfig["remotes"]) {
       type: remote.type ?? "var",
       entry: remote.entry,
     }));
+}
+
+const ESM_REMOTE_LOAD_TYPES = new Set(["module", "import", "module-import"]);
+/** Public webpack / Enhanced remote `type` values. Unknown strings are ignored. */
+const KNOWN_REMOTE_LOAD_TYPES = new Set([
+  "var",
+  "module",
+  "assign",
+  "this",
+  "window",
+  "self",
+  "global",
+  "commonjs",
+  "commonjs2",
+  "amd",
+  "umd",
+  "jsonp",
+  "system",
+  "promise",
+  "import",
+  "script",
+  "module-import",
+]);
+
+function remoteTypeKey(type: unknown): string | undefined {
+  if (typeof type !== "string") return undefined;
+  const trimmed = type.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function isPromiseRemote(remote: NormalizedRemote): boolean {
+  if (remoteTypeKey(remote.type) === "promise") return true;
+  if (remote.type) return false;
+  return typeof remote.entry === "string" && /^\s*promise\b/i.test(remote.entry);
+}
+
+function promiseRemotes(remotes: NormalizedMFConfig["remotes"]) {
+  return Object.entries(remotes)
+    .filter(([, remote]) => isPromiseRemote(remote))
+    .map(([name, remote]) => ({
+      name,
+      type: remoteTypeKey(remote.type) ?? "promise",
+      entry: remote.entry,
+    }));
+}
+
+function hasBootstrapFile(sourceFiles: string[] | undefined): boolean {
+  return (sourceFiles ?? []).some((file) =>
+    /(?:^|\/)bootstrap\.[cm]?[jt]sx?$/i.test(file.replaceAll("\\", "/")),
+  );
+}
+
+function libraryConflictsWithRemoteLoadType(libraryType: string, remoteLoadType: string): boolean {
+  const esmRemote = ESM_REMOTE_LOAD_TYPES.has(remoteLoadType);
+  return libraryType === "module" ? !esmRemote : esmRemote;
+}
+
+function mismatchedLibraryRemotes(
+  libraryType: string,
+  remotes: NormalizedMFConfig["remotes"],
+): Array<{ name: string; type: string; entry: string }> {
+  const matches: Array<{ name: string; type: string; entry: string }> = [];
+  for (const [name, remote] of Object.entries(remotes)) {
+    const type = remoteTypeKey(remote.type);
+    if (!type || !KNOWN_REMOTE_LOAD_TYPES.has(type) || type === "promise") continue;
+    if (!libraryConflictsWithRemoteLoadType(libraryType, type)) continue;
+    matches.push({ name, type, entry: remote.entry });
+  }
+  return matches;
 }
 
 function manifestAssetPath(manifestPath: string, asset: string): string {
@@ -1312,13 +1382,12 @@ export const builtInRules: DoctorRule[] = [
   createRule("config/library-remote-type-mismatch", "warning", (context) => {
     const config = mf(context);
     const libraryType = config?.library?.type;
+    if (!config || typeof libraryType !== "string" || libraryType.length === 0) return;
+
     if (
-      libraryType &&
-      config?.remoteType &&
-      ((libraryType === "module" &&
-        !["module", "import", "module-import"].includes(config.remoteType)) ||
-        (libraryType !== "module" &&
-          ["module", "import", "module-import"].includes(config.remoteType)))
+      typeof config.remoteType === "string" &&
+      config.remoteType.length > 0 &&
+      libraryConflictsWithRemoteLoadType(libraryType, config.remoteType)
     )
       report(
         context,
@@ -1326,6 +1395,33 @@ export const builtInRules: DoctorRule[] = [
         { libraryType, remoteType: config.remoteType },
         "Make the producer library format and consumer remote type agree.",
       );
+
+    const remotes = mismatchedLibraryRemotes(libraryType, config.remotes);
+    if (remotes.length === 0) return;
+    report(
+      context,
+      `Remote${remotes.length === 1 ? "" : "s"} ${remotes.map((remote) => `"${remote.name}"`).join(", ")} use a loading type that may not interoperate with library type "${libraryType}".`,
+      { libraryType, remotes },
+      "Align `library.type` with each remote object's `type`. ESM (`library.type: 'module'`) containers should load remotes as `module`, `import`, or `module-import`; `script` remotes belong with non-module libraries.",
+    );
+  }),
+  createRule("config/promise-remote-async-boundary", "warning", (context) => {
+    const config = mf(context);
+    if (!config) return;
+    const remotes = promiseRemotes(config.remotes);
+    if (remotes.length === 0) return;
+    if (config.experiments?.asyncStartup) return;
+    if (hasBootstrapFile(context.facts.imports.sourceFiles)) return;
+    report(
+      context,
+      `Promise remote${remotes.length === 1 ? "" : "s"} ${remotes.map((remote) => `"${remote.name}"`).join(", ")} load asynchronously without an async startup or bootstrap boundary.`,
+      {
+        remotes,
+        asyncStartup: false,
+        bootstrap: false,
+      },
+      "Enable `experiments.asyncStartup` or move application startup behind `import('./bootstrap')` so promise remotes can initialize before the host runs.",
+    );
   }),
   createRule("config/copied-webpack-options-on-vite", "warning", (context) => {
     if (context.facts.bundler.name !== "vite") return;

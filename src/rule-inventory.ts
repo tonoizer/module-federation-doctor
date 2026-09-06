@@ -91,6 +91,7 @@ const ids = [
   "config/library-remote-type-mismatch",
   "config/name-required",
   "config/plugin-package-mismatch",
+  "config/promise-remote-async-boundary",
   "config/remote-alias-prefix-collision",
   "config/remote-capability-disabled",
   "config/remote-entry-invalid",
@@ -223,6 +224,7 @@ const demoByRule = {
   "config/library-remote-type-mismatch": "unit",
   "config/name-required": "unit",
   "config/plugin-package-mismatch": "unit",
+  "config/promise-remote-async-boundary": "unit",
   "config/remote-alias-prefix-collision": "showcase",
   "config/remote-capability-disabled": "unit",
   "config/remote-entry-invalid": "showcase",
@@ -310,6 +312,7 @@ export const MIGRATED_GROUP1_CONFIG_RULE_IDS = [
   "config/remote-manifest-recommended",
   "config/observability-plugin-recommended",
   "config/library-remote-type-mismatch",
+  "config/promise-remote-async-boundary",
   "config/share-scope-undeclared",
   "config/runtime-plugin-missing",
   "config/get-public-path-invalid",
@@ -659,6 +662,15 @@ const plans: Record<string, RulePlan> = {
     "project",
     "high",
     "Declared config is exact for this shape check.",
+  ),
+  "config/promise-remote-async-boundary": plan(
+    1,
+    "warning",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Declared remote type and asyncStartup are exact; a bootstrap filename in sourceFiles is an optional quiet path.",
   ),
   "config/share-scope-undeclared": plan(
     1,
@@ -1852,6 +1864,11 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
   "config/get-public-path-unused": ["project.scope", "moduleFederation"],
   "config/implementation-suspicious": ["project.scope", "moduleFederation"],
   "config/library-remote-type-mismatch": ["project.scope", "moduleFederation"],
+  "config/promise-remote-async-boundary": [
+    "project.scope",
+    "moduleFederation",
+    "imports.sourceFiles",
+  ],
   "config/name-required": ["project.scope", "project.moduleFederation"],
   "config/plugin-package-mismatch": ["project.scope", "bundler.name", "dependencies.declared"],
   "config/rsbuild-mf-api-generation": [
@@ -2107,6 +2124,7 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
     "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
     "config/hashed-remote-filename": ["bundler.outputFilename"],
     "ssr/remote-entry-target-mismatch": ["builds"],
+    "config/promise-remote-async-boundary": ["imports.sourceFiles"],
   };
   const optional = optionalPluginFacts[id];
   if (optional) {
