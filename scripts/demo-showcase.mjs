@@ -169,6 +169,16 @@ const cases = [
     expectedExit: 0,
   },
   {
+    dir: "examples/showcase/bridge/export-app-missing",
+    ruleId: "bridge/export-app-missing",
+    expectedExit: 0,
+  },
+  {
+    dir: "examples/showcase/bridge/vue-share-missing",
+    ruleId: "bridge/vue-share-missing",
+    expectedExit: 1,
+  },
+  {
     command: "federation",
     pattern: "examples/showcase/federation/version-conflict/*.project.json",
     ruleId: "federation/version-conflict",

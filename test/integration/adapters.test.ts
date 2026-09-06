@@ -183,6 +183,8 @@ describe("adapter cases", () => {
     });
     expect(stdout).toContain("ok examples/showcase/config/expose-key-invalid");
     expect(stdout).toContain("ok examples/showcase/shared/eager-without-singleton");
+    expect(stdout).toContain("ok examples/showcase/bridge/export-app-missing");
+    expect(stdout).toContain("ok examples/showcase/bridge/vue-share-missing");
     expect(stdout).toContain("ok examples/showcase/federation/version-conflict");
     expect(stdout).not.toContain("examples/showcase/config/name-required");
     expect(stdout).not.toContain("examples/showcase/name-required");

@@ -51,6 +51,15 @@ stay as rules, not showcases.
 | Version-first offline remotes | `node dist/cli.js check examples/showcase/reliability/version-first-offline-remotes --ci` | `reliability/version-first-offline-remotes` (warning) |
 | Shared `import: false`        | `node dist/cli.js check examples/showcase/reliability/shared-import-false --ci`           | `reliability/shared-import-false` (warning)           |
 
+## Bridge
+
+CLI/config-only Bridge fixtures (not full Bridge apps):
+
+| Setup                  | Command                                                                   | Finding                               |
+| ---------------------- | ------------------------------------------------------------------------- | ------------------------------------- |
+| Missing `./export-app` | `node dist/cli.js check examples/showcase/bridge/export-app-missing --ci` | `bridge/export-app-missing` (warning) |
+| Vue share missing      | `node dist/cli.js check examples/showcase/bridge/vue-share-missing --ci`  | `bridge/vue-share-missing` (error)    |
+
 ## Federation
 
 | Setup                   | Command                                                                                             | Finding                                        |
