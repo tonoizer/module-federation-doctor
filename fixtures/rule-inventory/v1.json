@@ -746,9 +746,9 @@
         "name": "MFDoctor maintainers"
       },
       "remediation": {
-        "summary": "Module Federation skips manifest generation when bundler `output.publicPath` is not a string.",
+        "summary": "Module Federation skips manifest generation when bundler `output.publicPath` (or Vite MF `publicPath`) is not a string.",
         "documentation": "/rules/artifact/public-path-non-string-manifest",
-        "fix": "Set `output.publicPath` to a string URL, root-relative path, or `auto` when manifests are required."
+        "fix": "Set `output.publicPath` or Vite MF `publicPath` to a string URL, root-relative path, or `auto` when manifests are required."
       },
       "prerequisites": {
         "allOf": [
