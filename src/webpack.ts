@@ -6,7 +6,4 @@ export const ModuleFederationDoctorPlugin = webpackDoctor.webpack;
 /** @deprecated Use `ModuleFederationDoctorPlugin`. */
 export const moduleFederationDoctorPlugin = ModuleFederationDoctorPlugin;
 
-/** @deprecated Use `ModuleFederationDoctorPlugin`. */
-export const doctor = ModuleFederationDoctorPlugin;
-
 export default ModuleFederationDoctorPlugin;

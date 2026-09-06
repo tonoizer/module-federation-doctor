@@ -189,17 +189,22 @@ for (const captureOnlyExport of [
     "default package entry must not expose capture-only export " + captureOnlyExport,
   );
 assert.equal(typeof vite.federationDoctor, "function");
+assert.equal(vite.doctor, undefined, "vite adapter must not export unused doctor alias");
 assert.equal(typeof nuxt.moduleFederationDoctor.setup, "function");
 assert.equal(nuxt.nuxtDoctor, nuxt.moduleFederationDoctor);
 assert.equal(nuxt.federationDoctorNuxt, nuxt.moduleFederationDoctor);
 assert.equal(nuxt.default, nuxt.moduleFederationDoctor);
 assert.equal(typeof nuxt.default.setup, "function");
 assert.equal(typeof rspack.moduleFederationDoctorPlugin, "function");
+assert.equal(rspack.doctor, undefined, "rspack adapter must not export unused doctor alias");
 assert.equal(typeof rsbuild.pluginModuleFederationDoctor, "function");
+assert.equal(rsbuild.doctor, undefined, "rsbuild adapter must not export unused doctor alias");
 assert.equal(typeof webpack.ModuleFederationDoctorPlugin, "function");
 assert.equal(webpack.moduleFederationDoctorPlugin, webpack.ModuleFederationDoctorPlugin);
+assert.equal(webpack.doctor, undefined, "webpack adapter must not export unused doctor alias");
 assert.equal(typeof modern.moduleFederationDoctorPlugin, "function");
 assert.equal(modern.pluginModuleFederationDoctor, undefined);
+assert.equal(modern.doctor, undefined, "modern adapter must not export unused doctor alias");
 assert.equal(typeof modern.appendModuleFederationDoctor, "function");
 assert.equal(typeof vite.default, "function");
 assert.equal(typeof rspack.default, "function");
