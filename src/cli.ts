@@ -33,7 +33,7 @@ import {
 import { probeManifest } from "./probe.js";
 import { compareManifests, formatCompareTerminal, writeCompareReports } from "./compare.js";
 import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
-import { builtInRules, federationRuleMeta, runtimeRuleMeta } from "./rules.js";
+import { ruleCatalog } from "./rules.js";
 import { loadCliCapabilities } from "./capabilities.js";
 import type {
   BaselineOptions,
@@ -42,7 +42,6 @@ import type {
   DoctorReport,
   ModuleFederationConfigLike,
   OutputFormat,
-  RuleMeta,
 } from "./types.js";
 import { stableStringify } from "./utils.js";
 import { discoverWorkspaceProjectsWithBudget } from "./workspace.js";
@@ -412,21 +411,6 @@ async function configAt(root: string): Promise<DoctorOptions> {
   return federation.config ? { ...config, moduleFederation: federation.config } : config;
 }
 
-function toRuleMeta(
-  rule: (typeof federationRuleMeta)[number] | (typeof runtimeRuleMeta)[number],
-): RuleMeta {
-  return {
-    id: rule.id,
-    defaultSeverity: rule.severity,
-    supportedBundlers: ["vite", "rspack", "rsbuild", "webpack", "modern"],
-    documentation: `/rules/${rule.id}`,
-    category: rule.category,
-    impact: rule.impact,
-    fix: rule.fix,
-    sources: rule.sources,
-  };
-}
-
 function baselineFromConfig(config: DoctorOptions): string | BaselineOptions | undefined {
   return config.baseline;
 }
@@ -699,12 +683,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     }
   }
   if (parsed.command === "rules") {
-    const catalog: RuleMeta[] = [
-      ...builtInRules.map((rule) => rule.meta),
-      ...federationRuleMeta.map(toRuleMeta),
-      ...runtimeRuleMeta.map(toRuleMeta),
-    ];
-    catalog.sort((left, right) => left.id.localeCompare(right.id));
+    const catalog = ruleCatalog();
     if (parsed.ruleId) {
       const rule = catalog.find((item) => item.id === parsed.ruleId);
       if (!rule) {

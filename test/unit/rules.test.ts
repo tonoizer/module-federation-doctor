@@ -3657,6 +3657,50 @@ describe("config/copied-webpack-options-on-vite", () => {
     });
   });
 
+  it("skips through analyze on webpack even when webpack-only keys are present", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "webpack",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "./src/index.ts" },
+        remotes: {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:4174/mf-manifest.json",
+          },
+        },
+        remoteType: "script",
+        virtualRuntimeEntry: true,
+        runtime: false,
+        async: true,
+        experiments: {
+          asyncStartup: true,
+          optimization: {
+            disableRemote: true,
+            target: "node",
+          },
+        },
+      },
+      rules: {
+        "doctor/partial-analysis": "off",
+        "artifact/types-missing": "off",
+        "artifact/types-metadata-missing": "off",
+        "artifact/remote-entry-missing": "off",
+        "config/plugin-package-mismatch": "off",
+        "config/remote-capability-disabled": "off",
+        "config/remote-localhost-in-production": "off",
+      },
+    });
+    expect(result.report.findings.map((item) => item.ruleId)).not.toContain(
+      "config/copied-webpack-options-on-vite",
+    );
+  });
+
   it("stays quiet through analyze for a valid Vite config", async () => {
     const root = await fixture();
     const result = await analyze({
