@@ -7,6 +7,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "config/expose-path-missing",
   "config/remote-entry-invalid",
   "config/filename-invalid",
+  "config/hashed-remote-filename",
   "config/remote-http-insecure",
   "config/remote-localhost-in-production",
   "config/duplicate-plugin-registration",

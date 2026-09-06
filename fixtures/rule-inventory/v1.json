@@ -3840,6 +3840,84 @@
       "migrationNote": "Group 1; Declared config is exact for this shape check. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
+      "id": "config/hashed-remote-filename",
+      "version": "1",
+      "group": 1,
+      "status": "migrated",
+      "defaultSeverity": "warning",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds. Webpack/Rspack `[contenthash]` in Module Federation `filename`, or in `output.filename` when the container filename is unset, has the same effect as Vite `[hash]`.",
+        "documentation": "/rules/config/hashed-remote-filename",
+        "fix": "Use a stable Module Federation `filename` such as `remoteEntry.js`. Keep hashing on chunk filenames instead of the container entry."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "bundler.name",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "modern"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "modern"
+          }
+        ]
+      },
+      "evidenceReads": [
+        "project.scope",
+        "moduleFederation",
+        "bundler.name",
+        "bundler.outputFilename"
+      ],
+      "migrationNote": "Group 1; Declared MF filename pattern check is exact; webpack/rspack output.filename is exact when the adapter observed a string template and is skipped when absent. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
       "id": "config/get-public-path-invalid",
       "version": "1",
       "group": 1,

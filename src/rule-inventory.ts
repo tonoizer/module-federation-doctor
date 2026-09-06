@@ -81,6 +81,7 @@ const ids = [
   "config/external-runtime-conflict",
   "config/external-runtime-with-exposes",
   "config/filename-invalid",
+  "config/hashed-remote-filename",
   "config/get-public-path-invalid",
   "config/get-public-path-unused",
   "config/implementation-suspicious",
@@ -205,7 +206,9 @@ const demoByRule = {
   "config/external-runtime-conflict": "unit",
   "config/external-runtime-with-exposes": "unit",
   "config/filename-invalid": "showcase",
+  "config/hashed-remote-filename": "showcase",
   "config/get-public-path-invalid": "unit",
+
   "config/get-public-path-unused": "unit",
   "config/implementation-suspicious": "unit",
   "config/library-remote-type-mismatch": "unit",
@@ -254,6 +257,7 @@ const demoByRule = {
   "vite/alias-share-bypass": "showcase",
   "vite/server-origin": "unit",
   "config/transform-import-share-conflict": "unit",
+  "config/shared-externals-conflict": "showcase",
   "runtime/error-correlated": "unit",
   "runtime/init-failed": "unit",
   "runtime/remote-load-failed": "unit",
@@ -269,6 +273,7 @@ const demoByRule = {
   "shared/prefix-share-recommended": "unit",
   "shared/package-path-missing": "unit",
   "shared/subpath-version-unresolved": "unit",
+
   "shared/eager-without-singleton": "showcase",
   "shared/singleton-mismatch": "showcase",
   "shared/singleton-risk": "showcase",
@@ -286,6 +291,7 @@ export const MIGRATED_GROUP1_CONFIG_RULE_IDS = [
   "config/expose-path-missing",
   "config/remote-entry-invalid",
   "config/filename-invalid",
+  "config/hashed-remote-filename",
   "config/remote-http-insecure",
   "config/remote-localhost-in-production",
   "config/remote-alias-prefix-collision",
@@ -527,6 +533,16 @@ const plans: Record<string, RulePlan> = {
     "project",
     "high",
     "Declared config is exact for this shape check.",
+  ),
+  "config/hashed-remote-filename": plan(
+    1,
+    "warning",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Declared MF filename pattern check is exact; webpack/rspack output.filename is exact when the adapter observed a string template and is skipped when absent.",
+    WEBPACK_FAMILY,
   ),
   "config/remote-http-insecure": plan(
     1,
@@ -1747,6 +1763,12 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
   "config/external-runtime-conflict": ["project.scope", "moduleFederation"],
   "config/external-runtime-with-exposes": ["project.scope", "moduleFederation"],
   "config/filename-invalid": ["project.scope", "moduleFederation"],
+  "config/hashed-remote-filename": [
+    "project.scope",
+    "moduleFederation",
+    "bundler.name",
+    "bundler.outputFilename",
+  ],
   "config/get-public-path-invalid": ["project.scope", "moduleFederation"],
   "config/get-public-path-unused": ["project.scope", "moduleFederation"],
   "config/implementation-suspicious": ["project.scope", "moduleFederation"],
@@ -1989,6 +2011,7 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
     "config/shared-externals-conflict": ["bundler.externals"],
     "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
     "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
+    "config/hashed-remote-filename": ["bundler.outputFilename"],
   };
   const optional = optionalPluginFacts[id];
   if (optional) {

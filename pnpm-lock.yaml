@@ -645,6 +645,8 @@ importers:
 
   examples/showcase/config/filename-invalid: {}
 
+  examples/showcase/config/hashed-remote-filename: {}
+
   examples/showcase/config/implementation-local: {}
 
   examples/showcase/config/implementation-suspicious-suppressed: {}

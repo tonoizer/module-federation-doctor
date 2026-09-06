@@ -1769,6 +1769,7 @@ export interface BuildDiagnostics {
   outputPublicPathKind?: OutputPublicPathKind;
   /** Public bundler externals names when the adapter observed compiler/config. */
   externals?: string[];
+  outputFilename?: string;
 }
 
 function buildOutputOrderKey(output: BuildOutputInput): string {
@@ -2026,6 +2027,7 @@ export async function addBuildFacts(
   if (diagnostics?.outputPublicPathKind)
     facts.bundler.outputPublicPathKind = diagnostics.outputPublicPathKind;
   if (diagnostics?.externals !== undefined) facts.bundler.externals = diagnostics.externals;
+  if (diagnostics?.outputFilename) facts.bundler.outputFilename = diagnostics.outputFilename;
   if (outputs) {
     const orderedOutputs = orderBuildOutputs(outputs);
     const builds = orderedOutputs.map((output, index) =>

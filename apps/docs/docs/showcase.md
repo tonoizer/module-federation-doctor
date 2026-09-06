@@ -22,6 +22,7 @@ stay as rules, not showcases.
 | Missing expose path     | `node dist/cli.js check examples/showcase/config/expose-path-missing --ci`                  | `config/expose-path-missing` (error)              |
 | Invalid remote entry    | `node dist/cli.js check examples/showcase/config/remote-entry-invalid --ci`                 | `config/remote-entry-invalid` (error)             |
 | Invalid filename        | `node dist/cli.js check examples/showcase/config/filename-invalid --ci`                     | `config/filename-invalid` (error)                 |
+| Hashed remote filename  | `node dist/cli.js check examples/showcase/config/hashed-remote-filename --ci`               | `config/hashed-remote-filename` (warning)         |
 | Undeclared share scope  | `node dist/cli.js check examples/showcase/config/share-scope-undeclared --ci`               | `config/share-scope-undeclared` (error)           |
 | Insecure remote HTTP    | `node dist/cli.js check examples/showcase/config/remote-http-insecure --ci`                 | `config/remote-http-insecure` (warning)           |
 | Local implementation    | `node dist/cli.js check examples/showcase/config/implementation-local --ci`                 | no findings (heuristic does not fire)             |

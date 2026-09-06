@@ -19,6 +19,7 @@ failure—such as a missing `name`—stay in the catalog but are not demoed here
 | `config/expose-path-missing`                  | `config/expose-path-missing`            | error                                               |
 | `config/remote-entry-invalid`                 | `config/remote-entry-invalid`           | error                                               |
 | `config/filename-invalid`                     | `config/filename-invalid`               | error                                               |
+| `config/hashed-remote-filename`               | `config/hashed-remote-filename`         | warning (webpack/rspack `[contenthash]`)            |
 | `config/share-scope-undeclared`               | `config/share-scope-undeclared`         | error                                               |
 | `config/async-boundary-missing`               | `config/async-boundary-missing`         | error                                               |
 | `config/async-boundary-missing-ok`            | _(none)_                                | async `import('./bootstrap')` (no RUNTIME-005)      |

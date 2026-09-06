@@ -829,6 +829,17 @@ function generateTypesOptions(config: NormalizedMFConfig | undefined): Record<st
   return options;
 }
 
+/** Webpack/Rspack/Vite filename templates that change the remoteEntry URL on rebuild. */
+const HASHED_FILENAME_PATTERN = /\[[^\]]*hash[^\]]*\]|contenthash|fullhash/i;
+
+function isHashedFilenamePattern(filename: string): boolean {
+  return HASHED_FILENAME_PATTERN.test(filename);
+}
+
+function hashedFilenameAllowed(options: RuleContext["options"]): boolean {
+  return options["hashedFilenameMode"] === "allow";
+}
+
 const DEFAULT_REMOTE_ENTRY_MAX_BYTES = 524_288;
 const DEFAULT_SHARED_MAX_BYTES = 524_288;
 const DEFAULT_EXPOSE_MAX_BYTES = 358_400;
@@ -960,6 +971,30 @@ export const builtInRules: DoctorRule[] = [
         { filename },
         "Use a relative `.js` or `.mjs` filename without `..` path segments.",
       );
+  }),
+  createRule("config/hashed-remote-filename", "warning", (context) => {
+    if (context.facts.bundler.name === "vite") return;
+    if (hashedFilenameAllowed(context.options)) return;
+    const filename = mf(context)?.filename;
+    const outputFilename = context.facts.bundler.outputFilename;
+    const hashedMf =
+      typeof filename === "string" && filename.length > 0 && isHashedFilenamePattern(filename);
+    const hasStableMfFilename =
+      typeof filename === "string" && filename.length > 0 && !isHashedFilenamePattern(filename);
+    const hashedOutput =
+      typeof outputFilename === "string" &&
+      isHashedFilenamePattern(outputFilename) &&
+      !hasStableMfFilename;
+    if (!hashedMf && !hashedOutput) return;
+    report(
+      context,
+      "Hashed remote entry filenames break stable consumer URLs.",
+      {
+        ...(hashedMf ? { filename } : {}),
+        ...(hashedOutput ? { outputFilename } : {}),
+      },
+      "Use a stable Module Federation `filename` such as `remoteEntry.js`. Keep `[contenthash]` / `[hash]` on chunk filenames, not the container entry. When `filename` is unset, a hashed webpack/rspack `output.filename` also hashes the remote entry.",
+    );
   }),
   createRule("config/remote-http-insecure", "warning", (context) => {
     for (const [name, remote] of Object.entries(mf(context)?.remotes ?? {})) {
@@ -1795,9 +1830,8 @@ export const builtInRules: DoctorRule[] = [
     if (context.facts.bundler.name !== "vite") return;
     const filename = mf(context)?.filename;
     if (!filename) return;
-    const mode = context.options["hashedFilenameMode"];
-    if (mode === "allow") return;
-    if (!/\[[^\]]*hash[^\]]*\]|contenthash|fullhash/i.test(filename)) return;
+    if (hashedFilenameAllowed(context.options)) return;
+    if (!isHashedFilenamePattern(filename)) return;
     report(
       context,
       "Hashed remote entry filenames break stable consumer URLs.",
