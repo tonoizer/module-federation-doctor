@@ -45,6 +45,8 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain('git tag --points-at HEAD --list "${TAG}"');
     expect(workflow).toContain("npm install --global npm@11.17.0");
     expect(workflow).toContain("node-version: [22, 24, 26]");
+    expect(workflow).toContain("vp run pack:check && vp run test:e2e");
+    expect(workflow).not.toContain("vp run check");
     expect(workflow).toContain("id-token: write");
     expect(workflow.indexOf("id-token: write")).toBeGreaterThan(workflow.indexOf("stage:"));
     expect(workflow).toContain("environment: npm");
