@@ -16,9 +16,9 @@ emit so CLI `check` / `workspace` can consume real facts.
 
 ## How to get to it (user POV)
 
-- Add the matching adapter in a Vite/Rspack/Rsbuild/Webpack config under `examples/standalone-findings/{vite,webpack,rspack,rsbuild}/` (four cells — Modern lives under `examples/compatibility/modern/`, Nuxt under `examples/compatibility/nuxt/`).
-- Build the example package, e.g. `pnpm exec vp run --filter @mfdoctor-standalone/vite build` (bare `vp` needs `node_modules/.bin` on `PATH`).
-- Or run the catalog script: `pnpm demo:standalone` (builds all four standalone cells).
+- Add the matching adapter in a Vite/Rspack/Rsbuild/Webpack config under `examples/standalone-findings/{vite,webpack,rspack,rsbuild}/`. Modern red emit is the documented partial stub at `examples/standalone-findings/modern/` (same `modifyBundlerChain` afterEmit path as the green smoke in `examples/compatibility/modern/`; matrix status stays partial). Nuxt lives under `examples/compatibility/nuxt/`.
+- Build the example package, e.g. `pnpm exec vp run --filter @mfdoctor-standalone/vite build` (bare `vp` needs `node_modules/.bin` on `PATH`). Modern: `pnpm exec vp run --filter @mfdoctor-standalone/modern build`.
+- Or run the catalog script: `pnpm demo:standalone` (builds all five standalone cells).
 
 ## Driving it with the post-emit plugin
 

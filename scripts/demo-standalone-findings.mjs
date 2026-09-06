@@ -7,7 +7,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const vitePlus = process.platform === "win32" ? "vp.cmd" : "vp";
 const vitePlusArgs = ["run"];
 
-/** @type {Array<{ label: string; filter: string; dir: string; ruleIds: string[] }>} */
+/** @type {Array<{ label: string; filter: string; dir: string; ruleIds: string[]; bundler?: string }>} */
 const cells = [
   {
     label: "examples/standalone-findings/vite",
@@ -36,6 +36,13 @@ const cells = [
     filter: "@mfdoctor-standalone/rsbuild",
     dir: "examples/standalone-findings/rsbuild",
     ruleIds: ["shared/eager-without-singleton", "shared/singleton-risk"],
+  },
+  {
+    label: "examples/standalone-findings/modern",
+    filter: "@mfdoctor-standalone/modern",
+    dir: "examples/standalone-findings/modern",
+    bundler: "modern",
+    ruleIds: ["shared/version-unsatisfied", "shared/singleton-risk"],
   },
 ];
 
@@ -82,6 +89,23 @@ for (const cell of cells) {
   const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
   const findings = (report.findings ?? []).map((finding) => finding.ruleId);
   if (!assertRules(cell.label, cell.ruleIds, findings)) failed = true;
+
+  if (cell.bundler) {
+    const projectPath = path.join(root, cell.dir, ".mf/doctor/project.json");
+    if (!fs.existsSync(projectPath)) {
+      process.stdout.write(`FAIL ${cell.label} missing ${projectPath}\n`);
+      failed = true;
+      continue;
+    }
+    const project = JSON.parse(fs.readFileSync(projectPath, "utf8"));
+    const recorded = project.bundler?.name;
+    if (recorded !== cell.bundler) {
+      process.stdout.write(
+        `FAIL ${cell.label} bundler ${recorded ?? "(none)"} !== ${cell.bundler}\n`,
+      );
+      failed = true;
+    }
+  }
 }
 
 process.exit(failed ? 1 : 0);

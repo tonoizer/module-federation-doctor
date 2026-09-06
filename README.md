@@ -353,7 +353,8 @@ Examples:
 - `examples/mixed-federation-issues` — same flat topology with intentional MFDoctor
   findings; run `vp run demo:mixed-issues`
 - `examples/standalone-findings` — per-bundler Vite/Webpack/Rspack/Rsbuild
-  cells that emit visible MFDoctor findings; run `vp run demo:standalone`
+  cells plus a **partial** Modern.js afterEmit stub that emit visible MFDoctor
+  findings; run `vp run demo:standalone`
 - `examples/showcase` — one-rule CLI fixtures + runtime green/fail demos; run
   `vp run demo:showcase`
 - `examples/ci/github-actions-mfdoctor.yml` — copy-paste consumer CI (no Vite Plus /

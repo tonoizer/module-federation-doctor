@@ -1,0 +1,19 @@
+{
+  "name": "@mfdoctor-standalone/modern",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\""
+  },
+  "dependencies": {
+    "@module-federation/enhanced": "2.8.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@tonoizer/mfdoctor": "workspace:*",
+    "@rspack/core": "2.1.5"
+  }
+}
