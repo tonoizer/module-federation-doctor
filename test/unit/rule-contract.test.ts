@@ -652,6 +652,7 @@ describe("evidence-aware rule contract", () => {
         "config/shared-externals-conflict": ["bundler.externals"],
         "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
         "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
+        "config/hashed-remote-filename": ["bundler.outputFilename"],
       };
       const optionalReads = optionalPluginFacts[entry.id] ?? [];
       expect(requirements.length).toBeGreaterThanOrEqual(2);
@@ -843,6 +844,11 @@ describe("evidence-aware rule contract", () => {
         .find((entry) => entry.id === "config/shared-externals-conflict")
         ?.applicability.bundlers?.map((item) => item.name),
     ).toEqual(["rspack", "rsbuild", "webpack", "modern"]);
+    expect(
+      ruleInventory
+        .find((entry) => entry.id === "config/hashed-remote-filename")
+        ?.applicability.bundlers?.map((item) => item.name),
+    ).toEqual(["rspack", "rsbuild", "webpack", "modern"]);
   });
 
   it("drives catalog supportedBundlers from inventory adapters", () => {
@@ -858,6 +864,12 @@ describe("evidence-aware rule contract", () => {
     ]);
     expect(catalog.get("config/rsbuild-mf-api-generation")?.supportedBundlers).toEqual(["rsbuild"]);
     expect(catalog.get("config/shared-externals-conflict")?.supportedBundlers).toEqual([
+      "rspack",
+      "rsbuild",
+      "webpack",
+      "modern",
+    ]);
+    expect(catalog.get("config/hashed-remote-filename")?.supportedBundlers).toEqual([
       "rspack",
       "rsbuild",
       "webpack",
@@ -880,6 +892,8 @@ describe("evidence-aware rule contract", () => {
       "bundler.moduleFederationPluginCount": "context.facts.bundler.moduleFederationPluginCount",
       "bundler.outputPublicPathKind": "context.facts.bundler.outputPublicPathKind",
       "bundler.externals": "context.facts.bundler.externals",
+      "bundler.outputFilename": "context.facts.bundler.outputFilename",
+
       "imports.sourceFiles": "context.facts.imports.sourceFiles",
       "imports.packages": "context.facts.imports.packages",
       "imports.dynamicPackages": "context.facts.imports.dynamicPackages",

@@ -76,6 +76,11 @@ export interface BundlerFacts {
    */
   outputPublicPathKind?: OutputPublicPathKind;
   /**
+   * Webpack/Rspack `output.filename` string template when the adapter observed it.
+   * Absent on CLI-only runs and when `output.filename` is a function or unset.
+   */
+  outputFilename?: string;
+  /**
    * Additive Vite resolved-config snapshot from `configResolved` (plugin path).
    * Absent on CLI-only runs — rules that need these facts skip honestly.
    */

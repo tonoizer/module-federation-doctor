@@ -58,7 +58,7 @@ export type CompilerLike = {
     mode?: string;
     target?: string | string[] | false;
     plugins?: unknown[];
-    output?: { path?: string; publicPath?: unknown };
+    output?: { path?: string; publicPath?: unknown; filename?: unknown };
     externals?: unknown;
   };
 };
@@ -167,6 +167,11 @@ export function countModuleFederationPlugins(compiler: {
     const name = moduleFederationPluginName(plugin);
     return typeof name === "string" && MF_PLUGIN_NAMES.has(name);
   }).length;
+}
+
+/** Record webpack/rspack `output.filename` only when it is a public string template. */
+export function readOutputFilename(filename: unknown): string | undefined {
+  return typeof filename === "string" && filename.length > 0 ? filename : undefined;
 }
 
 /** Classify bundler `output.publicPath` the way MF manifest generation does. */
@@ -340,6 +345,8 @@ function collectCompilerDiagnostics(compiler: CompilerLike): BuildDiagnostics {
   if (compiler.options?.output && "publicPath" in compiler.options.output)
     diagnostics.outputPublicPathKind = classifyOutputPublicPath(compiler.options.output.publicPath);
   if (compiler.options) diagnostics.externals = extractPublicExternals(compiler.options.externals);
+  const outputFilename = readOutputFilename(compiler.options?.output?.filename);
+  if (outputFilename) diagnostics.outputFilename = outputFilename;
   return diagnostics;
 }
 

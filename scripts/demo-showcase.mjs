@@ -32,6 +32,11 @@ const cases = [
     expectedExit: 1,
   },
   {
+    dir: "examples/showcase/config/hashed-remote-filename",
+    ruleId: "config/hashed-remote-filename",
+    expectedExit: 0,
+  },
+  {
     dir: "examples/showcase/config/share-scope-undeclared",
     ruleId: "config/share-scope-undeclared",
     expectedExit: 1,

@@ -152,6 +152,76 @@ describe("webpack adapter", () => {
     expect(compilation.errors).toEqual([]);
   });
 
+  it("records observed webpack output.filename string templates", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-webpack-filename-"));
+    roots.push(root);
+    await fs.mkdir(path.join(root, "dist"));
+    await fs.writeFile(path.join(root, "dist", "remoteEntry.js"), "window.remote = {};\n");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "webpack-hashed-filename",
+        dependencies: { "@module-federation/enhanced": "1.0.0" },
+      }),
+    );
+
+    const taps: Array<
+      (compilation: { assets: Record<string, unknown>; errors: Error[] }) => Promise<void>
+    > = [];
+    const compiler = {
+      context: root,
+      options: {
+        mode: "production",
+        output: { path: path.join(root, "dist"), filename: "[name].[contenthash].js" },
+      },
+      hooks: {
+        afterEmit: {
+          tapPromise(
+            _name: string,
+            fn: (compilation: {
+              assets: Record<string, unknown>;
+              errors: Error[];
+            }) => Promise<void>,
+          ) {
+            taps.push(fn);
+          },
+        },
+      },
+    };
+
+    const raw = webpackDoctor.raw(
+      {
+        root,
+        moduleFederation: {
+          name: "webpack_hashed",
+          filename: "remoteEntry.js",
+          exposes: {},
+          shared: {},
+        },
+        mode: "ci",
+        output: { formats: [] },
+        rules: {
+          "artifact/remote-entry-missing": "off",
+          "artifact/types-missing": "off",
+          "doctor/partial-analysis": "off",
+        },
+      },
+      {
+        framework: "webpack",
+        versions: { unplugin: "3.3.0" },
+        webpack: { compiler },
+      } as never,
+    );
+    const plugin = Array.isArray(raw) ? raw[0]! : raw;
+    plugin.webpack!(compiler as never);
+    await taps[0]!({ assets: { "remoteEntry.js": {} }, errors: [] });
+
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, ".mf/doctor/project.json"), "utf8"),
+    ) as { bundler: { outputFilename?: string } };
+    expect(project.bundler.outputFilename).toBe("[name].[contenthash].js");
+  });
+
   it("keeps rspack compiler identity and output scope in the same build contract", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-rspack-hook-"));
     roots.push(root);

@@ -12,7 +12,7 @@ Use it as a review checklist even when a rule does not yet automate the check.
 | Option                          | Main risk                                          | Practical fix                                                  |
 | ------------------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
 | `name`                          | Runtime/global collision                           | Use one stable unique name per container                       |
-| `filename`                      | Missing or unsafe remote entry                     | Use a relative JavaScript filename and verify emission         |
+| `filename`                      | Missing, unsafe, or hashed remote entry            | Use a stable relative `.js` filename (no `[contenthash]`)      |
 | `library` + `remoteType`        | Producer/consumer format mismatch                  | Align global, module, CommonJS, or script contracts            |
 | `remotes`                       | Bad URL, alias, scope, or offline startup          | Prefer HTTPS manifest URLs; test failure recovery              |
 | `shareScope`                    | Isolated pools cannot reuse packages               | Align top-level, remote, and item scopes                       |

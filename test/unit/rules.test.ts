@@ -619,6 +619,13 @@ describe("built-in rules", () => {
       (facts: ProjectFacts) => (facts.moduleFederation!.filename = "../remoteEntry.txt"),
     ],
     [
+      "config/hashed-remote-filename",
+      (facts: ProjectFacts) => {
+        facts.bundler.name = "webpack";
+        facts.moduleFederation!.filename = "remoteEntry.[contenthash].js";
+      },
+    ],
+    [
       "config/remote-http-insecure",
       (facts: ProjectFacts) =>
         (facts.moduleFederation!.remotes = {
@@ -4362,5 +4369,97 @@ describe("shared/package-path-missing", () => {
       report: (finding) => findings.push(finding),
     });
     expect(findings).toHaveLength(0);
+  });
+});
+
+describe("config/hashed-remote-filename", () => {
+  function baseFacts(bundler: ProjectFacts["bundler"]["name"] = "webpack"): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: bundler, mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "remote",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "src/Widget.ts" },
+        remotes: {},
+        shared: {},
+      },
+      dependencies: { declared: { "@module-federation/enhanced": "1.0.0" }, installed: {} },
+      imports: {
+        sourceFiles: ["src/Widget.ts"],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  async function run(facts: ProjectFacts, options: Record<string, unknown> = {}) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/hashed-remote-filename")!;
+    await rule.check({ facts, options, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  it("warns when webpack Module Federation filename uses [contenthash]", async () => {
+    const facts = baseFacts("webpack");
+    facts.moduleFederation!.filename = "remoteEntry.[contenthash].js";
+    expect(await run(facts)).toEqual([
+      expect.objectContaining({
+        message: "Hashed remote entry filenames break stable consumer URLs.",
+        evidence: { filename: "remoteEntry.[contenthash].js" },
+      }),
+    ]);
+  });
+
+  it("warns when rspack Module Federation filename uses [hash]", async () => {
+    const facts = baseFacts("rspack");
+    facts.moduleFederation!.filename = "static/js/remoteEntry.[hash:8].js";
+    expect(await run(facts)).not.toHaveLength(0);
+  });
+
+  it("warns when observed output.filename is hashed and MF filename is unset", async () => {
+    const facts = baseFacts("webpack");
+    delete facts.moduleFederation!.filename;
+    facts.bundler.outputFilename = "[name].[contenthash].js";
+    expect(await run(facts)).toEqual([
+      expect.objectContaining({
+        evidence: { outputFilename: "[name].[contenthash].js" },
+      }),
+    ]);
+  });
+
+  it("stays quiet when MF filename is a stable override of hashed output.filename", async () => {
+    const facts = baseFacts("webpack");
+    facts.moduleFederation!.filename = "remoteEntry.js";
+    facts.bundler.outputFilename = "[name].[contenthash].js";
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("stays quiet on Vite (vite/hashed-remote-filename owns that dialect)", async () => {
+    const facts = baseFacts("vite");
+    facts.moduleFederation!.filename = "remoteEntry.[hash].js";
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("honors hashedFilenameMode allow", async () => {
+    const facts = baseFacts("webpack");
+    facts.moduleFederation!.filename = "remoteEntry.[contenthash].js";
+    expect(await run(facts, { hashedFilenameMode: "allow" })).toHaveLength(0);
   });
 });

@@ -50,6 +50,16 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Use a relative `.js` or `.mjs` filename without absolute or `..` segments.",
     sources: ["https://module-federation.io/configure/filename.html"],
   },
+  "config/hashed-remote-filename": {
+    category: "reliability",
+    impact:
+      "Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds. Webpack/Rspack `[contenthash]` in Module Federation `filename`, or in `output.filename` when the container filename is unset, has the same effect as Vite `[hash]`.",
+    fix: "Use a stable Module Federation `filename` such as `remoteEntry.js`. Keep hashing on chunk filenames instead of the container entry.",
+    sources: [
+      "https://module-federation.io/configure/filename.html",
+      "https://webpack.js.org/configuration/output/#outputfilename",
+    ],
+  },
   "config/remote-http-insecure": {
     category: "security",
     impact: "Remote code fetched over plain HTTP can be changed in transit.",

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { classifyOutputPublicPath, countModuleFederationPlugins } from "../../src/plugin.js";
+import {
+  classifyOutputPublicPath,
+  countModuleFederationPlugins,
+  readOutputFilename,
+} from "../../src/plugin.js";
 
 describe("compiler build diagnostics helpers", () => {
   it("counts Module Federation plugin instances by public name", () => {
@@ -64,5 +68,13 @@ describe("compiler build diagnostics helpers", () => {
     expect(classifyOutputPublicPath("auto")).toBe("auto");
     expect(classifyOutputPublicPath(() => "/")).toBe("non-string");
     expect(classifyOutputPublicPath(undefined)).toBe("unknown");
+  });
+
+  it("records output.filename only when it is a public string template", () => {
+    expect(readOutputFilename("[name].[contenthash].js")).toBe("[name].[contenthash].js");
+    expect(readOutputFilename("remoteEntry.js")).toBe("remoteEntry.js");
+    expect(readOutputFilename("")).toBeUndefined();
+    expect(readOutputFilename(() => "[name].js")).toBeUndefined();
+    expect(readOutputFilename(undefined)).toBeUndefined();
   });
 });
