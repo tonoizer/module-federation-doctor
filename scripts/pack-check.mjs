@@ -235,7 +235,11 @@ assert.equal(rspack.doctor, undefined, "rspack adapter must not export unused do
 assert.equal(typeof rsbuild.pluginModuleFederationDoctor, "function");
 assert.equal(rsbuild.doctor, undefined, "rsbuild adapter must not export unused doctor alias");
 assert.equal(typeof webpack.ModuleFederationDoctorPlugin, "function");
-assert.equal(webpack.moduleFederationDoctorPlugin, webpack.ModuleFederationDoctorPlugin);
+assert.equal(
+  webpack.moduleFederationDoctorPlugin,
+  undefined,
+  "webpack adapter must not export unused moduleFederationDoctorPlugin alias",
+);
 assert.equal(webpack.doctor, undefined, "webpack adapter must not export unused doctor alias");
 assert.equal(typeof modern.moduleFederationDoctorPlugin, "function");
 assert.equal(modern.pluginModuleFederationDoctor, undefined);
