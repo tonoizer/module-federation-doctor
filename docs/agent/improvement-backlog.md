@@ -15,6 +15,11 @@ German twin.
 Verify skill: `.cursor/skills/verify-mfdoctor/` — **note gaps, do not
 regenerate the map in this workstream.**
 
+**Ownership:** Kevin handed the follow-up (maintain verify-mfdoctor plus
+the 20–100 mini fix PRs in this list) to the **MF Doctor bot**, not
+Developer. This document is the handoff packet. Do not start the fix
+swarm from this analysis PR.
+
 ---
 
 ## Kurzfassung
