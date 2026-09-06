@@ -26,8 +26,14 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("github.event.release.tag_name || inputs.tag");
     expect(workflow).toContain("path: .release-tooling");
-    expect(workflow).toContain("sparse-checkout: scripts/pack-check.mjs");
     expect(workflow).toContain("cp .release-tooling/scripts/pack-check.mjs scripts/pack-check.mjs");
+    expect(workflow).toContain(
+      "cp .release-tooling/test/e2e/mixed-federation.spec.ts test/e2e/mixed-federation.spec.ts",
+    );
+    expect(workflow).toContain("examples/mixed-federation-issues");
+    expect(workflow).toContain("examples/nested-federation");
+    expect(workflow).toContain("examples/compatibility/vite-nitro-react");
+    expect(workflow).toMatch(/sparse-checkout:\s*\|\s*\n\s+scripts\n\s+test\/e2e\n/);
     expect(workflow).not.toContain("ref: ${{ needs.resolve-ref.outputs.sha }}");
     expect(workflow).toContain("description: Existing plain-semver tag");
     expect(workflow).not.toContain("description: Branch or plain semver tag");
