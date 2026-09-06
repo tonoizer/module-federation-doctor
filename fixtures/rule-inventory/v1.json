@@ -3319,6 +3319,7 @@
       "version": "1",
       "group": 1,
       "status": "migrated",
+      "demo": "showcase",
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {

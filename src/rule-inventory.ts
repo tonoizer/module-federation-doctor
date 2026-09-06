@@ -196,6 +196,7 @@ const demoByRule = {
   "config/dts-output-dir-mismatch": "showcase",
   "config/duplicate-plugin-registration": "unit",
   "config/async-boundary-missing": "showcase",
+  "config/async-startup-rspack-version": "showcase",
   "config/eager-tree-shaking-conflict": "unit",
   "config/expose-key-invalid": "showcase",
   "config/expose-path-missing": "showcase",
