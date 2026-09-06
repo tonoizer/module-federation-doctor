@@ -133,7 +133,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: vp exec playwright install chromium
-      - run: vp run check
+      - name: Validate publishable tag
+        run: vp run pack:check && vp run test:e2e
 
   stage:
     needs: [resolve-ref, verify]
