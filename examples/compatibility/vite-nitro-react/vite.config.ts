@@ -19,6 +19,7 @@ const mfOptions = {
   exposes: { "./App": "./src/app.tsx" },
   shared: {
     react: { singleton: true, requiredVersion: "^19.2.0" },
+    "react/": { singleton: true, requiredVersion: "^19.2.0" },
     "react-dom": { singleton: true, requiredVersion: "^19.2.0" },
     "react-dom/": { singleton: true, requiredVersion: "^19.2.0" },
     "react-dom/server.edge": { singleton: true, requiredVersion: "^19.2.0" },

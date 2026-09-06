@@ -1,8 +1,11 @@
-import React from "react";
+import { reactFromLoadShare } from "@mfdoctor-example/shared-ui";
+import reactShare from "react";
 import { createRoot } from "react-dom/client";
+import "react/jsx-runtime";
 
 // Vite 8/Rolldown cannot bind named ESM imports from MF's CJS react loadShare
-// virtual module. Take Suspense/lazy from the default CJS namespace instead.
+// virtual module. Unwrap `{ default: React }` so Suspense/lazy exist at runtime.
+const React = reactFromLoadShare<typeof import("react")>(reactShare);
 const { Suspense, lazy } = React;
 
 const RspackCard = lazy(() => import("rspackRemote/Card"));

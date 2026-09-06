@@ -1,9 +1,11 @@
-import { nestedCardStyle } from "@mfdoctor-example/nested-shared-ui";
-import React from "react";
+import { nestedCardStyle, reactFromLoadShare } from "@mfdoctor-example/nested-shared-ui";
+import reactShare from "react";
 import "react-dom";
+import "react/jsx-runtime";
 
 // Vite 8/Rolldown cannot bind named ESM imports from MF's CJS react loadShare
-// virtual module. Take Suspense/lazy from the default CJS namespace instead.
+// virtual module. Unwrap `{ default: React }` so Suspense/lazy exist at runtime.
+const React = reactFromLoadShare<typeof import("react")>(reactShare);
 const { Suspense, lazy } = React;
 
 const RspackCard = lazy(() => import("rspackRemote/Card"));

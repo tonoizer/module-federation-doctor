@@ -29,6 +29,9 @@ const mfOptions = {
   },
   shared: {
     react: { singleton: true, requiredVersion: "^19.1.0" },
+    // Share compiler-injected jsx-runtime with the host React singleton. Leave
+    // react-dom/ unshared so prefix-share-recommended still fires for client.
+    "react/": { singleton: true, requiredVersion: "^19.1.0" },
     "react-dom": { singleton: true, requiredVersion: "^19.1.0" },
   },
 };
