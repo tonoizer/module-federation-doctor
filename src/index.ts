@@ -234,6 +234,7 @@ export type {
   ModuleFederationInstanceInput,
   UnresolvedDynamicApi,
   UnresolvedDynamicImport,
+  NormalizedExposeObject,
   NormalizedMFConfig,
   OutputFormat,
   OutputPublicPathKind,
