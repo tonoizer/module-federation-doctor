@@ -19,6 +19,12 @@ const mfOptions = {
       shareScope: "default",
     },
   },
+  // Nested producer: include consumed remote types in this container's DTS archive.
+  dts: {
+    generateTypes: {
+      extractRemoteTypes: true,
+    },
+  },
   shared: {
     react: { singleton: true, requiredVersion: "^19.1.0" },
     "react-dom": { singleton: true, requiredVersion: "^19.1.0" },

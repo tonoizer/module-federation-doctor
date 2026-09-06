@@ -28,6 +28,7 @@ import {
   shouldSkipMf2SharedUnused,
 } from "./mf-toolkit-shapes.js";
 import { lookupAssetSize } from "./collect.js";
+import { buildFederationModel } from "./federation-model.js";
 import { ruleGuidance } from "./rule-guidance.js";
 import { supportedBundlersFromInventory } from "./rule-inventory.js";
 import { collectReactDomServerSignals, isWebClientArtifactTarget } from "./react-dom-server.js";
@@ -1111,6 +1112,28 @@ export const builtInRules: DoctorRule[] = [
       { filename, filenameDir, outputDir: normalizedOutput },
       "Align `filename` nesting with `dts.generateTypes.outputDir` so type archives resolve next to the container.",
     );
+  }),
+  createRule("config/nested-producer-dts-extract", "warning", (context) => {
+    if (!mf(context)) return;
+    for (const node of buildFederationModel([context.facts]).projects) {
+      if (node.exposes.length === 0) continue;
+      if (node.remotes.length === 0) continue;
+      if (!node.dts.enabled) continue;
+      const config = node.instance?.moduleFederation ?? node.project.moduleFederation;
+      if (dtsOptions(config).generateTypes === false) continue;
+      if (node.dts.extractRemoteTypes) continue;
+      const remotes = node.remotes.map((remote) => remote.alias);
+      report(
+        context,
+        `Nested producer "${node.federationName ?? node.projectName}" exposes modules and consumes remotes, but dts.generateTypes.extractRemoteTypes is not enabled.`,
+        {
+          extractRemoteTypes: false,
+          exposes: node.exposes,
+          remotes,
+        },
+        "Enable `dts.generateTypes.extractRemoteTypes` so this producer's type archive includes types from nested remotes.",
+      );
+    }
   }),
   createRule("artifact/public-path-non-string-manifest", "warning", (context) => {
     const config = mf(context);

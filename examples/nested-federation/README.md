@@ -16,8 +16,10 @@ gates the emitted `.mf/doctor/project.json` facts.
 
 ## Green path
 
-This suite stays clean on purpose (like `mixed-federation`). Consumers that point
-at `remoteEntry.js` intentionally suppress:
+This suite stays clean on purpose (like `mixed-federation`). Nested remotes that
+both expose and consume remotes enable `dts.generateTypes.extractRemoteTypes` so
+`config/nested-producer-dts-extract` stays quiet. Consumers that point at
+`remoteEntry.js` intentionally suppress:
 
 - `config/remote-manifest-recommended`
 - `reliability/version-first-offline-remotes` (Vite consumers)

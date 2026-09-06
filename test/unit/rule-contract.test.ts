@@ -609,9 +609,9 @@ describe("evidence-aware rule contract", () => {
     ]);
     expect([...ruleInventoryIds].sort()).toEqual(runtimeIds);
     expect(new Set(ruleInventoryIds).size).toBe(ruleInventoryIds.length);
-    expect(ruleInventoryIds).not.toContain("config/nested-producer-dts-extract");
+    expect(ruleInventoryIds).toContain("config/nested-producer-dts-extract");
+    expect(runtimeIds).toContain("config/nested-producer-dts-extract");
     expect(ruleInventoryIds).not.toContain("config/remote-type-urls-missing");
-    expect(runtimeIds).not.toContain("config/nested-producer-dts-extract");
     expect(runtimeIds).not.toContain("config/remote-type-urls-missing");
     expect(ruleInventory.find((entry) => entry.id === "config/name-required")?.status).toBe(
       "migrated",

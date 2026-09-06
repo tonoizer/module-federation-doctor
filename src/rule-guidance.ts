@@ -97,6 +97,13 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
       "https://module-federation.io/configure/filename.html",
     ],
   },
+  "config/nested-producer-dts-extract": {
+    category: "reliability",
+    impact:
+      "A remote that both exposes modules and consumes remotes publishes an incomplete type archive unless `dts.generateTypes.extractRemoteTypes` is enabled, so nested consumers miss types from inner remotes.",
+    fix: "Enable `dts.generateTypes.extractRemoteTypes` on nested producers. Host-only consumers do not need this flag.",
+    sources: ["https://module-federation.io/configure/dts.html"],
+  },
   "artifact/public-path-non-string-manifest": {
     category: "correctness",
     impact:

@@ -11,6 +11,12 @@ const mfOptions = {
   remotes: {
     webpackRemote: "nested_webpack_remote@http://127.0.0.1:3013/remoteEntry.js",
   },
+  // Nested producer: include consumed remote types in this container's DTS archive.
+  dts: {
+    generateTypes: {
+      extractRemoteTypes: true,
+    },
+  },
   shared: {
     react: { singleton: true, requiredVersion: "^19.1.0" },
     "react-dom": { singleton: true, requiredVersion: "^19.1.0" },
