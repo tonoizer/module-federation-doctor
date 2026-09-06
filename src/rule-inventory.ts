@@ -1593,7 +1593,7 @@ const plans: Record<string, RulePlan> = {
     "error",
     "config.declared",
     "declared",
-    "remote",
+    "project",
     "high",
     "Consumer targetKind (experiments.target, vite.target, or unambiguous builds.targetKind) plus a classifiable remoteEntry suffix are exact for this pairing check. Missing targetKind skips.",
     VITE_RSPACK,

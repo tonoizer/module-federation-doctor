@@ -9661,14 +9661,14 @@
           {
             "predicate": "project.scope",
             "layer": "declared",
-            "subjectKind": "remote",
+            "subjectKind": "project",
             "minimumConfidence": "high",
             "minimumCompleteness": "complete"
           },
           {
             "predicate": "moduleFederation",
             "layer": "declared",
-            "subjectKind": "remote",
+            "subjectKind": "project",
             "minimumConfidence": "high",
             "minimumCompleteness": "complete"
           }
