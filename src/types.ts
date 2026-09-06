@@ -187,6 +187,17 @@ export interface NormalizedShared {
    * `shared[pkg].packagePath`). Relative paths are project-root relative.
    */
   packagePath?: string;
+  /**
+   * Webpack/Enhanced share layer (`SharedConfig.layer` at
+   * module-federation/core@641a0b6). Isolates the provided module into a
+   * compilation layer. Vite has no equivalent and ignores the key.
+   */
+  layer?: string;
+  /**
+   * Webpack/Enhanced issuer layer (`SharedConfig.issuerLayer`). Matches
+   * requests from that issuer layer onto this share. SDK sibling of `layer`.
+   */
+  issuerLayer?: string;
   allowNodeModulesSuffixMatch?: boolean;
   shareScope: string | string[];
   treeShaking?: {
@@ -687,6 +698,10 @@ export interface ModuleFederationConfigLike {
             request?: string;
             /** Path that redirects shared package resolution. */
             packagePath?: string;
+            /** Webpack/Enhanced compilation layer for the shared module. */
+            layer?: string;
+            /** Webpack/Enhanced issuer layer that this share matches. */
+            issuerLayer?: string;
             allowNodeModulesSuffixMatch?: boolean;
             shareScope?: string | string[];
             treeShaking?:

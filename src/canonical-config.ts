@@ -115,6 +115,30 @@ const DEFAULT_LIMITS: Required<CanonicalConfigLimits> = {
 const COLLECTIONS = new Set(["exposes", "remotes", "shared"]);
 /** Confirmed SDK `ExposesConfig` keys (module-federation/core@641a0b6). */
 const KNOWN_EXPOSE_CONFIG_KEYS = new Set(["import", "name"]);
+/**
+ * Confirmed SDK `SharedConfig` keys (module-federation/core@641a0b6) plus
+ * MFDoctor `packagePath`. `layer` / `issuerLayer` are webpack-family.
+ */
+const KNOWN_SHARED_CONFIG_KEYS = new Set([
+  "eager",
+  "exclude",
+  "include",
+  "import",
+  "request",
+  "layer",
+  "issuerLayer",
+  "packageName",
+  "packagePath",
+  "requiredVersion",
+  "shareKey",
+  "shareScope",
+  "shareStrategy",
+  "singleton",
+  "strictVersion",
+  "version",
+  "allowNodeModulesSuffixMatch",
+  "treeShaking",
+]);
 const KNOWN_FIELDS = new Set([
   "name",
   "filename",
@@ -768,6 +792,7 @@ export function readCanonicalModuleFederationConfig(
     });
   }
   for (const field of exposeUnknownFields(declared)) extensions.push(field);
+  for (const field of sharedUnknownFields(declared)) extensions.push(field);
   return {
     schemaVersion: 1,
     contract: contract(context),
@@ -779,13 +804,24 @@ export function readCanonicalModuleFederationConfig(
 }
 
 function exposeUnknownFields(declared: CanonicalConfigSnapshot): CanonicalUnknownField[] {
+  return collectionUnknownFields(declared.collections.exposes, KNOWN_EXPOSE_CONFIG_KEYS);
+}
+
+function sharedUnknownFields(declared: CanonicalConfigSnapshot): CanonicalUnknownField[] {
+  return collectionUnknownFields(declared.collections.shared, KNOWN_SHARED_CONFIG_KEYS);
+}
+
+function collectionUnknownFields(
+  entries: CanonicalConfigEntry[],
+  knownKeys: ReadonlySet<string>,
+): CanonicalUnknownField[] {
   const fields: CanonicalUnknownField[] = [];
-  for (const entry of declared.collections.exposes) {
+  for (const entry of entries) {
     if (entry.value.state !== "known") continue;
     const value = entry.value.value;
     if (value === null || typeof value !== "object" || Array.isArray(value)) continue;
     for (const key of Object.keys(value).sort()) {
-      if (KNOWN_EXPOSE_CONFIG_KEYS.has(key)) continue;
+      if (knownKeys.has(key)) continue;
       const fieldValue = value[key];
       fields.push({
         path: `${entry.id}/${pointerSegment(safeKey(key))}`,

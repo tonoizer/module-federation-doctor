@@ -57,6 +57,29 @@ describe("canonical declared config bridge", () => {
     expect(facts.moduleFederation?.shared.react?.singleton).toBe(false);
   });
 
+  it("round-trips shared.layer on normalized facts and the declared collection", async () => {
+    const facts = await collect({
+      name: "host",
+      shared: {
+        react: { singleton: true, layer: "client", issuerLayer: "ssr" },
+      },
+    });
+    expect(facts.moduleFederation?.shared.react).toMatchObject({
+      package: "react",
+      singleton: true,
+      layer: "client",
+      issuerLayer: "ssr",
+    });
+    expect(facts.canonicalConfig?.declared.collections.shared[0]?.value.value).toEqual({
+      singleton: true,
+      layer: "client",
+      issuerLayer: "ssr",
+    });
+    expect(facts.canonicalConfig?.extensions.some((field) => field.path.endsWith("/layer"))).toBe(
+      false,
+    );
+  });
+
   it("does not invent a declaration when no config was supplied", async () => {
     const facts = await collect();
     expect(facts.moduleFederation).toBeUndefined();
