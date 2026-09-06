@@ -61,10 +61,11 @@ a new rule without one of those three tags.
 gate uses knip with `includeEntryExports` and a preprocessor that reports only
 the published `.` barrel.
 
-Library-only symbols that stay on `.` until a slim PR (identity factories,
-waivers, lineage, migrated-group lists, analysis-cache defaults) are listed in
-`scripts/knip-index-export-allowlist.mjs`. Do not add names there to land a new
-export — import it from a test via `src/index.js` (see
+Library-only symbols that stay on `.` until a slim PR (identity helpers,
+correlation/governance, migrated-group lists, analysis-cache defaults) are
+listed in `scripts/knip-index-export-allowlist.mjs`. Finding lineage and
+governance waivers are **not** on `.` (BL-39). Do not add names there to land a
+new export — import it from a test via `src/index.js` (see
 `test/unit/root-entry-exports.test.ts`) or omit it from the root entry.
 
 ## Adapter contract

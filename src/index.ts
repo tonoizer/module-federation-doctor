@@ -359,49 +359,10 @@ export type {
   DeploymentRelationshipInput,
   DeploymentRelationshipKind,
 } from "./build-artifact-deployment-correlation.js";
-export {
-  assertFindingLineageRecord,
-  createFindingHistorySnapshot,
-  createFindingLineage,
-  diffFindingHistory,
-  diffFindingHistorySeries,
-  FINDING_LINEAGE_SCHEMA_VERSION,
-  FindingLineageValidationError,
-} from "./finding-lineage.js";
-export type {
-  FindingHistoryChange,
-  FindingHistoryDiff,
-  FindingHistorySnapshot,
-  FindingHistorySnapshotInput,
-  FindingHistoryState,
-  FindingIdentityDimensionValue,
-  FindingLineageCompleteness,
-  FindingLineageConfidence,
-  FindingLineageInput,
-  FindingLineageOutcome,
-  FindingLineageRecord,
-  FindingLineageSchemaVersion,
-  FindingLineageScope,
-  FindingLineageSeverity,
-  FindingOccurrenceBasis,
-} from "./finding-lineage.js";
-export {
-  defineGovernanceWaiver,
-  evaluateGovernanceWaiver,
-  resolveGovernanceWaivers,
-  GOVERNANCE_WAIVER_SCHEMA_VERSION,
-} from "./governance-waivers.js";
-export type {
-  GovernanceWaiver,
-  GovernanceWaiverDecision,
-  GovernanceWaiverDecisionOutcome,
-  GovernanceWaiverEvaluationContext,
-  GovernanceWaiverInput,
-  GovernanceWaiverResolution,
-  GovernanceWaiverResolutionOutcome,
-  GovernanceWaiverSchemaVersion,
-  ResolveGovernanceWaiversOptions,
-} from "./governance-waivers.js";
+// Finding lineage and governance waivers stay in src/finding-lineage.ts and
+// src/governance-waivers.ts (ADR 0086, library-only). They are not re-exported
+// from this root entry until the CLI uses them. JSON Schema contracts remain
+// published. Baseline CLI is unchanged.
 export { projectV1Suppression, V1_COMPATIBILITY_SCHEMA_VERSION } from "./v1-compatibility.js";
 export type {
   V1CompatibilitySchemaVersion,
