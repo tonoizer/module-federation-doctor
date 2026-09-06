@@ -106,6 +106,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "ssr/node-remote-manifest",
   "ssr/node-runtime-plugin-missing",
   "ssr/node-library-dts",
+  "ssr/remote-entry-target-mismatch",
   "runtime-plugins/invalid-factory",
   "runtime-plugins/create-script-cors-parity",
   "runtime-plugins/create-script-without-link",

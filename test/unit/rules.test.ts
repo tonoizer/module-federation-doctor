@@ -1849,6 +1849,24 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "ssr/remote-entry-target-mismatch",
+      (facts: ProjectFacts) => {
+        facts.moduleFederation!.experiments = {
+          asyncStartup: false,
+          externalRuntime: false,
+          provideExternalRuntime: false,
+          target: "web",
+        };
+        facts.moduleFederation!.remotes = {
+          shop: {
+            name: "shop",
+            entry: "http://localhost:3001/remoteEntry.ssr.js",
+            shareScope: "default",
+          },
+        };
+      },
+    ],
+    [
       "runtime-plugins/invalid-factory",
       (facts: ProjectFacts) => {
         facts.moduleFederation!.runtimePlugins = ["./src/bad-plugin.ts"];

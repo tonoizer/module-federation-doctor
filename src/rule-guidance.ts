@@ -882,6 +882,16 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: 'Set `library: { type: "commonjs-module" }` (or another commonjs-like type) and `dts: false` on node/SSR producers. Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.',
     sources: ["https://module-federation.io/blog/node"],
   },
+  "ssr/remote-entry-target-mismatch": {
+    category: "correctness",
+    impact:
+      "A browser host that loads `remoteEntry.ssr.js` (or an SSR-specific path) executes the server container in the client. The reverse — an SSR host loading a browser `remoteEntry.js` — misses the server runtime contract. Dual-env Nitro pairing of client+server outputs is not this check.",
+    fix: 'Point browser remotes at `remoteEntry.js` (or the client `mf-manifest.json`) and node/SSR remotes at `remoteEntry.ssr.js` or `/ssr/...`. Requires `experiments.target` / `vite.target` / unambiguous `builds.targetKind` on the consumer; missing targetKind skips. Set `ssrMode: "browser-only"` or `"node"` to force a side, or turn the rule `"off"`.',
+    sources: [
+      "https://module-federation.io/guide/basic/manifest-snapshot.html",
+      "https://module-federation.io/blog/node",
+    ],
+  },
   "bridge/vue-share-missing": {
     category: "correctness",
     impact:

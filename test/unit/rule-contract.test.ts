@@ -655,6 +655,7 @@ describe("evidence-aware rule contract", () => {
         "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
         "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
         "config/hashed-remote-filename": ["bundler.outputFilename"],
+        "ssr/remote-entry-target-mismatch": ["builds"],
       };
       const optionalReads = optionalPluginFacts[entry.id] ?? [];
       expect(requirements.length).toBeGreaterThanOrEqual(2);
@@ -854,6 +855,11 @@ describe("evidence-aware rule contract", () => {
         .find((entry) => entry.id === "config/hashed-remote-filename")
         ?.applicability.bundlers?.map((item) => item.name),
     ).toEqual(["rspack", "rsbuild", "webpack", "modern"]);
+    expect(
+      ruleInventory
+        .find((entry) => entry.id === "ssr/remote-entry-target-mismatch")
+        ?.applicability.bundlers?.map((item) => item.name),
+    ).toEqual(["vite", "rspack"]);
     expect(
       ruleInventory
         .find((entry) => entry.id === "config/alias-share-bypass")

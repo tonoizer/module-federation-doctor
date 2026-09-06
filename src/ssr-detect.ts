@@ -6,6 +6,9 @@ import type { NormalizedMFConfig, ProjectFacts } from "./types.js";
 
 export type SsrModeOption = "browser-only" | "dual" | "node";
 
+/** Browser vs SSR as implied by remoteEntry suffix or consumer target facts. */
+export type RemoteEntryTargetKind = "web" | "ssr";
+
 const NODE_RUNTIME_PLUGIN = "@module-federation/node/runtimePlugin";
 const COMMONJS_LIBRARY_TYPES = new Set([
   "commonjs",
@@ -45,7 +48,67 @@ export function isSsrAwareRemoteEntry(entry: string): boolean {
   if (/\/ssr\//i.test(trimmed)) return true;
   if (/[?&](?:env|target)=(?:ssr|node)\b/i.test(trimmed)) return true;
   if (/-(?:ssr|node)(?:\/|\.|$)/i.test(trimmed)) return true;
+  // SvelteKit / Vite SSR container: remoteEntry.ssr.js (dot suffix, not `-ssr`).
+  if (/\.(?:ssr|node)\.[cm]?js(?:[?#]|$)/i.test(trimmed)) return true;
   return false;
+}
+
+function remoteEntryBasename(entry: string): string {
+  const withoutQuery = entry.split(/[?#]/)[0] ?? entry;
+  const parts = withoutQuery.replaceAll("\\", "/").split("/");
+  return parts[parts.length - 1] ?? "";
+}
+
+/**
+ * Infer browser vs SSR from a remote URL suffix or path when the signal is
+ * unambiguous. Opaque aliases, fragment remotes, and browser `mf-manifest.json`
+ * (owned by `ssr/node-remote-manifest`) return `undefined`.
+ */
+export function remoteEntryImpliedTarget(entry: string): RemoteEntryTargetKind | undefined {
+  const trimmed = entry.trim();
+  if (!trimmed) return undefined;
+  if (/\.(?:ssr|node)\.[cm]?js(?:[?#]|$)/i.test(trimmed)) return "ssr";
+  if (isSsrAwareRemoteEntry(trimmed)) return "ssr";
+  if (isBrowserOnlyManifestRemoteEntry(trimmed)) return undefined;
+  const basename = remoteEntryBasename(trimmed);
+  if (/^remote[-.]?entry(?:-[^/]+)?\.[cm]?js$/i.test(basename)) return "web";
+  if (/^remote[-.]?entry$/i.test(basename)) return "web";
+  return undefined;
+}
+
+/**
+ * Consumer target for remoteEntry pairing. Requires an explicit MF target,
+ * `ssrMode`, or unambiguous `builds.targetKind`. Mixed web+ssr/node outputs
+ * (dual-env Nitro pairing) and bare `targetKind=node` (Vite default `ssr.target`)
+ * are skipped — not a producer/consumer contract.
+ */
+export function consumerRemoteTargetKind(
+  facts: ProjectFacts,
+  ssrMode?: SsrModeOption,
+): RemoteEntryTargetKind | undefined {
+  if (ssrMode === "browser-only") return "web";
+  if (ssrMode === "dual") return undefined;
+  if (ssrMode === "node") return "ssr";
+
+  const kinds = new Set(
+    (facts.builds ?? [])
+      .map((build) => build.targetKind)
+      .filter((kind): kind is NonNullable<typeof kind> => Boolean(kind) && kind !== "unknown"),
+  );
+  const hasWeb = kinds.has("web") || kinds.has("worker");
+  const hasSsr = kinds.has("ssr");
+  const hasNode = kinds.has("node");
+  // Dual-env Nitro pairing writes web + node/ssr outputs into one report.
+  if (hasWeb && (hasSsr || hasNode)) return undefined;
+
+  const experimentsTarget = facts.moduleFederation?.experiments?.target;
+  const viteTarget = facts.moduleFederation?.vite?.target;
+  if (experimentsTarget === "node" || viteTarget === "node") return "ssr";
+  if (experimentsTarget === "web" || viteTarget === "web") return "web";
+
+  if (hasSsr && !hasWeb) return "ssr";
+  if (hasWeb && !hasSsr && !hasNode) return "web";
+  return undefined;
 }
 
 /**
