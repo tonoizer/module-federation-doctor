@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 126,
-  "migratedCount": 126,
+  "ruleCount": 127,
+  "migratedCount": 127,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
@@ -4137,6 +4137,74 @@
         "bundler.outputFilename"
       ],
       "migrationNote": "Group 1; Declared MF filename pattern check is exact; webpack/rspack output.filename is exact when the adapter observed a string template and is skipped when absent. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
+      "id": "config/unique-name-mismatch",
+      "version": "1",
+      "group": 1,
+      "status": "migrated",
+      "demo": "unit",
+      "defaultSeverity": "info",
+      "confidenceCeiling": "medium",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "Webpack/Rspack `output.uniqueName` namespaces the compiler runtime. When it disagrees with Module Federation `name` on the same compiler, chunk-loading globals and the container id can diverge. This stays info because uniqueName is often set equal on purpose, and a mismatch can be intentional. Multi-plugin compilers are skipped because uniqueName is compiler-scoped.",
+        "documentation": "/rules/config/unique-name-mismatch",
+        "fix": "Set `output.uniqueName` to the same value as Module Federation `name`. Omit uniqueName when you do not need an override."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "medium",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "medium",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "bundler.name",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "medium",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "rspack"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "rspack"
+          }
+        ]
+      },
+      "evidenceReads": [
+        "project.scope",
+        "moduleFederation",
+        "bundler.name",
+        "bundler.outputUniqueName",
+        "bundler.moduleFederationPluginCount"
+      ],
+      "migrationNote": "Group 1; Webpack/Rspack output.uniqueName vs Module Federation name is exact when the adapter observed uniqueName on a single-plugin compiler; skipped when uniqueName is absent or more than one Module Federation plugin shares the compiler. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
       "id": "config/get-public-path-invalid",

@@ -60,6 +60,17 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
       "https://webpack.js.org/configuration/output/#outputfilename",
     ],
   },
+  "config/unique-name-mismatch": {
+    category: "reliability",
+    impact:
+      "Webpack/Rspack `output.uniqueName` namespaces the compiler runtime. When it disagrees with Module Federation `name` on the same compiler, chunk-loading globals and the container id can diverge. This stays info because uniqueName is often set equal on purpose, and a mismatch can be intentional. Multi-plugin compilers are skipped because uniqueName is compiler-scoped.",
+    fix: "Set `output.uniqueName` to the same value as Module Federation `name`. Omit uniqueName when you do not need an override.",
+    sources: [
+      "https://module-federation.io/configure/name.html",
+      "https://webpack.js.org/configuration/output/#outputuniquename",
+      "https://rspack.rs/config/output#outputuniquename",
+    ],
+  },
   "config/remote-http-insecure": {
     category: "security",
     impact: "Remote code fetched over plain HTTP can be changed in transit.",

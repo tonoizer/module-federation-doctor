@@ -73,6 +73,7 @@ const ids = [
   "config/external-runtime-with-exposes",
   "config/filename-invalid",
   "config/hashed-remote-filename",
+  "config/unique-name-mismatch",
   "config/get-public-path-invalid",
   "config/get-public-path-unused",
   "config/implementation-suspicious",
@@ -208,6 +209,7 @@ const demoByRule = {
   "config/external-runtime-with-exposes": "unit",
   "config/filename-invalid": "showcase",
   "config/hashed-remote-filename": "showcase",
+  "config/unique-name-mismatch": "unit",
   "config/get-public-path-invalid": "unit",
   "config/get-public-path-unused": "unit",
   "config/implementation-suspicious": "unit",
@@ -295,6 +297,7 @@ export const MIGRATED_GROUP1_CONFIG_RULE_IDS = [
   "config/remote-entry-invalid",
   "config/filename-invalid",
   "config/hashed-remote-filename",
+  "config/unique-name-mismatch",
   "config/remote-http-insecure",
   "config/remote-localhost-in-production",
   "config/remote-alias-prefix-collision",
@@ -478,6 +481,7 @@ const VITE_RSPACK = ["vite", "rspack"] as const;
 const RSBUILD = ["rsbuild"] as const;
 const RSPACK_FAMILY = ["rspack", "rsbuild"] as const;
 const WEBPACK_FAMILY = ["rspack", "rsbuild", "webpack", "modern"] as const;
+const WEBPACK_RSPACK = ["webpack", "rspack"] as const;
 const ENHANCED_ALIAS_FAMILY = ["webpack", "rspack", "rsbuild"] as const;
 const plan = (
   group: RuleMigrationGroup,
@@ -556,6 +560,16 @@ const plans: Record<string, RulePlan> = {
     "high",
     "Declared MF filename pattern check is exact; webpack/rspack output.filename is exact when the adapter observed a string template and is skipped when absent.",
     WEBPACK_FAMILY,
+  ),
+  "config/unique-name-mismatch": plan(
+    1,
+    "info",
+    "config.declared",
+    "declared",
+    "project",
+    "medium",
+    "Webpack/Rspack output.uniqueName vs Module Federation name is exact when the adapter observed uniqueName on a single-plugin compiler; skipped when uniqueName is absent or more than one Module Federation plugin shares the compiler.",
+    WEBPACK_RSPACK,
   ),
   "config/remote-http-insecure": plan(
     1,
@@ -1873,6 +1887,13 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "bundler.name",
     "bundler.outputFilename",
   ],
+  "config/unique-name-mismatch": [
+    "project.scope",
+    "moduleFederation",
+    "bundler.name",
+    "bundler.outputUniqueName",
+    "bundler.moduleFederationPluginCount",
+  ],
   "config/get-public-path-invalid": ["project.scope", "moduleFederation"],
   "config/get-public-path-unused": ["project.scope", "moduleFederation"],
   "config/implementation-suspicious": ["project.scope", "moduleFederation"],
@@ -2139,6 +2160,10 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
     "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
     "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
     "config/hashed-remote-filename": ["bundler.outputFilename"],
+    "config/unique-name-mismatch": [
+      "bundler.outputUniqueName",
+      "bundler.moduleFederationPluginCount",
+    ],
     "ssr/remote-entry-target-mismatch": ["builds"],
     "config/promise-remote-async-boundary": ["imports.sourceFiles"],
   };

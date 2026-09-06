@@ -816,6 +816,13 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/unique-name-mismatch",
+      (facts: ProjectFacts) => {
+        facts.bundler.name = "webpack";
+        facts.bundler.outputUniqueName = "other_runtime";
+      },
+    ],
+    [
       "config/remote-http-insecure",
       (facts: ProjectFacts) =>
         (facts.moduleFederation!.remotes = {
@@ -5960,6 +5967,93 @@ describe("config/hashed-remote-filename", () => {
     const facts = baseFacts("webpack");
     facts.moduleFederation!.filename = "remoteEntry.[contenthash].js";
     expect(await run(facts, { hashedFilenameMode: "allow" })).toHaveLength(0);
+  });
+});
+
+describe("config/unique-name-mismatch", () => {
+  function baseFacts(bundler: ProjectFacts["bundler"]["name"] = "webpack"): ProjectFacts {
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: { name: bundler, mode: "ci" },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "shop",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "src/Widget.ts" },
+        remotes: {},
+        shared: {},
+      },
+      dependencies: { declared: { "@module-federation/enhanced": "1.0.0" }, installed: {} },
+      imports: {
+        sourceFiles: ["src/Widget.ts"],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  async function run(facts: ProjectFacts) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find((item) => item.meta.id === "config/unique-name-mismatch")!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  it("emits info when webpack uniqueName and federation name are both observed and unequal", async () => {
+    const facts = baseFacts("webpack");
+    facts.bundler.outputUniqueName = "other_runtime";
+    expect(await run(facts)).toEqual([
+      expect.objectContaining({
+        message:
+          'Bundler `output.uniqueName` "other_runtime" disagrees with Module Federation `name` "shop".',
+        evidence: { uniqueName: "other_runtime", name: "shop" },
+      }),
+    ]);
+  });
+
+  it("emits info on rspack when uniqueName disagrees with federation name", async () => {
+    const facts = baseFacts("rspack");
+    facts.bundler.outputUniqueName = "rspack_runtime";
+    expect(await run(facts)).not.toHaveLength(0);
+  });
+
+  it("stays quiet when uniqueName is absent", async () => {
+    expect(await run(baseFacts("webpack"))).toHaveLength(0);
+  });
+
+  it("stays quiet when uniqueName equals federation name", async () => {
+    const facts = baseFacts("webpack");
+    facts.bundler.outputUniqueName = "shop";
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("stays quiet on Vite even when uniqueName is set", async () => {
+    const facts = baseFacts("vite");
+    facts.bundler.outputUniqueName = "other_runtime";
+    expect(await run(facts)).toHaveLength(0);
+  });
+
+  it("stays quiet on a multi-plugin compiler where uniqueName cannot match every container", async () => {
+    const facts = baseFacts("webpack");
+    facts.bundler.outputUniqueName = "webpack_smoke_checkout";
+    facts.bundler.moduleFederationPluginCount = 2;
+    facts.moduleFederation!.name = "webpack_smoke_catalog";
+    expect(await run(facts)).toHaveLength(0);
   });
 });
 

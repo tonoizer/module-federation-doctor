@@ -97,6 +97,10 @@
           "type": "string",
           "minLength": 1
         },
+        "outputUniqueName": {
+          "type": "string",
+          "minLength": 1
+        },
         "viteConfig": {
           "type": "object",
           "properties": {

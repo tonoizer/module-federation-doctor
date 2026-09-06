@@ -64,7 +64,7 @@ export type CompilerLike = {
     mode?: string;
     target?: string | string[] | false;
     plugins?: unknown[];
-    output?: { path?: string; publicPath?: unknown; filename?: unknown };
+    output?: { path?: string; publicPath?: unknown; filename?: unknown; uniqueName?: unknown };
     externals?: unknown;
     resolve?: { alias?: unknown };
     optimization?: { splitChunks?: unknown };
@@ -485,6 +485,9 @@ function collectCompilerDiagnostics(compiler: CompilerLike): BuildDiagnostics {
   if (compiler.options) diagnostics.externals = extractPublicExternals(compiler.options.externals);
   const outputFilename = readOutputFilename(compiler.options?.output?.filename);
   if (outputFilename) diagnostics.outputFilename = outputFilename;
+  const uniqueName = compiler.options?.output?.uniqueName;
+  if (typeof uniqueName === "string" && uniqueName.length > 0)
+    diagnostics.outputUniqueName = uniqueName;
   mergeResolveAliasObservation(diagnostics, observeResolveAlias(compiler.options?.resolve?.alias));
   if (compiler.options && "optimization" in compiler.options)
     diagnostics.splitChunks = extractCompilerSplitChunksFacts(compiler.options.optimization) ?? {};
