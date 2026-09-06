@@ -16,7 +16,7 @@ export const INDEX_UNUSED_EXPORT_ALLOWLIST = Object.freeze([
   "unknownIdentity",
   // ADR 0086 — correlation, ownership, build/deployment, runtime identity
   // still on `.` until later slim PRs. Lineage/waiver value exports were
-  // dropped from `.` in BL-39.
+  // dropped from `.` in BL-39. V1 compatibility helpers were dropped in BL-49.
   "BUILD_ARTIFACT_DEPLOYMENT_SCHEMA_VERSION",
   "IDENTITY_CORRELATION_SCHEMA_VERSION",
   "IDENTITY_GOVERNANCE_SCHEMA_VERSION",
@@ -30,9 +30,6 @@ export const INDEX_UNUSED_EXPORT_ALLOWLIST = Object.freeze([
   "isSemanticIdentityKey",
   "projectRuntimeCaptureIdentity",
   "resolveIdentityGovernance",
-  // BL-49 — V1 suppression projection is unused on the CLI path.
-  "V1_COMPATIBILITY_SCHEMA_VERSION",
-  "projectV1Suppression",
   // BL-52 — semantic-graph stays experimental on `.`; schema const is unused.
   "SEMANTIC_GRAPH_SCHEMA_VERSION",
   // BL-55 — migrated-group inventory lists are not a product API.

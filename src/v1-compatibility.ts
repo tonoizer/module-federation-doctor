@@ -3,7 +3,11 @@ import { entryMatchesFinding, type BaselineEntry, type BaselineFile } from "./ba
 import type { DoctorFinding } from "./types.js";
 import { IdentityValidationError } from "./identity.js";
 
-/** Version of the additive V1 suppression compatibility projection. */
+/**
+ * @experimental Library-only V1 suppression projection (ADR 0086). Not
+ * re-exported from `@tonoizer/mfdoctor` and not used by the baseline CLI.
+ * Kept for ADR tests via relative import.
+ */
 export const V1_COMPATIBILITY_SCHEMA_VERSION = 1 as const;
 export type V1CompatibilitySchemaVersion = typeof V1_COMPATIBILITY_SCHEMA_VERSION;
 

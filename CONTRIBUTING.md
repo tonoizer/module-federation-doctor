@@ -63,10 +63,11 @@ the published `.` barrel.
 
 Library-only symbols that stay on `.` until a slim PR (identity helpers,
 correlation/governance, migrated-group lists, analysis-cache defaults) are
-listed in `scripts/knip-index-export-allowlist.mjs`. Finding lineage and
-governance waivers are **not** on `.` (BL-39). Do not add names there to land a
-new export — import it from a test via `src/index.js` (see
-`test/unit/root-entry-exports.test.ts`) or omit it from the root entry.
+listed in `scripts/knip-index-export-allowlist.mjs`. Finding lineage,
+governance waivers, and V1 compatibility helpers are **not** on `.` (BL-39,
+BL-49). Do not add names there to land a new export — import it from a test
+via `src/index.js` (see `test/unit/root-entry-exports.test.ts`) or omit it from
+the root entry.
 
 ## Adapter contract
 

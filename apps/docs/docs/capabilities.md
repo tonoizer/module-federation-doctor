@@ -192,8 +192,10 @@ flags.
 
 ## V1 compatibility bridge
 
-`projectV1Suppression` is the explicit compatibility seam for consumers that
-have both a legacy `DoctorFinding` and additive lineage/waiver evidence. It
+`projectV1Suppression` is the explicit compatibility seam for ADR tests that
+have both a legacy `DoctorFinding` and additive lineage/waiver evidence. It is
+**not** re-exported from `@tonoizer/mfdoctor` and is not used by the baseline
+CLI; the helper remains in `src/v1-compatibility.ts` for relative import. It
 delegates baseline matching to the existing V1 matcher, records whether the
 baseline, a governed waiver, or both supplied suppression, and exposes the
 waiver outcome without changing the finding, baseline file, fingerprint,
