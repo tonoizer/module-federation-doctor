@@ -27,8 +27,12 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain("github.event.release.tag_name || inputs.tag");
     expect(workflow).toContain("path: .release-tooling");
     expect(workflow).toContain("cp .release-tooling/scripts/pack-check.mjs scripts/pack-check.mjs");
+    expect(workflow).toContain("cp .release-tooling/scripts/giga-smoke.mjs scripts/giga-smoke.mjs");
     expect(workflow).toContain(
       "cp .release-tooling/test/e2e/mixed-federation.spec.ts test/e2e/mixed-federation.spec.ts",
+    );
+    expect(workflow).toContain(
+      "grep -q reactFromLoadShare examples/mixed-federation/host-vite/src/bootstrap.tsx",
     );
     expect(workflow).toContain("examples/mixed-federation-issues");
     expect(workflow).toContain("examples/nested-federation");
