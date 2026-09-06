@@ -105,6 +105,13 @@ for (const cell of cells) {
       );
       failed = true;
     }
+    const incomplete = report.status?.incompleteReasons ?? [];
+    if (!incomplete.includes("partial-bundler")) {
+      process.stdout.write(
+        `FAIL ${cell.label} missing incompleteReasons partial-bundler (${incomplete.join(", ") || "none"})\n`,
+      );
+      failed = true;
+    }
   }
 }
 

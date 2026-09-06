@@ -20,9 +20,9 @@ For nested multi-bundler orchestration, see [`../nested-federation`](../nested-f
 | `modern/`  | Modern.js (**partial**) | `shared/version-unsatisfied`, `shared/singleton-risk`                                                            |
 
 The `modern/` cell does **not** upgrade Modern.js to first-class. It records
-`bundler: "modern"` and typically also reports `doctor/partial-analysis`. A real
-`@modern-js/app-tools` build is still required for a **supported** matrix claim
-(#130).
+`bundler: "modern"` and `status.incompleteReasons` includes `partial-bundler`.
+A real `@modern-js/app-tools` build is still required for a **supported** matrix
+claim (#130).
 
 ```bash
 vp run demo:standalone

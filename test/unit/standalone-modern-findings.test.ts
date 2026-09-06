@@ -23,6 +23,7 @@ describe("standalone Modern findings cell (BL-21)", () => {
     expect(catalog).toContain("@mfdoctor-standalone/modern");
     expect(catalog).toContain('bundler: "modern"');
     expect(catalog).toContain("shared/version-unsatisfied");
+    expect(catalog).toContain("partial-bundler");
 
     const matrix = JSON.parse(
       await fs.readFile(path.join(root, "fixtures/compatibility-matrix.json"), "utf8"),

@@ -19,5 +19,5 @@ vp run --filter @mfdoctor-standalone/modern build
 ```
 
 Expect `.mf/doctor/report.json` with `shared/version-unsatisfied` and
-`shared/singleton-risk` (and typically `doctor/partial-analysis`, because
-`bundler` is recorded as `modern`).
+`shared/singleton-risk`. The report stays incomplete (`partial-bundler`) because
+`bundler` is recorded as `modern`.
