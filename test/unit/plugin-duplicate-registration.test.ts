@@ -88,7 +88,9 @@ async function readDoctorOutput(root: string): Promise<{
 }
 
 function duplicateFindings(report: { findings: Array<{ ruleId: string }> }): unknown[] {
-  return report.findings.filter((finding) => finding.ruleId === "config/duplicate-plugin-registration");
+  return report.findings.filter(
+    (finding) => finding.ruleId === "config/duplicate-plugin-registration",
+  );
 }
 
 async function runVitePlugins(
@@ -193,10 +195,7 @@ describe("Vite/Rsbuild duplicate plugin registration", () => {
     const root = await makeRoot("vite-explicit-instances");
     await runVitePlugins(
       root,
-      [
-        { name: "module-federation-vite" },
-        { name: "module-federation-vite" },
-      ],
+      [{ name: "module-federation-vite" }, { name: "module-federation-vite" }],
       {
         moduleFederationInstances: [
           instanceConfig("checkout", "checkout.js"),
