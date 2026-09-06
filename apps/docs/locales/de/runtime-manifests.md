@@ -89,9 +89,12 @@ vendored in-tree):
   core-demo re-soak remains unverified. It was **not** a MFDoctor Modern adapter
   crash. In-repo
   [`examples/compatibility/modern`](https://github.com/tonoizer/module-federation-doctor/tree/main/examples/compatibility/modern)
-  smoke stays green; a full `@modern-js/app-tools` core-demo re-soak is still
-  external evidence and is not covered by this partial cell. Track the final
-  verification in [#130](https://github.com/tonoizer/module-federation-doctor/issues/130).
+  smoke stays green as a Rspack-under-the-hood stub. A real
+  `@modern-js/app-tools` production emit was verified outside this lockfile, but
+  current App Tools releases cannot be added here under `trustPolicy: no-downgrade`
+  (last provenance-attested stable is `2.63.3`). A full upstream core-demo
+  re-soak (`modern-ssr-*`, `modern-data-fetch-*`) is still external evidence.
+  Track that remaining verification in [#130](https://github.com/tonoizer/module-federation-doctor/issues/130).
 
 ## Ruhiger Soak-Test / Demo-Konfiguration
 

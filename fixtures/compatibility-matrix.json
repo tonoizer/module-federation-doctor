@@ -228,7 +228,12 @@
       "bundler": "modern",
       "package": "@mfdoctor-example/modern-smoke",
       "expectedErrors": 0,
-      "coverage": ["Modern.js adapter", "Rspack lifecycle", "production"]
+      "coverage": [
+        "Modern.js adapter",
+        "Rspack lifecycle",
+        "production",
+        "App Tools blocked: lockfile trustPolicy no-downgrade (last provenance 2.63.3)"
+      ]
     },
     {
       "id": "nuxt",

@@ -47,7 +47,7 @@ collected. Clean builds stay quiet by default.
 | Vite / Vite 5 CommonJS     | **supported** | Primary CI cells in `fixtures/compatibility-matrix.json`               |
 | Rspack / Rsbuild / Webpack | **supported** | First-class adapters; production build+MFDoctor gates                  |
 | Rolldown / Vite Plus       | **partial**   | Same `@tonoizer/mfdoctor/vite` entry; no dedicated Rolldown CI smoke   |
-| Modern.js                  | **partial**   | Adapter + Rspack-under-the-hood smoke; not full `@modern-js/app-tools` |
+| Modern.js                  | **partial**   | Rspack-under-the-hood smoke; App Tools blocked by lockfile trustPolicy |
 | Nuxt 3/4                   | **partial**   | Adapter + unit contract; upstream app build baseline-blocked           |
 
 **Partial** means an adapter exists and some coverage is present, but rule depth,
@@ -140,15 +140,20 @@ plugins: [
 **Modern.js** (**partial** — adapter + Rspack-under-the-hood smoke; does not hide `/rspack`)
 
 ```ts
-import { moduleFederationPlugin } from "@module-federation/modern-js";
+import { appTools } from "@modern-js/app-tools";
+import { moduleFederationPlugin } from "@module-federation/modern-js-v3";
 import { moduleFederationDoctorPlugin } from "@tonoizer/mfdoctor/modern";
 
 plugins: [
   appTools(),
-  moduleFederationPlugin(),
+  moduleFederationPlugin({ config: mfOptions, ssr: false }),
   moduleFederationDoctorPlugin({ moduleFederation: mfOptions }),
 ];
 ```
+
+A real `@modern-js/app-tools` CI cell is blocked by this repo's
+`trustPolicy: no-downgrade` (current App Tools dropped npm provenance after
+`2.63.3`). The compatibility smoke stays Rspack-under-the-hood.
 
 CI is auto-detected from the environment (`CI`, `GITHUB_ACTIONS`, and other
 common provider signals). In CI, MFDoctor fails on error findings and includes
