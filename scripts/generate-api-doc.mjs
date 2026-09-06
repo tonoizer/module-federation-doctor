@@ -46,6 +46,13 @@ function importTarget(value) {
   return value?.import ?? value?.default ?? "(conditional export)";
 }
 
+function schemaPurpose(key) {
+  if (key === "./schemas/ui.schema.json") {
+    return "Programmatic graph (`buildUiPayload`) — not an HTML dashboard or `--ui` flag.";
+  }
+  return "Public JSON Schema contract.";
+}
+
 const runtimeRows = runtimeEntries
   .map(([key, value]) => {
     const target = importTarget(value);
@@ -53,10 +60,9 @@ const runtimeRows = runtimeEntries
     return `| \`${displayName(key)}\` | \`${target}\` | ${purpose} |`;
   })
   .join("\n");
+
 const schemaRows = schemaEntries
-  .map(
-    ([key]) => `| \`${displayName(key)}\` | \`${key.slice(2)}\` | Public JSON Schema contract. |`,
-  )
+  .map(([key]) => `| \`${displayName(key)}\` | \`${key.slice(2)}\` | ${schemaPurpose(key)} |`)
   .join("\n");
 
 const content = `---
@@ -86,6 +92,10 @@ ${schemaRows}
 The package's declaration files are published alongside the runtime targets.
 Use the [CLI capabilities contract](./cli.md#discover-cli-capabilities) for
 machine-readable command, format, exit-code, and schema discovery.
+
+\`ui.schema.json\` / \`buildUiPayload\` is **not** a shipped HTML dashboard or
+\`--ui\` CLI. Use terminal, JSON, and SARIF; see
+[limitations](./limitations.md) and [report schemas](./report-schemas.md).
 
 Finding lineage (\`finding-lineage.schema.json\`) and governance waivers
 (\`governance-waiver.schema.json\`) are **experimental** library-only contracts

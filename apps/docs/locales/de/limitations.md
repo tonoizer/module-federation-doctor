@@ -53,7 +53,8 @@ fetching URLs or executing remote JavaScript.
 MFDoctor does not ship an HTML dashboard or `--ui` server. Use terminal, JSON, and
 SARIF reports. `buildUiPayload` / `schemas/ui.schema.json` remain as a
 programmatic federation graph contract for custom tooling — see
-[report schemas](./report-schemas.md). An HTML analysis UI
+[report schemas](./report-schemas.md) and the [public API surface](./api.md).
+An HTML analysis UI
 ([#13](https://github.com/tonoizer/module-federation-doctor/issues/13)) was
 closed as not planned.
 
