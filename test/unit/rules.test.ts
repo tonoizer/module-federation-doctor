@@ -3927,7 +3927,6 @@ describe("Group 6 evidence bridge", () => {
     ).toMatchObject({ outcome: "fail" });
   });
 
-
   it("returns unknown for absent webpack splitChunks facts", async () => {
     const facts = viteFacts();
     facts.bundler.name = "webpack";
