@@ -20,12 +20,15 @@ failure—such as a missing `name`—stay in the catalog but are not demoed here
 | `config/remote-entry-invalid`                 | `config/remote-entry-invalid`           | error                                               |
 | `config/filename-invalid`                     | `config/filename-invalid`               | error                                               |
 | `config/share-scope-undeclared`               | `config/share-scope-undeclared`         | error                                               |
+| `config/async-boundary-missing`               | `config/async-boundary-missing`         | error                                               |
+| `config/async-boundary-missing-ok`            | _(none)_                                | async `import('./bootstrap')` (no RUNTIME-005)      |
 | `config/remote-http-insecure`                 | `config/remote-http-insecure`           | warning                                             |
 | `config/implementation-local`                 | _(none)_                                | local `implementation` does not fire                |
 | `config/implementation-suspicious-suppressed` | _(none)_                                | `rules["config/implementation-suspicious"] = "off"` |
 | `config/remote-localhost-in-production`       | `config/remote-localhost-in-production` | warning (CI mode)                                   |
 | `config/remote-alias-prefix-collision`        | `config/remote-alias-prefix-collision`  | error                                               |
 | `config/dts-output-dir-mismatch`              | `config/dts-output-dir-mismatch`        | warning                                             |
+| `config/rsbuild-mf-api-generation`            | `config/rsbuild-mf-api-generation`      | error                                               |
 
 ## Shared
 
@@ -39,6 +42,7 @@ failure—such as a missing `name`—stay in the catalog but are not demoed here
 | `shared/unused-unresolved`         | `doctor/partial-analysis`        | no `shared/unused` (unresolved dynamics) |
 | `shared/candidate`                 | `shared/candidate`               | info                                     |
 | `shared/candidate-suppressed`      | _(none)_                         | `rules["shared/candidate"] = "off"`      |
+| `shared/deep-import-bypass`        | `shared/deep-import-bypass`      | warning                                  |
 
 ## Reliability
 
@@ -60,6 +64,8 @@ Committed `.project.json` facts for `mfdoctor federation`:
 | `federation/singleton-mismatch`      | `shared/singleton-mismatch`          | warning  |
 | `federation/name-conflict`           | `federation/name-conflict`           | error    |
 | `federation/missing-provider`        | `federation/missing-provider`        | error    |
+| `federation/host-gaps`               | `federation/host-gaps`               | warning  |
+| `federation/ghost-shares`            | `federation/ghost-shares`            | info     |
 
 ## Runtime
 
