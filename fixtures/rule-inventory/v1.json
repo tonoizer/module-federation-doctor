@@ -3368,7 +3368,7 @@
       "remediation": {
         "summary": "Registering Module Federation more than once on the same compiler breaks the core singleton contract.",
         "documentation": "/rules/config/duplicate-plugin-registration",
-        "fix": "Keep a single Module Federation plugin instance per compiler."
+        "fix": "Keep a single Module Federation plugin instance per compiler, or give independently configured federation instances distinct plugin configurations."
       },
       "prerequisites": {
         "allOf": [

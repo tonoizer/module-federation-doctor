@@ -13,9 +13,7 @@ Registering Module Federation more than once on the same compiler breaks the cor
 
 ## So beheben Sie das Problem
 
-Keep a single Module Federation plugin instance per compiler. Two independently
-configured federation plugins (explicit `moduleFederationInstances` or distinct
-public configs) are not duplicates.
+Keep a single Module Federation plugin instance per compiler, or give independently configured federation instances distinct plugin configurations.
 
 Suppress or retarget with `rules["config/duplicate-plugin-registration"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
 
