@@ -7,7 +7,7 @@ import {
   validateRuntimeCaptureEnvelope,
   type RuntimeCaptureEnvelope,
   type RuntimeCaptureObservabilityRecord,
-} from "./capture.js";
+} from "./runtime-capture-contract.js";
 import {
   stableEvidenceId,
   type EvidenceCompletenessInfo,

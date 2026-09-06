@@ -50,6 +50,13 @@ The command accepts only contract version 1, rejects oversized or unsafe files
 before analysis, and keeps the existing runtime output shape. Runtime mutation
 and automatic export remain outside the boundary.
 
+`mfdoctor runtime` nutzt nur den File-Import-Vertrag: Es validiert einen
+v1-Umschlag und ruft die Bibliotheks-Transports für Browser,
+Snapshot/Instanz oder Netzwerk/Fehler nicht auf. Diese Transports bleiben
+auf `@tonoizer/mfdoctor/capture` für externe Werkzeuge; `check`, Adapter
+und Anwendungsstart rufen sie nicht auf, und sie injizieren keinen Doctor
+in eine Seite.
+
 ## Existing export adapters
 
 The `@tonoizer/mfdoctor/capture` entry point can normalize a user-supplied
