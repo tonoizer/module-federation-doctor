@@ -851,6 +851,19 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "config/async-startup-rspack-version",
+      (facts: ProjectFacts) => {
+        facts.bundler.name = "rspack";
+        facts.bundler.version = "1.7.4";
+        facts.dependencies.installed["@rspack/core"] = "1.7.4";
+        facts.moduleFederation!.experiments = {
+          asyncStartup: true,
+          externalRuntime: false,
+          provideExternalRuntime: false,
+        };
+      },
+    ],
+    [
       "reliability/external-runtime-provider-unverified",
       (facts: ProjectFacts) =>
         (facts.moduleFederation!.experiments = {
@@ -3865,5 +3878,190 @@ describe("config/copied-webpack-options-on-vite", () => {
         (item) => item.ruleId === "config/copied-webpack-options-on-vite",
       ),
     ).toBe(false);
+  });
+});
+
+describe("config/async-startup-rspack-version", () => {
+  const quietRules = {
+    "doctor/partial-analysis": "off" as const,
+    "config/plugin-package-mismatch": "off" as const,
+    "artifact/remote-entry-missing": "off" as const,
+    "artifact/types-missing": "off" as const,
+    "artifact/types-metadata-missing": "off" as const,
+    "artifact/dts-disabled": "off" as const,
+    "artifact/manifest-disabled": "off" as const,
+    "shared/candidate": "off" as const,
+  };
+
+  function experiments(asyncStartup: boolean) {
+    return { asyncStartup, externalRuntime: false, provideExternalRuntime: false };
+  }
+
+  function baseFacts(
+    bundler: ProjectFacts["bundler"]["name"],
+    options: {
+      asyncStartup?: boolean;
+      version?: string;
+      installed?: string;
+    } = {},
+  ): ProjectFacts {
+    const asyncStartup = options.asyncStartup ?? true;
+    return {
+      schemaVersion: 1,
+      project: { name: "fixture", root: "." },
+      bundler: {
+        name: bundler,
+        mode: "ci",
+        ...(options.version ? { version: options.version } : {}),
+      },
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      moduleFederation: {
+        name: "host",
+        filename: "remoteEntry.js",
+        exposes: { "./Widget": "src/Widget.ts" },
+        remotes: {},
+        shared: {},
+        experiments: experiments(asyncStartup),
+      },
+      dependencies: {
+        declared: { "@module-federation/enhanced": "2.8.2" },
+        installed: options.installed ? { "@rspack/core": options.installed } : {},
+      },
+      imports: {
+        sourceFiles: ["src/Widget.ts"],
+        specifiers: [],
+        packages: [],
+        dynamicPackages: [],
+        remotes: [],
+        unresolvedDynamic: [],
+        evidenceSources: ["source"],
+      },
+      artifacts: { emittedAssets: [] },
+    };
+  }
+
+  async function run(facts: ProjectFacts) {
+    const findings: Array<
+      Omit<DoctorFinding, "schemaVersion" | "ruleId" | "severity" | "project" | "fingerprint">
+    > = [];
+    const rule = builtInRules.find(
+      (item) => item.meta.id === "config/async-startup-rspack-version",
+    )!;
+    await rule.check({ facts, options: {}, report: (finding) => findings.push(finding) });
+    return findings;
+  }
+
+  it("flags Rspack 1.7.4 and below when asyncStartup is enabled", async () => {
+    const findings = await run(baseFacts("rspack", { version: "1.7.4" }));
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      message: expect.stringContaining("1.7.4"),
+      evidence: {
+        bundler: "rspack",
+        version: "1.7.4",
+        package: "@rspack/core",
+        minimumExclusive: "1.7.4",
+      },
+      suggestion: expect.stringContaining("greater than 1.7.4"),
+    });
+  });
+
+  it("stays quiet on Rspack versions greater than 1.7.4", async () => {
+    expect(await run(baseFacts("rspack", { version: "1.7.5" }))).toHaveLength(0);
+    expect(await run(baseFacts("rspack", { version: "1.8.0" }))).toHaveLength(0);
+  });
+
+  it("uses installed @rspack/core on Rsbuild rather than @rsbuild/core", async () => {
+    const old = await run(baseFacts("rsbuild", { version: "1.3.0", installed: "1.7.4" }));
+    expect(old).toHaveLength(1);
+    expect(old[0]?.evidence).toMatchObject({ bundler: "rsbuild", version: "1.7.4" });
+
+    const supported = await run(baseFacts("rsbuild", { version: "1.3.0", installed: "1.7.5" }));
+    expect(supported).toHaveLength(0);
+  });
+
+  it("does not treat an unknown Rsbuild core version as Rspack 1.7.4", async () => {
+    // @rsbuild/core 1.3.0 is not comparable to the Rspack cutoff.
+    expect(await run(baseFacts("rsbuild", { version: "1.3.0" }))).toHaveLength(0);
+  });
+
+  it("stays quiet when asyncStartup is off or the bundler is not Rspack-family", async () => {
+    expect(await run(baseFacts("rspack", { asyncStartup: false, version: "1.6.0" }))).toHaveLength(
+      0,
+    );
+    expect(await run(baseFacts("webpack", { version: "5.90.0" }))).toHaveLength(0);
+    expect(await run(baseFacts("vite", { version: "6.0.0" }))).toHaveLength(0);
+  });
+
+  it("skips rather than inventing a mismatch when the Rspack version is missing", async () => {
+    expect(await run(baseFacts("rspack"))).toHaveLength(0);
+  });
+
+  it("reports through analyze when bundlerVersion is 1.7.4", async () => {
+    const root = await fixture();
+    const result = await analyze({
+      root,
+      bundler: "rspack",
+      bundlerVersion: "1.7.4",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        experiments: { asyncStartup: true },
+        exposes: { "./Widget": "./src/index.ts" },
+      },
+      rules: quietRules,
+    });
+    expect(result.facts.bundler.version).toBe("1.7.4");
+    expect(result.report.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ ruleId: "config/async-startup-rspack-version" }),
+      ]),
+    );
+  });
+
+  it("resolves nested @rspack/core for Rsbuild projects", async () => {
+    const root = await fixture();
+    await fs.mkdir(path.join(root, "node_modules/@rspack/core"), { recursive: true });
+    await fs.writeFile(
+      path.join(root, "node_modules/@rspack/core/package.json"),
+      JSON.stringify({ name: "@rspack/core", version: "1.7.4", main: "index.js" }),
+    );
+    await fs.writeFile(
+      path.join(root, "node_modules/@rspack/core/index.js"),
+      "module.exports = {};\n",
+    );
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "fixture",
+        dependencies: { "@rsbuild/core": "1.3.0" },
+      }),
+    );
+    const result = await analyze({
+      root,
+      bundler: "rsbuild",
+      mode: "ci",
+      output: { formats: [] },
+      moduleFederation: {
+        name: "host",
+        experiments: { asyncStartup: true },
+        exposes: { "./Widget": "./src/index.ts" },
+      },
+      rules: quietRules,
+    });
+    expect(result.facts.dependencies.installed["@rspack/core"]).toBe("1.7.4");
+    expect(result.report.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ ruleId: "config/async-startup-rspack-version" }),
+      ]),
+    );
   });
 });

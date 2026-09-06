@@ -240,6 +240,25 @@ function sourceEvidenceIncomplete(facts: ProjectFacts): boolean {
   );
 }
 
+/**
+ * Exclusive floor from the Module Federation config-check skill:
+ * `experiments.asyncStartup` requires Rspack greater than 1.7.4.
+ * Rspack added the experiment in 1.7.4 (#11899); MF guidance treats that
+ * release as insufficient.
+ */
+const RSPACK_ASYNC_STARTUP_MIN_EXCLUSIVE = "1.7.4";
+
+function parseRspackVersion(version: string | undefined): string | undefined {
+  if (!version) return undefined;
+  const trimmed = version.trim();
+  if (!trimmed) return undefined;
+  return semver.valid(trimmed) ?? semver.coerce(trimmed)?.version ?? undefined;
+}
+
+function rspackHonorsAsyncStartup(version: string): boolean {
+  return semver.gt(version, RSPACK_ASYNC_STARTUP_MIN_EXCLUSIVE);
+}
+
 function manifestExplicitlyDisabled(context: RuleContext): boolean {
   const config = mf(context);
   if (!config || config.manifest?.enabled !== false) return false;
@@ -1382,6 +1401,31 @@ export const builtInRules: DoctorRule[] = [
       );
       return;
     }
+  }),
+  createRule("config/async-startup-rspack-version", "warning", (context) => {
+    const bundler = context.facts.bundler.name;
+    if (bundler !== "rspack" && bundler !== "rsbuild") return;
+    const config = mf(context);
+    if (!config?.experiments?.asyncStartup) return;
+    const version = parseRspackVersion(
+      bundler === "rspack"
+        ? (context.facts.bundler.version ?? context.facts.dependencies.installed["@rspack/core"])
+        : context.facts.dependencies.installed["@rspack/core"],
+    );
+    // Missing or unparsable version is unknown (evidence-inconclusive), not a pass.
+    if (!version) return;
+    if (rspackHonorsAsyncStartup(version)) return;
+    report(
+      context,
+      `\`experiments.asyncStartup\` is enabled, but Rspack ${version} cannot honor it (requires > ${RSPACK_ASYNC_STARTUP_MIN_EXCLUSIVE}).`,
+      {
+        bundler,
+        version,
+        package: "@rspack/core",
+        minimumExclusive: RSPACK_ASYNC_STARTUP_MIN_EXCLUSIVE,
+      },
+      `Upgrade \`@rspack/core\` to a version greater than ${RSPACK_ASYNC_STARTUP_MIN_EXCLUSIVE}, or disable \`experiments.asyncStartup\` until the bundler supports it.`,
+    );
   }),
   createRule("reliability/external-runtime-provider-unverified", "warning", (context) => {
     if (mf(context)?.experiments?.externalRuntime)

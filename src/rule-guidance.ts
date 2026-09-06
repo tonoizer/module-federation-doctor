@@ -245,6 +245,17 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
       shared,
     ],
   },
+  "config/async-startup-rspack-version": {
+    category: "correctness",
+    impact:
+      "`experiments.asyncStartup` is a no-op (or a silent break) on Rspack versions that do not implement it. Enabling the flag then skips the manual async-boundary check while the bundler still starts synchronously.",
+    fix: "Upgrade `@rspack/core` to a version greater than 1.7.4, or disable `experiments.asyncStartup` until the bundler can honor it.",
+    sources: [
+      experiments,
+      "https://module-federation.io/blog/hoisted-runtime.md",
+      "https://github.com/web-infra-dev/rspack/pull/11899",
+    ],
+  },
   "reliability/external-runtime-provider-unverified": {
     category: "reliability",
     impact: "A remote fails if `_FEDERATION_RUNTIME_CORE` is absent or initialized too late.",

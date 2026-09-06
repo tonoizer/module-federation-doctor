@@ -33,7 +33,7 @@ Use it as a review checklist even when a rule does not yet automate the check.
 | Direct `.js` remotes + DTS      | No type URL without manifests/`remoteTypeUrls`     | Prefer manifests or set `remoteTypeUrls`                       |
 | Non-string `output.publicPath`  | Manifest generation is skipped upstream            | Use a string/`auto` publicPath when manifests are required     |
 | Localhost remotes in CI         | Deployed builds cannot reach loopback remotes      | Use deployed URLs for CI/production MFDoctor runs              |
-| `experiments.asyncStartup`      | Entry exports become async                         | Ensure direct/UMD consumers await the Promise                  |
+| `experiments.asyncStartup`      | Entry exports become async; ignored on old Rspack  | Requires Rspack > 1.7.4; await Promise consumers               |
 | `externalRuntime` pair          | Hard load-order dependency                         | One pure provider; externalize only downstream browser remotes |
 | snapshot/remote/shared removal  | Tree-shaken capability still used                  | Never disable a configured capability                          |
 | shared tree shaking             | Incomplete deployment union                        | Publish the merged secondary artifact and update snapshots     |

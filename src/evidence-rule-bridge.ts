@@ -1,3 +1,4 @@
+import semver from "semver";
 import type { AnalysisBudgetTracker } from "./analysis-budgets.js";
 import type { EvidenceGraphV2, EvidenceScope, EvidenceSubject, EvidenceValue } from "./evidence.js";
 import { migrateProjectFacts } from "./evidence-reader.js";
@@ -123,6 +124,22 @@ function pluginPackageMismatchEvidenceInconclusive(
   return undefined;
 }
 
+function asyncStartupRspackVersionEvidenceInconclusive(
+  context: EvidenceRuleContext,
+): string | undefined {
+  if (!context.facts) return undefined;
+  const bundler = context.facts.bundler.name;
+  if (bundler !== "rspack" && bundler !== "rsbuild") return undefined;
+  if (!context.facts.moduleFederation?.experiments?.asyncStartup) return undefined;
+  const raw =
+    bundler === "rspack"
+      ? (context.facts.bundler.version ?? context.facts.dependencies.installed["@rspack/core"])
+      : context.facts.dependencies.installed["@rspack/core"];
+  const trimmed = raw?.trim();
+  if (trimmed && (semver.valid(trimmed) || semver.coerce(trimmed))) return undefined;
+  return "Rspack version was not collected; experiments.asyncStartup cannot be judged against the >1.7.4 requirement.";
+}
+
 function vitePluginConfigEvidenceInconclusive(context: EvidenceRuleContext): string | undefined {
   if (!context.facts || context.facts.bundler.name !== "vite") return undefined;
   if (!context.facts.bundler.viteConfig)
@@ -163,6 +180,8 @@ function inconclusiveFor(
 ): ((context: EvidenceRuleContext) => string | undefined) | undefined {
   if (id === "shared/unused") return sharedUnusedEvidenceInconclusive;
   if (id === "config/plugin-package-mismatch") return pluginPackageMismatchEvidenceInconclusive;
+  if (id === "config/async-startup-rspack-version")
+    return asyncStartupRspackVersionEvidenceInconclusive;
   return GROUP6_INCONCLUSIVE[id as (typeof MIGRATED_GROUP6_RULE_IDS)[number]];
 }
 
