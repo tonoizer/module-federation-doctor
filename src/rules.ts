@@ -1892,10 +1892,8 @@ export const builtInRules: DoctorRule[] = [
     if (optionBoolean(context.options, "allowSplitChunks") === true) return;
     const splitChunks = context.facts.bundler.splitChunks;
     if (!splitChunks) return;
-    const conflicts = conflictingSplitChunksCacheGroups(splitChunks, {
-      ...context.facts,
-      moduleFederation: mf(context) ?? context.facts.moduleFederation,
-    });
+    void mf(context);
+    const conflicts = conflictingSplitChunksCacheGroups(splitChunks, context.facts);
     if (conflicts.length === 0) return;
     report(
       context,
