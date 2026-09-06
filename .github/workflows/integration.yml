@@ -20,6 +20,8 @@ jobs:
       - run: vp run test:integration
       # One-rule showcase fixtures (config, shared, federation, runtime).
       - run: node scripts/demo-showcase.mjs
+      # Per-bundler standalone emit: project.json + expected rule IDs.
+      - run: node scripts/demo-standalone-findings.mjs
       # Red multi-bundler demo: asserts planted findings and federation conflicts.
       - run: node scripts/demo-mixed-issues.mjs
       - if: always()
@@ -29,4 +31,5 @@ jobs:
           path: |
             examples/mixed-federation/*/.mf/doctor
             examples/mixed-federation-issues/*/.mf/doctor
+            examples/standalone-findings/*/.mf/doctor
           if-no-files-found: ignore

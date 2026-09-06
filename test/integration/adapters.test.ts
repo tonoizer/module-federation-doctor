@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -12,6 +13,34 @@ const vitePlus = process.platform === "win32" ? "vp.cmd" : "vp";
 const vitePlusArgs: string[] = ["run"];
 const vitePlusExecOptions = { shell: process.platform === "win32" };
 const roots: string[] = [];
+const repository = path.resolve(import.meta.dirname, "../..");
+const adapterCases = JSON.parse(
+  readFileSync(path.join(repository, "fixtures/adapters/cases.json"), "utf8"),
+) as AdapterCases;
+
+interface AdapterEmitCell {
+  bundler: BundlerName;
+  filter: string;
+  dir: string;
+  ruleIds: string[];
+  incompleteReasons?: string[];
+}
+
+interface AdapterCases {
+  bundlers: BundlerName[];
+  cases: Record<
+    "clean" | "warning" | "error",
+    { expectedExitCode: number; expectedSeverity: "warning" | "error" | null }
+  >;
+  emit: AdapterEmitCell[];
+}
+
+function productionBuildEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, CI: "", NODE_ENV: "production" };
+  delete env.VITEST;
+  delete env.VITEST_WORKER_ID;
+  return env;
+}
 
 async function project(bundler: BundlerName, kind: "clean" | "warning" | "error") {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), `mfdoctor-${bundler}-${kind}-`));
@@ -71,29 +100,34 @@ afterEach(async () => {
 });
 
 describe("adapter cases", () => {
-  for (const bundler of ["vite", "rspack", "rsbuild", "webpack", "modern"] as const) {
+  for (const bundler of adapterCases.bundlers) {
     it(`${bundler}: clean, warning, and error policy`, async () => {
       const clean = await project(bundler, "clean");
       const warning = await project(bundler, "warning");
       const error = await project(bundler, "error");
       expect(clean.report.findings).toEqual([]);
-      expect(warning.exitCode).toBe(0);
-      expect(warning.report.findings.some((item) => item.severity === "warning")).toBe(true);
-      expect(error.exitCode).toBe(1);
-      expect(error.report.findings.some((item) => item.severity === "error")).toBe(true);
+      expect(warning.exitCode).toBe(adapterCases.cases.warning.expectedExitCode);
+      expect(
+        warning.report.findings.some(
+          (item) => item.severity === adapterCases.cases.warning.expectedSeverity,
+        ),
+      ).toBe(true);
+      expect(error.exitCode).toBe(adapterCases.cases.error.expectedExitCode);
+      expect(
+        error.report.findings.some(
+          (item) => item.severity === adapterCases.cases.error.expectedSeverity,
+        ),
+      ).toBe(true);
     });
   }
 
   it("builds the clean mixed-federation example through real bundler hooks", async () => {
-    const repository = path.resolve(import.meta.dirname, "../..");
     const packages = [
       "@mfdoctor-example/host-vite",
       "@mfdoctor-example/remote-rspack",
       "@mfdoctor-example/remote-rsbuild",
     ];
-    const baseEnvironment: NodeJS.ProcessEnv = { ...process.env, CI: "", NODE_ENV: "production" };
-    delete baseEnvironment.VITEST;
-    delete baseEnvironment.VITEST_WORKER_ID;
+    const baseEnvironment = productionBuildEnv();
 
     for (const packageName of packages) {
       const { stdout, stderr } = await execFileAsync(
@@ -124,11 +158,8 @@ describe("adapter cases", () => {
   }, 120_000);
 
   it("keeps two Webpack federation plugin instances separate in a production build", async () => {
-    const repository = path.resolve(import.meta.dirname, "../..");
     const packageRoot = path.join(repository, "examples/compatibility/webpack");
-    const baseEnvironment: NodeJS.ProcessEnv = { ...process.env, CI: "", NODE_ENV: "production" };
-    delete baseEnvironment.VITEST;
-    delete baseEnvironment.VITEST_WORKER_ID;
+    const baseEnvironment = productionBuildEnv();
 
     await execFileAsync(
       vitePlus,
@@ -173,7 +204,6 @@ describe("adapter cases", () => {
   }, 120_000);
 
   it("demos intentional showcase findings through the CLI", async () => {
-    const repository = path.resolve(import.meta.dirname, "../..");
     await execFileAsync(vitePlus, [...vitePlusArgs, "build"], {
       ...vitePlusExecOptions,
       cwd: repository,
@@ -193,6 +223,57 @@ describe("adapter cases", () => {
     expect(stdout).not.toContain("examples/showcase/config/name-required");
     expect(stdout).not.toContain("examples/showcase/name-required");
   }, 60_000);
+});
+
+describe("standalone-findings emit reports", () => {
+  it("keeps emit cells aligned with the demo:standalone catalog", async () => {
+    const catalog = await fs.readFile(
+      path.join(repository, "scripts/demo-standalone-findings.mjs"),
+      "utf8",
+    );
+    expect(catalog).toContain("fixtures/adapters/cases.json");
+    expect(adapterCases.emit.map((cell) => cell.dir)).toEqual(
+      adapterCases.emit.map((cell) => `examples/standalone-findings/${cell.bundler}`),
+    );
+    expect(new Set(adapterCases.emit.map((cell) => cell.bundler))).toEqual(
+      new Set(adapterCases.bundlers),
+    );
+  });
+
+  for (const cell of adapterCases.emit) {
+    it(`${cell.bundler}: writes project.json and expected rule IDs`, async () => {
+      await execFileAsync(vitePlus, [...vitePlusArgs, "--filter", cell.filter, "build"], {
+        ...vitePlusExecOptions,
+        cwd: repository,
+        env: productionBuildEnv(),
+        maxBuffer: 10 * 1024 * 1024,
+      });
+
+      const doctorDir = path.join(repository, cell.dir, ".mf/doctor");
+      const facts = JSON.parse(await fs.readFile(path.join(doctorDir, "project.json"), "utf8")) as {
+        schemaVersion?: number;
+        project?: { name?: string };
+        bundler?: { name?: string };
+      };
+      expect(facts.schemaVersion).toBe(1);
+      expect(facts.bundler?.name).toBe(cell.bundler);
+      expect(facts.project?.name).toEqual(expect.any(String));
+      expect(facts.project?.name?.length).toBeGreaterThan(0);
+
+      const report = JSON.parse(await fs.readFile(path.join(doctorDir, "report.json"), "utf8")) as {
+        findings?: Array<{ ruleId: string }>;
+        status?: { incompleteReasons?: string[] };
+      };
+      expect((report.findings ?? []).map((finding) => finding.ruleId)).toEqual(
+        expect.arrayContaining(cell.ruleIds),
+      );
+      if (cell.incompleteReasons?.length) {
+        expect(report.status?.incompleteReasons ?? []).toEqual(
+          expect.arrayContaining(cell.incompleteReasons),
+        );
+      }
+    }, 120_000);
+  }
 });
 
 describe("cross-project analysis", () => {
