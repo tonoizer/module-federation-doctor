@@ -65,6 +65,25 @@ CLI/config-only Bridge fixtures (not full Bridge apps):
 | Missing `./export-app` | `node dist/cli.js check examples/showcase/bridge/export-app-missing --ci` | `bridge/export-app-missing` (warning) |
 | Vue share missing      | `node dist/cli.js check examples/showcase/bridge/vue-share-missing --ci`  | `bridge/vue-share-missing` (error)    |
 
+## Artifact
+
+| Setup                     | Command                                                                          | Finding                                    |
+| ------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
+| `react-dom/server` in web | `node dist/cli.js check examples/showcase/artifact/react-dom-server-in-web --ci` | `artifact/react-dom-server-in-web` (error) |
+
+## SSR
+
+| Setup                       | Command                                                                         | Finding                                   |
+| --------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------- |
+| Missing node runtime plugin | `node dist/cli.js check examples/showcase/ssr/node-runtime-plugin-missing --ci` | `ssr/node-runtime-plugin-missing` (error) |
+
+## Runtime plugins
+
+| Setup                          | Command                                                                                   | Finding                                               |
+| ------------------------------ | ----------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Invalid plugin factory         | `node dist/cli.js check examples/showcase/runtime-plugins/invalid-factory --ci`           | `runtime-plugins/invalid-factory` (warning)           |
+| createScript CORS without link | `node dist/cli.js check examples/showcase/runtime-plugins/create-script-cors-parity --ci` | `runtime-plugins/create-script-cors-parity` (warning) |
+
 ## Federation
 
 | Setup                   | Command                                                                                             | Finding                                        |

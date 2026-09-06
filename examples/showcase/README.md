@@ -77,6 +77,37 @@ of `@module-federation/bridge-vue3`.
 | `bridge/export-app-missing` | `bridge/export-app-missing` | warning  |
 | `bridge/vue-share-missing`  | `bridge/vue-share-missing`  | error    |
 
+## Artifact
+
+CLI/config-only artifact fixtures (not a bundler emit). Source scan of
+`react-dom/server` on a web/client target is enough for
+`artifact/react-dom-server-in-web`.
+
+| Directory                          | Expected rule                      | Severity |
+| ---------------------------------- | ---------------------------------- | -------- |
+| `artifact/react-dom-server-in-web` | `artifact/react-dom-server-in-web` | error    |
+
+## SSR
+
+CLI/config-only dual-env fixtures. Vite `target: "node"` and Enhanced
+`experiments.optimization.target: "node"` both normalize to node/SSR facts.
+Omitting `@module-federation/node/runtimePlugin` is enough for
+`ssr/node-runtime-plugin-missing`.
+
+| Directory                         | Expected rule                     | Severity |
+| --------------------------------- | --------------------------------- | -------- |
+| `ssr/node-runtime-plugin-missing` | `ssr/node-runtime-plugin-missing` | error    |
+
+## Runtime plugins
+
+CLI/config-only runtime plugin contract fixtures. Local `runtimePlugins`
+paths are inspected from source (CORS parity and factory shape).
+
+| Directory                                   | Expected rule                               | Severity |
+| ------------------------------------------- | ------------------------------------------- | -------- |
+| `runtime-plugins/invalid-factory`           | `runtime-plugins/invalid-factory`           | warning  |
+| `runtime-plugins/create-script-cors-parity` | `runtime-plugins/create-script-cors-parity` | warning  |
+
 ## Federation
 
 Committed `.project.json` facts for `mfdoctor federation`:

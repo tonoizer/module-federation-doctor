@@ -6,16 +6,16 @@ orchestration, standalone cells for per-bundler build+MFDoctor findings, the red
 path for intentional conflicts, the showcase for one-rule demos, and
 compatibility for production framework/bundler smoke.
 
-| Suite                                                                | Intent                                                                  | Command                                     |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------- |
-| [`mixed-federation`](./mixed-federation)                             | Healthy Vite + Rspack + Rsbuild e2e                                     | `vp run test:examples` / `vp run test:e2e`  |
-| [`nested-federation`](./nested-federation)                           | Nested Vite host → Vite/Rsbuild → Rspack/Webpack                        | `vp run test:nested` / `vp run demo:nested` |
-| [`standalone-findings`](./standalone-findings)                       | Per-bundler standalone cells with visible MFDoctor findings             | `vp run demo:standalone`                    |
-| [`mixed-federation-issues`](./mixed-federation-issues)               | Same flat topology, intentional shared/federation conflicts             | `vp run demo:mixed-issues`                  |
-| [`showcase`](./showcase)                                             | One-rule CLI fixtures (config / shared / bridge / federation / runtime) | `vp run demo:showcase`                      |
-| [`compatibility/webpack`](./compatibility/webpack)                   | Webpack smoke for the compatibility matrix                              | compatibility workflow                      |
-| [`compatibility/vite-nitro-react`](./compatibility/vite-nitro-react) | Vite + Nitro + React SSR output-shape smoke                             | compatibility workflow                      |
-| [`ci/github-actions-mfdoctor.yml`](./ci/github-actions-mfdoctor.yml) | Copy-paste consumer CI (no Vite Plus / `setup-vp`)                      | paste into host `.github/workflows/`        |
+| Suite                                                                | Intent                                                                                                     | Command                                     |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| [`mixed-federation`](./mixed-federation)                             | Healthy Vite + Rspack + Rsbuild e2e                                                                        | `vp run test:examples` / `vp run test:e2e`  |
+| [`nested-federation`](./nested-federation)                           | Nested Vite host → Vite/Rsbuild → Rspack/Webpack                                                           | `vp run test:nested` / `vp run demo:nested` |
+| [`standalone-findings`](./standalone-findings)                       | Per-bundler standalone cells with visible MFDoctor findings                                                | `vp run demo:standalone`                    |
+| [`mixed-federation-issues`](./mixed-federation-issues)               | Same flat topology, intentional shared/federation conflicts                                                | `vp run demo:mixed-issues`                  |
+| [`showcase`](./showcase)                                             | One-rule CLI fixtures (config / shared / bridge / artifact / ssr / runtime-plugins / federation / runtime) | `vp run demo:showcase`                      |
+| [`compatibility/webpack`](./compatibility/webpack)                   | Webpack smoke for the compatibility matrix                                                                 | compatibility workflow                      |
+| [`compatibility/vite-nitro-react`](./compatibility/vite-nitro-react) | Vite + Nitro + React SSR output-shape smoke                                                                | compatibility workflow                      |
+| [`ci/github-actions-mfdoctor.yml`](./ci/github-actions-mfdoctor.yml) | Copy-paste consumer CI (no Vite Plus / `setup-vp`)                                                         | paste into host `.github/workflows/`        |
 
 From the repo root:
 

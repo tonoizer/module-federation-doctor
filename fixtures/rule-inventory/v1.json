@@ -902,7 +902,7 @@
       "version": "1",
       "group": 2,
       "status": "migrated",
-      "demo": "unit",
+      "demo": "showcase",
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
@@ -7831,7 +7831,7 @@
       "version": "1",
       "group": 1,
       "status": "migrated",
-      "demo": "unit",
+      "demo": "showcase",
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
@@ -7991,7 +7991,7 @@
       "version": "1",
       "group": 1,
       "status": "migrated",
-      "demo": "unit",
+      "demo": "showcase",
       "defaultSeverity": "warning",
       "confidenceCeiling": "high",
       "owner": {
@@ -9210,7 +9210,7 @@
       "version": "1",
       "group": 1,
       "status": "migrated",
-      "demo": "unit",
+      "demo": "showcase",
       "defaultSeverity": "error",
       "confidenceCeiling": "high",
       "owner": {
