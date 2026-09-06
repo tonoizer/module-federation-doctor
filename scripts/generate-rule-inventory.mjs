@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import {
   ALL_MIGRATED_RULE_IDS,
   RULE_COMPATIBILITY_EXCEPTIONS,
+  assertInventoryDemoCoverage,
   ruleInventory,
   ruleInventoryIds,
 } from "../dist/index.js";
@@ -26,6 +27,7 @@ const document = {
     version: entry.version,
     group: entry.group,
     status: entry.status,
+    demo: entry.demo,
     defaultSeverity: entry.defaultSeverity,
     confidenceCeiling: entry.confidenceCeiling,
     owner: entry.owner,
@@ -36,6 +38,31 @@ const document = {
     migrationNote: entry.migrationNote,
   })),
 };
+
+try {
+  assertInventoryDemoCoverage(document.rules, {
+    showcaseCatalogSource: await fs.readFile(
+      path.join(repository, "scripts/demo-showcase.mjs"),
+      "utf8",
+    ),
+    emitCatalogSource: await fs.readFile(
+      path.join(repository, "scripts/demo-standalone-findings.mjs"),
+      "utf8",
+    ),
+  });
+} catch (error) {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.exit(1);
+}
+
+const demoCounts = document.rules.reduce(
+  (counts, entry) => {
+    counts[entry.demo] += 1;
+    return counts;
+  },
+  { showcase: 0, unit: 0, emit: 0 },
+);
+const summary = `${document.ruleCount} rules, ${demoCounts.showcase} showcase, ${demoCounts.emit} emit, ${demoCounts.unit} unit`;
 
 const content = `${JSON.stringify(document, null, 2)}\n`;
 
@@ -62,12 +89,10 @@ if (check) {
     );
     process.exitCode = 1;
   } else {
-    process.stdout.write(`Rule inventory is up to date (${document.ruleCount} rules).\n`);
+    process.stdout.write(`Rule inventory is up to date (${summary}).\n`);
   }
 } else {
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.writeFile(outputPath, formattedContent);
-  process.stdout.write(
-    `Wrote ${path.relative(repository, outputPath)} (${document.ruleCount} rules).\n`,
-  );
+  process.stdout.write(`Wrote ${path.relative(repository, outputPath)} (${summary}).\n`);
 }

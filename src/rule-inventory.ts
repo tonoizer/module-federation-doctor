@@ -8,6 +8,9 @@ import type { BundlerName } from "./types.js";
 
 export type RuleMigrationGroup = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 export type RuleMigrationStatus = "legacy" | "migrated";
+/** Agent-runnable leaf for a built-in: CLI showcase, plugin emit, or unit tests only. */
+export const RULE_DEMO_COVERAGE = ["showcase", "unit", "emit"] as const;
+export type RuleDemoCoverage = (typeof RULE_DEMO_COVERAGE)[number];
 
 /** Documented compatibility-only built-ins that intentionally stay off the evidence bridge. */
 export interface RuleCompatibilityException {
@@ -26,6 +29,8 @@ export const RULE_COMPATIBILITY_EXCEPTIONS: readonly RuleCompatibilityException[
 export interface RuleInventoryEntry extends EvidenceAwareRuleMeta {
   group: RuleMigrationGroup;
   status: RuleMigrationStatus;
+  /** How agents can exercise this rule. Required — `inventory:check` fails when missing. */
+  demo: RuleDemoCoverage;
   migrationNote: string;
   /** Fact paths read by the legacy implementation; prerequisites must cover every path. */
   evidenceReads: readonly string[];
@@ -147,6 +152,127 @@ const ids = [
   "ssr/node-remote-manifest",
   "ssr/node-runtime-plugin-missing",
 ] as const;
+
+/**
+ * Honest coverage tag for every built-in. Showcase/emit require a catalog leaf;
+ * `unit` is allowed for existing rules without adding fixtures in the same change.
+ * Adding an id to `ids` without a tag here fails typecheck and `inventory:check`.
+ */
+const demoByRule = {
+  "artifact/dts-disabled": "unit",
+  "artifact/expose-missing": "unit",
+  "artifact/manifest-assets-disabled": "unit",
+  "artifact/manifest-disabled": "unit",
+  "artifact/manifest-expose-assets-empty": "unit",
+  "artifact/manifest-invalid": "unit",
+  "artifact/manifest-name-mismatch": "unit",
+  "artifact/manifest-remote-entry-missing": "unit",
+  "artifact/manifest-shared-version-mismatch": "unit",
+  "artifact/public-path-non-string-manifest": "unit",
+  "artifact/public-path-suspicious": "unit",
+  "artifact/react-dom-server-in-web": "unit",
+  "artifact/remote-entry-missing": "unit",
+  "artifact/types-metadata-missing": "unit",
+  "artifact/types-missing": "unit",
+  "bridge/consumer-api-manual": "unit",
+  "bridge/disable-alias-deprecated": "unit",
+  "bridge/export-app-missing": "unit",
+  "bridge/lazy-plugin-unregistered": "unit",
+  "bridge/missing-fallback-loading": "unit",
+  "bridge/provider-shape-invalid": "unit",
+  "bridge/react-dom-prefix-missing": "unit",
+  "bridge/react-version-entry-mismatch": "unit",
+  "bridge/react-version-entry-prefer": "unit",
+  "bridge/router-implicit-enable": "unit",
+  "bridge/router-shared-conflict": "unit",
+  "bridge/ssr-instanceid-hydration": "unit",
+  "bridge/ssr-server-entry-leak": "unit",
+  "bridge/tanstack-router-conflict": "unit",
+  "bridge/vue-consumer-manual": "unit",
+  "bridge/vue-server-entry": "unit",
+  "bridge/vue-share-missing": "unit",
+  "bridge/vue-ssr-fresh-context": "unit",
+  "config/copied-webpack-options-on-vite": "unit",
+  "config/dts-output-dir-mismatch": "showcase",
+  "config/duplicate-plugin-registration": "unit",
+  "config/async-boundary-missing": "showcase",
+  "config/eager-tree-shaking-conflict": "unit",
+  "config/expose-key-invalid": "showcase",
+  "config/expose-path-missing": "showcase",
+  "config/external-runtime-conflict": "unit",
+  "config/external-runtime-with-exposes": "unit",
+  "config/filename-invalid": "showcase",
+  "config/get-public-path-invalid": "unit",
+  "config/get-public-path-unused": "unit",
+  "config/implementation-suspicious": "unit",
+  "config/library-remote-type-mismatch": "unit",
+  "config/name-required": "unit",
+  "config/plugin-package-mismatch": "unit",
+  "config/remote-alias-prefix-collision": "showcase",
+  "config/remote-capability-disabled": "unit",
+  "config/remote-entry-invalid": "showcase",
+  "config/remote-http-insecure": "showcase",
+  "config/remote-localhost-in-production": "showcase",
+  "config/remote-manifest-recommended": "emit",
+  "config/observability-plugin-recommended": "unit",
+  "config/rsbuild-mf-api-generation": "showcase",
+  "config/runtime-plugin-missing": "unit",
+  "config/share-scope-undeclared": "showcase",
+  "config/shared-capability-disabled": "unit",
+  "config/tree-shaking-server-calc-injection": "unit",
+  "doctor/partial-analysis": "showcase",
+  "federation/circular-remote-graph": "showcase",
+  "federation/external-runtime-provider-missing": "unit",
+  "federation/ghost-shares": "showcase",
+  "federation/host-gaps": "showcase",
+  "federation/missing-provider": "showcase",
+  "federation/name-conflict": "showcase",
+  "federation/share-scope-mismatch": "showcase",
+  "federation/share-strategy-mismatch": "showcase",
+  "federation/version-conflict": "showcase",
+  "performance/asset-budget": "unit",
+  "performance/version-first-startup": "unit",
+  "performance/vite-bundle-all-css": "unit",
+  "reliability/async-startup-library-promise": "unit",
+  "reliability/external-runtime-provider-unverified": "unit",
+  "reliability/shared-import-false": "showcase",
+  "reliability/snapshot-capability-disabled": "unit",
+  "reliability/tree-shaking-server-calc-contract": "unit",
+  "reliability/version-first-offline-remotes": "showcase",
+  "reliability/vite-fixed-parse-timeout": "unit",
+  "vite/remotes-prefer-module": "unit",
+  "vite/var-filename-interop": "unit",
+  "vite/host-init-inject-ssr": "unit",
+  "vite/ssr-nitro-externals": "unit",
+  "vite/manual-chunks-conflict": "unit",
+  "vite/hashed-remote-filename": "unit",
+  "vite/remote-hmr-dev": "unit",
+  "vite/alias-share-bypass": "unit",
+  "vite/server-origin": "unit",
+  "config/transform-import-share-conflict": "unit",
+  "runtime/error-correlated": "unit",
+  "runtime/init-failed": "unit",
+  "runtime/remote-load-failed": "unit",
+  "runtime/remote-unknown": "unit",
+  "runtime/shared-mismatch": "showcase",
+  "runtime-plugins/create-script-cors-parity": "unit",
+  "runtime-plugins/create-script-without-link": "unit",
+  "runtime-plugins/invalid-factory": "unit",
+  "security/get-public-path-dynamic-code": "unit",
+  "shared/candidate": "showcase",
+  "shared/react-host-missing": "unit",
+  "shared/deep-import-bypass": "showcase",
+  "shared/prefix-share-recommended": "unit",
+  "shared/subpath-version-unresolved": "unit",
+  "shared/eager-without-singleton": "showcase",
+  "shared/singleton-mismatch": "showcase",
+  "shared/singleton-risk": "showcase",
+  "shared/unused": "showcase",
+  "shared/version-unsatisfied": "showcase",
+  "ssr/node-library-dts": "unit",
+  "ssr/node-remote-manifest": "unit",
+  "ssr/node-runtime-plugin-missing": "unit",
+} as const satisfies { [K in (typeof ids)[number]]: RuleDemoCoverage };
 
 /** Group 1 core-configuration rules promoted by the staged V1 rollout. */
 export const MIGRATED_GROUP1_CONFIG_RULE_IDS = [
@@ -1872,7 +1998,8 @@ export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
   const spec = plans[id];
   const guidance = ruleGuidance[id];
   const evidenceReads = evidenceReadsByRule[id];
-  if (!spec || !guidance || !evidenceReads)
+  const demo = demoByRule[id];
+  if (!spec || !guidance || !evidenceReads || !demo)
     throw new Error(`Rule inventory is incomplete for ${id}`);
   return {
     id,
@@ -1889,6 +2016,7 @@ export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
     defaultSeverity: spec.severity,
     group: spec.group,
     status: inventoryStatusFor(id),
+    demo,
     evidenceReads,
     migrationNote: migrationNoteFor(id, spec),
   };
@@ -1924,4 +2052,98 @@ export function supportedBundlersFromInventory(id: string): BundlerName[] {
       throw new Error(`Inventory adapter ${adapter.name} for ${id} is not a known bundler`);
     return adapter.name;
   });
+}
+
+export function isRuleDemoCoverage(value: unknown): value is RuleDemoCoverage {
+  return value === "showcase" || value === "unit" || value === "emit";
+}
+
+export interface InventoryDemoCatalogSources {
+  showcaseCatalogSource: string;
+  emitCatalogSource: string;
+}
+
+export interface InventoryDemoEntry {
+  id: string;
+  demo?: unknown;
+}
+
+const SHOWCASE_RULE_ID = /ruleId:\s*"([^"]+)"/g;
+const EMIT_RULE_IDS_BLOCK = /ruleIds:\s*\[([^\]]*)\]/g;
+
+function uniqueSorted(values: readonly string[]): string[] {
+  return [...new Set(values)].sort();
+}
+
+export function showcaseCatalogRuleIds(source: string): string[] {
+  return uniqueSorted([...source.matchAll(SHOWCASE_RULE_ID)].map((match) => match[1] ?? ""));
+}
+
+export function emitCatalogRuleIds(source: string): string[] {
+  const idsFound: string[] = [];
+  for (const block of source.matchAll(EMIT_RULE_IDS_BLOCK)) {
+    idsFound.push(...[...(block[1] ?? "").matchAll(/"([^"]+)"/g)].map((match) => match[1] ?? ""));
+  }
+  return uniqueSorted(idsFound.filter(Boolean));
+}
+
+export function inventoryDemoCoverageErrors(
+  entries: readonly InventoryDemoEntry[],
+  catalogs: InventoryDemoCatalogSources,
+): string[] {
+  const errors: string[] = [];
+  const missing = entries
+    .filter((entry) => !isRuleDemoCoverage(entry.demo))
+    .map((entry) => entry.id);
+  if (missing.length > 0) {
+    errors.push(`Rules missing demo tag (showcase | unit | emit): ${missing.join(", ")}`);
+  }
+
+  const showcaseCatalog = new Set(showcaseCatalogRuleIds(catalogs.showcaseCatalogSource));
+  const emitCatalog = new Set(emitCatalogRuleIds(catalogs.emitCatalogSource));
+  const taggedShowcase = new Set(
+    entries.filter((entry) => entry.demo === "showcase").map((entry) => entry.id),
+  );
+  const taggedEmit = new Set(
+    entries.filter((entry) => entry.demo === "emit").map((entry) => entry.id),
+  );
+
+  const showcaseWithoutLeaf = [...taggedShowcase].filter((id) => !showcaseCatalog.has(id)).sort();
+  if (showcaseWithoutLeaf.length > 0) {
+    errors.push(
+      `Tagged showcase but missing demo-showcase leaf: ${showcaseWithoutLeaf.join(", ")}`,
+    );
+  }
+  const leafWithoutShowcaseTag = [...showcaseCatalog]
+    .filter((id) => !taggedShowcase.has(id))
+    .sort();
+  if (leafWithoutShowcaseTag.length > 0) {
+    errors.push(`demo-showcase leaf not tagged showcase: ${leafWithoutShowcaseTag.join(", ")}`);
+  }
+
+  const emitWithoutLeaf = [...taggedEmit]
+    .filter((id) => !emitCatalog.has(id) || showcaseCatalog.has(id))
+    .sort();
+  if (emitWithoutLeaf.length > 0) {
+    errors.push(
+      `Tagged emit but missing standalone-findings leaf (or already showcase): ${emitWithoutLeaf.join(", ")}`,
+    );
+  }
+  const emitLeafWithoutTag = [...emitCatalog]
+    .filter((id) => !showcaseCatalog.has(id) && !taggedEmit.has(id))
+    .sort();
+  if (emitLeafWithoutTag.length > 0) {
+    errors.push(`standalone-findings leaf not tagged emit: ${emitLeafWithoutTag.join(", ")}`);
+  }
+
+  return errors;
+}
+
+/** Gate used by `inventory:check`. Throws when any rule lacks a demo tag or catalogs drift. */
+export function assertInventoryDemoCoverage(
+  entries: readonly InventoryDemoEntry[],
+  catalogs: InventoryDemoCatalogSources,
+): void {
+  const errors = inventoryDemoCoverageErrors(entries, catalogs);
+  if (errors.length > 0) throw new Error(errors.join("\n"));
 }
