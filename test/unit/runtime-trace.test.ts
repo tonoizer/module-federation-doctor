@@ -23,7 +23,7 @@ import {
   runtimeCaptureRecordId,
   type RuntimeCaptureEnvelope,
   type RuntimeCaptureIdentity,
-} from "../../src/capture.js";
+} from "../../src/runtime-capture-contract.js";
 import type { FederationInstanceFacts, ProjectFacts } from "../../src/types.js";
 import { normalizeModuleFederation } from "../../src/normalize.js";
 

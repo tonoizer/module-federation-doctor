@@ -1,4 +1,4 @@
-import type { RuntimeCaptureIdentity } from "./capture.js";
+import type { RuntimeCaptureIdentity } from "./runtime-capture-contract.js";
 import {
   createRuntimeInstanceIdentity,
   createRuntimeRealmIdentity,

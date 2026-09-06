@@ -160,66 +160,66 @@ that path is correct.
 
 ## Ranked compact index
 
-| Rank | ID    | Score | Sev | Effort | Cat       | Bundlers                         | Title                                                              |
-| ---- | ----- | ----- | --- | ------ | --------- | -------------------------------- | ------------------------------------------------------------------ |
-| 1    | BL-01 | 96    | P1  | S      | coverage  | all                              | `supportedBundlers` lies (createRule + CLI catalog)                |
-| 2    | BL-02 | 94    | P1  | S      | docs      | all                              | Showcase README missing live demo cases                            |
-| 3    | BL-03 | 92    | P1  | M      | tests     | all                              | Verify-skill: prompt / baseline / runtime / federation glob        |
-| 4    | BL-04 | 90    | P1  | S      | docs      | all                              | Nuxt missing from machine-readable bundler matrix                  |
-| 5    | BL-05 | 88    | P1  | M      | coverage  | vite, rsbuild                    | publicPath facts for non-string manifest rule                      |
-| 6    | BL-06 | 87    | P1  | M      | coverage  | rspack, rsbuild, webpack         | alias ∩ shared outside Vite                                        |
-| 7    | BL-07 | 86    | P1  | M      | coverage  | rspack, rsbuild, webpack, modern | shared ∩ bundler externals                                         |
-| 8    | BL-08 | 85    | P1  | S      | coverage  | all                              | Omitted shareStrategy default fakes alignment                      |
-| 9    | BL-09 | 84    | P1  | M      | coverage  | rspack, rsbuild                  | asyncStartup without Rspack version                                |
-| 10   | BL-10 | 83    | P1  | M      | tests     | all                              | Inventory: showcase vs unit-only                                   |
-| 11   | BL-11 | 82    | P1  | L      | tests     | all                              | Nuxt example app (partial cell, real emit)                         |
-| 12   | BL-12 | 81    | P1  | M      | tests     | vite                             | Showcase leaves for `vite/*` rules                                 |
-| 13   | BL-13 | 81    | P1  | M      | coverage  | webpack, rspack                  | Hashed remoteEntry filename outside Vite                           |
-| 14   | BL-14 | 80    | P1  | M      | coverage  | all                              | Normalize + check `shared.packagePath`                             |
-| 15   | BL-15 | 80    | P1  | M      | tests     | all                              | Showcase leaves for `bridge/*`                                     |
-| 16   | BL-16 | 79    | P1  | S      | coverage  | all                              | Rule (or skip) for `extractRemoteTypes`                            |
-| 17   | BL-17 | 79    | P1  | M      | tests     | all                              | Showcase leaves for artifact / ssr / runtime-plugins               |
-| 18   | BL-18 | 78    | P2  | S      | dead-code | all                              | Delete unused adapter `doctor` aliases                             |
-| 19   | BL-19 | 78    | P1  | M      | coverage  | all                              | `consumeTypes` / `remoteTypeUrls` vs `.js` remotes                 |
-| 20   | BL-20 | 77    | P2  | M      | coverage  | rspack, webpack, rsbuild         | Flag Vite-only keys on Enhanced config                             |
-| 21   | BL-21 | 77    | P2  | L      | tests     | modern                           | Standalone Modern findings cell                                    |
-| 22   | BL-22 | 76    | P2  | M      | coverage  | rspack, webpack, rsbuild         | splitChunks / cacheGroups vs MF runtime                            |
-| 23   | BL-23 | 76    | P2  | S      | overeng   | all                              | Stop exporting unused `capability-packs` from `.`                  |
-| 24   | BL-24 | 75    | P2  | M      | coverage  | vite, rsbuild                    | Duplicate MF plugin registration facts                             |
-| 25   | BL-25 | 74    | P2  | M      | dx        | all                              | Add knip (or ts-prune) to CI                                       |
-| 26   | BL-26 | 74    | P2  | L      | coverage  | modern                           | Real `@modern-js/app-tools` CI evidence                            |
-| 27   | BL-27 | 73    | P2  | M      | overeng   | all                              | Slim public identity factories on `.`                              |
-| 28   | BL-28 | 73    | P2  | L      | coverage  | vite                             | Rolldown / Vite Plus smoke build cell                              |
-| 29   | BL-29 | 72    | P2  | M      | tests     | all                              | Adapter integration tests that actually emit                       |
-| 30   | BL-30 | 72    | P2  | M      | coverage  | all                              | Remote `type: promise` / `script` contracts                        |
-| 31   | BL-31 | 71    | P2  | S      | docs      | all                              | Agent-facing “evidence v2 is not default” banner                   |
-| 32   | BL-32 | 71    | P2  | M      | coverage  | vite, rspack                     | Browser vs SSR remoteEntry pairing                                 |
-| 33   | BL-33 | 70    | P2  | M      | coverage  | webpack, rspack                  | `don'tExpose` / expose filter surface                              |
-| 34   | BL-34 | 70    | P2  | M      | coverage  | rspack                           | Legacy `@module-federation/rspack` vs Enhanced                     |
-| 35   | BL-35 | 70    | P3  | S      | dead-code | webpack                          | Drop webpack `moduleFederationDoctorPlugin` alias                  |
-| 36   | BL-36 | 69    | P2  | S      | docs      | all                              | Name Next.js as unsupported in limitations                         |
-| 37   | BL-37 | 69    | P3  | S      | dead-code | all                              | Drop Nuxt `nuxtDoctor` / `federationDoctorNuxt` aliases            |
-| 38   | BL-38 | 68    | P2  | S      | docs      | all                              | Capabilities matrix: Nuxt column                                   |
-| 39   | BL-39 | 68    | P2  | M      | overeng   | all                              | Un-export lineage/waivers from public `.` until CLI uses them      |
-| 40   | BL-40 | 68    | P2  | M      | tests     | rspack, webpack                  | Prefix-share / subpath tests on Enhanced                           |
-| 41   | BL-41 | 67    | P2  | S      | tests     | all                              | `mfdoctor rules` proof of per-rule bundlers                        |
-| 42   | BL-42 | 67    | P2  | M      | coverage  | webpack, rspack                  | Shared `layer` (low confidence)                                    |
-| 43   | BL-43 | 66    | P3  | M      | coverage  | all                              | `dts.generateTypes.compilerInstance` / tsgo advisory               |
-| 44   | BL-44 | 66    | P2  | S      | docs      | modern                           | Modern smoke README: not full app-tools                            |
-| 45   | BL-45 | 65    | P2  | M      | tests     | modern                           | transformImport facts from Modern adapter                          |
-| 46   | BL-46 | 65    | P3  | S      | dead-code | all                              | Remove or freeze `RULE_COMPATIBILITY_EXCEPTIONS` noise             |
-| 47   | BL-47 | 64    | P2  | S      | coverage  | webpack, rspack                  | `output.uniqueName` vs MF `name`                                   |
-| 48   | BL-48 | 63    | P2  | M      | coverage  | rsbuild, modern                  | SSR host-init analogues of `vite/host-init-inject-ssr`             |
-| 49   | BL-49 | 62    | P2  | S      | overeng   | all                              | Un-export `projectV1Suppression` until runtime uses it             |
-| 50   | BL-50 | 61    | P2  | M      | coverage  | all                              | Stats expected (Enhanced) vs unexpected (Vite)                     |
-| 51   | BL-51 | 61    | P2  | L      | overeng   | all                              | Share projection helpers; do not merge runner yet                  |
-| 52   | BL-52 | 60    | P3  | S      | docs      | all                              | Mark semantic-graph / identity APIs experimental on the `.` export |
-| 53   | BL-53 | 59    | P3  | M      | coverage  | vite                             | Rules or honest skips for `ignoreOrigin` / `virtualModuleDir`      |
-| 54   | BL-54 | 58    | P2  | L      | overeng   | all                              | Split `src/capture.ts` (~3.7k LOC) along used vs unused transports |
-| 55   | BL-55 | 55    | P3  | S      | dead-code | all                              | Internalize `MIGRATED_GROUP*` exports                              |
-| 56   | BL-56 | 54    | P3  | S      | docs      | all                              | `buildUiPayload` is not an HTML UI (cross-link only)               |
-| 57   | BL-57 | 52    | P3  | L      | coverage  | all                              | `dataPrefetch` / prefetch remotes (low confidence)                 |
-| 58   | BL-58 | 48    | P3  | S      | dead-code | all                              | Un-export `DEFAULT_ANALYSIS_CACHE_OPTIONS`                         |
+| Rank | ID    | Score | Sev | Effort | Cat       | Bundlers                         | Title                                                                         |
+| ---- | ----- | ----- | --- | ------ | --------- | -------------------------------- | ----------------------------------------------------------------------------- |
+| 1    | BL-01 | 96    | P1  | S      | coverage  | all                              | `supportedBundlers` lies (createRule + CLI catalog)                           |
+| 2    | BL-02 | 94    | P1  | S      | docs      | all                              | Showcase README missing live demo cases                                       |
+| 3    | BL-03 | 92    | P1  | M      | tests     | all                              | Verify-skill: prompt / baseline / runtime / federation glob                   |
+| 4    | BL-04 | 90    | P1  | S      | docs      | all                              | Nuxt missing from machine-readable bundler matrix                             |
+| 5    | BL-05 | 88    | P1  | M      | coverage  | vite, rsbuild                    | publicPath facts for non-string manifest rule                                 |
+| 6    | BL-06 | 87    | P1  | M      | coverage  | rspack, rsbuild, webpack         | alias ∩ shared outside Vite                                                   |
+| 7    | BL-07 | 86    | P1  | M      | coverage  | rspack, rsbuild, webpack, modern | shared ∩ bundler externals                                                    |
+| 8    | BL-08 | 85    | P1  | S      | coverage  | all                              | Omitted shareStrategy default fakes alignment                                 |
+| 9    | BL-09 | 84    | P1  | M      | coverage  | rspack, rsbuild                  | asyncStartup without Rspack version                                           |
+| 10   | BL-10 | 83    | P1  | M      | tests     | all                              | Inventory: showcase vs unit-only                                              |
+| 11   | BL-11 | 82    | P1  | L      | tests     | all                              | Nuxt example app (partial cell, real emit)                                    |
+| 12   | BL-12 | 81    | P1  | M      | tests     | vite                             | Showcase leaves for `vite/*` rules                                            |
+| 13   | BL-13 | 81    | P1  | M      | coverage  | webpack, rspack                  | Hashed remoteEntry filename outside Vite                                      |
+| 14   | BL-14 | 80    | P1  | M      | coverage  | all                              | Normalize + check `shared.packagePath`                                        |
+| 15   | BL-15 | 80    | P1  | M      | tests     | all                              | Showcase leaves for `bridge/*`                                                |
+| 16   | BL-16 | 79    | P1  | S      | coverage  | all                              | Rule (or skip) for `extractRemoteTypes`                                       |
+| 17   | BL-17 | 79    | P1  | M      | tests     | all                              | Showcase leaves for artifact / ssr / runtime-plugins                          |
+| 18   | BL-18 | 78    | P2  | S      | dead-code | all                              | Delete unused adapter `doctor` aliases                                        |
+| 19   | BL-19 | 78    | P1  | M      | coverage  | all                              | `consumeTypes` / `remoteTypeUrls` vs `.js` remotes                            |
+| 20   | BL-20 | 77    | P2  | M      | coverage  | rspack, webpack, rsbuild         | Flag Vite-only keys on Enhanced config                                        |
+| 21   | BL-21 | 77    | P2  | L      | tests     | modern                           | Standalone Modern findings cell                                               |
+| 22   | BL-22 | 76    | P2  | M      | coverage  | rspack, webpack, rsbuild         | splitChunks / cacheGroups vs MF runtime                                       |
+| 23   | BL-23 | 76    | P2  | S      | overeng   | all                              | Stop exporting unused `capability-packs` from `.`                             |
+| 24   | BL-24 | 75    | P2  | M      | coverage  | vite, rsbuild                    | Duplicate MF plugin registration facts                                        |
+| 25   | BL-25 | 74    | P2  | M      | dx        | all                              | Add knip (or ts-prune) to CI                                                  |
+| 26   | BL-26 | 74    | P2  | L      | coverage  | modern                           | Real `@modern-js/app-tools` CI evidence                                       |
+| 27   | BL-27 | 73    | P2  | M      | overeng   | all                              | Slim public identity factories on `.`                                         |
+| 28   | BL-28 | 73    | P2  | L      | coverage  | vite                             | Rolldown / Vite Plus smoke build cell                                         |
+| 29   | BL-29 | 72    | P2  | M      | tests     | all                              | Adapter integration tests that actually emit                                  |
+| 30   | BL-30 | 72    | P2  | M      | coverage  | all                              | Remote `type: promise` / `script` contracts                                   |
+| 31   | BL-31 | 71    | P2  | S      | docs      | all                              | Agent-facing “evidence v2 is not default” banner                              |
+| 32   | BL-32 | 71    | P2  | M      | coverage  | vite, rspack                     | Browser vs SSR remoteEntry pairing                                            |
+| 33   | BL-33 | 70    | P2  | M      | coverage  | webpack, rspack                  | `don'tExpose` / expose filter surface                                         |
+| 34   | BL-34 | 70    | P2  | M      | coverage  | rspack                           | Legacy `@module-federation/rspack` vs Enhanced                                |
+| 35   | BL-35 | 70    | P3  | S      | dead-code | webpack                          | Drop webpack `moduleFederationDoctorPlugin` alias                             |
+| 36   | BL-36 | 69    | P2  | S      | docs      | all                              | Name Next.js as unsupported in limitations                                    |
+| 37   | BL-37 | 69    | P3  | S      | dead-code | all                              | Drop Nuxt `nuxtDoctor` / `federationDoctorNuxt` aliases                       |
+| 38   | BL-38 | 68    | P2  | S      | docs      | all                              | Capabilities matrix: Nuxt column                                              |
+| 39   | BL-39 | 68    | P2  | M      | overeng   | all                              | Un-export lineage/waivers from public `.` until CLI uses them                 |
+| 40   | BL-40 | 68    | P2  | M      | tests     | rspack, webpack                  | Prefix-share / subpath tests on Enhanced                                      |
+| 41   | BL-41 | 67    | P2  | S      | tests     | all                              | `mfdoctor rules` proof of per-rule bundlers                                   |
+| 42   | BL-42 | 67    | P2  | M      | coverage  | webpack, rspack                  | Shared `layer` (low confidence)                                               |
+| 43   | BL-43 | 66    | P3  | M      | coverage  | all                              | `dts.generateTypes.compilerInstance` / tsgo advisory                          |
+| 44   | BL-44 | 66    | P2  | S      | docs      | modern                           | Modern smoke README: not full app-tools                                       |
+| 45   | BL-45 | 65    | P2  | M      | tests     | modern                           | transformImport facts from Modern adapter                                     |
+| 46   | BL-46 | 65    | P3  | S      | dead-code | all                              | Remove or freeze `RULE_COMPATIBILITY_EXCEPTIONS` noise                        |
+| 47   | BL-47 | 64    | P2  | S      | coverage  | webpack, rspack                  | `output.uniqueName` vs MF `name`                                              |
+| 48   | BL-48 | 63    | P2  | M      | coverage  | rsbuild, modern                  | SSR host-init analogues of `vite/host-init-inject-ssr`                        |
+| 49   | BL-49 | 62    | P2  | S      | overeng   | all                              | Un-export `projectV1Suppression` until runtime uses it                        |
+| 50   | BL-50 | 61    | P2  | M      | coverage  | all                              | Stats expected (Enhanced) vs unexpected (Vite)                                |
+| 51   | BL-51 | 61    | P2  | L      | overeng   | all                              | Share projection helpers; do not merge runner yet                             |
+| 52   | BL-52 | 60    | P3  | S      | docs      | all                              | Mark semantic-graph / identity APIs experimental on the `.` export            |
+| 53   | BL-53 | 59    | P3  | M      | coverage  | vite                             | Rules or honest skips for `ignoreOrigin` / `virtualModuleDir`                 |
+| 54   | BL-54 | 58    | P2  | L      | overeng   | all                              | Split `src/capture.ts` (~3.7k LOC) along used vs unused transports (**done**) |
+| 55   | BL-55 | 55    | P3  | S      | dead-code | all                              | Internalize `MIGRATED_GROUP*` exports                                         |
+| 56   | BL-56 | 54    | P3  | S      | docs      | all                              | `buildUiPayload` is not an HTML UI (cross-link only)                          |
+| 57   | BL-57 | 52    | P3  | L      | coverage  | all                              | `dataPrefetch` / prefetch remotes (low confidence)                            |
+| 58   | BL-58 | 48    | P3  | S      | dead-code | all                              | Un-export `DEFAULT_ANALYSIS_CACHE_OPTIONS`                                    |
 
 ---
 
@@ -972,6 +972,7 @@ that path is correct.
 
 |                        |                                                                                                                                                                                                                                                                              |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **status**             | **done** — file-import contract is `src/runtime-capture-contract.ts`; unused browser/fallback/network transports isolated in `src/runtime-capture-transports.ts` with tests. No in-browser injection. ADR 0084 closeout not in this PR.                                      |
 | **category**           | overeng                                                                                                                                                                                                                                                                      |
 | **bundlers**           | all                                                                                                                                                                                                                                                                          |
 | **severity**           | P2                                                                                                                                                                                                                                                                           |

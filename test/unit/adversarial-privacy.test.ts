@@ -6,7 +6,7 @@ import {
   runtimeCaptureRecordId,
   validateRuntimeCaptureEnvelope,
   type RuntimeCaptureEnvelope,
-} from "../../src/capture.js";
+} from "../../src/runtime-capture-contract.js";
 import { redactEvidenceValue, type EvidenceValue } from "../../src/evidence.js";
 import { readEvidenceDocument } from "../../src/evidence-reader.js";
 import { fingerprint } from "../../src/utils.js";
