@@ -75,9 +75,9 @@ describe("canonical declared config bridge", () => {
       layer: "client",
       issuerLayer: "ssr",
     });
-    expect(
-      facts.canonicalConfig?.extensions.some((field) => field.path.endsWith("/layer")),
-    ).toBe(false);
+    expect(facts.canonicalConfig?.extensions.some((field) => field.path.endsWith("/layer"))).toBe(
+      false,
+    );
   });
 
   it("does not invent a declaration when no config was supplied", async () => {
