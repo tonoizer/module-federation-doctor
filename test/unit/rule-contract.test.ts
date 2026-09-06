@@ -650,6 +650,7 @@ describe("evidence-aware rule contract", () => {
         "vite/remote-hmr-dev": ["builds"],
         "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
         "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
+        "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
       };
       const optionalReads = optionalPluginFacts[entry.id] ?? [];
       expect(requirements.length).toBeGreaterThanOrEqual(2);
@@ -830,6 +831,11 @@ describe("evidence-aware rule contract", () => {
         .find((entry) => entry.id === "config/rsbuild-mf-api-generation")
         ?.applicability.bundlers?.map((item) => item.name),
     ).toEqual(["rsbuild"]);
+    expect(
+      ruleInventory
+        .find((entry) => entry.id === "config/async-startup-rspack-version")
+        ?.applicability.bundlers?.map((item) => item.name),
+    ).toEqual(["rspack", "rsbuild"]);
   });
 
   it("drives catalog supportedBundlers from inventory adapters", () => {
@@ -856,6 +862,7 @@ describe("evidence-aware rule contract", () => {
     const patterns: Record<string, string> = {
       moduleFederation: "mf(context)",
       "bundler.name": "context.facts.bundler.name",
+      "bundler.version": "context.facts.bundler.version",
       "bundler.mode": "context.facts.bundler.mode",
       "bundler.moduleFederationPluginCount": "context.facts.bundler.moduleFederationPluginCount",
       "bundler.outputPublicPathKind": "context.facts.bundler.outputPublicPathKind",

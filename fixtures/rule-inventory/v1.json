@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 113,
-  "migratedCount": 113,
+  "ruleCount": 114,
+  "migratedCount": 114,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
@@ -3276,6 +3276,73 @@
         "imports.sourceScan"
       ],
       "migrationNote": "Group 1; Host remotes/shared config plus readable entry sources are exact when source scan is complete. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
+      "id": "config/async-startup-rspack-version",
+      "version": "1",
+      "group": 1,
+      "status": "migrated",
+      "defaultSeverity": "warning",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "MFDoctor maintainers"
+      },
+      "remediation": {
+        "summary": "`experiments.asyncStartup` is a no-op (or a silent break) on Rspack versions that do not implement it. Enabling the flag then skips the manual async-boundary check while the bundler still starts synchronously.",
+        "documentation": "/rules/config/async-startup-rspack-version",
+        "fix": "Upgrade `@rspack/core` to a version greater than 1.7.4, or disable `experiments.asyncStartup` until the bundler can honor it."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "moduleFederation",
+            "layer": "declared",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "bundler.name",
+            "layer": "effective",
+            "subjectKind": "project",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          }
+        ]
+      },
+      "evidenceReads": [
+        "project.scope",
+        "moduleFederation",
+        "bundler.name",
+        "bundler.version",
+        "dependencies.installed"
+      ],
+      "migrationNote": "Group 1; Declared asyncStartup plus installed @rspack/core (or rspack bundler.version) is high confidence when the version is collected; missing version is unknown rather than a pass. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
       "id": "config/eager-tree-shaking-conflict",

@@ -1615,7 +1615,12 @@ export async function collectProjectFacts(
     depth: options.sharedPolicy.importDepth,
   });
 
-  const installed = await installedVersions(options.root, declared);
+  const resolveInstalled =
+    (options.bundler === "rspack" || options.bundler === "rsbuild") &&
+    declared["@rspack/core"] === undefined
+      ? { ...declared, "@rspack/core": "*" }
+      : declared;
+  const installed = await installedVersions(options.root, resolveInstalled);
   const bundlerPackage = {
     vite: "vite",
     rspack: "@rspack/core",

@@ -618,6 +618,8 @@ importers:
 
   examples/showcase/config/async-boundary-missing-ok: {}
 
+  examples/showcase/config/async-startup-rspack-version: {}
+
   examples/showcase/config/dts-output-dir-mismatch: {}
 
   examples/showcase/config/expose-key-invalid: {}

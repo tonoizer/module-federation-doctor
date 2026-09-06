@@ -69,6 +69,7 @@ const ids = [
   "config/dts-output-dir-mismatch",
   "config/duplicate-plugin-registration",
   "config/async-boundary-missing",
+  "config/async-startup-rspack-version",
   "config/eager-tree-shaking-conflict",
   "config/expose-key-invalid",
   "config/expose-path-missing",
@@ -171,6 +172,7 @@ export const MIGRATED_GROUP1_CONFIG_RULE_IDS = [
   "config/shared-capability-disabled",
   "config/eager-tree-shaking-conflict",
   "config/async-boundary-missing",
+  "config/async-startup-rspack-version",
   "config/tree-shaking-server-calc-injection",
   "config/rsbuild-mf-api-generation",
 ] as const;
@@ -323,6 +325,7 @@ type RulePlan = {
 const ALL = ["vite", "rspack", "rsbuild", "webpack", "modern"] as const;
 const VITE = ["vite"] as const;
 const RSBUILD = ["rsbuild"] as const;
+const RSPACK_FAMILY = ["rspack", "rsbuild"] as const;
 const plan = (
   group: RuleMigrationGroup,
   severity: RulePlan["severity"],
@@ -615,6 +618,16 @@ const plans: Record<string, RulePlan> = {
     "project",
     "high",
     "Host remotes/shared config plus readable entry sources are exact when source scan is complete.",
+  ),
+  "config/async-startup-rspack-version": plan(
+    1,
+    "warning",
+    "config.declared",
+    "declared",
+    "project",
+    "high",
+    "Declared asyncStartup plus installed @rspack/core (or rspack bundler.version) is high confidence when the version is collected; missing version is unknown rather than a pass.",
+    RSPACK_FAMILY,
   ),
   "reliability/external-runtime-provider-unverified": plan(
     6,
@@ -1564,6 +1577,13 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "imports.sourceFiles",
     "imports.sourceScan",
   ],
+  "config/async-startup-rspack-version": [
+    "project.scope",
+    "moduleFederation",
+    "bundler.name",
+    "bundler.version",
+    "dependencies.installed",
+  ],
   "config/expose-key-invalid": ["project.scope", "moduleFederation"],
   "config/expose-path-missing": [
     "project.scope",
@@ -1812,6 +1832,7 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
     "vite/remote-hmr-dev": ["builds"],
     "config/transform-import-share-conflict": ["bundler.transformImportLibraries"],
     "config/rsbuild-mf-api-generation": ["canonicalConfig", "dependencies.installed"],
+    "config/async-startup-rspack-version": ["bundler.version", "dependencies.installed"],
   };
   const optional = optionalPluginFacts[id];
   if (optional) {

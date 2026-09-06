@@ -1700,6 +1700,44 @@ describe("evidence-aware rule rollout bridge", () => {
     ).toBe(true);
   });
 
+  it("keeps async-startup-rspack-version unknown when Rspack version is missing", async () => {
+    const root = await fixture("group1-async-startup-rspack-version-unknown");
+    const baseline = await analyze({
+      root,
+      bundler: "rspack",
+      mode: "ci",
+      moduleFederation: { name: "host", experiments: { asyncStartup: true } },
+      output: { formats: [] },
+      rules: quietRules,
+    });
+    const facts = structuredClone(baseline.facts);
+    delete facts.bundler.version;
+    facts.dependencies.installed = {};
+    facts.moduleFederation!.experiments = {
+      asyncStartup: true,
+      externalRuntime: false,
+      provideExternalRuntime: false,
+    };
+    const migrated = await runMigratedEvidenceRules(facts, {
+      "config/async-startup-rspack-version": "warning",
+    });
+    expect(
+      migrated.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/async-startup-rspack-version",
+      ),
+    ).toMatchObject({ outcome: "unknown", reasonCode: "evidence-inconclusive" });
+
+    facts.bundler.version = "1.7.4";
+    const failing = await runMigratedEvidenceRules(facts, {
+      "config/async-startup-rspack-version": "warning",
+    });
+    expect(
+      failing.output.evaluations.find(
+        (evaluation) => evaluation.rule.id === "config/async-startup-rspack-version",
+      ),
+    ).toMatchObject({ outcome: "fail", completeness: "complete" });
+  });
+
   it("keeps duplicate-plugin unknown when registration evidence is absent for non-webpack bundlers", async () => {
     const root = await fixture("group3-vite-duplicate-plugin-rollout-bridge");
     const baseline = await analyze({
