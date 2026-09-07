@@ -5,5 +5,5 @@ generate-exit: 0
 update-exit: 0
 prune-missing-exit: 2
 schemaVersion: 1
-entry-count: 1
-rule-ids: ['config/remote-http-insecure']
+entry-count: 2
+rule-ids: ['config/js-remote-without-type-urls', 'config/remote-http-insecure']

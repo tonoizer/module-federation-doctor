@@ -3,5 +3,5 @@ entry-point: node dist/cli.js check <disposable-showcase-fixture> --ci --format 
 fixture-src: /workspace/examples/showcase/config/remote-http-insecure
 no-write-side-effect: .mf absent under fixture copy (observed)
 status: {'complete': False, 'incompleteReasons': ['missing-emit']}
-finding-count: 1
-rule-ids: ['config/remote-http-insecure']
+finding-count: 2
+rule-ids: ['config/js-remote-without-type-urls', 'config/remote-http-insecure']

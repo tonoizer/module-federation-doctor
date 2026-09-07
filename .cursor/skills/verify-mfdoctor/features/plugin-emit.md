@@ -19,6 +19,7 @@ emit so CLI `check` / `workspace` can consume real facts.
 - Add the matching adapter in a Vite/Rspack/Rsbuild/Webpack config under `examples/standalone-findings/{vite,webpack,rspack,rsbuild}/`. Modern red emit is the documented partial stub at `examples/standalone-findings/modern/` (same `modifyBundlerChain` afterEmit path as the green smoke in `examples/compatibility/modern/`; matrix status stays partial). Nuxt lives under `examples/compatibility/nuxt/`.
 - Build the example package, e.g. `pnpm exec vp run --filter @mfdoctor-standalone/vite build` (bare `vp` needs `node_modules/.bin` on `PATH`). Modern: `pnpm exec vp run --filter @mfdoctor-standalone/modern build`.
 - Or run the catalog script: `pnpm demo:standalone` (builds all five standalone cells).
+- Vite Plus package smoke (partial Rolldown) lives at `examples/compatibility/rolldown`, not under `examples/standalone-findings/vite`.
 
 ## Driving it with the post-emit plugin
 
@@ -31,7 +32,7 @@ Preconditions:
 - **Build one red cell.** Run `pnpm exec vp run --filter @mfdoctor-standalone/vite build` from the repo root (or an equivalent filter build for another standalone cell).
 - **Observe emit.** Confirm `examples/standalone-findings/vite/.mf/doctor/project.json` exists after the build exits.
 - **Observe findings.** Read `.mf/doctor/report.json` and expect rule IDs such as `config/remote-http-insecure`, `config/remote-manifest-recommended`, and `reliability/version-first-offline-remotes` (see `examples/standalone-findings/README.md`). The emit report is the source of truth for this feature.
-- **Optional follow-up.** Run `node dist/cli.js check examples/standalone-findings/vite --format json --output -`. Static CLI `check` re-analyzes config/source; it does **not** replay the plugin report. Expect `status.incompleteReasons` to still include `missing-emit`. This cell can also report `partial-bundler` when the bundler lifecycle is Vite Plus / Rolldown (partial in the public matrix). Remote findings may differ (e.g. `config/remote-entry-invalid` instead of `config/remote-http-insecure` / `config/remote-manifest-recommended`). Do not require an identical `ruleId` set.
+- **Optional follow-up.** Run `node dist/cli.js check examples/standalone-findings/vite --format json --output -`. Static CLI `check` re-analyzes config/source; it does **not** replay the plugin report. Expect `status.incompleteReasons` to still include `missing-emit`. This standalone cell depends on `vite@8.x` (not the `vite-plus` package); emit `bundler.lifecycle.flavor` is `rolldown-vite`, so the optional static check typically also includes `partial-bundler` (Rolldown is `partial` in the public matrix). Prove the `vite-plus` package itself at `examples/compatibility/rolldown` if that path is in scope. Remote findings may differ (e.g. `config/remote-entry-invalid` instead of `config/remote-http-insecure` / `config/remote-manifest-recommended`). Do not require an identical `ruleId` set.
 - **Proof.** Capture build command, exit code, and copies (or excerpts) of `project.json` / `report.json` keys under
   `.cursor/skills/verify-mfdoctor/evidence/plugin-emit/`. Prefer text excerpts over huge binaries.
 

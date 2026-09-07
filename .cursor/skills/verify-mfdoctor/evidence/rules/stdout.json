@@ -1,11 +1,1447 @@
 {
-  "schemaVersion": 1,
-  "ruleCount": 113,
-  "sampleRuleIds": [
-    "artifact/dts-disabled",
-    "artifact/expose-missing",
-    "artifact/manifest-assets-disabled",
-    "artifact/manifest-disabled",
-    "artifact/manifest-expose-assets-empty"
-  ]
+  "rules": [
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/artifact/dts-disabled",
+      "fix": "Set `dts: true` (or enable `dts.generateTypes`). If another declaration delivery path is intentional, document and test it, then turn this rule off for that project.",
+      "id": "artifact/dts-disabled",
+      "impact": "When a producer exposes modules but explicitly disables DTS, consumers receive no automatic checked declaration contract for those modules.",
+      "sources": ["https://module-federation.io/configure/dts.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/artifact/expose-missing",
+      "fix": "Fix the expose build or remove the stale public contract.",
+      "id": "artifact/expose-missing",
+      "impact": "The config promises an expose that the emitted manifest does not contain.",
+      "sources": [
+        "https://module-federation.io/configure/exposes.html",
+        "https://module-federation.io/configure/manifest.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/artifact/manifest-assets-disabled",
+      "fix": "Enable asset analysis for production producer manifests.",
+      "id": "artifact/manifest-assets-disabled",
+      "impact": "Disabled asset analysis removes shared and expose asset details from producer metadata.",
+      "sources": [
+        "https://module-federation.io/configure/manifest.html",
+        "https://github.com/module-federation/vite"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/artifact/manifest-disabled",
+      "fix": "For a producer, set `manifest: true` to publish the metadata. For a consumer, point remotes at the producer's `mf-manifest.json` when those capabilities are wanted. If direct `remoteEntry.js` URLs are intentional, document that choice and turn this rule off.",
+      "id": "artifact/manifest-disabled",
+      "impact": "When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. MFDoctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis.",
+      "sources": ["https://module-federation.io/configure/manifest.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/artifact/manifest-expose-assets-empty",
+      "fix": "Ensure the expose is built and manifest asset analysis completes.",
+      "id": "artifact/manifest-expose-assets-empty",
+      "impact": "Preload and debugging tools cannot map an expose to its assets.",
+      "sources": ["https://module-federation.io/configure/manifest.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/artifact/manifest-invalid",
+      "fix": "Rebuild the manifest and verify `metaData`, `exposes`, and `shared` are present.",
+      "id": "artifact/manifest-invalid",
+      "impact": "The runtime and tooling cannot consume malformed or incomplete manifest JSON.",
+      "sources": [
+        "https://module-federation.io/configure/manifest.html",
+        "https://github.com/module-federation/core"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/artifact/manifest-name-mismatch",
+      "fix": "Clean output and make the federation plugin and MFDoctor share one options object.",
+      "id": "artifact/manifest-name-mismatch",
+      "impact": "Stale output can register a different container than the current config.",
+      "sources": ["https://module-federation.io/configure/manifest.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/artifact/manifest-remote-entry-missing",
+      "fix": "Clean and rebuild; verify output path, filename, and manifest settings.",
+      "id": "artifact/manifest-remote-entry-missing",
+      "impact": "Consumers follow manifest metadata to a remote entry that was not emitted.",
+      "sources": ["https://module-federation.io/configure/manifest.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/artifact/manifest-shared-version-mismatch",
+      "fix": "Clean output, reinstall from the lockfile, and rebuild the manifest.",
+      "id": "artifact/manifest-shared-version-mismatch",
+      "impact": "Stale version metadata can choose the wrong shared provider at runtime.",
+      "sources": [
+        "https://module-federation.io/configure/manifest.html",
+        "https://module-federation.io/configure/shared.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/artifact/public-path-non-string-manifest",
+      "fix": "Set `output.publicPath` or Vite MF `publicPath` to a string URL, root-relative path, or `auto` when manifests are required.",
+      "id": "artifact/public-path-non-string-manifest",
+      "impact": "Module Federation skips manifest generation when bundler `output.publicPath` (or Vite MF `publicPath`) is not a string.",
+      "sources": [
+        "https://module-federation.io/configure/manifest.html",
+        "https://github.com/module-federation/core"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/artifact/public-path-suspicious",
+      "fix": "Use `auto`, a root-relative path, HTTPS URL, or reviewed dynamic getter.",
+      "id": "artifact/public-path-suspicious",
+      "impact": "A malformed asset base makes remote chunks and styles resolve from the wrong URL.",
+      "sources": ["https://module-federation.io/configure/getpublicpath.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/artifact/react-dom-server-in-web",
+      "fix": "Keep `react-dom/server` (and `react-dom/server.*`) on the SSR/server build only. Use a client entry such as `react-dom/client` for web remotes/hosts, or mark the target with `ssrMode: \"node\"` / `experiments.target: \"node\"` when the artifact is server-only. Set `rules[\"artifact/react-dom-server-in-web\"]` to `\"off\"` when intentional.",
+      "id": "artifact/react-dom-server-in-web",
+      "impact": "react-dom/server (and related server entries) in a web/client Module Federation bundle crash or mis-target the browser runtime — a common MF/SSR boundary failure.",
+      "sources": [
+        "https://react.dev/reference/react-dom/server",
+        "https://module-federation.io/guide/framework/react"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/artifact/remote-entry-missing",
+      "fix": "Check output naming and plugin order, then clean and rebuild.",
+      "id": "artifact/remote-entry-missing",
+      "impact": "A producer has no executable container at its configured filename.",
+      "sources": ["https://module-federation.io/configure/filename.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/artifact/types-metadata-missing",
+      "fix": "Fix DTS generation and ensure its metadata reaches the manifest.",
+      "id": "artifact/types-metadata-missing",
+      "impact": "The manifest cannot advertise generated type archives to consumers.",
+      "sources": [
+        "https://module-federation.io/configure/manifest.html",
+        "https://module-federation.io/configure/dts.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/artifact/types-missing",
+      "fix": "Enable DTS output and fail CI when type generation fails.",
+      "id": "artifact/types-missing",
+      "impact": "No emitted declaration artifact was found for a typed producer.",
+      "sources": ["https://module-federation.io/configure/dts.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/bridge/consumer-api-manual",
+      "fix": "Prefer `createRemoteAppComponent` / `createBridge` from `@module-federation/bridge-react`, or set the rule to `\"off\"`.",
+      "id": "bridge/consumer-api-manual",
+      "impact": "Hand-rolled `loadRemote` / remote mounts skip Bridge lifecycle helpers and lose documented loading/error contracts.",
+      "sources": ["https://module-federation.io/guide/bridge/react-bridge"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "info",
+      "documentation": "/rules/bridge/disable-alias-deprecated",
+      "fix": "Prefer `enableBridgeRouter: false` (or true) over `disableAlias`, or set the rule to `\"off\"`.",
+      "id": "bridge/disable-alias-deprecated",
+      "impact": "`bridge.disableAlias` is a deprecated escape hatch; explicit `enableBridgeRouter` communicates intent clearly.",
+      "sources": ["https://module-federation.io/guide/bridge/react-bridge"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/bridge/export-app-missing",
+      "fix": "Expose `\"./export-app\"` via `createBridgeComponent` (render/destroy), or set the rule to `\"off\"`.",
+      "id": "bridge/export-app-missing",
+      "impact": "Bridge producers without `./export-app` break the conventional Bridge remote contract expected by hosts.",
+      "sources": ["https://module-federation.io/guide/bridge/react-bridge"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/bridge/lazy-plugin-unregistered",
+      "fix": "Add `@module-federation/bridge-react/plugin` to `runtimePlugins`. Soften with `requireRuntimePlugin: false` or turn the rule `\"off\"` for non-lazy Bridge setups.",
+      "id": "bridge/lazy-plugin-unregistered",
+      "impact": "Lazy Bridge React loading requires `@module-federation/bridge-react/plugin` in `runtimePlugins` or Bridge remotes fail at runtime.",
+      "sources": [
+        "https://module-federation.io/guide/bridge/react-bridge",
+        "https://module-federation.io/configure/runtimeplugins.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/bridge/missing-fallback-loading",
+      "fix": "Pass `fallback` and `loading` to `createRemoteAppComponent`, or set `rules[\"bridge/missing-fallback-loading\"]` to `\"off\"`.",
+      "id": "bridge/missing-fallback-loading",
+      "impact": "Bridge remotes without `fallback`/`loading` leave consumers with a blank screen while the remote loads or fails.",
+      "sources": ["https://module-federation.io/guide/bridge/react-bridge"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/bridge/provider-shape-invalid",
+      "fix": "Pass a complete options object (loader/module for consumers, or a root component for export-app). Fallback/loading UX is covered by `bridge/missing-fallback-loading`. Turn the rule `\"off\"` when source facts are too thin or the call shape is dynamic.",
+      "id": "bridge/provider-shape-invalid",
+      "impact": "Incomplete `createRemoteAppComponent` / `createBridgeComponent` options omit required loader/module or root component contracts and break Bridge remotes.",
+      "sources": ["https://module-federation.io/guide/bridge/react-bridge"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/bridge/react-dom-prefix-missing",
+      "fix": "Add `'react-dom/': { singleton: true, ... }` (or `react-dom/client`) to `shared`. Disable with `requireReactDomPrefix: false` or `rules[\"bridge/react-dom-prefix-missing\"]: \"off\"` when intentional.",
+      "id": "bridge/react-dom-prefix-missing",
+      "impact": "Bridge React v18/v19 needs `react-dom/` (or `react-dom/client`) in `shared` so renderer subpaths negotiate one copy across host and remote.",
+      "sources": [
+        "https://module-federation.io/guide/bridge/react-bridge",
+        "https://module-federation.io/configure/shared.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/bridge/react-version-entry-mismatch",
+      "fix": "Align the Bridge entry with the installed React major (`/v18` or `/v19`). Limit majors with `reactMajors`, or set the rule to `\"off\"`.",
+      "id": "bridge/react-version-entry-mismatch",
+      "impact": "Importing `@module-federation/bridge-react/v18` against React 19 (or the reverse) selects the wrong Bridge API surface and can fail at runtime.",
+      "sources": ["https://module-federation.io/guide/bridge/react-bridge"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/bridge/react-version-entry-prefer",
+      "fix": "Import `@module-federation/bridge-react/v18` or `/v19` to match your React major. Override majors with `reactMajors`, or set the rule to `\"off\"` when the bare entry is intentional.",
+      "id": "bridge/react-version-entry-prefer",
+      "impact": "The bare `@module-federation/bridge-react` entry can pick the wrong React Bridge API when the React major is known.",
+      "sources": ["https://module-federation.io/guide/bridge/react-bridge"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "info",
+      "documentation": "/rules/bridge/router-implicit-enable",
+      "fix": "Set `bridge: { enableBridgeRouter: true }` (or `false`) explicitly. Allow demos to stay implicit with `allowImplicitBridgeRouter: true` or set the rule to `\"off\"`.",
+      "id": "bridge/router-implicit-enable",
+      "impact": "Rspack may auto-enable Bridge router when the Bridge package is present; leaving `bridge.enableBridgeRouter` implicit hides the routing contract from reviewers and CI.",
+      "sources": ["https://module-federation.io/guide/bridge/react-bridge"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/bridge/router-shared-conflict",
+      "fix": "Remove React Router from `shared`, or disable Bridge router with `bridge.enableBridgeRouter: false`. Soften with `rules[\"bridge/router-shared-conflict\"]: \"off\"` when intentional.",
+      "id": "bridge/router-shared-conflict",
+      "impact": "Bridge router aliases React Router; sharing `react-router` / `react-router-dom` at the same time can load duplicate router runtimes and break navigation.",
+      "sources": [
+        "https://module-federation.io/guide/bridge/react-bridge",
+        "https://module-federation.io/configure/shared.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "info",
+      "documentation": "/rules/bridge/ssr-instanceid-hydration",
+      "fix": "Set `bridge.instanceId` for SSR builds, use `ssrMode: \"browser-only\"` when not SSR, or set the rule to `\"off\"`.",
+      "id": "bridge/ssr-instanceid-hydration",
+      "impact": "Without a stable `bridge.instanceId`, SSR Bridge hydration registries can collide across requests.",
+      "sources": ["https://module-federation.io/guide/bridge/react-bridge"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/bridge/ssr-server-entry-leak",
+      "fix": "Import the Bridge `/server` entry (or a node-safe path) for SSR/node targets. Override with `ssrMode: \"browser-only\"` when the build is not SSR, or set the rule to `\"off\"`.",
+      "id": "bridge/ssr-server-entry-leak",
+      "impact": "Browser-only Bridge React entries must not load inside node/SSR builds; doing so leaks DOM-oriented Bridge code into the server bundle.",
+      "sources": ["https://module-federation.io/guide/bridge/react-bridge"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "info",
+      "documentation": "/rules/bridge/tanstack-router-conflict",
+      "fix": "Disable Bridge router or isolate TanStack Router, or set `rules[\"bridge/tanstack-router-conflict\"]` to `\"off\"`.",
+      "id": "bridge/tanstack-router-conflict",
+      "impact": "Bridge router aliasing plus `@tanstack/react-router` can duplicate navigation ownership in one app.",
+      "sources": ["https://module-federation.io/guide/bridge/react-bridge"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/bridge/vue-consumer-manual",
+      "fix": "Prefer `createRemoteAppComponent` from `@module-federation/bridge-vue3`, or set the rule to `\"off\"`.",
+      "id": "bridge/vue-consumer-manual",
+      "impact": "Hand-rolled `loadRemote` mounts skip Vue Bridge lifecycle helpers and documented loading/error contracts.",
+      "sources": ["https://module-federation.io/integrations/practice/vue"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/bridge/vue-server-entry",
+      "fix": "Import `@module-federation/bridge-vue3/server` (or the documented SSR entry). Set `ssrMode: \"browser-only\"` when not SSR, or turn the rule `\"off\"`.",
+      "id": "bridge/vue-server-entry",
+      "impact": "Browser-only Vue Bridge entries in node/SSR builds miss the server/hydration contract and can leak client-only Bridge code.",
+      "sources": ["https://module-federation.io/integrations/practice/vue"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/bridge/vue-share-missing",
+      "fix": "Share `vue` (and `vue-router` when imported) as singletons, or set the rule to `\"off\"`.",
+      "id": "bridge/vue-share-missing",
+      "impact": "Vue Bridge remotes and hosts that omit `vue` (and `vue-router` when used) from `shared` can load duplicate Vue runtimes and break reactivity or routing.",
+      "sources": ["https://module-federation.io/integrations/practice/vue"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/bridge/vue-ssr-fresh-context",
+      "fix": "Create per-request app/router/store factories (or use Bridge SSR hydration helpers). Set `ssrMode: \"browser-only\"` when not SSR, or turn the rule `\"off\"`.",
+      "id": "bridge/vue-ssr-fresh-context",
+      "impact": "Reusing one Vue app/router/store across SSR requests leaks request state between users.",
+      "sources": ["https://module-federation.io/integrations/practice/vue"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/alias-share-bypass",
+      "fix": "Remove the overlapping alias, drop the package from shared, or allowlist intentional bypasses via `allowPackages`. Function aliases stay unknown.",
+      "id": "config/alias-share-bypass",
+      "impact": "Webpack/Rspack/Rsbuild resolve.alias can rewrite imports around the share scope and duplicate singleton packages.",
+      "sources": [
+        "https://module-federation.io/configure/shared.html",
+        "https://webpack.js.org/configuration/resolve/#resolvealias",
+        "https://rspack.rs/config/resolve#resolvealias",
+        "https://rsbuild.rs/config/resolve/alias"
+      ],
+      "supportedBundlers": ["webpack", "rspack", "rsbuild"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/async-boundary-missing",
+      "fix": "Move app startup behind a dynamic import (for example `import('./bootstrap')`), enable `experiments.asyncStartup`, or mark those shared packages `eager: true` when intentional.",
+      "id": "config/async-boundary-missing",
+      "impact": "A host entry that synchronously imports non-eager shared packages can hit RUNTIME-005 (`loadShareSync`) because Module Federation needs an async boundary before shared negotiation finishes.",
+      "sources": [
+        "https://module-federation.io/guide/troubleshooting/runtime.html#runtime-005",
+        "https://module-federation.io/configure/experiments.html",
+        "https://module-federation.io/configure/shared.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/async-startup-rspack-version",
+      "fix": "Upgrade `@rspack/core` to a version greater than 1.7.4, or disable `experiments.asyncStartup` until the bundler can honor it.",
+      "id": "config/async-startup-rspack-version",
+      "impact": "`experiments.asyncStartup` is a no-op (or a silent break) on Rspack versions that do not implement it. Enabling the flag then skips the manual async-boundary check while the bundler still starts synchronously.",
+      "sources": [
+        "https://module-federation.io/configure/experiments.html",
+        "https://module-federation.io/blog/hoisted-runtime.md",
+        "https://github.com/web-infra-dev/rspack/pull/11899"
+      ],
+      "supportedBundlers": ["rspack", "rsbuild"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/copied-vite-options-on-webpack",
+      "fix": "Remove the listed Vite-only keys from webpack, Rspack, Rsbuild, or Modern.js federation options. They are `@module-federation/vite` controls and have no Enhanced equivalent.",
+      "id": "config/copied-vite-options-on-webpack",
+      "impact": "Vite-only Module Federation options pasted onto Enhanced / webpack-family configs (`virtualModuleDir`, `hostInitInjectLocation`, `bundleAllCSS`, `remoteHmr`, `varFilename`) are ignored, so a copied Vite config silently no-ops.",
+      "sources": [
+        "https://github.com/module-federation/vite",
+        "https://github.com/module-federation/core",
+        "https://module-federation.io/configure/index.html"
+      ],
+      "supportedBundlers": ["rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/copied-webpack-options-on-vite",
+      "fix": "Remove the listed webpack-only keys. Prefer the Vite equivalent when one exists (`remotes.<name>.type` for `remoteType`; top-level `disableRemote` / `disableShared` / `disableSnapshot` / `target` for `experiments.optimization.*`). Keys without a Vite equivalent are not applicable and should be deleted.",
+      "id": "config/copied-webpack-options-on-vite",
+      "impact": "Webpack ModuleFederationPlugin-only options pasted onto `@module-federation/vite` are ignored or misinterpreted, which leads to silent mis-shares or runtime crashes after a webpack-to-Vite migration.",
+      "sources": [
+        "https://github.com/module-federation/vite",
+        "https://module-federation.io/configure/remotetype.html",
+        "https://module-federation.io/configure/experiments.html",
+        "https://github.com/module-federation/core"
+      ],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/dts-output-dir-mismatch",
+      "fix": "Align `filename` directory layout with `dts.generateTypes.outputDir`, or keep both at the output root.",
+      "id": "config/dts-output-dir-mismatch",
+      "impact": "A nested remote-entry `filename` that disagrees with `dts.generateTypes.outputDir` can publish type archives to the wrong path.",
+      "sources": [
+        "https://module-federation.io/configure/dts.html",
+        "https://module-federation.io/configure/filename.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/duplicate-plugin-registration",
+      "fix": "Keep a single Module Federation plugin instance per compiler, or give independently configured federation instances distinct plugin configurations.",
+      "id": "config/duplicate-plugin-registration",
+      "impact": "Registering Module Federation more than once on the same compiler breaks the core singleton contract.",
+      "sources": [
+        "https://github.com/module-federation/core",
+        "https://module-federation.io/guide/installation.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/eager-tree-shaking-conflict",
+      "fix": "Choose eager loading for small dependencies or tree shaking for larger libraries.",
+      "id": "config/eager-tree-shaking-conflict",
+      "impact": "Eager modules live in the initial entry and cannot use the on-demand shared tree-shaking path.",
+      "sources": [
+        "https://module-federation.io/configure/shared.html",
+        "https://github.com/module-federation/vite"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/expose-key-invalid",
+      "fix": "Rename the key to start with `./` and update consumer imports.",
+      "id": "config/expose-key-invalid",
+      "impact": "Consumers cannot address an expose whose public key does not follow the `./Name` form.",
+      "sources": ["https://module-federation.io/configure/exposes.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/expose-path-missing",
+      "fix": "Correct the path, including its exact extension, or create the source file.",
+      "id": "config/expose-path-missing",
+      "impact": "The producer build cannot include a module that does not exist at the configured path.",
+      "sources": ["https://module-federation.io/configure/exposes.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/external-runtime-conflict",
+      "fix": "Provide at the top consumer and externalize only its browser remotes.",
+      "id": "config/external-runtime-conflict",
+      "impact": "The same build cannot externalize the runtime it is responsible for providing.",
+      "sources": ["https://module-federation.io/configure/experiments.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/external-runtime-with-exposes",
+      "fix": "Move `provideExternalRuntime` to the top consumer or remove exposes.",
+      "id": "config/external-runtime-with-exposes",
+      "impact": "A runtime provider is only supported on a pure consumer and the upstream plugin throws otherwise.",
+      "sources": ["https://module-federation.io/configure/experiments.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "security",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/filename-invalid",
+      "fix": "Use a relative `.js` or `.mjs` filename without absolute or `..` segments.",
+      "id": "config/filename-invalid",
+      "impact": "Unsafe paths can escape output layout; a non-JavaScript entry cannot run as a container.",
+      "sources": ["https://module-federation.io/configure/filename.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/get-public-path-invalid",
+      "fix": "Use a stringified function, arrow function, or return statement.",
+      "id": "config/get-public-path-invalid",
+      "impact": "The runtime cannot evaluate an invalid stringified public-path function.",
+      "sources": ["https://module-federation.io/configure/getpublicpath.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "info",
+      "documentation": "/rules/config/get-public-path-unused",
+      "fix": "Remove dead config or move it to the producer that owns the assets.",
+      "id": "config/get-public-path-unused",
+      "impact": "`getPublicPath` has no effect on a consumer that exposes no modules.",
+      "sources": ["https://module-federation.io/configure/getpublicpath.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/hashed-remote-filename",
+      "fix": "Use a stable Module Federation `filename` such as `remoteEntry.js`. Keep hashing on chunk filenames instead of the container entry.",
+      "id": "config/hashed-remote-filename",
+      "impact": "Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds. Webpack/Rspack `[contenthash]` in Module Federation `filename`, or in `output.filename` when the container filename is unset, has the same effect as Vite `[hash]`.",
+      "sources": [
+        "https://module-federation.io/configure/filename.html",
+        "https://webpack.js.org/configuration/output/#outputfilename"
+      ],
+      "supportedBundlers": ["rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "info",
+      "documentation": "/rules/config/implementation-suspicious",
+      "fix": "Use a compatible `@module-federation/runtime-tools` path and pin compatible versions.",
+      "id": "config/implementation-suspicious",
+      "impact": "A custom implementation can violate the runtime contract expected by the build plugin.",
+      "sources": ["https://module-federation.io/configure/implementation.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/js-remote-without-type-urls",
+      "fix": "Point remotes at `mf-manifest.json`, or set `dts.consumeTypes.remoteTypeUrls` for each direct `.js` remote. Disable `dts.consumeTypes` when the host does not consume federated types.",
+      "id": "config/js-remote-without-type-urls",
+      "impact": "Hosts that consume types cannot resolve a stable type archive URL from a direct `.js` remote entry. Manifest remotes publish type metadata; otherwise `consumeTypes.remoteTypeUrls` must name the zip/api URLs.",
+      "sources": [
+        "https://module-federation.io/configure/dts.html",
+        "https://module-federation.io/configure/remotes.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/library-remote-type-mismatch",
+      "fix": "Align `library.type`, `remoteType`, and each remote object's `type`.",
+      "id": "config/library-remote-type-mismatch",
+      "impact": "A consumer loader can fail when its remote type does not match the producer library format.",
+      "sources": [
+        "https://module-federation.io/configure/library.html",
+        "https://module-federation.io/configure/remotetype.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/name-required",
+      "fix": "Set `name` to a stable, federation-wide unique id such as \"host\" or \"shop\".",
+      "id": "config/name-required",
+      "impact": "The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so MFDoctor keeps this for offline checks rather than a showcase fixture.",
+      "sources": ["https://module-federation.io/configure/name.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/nested-producer-dts-extract",
+      "fix": "Enable `dts.generateTypes.extractRemoteTypes` on nested producers. Host-only consumers do not need this flag.",
+      "id": "config/nested-producer-dts-extract",
+      "impact": "A remote that both exposes modules and consumes remotes publishes an incomplete type archive unless `dts.generateTypes.extractRemoteTypes` is enabled, so nested consumers miss types from inner remotes.",
+      "sources": ["https://module-federation.io/configure/dts.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "info",
+      "documentation": "/rules/config/observability-plugin-recommended",
+      "fix": "Add `@module-federation/observability-plugin` and register its browser/runtime entry through `runtimePlugins` or the runtime `plugins` option. The build-only `/build` entry does not provide runtime reporting. Use `off` or a fingerprint baseline when this environment intentionally does not collect runtime reports.",
+      "id": "config/observability-plugin-recommended",
+      "impact": "Module Federation 2.5+ projects can opt into runtime health correlation, but a declared Observability Plugin is ineffective until its runtime entry is registered. The default nudge requires the package to be present; the production profile can recommend it for every supported federated surface.",
+      "sources": [
+        "https://module-federation.io/plugin/plugins/observability-plugin",
+        "https://module-federation.io/configure/runtimeplugins.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/plugin-package-mismatch",
+      "fix": "Use the official package for Vite, Rspack, Rsbuild, Webpack, or Modern.js. For Rspack, depend on `@module-federation/enhanced` (or `@module-federation/enhanced/rspack`) and remove leftover `@module-federation/rspack`.",
+      "id": "config/plugin-package-mismatch",
+      "impact": "Using the wrong integration can skip required bundler hooks and runtime generation. On Rspack, leftover `@module-federation/rspack` (alone or mixed with `@module-federation/enhanced`) misses Enhanced options such as asyncStartup.",
+      "sources": [
+        "https://module-federation.io/integrations/index.html",
+        "https://module-federation.io/integrations/build-tool/rspack"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/promise-remote-async-boundary",
+      "fix": "Enable `experiments.asyncStartup`, or move application startup behind a dynamic `import('./bootstrap')` (or another async app-shell import).",
+      "id": "config/promise-remote-async-boundary",
+      "impact": "Promise remotes resolve asynchronously. Without `experiments.asyncStartup` or an `import('./bootstrap')` boundary, the host can start before those remotes finish initializing.",
+      "sources": [
+        "https://module-federation.io/configure/remotes.html",
+        "https://module-federation.io/configure/experiments.html",
+        "https://module-federation.io/guide/troubleshooting/runtime.html#runtime-005"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/remote-alias-prefix-collision",
+      "fix": "Rename aliases so none is a prefix of another remote name or alias.",
+      "id": "config/remote-alias-prefix-collision",
+      "impact": "An alias that prefixes another remote name/alias makes multi-level path references ambiguous and is rejected by the runtime.",
+      "sources": [
+        "https://module-federation.io/configure/remotes.html",
+        "https://github.com/module-federation/core"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/remote-capability-disabled",
+      "fix": "Remove `disableRemote` or remove all consumed remotes.",
+      "id": "config/remote-capability-disabled",
+      "impact": "Tree-shaken remote-consumption code cannot load configured remotes.",
+      "sources": [
+        "https://github.com/module-federation/vite",
+        "https://github.com/module-federation/core"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/remote-entry-invalid",
+      "fix": "Use a valid URL/object entry or the `name@url` form supported by the bundler.",
+      "id": "config/remote-entry-invalid",
+      "impact": "The runtime cannot resolve a remote without a usable entry or manifest address.",
+      "sources": ["https://module-federation.io/configure/remotes.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "security",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/remote-http-insecure",
+      "fix": "Serve non-local remotes over HTTPS and keep HTTP only for local development.",
+      "id": "config/remote-http-insecure",
+      "impact": "Remote code fetched over plain HTTP can be changed in transit.",
+      "sources": ["https://module-federation.io/configure/remotes.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/remote-localhost-in-production",
+      "fix": "Point remotes at deployed HTTPS (or manifest) URLs for CI and production builds.",
+      "id": "config/remote-localhost-in-production",
+      "impact": "Localhost remotes in CI/production builds cannot resolve on other machines and break deployments.",
+      "sources": ["https://module-federation.io/configure/remotes.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "info",
+      "documentation": "/rules/config/remote-manifest-recommended",
+      "fix": "Point consumers at `mf-manifest.json` when those capabilities are wanted.",
+      "id": "config/remote-manifest-recommended",
+      "impact": "A direct remote entry lacks manifest-powered type hints, preloading data, and richer DevTools data. The `demo` policy only softens this recommendation for explicitly known-local bare/relative entries or loopback URLs during development; external, authenticated non-loopback, unknown, and CI remotes remain visible.",
+      "sources": [
+        "https://module-federation.io/configure/remotes.html",
+        "https://module-federation.io/configure/manifest.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/rsbuild-mf-api-generation",
+      "fix": "Use `@module-federation/rsbuild-plugin` with a flat `pluginModuleFederation({ ... })` config for MF 2.0 generation options (`dts`, `manifest`, `getPublicPath`, …). Keep Rsbuild `moduleFederation.options` for MF 1.5 only. Pass `target` / `environment` / `ssrDir` as the plugin second argument, never under a nested `options` bag.",
+      "id": "config/rsbuild-mf-api-generation",
+      "impact": "Rsbuild Module Federation 1.5 (`moduleFederation.options`) and `@module-federation/rsbuild-plugin` v2 use different option surfaces. Copied or nested keys are ignored or crash during generate/runtime instead of emitting the expected MF API, types, or manifest.",
+      "sources": [
+        "https://module-federation.io/integrations/build-tool/rsbuild",
+        "https://rsbuild.rs/guide/advanced/module-federation",
+        "https://module-federation.io/configure/index.html"
+      ],
+      "supportedBundlers": ["rsbuild"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/runtime-plugin-missing",
+      "fix": "Correct the path/package and include local plugin files in the MFDoctor scan.",
+      "id": "config/runtime-plugin-missing",
+      "impact": "A missing runtime plugin stops injected runtime behavior from loading.",
+      "sources": ["https://module-federation.io/configure/runtimeplugins.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/share-scope-undeclared",
+      "fix": "Declare the scope at top level or move the shared item into an initialized scope.",
+      "id": "config/share-scope-undeclared",
+      "impact": "A dependency placed in a scope the container does not initialize cannot be reused there.",
+      "sources": ["https://module-federation.io/configure/shareScope.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/config/shared-capability-disabled",
+      "fix": "Remove `disableShared` or remove the shared configuration.",
+      "id": "config/shared-capability-disabled",
+      "impact": "Tree-shaken sharing code cannot register or consume configured shared packages.",
+      "sources": [
+        "https://github.com/module-federation/vite",
+        "https://github.com/module-federation/core"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/shared-externals-conflict",
+      "fix": "Remove the package from `shared` or from bundler `externals` (webpack/rspack `externals`, rsbuild `output.externals`). Functions and regex externals are not compared. When externals were not observed (CLI without `externals` and without an adapter), this rule skips.",
+      "id": "config/shared-externals-conflict",
+      "impact": "A library listed in both `shared` and bundler `externals` is excluded from the bundle while still declared as shared, which causes runtime failures.",
+      "sources": [
+        "https://module-federation.io/configure/shared.html",
+        "https://webpack.js.org/configuration/externals/",
+        "https://rspack.rs/config/externals",
+        "https://rsbuild.rs/config/output/externals"
+      ],
+      "supportedBundlers": ["rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/split-chunks-mf-runtime",
+      "fix": "Exclude federation runtime chunks from cacheGroups (name, test, and filename). Leave MF-owned remoteEntry and shared-runtime chunks to the federation plugin, or allowlist a proven layout with `allowSplitChunks: true`.",
+      "id": "config/split-chunks-mf-runtime",
+      "impact": "User cacheGroups that target mf-* / remoteEntry / shared-runtime chunks can steal Module Federation runtime and shared ownership, breaking init order or duplicate-share isolation. This is an advisory for observed public splitChunks only; MFDoctor does not nag every project to set chunks: \"async\".",
+      "sources": [
+        "https://webpack.js.org/plugins/split-chunks-plugin/",
+        "https://rspack.rs/config/optimization#optimizationsplitchunks",
+        "https://rsbuild.rs/config/performance/chunk-split"
+      ],
+      "supportedBundlers": ["webpack", "rspack", "rsbuild"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/transform-import-share-conflict",
+      "fix": "Remove the rewrite, exclude the package from shared, or allowlist intentional bypasses via `allowPackages`. Modern.js and Rsbuild adapters collect public `source.transformImport` library names. Function-form transformImport is not invoked and stays unknown, so this rule skips.",
+      "id": "config/transform-import-share-conflict",
+      "impact": "transformImport (or equivalent) can rewrite packages that are also shared, bypassing or duplicating the share scope.",
+      "sources": [
+        "https://module-federation.io/configure/shared.html",
+        "https://modernjs.dev/configure/app/source/transform-import",
+        "https://rsbuild.rs/config/source/transform-import"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/config/tree-shaking-server-calc-injection",
+      "fix": "Disable injection and let the deployment service merge consumer export metadata.",
+      "id": "config/tree-shaking-server-calc-injection",
+      "impact": "Runtime-injected used exports conflict with the deployment-owned `server-calc` contract.",
+      "sources": ["https://module-federation.io/configure/injectTreeShakingUsedExports.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "info",
+      "documentation": "/rules/config/unique-name-mismatch",
+      "fix": "Set `output.uniqueName` to the same value as Module Federation `name`. Omit uniqueName when you do not need an override.",
+      "id": "config/unique-name-mismatch",
+      "impact": "Webpack/Rspack `output.uniqueName` namespaces the compiler runtime. When it disagrees with Module Federation `name` on the same compiler, chunk-loading globals and the container id can diverge. This stays info because uniqueName is often set equal on purpose, and a mismatch can be intentional. Multi-plugin compilers are skipped because uniqueName is compiler-scoped.",
+      "sources": [
+        "https://module-federation.io/configure/name.html",
+        "https://webpack.js.org/configuration/output/#outputuniquename",
+        "https://rspack.rs/config/output#outputuniquename"
+      ],
+      "supportedBundlers": ["webpack", "rspack"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/doctor/partial-analysis",
+      "fix": "When MF options are missing, pass them explicitly. On Vite, missing `mf-manifest.json` / `mf-stats.json` usually means enable `manifest: true` — not missing options; an explicit `manifest: false` is reported by `artifact/manifest-disabled` instead. On Webpack/Rspack/Rsbuild, remotes with `capabilities.stats` false after emit is incomplete (`missing-stats` on `status.incompleteReasons`, or this rule): those bundlers emit stats by default (`manifest !== false`). Fix source permissions or transient read races when `imports.sourceReadFailures` is present, or raise the analysis budget when only a budget cutoff made the workspace `partial`. Prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
+      "id": "doctor/partial-analysis",
+      "impact": "Missing facts, unresolved dynamic imports, unreadable source files recorded in `imports.sourceReadFailures`, budget-limited persisted projects, or omitted workspace projects reduce confidence and can hide relevant findings. Source read failures make project or workspace input `unknown`; a pure analysis-budget cutoff is `partial`. Incomplete workspace evidence suppresses absence-based federation rules (`host-gaps`, `ghost-shares`, `missing-provider`, and `external-runtime-provider-missing`) while positive mismatches remain useful. Package-capable unresolved dynamics suppress workspace absence certainty without changing the ordinary project exit code.",
+      "sources": ["https://module-federation.io/configure/index.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/federation/circular-remote-graph",
+      "fix": "Keep valid `loaded-first` bi-directional setups. For a risky cycle, use `loaded-first`, add startup fallback handling, or make the remote edge on the startup path lazy.",
+      "id": "federation/circular-remote-graph",
+      "impact": "A remote cycle is valid Module Federation topology by itself. MFDoctor warns only when a strongly connected group contains a `version-first` member that eagerly loads a remote during startup.",
+      "sources": [
+        "https://module-federation.io/configure/shareStrategy.html",
+        "https://module-federation.io/configure/remotes.html",
+        "https://github.com/module-federation/module-federation-examples/tree/master/bi-directional"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/federation/external-runtime-provider-missing",
+      "fix": "Enable `provideExternalRuntime` on one top-level pure consumer.",
+      "id": "federation/external-runtime-provider-missing",
+      "impact": "External-runtime remotes cannot start without a federation-wide provider.",
+      "sources": ["https://module-federation.io/configure/experiments.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "performance",
+      "defaultSeverity": "info",
+      "documentation": "/rules/federation/ghost-shares",
+      "fix": "Remove the unused shared entry, or add matching `shared` declarations where other projects actually consume the package.",
+      "id": "federation/ghost-shares",
+      "impact": "A package is declared in `shared` by only one project and is unused elsewhere in the federation graph, creating one-sided version coupling.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "performance",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/federation/host-gaps",
+      "fix": "Add the package to `shared` (usually as a singleton) in every participating project that imports it.",
+      "id": "federation/host-gaps",
+      "impact": "A package used by two or more federation projects is missing from every `shared` config, so each app may bundle its own copy.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "error",
+      "documentation": "/rules/federation/missing-provider",
+      "fix": "Let at least one build provide the package or restore a local fallback.",
+      "id": "federation/missing-provider",
+      "impact": "Workspace evidence shows consumers disabled their fallback and no build provides the package. A lone `import: false` without sibling absence proof is `reliability/shared-import-false` instead.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/federation/name-conflict",
+      "fix": "Give every participating container a unique stable name.",
+      "id": "federation/name-conflict",
+      "impact": "Duplicate container names collide in runtime data and global chunk storage.",
+      "sources": ["https://module-federation.io/configure/name.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/federation/share-scope-mismatch",
+      "fix": "Align top-level, remote, and shared-item scopes intentionally.",
+      "id": "federation/share-scope-mismatch",
+      "impact": "Projects in different scopes cannot reuse the same shared provider.",
+      "sources": ["https://module-federation.io/configure/shareScope.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/federation/share-strategy-mismatch",
+      "fix": "Pick one federation-wide `shareStrategy`, or document intentional per-app exceptions.",
+      "id": "federation/share-strategy-mismatch",
+      "impact": "Hosts and remotes that disagree on `version-first` vs `loaded-first` (or omitted vs an explicit strategy) negotiate shared versions differently at startup.",
+      "sources": ["https://module-federation.io/configure/shareStrategy.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/federation/version-conflict",
+      "fix": "Align lockfiles and compatible `requiredVersion` ranges.",
+      "id": "federation/version-conflict",
+      "impact": "No installed provider version satisfies every consumer range.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "performance",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/performance/asset-budget",
+      "fix": "Reduce the oversized entry, expose, or shared assets, or raise `rules[\"performance/asset-budget\"]` byte limits. Review the reported asset list before changing the budget.",
+      "id": "performance/asset-budget",
+      "impact": "Federation assets that exceed project budgets slow startup and transfer more bytes than planned. Overlapping manifest groups are merged before the comparison so one physical asset is not counted twice.",
+      "sources": [
+        "https://module-federation.io/configure/manifest.html",
+        "https://module-federation.io/configure/shareStrategy.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "performance",
+      "defaultSeverity": "info",
+      "documentation": "/rules/performance/version-first-startup",
+      "fix": "Use `loaded-first` when on-demand loading is more important than highest-version selection.",
+      "id": "performance/version-first-startup",
+      "impact": "`version-first` loads all remote entries during initialization, adding startup work.",
+      "sources": ["https://module-federation.io/configure/shareStrategy.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "performance",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/performance/vite-bundle-all-css",
+      "fix": "Disable `bundleAllCSS` unless every expose needs the complete stylesheet set.",
+      "id": "performance/vite-bundle-all-css",
+      "impact": "Vite attaches all bundle CSS to every expose, which can duplicate transfer and style work.",
+      "sources": ["https://github.com/module-federation/vite"],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/reliability/async-startup-library-promise",
+      "fix": "Make consumers await it or keep synchronous startup for that library.",
+      "id": "reliability/async-startup-library-promise",
+      "impact": "Async startup changes synchronous library entry exports into a Promise contract.",
+      "sources": ["https://module-federation.io/configure/experiments.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/reliability/external-runtime-provider-unverified",
+      "fix": "Verify a pure top consumer provides the runtime before remote execution.",
+      "id": "reliability/external-runtime-provider-unverified",
+      "impact": "A remote fails if `_FEDERATION_RUNTIME_CORE` is absent or initialized too late.",
+      "sources": ["https://module-federation.io/configure/experiments.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/reliability/shared-import-false",
+      "fix": "Guarantee a provider loads first or restore a local fallback.",
+      "id": "reliability/shared-import-false",
+      "impact": "With `import: false`, a federation participant has no local fallback if another provider is missing. When workspace evidence shows no provider at all, `federation/missing-provider` owns that finding instead.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/reliability/snapshot-capability-disabled",
+      "fix": "Enable snapshots when those features are part of the deployment contract.",
+      "id": "reliability/snapshot-capability-disabled",
+      "impact": "Snapshot removal disables manifest remotes, preload, dynamic type hints, HMR, and DevTools data.",
+      "sources": [
+        "https://github.com/module-federation/vite",
+        "https://github.com/module-federation/core"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/reliability/tree-shaking-server-calc-contract",
+      "fix": "Set `treeShakingDir`, merge all consumer exports, and publish matching secondary artifacts.",
+      "id": "reliability/tree-shaking-server-calc-contract",
+      "impact": "Server-calculated shared artifacts need a known fallback output and deployment pipeline.",
+      "sources": [
+        "https://module-federation.io/configure/treeShakingDir.html",
+        "https://module-federation.io/configure/treeShakingSharedPlugins.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/reliability/version-first-offline-remotes",
+      "fix": "Use `loaded-first` when delayed remote failure is acceptable, or keep `version-first` and add `@module-federation/retry-plugin` / an `errorLoadRemote` recovery plugin. A runtime plugin that deliberately sets `shareStrategy` to `loaded-first` (including Modern's shared-strategy plugin) is treated as the loaded-first choice.",
+      "id": "reliability/version-first-offline-remotes",
+      "impact": "An unavailable remote can break startup before its exposed module is requested. The `demo` policy only softens this recommendation when every remote is an explicitly known-local bare/relative entry or loopback URL during development; external, authenticated non-loopback, unknown, and CI remotes remain visible.",
+      "sources": [
+        "https://module-federation.io/configure/shareStrategy.html",
+        "https://module-federation.io/configure/runtimeplugins.html",
+        "https://github.com/module-federation/core/tree/main/packages/retry-plugin"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "info",
+      "documentation": "/rules/reliability/vite-fixed-parse-timeout",
+      "fix": "Prefer `moduleParseIdleTimeout` so only inactivity ends parsing.",
+      "id": "reliability/vite-fixed-parse-timeout",
+      "impact": "A busy large build can exceed a fixed timeout and produce incomplete remote/shared analysis.",
+      "sources": ["https://github.com/module-federation/vite"],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/runtime-plugins/create-script-cors-parity",
+      "fix": "Mirror crossorigin (and credentials where applicable) on createLink; keep fetch credentials consistent.",
+      "id": "runtime-plugins/create-script-cors-parity",
+      "impact": "CORS on createScript without matching createLink makes preload and load use different cache keys.",
+      "sources": [
+        "https://module-federation.io/guide/troubleshooting/runtime.html",
+        "https://module-federation.io/guide/runtime/runtime-hooks.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "info",
+      "documentation": "/rules/runtime-plugins/create-script-without-link",
+      "fix": "Add createLink when preloadRemote or CSS/JS link loading is in play, or suppress if preload is unused.",
+      "id": "runtime-plugins/create-script-without-link",
+      "impact": "A createScript hook without createLink can waste preload work when link-based loading is used.",
+      "sources": [
+        "https://module-federation.io/guide/troubleshooting/runtime.html",
+        "https://module-federation.io/guide/runtime/runtime-hooks.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/runtime-plugins/invalid-factory",
+      "fix": "Export a factory or plugin object that includes a stable `name` plus the hooks you intend to run.",
+      "id": "runtime-plugins/invalid-factory",
+      "impact": "A runtime plugin without a factory or usable `name` is ignored at runtime (silent no-op).",
+      "sources": [
+        "https://module-federation.io/configure/runtimeplugins.html",
+        "https://module-federation.io/guide/runtime/runtime-plugins.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "error",
+      "documentation": "/rules/runtime/error-correlated",
+      "fix": "Use the RUNTIME code with the matched build facts; do not infer browser behavior from static analysis alone.",
+      "id": "runtime/error-correlated",
+      "impact": "A stable RUNTIME error code from an imported browser trace was matched to offline build evidence.",
+      "sources": ["https://module-federation.io/plugin/plugins/observability-plugin"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "error",
+      "documentation": "/rules/runtime/init-failed",
+      "fix": "Verify async startup, external runtime provider order, and runtime plugins against MFDoctor project facts.",
+      "id": "runtime/init-failed",
+      "impact": "Container initialization failed before exposes or shared resolution could finish.",
+      "sources": [
+        "https://module-federation.io/plugin/plugins/observability-plugin",
+        "https://module-federation.io/configure/experiments.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "error",
+      "documentation": "/rules/runtime/remote-load-failed",
+      "fix": "Compare the redacted entry URL and manifest metadata with the producer build output.",
+      "id": "runtime/remote-load-failed",
+      "impact": "A browser Observability trace failed while loading a remote manifest, entry, expose, or factory.",
+      "sources": ["https://module-federation.io/plugin/plugins/observability-plugin"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/runtime/remote-unknown",
+      "fix": "Collect project.json for every host and remote, or correct the remote name in the trace source.",
+      "id": "runtime/remote-unknown",
+      "impact": "The trace names a remote that is absent from loaded MFDoctor project facts.",
+      "sources": ["https://module-federation.io/plugin/plugins/observability-plugin"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "error",
+      "documentation": "/rules/runtime/shared-mismatch",
+      "fix": "Align shared versions, singleton/import settings, and providers across hosts and remotes.",
+      "id": "runtime/shared-mismatch",
+      "impact": "Runtime shared selection conflicts with installed versions, required ranges, or provider config.",
+      "sources": [
+        "https://module-federation.io/plugin/plugins/observability-plugin",
+        "https://module-federation.io/configure/shared.html"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "security",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/security/get-public-path-dynamic-code",
+      "fix": "Keep it static, review it as code, and never concatenate untrusted data.",
+      "id": "security/get-public-path-dynamic-code",
+      "impact": "Module Federation evaluates this string with `new Function` in the consumer.",
+      "sources": ["https://module-federation.io/configure/getpublicpath.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "performance",
+      "defaultSeverity": "info",
+      "documentation": "/rules/shared/candidate",
+      "fix": "Evaluate sharing it as a singleton across all participating projects.",
+      "id": "shared/candidate",
+      "impact": "A stateful framework dependency may be bundled separately by host and remote.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "performance",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/shared/deep-import-bypass",
+      "fix": "Prefer root imports (for example `import { cloneDeep } from \"lodash\"`), or add the exact subpath keys to `shared`. For React and React DOM subpaths, use `shared/prefix-share-recommended`. Suppress intentional cases with `rules[\"shared/deep-import-bypass\"]` or `deepImportAllowlist`.",
+      "id": "shared/deep-import-bypass",
+      "impact": "Subpath imports bypass Module Federation shared-scope negotiation when only the root package is declared in `shared`, so each microfrontend may bundle its own copy.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "performance",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/shared/eager-without-singleton",
+      "fix": "Make it singleton when safe, or remove eager loading.",
+      "id": "shared/eager-without-singleton",
+      "impact": "An eager non-singleton can add copies to initial chunks without guaranteeing reuse.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/shared/package-path-missing",
+      "fix": "Point `packagePath` at an existing package directory or entry file (relative to the project root, or an absolute path). Remove the field when Node module resolution should be used instead. Unknown bundlers skip this check rather than inventing a disk finding.",
+      "id": "shared/package-path-missing",
+      "impact": "`shared[pkg].packagePath` redirects where the bundler reads the shared package (version, singleton fallback). A path that is missing on disk makes version/singleton negotiation fail at build or runtime with no other MFDoctor finding.",
+      "sources": [
+        "https://module-federation.io/configure/shared.html",
+        "https://github.com/originjs/vite-plugin-federation/blob/main/README.md"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "performance",
+      "defaultSeverity": "error",
+      "documentation": "/rules/shared/prefix-share-recommended",
+      "fix": "Add `\"react/\"` / `\"react-dom/\"` to `shared`, or add only the exact observed subpaths. Turn `rules[\"shared/prefix-share-recommended\"]` off or baseline the fingerprint when the import boundary is intentional.",
+      "id": "shared/prefix-share-recommended",
+      "impact": "Observed `react/...` or `react-dom/...` imports are not covered by the root shared key, so framework subpaths can bypass shared-scope negotiation and create duplicate renderer/runtime modules. Bridge projects use the focused `bridge/react-dom-prefix-missing` contract instead of this rule.",
+      "sources": [
+        "https://module-federation.io/configure/shared.html",
+        "https://module-federation.io/guide/bridge/react-bridge"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/shared/react-host-missing",
+      "fix": "Declare imported `react` and `react-dom` packages as singleton shared dependencies, for example `{ singleton: true }`, or suppress the rule when the separate runtime is intentional.",
+      "id": "shared/react-host-missing",
+      "impact": "A React host that loads remotes without sharing its imported React runtime can create separate React or renderer instances across the federation graph.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/shared/singleton-mismatch",
+      "fix": "Use one federation-wide singleton policy for stateful packages.",
+      "id": "shared/singleton-mismatch",
+      "impact": "Projects disagree on whether multiple instances are allowed.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/shared/singleton-risk",
+      "fix": "Share stateful framework runtimes as singletons and align their versions.",
+      "id": "shared/singleton-risk",
+      "impact": "Multiple framework runtimes can split global state, contexts, hooks, or renderers.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/shared/subpath-version-unresolved",
+      "fix": "Set an explicit `version` (or a concrete `requiredVersion` such as `\"^19.1.0\"`) on the prefix/subpath shared key, or ensure the parent package is installed so `@module-federation/vite` can inherit its version. Non-Vite adapters are out of scope for this rule.",
+      "id": "shared/subpath-version-unresolved",
+      "impact": "On Vite, prefix and package-subpath shared keys inherit provider `version` from the parent package. When that resolution fails, the shared entry ships with `version: undefined`, which breaks singleton / `requiredVersion` matching and can crash remotes that expect the host to provide the share.",
+      "sources": [
+        "https://module-federation.io/configure/shared.html",
+        "https://github.com/module-federation/vite/blob/main/src/utils/normalizeModuleFederationOptions.ts"
+      ],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "performance",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/shared/unused",
+      "fix": "Remove stale entries, or ensure usage is visible via static imports, string-literal `import()` / `loadShare`, or an opt-in Observability runtime trace.",
+      "id": "shared/unused",
+      "impact": "Unused shared declarations add runtime bookkeeping and can signal stale config.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/shared/version-unsatisfied",
+      "fix": "Align installed versions and `requiredVersion` across the federation.",
+      "id": "shared/version-unsatisfied",
+      "impact": "The installed provider does not satisfy the configured consumer range.",
+      "sources": ["https://module-federation.io/configure/shared.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/ssr/node-library-dts",
+      "fix": "Set `library: { type: \"commonjs-module\" }` (or another commonjs-like type) and `dts: false` on node/SSR producers. Set `ssrMode: \"browser-only\"` when not SSR, or turn the rule `\"off\"`.",
+      "id": "ssr/node-library-dts",
+      "impact": "Node/SSR producers that keep ESM-style `library.type` or enabled `dts` diverge from the commonjs dual-env contract used by server remotes.",
+      "sources": ["https://module-federation.io/blog/node"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/ssr/node-remote-manifest",
+      "fix": "Point node/SSR remotes at `/ssr/mf-manifest.json` (or another env-specific path). Set `ssrMode: \"browser-only\"` when the build is not SSR, or turn the rule `\"off\"`.",
+      "id": "ssr/node-remote-manifest",
+      "impact": "Node/SSR consumers that load the browser `mf-manifest.json` miss the server remote graph and can fail to resolve remotes during SSR.",
+      "sources": [
+        "https://module-federation.io/guide/basic/manifest-snapshot.html",
+        "https://module-federation.io/integrations/build-tool/rsbuild"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/ssr/node-runtime-plugin-missing",
+      "fix": "Add `@module-federation/node/runtimePlugin` to `runtimePlugins`. Set `ssrMode: \"browser-only\"` when not SSR, or turn the rule `\"off\"`.",
+      "id": "ssr/node-runtime-plugin-missing",
+      "impact": "Without `@module-federation/node/runtimePlugin`, Node Federation hosts cannot load remotes with the server runtime contract.",
+      "sources": [
+        "https://module-federation.io/plugin/plugins/",
+        "https://module-federation.io/blog/node"
+      ],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/ssr/remote-entry-target-mismatch",
+      "fix": "Point browser remotes at `remoteEntry.js` (or the client `mf-manifest.json`) and node/SSR remotes at `remoteEntry.ssr.js` or `/ssr/...`. Requires `experiments.target` / `vite.target` / unambiguous `builds.targetKind` on the consumer; missing targetKind skips. Set `ssrMode: \"browser-only\"` or `\"node\"` to force a side, or turn the rule `\"off\"`.",
+      "id": "ssr/remote-entry-target-mismatch",
+      "impact": "A browser host that loads `remoteEntry.ssr.js` (or an SSR-specific path) executes the server container in the client. The reverse — an SSR host loading a browser `remoteEntry.js` — misses the server runtime contract. Dual-env Nitro pairing of client+server outputs is not this check.",
+      "sources": [
+        "https://module-federation.io/guide/basic/manifest-snapshot.html",
+        "https://module-federation.io/blog/node"
+      ],
+      "supportedBundlers": ["vite", "rspack"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/vite/alias-share-bypass",
+      "fix": "Remove the overlapping alias, drop the package from shared, or allowlist intentional bypasses.",
+      "id": "vite/alias-share-bypass",
+      "impact": "resolve.alias can rewrite imports around the share scope and duplicate singleton packages.",
+      "sources": [
+        "https://github.com/module-federation/vite",
+        "https://module-federation.io/configure/shared.html"
+      ],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/vite/hashed-remote-filename",
+      "fix": "Use a stable `filename` such as `remoteEntry.js` for the container entry.",
+      "id": "vite/hashed-remote-filename",
+      "impact": "Hashed remote entry filenames invalidate consumer URLs whenever the producer rebuilds.",
+      "sources": [
+        "https://github.com/module-federation/vite",
+        "https://module-federation.io/configure/filename.html"
+      ],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "error",
+      "documentation": "/rules/vite/host-init-inject-ssr",
+      "fix": "Set `hostInitInjectLocation: 'entry'` for SSR / Nitro / Nuxt-style apps.",
+      "id": "vite/host-init-inject-ssr",
+      "impact": "SSR and HTML-less frameworks need host init injected into the entry, not the HTML document, or federation bootstrap never runs on the server.",
+      "sources": ["https://github.com/module-federation/vite"],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "info",
+      "documentation": "/rules/vite/ignore-origin",
+      "fix": "Set Vite `server.origin` to the public deployment base you tested, or turn `ignoreOrigin` off. CLI/config-only analysis without a plugin origin fact stays unknown rather than claiming a pass.",
+      "id": "vite/ignore-origin",
+      "impact": "`ignoreOrigin` changes proxy entry origin behavior. Without a tested Vite `server.origin`, remote URLs can resolve against the wrong host.",
+      "sources": ["https://github.com/module-federation/vite"],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "info",
+      "documentation": "/rules/vite/manual-chunks-conflict",
+      "fix": "Keep federation runtime chunks isolated; move general splitting outside that graph or allowlist a proven layout. Treat the finding as informational until a production build or runtime trace confirms an ordering problem.",
+      "id": "vite/manual-chunks-conflict",
+      "impact": "Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk ownership and create init-order cycles. This is an advisory signal because static config cannot prove a runtime cycle for every framework.",
+      "sources": ["https://github.com/module-federation/vite"],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "info",
+      "documentation": "/rules/vite/remote-hmr-dev",
+      "fix": "Enable `remoteHmr` in development profiles when remotes/exposes are active.",
+      "id": "vite/remote-hmr-dev",
+      "impact": "Without `remoteHmr`, local Vite remotes miss cross-container hot updates.",
+      "sources": ["https://github.com/module-federation/vite"],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/vite/remotes-prefer-module",
+      "fix": "Prefer object remotes with `type: 'module'` for Vite↔Vite ESM. For webpack/rspack remotes, set an explicit type such as `global`, or keep `varFilename` when this app intentionally emits a var entry for var hosts.",
+      "id": "vite/remotes-prefer-module",
+      "impact": "Vite string remotes and missing/`var` type default to script-style loading. Vite↔Vite ESM remotes need explicit `type: 'module'`; mixed bundlers should declare an explicit non-default type (for example `global`) or document a `varFilename` producer interop path.",
+      "sources": [
+        "https://github.com/module-federation/vite",
+        "https://module-federation.io/configure/remotes.html"
+      ],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "info",
+      "documentation": "/rules/vite/server-origin",
+      "fix": "Set Vite `server.origin` to the URL remotes should publish for consumers. MFDoctor recommends `http://localhost:<server.port>` (default port 5173); configure `rules[\"vite/server-origin\"].recommendedOrigin` or turn off `requireServerOrigin` when your topology differs.",
+      "id": "vite/server-origin",
+      "impact": "Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development.",
+      "sources": ["https://github.com/module-federation/vite"],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "reliability",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/vite/ssr-nitro-externals",
+      "fix": "Align `shared` React with `ssrExternals` / `ssrEntryLoader` for the SSR runtime, or document an intentional dual-instance path.",
+      "id": "vite/ssr-nitro-externals",
+      "impact": "Shared React (or react-dom) can conflict with Nitro/SSR externals and `ssrEntryLoader` when the server expects a different module instance.",
+      "sources": ["https://github.com/module-federation/vite"],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "tooling",
+      "defaultSeverity": "info",
+      "documentation": "/rules/vite/var-filename-interop",
+      "fix": "Keep `varFilename` when serving webpack/rspack var hosts. Prefer `type: 'module'` remotes when this app is a Vite consumer talking to Vite producers.",
+      "id": "vite/var-filename-interop",
+      "impact": "`varFilename` emits an additional global-format remote entry so var hosts (webpack/rspack) can load this Vite producer.",
+      "sources": ["https://github.com/module-federation/vite"],
+      "supportedBundlers": ["vite"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
+      "documentation": "/rules/vite/virtual-module-dir",
+      "fix": "Use one simple directory name without slashes, for example `__mf__`.",
+      "id": "vite/virtual-module-dir",
+      "impact": "A `virtualModuleDir` with slashes is not a single virtual folder. Nested names collide with virtual module IDs and break Vite federation bootstrap.",
+      "sources": ["https://github.com/module-federation/vite"],
+      "supportedBundlers": ["vite"]
+    }
+  ],
+  "schemaVersion": 1
 }

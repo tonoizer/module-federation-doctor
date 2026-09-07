@@ -14,6 +14,26 @@
         "remote": "shop"
       },
       "detailsSchema": "remotes.config.v1",
+      "documentation": "/rules/config/js-remote-without-type-urls",
+      "evidence": {
+        "alias": "shop",
+        "entry": "http://cdn.example.com/remoteEntry.js",
+        "remote": "shop"
+      },
+      "fingerprint": "fc6adef144644fd46794d3d5f4ffe757a461927bd48b541633d5cb2aee1703cb",
+      "message": "Remote \"shop\" points at a .js entry while dts consumeTypes is on and remoteTypeUrls does not cover it.",
+      "project": "@mfdoctor-showcase/remote-http-insecure",
+      "ruleId": "config/js-remote-without-type-urls",
+      "schemaVersion": 1,
+      "severity": "warning",
+      "suggestion": "Point the remote at `mf-manifest.json` so type URLs come from the manifest, or set `dts.consumeTypes.remoteTypeUrls` for this remote."
+    },
+    {
+      "details": {
+        "entry": "http://cdn.example.com/remoteEntry.js",
+        "remote": "shop"
+      },
+      "detailsSchema": "remotes.config.v1",
       "documentation": "/rules/config/remote-http-insecure",
       "evidence": {
         "entry": "http://cdn.example.com/remoteEntry.js",
@@ -39,6 +59,6 @@
     "projects": 1,
     "score": 99,
     "scoreLabel": "Great",
-    "warnings": 1
+    "warnings": 2
   }
 }

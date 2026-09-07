@@ -1,6 +1,6 @@
-Agent prompts (top 1)
+Agent prompts (top 2)
 
---- prompt 1/1 ---
+--- prompt 1/2 ---
 # Fix: config/remote-http-insecure
 
 Fix exactly this MFDoctor finding. Do not change unrelated rules.
@@ -25,6 +25,40 @@ Use HTTPS so remote code cannot be changed in transit.
 
 ## Docs
 - MFDoctor: https://mfdoctor.kevinbeier.com/rules/config/remote-http-insecure
+- Source: https://module-federation.io/configure/remotes.html
+
+## Verify
+```bash
+mfdoctor check
+```
+
+--- prompt 2/2 ---
+# Fix: config/js-remote-without-type-urls
+
+Fix exactly this MFDoctor finding. Do not change unrelated rules.
+Do not suggest suppressions or baseline entries unless the user asks.
+
+## Finding
+- Rule: `config/js-remote-without-type-urls`
+- Severity: warning
+- Project: @mfdoctor-showcase/remote-http-insecure
+- Fingerprint: `fc6adef144644fd46794d3d5f4ffe757a461927bd48b541633d5cb2aee1703cb`
+- Message: Remote "shop" points at a .js entry while dts consumeTypes is on and remoteTypeUrls does not cover it.
+
+## Impact
+Hosts that consume types cannot resolve a stable type archive URL from a direct `.js` remote entry. Manifest remotes publish type metadata; otherwise `consumeTypes.remoteTypeUrls` must name the zip/api URLs.
+
+## Fix
+Point the remote at `mf-manifest.json` so type URLs come from the manifest, or set `dts.consumeTypes.remoteTypeUrls` for this remote.
+
+## Evidence
+- alias: shop
+- entry: http://cdn.example.com/remoteEntry.js
+- remote: shop
+
+## Docs
+- MFDoctor: https://mfdoctor.kevinbeier.com/rules/config/js-remote-without-type-urls
+- Source: https://module-federation.io/configure/dts.html
 - Source: https://module-federation.io/configure/remotes.html
 
 ## Verify

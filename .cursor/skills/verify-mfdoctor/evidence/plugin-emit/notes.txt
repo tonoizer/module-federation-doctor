@@ -1,7 +1,8 @@
 feature-id: plugin-emit
 entry-point: pnpm exec vp run --filter @mfdoctor-standalone/vite build
 project.json: present
-report-rule-ids: ['config/async-boundary-missing', 'shared/prefix-share-recommended', 'config/remote-http-insecure', 'reliability/version-first-offline-remotes', 'config/remote-manifest-recommended', 'vite/server-origin']
+report-rule-ids: ['config/async-boundary-missing', 'shared/prefix-share-recommended', 'config/js-remote-without-type-urls', 'config/remote-http-insecure', 'reliability/version-first-offline-remotes', 'config/remote-manifest-recommended', 'vite/server-origin']
 expected-core-present: config/remote-http-insecure, config/remote-manifest-recommended, reliability/version-first-offline-remotes
 build-exit: 0
-note: optional post-emit CLI check re-analyzes statically (still missing-emit; this Vite Plus cell also reports partial-bundler); remote ruleIds can differ from emit report — emit report is authoritative
+bundler: vite@8.1.5 lifecycle.flavor=rolldown-vite (Rolldown engine; not the vite-plus package)
+note: optional post-emit CLI check re-analyzes statically (still missing-emit; this rolldown-vite cell also reports partial-bundler); remote ruleIds can differ from emit report — emit report is authoritative
