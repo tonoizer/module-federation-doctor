@@ -120,9 +120,30 @@
       },
       {
         "bundler": "modern",
-        "coverage": ["Modern.js adapter", "Rspack lifecycle", "production"],
+        "coverage": [
+          "Modern.js adapter",
+          "Rspack lifecycle",
+          "production",
+          "App Tools blocked: lockfile trustPolicy no-downgrade (last provenance 2.63.3)"
+        ],
         "fixture": "examples/compatibility/modern",
         "id": "modern"
+      },
+      {
+        "bundler": "vite",
+        "coverage": [
+          "Nuxt module adapter",
+          "vite:extendConfig",
+          "Vite-under-the-hood production emit"
+        ],
+        "fixture": "examples/compatibility/nuxt",
+        "id": "nuxt"
+      },
+      {
+        "bundler": "vite",
+        "coverage": ["Vite Plus", "Rolldown emit lifecycle", "closeBundle post-emit", "production"],
+        "fixture": "examples/compatibility/rolldown",
+        "id": "rolldown"
       }
     ],
     "partial": ["rolldown", "modern", "nuxt"],
@@ -244,7 +265,7 @@
   },
   "package": {
     "name": "@tonoizer/mfdoctor",
-    "version": "1.1.0"
+    "version": "2.0.0"
   },
   "schemaVersion": 1,
   "schemaVersions": {

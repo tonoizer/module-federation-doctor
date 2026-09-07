@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "ruleCount": 113,
+  "ruleCount": 127,
   "sampleRuleIds": [
     "artifact/dts-disabled",
     "artifact/expose-missing",

@@ -1,10 +1,16 @@
 {
+  "schemaVersion": 1,
+  "entryCount": 2,
   "entries": [
+    {
+      "fingerprint": "fc6adef144644fd46794d3d5f4ffe757a461927bd48b541633d5cb2aee1703cb",
+      "project": "@mfdoctor-showcase/remote-http-insecure",
+      "ruleId": "config/js-remote-without-type-urls"
+    },
     {
       "fingerprint": "aad0eafc068fda2276d500d41467e3aff6e518386627d6d6f1803602c6d19e7d",
       "project": "@mfdoctor-showcase/remote-http-insecure",
       "ruleId": "config/remote-http-insecure"
     }
-  ],
-  "schemaVersion": 1
+  ]
 }

@@ -1,1 +1,1 @@
-Wrote 1 baseline entry to /tmp/mfdoctor-verify-maintain-3300/mfdoctor.baseline.json
+Wrote 2 baseline entries to /tmp/mfdoctor-verify-maintain-4588/remote-http-insecure/mfdoctor.baseline.json

@@ -1,6 +1,6 @@
 feature-id: rules
 catalog-exit: 0
-ruleCount: 113
+ruleCount: 127
 schemaVersion: 1
 one-exit: 0
 one-id: config/remote-http-insecure
