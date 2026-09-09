@@ -9,7 +9,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@module-federation/vite": "1.21.0",
+    "@module-federation/vite": "1.21.1",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

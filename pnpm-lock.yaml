@@ -139,8 +139,8 @@ importers:
   examples/compatibility/nuxt:
     dependencies:
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
+        specifier: 1.21.1
+        version: 1.21.1(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
     devDependencies:
       '@tonoizer/mfdoctor':
         specifier: workspace:*
@@ -152,8 +152,8 @@ importers:
   examples/compatibility/rolldown:
     dependencies:
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.24)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39)(yaml@2.9.0))(typescript@5.9.3)
+        specifier: 1.21.1
+        version: 1.21.1(@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.24)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39)(yaml@2.9.0))(typescript@5.9.3)
     devDependencies:
       '@tonoizer/mfdoctor':
         specifier: workspace:*
@@ -197,8 +197,8 @@ importers:
   examples/compatibility/vite-cjs:
     dependencies:
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(typescript@5.9.3)(vite@5.4.21(@types/node@26.2.0)(lightningcss@1.33.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0))
+        specifier: 1.21.1
+        version: 1.21.1(typescript@5.9.3)(vite@5.4.21(@types/node@26.2.0)(lightningcss@1.33.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0))
     devDependencies:
       '@tonoizer/mfdoctor':
         specifier: workspace:*
@@ -210,8 +210,8 @@ importers:
   examples/compatibility/vite-multi-instance:
     dependencies:
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(typescript@5.9.3)(vite@5.4.21(@types/node@26.2.0)(lightningcss@1.33.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0))
+        specifier: 1.21.1
+        version: 1.21.1(typescript@5.9.3)(vite@5.4.21(@types/node@26.2.0)(lightningcss@1.33.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0))
     devDependencies:
       '@tonoizer/mfdoctor':
         specifier: workspace:*
@@ -223,8 +223,8 @@ importers:
   examples/compatibility/vite-nitro-react:
     dependencies:
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
+        specifier: 1.21.1
+        version: 1.21.1(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -276,8 +276,8 @@ importers:
         specifier: workspace:*
         version: link:../../mixed-federation/shared-ui
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
+        specifier: 1.21.1
+        version: 1.21.1(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -381,8 +381,8 @@ importers:
         specifier: workspace:*
         version: link:../shared-ui
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
+        specifier: 1.21.1
+        version: 1.21.1(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -492,8 +492,8 @@ importers:
         specifier: workspace:*
         version: link:../shared-ui
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
+        specifier: 1.21.1
+        version: 1.21.1(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -597,8 +597,8 @@ importers:
         specifier: workspace:*
         version: link:../shared-ui
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
+        specifier: 1.21.1
+        version: 1.21.1(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -849,8 +849,8 @@ importers:
   examples/standalone-findings/vite:
     dependencies:
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
+        specifier: 1.21.1
+        version: 1.21.1(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -918,8 +918,8 @@ importers:
   fixtures/shared-subpath-version/resolved:
     dependencies:
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.24)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39)(yaml@2.9.0))(typescript@5.9.3)
+        specifier: 1.21.1
+        version: 1.21.1(@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.24)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39)(yaml@2.9.0))(typescript@5.9.3)
       react:
         specifier: 19.1.1
         version: 19.1.1
@@ -927,8 +927,8 @@ importers:
   fixtures/shared-subpath-version/unresolved:
     dependencies:
       '@module-federation/vite':
-        specifier: 1.21.0
-        version: 1.21.0(@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.24)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39)(yaml@2.9.0))(typescript@5.9.3)
+        specifier: 1.21.1
+        version: 1.21.1(@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.24)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39)(yaml@2.9.0))(typescript@5.9.3)
 
 packages:
 
@@ -1499,8 +1499,8 @@ packages:
   '@module-federation/third-party-dts-extractor@2.9.0':
     resolution: {integrity: sha512-R1Xuqnqzw6wQxWV3yU9fX1FydXAeZF2TNVFAVo1N1oLBA2j5y7aUO/Fc3VSNgd9/gxMzJgTVBdA+nMiD2SFCgg==}
 
-  '@module-federation/vite@1.21.0':
-    resolution: {integrity: sha512-HVrbTmV2/8gwzqspT4Pc7o3RzD4q7tm9wMtRlxHPkmljbB26Qnbbcc6ncocQ7yhIpUz/8/SJ45Sj5GWnzrj9cw==}
+  '@module-federation/vite@1.21.1':
+    resolution: {integrity: sha512-DuWlaYvnmcxyQVEtKNikfR33iKfzugje+K1BGKZbpdPBw1ACzcXIBVrdrEnN+A6yAbwy1QNV90MCZoAsXpkOdw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       vite: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
@@ -6792,7 +6792,7 @@ snapshots:
 
   '@module-federation/third-party-dts-extractor@2.9.0': {}
 
-  '@module-federation/vite@1.21.0(@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.24)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39)(yaml@2.9.0))(typescript@5.9.3)':
+  '@module-federation/vite@1.21.1(@voidzero-dev/vite-plus-core@0.2.9(@arethetypeswrong/core@0.18.5)(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(publint@0.3.24)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(typescript@5.9.3)(unrun@0.2.39)(yaml@2.9.0))(typescript@5.9.3)':
     dependencies:
       '@module-federation/dts-plugin': 2.9.0(typescript@5.9.3)
       '@module-federation/runtime': 2.9.0
@@ -6804,7 +6804,7 @@ snapshots:
       - utf-8-validate
       - vue-tsc
 
-  '@module-federation/vite@1.21.0(typescript@5.9.3)(vite@5.4.21(@types/node@26.2.0)(lightningcss@1.33.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0))':
+  '@module-federation/vite@1.21.1(typescript@5.9.3)(vite@5.4.21(@types/node@26.2.0)(lightningcss@1.33.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0))':
     dependencies:
       '@module-federation/dts-plugin': 2.9.0(typescript@5.9.3)
       '@module-federation/runtime': 2.9.0
@@ -6816,7 +6816,7 @@ snapshots:
       - utf-8-validate
       - vue-tsc
 
-  '@module-federation/vite@1.21.0(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))':
+  '@module-federation/vite@1.21.1(typescript@5.9.3)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.49.0)(yaml@2.9.0))':
     dependencies:
       '@module-federation/dts-plugin': 2.9.0(typescript@5.9.3)
       '@module-federation/runtime': 2.9.0
