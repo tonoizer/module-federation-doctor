@@ -60,6 +60,10 @@ minimumReleaseAgeExclude:
   - "@module-federation/sdk@2.9.0"
   - "@module-federation/third-party-dts-extractor@2.9.0"
   - "@module-federation/webpack-bundler-runtime@2.9.0"
+  # vitest 4.1.11 (Dependabot #444) pulls these transitive versions while they
+  # are still inside the ten-day window. Keep exact; drop when they age out.
+  - obug@2.2.1
+  - tinyexec@1.3.1
 # Reject releases whose npm trust evidence is weaker than an earlier release.
 trustPolicy: no-downgrade
 # Vite 5.4.21 is the security backport for intentional Vite 5 compatibility cells.
