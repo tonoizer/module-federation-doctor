@@ -91,9 +91,10 @@ dangerouslyAllowAllBuilds: false
 # react-router >=8.3.0. react-router-dom has no 8.x release yet.
 # Dependabot alert #48 / GHSA-2v37-7h3g-55p8 — nanoid <3.3.18 infinite loop when size is zero. Drop when upstream pins >=3.3.18.
 # Dependabot alerts #49–#52 — fast-uri <3.1.6 (GHSA-jqff-g426-hqxp, GHSA-f65p-4m7j-42xc, GHSA-5jgf-p345-68v8, GHSA-fph4-wmhf-6fwf). Drop when upstream pins >=3.1.6.
-# Dependabot alerts #54/#55 / GHSA-82fw-gwwq-j7x9 — vitest and @vitest/mocker
-# <4.1.11 path traversal via redirect mock. vite-plus@0.2.9 still pins 4.1.10.
-# Drop when vite-plus pins >=4.1.11.
+# Dependabot alerts #54/#55 / GHSA-82fw-gwwq-j7x9 — vitest/@vitest/mocker
+# <4.1.11 path traversal via redirect mock. Root is already vite-plus 0.3.0 +
+# vitest 4.1.11; remaining 4.1.10 came from examples/compatibility/rolldown
+# (vite-plus@0.2.9). Drop when that cell pins vite-plus that includes >=4.1.11.
 overrides:
   react-router: 8.3.0
   "nanoid@3": 3.3.18
