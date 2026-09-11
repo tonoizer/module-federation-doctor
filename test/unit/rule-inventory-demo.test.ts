@@ -90,3 +90,54 @@ describe("rule inventory demo coverage (BL-10)", () => {
     expect(generator).toContain("fixtures/adapters/cases.json");
   });
 });
+
+describe("emitCatalogRuleIds", () => {
+  it("extracts string ids from unquoted ruleIds arrays", () => {
+    expect(emitCatalogRuleIds(`ruleIds: ["config/a", "shared/b"]`)).toEqual([
+      "config/a",
+      "shared/b",
+    ]);
+    expect(emitCatalogRuleIds(`ruleIds:["compact"]`)).toEqual(["compact"]);
+    expect(emitCatalogRuleIds(`ruleIds : [ "spaced" ]`)).toEqual(["spaced"]);
+  });
+
+  it("extracts string ids from quoted ruleIds keys", () => {
+    expect(emitCatalogRuleIds(`"ruleIds": ["config/a"]`)).toEqual(["config/a"]);
+    expect(
+      emitCatalogRuleIds(`{
+      "ruleIds": [
+        "config/remote-manifest-recommended",
+        "shared/eager-without-singleton"
+      ]
+    }`),
+    ).toEqual(["config/remote-manifest-recommended", "shared/eager-without-singleton"]);
+  });
+
+  it("collects unique sorted ids from multiple blocks", () => {
+    expect(
+      emitCatalogRuleIds(`
+        ruleIds: ["shared/b", "config/a"]
+        "ruleIds": ["config/a", "runtime/c"]
+      `),
+    ).toEqual(["config/a", "runtime/c", "shared/b"]);
+  });
+
+  it("ignores empty arrays", () => {
+    expect(emitCatalogRuleIds(`ruleIds: []`)).toEqual([]);
+    expect(emitCatalogRuleIds(`"ruleIds": []`)).toEqual([]);
+    expect(emitCatalogRuleIds(`ruleIds: [] "ruleIds": []`)).toEqual([]);
+    expect(emitCatalogRuleIds(`ruleIds: [""]`)).toEqual([]);
+  });
+
+  it("closes each block at the first ] without nested quote or array parsing", () => {
+    expect(emitCatalogRuleIds(`ruleIds: [["inner"], "outer"]`)).toEqual(["inner"]);
+    expect(emitCatalogRuleIds(`ruleIds: ["plain-id"]`)).toEqual(["plain-id"]);
+  });
+
+  it("terminates quickly on pathological ruleIds:[ repetition", () => {
+    const started = Date.now();
+    const source = `${"ruleIds:[".repeat(20_000)}${'"ruleIds":['.repeat(20_000)}`;
+    expect(emitCatalogRuleIds(source)).toEqual([]);
+    expect(Date.now() - started).toBeLessThan(500);
+  });
+});
