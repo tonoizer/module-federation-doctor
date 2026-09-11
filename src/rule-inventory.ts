@@ -2270,7 +2270,7 @@ export interface InventoryDemoEntry {
 }
 
 const SHOWCASE_RULE_ID = /ruleId:\s*"([^"]+)"/g;
-const EMIT_RULE_IDS_BLOCK = /(?:ruleIds|"ruleIds")\s*:\s*\[([^\]]*)\]/g;
+const RULE_IDS_KEY = "ruleIds";
 
 function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort();
@@ -2280,10 +2280,54 @@ export function showcaseCatalogRuleIds(source: string): string[] {
   return uniqueSorted([...source.matchAll(SHOWCASE_RULE_ID)].map((match) => match[1] ?? ""));
 }
 
+function skipSpaces(source: string, index: number): number {
+  while (/\s/.test(source[index] ?? "")) index += 1;
+  return index;
+}
+
+/** Pull non-empty `"..."` slices; first closing quote wins (no escape processing). */
+function quotedStringsIn(block: string): string[] {
+  const quoted: string[] = [];
+  let cursor = 0;
+  while (cursor < block.length) {
+    const open = block.indexOf('"', cursor);
+    if (open === -1) break;
+    const close = block.indexOf('"', open + 1);
+    if (close === -1) break;
+    if (close - open > 1) quoted.push(block.slice(open + 1, close));
+    cursor = close + 1;
+  }
+  return quoted;
+}
+
+/**
+ * Linear scan for `ruleIds: [...]` / `"ruleIds": [...]`. Avoids the polynomial
+ * ReDoS in `(?:ruleIds|"ruleIds")\s*:\s*\[([^\]]*)\]` (CodeQL js/polynomial-redos).
+ * First `]` closes the array, matching the previous capture.
+ */
 export function emitCatalogRuleIds(source: string): string[] {
   const idsFound: string[] = [];
-  for (const block of source.matchAll(EMIT_RULE_IDS_BLOCK)) {
-    idsFound.push(...[...(block[1] ?? "").matchAll(/"([^"]+)"/g)].map((match) => match[1] ?? ""));
+  let cursor = 0;
+  while (cursor < source.length) {
+    const keyAt = source.indexOf(RULE_IDS_KEY, cursor);
+    if (keyAt === -1) break;
+    let afterKey = keyAt + RULE_IDS_KEY.length;
+    if (keyAt > 0 && source[keyAt - 1] === '"' && source[afterKey] === '"') afterKey += 1;
+    let index = skipSpaces(source, afterKey);
+    if (source[index] !== ":") {
+      cursor = afterKey;
+      continue;
+    }
+    index = skipSpaces(source, index + 1);
+    if (source[index] !== "[") {
+      cursor = afterKey;
+      continue;
+    }
+    const interiorStart = index + 1;
+    const close = source.indexOf("]", interiorStart);
+    if (close === -1) break;
+    idsFound.push(...quotedStringsIn(source.slice(interiorStart, close)));
+    cursor = close + 1;
   }
   return uniqueSorted(idsFound.filter(Boolean));
 }
