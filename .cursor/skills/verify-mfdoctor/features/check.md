@@ -45,6 +45,6 @@ Helper:
 
 - Do **not** claim the project is green from check alone — showcase/static check often reports `status.incompleteReasons` including `missing-emit` even when the process exits `0` or `1`.
 - `--diagnostics-dir` must stay inside the project root.
-- Prefer JSON over ANSI; with `--output -`, terminal findings move to stderr.
+- Prefer JSON over ANSI; with `--output -`, terminal findings move to stderr. `--output -` skips `report.json` but still writes `project.json` unless `--no-write` is also set.
 - Copying fixtures into `/tmp` avoids dirtying tracked `examples/` trees.
 - Showcase fixtures often turn `doctor/partial-analysis` **off**; rely on `status.incompleteReasons` / exit `2` (budget) rather than expecting that ruleId on every check.
