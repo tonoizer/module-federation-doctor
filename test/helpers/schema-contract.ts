@@ -201,6 +201,25 @@ export async function validateFixturePayloads(): Promise<void> {
           rejectEmbeddedCredentials: true,
         },
       },
+      operations: {
+        schemaVersion: 1,
+        commands: {
+          capabilities: {
+            description: "Print this machine-readable CLI discovery contract.",
+            formats: ["json"],
+            arguments: [],
+            options: [],
+            prerequisites: ["None."],
+            network: {
+              mode: "offline",
+              userInitiated: false,
+              behavior: "Reads local files only.",
+            },
+            writtenArtifacts: [],
+            errorCodes: {},
+          },
+        },
+      },
       bundlerMatrix: {
         source: "./fixtures/compatibility-matrix.json",
         supported: ["vite"],

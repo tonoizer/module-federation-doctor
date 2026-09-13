@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   FINDING_DETAILS_SCHEMAS,
   TYPED_DETAILS_RULE_IDS,
+  boundSafeEvidence,
+  buildFindingRepairContext,
   findingDetails,
+  findingRuleFamily,
   isKnownFindingDetailsSchema,
   readFindingDetails,
 } from "../../src/finding-details.js";
@@ -31,6 +34,74 @@ function finding(
 }
 
 describe("typed finding details (#136)", () => {
+  it("builds stable, bounded repair context without changing finding identity", () => {
+    const evidence = {
+      aToken: "secret-value",
+      source: "/workspace/src/entry.ts",
+      nested: { password: "also-secret" },
+      ...Object.fromEntries(Array.from({ length: 8 }, (_, index) => [`k${index}`, index])),
+    };
+    const context = buildFindingRepairContext(
+      {
+        ruleId: "shared/unused",
+        fingerprint: "fp-stable",
+        evidence,
+        detailsSchema: FINDING_DETAILS_SCHEMAS.SHARED_UNUSED,
+        details: { package: "react", source: "/workspace/src/entry.ts" },
+      },
+      {
+        projectDirectory: "/workspace",
+        reportPath: "/workspace/.mf/doctor/report.json",
+        jsonPointer: "/findings/0",
+      },
+    );
+
+    expect(findingRuleFamily("shared/unused")).toBe("shared");
+    expect(findingRuleFamily("unknown-rule")).toBe("unknown-rule");
+    expect(context).toMatchObject({
+      schemaVersion: 1,
+      ruleFamily: "shared",
+      ruleId: "shared/unused",
+      fingerprint: "fp-stable",
+      reportPath: "/workspace/.mf/doctor/report.json",
+      jsonPointer: "/findings/0",
+      detailsSchema: FINDING_DETAILS_SCHEMAS.SHARED_UNUSED,
+      details: { package: "react", source: "./src/entry.ts" },
+    });
+    expect(Object.keys(context.evidence)).toHaveLength(8);
+    expect(context.evidence.aToken).toBe("[REDACTED]");
+    expect(context.evidence.source).toBeUndefined();
+    expect(context.evidence.nested).toBeUndefined();
+    expect(JSON.stringify(context)).not.toContain("secret-value");
+    expect(JSON.stringify(context)).not.toContain("also-secret");
+  });
+
+  it("bounds and redacts standalone evidence deterministically", () => {
+    const bounded = boundSafeEvidence(
+      {
+        z: "last",
+        a: "first",
+        authorization: "Bearer secret",
+        long: "x".repeat(200),
+        ...Object.fromEntries(Array.from({ length: 8 }, (_, index) => [`k${index}`, index])),
+      },
+      "/workspace",
+    );
+    expect(Object.keys(bounded)).toEqual([
+      "a",
+      "authorization",
+      "k0",
+      "k1",
+      "k2",
+      "k3",
+      "k4",
+      "k5",
+    ]);
+    expect(bounded.authorization).toBe("[REDACTED]");
+    expect(bounded.long).toBeUndefined();
+    expect(bounded.a).toBe("first");
+  });
+
   it("keeps fingerprints stable when detailsSchema/details are added", () => {
     const evidence = { package: "react", evidenceSources: [] as string[] };
     const without = finding({

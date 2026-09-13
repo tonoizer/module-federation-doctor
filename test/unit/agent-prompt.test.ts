@@ -4,15 +4,18 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   buildAgentPrompt,
+  buildVerificationPlan,
   DEFAULT_PROMPT_FINDINGS,
   DIAGNOSTICS_PROMPTS_ENV,
   findPromptTarget,
   formatTopAgentPrompts,
   MAX_DIAGNOSTICS_PROMPT_FINDINGS,
+  renderVerificationPlan,
   resolveDiagnosticsDir,
   resolveDiagnosticsPromptLimit,
   resolveDiagnosticsPromptLimitFromEnv,
   selectTopFindings,
+  UNKNOWN_AGENT_VALUE,
   writeDiagnosticsDump,
 } from "../../src/agent-prompt.js";
 import type { DoctorFinding, DoctorReport } from "../../src/types.js";
@@ -37,6 +40,54 @@ afterEach(async () => {
 });
 
 describe("agent prompts", () => {
+  it("retains an explicit verification plan without inventing a build command", () => {
+    const report: DoctorReport = {
+      schemaVersion: 1,
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      status: { complete: false, incompleteReasons: ["missing-emit"] },
+      summary: { projects: 1, info: 0, warnings: 1, errors: 0 },
+      findings: [],
+    };
+    const plan = buildVerificationPlan(report, {
+      analysisKind: "check",
+      projectDirectory: "/workspace/app",
+      reportPath: "/workspace/app/.mf/doctor/report.json",
+      requiredArtifacts: [".mf/doctor/project.json", ".mf/doctor/report.json"],
+      rebuildRequired: true,
+      rebuildReason: "Emit evidence is missing.",
+      followUp: {
+        kind: "workspace",
+        required: true,
+        command: "mfdoctor workspace apps",
+        reason: "Re-run the workspace gate.",
+      },
+      completenessConditions: ["status.complete is true", "no findings remain"],
+    });
+
+    expect(plan).toMatchObject({
+      schemaVersion: 1,
+      analysisKind: "check",
+      projectDirectory: "/workspace/app",
+      reportPath: "/workspace/app/.mf/doctor/report.json",
+      requiredArtifacts: [".mf/doctor/project.json", ".mf/doctor/report.json"],
+      rebuildRequired: true,
+      buildCommand: UNKNOWN_AGENT_VALUE,
+      followUp: { kind: "workspace", required: true, command: "mfdoctor workspace apps" },
+      completeness: "partial",
+      completenessConditions: ["status.complete is true", "no findings remain"],
+    });
+    expect(renderVerificationPlan(plan)).toContain(
+      "Build command: unknown (not provided; do not invent one)",
+    );
+  });
+
   it("builds a stable single-finding prompt contract", () => {
     const prompt = buildAgentPrompt(
       finding({
@@ -62,6 +113,69 @@ describe("agent prompts", () => {
     );
     // Evidence values are bounded
     expect(prompt).toMatch(/note: x{120}…/);
+  });
+
+  it("keeps workspace and runtime repair verification on their own operations", () => {
+    const workspacePrompt = buildAgentPrompt(
+      finding({
+        ruleId: "federation/name-conflict",
+        severity: "error",
+        fingerprint: "fp-workspace",
+        project: "host",
+      }),
+      {
+        analysisContext: {
+          analysisKind: "workspace",
+          projectDirectory: "/workspace",
+          reportPath: "/workspace/.mf/doctor/report.json",
+        },
+      },
+    );
+    expect(workspacePrompt).toContain("- Analysis kind: `workspace`");
+    expect(workspacePrompt).toContain("mfdoctor workspace");
+    expect(workspacePrompt).not.toContain("```bash\nmfdoctor check\n```");
+
+    const runtimePrompt = buildAgentPrompt(
+      finding({
+        ruleId: "runtime/remote-load-failed",
+        severity: "error",
+        fingerprint: "fp-runtime",
+        project: "runtime",
+      }),
+    );
+    expect(runtimePrompt).toContain("- Analysis kind: `runtime`");
+    expect(runtimePrompt).toContain("mfdoctor runtime <trace.json>");
+    expect(runtimePrompt).not.toContain("```bash\nmfdoctor check\n```");
+  });
+
+  it("renders stable repair metadata and redacted bounded evidence", () => {
+    const prompt = buildAgentPrompt(
+      finding({
+        ruleId: "shared/unused",
+        severity: "warning",
+        fingerprint: "fp-repair",
+        evidence: {
+          aToken: "do-not-print",
+          source: "/workspace/src/entry.ts",
+          ...Object.fromEntries(Array.from({ length: 9 }, (_, index) => [`k${index}`, index])),
+        },
+        detailsSchema: "shared.unused.v1",
+        details: { package: "react", source: "/workspace/src/entry.ts" },
+      }),
+      {
+        projectDirectory: "/workspace",
+        reportPath: "/workspace/.mf/doctor/report.json",
+        jsonPointer: "/findings/2",
+      },
+    );
+    expect(prompt).toContain("- Rule family: `shared`");
+    expect(prompt).toContain("- Report path: `/workspace/.mf/doctor/report.json`");
+    expect(prompt).toContain("- JSON pointer: `/findings/2`");
+    expect(prompt).toContain("- Details schema: `shared.unused.v1`");
+    expect(prompt).toContain("[REDACTED]");
+    expect(prompt).toContain("./src/entry.ts");
+    expect(prompt).toContain("more keys omitted");
+    expect(prompt).not.toContain("do-not-print");
   });
 
   it("stringifies undefined evidence values without throwing", () => {
@@ -221,12 +335,70 @@ describe("agent prompts", () => {
     const result = await writeDiagnosticsDump(report, dumpRoot);
     await expect(fs.access(result.reportPath)).resolves.toBeUndefined();
     await expect(fs.access(result.summaryPath)).resolves.toBeUndefined();
+    await expect(fs.access(result.verificationPlanPath)).resolves.toBeUndefined();
     expect(result.promptFiles).toHaveLength(1);
     const prompt = await fs.readFile(path.join(dumpRoot, result.promptFiles[0]!), "utf8");
     expect(prompt).toContain("# Fix: config/name-required");
     const summary = await fs.readFile(result.summaryPath, "utf8");
     expect(summary).toContain("Score: 99/100 (Great)");
     expect(summary).toContain("config/name-required");
+    expect(summary).toContain("## Verification plan");
+  });
+
+  it("infers runtime and workspace operation plans for diagnostics dumps", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-diag-context-"));
+    roots.push(root);
+    const cases = [
+      {
+        name: "runtime",
+        expectedCommand: "mfdoctor runtime <trace.json>",
+        item: finding({
+          ruleId: "runtime/remote-load-failed",
+          severity: "error",
+          fingerprint: "fp-runtime-dump",
+          project: "runtime",
+        }),
+      },
+      {
+        name: "workspace",
+        expectedCommand: "mfdoctor workspace",
+        item: finding({
+          ruleId: "doctor/partial-analysis",
+          severity: "warning",
+          fingerprint: "fp-workspace-dump",
+          project: "workspace",
+          details: { workspaceDiagnostics: [{ kind: "missing", files: [], message: "missing" }] },
+        }),
+      },
+    ];
+
+    for (const item of cases) {
+      const dumpRoot = path.join(root, item.name);
+      const report: DoctorReport = {
+        schemaVersion: 1,
+        capabilities: {
+          config: true,
+          sourceImports: true,
+          manifest: true,
+          stats: true,
+          emittedAssets: true,
+          installedVersions: true,
+        },
+        status: { complete: true, incompleteReasons: [] },
+        summary: { projects: 1, info: 0, warnings: 1, errors: 0 },
+        findings: [item.item],
+      };
+      const result = await writeDiagnosticsDump(report, dumpRoot);
+      const plan = JSON.parse(await fs.readFile(result.verificationPlanPath, "utf8")) as {
+        analysisKind: string;
+        followUp: { command: string };
+      };
+      expect(plan.analysisKind).toBe(item.name);
+      expect(plan.followUp.command).toBe(item.expectedCommand);
+      const prompt = await fs.readFile(path.join(dumpRoot, result.promptFiles[0]!), "utf8");
+      expect(prompt).toContain(`- Analysis kind: \`${item.name}\``);
+      expect(prompt).not.toContain("```bash\nmfdoctor check\n```");
+    }
   });
 
   it("defaults diagnostics dumps to top-3 and allows opt-in beyond with a hard cap", async () => {

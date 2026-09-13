@@ -1,4 +1,6 @@
 import type { AnalysisBudgetReport } from "./analysis-budgets.js";
+import type { DoctorFinding } from "./types.js";
+import { redact } from "./utils.js";
 
 /**
  * Versioned, machine-readable finding detail payloads (#136).
@@ -19,6 +21,25 @@ export const FINDING_DETAILS_SCHEMAS = {
 
 export type FindingDetailsSchemaId =
   (typeof FINDING_DETAILS_SCHEMAS)[keyof typeof FINDING_DETAILS_SCHEMAS];
+
+/** Stable top-level family extracted from a rule id such as `shared/unused`. */
+export type FindingRuleFamily = string;
+
+/** Return the stable rule-family prefix without interpreting individual leaves. */
+export function findingRuleFamily(ruleId: string): FindingRuleFamily {
+  const separator = ruleId.indexOf("/");
+  const family = separator === -1 ? ruleId : ruleId.slice(0, separator);
+  return family.trim() || "unknown";
+}
+
+/** Compatibility aliases for callers that prefer a noun-first helper name. */
+export const ruleFamilyForFinding = findingRuleFamily;
+export const ruleFamily = findingRuleFamily;
+
+/** Bounds shared by repair context and rendered agent evidence. */
+export const MAX_REPAIR_EVIDENCE_KEYS = 8;
+export const MAX_REPAIR_EVIDENCE_VALUE_CHARS = 120;
+export const MAX_REPAIR_EVIDENCE_KEY_CHARS = 120;
 
 /** Inventory of built-in rule IDs that emit typed details in the first batch. */
 export const TYPED_DETAILS_RULE_IDS = [
@@ -116,6 +137,94 @@ export interface DoctorPartialAnalysisDetailsV1 {
     files: string[];
     message: string;
   }>;
+}
+
+export interface FindingRepairContextOptions {
+  /** Project root used by the common redactor to hide local absolute paths. */
+  projectDirectory?: string;
+  reportPath?: string;
+  jsonPointer?: string;
+}
+
+/**
+ * Bounded, redacted evidence for copyable repair handoffs.
+ * Values are rendered strings so nested objects cannot bypass the size bound.
+ */
+export function boundSafeEvidence(
+  evidence: Record<string, unknown>,
+  projectDirectory?: string,
+): Record<string, string> {
+  const safe = redact(evidence, projectDirectory) as Record<string, unknown>;
+  const entries = Object.entries(safe).sort(([left], [right]) => left.localeCompare(right));
+  const bounded: Record<string, string> = {};
+  for (const [key, value] of entries.slice(0, MAX_REPAIR_EVIDENCE_KEYS)) {
+    const boundedKey =
+      key.length > MAX_REPAIR_EVIDENCE_KEY_CHARS
+        ? `${key.slice(0, MAX_REPAIR_EVIDENCE_KEY_CHARS)}…`
+        : key;
+    let rendered: string;
+    if (value === undefined) rendered = "undefined";
+    else if (value === null) rendered = "null";
+    else if (typeof value === "string") rendered = value;
+    else {
+      try {
+        rendered = JSON.stringify(value) ?? String(value);
+      } catch {
+        rendered = String(value);
+      }
+    }
+    bounded[boundedKey] =
+      rendered.length > MAX_REPAIR_EVIDENCE_VALUE_CHARS
+        ? `${rendered.slice(0, MAX_REPAIR_EVIDENCE_VALUE_CHARS)}…`
+        : rendered;
+  }
+  return bounded;
+}
+
+export interface FindingRepairContextV1 {
+  schemaVersion: 1;
+  ruleFamily: FindingRuleFamily;
+  ruleId: string;
+  fingerprint: string;
+  reportPath?: string;
+  jsonPointer?: string;
+  evidence: Record<string, string>;
+  detailsSchema?: string;
+  details?: Record<string, string>;
+}
+
+type FindingRepairInput = Pick<DoctorFinding, "ruleId" | "fingerprint"> & {
+  evidence?: unknown;
+  detailsSchema?: unknown;
+  details?: unknown;
+};
+
+function recordValue(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+/** Build stable metadata plus bounded evidence without changing report fingerprints. */
+export function buildFindingRepairContext(
+  finding: FindingRepairInput,
+  options: FindingRepairContextOptions = {},
+): FindingRepairContextV1 {
+  const evidence = recordValue(finding.evidence) ?? {};
+  const details = recordValue(finding.details);
+  return {
+    schemaVersion: 1,
+    ruleFamily: findingRuleFamily(finding.ruleId),
+    ruleId: finding.ruleId,
+    fingerprint: finding.fingerprint,
+    ...(options.reportPath ? { reportPath: options.reportPath } : {}),
+    ...(options.jsonPointer ? { jsonPointer: options.jsonPointer } : {}),
+    evidence: boundSafeEvidence(evidence, options.projectDirectory),
+    ...(typeof finding.detailsSchema === "string" && finding.detailsSchema.length > 0
+      ? { detailsSchema: finding.detailsSchema }
+      : {}),
+    ...(details ? { details: boundSafeEvidence(details, options.projectDirectory) } : {}),
+  };
 }
 
 export type FindingDetailsV1 =

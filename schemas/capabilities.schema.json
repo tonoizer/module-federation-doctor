@@ -17,6 +17,7 @@
     "completeness",
     "githubAction",
     "networkPolicy",
+    "operations",
     "bundlerMatrix"
   ],
   "properties": {
@@ -152,6 +153,7 @@
         }
       }
     },
+    "operations": { "$ref": "#/$defs/operations" },
     "bundlerMatrix": {
       "type": "object",
       "additionalProperties": false,
@@ -182,6 +184,128 @@
     }
   },
   "$defs": {
+    "operations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "commands"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "commands": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "pattern": "^[a-z][a-z-]*$" },
+          "additionalProperties": { "$ref": "#/$defs/operation" }
+        }
+      }
+    },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "description",
+        "arguments",
+        "options",
+        "prerequisites",
+        "network",
+        "writtenArtifacts",
+        "errorCodes"
+      ],
+      "properties": {
+        "description": { "type": "string", "minLength": 1 },
+        "formats": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["terminal", "json", "sarif"] }
+        },
+        "arguments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/argument" }
+        },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/option" }
+        },
+        "prerequisites": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "network": { "$ref": "#/$defs/network" },
+        "writtenArtifacts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "errorCodes": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
+          "additionalProperties": { "$ref": "#/$defs/errorCode" }
+        }
+      }
+    },
+    "argument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "required", "description"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "type": { "enum": ["path", "glob", "url", "string", "enum"] },
+        "required": { "type": "boolean" },
+        "repeatable": { "type": "boolean" },
+        "minimumCount": { "type": "integer", "minimum": 1 },
+        "values": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "description"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^--[a-z][a-z0-9-]*$" },
+        "aliases": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^-[a-zA-Z]$" }
+        },
+        "type": {
+          "enum": ["boolean", "integer", "string", "enum", "path", "glob", "url"]
+        },
+        "required": { "type": "boolean" },
+        "repeatable": { "type": "boolean" },
+        "values": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "userInitiated", "behavior"],
+      "properties": {
+        "mode": { "enum": ["offline", "network"] },
+        "userInitiated": { "type": "boolean" },
+        "behavior": { "type": "string", "minLength": 1 }
+      }
+    },
+    "errorCode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exitCode", "description"],
+      "properties": {
+        "exitCode": { "enum": [0, 1, 2] },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
     "command": {
       "type": "object",
       "additionalProperties": false,
