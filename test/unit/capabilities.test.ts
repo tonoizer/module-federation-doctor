@@ -3,15 +3,69 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  CLI_OPERATIONS,
   deriveBundlerMatrix,
   loadCliCapabilities,
   type CompatibilityMatrixDocument,
 } from "../../src/capabilities.js";
+import { parseArgs } from "../../src/cli.js";
 import { validatePayload } from "../helpers/schema-contract.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("CLI capabilities discovery contract", () => {
+  it("publishes a versioned operation contract and derives command discovery from it", async () => {
+    const capabilities = await loadCliCapabilities();
+    const operationNames = Object.keys(CLI_OPERATIONS).sort();
+    expect(capabilities.operations.schemaVersion).toBe(1);
+    expect(Object.keys(capabilities.operations.commands).sort()).toEqual(operationNames);
+    expect(Object.keys(capabilities.commands).sort()).toEqual(operationNames);
+
+    for (const name of operationNames) {
+      const operation = capabilities.operations.commands[name]!;
+      expect(capabilities.commands[name]).toMatchObject({
+        description: operation.description,
+        network: operation.network.mode === "network",
+      });
+      expect(operation.arguments).toBeDefined();
+      expect(operation.options).toBeDefined();
+      expect(operation.prerequisites.length).toBeGreaterThan(0);
+      expect(operation.writtenArtifacts).toBeDefined();
+      expect(operation.errorCodes).toBeDefined();
+    }
+
+    expect(capabilities.operations.commands.check).toMatchObject({
+      arguments: [expect.objectContaining({ name: "root", required: false })],
+      network: { mode: "offline", userInitiated: false },
+    });
+    expect(capabilities.operations.commands.check?.options).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "--ci" }),
+        expect.objectContaining({ name: "--diagnostics-prompts", minimum: 1, maximum: 25 }),
+      ]),
+    );
+    expect(capabilities.operations.commands.probe?.network).toMatchObject({
+      mode: "network",
+      userInitiated: true,
+    });
+    expect(capabilities.operations.commands.probe?.errorCodes).toHaveProperty("ssrf-blocked");
+    expect(capabilities.operations.commands.compare?.options).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "--format" })]),
+    );
+    expect(capabilities.networkPolicy.networkCommands).toEqual(["compare", "probe"]);
+    expect(capabilities.operations.commands.runtime?.network.mode).toBe("offline");
+    expect(capabilities.operations.commands.runtime?.writtenArtifacts).toContain(
+      "<diagnostics-dir>/verification-plan.json",
+    );
+
+    // The current parser/help surface remains the source of truth for CLI
+    // acceptance; this test keeps the discovered contract from silently
+    // drifting away from its documented command names and key option forms.
+    expect(parseArgs(["check", "--ci", "--diagnostics-prompts", "4"]).command).toBe("check");
+    expect(parseArgs(["workspace", "apps", "--glob", "**/project.json"]).workspace).toBe(true);
+    expect(parseArgs(["runtime", "./trace.json"]).trace).toBe("./trace.json");
+  });
+
   it("includes agent non-goals, completeness, action, and network policy", async () => {
     const capabilities = await loadCliCapabilities();
     expect(capabilities.nonGoals).toEqual(
