@@ -220,6 +220,7 @@ describe("adapter cases", () => {
     expect(stdout).toContain("ok examples/showcase/runtime-plugins/invalid-factory");
     expect(stdout).toContain("ok examples/showcase/runtime-plugins/create-script-cors-parity");
     expect(stdout).toContain("ok examples/showcase/federation/version-conflict");
+    expect(stdout).toContain("ok examples/showcase/shared/unused-unresolved");
     expect(stdout).not.toContain("examples/showcase/config/name-required");
     expect(stdout).not.toContain("examples/showcase/name-required");
   }, 60_000);

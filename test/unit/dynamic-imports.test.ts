@@ -246,6 +246,127 @@ describe("dynamic-import completeness", () => {
     expect(facts.imports.unresolvedDynamic).toEqual([]);
   });
 
+  it("keeps ambient MF API declarations unresolved", async () => {
+    const source = `
+      declare function loadRemote(id: string): Promise<unknown>;
+      declare function loadShare(id: string): Promise<unknown>;
+
+      export async function loadFederated(id: string) {
+        await loadRemote("shop/App");
+        await loadShare(id);
+      }
+    `;
+    const { facts } = await projectWith({ "src/app.ts": source });
+
+    expect(facts.imports.specifiers).toEqual([]);
+    expect(facts.imports.packages).toEqual([]);
+    expect(facts.imports.remotes).toEqual([]);
+    expect(facts.imports.unresolvedDynamic).toEqual([
+      { api: "loadRemote", file: "src/app.ts" },
+      { api: "loadShare", file: "src/app.ts" },
+    ]);
+  });
+
+  it("resolves literal CommonJS runtime bindings with lexical shadowing", async () => {
+    const source = `
+      const { loadRemote, loadShare: share, loadShareSync: syncShare } =
+        require("@module-federation/runtime");
+      const mf = require("@module-federation/runtime");
+
+      function shadowedByParameter(mf) {
+        mf.loadRemote("local/namespace");
+      }
+
+      function shadowedByBlock() {
+        {
+          const share = (id) => id;
+          share("local/share");
+        }
+      }
+
+      loadRemote("shop/App");
+      share("react");
+      syncShare("react-dom");
+      mf.loadRemote("catalog/Widget");
+    `;
+    const { facts } = await projectWith({ "src/app.js": source });
+
+    expect(facts.imports.packages).toEqual(["@module-federation/runtime", "react", "react-dom"]);
+    expect(facts.imports.dynamicPackages).toEqual(["react", "react-dom"]);
+    expect(facts.imports.remotes).toEqual(["catalog", "shop"]);
+    expect(facts.imports.specifiers).toEqual([
+      "@module-federation/runtime",
+      "catalog/Widget",
+      "react",
+      "react-dom",
+      "shop/App",
+    ]);
+    expect(facts.imports.unresolvedDynamic).toEqual([]);
+  });
+
+  it("resolves runtime-tools public re-export entry points", async () => {
+    const source = `
+      import { loadRemote as remote } from "@module-federation/runtime-tools";
+      import * as runtime from "@module-federation/runtime-tools/runtime";
+
+      remote("shop/App");
+      runtime.loadShare("react");
+    `;
+    const { facts } = await projectWith({ "src/app.ts": source });
+
+    expect(facts.imports.packages).toEqual(["@module-federation/runtime-tools", "react"]);
+    expect(facts.imports.dynamicPackages).toEqual(["react"]);
+    expect(facts.imports.remotes).toEqual(["shop"]);
+    expect(facts.imports.specifiers).toEqual([
+      "@module-federation/runtime-tools",
+      "@module-federation/runtime-tools/runtime",
+      "react",
+      "shop/App",
+    ]);
+    expect(facts.imports.unresolvedDynamic).toEqual([]);
+  });
+
+  it("does not let function-body vars shadow parameter initializers", async () => {
+    const source = `
+      import { loadShare } from "@module-federation/runtime";
+
+      export function ensureShared(value = loadShare("react")) {
+        var loadShare;
+        return value;
+      }
+    `;
+    const { facts } = await projectWith({ "src/app.ts": source });
+
+    expect(facts.imports.packages).toEqual(["@module-federation/runtime", "react"]);
+    expect(facts.imports.dynamicPackages).toEqual(["react"]);
+    expect(facts.imports.unresolvedDynamic).toEqual([]);
+  });
+
+  it("keeps static-block and TS-module vars scoped to their blocks", async () => {
+    const source = `
+      import { loadRemote } from "@module-federation/runtime";
+
+      class Local {
+        static {
+          var loadRemote;
+          loadRemote("local/static-block");
+        }
+      }
+
+      declare module "virtual-module" {
+        var loadRemote: unknown;
+      }
+
+      loadRemote("shop/App");
+    `;
+    const { facts } = await projectWith({ "src/app.ts": source });
+
+    expect(facts.imports.packages).toEqual(["@module-federation/runtime"]);
+    expect(facts.imports.remotes).toEqual(["shop"]);
+    expect(facts.imports.specifiers).toEqual(["@module-federation/runtime", "shop/App"]);
+    expect(facts.imports.unresolvedDynamic).toEqual([]);
+  });
+
   it("does not treat unimported local functions with MF API names as federation APIs", async () => {
     const source = await fs.readFile(path.join(dynamicFixtures, "local-api-names.ts"), "utf8");
     const { facts } = await projectWith({ "src/app.ts": source });

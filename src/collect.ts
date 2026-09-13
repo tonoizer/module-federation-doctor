@@ -233,25 +233,34 @@ const FEDERATION_RUNTIME_APIS = new Set<FederationRuntimeApi>([
   "registerRemotes",
 ]);
 
-/** Runtime entry points exposed by the supported federation runtime package. */
+/** Runtime entry points that publicly expose the federation runtime API. */
 function isFederationRuntimeModule(specifier: string): boolean {
   return (
     specifier === "@module-federation/runtime" ||
-    specifier.startsWith("@module-federation/runtime/")
+    specifier.startsWith("@module-federation/runtime/") ||
+    specifier === "@module-federation/runtime-tools" ||
+    specifier === "@module-federation/runtime-tools/runtime"
   );
 }
 
-interface ImportedApiBindings {
-  direct: Map<string, FederationRuntimeApi>;
-  namespaces: Set<string>;
-}
+type Binding =
+  | { kind: "local" }
+  | { kind: "runtime-api"; api: FederationRuntimeApi }
+  | { kind: "runtime-namespace" }
+  | { kind: "ambient-runtime-api"; api: FederationRuntimeApi };
 
-type BindingOrigin = "import" | "local";
+const LOCAL_BINDING: Binding = { kind: "local" };
 
 interface BindingScope {
   parent: BindingScope | undefined;
   functionScope: BindingScope;
-  bindings: Map<string, BindingOrigin>;
+  bindings: Map<string, Binding>;
+}
+
+interface BindingRegistrationContext {
+  file: string;
+  fileIsDeclaration: boolean;
+  scan: RawImportScan;
 }
 
 interface StaticImportAnalysisEntry {
@@ -283,20 +292,26 @@ function createBindingScope(parent?: BindingScope, functionBoundary = false): Bi
   const scope = {
     parent,
     functionScope: undefined as unknown as BindingScope,
-    bindings: new Map<string, BindingOrigin>(),
+    bindings: new Map<string, Binding>(),
   };
   scope.functionScope = functionBoundary || !parent ? scope : parent.functionScope;
   return scope;
 }
 
-function declareBinding(
-  scope: BindingScope,
-  name: string | undefined,
-  origin: BindingOrigin,
-): void {
+function declareBinding(scope: BindingScope, name: string | undefined, binding: Binding): void {
   if (!name) return;
   const existing = scope.bindings.get(name);
-  if (!existing || origin === "local") scope.bindings.set(name, origin);
+  if (!existing || binding.kind === "local") scope.bindings.set(name, binding);
+}
+
+function bindKnownBinding(scope: BindingScope, name: string | undefined, binding: Binding): void {
+  if (name) scope.bindings.set(name, binding);
+}
+
+function federationRuntimeApi(name: string | undefined): FederationRuntimeApi | undefined {
+  return name && FEDERATION_RUNTIME_APIS.has(name as FederationRuntimeApi)
+    ? (name as FederationRuntimeApi)
+    : undefined;
 }
 
 function declarePattern(node: unknown, scope: BindingScope): void {
@@ -304,7 +319,7 @@ function declarePattern(node: unknown, scope: BindingScope): void {
   const value = node as AstNode;
   switch (value.type) {
     case "Identifier":
-      declareBinding(scope, identifierName(value), "local");
+      declareBinding(scope, identifierName(value), LOCAL_BINDING);
       return;
     case "RestElement":
       declarePattern(value.argument, scope);
@@ -342,7 +357,64 @@ function declarationNode(node: AstNode): AstNode | undefined {
   return node;
 }
 
-function declareStatementBinding(node: unknown, scope: BindingScope): void {
+function bindingIdentifierName(node: unknown): string | undefined {
+  if (!node || typeof node !== "object") return undefined;
+  const value = node as AstNode;
+  if (value.type === "Identifier") return identifierName(value);
+  if (value.type === "AssignmentPattern") return bindingIdentifierName(value.left);
+  if (value.type === "TSParameterProperty") return bindingIdentifierName(value.parameter);
+  return undefined;
+}
+
+function requireSpecifier(
+  node: unknown,
+  lexicalScope: BindingScope,
+  fileIsDeclaration: boolean,
+): string | undefined {
+  if (fileIsDeclaration || !node || typeof node !== "object") return undefined;
+  const value = node as AstNode;
+  if (value.type !== "CallExpression" || identifierName(value.callee) !== "require")
+    return undefined;
+  if (lookupBinding(lexicalScope, "require")) return undefined;
+  const args = Array.isArray(value.arguments) ? value.arguments : [];
+  return literalString(args[0]);
+}
+
+function bindRuntimeRequirePattern(node: unknown, specifier: string, scope: BindingScope): void {
+  if (!isFederationRuntimeModule(specifier) || !node || typeof node !== "object") return;
+  const value = node as AstNode;
+  if (value.type === "Identifier") {
+    bindKnownBinding(scope, identifierName(value), { kind: "runtime-namespace" });
+    return;
+  }
+  if (value.type !== "ObjectPattern") return;
+  for (const property of Array.isArray(value.properties) ? value.properties : []) {
+    if (!property || typeof property !== "object") continue;
+    const item = property as AstNode;
+    const api = federationRuntimeApi(propertyName(item));
+    const local = bindingIdentifierName(item.type === "RestElement" ? undefined : item.value);
+    if (api && local) bindKnownBinding(scope, local, { kind: "runtime-api", api });
+  }
+}
+
+function registerRequireBinding(
+  declaration: AstNode,
+  lexicalScope: BindingScope,
+  targetScope: BindingScope,
+  context: BindingRegistrationContext | undefined,
+): void {
+  if (!context) return;
+  const specifier = requireSpecifier(declaration.init, lexicalScope, context.fileIsDeclaration);
+  if (!specifier) return;
+  recordSpecifier(context.scan, specifier, false, context.file, "import");
+  bindRuntimeRequirePattern(declaration.id, specifier, targetScope);
+}
+
+function declareStatementBinding(
+  node: unknown,
+  scope: BindingScope,
+  context?: BindingRegistrationContext,
+): void {
   if (!node || typeof node !== "object") return;
   const value = declarationNode(node as AstNode);
   if (!value) return;
@@ -351,35 +423,50 @@ function declareStatementBinding(node: unknown, scope: BindingScope): void {
     case "VariableDeclaration": {
       const target = value.kind === "var" ? scope.functionScope : scope;
       for (const declaration of Array.isArray(value.declarations) ? value.declarations : []) {
-        if (declaration && typeof declaration === "object")
-          declarePattern((declaration as AstNode).id, target);
+        if (!declaration || typeof declaration !== "object") continue;
+        const item = declaration as AstNode;
+        declarePattern(item.id, target);
+        registerRequireBinding(item, scope, target, context);
       }
       return;
     }
     case "FunctionDeclaration":
     case "ClassDeclaration":
-      declareBinding(scope, identifierName(value.id), "local");
+      declareBinding(scope, identifierName(value.id), LOCAL_BINDING);
       return;
     case "TSDeclareFunction":
-      declareBinding(scope, identifierName(value.id), "local");
+      {
+        const name = identifierName(value.id);
+        const api = federationRuntimeApi(name);
+        declareBinding(
+          scope,
+          name,
+          api && value.declare === true ? { kind: "ambient-runtime-api", api } : LOCAL_BINDING,
+        );
+      }
       return;
     case "TSEnumDeclaration":
-      declareBinding(scope, identifierName(value.id), "local");
+      declareBinding(scope, identifierName(value.id), LOCAL_BINDING);
       return;
     case "TSModuleDeclaration":
-      if (value.declare !== true) declareBinding(scope, identifierName(value.id), "local");
+      if (value.declare !== true) declareBinding(scope, identifierName(value.id), LOCAL_BINDING);
       return;
     case "TSImportEqualsDeclaration":
-      if (value.importKind !== "type") declareBinding(scope, identifierName(value.id), "local");
+      if (value.importKind !== "type")
+        declareBinding(scope, identifierName(value.id), LOCAL_BINDING);
       return;
     default:
       return;
   }
 }
 
-function declareStatementBindings(statements: unknown, scope: BindingScope): void {
+function declareStatementBindings(
+  statements: unknown,
+  scope: BindingScope,
+  context?: BindingRegistrationContext,
+): void {
   if (!Array.isArray(statements)) return;
-  for (const statement of statements) declareStatementBinding(statement, scope);
+  for (const statement of statements) declareStatementBinding(statement, scope, context);
 }
 
 function isFunctionNode(type: string | undefined): boolean {
@@ -395,19 +482,35 @@ function isClassNode(type: string | undefined): boolean {
 }
 
 /** Predeclare `var` bindings, whose function scope can span nested blocks. */
-function collectVarBindings(node: unknown, scope: BindingScope): void {
+function collectVarBindings(
+  node: unknown,
+  scope: BindingScope,
+  context?: BindingRegistrationContext,
+): void {
   let count = 0;
   const visit = (candidate: unknown): void => {
+    if (Array.isArray(candidate)) {
+      for (const item of candidate) visit(item);
+      return;
+    }
     if (!candidate || typeof candidate !== "object") return;
     const value = candidate as AstNode;
     if (typeof value.type !== "string") return;
-    if (isFunctionNode(value.type) || isClassNode(value.type)) return;
+    if (
+      isFunctionNode(value.type) ||
+      isClassNode(value.type) ||
+      value.type === "StaticBlock" ||
+      value.type === "TSModuleBlock"
+    )
+      return;
     count += 1;
     if (count > MAX_AST_NODES) throw new Error("AST node limit exceeded");
     if (value.type === "VariableDeclaration" && value.kind === "var") {
       for (const declaration of Array.isArray(value.declarations) ? value.declarations : []) {
-        if (declaration && typeof declaration === "object")
-          declarePattern((declaration as AstNode).id, scope.functionScope);
+        if (!declaration || typeof declaration !== "object") continue;
+        const item = declaration as AstNode;
+        declarePattern(item.id, scope.functionScope);
+        registerRequireBinding(item, scope, scope.functionScope, context);
       }
     }
     for (const key of visitorKeys[value.type] ?? []) {
@@ -419,7 +522,7 @@ function collectVarBindings(node: unknown, scope: BindingScope): void {
   visit(node);
 }
 
-function lookupBinding(scope: BindingScope, name: string): BindingOrigin | undefined {
+function lookupBinding(scope: BindingScope, name: string): Binding | undefined {
   for (let current: BindingScope | undefined = scope; current; current = current.parent) {
     const binding = current.bindings.get(name);
     if (binding) return binding;
@@ -432,29 +535,39 @@ function memberPropertyName(node: AstNode): string | undefined {
   return node.computed ? literalString(property) : identifierName(property);
 }
 
-function importedApiForCallee(
+interface FederationRuntimeCall {
+  api: FederationRuntimeApi;
+  unresolved: boolean;
+}
+
+function federationRuntimeCallForCallee(
   callee: unknown,
   scope: BindingScope,
-  imported: ImportedApiBindings,
-): FederationRuntimeApi | undefined {
+): FederationRuntimeCall | undefined {
   if (!callee || typeof callee !== "object") return undefined;
   const value = callee as AstNode;
   const name = identifierName(value);
-  if (name && lookupBinding(scope, name) === "import") return imported.direct.get(name);
+  if (name) {
+    const binding = lookupBinding(scope, name);
+    if (binding?.kind === "runtime-api") return { api: binding.api, unresolved: false };
+    if (binding?.kind === "ambient-runtime-api") return { api: binding.api, unresolved: true };
+    return undefined;
+  }
   if (value.type !== "MemberExpression") return undefined;
   const objectName = identifierName(value.object);
-  if (!objectName || lookupBinding(scope, objectName) !== "import") return undefined;
-  if (!imported.namespaces.has(objectName)) return undefined;
+  if (!objectName) return undefined;
+  const binding = lookupBinding(scope, objectName);
+  if (binding?.kind !== "runtime-namespace") return undefined;
   const property = memberPropertyName(value);
-  return property && FEDERATION_RUNTIME_APIS.has(property as FederationRuntimeApi)
-    ? (property as FederationRuntimeApi)
-    : undefined;
+  const api = federationRuntimeApi(property);
+  return api ? { api, unresolved: false } : undefined;
 }
 
 /** Walk the parsed AST with enough lexical scope to resolve imported runtime bindings. */
 function walkBoundedBindings(
   program: AstNode,
   root: BindingScope,
+  context: BindingRegistrationContext,
   visit: (node: AstNode, scope: BindingScope) => void,
 ): void {
   let count = 0;
@@ -475,21 +588,26 @@ function walkBoundedBindings(
     if (isFunctionNode(node.type)) {
       visit(node, scope);
       const functionScope = createBindingScope(scope, true);
-      declareBinding(functionScope, identifierName(node.id), "local");
+      declareBinding(functionScope, identifierName(node.id), LOCAL_BINDING);
+      const parameterScope = createBindingScope(scope);
+      declareBinding(parameterScope, identifierName(node.id), LOCAL_BINDING);
       for (const parameter of Array.isArray(node.params) ? node.params : [])
         declarePattern(parameter, functionScope);
-      collectVarBindings(node.body, functionScope);
+      for (const parameter of Array.isArray(node.params) ? node.params : [])
+        declarePattern(parameter, parameterScope);
+      collectVarBindings(node.body, functionScope, context);
       for (const key of visitorKeys[node.type] ?? []) {
         const child = node[key];
-        if (Array.isArray(child)) for (const item of child) walk(item, functionScope);
-        else walk(child, functionScope);
+        const childScope = key === "params" ? parameterScope : functionScope;
+        if (Array.isArray(child)) for (const item of child) walk(item, childScope);
+        else walk(child, childScope);
       }
       return;
     }
 
     if (isClassNode(node.type)) {
       const classScope = createBindingScope(scope);
-      declareBinding(classScope, identifierName(node.id), "local");
+      declareBinding(classScope, identifierName(node.id), LOCAL_BINDING);
       visit(node, classScope);
       walkChildren(node, classScope);
       return;
@@ -500,8 +618,10 @@ function walkBoundedBindings(
       node.type === "StaticBlock" ||
       node.type === "TSModuleBlock"
     ) {
-      const blockScope = createBindingScope(scope);
-      declareStatementBindings(node.body, blockScope);
+      const functionBoundary = node.type === "StaticBlock" || node.type === "TSModuleBlock";
+      const blockScope = createBindingScope(scope, functionBoundary);
+      declareStatementBindings(node.body, blockScope, context);
+      if (functionBoundary) collectVarBindings(node.body, blockScope, context);
       visit(node, blockScope);
       walkChildren(node, blockScope);
       return;
@@ -514,17 +634,8 @@ function walkBoundedBindings(
     ) {
       const loopScope = createBindingScope(scope);
       const left = node.type === "ForStatement" ? node.init : node.left;
-      if (
-        left &&
-        typeof left === "object" &&
-        (left as AstNode).type === "VariableDeclaration" &&
-        (left as AstNode).kind !== "var"
-      ) {
-        const declarations = (left as AstNode).declarations;
-        for (const declaration of Array.isArray(declarations) ? declarations : []) {
-          if (declaration && typeof declaration === "object")
-            declarePattern((declaration as AstNode).id, loopScope);
-        }
+      if (left && typeof left === "object" && (left as AstNode).type === "VariableDeclaration") {
+        declareStatementBinding(left, loopScope, context);
       }
       visit(node, loopScope);
       walkChildren(node, loopScope);
@@ -536,7 +647,7 @@ function walkBoundedBindings(
       const cases = Array.isArray(node.cases) ? node.cases : [];
       for (const item of cases) {
         if (!item || typeof item !== "object") continue;
-        declareStatementBindings((item as AstNode).consequent, switchScope);
+        declareStatementBindings((item as AstNode).consequent, switchScope, context);
       }
       visit(node, scope);
       walk(node.discriminant, scope);
@@ -562,31 +673,30 @@ function registerStaticImportBindings(
   item: StaticImportAnalysis,
   fileIsDeclaration: boolean,
   root: BindingScope,
-  imported: ImportedApiBindings,
 ): void {
   if (fileIsDeclaration) return;
   const specifier = item.moduleRequest.value;
   for (const entry of item.entries) {
-    if (entry.isType) continue;
     const local = entry.localName.value;
+    if (entry.isType) {
+      declareBinding(root, local, LOCAL_BINDING);
+      continue;
+    }
     if (isFederationRuntimeModule(specifier)) {
       if (entry.importName.kind === "NamespaceObject") {
-        imported.namespaces.add(local);
-        declareBinding(root, local, "import");
+        bindKnownBinding(root, local, { kind: "runtime-namespace" });
         continue;
       }
-      const api = entry.importName.name;
-      if (
-        entry.importName.kind === "Name" &&
-        api &&
-        FEDERATION_RUNTIME_APIS.has(api as FederationRuntimeApi)
-      ) {
-        imported.direct.set(local, api as FederationRuntimeApi);
-        declareBinding(root, local, "import");
+      const api =
+        entry.importName.kind === "Name"
+          ? federationRuntimeApi(entry.importName.name ?? undefined)
+          : undefined;
+      if (api) {
+        bindKnownBinding(root, local, { kind: "runtime-api", api });
         continue;
       }
     }
-    declareBinding(root, local, "local");
+    declareBinding(root, local, LOCAL_BINDING);
   }
 }
 
@@ -596,7 +706,6 @@ function recordStaticModuleEvidence(
   fileIsDeclaration: boolean,
   scan: RawImportScan,
   root: BindingScope,
-  imported: ImportedApiBindings,
 ): void {
   for (const item of module.staticImports) {
     const specifier = item.moduleRequest.value;
@@ -607,7 +716,7 @@ function recordStaticModuleEvidence(
     // federation runtime import does not prove that the runtime package is loaded.
     if (hasRuntimeEntry || !isFederationRuntimeModule(specifier))
       recordSpecifier(scan, specifier, false, file, "import");
-    registerStaticImportBindings(item, fileIsDeclaration, root, imported);
+    registerStaticImportBindings(item, fileIsDeclaration, root);
   }
 
   for (const item of module.staticExports) {
@@ -661,20 +770,19 @@ function scanSourceImports(source: string, file: string, scan: RawImportScan): b
     }
 
     const fileIsDeclaration = parserLanguage(file) === "dts";
-    const imported: ImportedApiBindings = { direct: new Map(), namespaces: new Set() };
     const root = createBindingScope();
+    const context: BindingRegistrationContext = { file, fileIsDeclaration, scan };
     recordStaticModuleEvidence(
       parsed.module as unknown as ModuleAnalysis,
       file,
       fileIsDeclaration,
       scan,
       root,
-      imported,
     );
-    declareStatementBindings((parsed.program as unknown as AstNode).body, root);
-    collectVarBindings(parsed.program, root);
+    declareStatementBindings((parsed.program as unknown as AstNode).body, root, context);
+    collectVarBindings(parsed.program, root, context);
 
-    walkBoundedBindings(parsed.program as unknown as AstNode, root, (node, scope) => {
+    walkBoundedBindings(parsed.program as unknown as AstNode, root, context, (node, scope) => {
       if (node.type === "ImportExpression") {
         const specifier = literalString(node.source);
         if (specifier) recordSpecifier(scan, specifier, true, file, "import");
@@ -682,8 +790,13 @@ function scanSourceImports(source: string, file: string, scan: RawImportScan): b
         return;
       }
       if (node.type !== "CallExpression") return;
-      const api = importedApiForCallee(node.callee, scope, imported);
-      if (!api) return;
+      const runtimeCall = federationRuntimeCallForCallee(node.callee, scope);
+      if (!runtimeCall) return;
+      if (runtimeCall.unresolved) {
+        unresolved(runtimeCall.api);
+        return;
+      }
+      const api = runtimeCall.api;
       const args = Array.isArray(node.arguments) ? node.arguments : [];
       const specifier = literalString(args[0]);
       if (api === "registerRemotes") {
