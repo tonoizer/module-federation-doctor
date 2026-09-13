@@ -55,8 +55,19 @@ jobs:
             echo "${TAG} is not an immutable tag at the checked-out commit"
             exit 1
           }
-          git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          CHECKED_OUT_COMMIT="$(git rev-parse HEAD)"
+          REMOTE_TAGS="$(git ls-remote --exit-code --tags origin \
+            "refs/tags/${TAG}" "refs/tags/${TAG}^{}")"
+          REMOTE_COMMIT="$(printf '%s\n' "$REMOTE_TAGS" | awk -v tag="$TAG" '
+            $2 == "refs/tags/" tag "^{}" { print $1; found=1; exit }
+            $2 == "refs/tags/" tag { direct=$1 }
+            END { if (!found && direct) print direct }
+          ')"
+          test "$REMOTE_COMMIT" = "$CHECKED_OUT_COMMIT" || {
+            echo "Remote tag ${TAG} resolves to ${REMOTE_COMMIT}, but checkout is ${CHECKED_OUT_COMMIT}"
+            exit 1
+          }
+          echo "sha=${CHECKED_OUT_COMMIT}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - id: registry
@@ -85,7 +96,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ needs.resolve-ref.outputs.sha }}
           persist-credentials: false
       - name: Use current release pack harness
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -153,7 +164,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ needs.resolve-ref.outputs.sha }}
           persist-credentials: false
       - name: Use current release pack harness
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5

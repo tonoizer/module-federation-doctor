@@ -69,7 +69,25 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain("examples/nested-federation");
     expect(workflow).toContain("examples/compatibility/vite-nitro-react");
     expect(workflow).toMatch(/sparse-checkout:\s*\|\s*\n\s+scripts\n\s+test\/e2e\n/);
-    expect(workflow).not.toContain("ref: ${{ needs.resolve-ref.outputs.sha }}");
+    const resolveRefJob = workflow.slice(
+      workflow.indexOf("  resolve-ref:"),
+      workflow.indexOf("  verify:"),
+    );
+    const verifyJob = workflow.slice(workflow.indexOf("  verify:"), workflow.indexOf("  stage:"));
+    const stageJob = workflow.slice(
+      workflow.indexOf("  stage:"),
+      workflow.indexOf("  promote-github-release:"),
+    );
+
+    expect(resolveRefJob).toContain("git ls-remote --exit-code --tags origin");
+    expect(resolveRefJob).toContain('"refs/tags/${TAG}^{}"');
+    expect(resolveRefJob).toContain('REMOTE_COMMIT="$(printf');
+    expect(resolveRefJob).toContain('test "$REMOTE_COMMIT" = "$CHECKED_OUT_COMMIT"');
+    expect(resolveRefJob).toContain('echo "sha=${CHECKED_OUT_COMMIT}"');
+    expect(verifyJob).toContain("ref: ${{ needs.resolve-ref.outputs.sha }}");
+    expect(verifyJob).not.toContain("ref: ${{ github.event.release.tag_name || inputs.tag }}");
+    expect(stageJob).toContain("ref: ${{ needs.resolve-ref.outputs.sha }}");
+    expect(stageJob).not.toContain("ref: ${{ github.event.release.tag_name || inputs.tag }}");
     expect(workflow).toContain("description: Existing plain-semver tag");
     expect(workflow).not.toContain("description: Branch or plain semver tag");
     expect(workflow).toContain('test "${TAG}" = "${VERSION}"');
