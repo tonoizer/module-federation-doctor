@@ -90,13 +90,15 @@ describe("strict completeness and failure artifacts", () => {
     roots.push(root);
     const output = path.join(root, "reports");
     const reportPath = path.join(output, "report.json");
+    const sarifPath = path.join(output, "results.sarif");
     await fs.mkdir(output, { recursive: true });
     await fs.writeFile(reportPath, '{"stale":true}\n');
+    await fs.writeFile(sarifPath, '{"staleSarif":true}\n');
     await fs.writeFile(path.join(root, "package.json"), '{"name":"stale-report"}');
 
     const result = await analyze({
       ...baseOptions(root),
-      output: { formats: ["json"], directory: output },
+      output: { formats: ["json", "sarif"], directory: output },
       baseline: path.join(root, "missing-baseline.json"),
       requireComplete: true,
     });
@@ -117,6 +119,12 @@ describe("strict completeness and failure artifacts", () => {
       "evidence-unknown",
     ]);
     expect(current).not.toHaveProperty("stale");
+    const currentSarif = JSON.parse(await fs.readFile(sarifPath, "utf8")) as {
+      runs: Array<{ results: Array<{ ruleId: string }> }>;
+    };
+    expect(currentSarif.runs[0]?.results).toContainEqual(
+      expect.objectContaining({ ruleId: "doctor/analysis-failed" }),
+    );
     expect((await fs.readdir(output)).filter((file) => file.endsWith(".tmp"))).toEqual([]);
   });
 
@@ -125,9 +133,11 @@ describe("strict completeness and failure artifacts", () => {
     roots.push(root);
     const output = path.join(root, "reports");
     const reportPath = path.join(output, "report.json");
+    const sarifPath = path.join(output, "results.sarif");
     const projectPath = path.join(root, "project.json");
     await fs.mkdir(output, { recursive: true });
     await fs.writeFile(reportPath, '{"stale":true}\n');
+    await fs.writeFile(sarifPath, '{"staleSarif":true}\n');
     await fs.writeFile(
       projectPath,
       JSON.stringify({
@@ -177,5 +187,51 @@ describe("strict completeness and failure artifacts", () => {
         detailsSchema: "doctor.run-failure.v1",
       }),
     );
+    await expect(fs.access(sarifPath)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("normalizes relative federation output for success and failure", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-relative-federation-"));
+    roots.push(root);
+    const projectPath = path.join(root, "project.json");
+    const fixturePath = path.resolve(
+      import.meta.dirname,
+      "../../fixtures/workspaces/clean/host/.mf/doctor/project.json",
+    );
+    const facts = JSON.parse(await fs.readFile(fixturePath, "utf8")) as {
+      capabilities: { emittedAssets: boolean };
+      artifacts: { emittedAssets: string[] };
+    };
+    facts.capabilities.emittedAssets = true;
+    facts.artifacts.emittedAssets = ["remoteEntry.js"];
+    await fs.writeFile(projectPath, JSON.stringify(facts));
+
+    const previous = process.cwd();
+    try {
+      expect(path.resolve(root)).not.toBe(previous);
+      const success = await analyzeFederation([projectPath], {
+        root,
+        outputDirectory: ".mf/doctor",
+        formats: ["json"],
+        requireComplete: true,
+      });
+      expect(success.exitCode).toBe(0);
+      const reportPath = path.join(root, ".mf/doctor/report.json");
+      await expect(fs.access(reportPath)).resolves.toBeUndefined();
+
+      const failure = await analyzeFederation([projectPath], {
+        root,
+        outputDirectory: ".mf/doctor",
+        formats: ["json"],
+        baseline: path.join(root, "missing-baseline.json"),
+        requireComplete: true,
+      });
+      expect(failure.exitCode).toBe(1);
+      expect(JSON.parse(await fs.readFile(reportPath, "utf8"))).toMatchObject({
+        findings: [expect.objectContaining({ ruleId: "doctor/analysis-failed" })],
+      });
+    } finally {
+      process.chdir(previous);
+    }
   });
 });

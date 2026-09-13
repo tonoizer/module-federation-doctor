@@ -176,6 +176,7 @@ export async function resolveOptions(options: DoctorOptions = {}): Promise<Resol
       write: options.output?.write !== false,
       stdout: options.output?.stdout === true,
     },
+    requireComplete: options.requireComplete === true,
     failOn: options.failOn ?? (ci ? "error" : "never"),
     score: options.score !== false,
     prompt: resolvePrompt({

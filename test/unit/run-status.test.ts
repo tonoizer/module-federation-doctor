@@ -237,6 +237,20 @@ describe("computeRunStatus", () => {
     });
   });
 
+  it.each(["invalid", "stale", "duplicate", "conflict"] as const)(
+    "reports %s workspace diagnostics as evidence-unknown",
+    (kind) => {
+      expect(
+        computeRunStatus([project()], {
+          workspaceDiagnostics: [{ kind, files: ["project.json"], message: "diagnostic" }],
+        }),
+      ).toEqual({
+        complete: false,
+        incompleteReasons: ["evidence-unknown"],
+      });
+    },
+  );
+
   it("reports evidence-unknown for budget, source-read, and unresolved dynamic gaps", () => {
     expect(
       computeRunStatus([
@@ -255,6 +269,26 @@ describe("computeRunStatus", () => {
           },
         }),
       ]),
+    ).toEqual({
+      complete: false,
+      incompleteReasons: ["evidence-unknown"],
+    });
+
+    expect(
+      computeRunStatus([project()], {
+        workspaceAnalysis: {
+          status: "partial",
+          limits: DEFAULT_ANALYSIS_BUDGETS,
+          usage: {
+            files: 1,
+            sourceBytes: 0,
+            artifacts: 0,
+            evidenceNodes: 0,
+            serializedBytes: 0,
+          },
+          exceeded: [{ kind: "files", limit: 1 }],
+        },
+      }),
     ).toEqual({
       complete: false,
       incompleteReasons: ["evidence-unknown"],
@@ -336,6 +370,26 @@ describe("computeRunStatus", () => {
       complete: false,
       incompleteReasons: ["missing-emit"],
     });
+    expect(reportFromFindings([], [], { requireProjects: true }).status).toEqual({
+      complete: false,
+      incompleteReasons: ["evidence-unknown"],
+    });
+    expect(
+      reportFromFindings([project()], [], {
+        workspaceAnalysis: {
+          status: "unknown",
+          limits: DEFAULT_ANALYSIS_BUDGETS,
+          usage: {
+            files: 0,
+            sourceBytes: 0,
+            artifacts: 0,
+            evidenceNodes: 0,
+            serializedBytes: 0,
+          },
+          exceeded: [],
+        },
+      }).status,
+    ).toEqual({ complete: false, incompleteReasons: ["evidence-unknown"] });
   });
 
   it("requires an explicit complete status and emitted build evidence for strict gates", () => {

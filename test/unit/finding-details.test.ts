@@ -12,6 +12,7 @@ import {
 import { fingerprint } from "../../src/utils.js";
 import { validatePayload } from "../helpers/schema-contract.js";
 import type { DoctorFinding } from "../../src/types.js";
+import { RUN_FAILURE_ERROR_CODES } from "../../src/run-status.js";
 
 function finding(
   partial: Pick<DoctorFinding, "ruleId" | "project" | "evidence"> & Partial<DoctorFinding>,
@@ -208,6 +209,50 @@ describe("typed finding details (#136)", () => {
     ).toEqual({
       detailsSchema: "doctor.partial-analysis.v1",
       details: { missing: ["manifest"] },
+    });
+  });
+
+  it("validates and reads typed analysis failure details", async () => {
+    const details = {
+      phase: "analysis" as const,
+      errorCode: RUN_FAILURE_ERROR_CODES.analysis,
+      runId: "123e4567-e89b-12d3-a456-426614174000",
+      error: "baseline could not be loaded",
+    };
+    const report = {
+      schemaVersion: 1,
+      capabilities: {
+        config: false,
+        sourceImports: false,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: false,
+      },
+      status: { complete: false, incompleteReasons: ["evidence-unknown"] },
+      summary: { projects: 0, info: 0, warnings: 0, errors: 1 },
+      findings: [
+        {
+          schemaVersion: 1,
+          ruleId: "doctor/analysis-failed",
+          severity: "error",
+          message: "analysis failed",
+          project: "workspace",
+          evidence: { phase: details.phase, errorCode: details.errorCode },
+          fingerprint: "fp-analysis-failed",
+          detailsSchema: FINDING_DETAILS_SCHEMAS.RUN_FAILURE,
+          details,
+        },
+      ],
+    };
+    await validatePayload("report.schema.json", report, "run failure details");
+    expect(findingDetails(FINDING_DETAILS_SCHEMAS.RUN_FAILURE, details)).toEqual({
+      detailsSchema: "doctor.run-failure.v1",
+      details,
+    });
+    expect(readFindingDetails(report.findings[0]!)).toEqual({
+      detailsSchema: "doctor.run-failure.v1",
+      details,
     });
   });
 

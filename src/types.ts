@@ -949,6 +949,11 @@ export interface DoctorOptions {
      */
     stdout?: boolean;
   };
+  /**
+   * When true, incomplete analysis is a gate failure. Legacy behavior is
+   * preserved when omitted or false. CLI: `--require-complete`.
+   */
+  requireComplete?: boolean;
   failOn?: "never" | "warning" | "error";
   /**
    * When false, omit the health score footer from terminal output.
@@ -1056,6 +1061,8 @@ export interface ResolvedDoctorOptions {
     /** When true, emit the JSON report on stdout. */
     stdout: boolean;
   };
+  /** Resolved strict completeness gate; false preserves legacy behavior. */
+  requireComplete: boolean;
   failOn: "never" | "warning" | "error";
   /**
    * When false, omit the health score footer from terminal output.

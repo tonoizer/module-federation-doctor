@@ -98,6 +98,14 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Prepare federation report artifacts
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -e
+        mkdir -p .mf/doctor
+        rm -f .mf/doctor/report.json .mf/doctor/results.sarif
+
     - name: Build apps (optional)
       if: ${{ inputs.build-command != '' }}
       shell: bash
@@ -126,6 +134,18 @@ runs:
         MFDOCTOR_REPORT_JSON: .mf/doctor/report.json
       run: |
         set +e
+        report_dir=".mf/doctor"
+        report_json="${report_dir}/report.json"
+        report_sarif="${report_dir}/results.sarif"
+        mkdir -p "${report_dir}"
+        # Each invocation owns a fresh report set. This prevents a missing or
+        # failed run from uploading artifacts produced by an earlier run.
+        rm -f "${report_json}" "${report_sarif}"
+        run_id="$(node -p 'require("node:crypto").randomUUID()')"
+        run_started_at="$(node -p 'Date.now().toString()')"
+        run_marker="${report_dir}/.workspace-federation-gate-${run_id}.run"
+        printf '%s\n' "${run_id}" > "${run_marker}"
+        trap 'rm -f "${run_marker}"' EXIT
         args=(workspace)
         # shellcheck disable=SC2206
         roots=(${MFDOCTOR_ROOTS})
@@ -140,15 +160,23 @@ runs:
             args+=(--glob "${glob}")
           done
         fi
-        args+=(--format "${MFDOCTOR_FORMATS}")
+        formats="${MFDOCTOR_FORMATS:-terminal,json,sarif}"
         if [ "${MFDOCTOR_REQUIRE_COMPLETE}" = "true" ]; then
+          case ",${formats}," in
+            *,json,*) ;;
+            *) formats="${formats},json" ;;
+          esac
           args+=(--require-complete)
         fi
+        args+=(--format "${formats}")
         # shellcheck disable=SC2086
         ${MFDOCTOR_CLI} "${args[@]}"
         code=$?
         set -e
         set +e
+        REPORT_STATUS_RUN_ID="${run_id}" \
+        REPORT_STATUS_STARTED_AT="${run_started_at}" \
+        REPORT_STATUS_RUN_MARKER="${run_marker}" \
         bash "${{ github.action_path }}/report-status.sh"
         completeness_code=$?
         set -e
@@ -156,8 +184,6 @@ runs:
           code=1
         fi
         echo "exit-code=${code}" >> "$GITHUB_OUTPUT"
-        report_json=".mf/doctor/report.json"
-        report_sarif=".mf/doctor/results.sarif"
         if [ -f "${report_json}" ]; then
           echo "report-json=${report_json}" >> "$GITHUB_OUTPUT"
         fi

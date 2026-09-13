@@ -35,7 +35,6 @@ import {
 import { writeDiagnosticsDump } from "./agent-prompt.js";
 import { computeHealthScore } from "./health-score.js";
 import { builtInRules, federationRuleMeta } from "./rules.js";
-import { writeFileAtomic } from "./atomic-write.js";
 import { DEFAULT_ALWAYS_SHARED } from "./shared-policy.js";
 import {
   createWorkspaceApplicationIdentity,
@@ -68,7 +67,6 @@ import {
   redact,
   relativePath,
   sortFindings,
-  stableStringify,
 } from "./utils.js";
 import { writeFederationReports, writeReports } from "./reporters.js";
 import { buildUiPayload, reportFromFindings } from "./ui-graph.js";
@@ -85,12 +83,9 @@ import {
   markRunIncomplete,
   RUN_FAILURE_DETAILS_SCHEMA,
   RUN_FAILURE_ERROR_CODES,
-  type RequireCompleteOptions,
   type RunFailureDetails,
   type RunFailurePhase,
 } from "./run-status.js";
-
-type EngineDoctorOptions = DoctorOptions & RequireCompleteOptions;
 
 const ANALYSIS_FAILURE_RULE_ID = "doctor/analysis-failed";
 
@@ -202,7 +197,7 @@ function minimalFailureFacts(
 async function failureFacts(
   resolved: ResolvedDoctorOptions | undefined,
   existing: ProjectFacts | undefined,
-  options: EngineDoctorOptions,
+  options: DoctorOptions,
 ): Promise<ProjectFacts> {
   if (existing) return existing;
   if (resolved) {
@@ -220,12 +215,24 @@ async function persistFailureReport(
   directory: string,
   write: boolean,
   report: DoctorReport,
+  formats: readonly OutputFormat[] = [],
 ): Promise<void> {
   if (!write) return;
+  const sarifPath = path.join(directory, "results.sarif");
   try {
     await fs.mkdir(directory, { recursive: true });
-    await writeFileAtomic(path.join(directory, "report.json"), stableStringify(report, 2) + "\n");
+    // A failed run must never leave a previous run's SARIF looking current. A
+    // caller that requested SARIF gets a fresh failure document below; all
+    // other callers get the stale artifact invalidated.
+    await fs.rm(sarifPath, { force: true });
+    await writeFederationReports(
+      report,
+      directory,
+      ["json", ...(formats.includes("sarif") ? (["sarif"] as const) : [])],
+      { write: true },
+    );
   } catch (error) {
+    await fs.rm(sarifPath, { force: true }).catch(() => undefined);
     process.stderr.write(
       `MFDoctor could not write the current failure report: ${errorMessage(error)}\n`,
     );
@@ -446,7 +453,7 @@ async function withBaseline(
 }
 
 async function runAnalysis(
-  options: EngineDoctorOptions = {},
+  options: DoctorOptions = {},
   emittedAssets?: string[],
   diagnostics?: BuildDiagnostics,
   buildOutputs?: BuildOutputInput[],
@@ -668,7 +675,7 @@ async function runAnalysis(
       facts: safeFacts,
       report,
       exitCode:
-        options.requireComplete && !isStrictlyComplete([facts], report.status)
+        resolvedOptions.requireComplete && !isStrictlyComplete([facts], report.status)
           ? 1
           : isAnalysisIncomplete(facts.analysis)
             ? 2
@@ -711,22 +718,23 @@ async function runAnalysis(
         path.resolve(fallbackRoot, options.output?.directory ?? ".mf/doctor"),
       resolved?.output.write ?? options.output?.write !== false,
       failureReport,
+      resolved?.output.formats ?? options.output?.formats ?? [],
     );
     const safeFacts = redact(failedFacts, failureRoot) as ProjectFacts;
     return {
       facts: safeFacts,
       report: failureReport,
-      exitCode: options.requireComplete ? 1 : 2,
+      exitCode: (resolved?.requireComplete ?? options.requireComplete) ? 1 : 2,
     };
   }
 }
 
-export async function analyze(options: EngineDoctorOptions = {}): Promise<AnalysisResult> {
+export async function analyze(options: DoctorOptions = {}): Promise<AnalysisResult> {
   return runAnalysis(options);
 }
 
 export async function analyzeBuild(
-  options: EngineDoctorOptions,
+  options: DoctorOptions,
   emittedAssets: string[],
   diagnostics?: BuildDiagnostics,
   buildOutputs?: BuildOutputInput[],
@@ -898,7 +906,7 @@ function federationProjectGroups(projects: ProjectFacts[]): ProjectFacts[][] {
     );
 }
 
-type FederationAnalysisOptions = {
+export type FederationAnalysisOptions = {
   outputDirectory?: string;
   formats?: OutputFormat[];
   /** When false, skip writing report artifacts to disk. Defaults to true. */
@@ -1143,11 +1151,11 @@ async function analyzeFederationImpl(
     sortFindings(findings),
     baselineOptions,
   );
-  const report = reportFromFindings(
-    projects,
-    baselined,
-    options.workspaceDiagnostics ? { workspaceDiagnostics: options.workspaceDiagnostics } : {},
-  );
+  const report = reportFromFindings(projects, baselined, {
+    requireProjects: true,
+    ...(options.analysis ? { workspaceAnalysis: options.analysis } : {}),
+    ...(options.workspaceDiagnostics ? { workspaceDiagnostics: options.workspaceDiagnostics } : {}),
+  });
   const ui = buildUiPayload(projects, report);
   const failOn = options.failOn ?? "error";
   const formats = options.formats ?? [];
@@ -1200,40 +1208,55 @@ export async function analyzeFederation(
   files: string[],
   options: FederationAnalysisOptions = {},
 ): Promise<FederationAnalysisResult> {
+  const root = path.resolve(options.root ?? process.cwd());
+  const normalizedOptions: FederationAnalysisOptions = {
+    ...options,
+    root,
+    ...(options.outputDirectory !== undefined
+      ? { outputDirectory: path.resolve(root, options.outputDirectory) }
+      : {}),
+  };
   const runId = randomUUID();
   try {
-    return await analyzeFederationImpl(files, options, runId);
+    return await analyzeFederationImpl(files, normalizedOptions, runId);
   } catch (error) {
     const message = errorMessage(error);
-    const root = path.resolve(options.root ?? process.cwd());
-    if (options.formats?.includes("terminal"))
+    const failureRoot = normalizedOptions.root ?? process.cwd();
+    if (normalizedOptions.formats?.includes("terminal"))
       process.stderr.write(`MFDoctor could not complete workspace analysis: ${message}\n`);
     const finding = runFailureFinding(
-      root,
+      failureRoot,
       "workspace",
       {
         phase: "analysis",
         errorCode: RUN_FAILURE_ERROR_CODES.analysis,
         runId,
-        error: redact(message, root) as string,
+        error: redact(message, failureRoot) as string,
       },
       `MFDoctor workspace analysis failed: ${message}`,
     );
     const findings = [finding];
-    const report = reportFromFindings([], findings);
+    const report = reportFromFindings([], findings, {
+      requireProjects: true,
+      ...(normalizedOptions.analysis ? { workspaceAnalysis: normalizedOptions.analysis } : {}),
+      ...(normalizedOptions.workspaceDiagnostics
+        ? { workspaceDiagnostics: normalizedOptions.workspaceDiagnostics }
+        : {}),
+    });
     report.status = markRunIncomplete(report.status, "evidence-unknown");
-    if (options.outputDirectory)
+    if (normalizedOptions.outputDirectory)
       await persistFailureReport(
-        path.resolve(root, options.outputDirectory),
-        options.write !== false,
+        normalizedOptions.outputDirectory,
+        normalizedOptions.write !== false,
         report,
+        normalizedOptions.formats ?? [],
       );
     return {
       projects: [],
       findings,
       report,
       ui: buildUiPayload([], report),
-      exitCode: options.requireComplete ? 1 : 2,
+      exitCode: normalizedOptions.requireComplete ? 1 : 2,
     };
   }
 }

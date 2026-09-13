@@ -1,4 +1,5 @@
 import type { AnalysisBudgetReport } from "./analysis-budgets.js";
+import type { RunFailureDetails } from "./run-status.js";
 import type { DoctorFinding } from "./types.js";
 import { redact } from "./utils.js";
 
@@ -17,6 +18,8 @@ export const FINDING_DETAILS_SCHEMAS = {
   REMOTES_CONFIG: "remotes.config.v1",
   ARTIFACT: "artifact.v1",
   DOCTOR_PARTIAL_ANALYSIS: "doctor.partial-analysis.v1",
+  RUN_FAILURE: "doctor.run-failure.v1",
+  DOCTOR_RUN_FAILURE: "doctor.run-failure.v1",
 } as const;
 
 export type FindingDetailsSchemaId =
@@ -41,7 +44,7 @@ export const MAX_REPAIR_EVIDENCE_KEYS = 8;
 export const MAX_REPAIR_EVIDENCE_VALUE_CHARS = 120;
 export const MAX_REPAIR_EVIDENCE_KEY_CHARS = 120;
 
-/** Inventory of built-in rule IDs that emit typed details in the first batch. */
+/** Inventory of built-in or engine rule IDs that emit typed details. */
 export const TYPED_DETAILS_RULE_IDS = [
   "shared/unused",
   "shared/singleton-risk",
@@ -71,6 +74,7 @@ export const TYPED_DETAILS_RULE_IDS = [
   "artifact/react-dom-server-in-web",
   "artifact/types-missing",
   "doctor/partial-analysis",
+  "doctor/analysis-failed",
 ] as const;
 
 export type TypedDetailsRuleId = (typeof TYPED_DETAILS_RULE_IDS)[number];
@@ -227,13 +231,19 @@ export function buildFindingRepairContext(
   };
 }
 
+/** Structured failure payload emitted when an analysis phase cannot complete. */
+export type RunFailureDetailsV1 = RunFailureDetails;
+/** Descriptive alias for consumers that group typed details by rule family. */
+export type DoctorRunFailureDetailsV1 = RunFailureDetailsV1;
+
 export type FindingDetailsV1 =
   | SharedUnusedDetailsV1
   | SharedSingletonDetailsV1
   | SharedVersionMismatchDetailsV1
   | RemotesConfigDetailsV1
   | ArtifactDetailsV1
-  | DoctorPartialAnalysisDetailsV1;
+  | DoctorPartialAnalysisDetailsV1
+  | RunFailureDetailsV1;
 
 export type FindingDetailsAttachment = {
   detailsSchema: FindingDetailsSchemaId;

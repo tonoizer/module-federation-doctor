@@ -170,10 +170,12 @@ run was incomplete without scraping findings:
 | `missing-stats`    | Enhanced emit with remotes but `capabilities.stats` is false. Explicit `manifest: false` uses `artifact/manifest-disabled`. Vite without `manifest: true` is opt-in and does not set this code. |
 | `partial-bundler`  | Bundler cell is partial in the public matrix (`modern`, `unknown`, Rolldown/Vite Plus lifecycle)                                                                                                |
 | `probe-skipped`    | Workspace group pre-probe could not classify one or more project files (`diagnostics.kind: probe`)                                                                                              |
-| `evidence-unknown` | Source/budget evidence is partial or unknown (read failures, budget cutoff, unresolved dynamics)                                                                                                |
+| `evidence-unknown` | Source/budget evidence is partial or unknown (read failures, budget cutoff, unresolved dynamics), or a workspace diagnostic is `invalid`, `stale`, `duplicate`, or `conflict`                   |
 
 Current reporters always write `status`. Older reports may omit it. This field
-does not change rule evaluation, fingerprints, or exit codes.
+does not change rule evaluation or fingerprints. Legacy callers keep their
+existing exit behavior; callers that opt into `requireComplete` treat every
+non-empty reason list as a policy failure (exit `1`).
 
 ## Health score (`summary.score`)
 
@@ -234,10 +236,19 @@ existing findings.
 | `remotes.config.v1`          | `config/remote-entry-invalid`, `config/remote-http-insecure`, `config/remote-localhost-in-production`, `config/remote-alias-prefix-collision`, `config/remote-manifest-recommended`, `config/remote-capability-disabled` |
 | `artifact.v1`                | other first-batch `artifact/*` rules                                                                                                                                                                                     |
 | `doctor.partial-analysis.v1` | `doctor/partial-analysis`                                                                                                                                                                                                |
+| `doctor.run-failure.v1`      | Structured rule, evidence-bridge, or analysis failure (`phase`, `errorCode`, `runId`, optional `ruleId` and redacted `error`)                                                                                            |
 
 TypeScript exports: `FINDING_DETAILS_SCHEMAS`, `TYPED_DETAILS_RULE_IDS`,
 `readFindingDetails`, and per-family `*DetailsV1` types from
-`@tonoizer/mfdoctor`.
+`@tonoizer/mfdoctor`. Run failures additionally expose the typed
+`RunFailureDetails`, `RunFailurePhase`, `RunFailureErrorCode`,
+`RUN_FAILURE_DETAILS_SCHEMA`, and `RUN_FAILURE_ERROR_CODES` exports.
+
+The GitHub workspace action validates the required report shape, clears files
+from the prior invocation, and checks a per-run marker plus report freshness
+before exposing JSON/SARIF upload paths. Strict action runs also add `json` when
+the requested format list omitted it. A legacy action run remains fail-open, but
+its completeness outputs still identify malformed or incomplete reports.
 
 ### Agent / CI example (prefer `details`, not message regex)
 

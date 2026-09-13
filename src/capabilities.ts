@@ -273,6 +273,12 @@ const ANALYSIS_OPTIONS = [
   },
 ] satisfies readonly CliOperationOption[];
 
+const REQUIRE_COMPLETE_OPTION = {
+  name: "--require-complete",
+  type: "boolean",
+  description: "Turn incomplete evidence into a policy failure.",
+} satisfies CliOperationOption;
+
 const FEDERATION_OPTIONS = [
   {
     name: "--workspace",
@@ -397,7 +403,8 @@ export const CLI_OPERATIONS = {
     errorCodes: { "usage-error": USAGE_ERROR, "io-error": IO_ERROR },
   },
   check: {
-    description: "Analyze one project and apply its finding policy.",
+    description:
+      "Analyze one project and apply its finding policy; --require-complete turns incomplete evidence into a policy failure.",
     formats: ["terminal", "json", "sarif"],
     arguments: [
       {
@@ -407,7 +414,7 @@ export const CLI_OPERATIONS = {
         description: "Project directory; defaults to the current working directory.",
       },
     ],
-    options: [...ANALYSIS_OPTIONS, REPORT_BASELINE_OPTION],
+    options: [...ANALYSIS_OPTIONS, REQUIRE_COMPLETE_OPTION, REPORT_BASELINE_OPTION],
     prerequisites: [
       "A readable project directory and its local MFDoctor/module-federation configuration.",
       "A build is not required for static analysis, but emitted-artifact claims require adapter facts.",
@@ -452,7 +459,8 @@ export const CLI_OPERATIONS = {
     },
   },
   federation: {
-    description: "Analyze explicit project facts or a discovered workspace.",
+    description:
+      "Analyze explicit project facts or a discovered workspace; --require-complete turns incomplete evidence into a policy failure.",
     formats: ["terminal", "json", "sarif"],
     arguments: [
       {
@@ -463,7 +471,12 @@ export const CLI_OPERATIONS = {
         description: "Saved project-facts glob(s); use --workspace for root discovery.",
       },
     ],
-    options: [...ANALYSIS_OPTIONS, ...FEDERATION_OPTIONS, REPORT_BASELINE_OPTION],
+    options: [
+      ...ANALYSIS_OPTIONS,
+      ...FEDERATION_OPTIONS,
+      REQUIRE_COMPLETE_OPTION,
+      REPORT_BASELINE_OPTION,
+    ],
     prerequisites: [
       "Explicit schema-valid .mf/doctor/project.json inputs, or roots containing adapter-emitted project facts with --workspace.",
       "All projects intended for a federation graph must be included; missing evidence yields incomplete analysis.",
@@ -589,7 +602,8 @@ export const CLI_OPERATIONS = {
     },
   },
   workspace: {
-    description: "Discover project facts and gate a federation workspace.",
+    description:
+      "Discover project facts and gate a federation workspace; --require-complete turns incomplete evidence into a policy failure.",
     formats: ["terminal", "json", "sarif"],
     arguments: [
       {
@@ -600,7 +614,12 @@ export const CLI_OPERATIONS = {
         description: "Workspace root(s); defaults to the current working directory.",
       },
     ],
-    options: [...ANALYSIS_OPTIONS, ...FEDERATION_OPTIONS, REPORT_BASELINE_OPTION],
+    options: [
+      ...ANALYSIS_OPTIONS,
+      ...FEDERATION_OPTIONS,
+      REQUIRE_COMPLETE_OPTION,
+      REPORT_BASELINE_OPTION,
+    ],
     prerequisites: [
       "Workspace roots containing adapter-emitted .mf/doctor/project.json files.",
       "Every intended federation project must be discoverable; omitted or partial facts keep the gate incomplete.",
@@ -668,6 +687,7 @@ const DISCOVERY_CONTRACT = {
       "--no-score",
       "--no-write",
       "--output",
+      "--require-complete",
     ],
     commands: {
       discover: "mfdoctor capabilities",

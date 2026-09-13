@@ -91,6 +91,21 @@ Accepted formats are `terminal`, `json`, and `sarif`. JSON and SARIF artifacts
 are written below `.mf/doctor/`. A format list containing only `json` or `sarif`
 does not add human-readable terminal output.
 
+### Vollständige Evidenz verlangen
+
+`--require-complete` ist ein optionales Gate für `check`, `workspace` und
+`federation`. Es liefert Exit-Code `1`, sobald der Report unvollständig ist:
+fehlende Post-Emit-Evidenz, partielle Bundler-Abdeckung, fehlende Enhanced-Stats,
+Quell- oder Budget-Unsicherheit oder ein Workspace-Diagnoseeintrag. Ohne das
+Flag bleibt das Legacy-Verhalten einschließlich Exit-Code `2` für unvollständige
+Workspace-Analysen erhalten.
+
+```bash
+mfdoctor check --require-complete
+mfdoctor workspace --require-complete
+mfdoctor federation --workspace --require-complete
+```
+
 ### JSON auf stdout ohne Dateien
 
 ```bash
@@ -180,6 +195,7 @@ Build each app with its MFDoctor adapter first so it emits
 mfdoctor workspace
 mfdoctor workspace apps packages --format terminal,json,sarif
 mfdoctor workspace apps packages --group checkout
+mfdoctor workspace apps packages --require-complete
 ```
 
 - With no roots, `workspace` searches below the current directory.
@@ -206,6 +222,7 @@ path as `workspace`:
 mfdoctor federation --workspace
 mfdoctor federation --workspace apps packages --format terminal,json,sarif
 mfdoctor federation --workspace apps packages --group checkout
+mfdoctor federation --workspace apps packages --require-complete
 ```
 
 For a hand-tuned CI layout, pass one or more quoted `project.json` patterns
@@ -326,11 +343,11 @@ stdout.
 
 ## Exit codes
 
-| Code | Meaning                                                                                          |
-| ---- | ------------------------------------------------------------------------------------------------ |
-| `0`  | Analysis completed and the active policy passed, or compare found no material diff.              |
-| `1`  | Findings failed policy, a requested remote entry returned an HTTP error, or compare found diffs. |
-| `2`  | Usage arguments, missing inputs, incomplete analysis, an unknown rule, or another hard failure.  |
+| Code | Meaning                                                                                                                      |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | Analysis completed and the active policy passed, or compare found no material diff.                                          |
+| `1`  | Findings failed policy, a requested remote entry returned an HTTP error, or compare found diffs.                             |
+| `2`  | Usage arguments, missing inputs, incomplete analysis without `--require-complete`, an unknown rule, or another hard failure. |
 
 ## GitHub Actions
 
@@ -396,8 +413,11 @@ A ready-to-copy file lives at
 [`examples/ci/github-actions-mfdoctor.yml`](https://github.com/tonoizer/module-federation-doctor/blob/main/examples/ci/github-actions-mfdoctor.yml).
 
 Optional action inputs are `build-command`, `globs`, `install`, `package-spec`,
-`upload-sarif`, and `upload-artifact`. You can also skip the Action and run the
-CLI directly:
+`require-complete`, `upload-sarif`, and `upload-artifact`. Set
+`require-complete: true` to make incomplete evidence fail the gate. In strict
+mode the Action always requests JSON, clears prior report/SARIF files, and
+checks report shape plus current-run freshness before upload. You can also skip
+the Action and run the CLI directly:
 
 ```bash
 pnpm exec mfdoctor workspace --format terminal,json,sarif

@@ -64,6 +64,21 @@ Accepted formats are `terminal`, `json`, and `sarif`. JSON and SARIF artifacts
 are written below `.mf/doctor/`. A format list containing only `json` or `sarif`
 does not add human-readable terminal output.
 
+### Require complete evidence
+
+`--require-complete` is an opt-in gate for `check`, `workspace`, and
+`federation`. It returns exit `1` whenever the report is incomplete: missing
+post-emit evidence, partial bundler coverage, missing enhanced stats, source or
+budget uncertainty, or any workspace discovery diagnostic. Omit the flag to
+preserve the legacy behavior, including exit `2` for incomplete workspace
+analysis.
+
+```bash
+mfdoctor check --require-complete
+mfdoctor workspace --require-complete
+mfdoctor federation --workspace --require-complete
+```
+
 ### Apply accepted debt
 
 ```bash
@@ -125,6 +140,7 @@ Build each app with its MFDoctor adapter first so it emits
 mfdoctor workspace
 mfdoctor workspace apps packages --format terminal,json,sarif
 mfdoctor workspace apps packages --group checkout
+mfdoctor workspace apps packages --require-complete
 ```
 
 - With no roots, `workspace` searches below the current directory.
@@ -151,6 +167,7 @@ path as `workspace`:
 mfdoctor federation --workspace
 mfdoctor federation --workspace apps packages --format terminal,json,sarif
 mfdoctor federation --workspace apps packages --group checkout
+mfdoctor federation --workspace apps packages --require-complete
 ```
 
 For a hand-tuned CI layout, pass one or more quoted `project.json` patterns
@@ -243,11 +260,11 @@ remote entry returns an HTTP error exits `1`.
 
 ## Exit codes
 
-| Code | Meaning                                                                                           |
-| ---- | ------------------------------------------------------------------------------------------------- |
-| `0`  | Analysis completed and the active policy passed.                                                  |
-| `1`  | Findings failed policy, or a requested remote entry returned an HTTP error.                       |
-| `2`  | Invalid arguments, missing inputs, incomplete analysis, an unknown rule, or another hard failure. |
+| Code | Meaning                                                                                                                        |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `0`  | Analysis completed and the active policy passed.                                                                               |
+| `1`  | Findings failed policy, or a requested remote entry returned an HTTP error.                                                    |
+| `2`  | Invalid arguments, missing inputs, incomplete analysis without `--require-complete`, an unknown rule, or another hard failure. |
 
 ## GitHub Actions
 
@@ -281,7 +298,10 @@ The Action requires a runnable `mfdoctor` CLI (`cli` input); missing CLI is a
 hard failure. `upload-sarif` needs `permissions.security-events: write` and fails
 loudly when that permission is missing.
 
-Optional action inputs are `build-command`, `globs`, `upload-sarif`, and
-`upload-artifact`. You can also run the CLI directly and upload
+Optional action inputs are `build-command`, `globs`, `require-complete`,
+`upload-sarif`, and `upload-artifact`. Set `require-complete: true` to make
+incomplete evidence fail the gate. In strict mode the Action always requests
+JSON, clears prior report/SARIF files, and checks report shape plus current-run
+freshness before upload. You can also run the CLI directly and upload
 `.mf/doctor/results.sarif` with `github/codeql-action/upload-sarif` when code
 scanning is enabled.
