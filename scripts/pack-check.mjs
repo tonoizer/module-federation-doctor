@@ -105,8 +105,8 @@ async function assertAgentPlaybookContent() {
     );
     assert.match(
       source,
-      /No probe unless the user asked/i,
-      `${label} must hard-rule probe as opt-in`,
+      /No network command unless the user asked/i,
+      `${label} must hard-rule network commands as opt-in`,
     );
     assert.match(
       source,
@@ -322,7 +322,8 @@ const packageRoot = dirname(require.resolve("@tonoizer/mfdoctor/package.json"));
 const agents = readFileSync(join(packageRoot, "AGENTS.md"), "utf8");
 const skill = readFileSync(join(packageRoot, "skills/mfdoctor/SKILL.md"), "utf8");
 assert.match(agents, /No suppressions unless the user asked/);
-assert.match(skill, /No probe unless the user asked/);
+assert.match(agents, /No network command unless the user asked/);
+assert.match(skill, /No network command unless the user asked/);
 `,
   );
   const doctorOptions =
