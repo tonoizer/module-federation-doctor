@@ -43,6 +43,39 @@ describe("dynamic-import integration", () => {
     expect(result.report.findings.some((item) => item.ruleId === "shared/unused")).toBe(false);
   });
 
+  it("uses precise imported MF API bindings for remote and shared usage", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-dyn-bindings-"));
+    roots.push(root);
+    await fs.writeFile(path.join(root, "package.json"), '{"name":"dyn-bindings"}');
+    await fs.mkdir(path.join(root, "src"), { recursive: true });
+    await fs.copyFile(
+      path.join(fixtures, "dynamic-imports/runtime-api-bindings.js"),
+      path.join(root, "src/app.js"),
+    );
+
+    const result = await analyze({
+      root,
+      bundler: "vite",
+      mode: "development",
+      output: { formats: [] },
+      include: ["src/**/*.{js,jsx,ts,tsx}"],
+      rules: {
+        "doctor/partial-analysis": "off",
+        "config/plugin-package-mismatch": "off",
+        "shared/singleton-risk": "off",
+      },
+      moduleFederation: {
+        name: "dyn_bindings",
+        shared: { react: { singleton: true } },
+      },
+    });
+
+    expect(result.facts.imports.remotes).toEqual(["catalog", "checkout", "shop"]);
+    expect(result.facts.imports.dynamicPackages).toContain("react");
+    expect(result.facts.imports.unresolvedDynamic).toEqual([]);
+    expect(result.report.findings.some((item) => item.ruleId === "shared/unused")).toBe(false);
+  });
+
   it("reports partial-analysis for unresolved dynamics instead of unused", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-dyn-partial-"));
     roots.push(root);

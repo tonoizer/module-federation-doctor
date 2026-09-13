@@ -1,4 +1,4 @@
-declare function loadShare(id: string): Promise<unknown>;
+import { loadShare } from "@module-federation/runtime";
 
 export async function ensureReact() {
   return loadShare("react");

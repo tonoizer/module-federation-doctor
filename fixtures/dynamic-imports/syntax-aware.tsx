@@ -1,3 +1,4 @@
+import { loadRemote, loadShare } from "@module-federation/runtime";
 import type { ReactNode } from "react";
 
 export function Widget(props: { children?: ReactNode }) {
