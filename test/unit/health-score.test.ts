@@ -29,7 +29,7 @@ describe("computeHealthScore", () => {
         finding({ ruleId: "config/expose-key-invalid", severity: "error" }),
         finding({ ruleId: "shared/singleton-mismatch", severity: "warning" }),
       ]),
-    ).toEqual({ score: 96, scoreLabel: "Great" });
+    ).toEqual({ score: 96, scoreLabel: "Needs work" });
 
     // Many unique errors → clamp to 0
     const many = Array.from({ length: 80 }, (_, i) =>
@@ -45,7 +45,19 @@ describe("computeHealthScore", () => {
         finding({ ruleId: "config/name-required", severity: "error", fingerprint: "b" }),
         finding({ ruleId: "config/name-required", severity: "error", fingerprint: "c" }),
       ]),
-    ).toEqual({ score: 99, scoreLabel: "Great" }); // 100 - 1.5
+    ).toEqual({ score: 99, scoreLabel: "Needs work" }); // 100 - 1.5; a blocking error is never Great
+  });
+
+  it("does not label a high-scoring blocking error Great", () => {
+    expect(
+      computeHealthScore([finding({ ruleId: "config/name-required", severity: "error" })]),
+    ).toEqual({ score: 99, scoreLabel: "Needs work" });
+
+    expect(
+      computeHealthScore([
+        finding({ ruleId: "config/name-required", severity: "error", suppressed: true }),
+      ]),
+    ).toEqual({ score: 100, scoreLabel: "Great" });
   });
 
   it("excludes info, tooling, doctor/*, and suppressed findings", () => {
@@ -92,11 +104,12 @@ describe("computeHealthScore", () => {
     expect(labelForScore(49)).toBe("Needs work");
     expect(labelForScore(0)).toBe("Needs work");
 
-    // 18 unique errors → 100 - 27 = 73 → OK (exercises banding after round)
+    // 18 unique errors → 100 - 27 = 73 → score band is OK, but the blocking
+    // errors keep the actionable label at Needs work.
     const okBand = Array.from({ length: 18 }, (_, i) =>
       finding({ ruleId: `config/ok-${i}`, severity: "error" }),
     );
-    expect(computeHealthScore(okBand)).toEqual({ score: 73, scoreLabel: "OK" });
+    expect(computeHealthScore(okBand)).toEqual({ score: 73, scoreLabel: "Needs work" });
 
     // 34 unique errors → 100 - 51 = 49 → Needs work
     const needsWork = Array.from({ length: 34 }, (_, i) =>

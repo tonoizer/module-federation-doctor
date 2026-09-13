@@ -90,13 +90,92 @@ function suggestionFor(finding: DoctorFinding): string | undefined {
   return ruleGuidance[finding.ruleId]?.fix;
 }
 
-function formatScoreFooter(report: DoctorReport): string | undefined {
+interface TerminalAnalysisStatus {
+  incomplete: boolean;
+  known: boolean;
+  reasons: string[];
+}
+
+function terminalAnalysisStatus(report: DoctorReport): TerminalAnalysisStatus {
+  const partialFinding = report.findings.some(
+    (finding) => finding.ruleId === "doctor/partial-analysis" && !finding.suppressed,
+  );
+  if (report.status) {
+    const reasons: string[] = [...report.status.incompleteReasons];
+    return {
+      incomplete: !report.status.complete || reasons.length > 0 || partialFinding,
+      known: true,
+      reasons,
+    };
+  }
+  if (partialFinding)
+    return { incomplete: true, known: true, reasons: ["doctor/partial-analysis"] };
+  return { incomplete: false, known: false, reasons: [] };
+}
+
+function hasBlockingError(report: DoctorReport): boolean {
+  return report.findings.some((finding) => finding.severity === "error" && !finding.suppressed);
+}
+
+function formatFindingSummary(report: DoctorReport): string {
+  const suppressed =
+    report.summary.suppressed && report.summary.suppressed > 0
+      ? `, ${report.summary.suppressed} suppressed`
+      : "";
+  return `${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info${suppressed}`;
+}
+
+function formatPolicyResult(report: DoctorReport): string {
+  return hasBlockingError(report) ? pc.red("Policy: failed") : pc.green("Policy: passed");
+}
+
+function formatAnalysisStatus(status: TerminalAnalysisStatus): string {
+  if (!status.known) return pc.dim("Analysis: status unavailable (legacy report)");
+  if (!status.incomplete) return pc.green("Analysis: complete");
+  const reasons = status.reasons.length > 0 ? ` (${status.reasons.join(", ")})` : "";
+  return pc.yellow(`Analysis: incomplete${reasons}`);
+}
+
+function formatNextAction(report: DoctorReport, status: TerminalAnalysisStatus): string {
+  const policyFailed = hasBlockingError(report);
+  if (policyFailed && status.incomplete)
+    return "Next action: Fix the policy errors, then rebuild with the MFDoctor adapter and rerun the check.";
+  if (policyFailed) return "Next action: Fix the policy errors, then rerun the check.";
+  if (status.incomplete)
+    return "Next action: Rebuild with the MFDoctor adapter and rerun the check to complete analysis.";
+  if (report.summary.warnings > 0)
+    return "Next action: Review the warnings and rerun the check after making any changes.";
+  return "Next action: No action required.";
+}
+
+function formatScoreFooter(
+  report: DoctorReport,
+  status: TerminalAnalysisStatus,
+): string | undefined {
+  if (status.incomplete)
+    return pc.dim(
+      report.summary.score === null || report.summary.score === undefined
+        ? "Score: n/a (partial analysis)"
+        : "Score: n/a (analysis incomplete)",
+    );
+
   const { score, scoreLabel } = report.summary;
   if (score === undefined || score === null || !scoreLabel) return undefined;
-  const text = `Score: ${score}/100 (${scoreLabel})`;
-  if (score >= 75) return pc.green(text);
-  if (score >= 50) return pc.yellow(text);
+  const displayLabel =
+    hasBlockingError(report) && scoreLabel === "Great" ? "Needs work" : scoreLabel;
+  const text = `Score: ${score}/100 (${displayLabel})`;
+  if (displayLabel === "Great") return pc.green(text);
+  if (displayLabel === "OK") return pc.yellow(text);
   return pc.red(text);
+}
+
+function formatLocation(finding: DoctorFinding): string {
+  const location = finding.location;
+  if (!location) return "";
+  if (location.line === undefined) return location.path;
+  return `${location.path}:${location.line}${
+    location.column === undefined ? "" : `:${location.column}`
+  }`;
 }
 
 /**
@@ -110,18 +189,39 @@ export function formatTerminalReport(
   const quiet = resolveQuiet(options);
   const printLog = resolvePrintLog(options);
   const showScore = options.score !== false;
+  const status = terminalAnalysisStatus(report);
   if (report.findings.length === 0) {
     if (quiet || !printLog.success) return "";
-    const lines = [pc.green("MFDoctor: no findings.")];
+    const lines = [
+      pc.bold("MFDoctor"),
+      formatPolicyResult(report),
+      formatAnalysisStatus(status),
+      formatNextAction(report, status),
+      formatFindingSummary(report),
+    ];
     if (showScore) {
-      const footer = formatScoreFooter(report);
+      const footer = formatScoreFooter(report, status);
       if (footer) lines.push(footer);
     }
+    lines.push(pc.green("MFDoctor: no findings."));
     return lines.join("\n");
   }
 
-  const lines: string[] = [pc.bold("MFDoctor")];
+  const lines: string[] = [
+    pc.bold("MFDoctor"),
+    formatPolicyResult(report),
+    formatAnalysisStatus(status),
+    formatNextAction(report, status),
+    formatFindingSummary(report),
+  ];
+  if (showScore) {
+    const footer = formatScoreFooter(report, status);
+    if (footer) lines.push(footer);
+  }
+  lines.push("");
+
   let project = "";
+  const emittedDetails = new Set<string>();
   for (const finding of report.findings) {
     if (finding.project !== project) {
       project = finding.project;
@@ -133,28 +233,27 @@ export function formatTerminalReport(
         : finding.severity === "warning"
           ? pc.yellow("warning")
           : pc.blue("info");
-    const location = finding.location ? ` ${finding.location.path}` : "";
+    const location = finding.location ? ` ${formatLocation(finding)}` : "";
     const suppressed = finding.suppressed ? pc.dim(" [suppressed]") : "";
     lines.push(`  ${icon} ${finding.ruleId}${location}${suppressed}`);
     lines.push(`    ${finding.message}`);
     const suggestion = suggestionFor(finding);
-    if (suggestion) lines.push(`    fix: ${suggestion}`);
-    lines.push(`    docs: ${doctorRuleDocUrl(finding)}`);
-    for (const source of officialSources(finding.ruleId)) {
-      lines.push(`    source: ${source}`);
+    const sources = officialSources(finding.ruleId);
+    const detailKey = [
+      finding.project,
+      finding.ruleId,
+      suggestion ?? "",
+      doctorRuleDocUrl(finding),
+      ...sources,
+    ].join("\u0000");
+    if (!emittedDetails.has(detailKey)) {
+      if (suggestion) lines.push(`    fix: ${suggestion}`);
+      lines.push(`    docs: ${doctorRuleDocUrl(finding)}`);
+      for (const source of sources) {
+        lines.push(`    source: ${source}`);
+      }
+      emittedDetails.add(detailKey);
     }
-  }
-  const suppressed =
-    report.summary.suppressed && report.summary.suppressed > 0
-      ? `, ${report.summary.suppressed} suppressed`
-      : "";
-  lines.push(
-    `\n${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info${suppressed}`,
-  );
-  if (showScore) {
-    const footer = formatScoreFooter(report);
-    if (footer) lines.push(footer);
-    else if (report.summary.score === null) lines.push(pc.dim("Score: n/a (partial analysis)"));
   }
   if (resolvePrompt(options)) {
     const prompts = formatTopAgentPrompts(report.findings);

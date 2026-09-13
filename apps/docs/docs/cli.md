@@ -133,6 +133,10 @@ mfdoctor check --prompt
   default. Local runs still show them. Opt in with `--prompt`, or dump prompts to
   disk with `--diagnostics-dir` without printing them.
 
+When terminal output is shown, its header reports the policy result, analysis
+completeness and reason codes, and next required action before the health score.
+An incomplete run does not present a numeric score as a complete health claim.
+
 You can also set `MFDOCTOR_QUIET=0` to show successful checks or
 `MFDOCTOR_QUIET=1` to force quiet success. Environment configuration wins over
 the file configuration.

@@ -12,7 +12,10 @@ import {
 } from "../../src/reporters.js";
 import type { DoctorReport, ProjectFacts } from "../../src/types.js";
 
-function emptyReport(findings: DoctorReport["findings"] = []): DoctorReport {
+function emptyReport(
+  findings: DoctorReport["findings"] = [],
+  status: DoctorReport["status"] = { complete: true, incompleteReasons: [] },
+): DoctorReport {
   const health = computeHealthScore(findings);
   return {
     schemaVersion: 1,
@@ -33,6 +36,7 @@ function emptyReport(findings: DoctorReport["findings"] = []): DoctorReport {
       score: health.score,
       scoreLabel: health.scoreLabel,
     },
+    status,
     findings,
   };
 }
@@ -308,7 +312,53 @@ describe("reporters", () => {
     expect(text).toContain("docs: https://mfdoctor.kevinbeier.com/rules/config/expose-key-invalid");
     expect(text).toContain("source: https://module-federation.io/configure/exposes.html");
     expect(text).toContain("1 error(s)");
-    expect(text).toContain("Score: 99/100 (Great)");
+    expect(text).toContain("Score: 99/100 (Needs work)");
+  });
+
+  it("leads with policy, completeness, next action, and score", () => {
+    const report = emptyReport(
+      [
+        {
+          schemaVersion: 1,
+          ruleId: "config/expose-key-invalid",
+          severity: "error",
+          message: "bad key",
+          project: "demo",
+          evidence: {},
+          fingerprint: "fp",
+          location: { path: "src/widget.ts", line: 12, column: 4 },
+        },
+      ],
+      { complete: false, incompleteReasons: ["missing-emit", "evidence-unknown"] },
+    );
+    const text = formatTerminalReport(report, { prompt: false });
+    const policy = text.indexOf("Policy: failed");
+    const analysis = text.indexOf("Analysis: incomplete (missing-emit, evidence-unknown)");
+    const action = text.indexOf(
+      "Next action: Fix the policy errors, then rebuild with the MFDoctor adapter and rerun the check.",
+    );
+    const score = text.indexOf("Score: n/a (analysis incomplete)");
+
+    expect(policy).toBeGreaterThanOrEqual(0);
+    expect(policy).toBeLessThan(analysis);
+    expect(analysis).toBeLessThan(action);
+    expect(action).toBeLessThan(score);
+    expect(text).toContain("config/expose-key-invalid src/widget.ts:12:4");
+  });
+
+  it("prints incomplete status and required action even when no findings exist", () => {
+    const text = formatTerminalReport(
+      emptyReport([], { complete: false, incompleteReasons: ["missing-emit"] }),
+      { printLog: { success: true } },
+    );
+
+    expect(text).toContain("Policy: passed");
+    expect(text).toContain("Analysis: incomplete (missing-emit)");
+    expect(text).toContain(
+      "Next action: Rebuild with the MFDoctor adapter and rerun the check to complete analysis.",
+    );
+    expect(text).toContain("Score: n/a (analysis incomplete)");
+    expect(text).not.toBe("");
   });
 
   it("omits the score footer when score: false", () => {
@@ -367,13 +417,48 @@ describe("reporters", () => {
       },
     ]);
     const withPrompts = formatTerminalReport(report, { prompt: true });
-    expect(withPrompts).toContain("Score: 99/100 (Great)");
+    expect(withPrompts).toContain("Score: 99/100 (Needs work)");
     expect(withPrompts).toContain("Agent prompts (top 1)");
     expect(withPrompts).toContain("# Fix: config/expose-key-invalid");
 
     const without = formatTerminalReport(report, { prompt: false });
-    expect(without).toContain("Score: 99/100 (Great)");
+    expect(without).toContain("Score: 99/100 (Needs work)");
     expect(without).not.toContain("Agent prompts");
+  });
+
+  it("does not repeat identical guidance for repeated findings", () => {
+    const text = formatTerminalReport(
+      emptyReport([
+        {
+          schemaVersion: 1,
+          ruleId: "config/expose-key-invalid",
+          severity: "error",
+          message: "bad key one",
+          project: "demo",
+          evidence: {},
+          fingerprint: "fp-1",
+          suggestion: "Rename the key.",
+        },
+        {
+          schemaVersion: 1,
+          ruleId: "config/expose-key-invalid",
+          severity: "error",
+          message: "bad key two",
+          project: "demo",
+          evidence: {},
+          fingerprint: "fp-2",
+          suggestion: "Rename the key.",
+        },
+      ]),
+      { prompt: false },
+    );
+
+    expect(text).toContain("bad key one");
+    expect(text).toContain("bad key two");
+    expect(text.match(/fix: Rename the key\./g)).toHaveLength(1);
+    expect(
+      text.match(/docs: https:\/\/mfdoctor\.kevinbeier\.com\/rules\/config\/expose-key-invalid/g),
+    ).toHaveLength(1);
   });
 
   it("hides agent prompts by default in CI and shows them locally", () => {

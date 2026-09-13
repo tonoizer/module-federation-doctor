@@ -374,11 +374,13 @@ Examples:
   remains as a compatibility alias for existing automation.
 
 MFDoctor-specific agent UX prefers CLI/plugin finding output (rule id, fix,
-MFDoctor docs URL, official MF sources, exit codes) plus an offline health score
-footer (`Score: N/100`) and top-3 copy-paste agent prompts on local runs. CI
-hides prompts by default (opt in with `--prompt`, or dump via
-`--diagnostics-dir`). Use `--no-score` / `--no-prompt` to hide terminal footers;
-JSON reports still include `summary.score`. Offline: `mfdoctor prompt --finding
+MFDoctor docs URL, official MF sources, exit codes) plus a terminal header for
+policy result, analysis completeness, and next action before the offline health
+score (`Score: N/100`). Blocking errors keep the score label at `Needs work`;
+incomplete analysis is shown as `Score: n/a`. Top-3 copy-paste agent prompts
+appear on local runs. CI hides prompts by default (opt in with `--prompt`, or
+dump via `--diagnostics-dir`). Use `--no-score` / `--no-prompt` to hide terminal
+footers; JSON reports still include `summary.score`. Offline: `mfdoctor prompt --finding
 <id>` and `--diagnostics-dir` for handoff dumps. After install, agents should read
 [`AGENTS.md`](./AGENTS.md) or `skills/mfdoctor/SKILL.md` from the package. For
 Module Federation concepts, use the upstream `mf` skill (this repository vendors

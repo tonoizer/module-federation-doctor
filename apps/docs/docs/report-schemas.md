@@ -191,9 +191,11 @@ score = clamp(0, round(100 − 1.5×|unique error rules| − 0.75×|unique warni
 
 Excluded from the score surface by default: `info` findings, tooling-category
 rules, `doctor/*` advisories, and baseline-suppressed findings. Bands: **≥75
-Great**, **≥50 OK**, else **Needs work**. The score does not change `failOn`
-semantics. Terminal printing can be disabled with `--no-score` / `score: false`
-while JSON still includes the fields. After the score footer, MFDoctor prints
+Great**, **≥50 OK**, else **Needs work**. A non-suppressed blocking error keeps
+the label at **Needs work** even when the numeric score is in the Great band;
+suppressed errors do not. The score does not change `failOn` semantics. Terminal
+printing can be disabled with `--no-score` / `score: false` while JSON still
+includes the fields. After the score footer, MFDoctor prints
 [top-3 agent fix prompts](./cli.md) (`--no-prompt` to hide; CI hides by default;
 `mfdoctor prompt` and `--diagnostics-dir` for offline handoff;
 `--diagnostics-prompts` / `MFDOCTOR_DIAGNOSTICS_PROMPTS` to dump more than top-3,
