@@ -50,7 +50,17 @@ jobs:
             echo "$RELEASE_TAG is not an immutable tag at the checked-out commit"
             exit 1
           }
-          git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null
+          REMOTE_TAGS="$(git ls-remote --exit-code --tags origin \
+            "refs/tags/${RELEASE_TAG}" "refs/tags/${RELEASE_TAG}^{}")"
+          REMOTE_COMMIT="$(printf '%s\n' "$REMOTE_TAGS" | awk -v tag="$RELEASE_TAG" '
+            $2 == "refs/tags/" tag "^{}" { print $1; found=1; exit }
+            $2 == "refs/tags/" tag { direct=$1 }
+            END { if (!found && direct) print direct }
+          ')"
+          test "$REMOTE_COMMIT" = "$RELEASE_COMMIT" || {
+            echo "Remote tag $RELEASE_TAG resolves to $REMOTE_COMMIT, but checkout is $CHECKED_OUT_COMMIT"
+            exit 1
+          }
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Record checked-out commit

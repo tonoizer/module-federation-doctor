@@ -81,6 +81,10 @@ describe("release file generation", () => {
     expect(workflow).toContain('CHECKED_OUT_COMMIT="$(git rev-parse HEAD)"');
     expect(workflow).toContain('test "$RELEASE_COMMIT" = "$CHECKED_OUT_COMMIT"');
     expect(workflow).toContain('git tag --points-at HEAD --list "$RELEASE_TAG"');
+    expect(workflow).toContain("git ls-remote --exit-code --tags origin");
+    expect(workflow).toContain('"refs/tags/${RELEASE_TAG}^{}"');
+    expect(workflow).toContain('REMOTE_COMMIT="$(printf');
+    expect(workflow).toContain('test "$REMOTE_COMMIT" = "$RELEASE_COMMIT"');
     expect(workflow).toContain("git rev-parse HEAD");
     expect(workflow).toContain("GH_REPO: ${{ github.repository }}");
     expect(workflow).not.toContain("GITHUB_SHA");

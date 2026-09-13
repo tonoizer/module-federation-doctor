@@ -19,6 +19,37 @@ describe("release workflow contracts", () => {
     expect(generator).not.toContain("execSync(");
   });
 
+  it("uses the release tag for release events and the required tag input for dispatches", async () => {
+    const workflow = await readFile(".github/workflows/release-files.yml", "utf8");
+    const tagExpression = "github.event.release.tag_name || inputs.tag";
+
+    expect(workflow.split(tagExpression)).toHaveLength(4);
+    expect(workflow).toContain("ref: ${{ " + tagExpression + " }}");
+    expect(workflow).toContain("RELEASE_TAG: ${{ " + tagExpression + " }}");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("description: Existing plain-semver GitHub release tag");
+    expect(workflow).toContain("required: true");
+    expect(workflow).not.toContain("ref: main");
+    expect(workflow).not.toContain("github.event_name == 'workflow_dispatch' && 'main'");
+  });
+
+  it("verifies the requested tag commit before building or uploading release files", async () => {
+    const workflow = await readFile(".github/workflows/release-files.yml", "utf8");
+    const verify = workflow.indexOf("- name: Verify release tag");
+
+    expect(verify).toBeGreaterThan(-1);
+    expect(workflow).toContain("fetch-depth: 0");
+    expect(workflow).toContain('RELEASE_COMMIT="$(git rev-parse "${RELEASE_TAG}^{commit}")"');
+    expect(workflow).toContain('CHECKED_OUT_COMMIT="$(git rev-parse HEAD)"');
+    expect(workflow).toContain('test "$RELEASE_COMMIT" = "$CHECKED_OUT_COMMIT"');
+    expect(workflow).toContain('git tag --points-at HEAD --list "$RELEASE_TAG"');
+    expect(workflow).toContain('test "$REMOTE_COMMIT" = "$RELEASE_COMMIT"');
+    expect(workflow).toContain("needs: build-release-files");
+    expect(verify).toBeLessThan(workflow.indexOf("uses: ./.github/actions/setup-vp"));
+    expect(verify).toBeLessThan(workflow.indexOf("- name: Pack release files"));
+    expect(verify).toBeLessThan(workflow.indexOf("- name: Upload release files"));
+  });
+
   it("publishes only an immutable version tag through staged OIDC publishing", async () => {
     const workflow = await readFile(".github/workflows/publish-on-release.yml", "utf8");
 
