@@ -100,6 +100,125 @@ describe("workspace discovery", () => {
     }
   });
 
+  it("marks newer source evidence stale until a matching build artifact anchors the cache", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-evidence-freshness-"));
+    try {
+      const projectRoot = path.join(root, "apps/app");
+      const projectFile = path.join(projectRoot, ".mf/doctor/project.json");
+      const sourceFile = path.join(projectRoot, "src/index.ts");
+      const artifactFile = path.join(projectRoot, "dist/remoteEntry.js");
+      await fs.mkdir(path.dirname(projectFile), { recursive: true });
+      await fs.mkdir(path.dirname(sourceFile), { recursive: true });
+      await fs.mkdir(path.dirname(artifactFile), { recursive: true });
+      await fs.writeFile(sourceFile, "export const value = 1;\n");
+      await fs.writeFile(artifactFile, "cached-output\n");
+
+      const project = {
+        schemaVersion: 1,
+        project: { name: "app", root: "." },
+        imports: { sourceFiles: ["src/index.ts"], specifiers: [], packages: [] },
+        artifacts: { records: [], emittedAssets: [] },
+      };
+      await fs.writeFile(projectFile, JSON.stringify(project));
+      const baselineMtime = Date.now() / 1000;
+      await fs.utimes(projectFile, baselineMtime, baselineMtime);
+      await fs.utimes(sourceFile, baselineMtime + 10, baselineMtime + 10);
+      await fs.utimes(artifactFile, baselineMtime + 20, baselineMtime + 20);
+
+      const stale = await discoverWorkspaceProjectsWithBudget({ cwd: root });
+      expect(stale.diagnostics).toContainEqual(
+        expect.objectContaining({
+          kind: "stale",
+          message: expect.stringContaining('source input "src/index.ts"'),
+        }),
+      );
+
+      const cachedProject = {
+        ...project,
+        artifacts: {
+          records: [{ path: "dist/remoteEntry.js", buildId: "build-1" }],
+          emittedAssets: [],
+        },
+        builds: [
+          {
+            id: "build-1",
+            hash: "revision-1",
+            artifacts: [{ path: "dist/remoteEntry.js", buildId: "build-1" }],
+            emittedAssets: ["dist/remoteEntry.js"],
+          },
+        ],
+      };
+      await fs.writeFile(projectFile, JSON.stringify(cachedProject));
+      await fs.utimes(projectFile, baselineMtime, baselineMtime);
+
+      const validCache = await discoverWorkspaceProjectsWithBudget({ cwd: root });
+      expect(validCache.diagnostics).not.toContainEqual(expect.objectContaining({ kind: "stale" }));
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reports missing logical remote participants without treating URL remotes as local", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-participants-"));
+    try {
+      const hostFile = path.join(root, "apps/host/.mf/doctor/project.json");
+      await fs.mkdir(path.dirname(hostFile), { recursive: true });
+      await fs.writeFile(
+        hostFile,
+        JSON.stringify({
+          schemaVersion: 1,
+          project: { name: "host", root: "." },
+          moduleFederation: {
+            name: "host",
+            remotes: {
+              localRemote: { name: "localRemote", entry: "localRemote" },
+              externalRemote: {
+                name: "externalRemote",
+                entry: "https://cdn.example.test/remote.js",
+              },
+            },
+          },
+        }),
+      );
+
+      const missing = await discoverWorkspaceProjectsWithBudget({ cwd: root });
+      expect(missing.expectedParticipants).toEqual([
+        {
+          host: "host",
+          remote: "localRemote",
+          source: "apps/host/.mf/doctor/project.json",
+        },
+      ]);
+      expect(missing.diagnostics).toContainEqual(
+        expect.objectContaining({
+          kind: "missing-participant",
+          message: expect.stringContaining('local remote participant "localRemote"'),
+        }),
+      );
+      expect(missing.diagnostics.map((item) => item.message).join("\n")).not.toContain(
+        "externalRemote",
+      );
+
+      const remoteFile = path.join(root, "apps/localRemote/.mf/doctor/project.json");
+      await fs.mkdir(path.dirname(remoteFile), { recursive: true });
+      await fs.writeFile(
+        remoteFile,
+        JSON.stringify({
+          schemaVersion: 1,
+          project: { name: "localRemote", root: "." },
+          moduleFederation: { name: "localRemote", remotes: {} },
+        }),
+      );
+
+      const complete = await discoverWorkspaceProjectsWithBudget({ cwd: root });
+      expect(complete.diagnostics).not.toContainEqual(
+        expect.objectContaining({ kind: "missing-participant" }),
+      );
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("applies an explicit group before workspace budgets are spent", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-workspace-group-budget-"));
     try {
