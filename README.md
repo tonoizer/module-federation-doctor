@@ -162,9 +162,11 @@ development defaults to `failOn: "never"` so findings print without breaking
 the build. Override with `--ci`, `mode: "ci"`, `mode: "development"`, or
 `failOn`.
 
-Quiet success is the default: zero findings print nothing. Use `--verbose`,
-`printLog: { success: true }`, `quiet: false`, or `MFDOCTOR_QUIET=0` for the
-legacy "no findings" line. `MFDOCTOR_QUIET=1` forces quiet.
+Quiet success is the default: zero findings from a complete analysis print
+nothing. Incomplete reports remain visible with their status and next action.
+Use `--verbose`, `printLog: { success: true }`, `quiet: false`, or
+`MFDOCTOR_QUIET=0` for the legacy "no findings" line on complete checks.
+`MFDOCTOR_QUIET=1` forces quiet only for complete successful empty reports.
 
 ### Noisy finding? Mute intentionally
 

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import pc from "picocolors";
 import { writeFileAtomic as writeFileAtomicBase } from "./atomic-write.js";
+import { policyFails } from "./baseline.js";
 import { resolvePrintLog, resolveQuiet, resolvePrompt } from "./config.js";
 import { formatTopAgentPrompts } from "./agent-prompt.js";
 import { doctorRuleDocUrl } from "./docs-url.js";
@@ -28,7 +29,7 @@ export async function writeFileAtomic(filePath: string, contents: string): Promi
 const OFFICIAL_SOURCE_HOSTS = new Set(["module-federation.io", "www.module-federation.io"]);
 
 export interface TerminalReportOptions {
-  /** When true (default), omit output on zero findings. */
+  /** When true (default), omit output on complete successful zero findings. */
   quiet?: boolean;
   printLog?: DoctorPrintLog;
   /**
@@ -42,6 +43,11 @@ export interface TerminalReportOptions {
    * Skipped automatically for quiet empty success.
    */
   prompt?: boolean;
+  /** Effective policy used for the current analysis and exit-code decision. */
+  policy?: {
+    failOn: "never" | "warning" | "error";
+    failOnSuppressed?: boolean;
+  };
 }
 
 /** Destination controls for report artifacts and stdout JSON. */
@@ -102,6 +108,7 @@ function terminalAnalysisStatus(report: DoctorReport): TerminalAnalysisStatus {
   );
   if (report.status) {
     const reasons: string[] = [...report.status.incompleteReasons];
+    if (partialFinding && reasons.length === 0) reasons.push("doctor/partial-analysis");
     return {
       incomplete: !report.status.complete || reasons.length > 0 || partialFinding,
       known: true,
@@ -125,8 +132,8 @@ function formatFindingSummary(report: DoctorReport): string {
   return `${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info${suppressed}`;
 }
 
-function formatPolicyResult(report: DoctorReport): string {
-  return hasBlockingError(report) ? pc.red("Policy: failed") : pc.green("Policy: passed");
+function formatPolicyResult(policyFailed: boolean): string {
+  return policyFailed ? pc.red("Policy: failed") : pc.green("Policy: passed");
 }
 
 function formatAnalysisStatus(status: TerminalAnalysisStatus): string {
@@ -136,8 +143,11 @@ function formatAnalysisStatus(status: TerminalAnalysisStatus): string {
   return pc.yellow(`Analysis: incomplete${reasons}`);
 }
 
-function formatNextAction(report: DoctorReport, status: TerminalAnalysisStatus): string {
-  const policyFailed = hasBlockingError(report);
+function formatNextAction(
+  report: DoctorReport,
+  status: TerminalAnalysisStatus,
+  policyFailed: boolean,
+): string {
   if (policyFailed && status.incomplete)
     return "Next action: Fix the policy errors, then rebuild with the MFDoctor adapter and rerun the check.";
   if (policyFailed) return "Next action: Fix the policy errors, then rerun the check.";
@@ -180,7 +190,7 @@ function formatLocation(finding: DoctorFinding): string {
 
 /**
  * Format the single end-of-build MFDoctor findings block for humans and agents.
- * Returns an empty string when quiet success applies (zero findings).
+ * Returns an empty string when quiet success applies to complete zero findings.
  */
 export function formatTerminalReport(
   report: DoctorReport,
@@ -190,13 +200,18 @@ export function formatTerminalReport(
   const printLog = resolvePrintLog(options);
   const showScore = options.score !== false;
   const status = terminalAnalysisStatus(report);
+  const policyFailed = policyFails(
+    report.findings,
+    options.policy?.failOn ?? "error",
+    options.policy?.failOnSuppressed ?? false,
+  );
   if (report.findings.length === 0) {
-    if (quiet || !printLog.success) return "";
+    if (!status.incomplete && (quiet || !printLog.success)) return "";
     const lines = [
       pc.bold("MFDoctor"),
-      formatPolicyResult(report),
+      formatPolicyResult(policyFailed),
       formatAnalysisStatus(status),
-      formatNextAction(report, status),
+      formatNextAction(report, status, policyFailed),
       formatFindingSummary(report),
     ];
     if (showScore) {
@@ -209,9 +224,9 @@ export function formatTerminalReport(
 
   const lines: string[] = [
     pc.bold("MFDoctor"),
-    formatPolicyResult(report),
+    formatPolicyResult(policyFailed),
     formatAnalysisStatus(status),
-    formatNextAction(report, status),
+    formatNextAction(report, status, policyFailed),
     formatFindingSummary(report),
   ];
   if (showScore) {

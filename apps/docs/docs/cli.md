@@ -122,8 +122,9 @@ mfdoctor check --no-prompt
 mfdoctor check --prompt
 ```
 
-- MFDoctor is quiet when a check has no findings. `--verbose` restores the green
-  success line.
+- MFDoctor is quiet when a check has no findings and analysis is complete.
+  Incomplete empty reports still print their status and next action. `--verbose`
+  restores the green success line for complete checks.
 - `--no-score` hides the terminal health score. Report JSON still contains
   `summary.score` and `summary.scoreLabel`.
 - `--no-prompt` hides the copy-paste fix prompts printed after findings.

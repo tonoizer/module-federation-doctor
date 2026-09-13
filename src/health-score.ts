@@ -40,7 +40,7 @@ function uniqueRuleIds(findings: DoctorFinding[], severity: Severity): Set<strin
  * - else Needs work
  *
  * `computeHealthScore` additionally uses Needs work for any non-suppressed
- * blocking error, even when the numeric score falls in the Great band.
+ * blocking error, even when the numeric band would otherwise be Great or OK.
  */
 export function labelForScore(score: number): HealthScoreLabel {
   if (score >= 75) return "Great";
@@ -67,8 +67,8 @@ export function computeHealthScore(findings: DoctorFinding[]): HealthScoreResult
   const raw = 100 - 1.5 * errorRules.size - 0.75 * warningRules.size;
   const score = Math.max(0, Math.round(raw));
   // The unique-rule formula intentionally keeps the numeric score stable, but
-  // one blocking error must not present a project as excellent just because
-  // the score is still numerically high.
+  // One blocking error must not present a project as healthy just because the
+  // numeric score is still in a higher band.
   const hasBlockingError = findings.some(
     (finding) => finding.severity === "error" && !finding.suppressed,
   );

@@ -317,7 +317,7 @@ for (const item of cases) {
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
   const exitCode = result.status ?? 1;
   const hasExpectation = item.expectNoFindings
-    ? !output.includes("MFDoctor") && !/\b(error|warning|info)\b/.test(output)
+    ? !/^  (?:error|warning|info) \S/m.test(output)
     : Boolean(item.ruleId && output.includes(item.ruleId));
   const forbidsOk = !(item.forbiddenRuleIds ?? []).some((id) => output.includes(id));
   const ok = exitCode === item.expectedExit && hasExpectation && forbidsOk;

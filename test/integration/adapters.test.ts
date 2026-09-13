@@ -14,6 +14,7 @@ const vitePlusArgs: string[] = ["run"];
 const vitePlusExecOptions = { shell: process.platform === "win32" };
 const roots: string[] = [];
 const repository = path.resolve(import.meta.dirname, "../..");
+const terminalFindingLine = /^  (?:error|warning|info) \S/m;
 const adapterCases = JSON.parse(
   readFileSync(path.join(repository, "fixtures/adapters/cases.json"), "utf8"),
 ) as AdapterCases;
@@ -140,9 +141,8 @@ describe("adapter cases", () => {
         },
       );
       expect(stderr).not.toContain("MFDoctor could not complete");
-      expect(stdout).not.toContain("MFDoctor: no findings.");
-      // Quiet success: no MFDoctor findings block on a clean build.
-      expect(stdout).not.toMatch(/^MFDoctor$/m);
+      // Incomplete zero-finding builds show status; complete zero-finding builds stay quiet.
+      expect(stdout).not.toMatch(terminalFindingLine);
     }
 
     const { stdout: workspaceStdout } = await execFileAsync(
@@ -150,8 +150,7 @@ describe("adapter cases", () => {
       ["dist/cli.js", "workspace", "examples/mixed-federation", "--format", "terminal,json"],
       { cwd: repository, env: baseEnvironment },
     );
-    expect(workspaceStdout).not.toContain("MFDoctor: no findings.");
-    expect(workspaceStdout).not.toMatch(/^MFDoctor$/m);
+    expect(workspaceStdout).not.toMatch(terminalFindingLine);
     await expect(
       fs.access(path.join(repository, ".mf/doctor/report.json")),
     ).resolves.toBeUndefined();

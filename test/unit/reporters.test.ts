@@ -349,7 +349,7 @@ describe("reporters", () => {
   it("prints incomplete status and required action even when no findings exist", () => {
     const text = formatTerminalReport(
       emptyReport([], { complete: false, incompleteReasons: ["missing-emit"] }),
-      { printLog: { success: true } },
+      { prompt: false },
     );
 
     expect(text).toContain("Policy: passed");
@@ -359,6 +359,100 @@ describe("reporters", () => {
     );
     expect(text).toContain("Score: n/a (analysis incomplete)");
     expect(text).not.toBe("");
+  });
+
+  it("does not hide incomplete empty reports under the default quiet setting", () => {
+    vi.stubEnv("MFDOCTOR_QUIET", "1");
+    const text = formatTerminalReport(
+      emptyReport([], { complete: false, incompleteReasons: ["evidence-unknown"] }),
+      { prompt: false },
+    );
+
+    expect(text).toContain("Analysis: incomplete (evidence-unknown)");
+    expect(text).toContain("Next action:");
+  });
+
+  it("uses a stable partial-analysis reason when the finding establishes incompleteness", () => {
+    const text = formatTerminalReport(
+      emptyReport([
+        {
+          schemaVersion: 1,
+          ruleId: "doctor/partial-analysis",
+          severity: "warning",
+          message: "partial",
+          project: "demo",
+          evidence: {},
+          fingerprint: "fp",
+        },
+      ]),
+      { prompt: false },
+    );
+
+    expect(text).toContain("Analysis: incomplete (doctor/partial-analysis)");
+  });
+
+  it("uses failOn never for the terminal policy result", () => {
+    const text = formatTerminalReport(
+      emptyReport([
+        {
+          schemaVersion: 1,
+          ruleId: "config/name-required",
+          severity: "error",
+          message: "name is required",
+          project: "demo",
+          evidence: {},
+          fingerprint: "fp",
+        },
+      ]),
+      { prompt: false, policy: { failOn: "never" } },
+    );
+
+    expect(text).toContain("Policy: passed");
+    expect(text).not.toContain("Policy: failed");
+  });
+
+  it("uses failOn warning for warning findings", () => {
+    const text = formatTerminalReport(
+      emptyReport([
+        {
+          schemaVersion: 1,
+          ruleId: "config/remote-http-insecure",
+          severity: "warning",
+          message: "insecure remote",
+          project: "demo",
+          evidence: {},
+          fingerprint: "fp",
+        },
+      ]),
+      { prompt: false, policy: { failOn: "warning" } },
+    );
+
+    expect(text).toContain("Policy: failed");
+  });
+
+  it("does not fail policy for suppressed findings unless requested", () => {
+    const report = emptyReport([
+      {
+        schemaVersion: 1,
+        ruleId: "config/name-required",
+        severity: "error",
+        message: "name is required",
+        project: "demo",
+        evidence: {},
+        fingerprint: "fp",
+        suppressed: true,
+      },
+    ]);
+
+    expect(formatTerminalReport(report, { prompt: false, policy: { failOn: "error" } })).toContain(
+      "Policy: passed",
+    );
+    expect(
+      formatTerminalReport(report, {
+        prompt: false,
+        policy: { failOn: "error", failOnSuppressed: true },
+      }),
+    ).toContain("Policy: failed");
   });
 
   it("omits the score footer when score: false", () => {

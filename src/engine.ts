@@ -439,6 +439,7 @@ async function runAnalysis(
       rolloutMode === "v2-compat" ? [...legacyFindings, ...migratedFindings] : legacyFindings,
     );
     const { findings, failOnSuppressed } = await withBaseline(rawFindings, resolved.baseline);
+    const policyFailed = policyFails(findings, resolved.failOn, failOnSuppressed);
     // Write the full report before any caller decides to fail the build.
     // Terminal showcase is the single print path (adapters must not re-print).
     const report = reportFor(facts, findings);
@@ -448,6 +449,7 @@ async function runAnalysis(
       printLog: resolved.printLog,
       score: resolved.score,
       prompt: resolved.prompt,
+      policy: { failOn: resolved.failOn, failOnSuppressed },
       write: resolved.output.write,
       stdoutJson: resolved.output.stdout,
     });
@@ -458,11 +460,7 @@ async function runAnalysis(
     return {
       facts: safeFacts,
       report,
-      exitCode: isAnalysisIncomplete(facts.analysis)
-        ? 2
-        : policyFails(findings, resolved.failOn, failOnSuppressed)
-          ? 1
-          : 0,
+      exitCode: isAnalysisIncomplete(facts.analysis) ? 2 : policyFailed ? 1 : 0,
       evidence: {
         rollout: { scope: "rules", mode: rolloutMode },
         evaluations: migratedRuns.flatMap(({ run }) => run.output.evaluations),
@@ -895,6 +893,7 @@ export async function analyzeFederation(
     options.workspaceDiagnostics ? { workspaceDiagnostics: options.workspaceDiagnostics } : {},
   );
   const ui = buildUiPayload(projects, report);
+  const failOn = options.failOn ?? "error";
   const formats = options.formats ?? [];
   const stdoutJson = options.stdoutJson === true;
   if (options.outputDirectory && (formats.length > 0 || stdoutJson))
@@ -907,11 +906,11 @@ export async function analyzeFederation(
         ...(options.printLog !== undefined ? { printLog: options.printLog } : {}),
         ...(options.score !== undefined ? { score: options.score } : {}),
         ...(options.prompt !== undefined ? { prompt: options.prompt } : {}),
+        policy: { failOn, failOnSuppressed },
         ...(options.write !== undefined ? { write: options.write } : {}),
         ...(stdoutJson ? { stdoutJson: true } : {}),
       },
     );
-  const failOn = options.failOn ?? "error";
   const evidence: EvidenceAnalysisMetadata | undefined =
     rolloutMode === "legacy"
       ? undefined

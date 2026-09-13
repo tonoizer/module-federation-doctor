@@ -150,8 +150,10 @@ analysis incomplete.
 CI tip: CI mode is auto-detected from CI / provider env vars (GitHub Actions,
 GitLab, Circle, Jenkins, …). No mode: "ci" needed in plugin config. Pass --ci
 or mode: "ci" to force it; mode: "development" to opt out. Findings are always
-collected in full before the build fails. Clean runs stay quiet by default;
-pass --verbose, printLog.success, or MFDOCTOR_QUIET=0 for the old success line.
+collected in full before the build fails. Complete successful runs with no
+findings stay quiet by default; incomplete reports show their status and next
+action. Pass --verbose, printLog.success, or MFDOCTOR_QUIET=0 for the old
+success line on complete checks.
 
 Score: terminal footer shows Score: N/100 (Great|OK|Needs work) after counts.
 Pass --no-score or score: false to hide it (report JSON still includes score).
@@ -600,6 +602,7 @@ async function runFederationAnalysis(
         }
       : {}),
     ...(baseline ? { baseline } : {}),
+    ...(config.failOn !== undefined ? { failOn: config.failOn } : {}),
     ...(verbose ? { quiet: false, printLog: { success: true } } : {}),
     score: showScore,
     // Keep stdout JSON free of agent prompts unless --prompt was forced.

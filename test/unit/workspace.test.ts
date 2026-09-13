@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { collectProjectFacts } from "../../src/collect.js";
 import { resolveOptions } from "../../src/config.js";
 import { analyzeFederation } from "../../src/engine.js";
-import { writeReports } from "../../src/reporters.js";
+import { formatTerminalReport, writeReports } from "../../src/reporters.js";
 import { resolveAnalysisBudgets } from "../../src/analysis-budgets.js";
 import type { DoctorReport, ProjectFacts } from "../../src/types.js";
 import {
@@ -619,6 +619,9 @@ describe("workspace discovery", () => {
 
       const result = await analyzeFederation(discovery.files, { analysis: discovery.budget });
       expect(result.exitCode).toBe(2);
+      expect(formatTerminalReport(result.report, { prompt: false })).toContain(
+        "Analysis: incomplete",
+      );
       expect(result.findings.some((item) => item.ruleId === "federation/ghost-shares")).toBe(false);
       expect(result.findings).toContainEqual(
         expect.objectContaining({ ruleId: "doctor/partial-analysis" }),

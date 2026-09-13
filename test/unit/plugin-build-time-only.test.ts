@@ -631,7 +631,7 @@ describe("adapter quiet success and failure terminal path", () => {
     { id: "webpack" as const, factory: webpackDoctor, framework: "webpack" as const },
     { id: "rsbuild" as const, factory: rsbuildDoctor, framework: "rsbuild" as const },
   ]) {
-    it(`${bundler.id}: quiet success prints nothing; failure prints one findings block`, async () => {
+    it(`${bundler.id}: complete success stays quiet; incomplete success prints status`, async () => {
       const cleanRoot = await fixtureRoot(bundler.id, "clean");
       const errorRoot = await fixtureRoot(bundler.id, "error");
       roots.push(cleanRoot, errorRoot);
@@ -720,7 +720,12 @@ describe("adapter quiet success and failure terminal path", () => {
       };
 
       const clean = await run(cleanRoot, "clean");
-      expect(clean.writes.join("")).not.toContain("MFDoctor");
+      const cleanOut = clean.writes.join("");
+      if (bundler.id === "vite" || bundler.id === "rsbuild") {
+        expect(cleanOut).toContain("MFDoctor");
+        expect(cleanOut).toContain("Analysis: incomplete");
+        expect(cleanOut).toContain("Next action:");
+      } else expect(cleanOut).toBe("");
       expect(clean.threw).toBe(false);
 
       const failed = await run(errorRoot, "error");
