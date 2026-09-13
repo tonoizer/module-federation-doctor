@@ -15,6 +15,32 @@ export const INCOMPLETE_REASON_CODES = [
 
 export type { DoctorRunStatus, IncompleteReasonCode };
 
+/** Versioned detail payload used for failures produced by the analysis engine. */
+export const RUN_FAILURE_DETAILS_SCHEMA = "doctor.run-failure.v1" as const;
+
+/** Stable machine-readable codes for failures that are not ordinary findings. */
+export const RUN_FAILURE_ERROR_CODES = {
+  rule: "rule-execution-failed",
+  evidence: "evidence-execution-failed",
+  analysis: "analysis-failed",
+} as const;
+
+export type RunFailurePhase = keyof typeof RUN_FAILURE_ERROR_CODES;
+export type RunFailureErrorCode = (typeof RUN_FAILURE_ERROR_CODES)[RunFailurePhase];
+
+export interface RunFailureDetails {
+  phase: RunFailurePhase;
+  errorCode: RunFailureErrorCode;
+  runId: string;
+  ruleId?: string;
+  error?: string;
+}
+
+/** Opt in to treating an incomplete run as a gate failure. */
+export interface RequireCompleteOptions {
+  requireComplete?: boolean;
+}
+
 export interface ComputeRunStatusOptions {
   /** Workspace discovery diagnostics (probe failures/skips). */
   workspaceDiagnostics?: readonly WorkspaceProjectDiagnostic[];
@@ -29,6 +55,37 @@ const ENHANCED_STATS_DEFAULT_ON = new Set<BundlerName>(["webpack", "rspack", "rs
 /** Empty complete status for hand-built reports and evidence projections. */
 export function emptyRunStatus(): DoctorRunStatus {
   return { complete: true, incompleteReasons: [] };
+}
+
+/** Older reports may omit status; strict consumers must treat that as incomplete. */
+export function isRunStatusComplete(status: DoctorRunStatus | undefined): boolean {
+  return status?.complete === true && status.incompleteReasons.length === 0;
+}
+
+/** The federation gate needs build evidence for every discovered project. */
+export function hasRequiredEvidence(projects: readonly ProjectFacts[]): boolean {
+  return (
+    projects.length > 0 && projects.every((project) => project.capabilities.emittedAssets === true)
+  );
+}
+
+/** Strict completeness combines the persisted status with the required build evidence. */
+export function isStrictlyComplete(
+  projects: readonly ProjectFacts[],
+  status: DoctorRunStatus | undefined,
+): boolean {
+  return hasRequiredEvidence(projects) && isRunStatusComplete(status);
+}
+
+/** Add a deterministic incompleteness reason to a status used for failure artifacts. */
+export function markRunIncomplete(
+  status: DoctorRunStatus | undefined,
+  reason: IncompleteReasonCode,
+): DoctorRunStatus {
+  const reasons = new Set(status?.incompleteReasons ?? []);
+  reasons.add(reason);
+  const incompleteReasons = INCOMPLETE_REASON_CODES.filter((code) => reasons.has(code));
+  return { complete: false, incompleteReasons: [...incompleteReasons] };
 }
 
 /** True for Webpack/Rspack/Rsbuild/Modern — stats emit by default. */

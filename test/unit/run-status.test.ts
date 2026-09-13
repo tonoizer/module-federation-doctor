@@ -3,7 +3,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ANALYSIS_BUDGETS } from "../../src/analysis-budgets.js";
-import { computeRunStatus, emptyRunStatus, INCOMPLETE_REASON_CODES } from "../../src/run-status.js";
+import {
+  computeRunStatus,
+  emptyRunStatus,
+  hasRequiredEvidence,
+  INCOMPLETE_REASON_CODES,
+  isRunStatusComplete,
+  isStrictlyComplete,
+  markRunIncomplete,
+} from "../../src/run-status.js";
 import { reportFromFindings } from "../../src/ui-graph.js";
 import type {
   AnalysisCapabilities,
@@ -328,5 +336,27 @@ describe("computeRunStatus", () => {
       complete: false,
       incompleteReasons: ["missing-emit"],
     });
+  });
+
+  it("requires an explicit complete status and emitted build evidence for strict gates", () => {
+    const complete = project();
+    const status = emptyRunStatus();
+
+    expect(isRunStatusComplete(status)).toBe(true);
+    expect(hasRequiredEvidence([complete])).toBe(true);
+    expect(isStrictlyComplete([complete], status)).toBe(true);
+
+    expect(isRunStatusComplete(undefined)).toBe(false);
+    expect(isStrictlyComplete([complete], undefined)).toBe(false);
+    expect(isStrictlyComplete([project({ capabilities: { emittedAssets: false } })], status)).toBe(
+      false,
+    );
+    expect(isStrictlyComplete([], status)).toBe(false);
+  });
+
+  it("adds failure incompleteness without losing existing stable reasons", () => {
+    expect(
+      markRunIncomplete({ complete: false, incompleteReasons: ["missing-emit"] }, "probe-skipped"),
+    ).toEqual({ complete: false, incompleteReasons: ["missing-emit", "probe-skipped"] });
   });
 });

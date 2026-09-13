@@ -67,6 +67,10 @@ inputs:
     description: Name for the uploaded reports artifact.
     required: false
     default: "mfdoctor-federation"
+  require-complete:
+    description: Fail when the federation report is incomplete or required build evidence is missing.
+    required: false
+    default: "false"
 
 outputs:
   report-json:
@@ -76,8 +80,20 @@ outputs:
     description: Path to results.sarif when sarif format is enabled.
     value: ${{ steps.gate.outputs.report-sarif }}
   exit-code:
-    description: Gate exit code (0 pass, 1 policy fail, 2 incomplete).
+    description: Gate exit code (0 pass, 1 policy or strict-completeness fail, 2 legacy incomplete).
     value: ${{ steps.gate.outputs.exit-code }}
+  policy-result:
+    description: Policy result independent of report completeness (pass, fail, or unknown).
+    value: ${{ steps.gate.outputs.policy-result }}
+  completeness:
+    description: Report completeness (complete or incomplete).
+    value: ${{ steps.gate.outputs.completeness }}
+  complete:
+    description: Whether the report contains complete required evidence (true or false).
+    value: ${{ steps.gate.outputs.complete }}
+  incomplete-reasons:
+    description: Comma-separated report completeness reason codes.
+    value: ${{ steps.gate.outputs.incomplete-reasons }}
 
 runs:
   using: composite
@@ -106,6 +122,8 @@ runs:
         MFDOCTOR_ROOTS: ${{ inputs.roots }}
         MFDOCTOR_GLOBS: ${{ inputs.globs }}
         MFDOCTOR_FORMATS: ${{ inputs.formats }}
+        MFDOCTOR_REQUIRE_COMPLETE: ${{ inputs.require-complete }}
+        MFDOCTOR_REPORT_JSON: .mf/doctor/report.json
       run: |
         set +e
         args=(workspace)
@@ -123,10 +141,20 @@ runs:
           done
         fi
         args+=(--format "${MFDOCTOR_FORMATS}")
+        if [ "${MFDOCTOR_REQUIRE_COMPLETE}" = "true" ]; then
+          args+=(--require-complete)
+        fi
         # shellcheck disable=SC2086
         ${MFDOCTOR_CLI} "${args[@]}"
         code=$?
         set -e
+        set +e
+        bash "${{ github.action_path }}/report-status.sh"
+        completeness_code=$?
+        set -e
+        if [ "${completeness_code}" -ne 0 ] && [ "${MFDOCTOR_REQUIRE_COMPLETE}" = "true" ]; then
+          code=1
+        fi
         echo "exit-code=${code}" >> "$GITHUB_OUTPUT"
         report_json=".mf/doctor/report.json"
         report_sarif=".mf/doctor/results.sarif"

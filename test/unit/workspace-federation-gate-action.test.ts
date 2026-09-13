@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 const actionDir = ".github/actions/workspace-federation-gate";
 const ensureCli = path.join(actionDir, "ensure-cli.sh");
 const requireSarif = path.join(actionDir, "require-sarif-upload.sh");
+const reportStatus = path.join(actionDir, "report-status.sh");
 
 function runScript(
   script: string,
@@ -40,6 +41,11 @@ describe("workspace-federation-gate action", () => {
     expect(action).toContain("id: upload-sarif");
     expect(action).toContain("continue-on-error: true");
     expect(action).toContain("MFDOCTOR_SARIF_OUTCOME: ${{ steps.upload-sarif.outcome }}");
+    expect(action).toContain("require-complete:");
+    expect(action).toContain("--require-complete");
+    expect(action).toContain("policy-result:");
+    expect(action).toContain("incomplete-reasons:");
+    expect(action).toContain("report-status.sh");
   });
 
   it("docs pin the Action to a release tag, not @main", async () => {
@@ -108,5 +114,98 @@ describe("workspace-federation-gate action", () => {
       MFDOCTOR_SARIF_OUTCOME: "failure",
     });
     expect(disabled.status).toBe(0);
+  });
+
+  it("reports policy and completeness independently, with strict opt-in", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "mfdoctor-gate-status-"));
+    try {
+      const report = path.join(dir, "report.json");
+      const output = path.join(dir, "github-output");
+      const incomplete = {
+        schemaVersion: 1,
+        capabilities: { emittedAssets: false },
+        status: { complete: false, incompleteReasons: ["missing-emit"] },
+        summary: { projects: 1 },
+        findings: [],
+      };
+      await writeFile(report, JSON.stringify(incomplete));
+
+      const legacy = runScript(reportStatus, {
+        MFDOCTOR_REPORT_JSON: report,
+        MFDOCTOR_REQUIRE_COMPLETE: "false",
+        GITHUB_OUTPUT: output,
+      });
+      expect(legacy.status).toBe(0);
+      expect(await readFile(output, "utf8")).toContain("policy-result=pass");
+      expect(await readFile(output, "utf8")).toContain("completeness=incomplete");
+      expect(await readFile(output, "utf8")).toContain("incomplete-reasons=missing-emit");
+
+      const strict = runScript(reportStatus, {
+        MFDOCTOR_REPORT_JSON: report,
+        MFDOCTOR_REQUIRE_COMPLETE: "true",
+        GITHUB_OUTPUT: "",
+      });
+      expect(strict.status).toBe(1);
+      expect(strict.stdout).toContain("complete=false");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not turn a policy failure into a completeness failure", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "mfdoctor-gate-status-complete-"));
+    try {
+      const report = path.join(dir, "report.json");
+      await writeFile(
+        report,
+        JSON.stringify({
+          schemaVersion: 1,
+          capabilities: { emittedAssets: true },
+          status: { complete: true, incompleteReasons: [] },
+          summary: { projects: 1 },
+          findings: [{ severity: "error", suppressed: false }],
+        }),
+      );
+      const result = runScript(reportStatus, {
+        MFDOCTOR_REPORT_JSON: report,
+        MFDOCTOR_REQUIRE_COMPLETE: "true",
+        GITHUB_OUTPUT: "",
+      });
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain("policy-result=fail");
+      expect(result.stdout).toContain("completeness=complete");
+      expect(result.stdout).toContain("complete=true");
+      expect(result.stdout).toContain("incomplete-reasons=\n");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("treats unknown report reason codes as invalid without writing arbitrary output", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "mfdoctor-gate-status-invalid-"));
+    try {
+      const report = path.join(dir, "report.json");
+      const output = path.join(dir, "github-output");
+      await writeFile(
+        report,
+        JSON.stringify({
+          capabilities: { emittedAssets: true },
+          status: { complete: false, incompleteReasons: ["bad\nINJECTED=yes"] },
+          summary: { projects: 1 },
+          findings: [],
+        }),
+      );
+      const result = runScript(reportStatus, {
+        MFDOCTOR_REPORT_JSON: report,
+        MFDOCTOR_REQUIRE_COMPLETE: "true",
+        GITHUB_OUTPUT: output,
+      });
+      const contents = await readFile(output, "utf8");
+      expect(result.status).toBe(1);
+      expect(contents).toContain("incomplete-reasons=invalid-status");
+      expect(contents).not.toContain("INJECTED=yes");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
