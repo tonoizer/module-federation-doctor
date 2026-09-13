@@ -202,6 +202,8 @@ pnpm exec mfdoctor check --ci
 pnpm exec mfdoctor check --format terminal,json,sarif
 pnpm exec mfdoctor check --baseline ./mfdoctor.baseline.json
 pnpm exec mfdoctor check --verbose
+pnpm exec mfdoctor --version
+pnpm exec mfdoctor -v
 pnpm exec mfdoctor workspace
 pnpm exec mfdoctor federation --workspace
 pnpm exec mfdoctor federation ".mf/doctor/**/project.json"
@@ -225,11 +227,13 @@ pnpm exec mfdoctor prompt --finding config/name-required .mf/doctor/report.json
 The published package ships the same playbook as [`AGENTS.md`](./AGENTS.md) and
 the Cursor/agent skill at [`skills/mfdoctor/SKILL.md`](./skills/mfdoctor/SKILL.md)
 (capabilities → check JSON → prompt → rebuild). Hard rules: no suppressions and
-no `probe` unless the user asked; do not claim green from `check` alone.
+no network command (including `compare` and `probe`) unless explicitly requested;
+do not claim green from `check` alone.
 
-`capabilities` is versioned JSON and does not load project configuration or use
-the network. A check exits `0` when policy passes, `1` when policy fails, and
-`2` when analysis is incomplete. The diagnostics directory contains bounded
+`--version` and `-v` print the installed `@tonoizer/mfdoctor` package version
+without loading project configuration or using the network. `capabilities` is
+versioned JSON and has the same offline behavior. A check exits `0` when policy
+passes, `1` when policy fails, and `2` when analysis is incomplete. The diagnostics directory contains bounded
 `report.json`, `summary.md`, and `prompts/*.md` (default top-3 prompts; pass
 `--diagnostics-prompts <n>` up to 25, or set `MFDOCTOR_DIAGNOSTICS_PROMPTS`, to
 dump more). JSON and SARIF remain stable machine-readable contracts, so agents
@@ -240,21 +244,22 @@ is no HTML report or `--ui` dashboard. For a programmatic remotes/shared graph,
 use `buildUiPayload` and `schemas/ui.schema.json` (see report schemas in the
 docs).
 
-| Command         | When to use it                                              |
-| --------------- | ----------------------------------------------------------- |
-| Plugin on build | Gate the real emit; strongest artifact evidence             |
-| `check`         | Offline config analysis without a full bundler run          |
-| `workspace`     | One-shot host↔remote gate; auto-discovers `project.json`    |
-| `federation`    | Same gate with `--workspace` or manual globs (escape hatch) |
-| `baseline`      | Generate/update fingerprint baselines for incremental CI    |
-| `runtime`       | Correlate an Observability Plugin export with project facts |
-| `probe`         | Inspect a deployed manifest / remoteEntry HEAD (network)    |
-| `compare`       | Diff deployed manifests (network; same safety as `probe`)   |
+| Command          | When to use it                                              |
+| ---------------- | ----------------------------------------------------------- |
+| Plugin on build  | Gate the real emit; strongest artifact evidence             |
+| `check`          | Offline config analysis without a full bundler run          |
+| `workspace`      | One-shot host↔remote gate; auto-discovers `project.json`    |
+| `federation`     | Same gate with `--workspace` or manual globs (escape hatch) |
+| `baseline`       | Generate/update fingerprint baselines for incremental CI    |
+| `runtime`        | Correlate an Observability Plugin export with project facts |
+| `--version`/`-v` | Print the installed package version (offline)               |
+| `probe`          | Inspect a deployed manifest / remoteEntry HEAD (network)    |
+| `compare`        | Diff deployed manifests (network; same safety as `probe`)   |
 
-`check`, `workspace`, `federation`, and `runtime` stay offline. `probe` and
-`compare` are the only commands that fetch over the network, and they never
-execute remote JavaScript. Exit codes: `0` pass, `1` policy fail (or compare
-drift), `2` analysis incomplete.
+`check`, `workspace`, `federation`, `runtime`, and version output stay offline.
+`probe` and `compare` are the only network commands; both require an explicit
+request, and neither executes remote JavaScript. Exit codes: `0` pass, `1`
+policy fail (or compare drift), `2` analysis incomplete.
 Fingerprint baselines keep known debt visible in reports without failing policy
 by default — see [baselines](https://mfdoctor.kevinbeier.com/baselines) and
 [governance](https://mfdoctor.kevinbeier.com/suppressions).

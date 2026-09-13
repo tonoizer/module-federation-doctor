@@ -105,7 +105,7 @@ async function assertAgentPlaybookContent() {
     );
     assert.match(
       source,
-      /No network command unless the user asked/i,
+      /No network command.*including.*compare.*probe.*explicitly requested/i,
       `${label} must hard-rule network commands as opt-in`,
     );
     assert.match(
@@ -322,8 +322,8 @@ const packageRoot = dirname(require.resolve("@tonoizer/mfdoctor/package.json"));
 const agents = readFileSync(join(packageRoot, "AGENTS.md"), "utf8");
 const skill = readFileSync(join(packageRoot, "skills/mfdoctor/SKILL.md"), "utf8");
 assert.match(agents, /No suppressions unless the user asked/);
-assert.match(agents, /No network command unless the user asked/);
-assert.match(skill, /No network command unless the user asked/);
+assert.match(agents, /No network command.*including.*compare.*probe.*explicitly requested/);
+assert.match(skill, /No network command.*including.*compare.*probe.*explicitly requested/);
 `,
   );
   const doctorOptions =
@@ -386,6 +386,11 @@ assert.equal(rspackChain[0][0], "module-federation-doctor");
   run(packageManager, [...consumerPnpmArgs, "check"], root);
   run(packageManager, [...consumerPnpmArgs, "cli"], root);
   run(npxCommand, ["--no-install", "mfdoctor", "--help"], consumer);
+  for (const versionFlag of ["--version", "-v"]) {
+    const version = capture(npxCommand, ["--no-install", "mfdoctor", versionFlag], consumer);
+    assert.equal(version.trim(), packageJson.version, `${versionFlag} must print package version`);
+    assert(!version.includes("Usage:"), `${versionFlag} must not print help output`);
+  }
   const capabilities = JSON.parse(
     capture(npxCommand, ["--no-install", "mfdoctor", "capabilities"], consumer),
   );
@@ -399,6 +404,11 @@ assert.equal(rspackChain[0][0], "module-federation-doctor");
   assert.equal(capabilities.githubAction?.name, "workspace-federation-gate");
   assert.equal(capabilities.networkPolicy?.offlineByDefault, true);
   assert.deepEqual(capabilities.networkPolicy?.networkCommands, ["compare", "probe"]);
+  assert.ok(
+    capabilities.nonGoals?.some((goal) =>
+      /No network command.*including.*compare.*probe.*explicitly requested/i.test(goal),
+    ),
+  );
   assert.equal(capabilities.bundlerMatrix?.source, "./fixtures/compatibility-matrix.json");
   assert.ok(capabilities.bundlerMatrix?.supported.includes("vite"));
   assert.ok(capabilities.bundlerMatrix?.partial.includes("modern"));

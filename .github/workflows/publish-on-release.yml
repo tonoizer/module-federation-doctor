@@ -152,6 +152,40 @@ jobs:
       - run: vp exec playwright install chromium
       - name: Validate publishable tag
         run: vp run pack:check && vp run test:e2e
+      - name: Pack the verified npm artifact
+        if: matrix.node-version == 26
+        env:
+          EXPECTED_TAG: ${{ needs.resolve-ref.outputs.tag }}
+          EXPECTED_SHA: ${{ needs.resolve-ref.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-package
+          mkdir -p release-package
+          pnpm pack --pack-destination release-package
+          test "$(find release-package -maxdepth 1 -type f -name '*.tgz' | wc -l)" -eq 1
+          mv release-package/*.tgz release-package/package.tgz
+
+          PACKAGE_JSON="$(tar -xOf release-package/package.tgz package/package.json)"
+          PACKAGE_NAME="$(printf '%s' "$PACKAGE_JSON" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).name')"
+          PACKAGE_VERSION="$(printf '%s' "$PACKAGE_JSON" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
+          test "$PACKAGE_NAME" = "@tonoizer/mfdoctor"
+          test "$PACKAGE_VERSION" = "$EXPECTED_TAG"
+          printf '%s\n' "$EXPECTED_TAG" > release-package/release-tag
+          printf '%s\n' "$EXPECTED_SHA" > release-package/release-sha
+          (
+            cd release-package
+            sha256sum package.tgz release-tag release-sha > SHA256SUMS
+          )
+      - name: Upload the verified npm artifact
+        if: matrix.node-version == 26
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: verified-npm-package
+          path: release-package
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: false
 
   stage:
     needs: [resolve-ref, verify]
@@ -159,53 +193,72 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
       id-token: write
     environment: npm
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Download the verified npm artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          ref: ${{ needs.resolve-ref.outputs.sha }}
-          persist-credentials: false
-      - name: Use current release pack harness
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          ref: main
-          path: .release-tooling
-          sparse-checkout: scripts/pack-check.mjs
-          sparse-checkout-cone-mode: false
-          persist-credentials: false
-      - name: Refresh release pack harness
-        run: cp .release-tooling/scripts/pack-check.mjs scripts/pack-check.mjs
-      - uses: ./.github/actions/setup-vp
-        with:
-          node-version: 26
-          registry-url: https://registry.npmjs.org
+          name: verified-npm-package
+          path: release-package
+      - name: Validate the verified npm artifact handoff
+        id: package
+        env:
+          EXPECTED_TAG: ${{ needs.resolve-ref.outputs.tag }}
+          EXPECTED_SHA: ${{ needs.resolve-ref.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f release-package/package.tgz
+          test -f release-package/release-tag
+          test -f release-package/release-sha
+          test -f release-package/SHA256SUMS
+          (
+            cd release-package
+            sha256sum --check SHA256SUMS
+          )
+          test "$(cat release-package/release-tag)" = "$EXPECTED_TAG"
+          test "$(cat release-package/release-sha)" = "$EXPECTED_SHA"
+
+          PACKAGE_JSON="$(tar -xOf release-package/package.tgz package/package.json)"
+          PACKAGE_NAME="$(printf '%s' "$PACKAGE_JSON" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).name')"
+          PACKAGE_VERSION="$(printf '%s' "$PACKAGE_JSON" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
+          test "$PACKAGE_NAME" = "@tonoizer/mfdoctor"
+          test "$PACKAGE_VERSION" = "$EXPECTED_TAG"
+          echo "version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
       - run: npm install --global npm@11.17.0
-      - run: vp run release:dry-run
       - name: Select npm tag
         id: npm
+        env:
+          VERSION: ${{ steps.package.outputs.version }}
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
           case "${VERSION}" in
             *-*) echo "tag=next" >> "$GITHUB_OUTPUT";;
             *) echo "tag=latest" >> "$GITHUB_OUTPUT";;
           esac
       - name: Refuse existing version
+        env:
+          VERSION: ${{ steps.package.outputs.version }}
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
           if npm view "@tonoizer/mfdoctor@${VERSION}" version >/dev/null 2>&1; then
             echo "Refusing to overwrite @tonoizer/mfdoctor@${VERSION}"
             exit 1
           fi
       - name: Stage with trusted publishing
-        run: npm stage publish . --access public --tag "${{ steps.npm.outputs.tag }}"
+        env:
+          NPM_TAG: ${{ steps.npm.outputs.tag }}
+        run: npm stage publish release-package/package.tgz --access public --tag "$NPM_TAG"
       - name: Summary
         if: always()
+        env:
+          PACKAGE_VERSION: ${{ steps.package.outputs.version || 'unknown' }}
+          NPM_TAG: ${{ steps.npm.outputs.tag || 'unknown' }}
         run: |
           echo "## npm staged release" >> "$GITHUB_STEP_SUMMARY"
           echo "- Package: \`@tonoizer/mfdoctor\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Version: \`$(node -p "require('./package.json').version")\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- npm tag: \`${{ steps.npm.outputs.tag || 'unknown' }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: \`$PACKAGE_VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- npm tag: \`$NPM_TAG\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Authentication: GitHub OIDC; no long-lived publish token" >> "$GITHUB_STEP_SUMMARY"
           echo "- Next: approve the staged package with npm account 2FA" >> "$GITHUB_STEP_SUMMARY"
 

@@ -135,6 +135,7 @@ Usage:
   mfdoctor rules [rule-id]
   mfdoctor capabilities [--format json]
   mfdoctor --version
+  mfdoctor -v
   mfdoctor --help
   mfdoctor probe https://host.example/mf-manifest.json
   mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry

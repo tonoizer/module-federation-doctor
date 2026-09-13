@@ -40,9 +40,9 @@ as a Cursor/agent skill at `skills/mfdoctor/SKILL.md`.
 - **No suppressions unless the user asked.** Do not add baselines, severity
   overrides, rule `off`, governance waivers, or allowlists to clear findings
   unless the user explicitly requested suppressions or accepted debt.
-- **No network command unless the user asked.** `mfdoctor compare` and
-  `mfdoctor probe` are the explicit network commands. Do not fetch deployed
-  manifests, CDN URLs, or remoteEntry endpoints unless the user asked.
+- **No network command (including `compare` and `probe`) unless explicitly requested.**
+  Do not fetch deployed manifests, CDN URLs, or remoteEntry endpoints unless
+  the user explicitly requests a network operation.
 - **Do not claim green from `check` alone.** Offline `check` is config/static
   analysis. Before claiming green, require plugin emit evidence (a build with a
   MFDoctor adapter that writes `.mf/doctor/project.json`) and, in monorepos, the
