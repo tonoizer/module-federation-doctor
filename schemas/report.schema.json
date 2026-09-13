@@ -62,7 +62,7 @@
           "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }]
         },
         "scoreLabel": {
-          "description": "Band label for score, or null when score is null.",
+          "description": "Actionable label for score; may be stricter than the numeric band, or null when score is null.",
           "oneOf": [{ "type": "string", "enum": ["Great", "OK", "Needs work"] }, { "type": "null" }]
         }
       },

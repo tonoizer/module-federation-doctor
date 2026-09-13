@@ -122,8 +122,9 @@ mfdoctor check --no-prompt
 mfdoctor check --prompt
 ```
 
-- MFDoctor is quiet when a check has no findings. `--verbose` restores the green
-  success line.
+- MFDoctor is quiet when a check has no findings and analysis is complete.
+  Incomplete empty reports still print their status and next action. `--verbose`
+  restores the green success line for complete checks.
 - `--no-score` hides the terminal health score. Report JSON still contains
   `summary.score` and `summary.scoreLabel`.
 - `--no-prompt` hides the copy-paste fix prompts printed after findings.
@@ -132,6 +133,10 @@ mfdoctor check --prompt
 - In CI (standard `CI` / provider env vars, or `mode: "ci"`), prompts are hidden by
   default. Local runs still show them. Opt in with `--prompt`, or dump prompts to
   disk with `--diagnostics-dir` without printing them.
+
+When terminal output is shown, its header reports the policy result, analysis
+completeness and reason codes, and next required action before the health score.
+An incomplete run does not present a numeric score as a complete health claim.
 
 You can also set `MFDOCTOR_QUIET=0` to show successful checks or
 `MFDOCTOR_QUIET=1` to force quiet success. Environment configuration wins over

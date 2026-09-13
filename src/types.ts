@@ -862,7 +862,7 @@ export type DoctorExtendEntry = DoctorPresetName | DoctorPolicyPack | DoctorRule
  */
 export interface DoctorPrintLog {
   /**
-   * When true, print the green "no findings" line on a clean run.
+   * When true, print the green "no findings" line on a complete clean run.
    * Default false — quiet success.
    */
   success?: boolean;
@@ -977,7 +977,8 @@ export interface DoctorOptions {
    */
   diagnosticsPromptLimit?: number;
   /**
-   * When true (default), skip terminal output on zero findings.
+   * When true (default), skip terminal output on complete successful zero
+   * findings. Incomplete reports remain visible with their status and action.
    * Override with `printLog.success: true`, `quiet: false`, CLI `--verbose`,
    * or `MFDOCTOR_QUIET=0`. Force quiet with `MFDOCTOR_QUIET=1`.
    */
@@ -1260,7 +1261,7 @@ export interface DoctorReport {
      * is too partial (`doctor/partial-analysis`).
      */
     score?: number | null;
-    /** Band label for `score`, or `null` when `score` is `null`. */
+    /** Actionable label distinct from numeric `labelForScore(score)`; may be stricter, or `null`. */
     scoreLabel?: HealthScoreLabel | null;
   };
   findings: DoctorFinding[];
