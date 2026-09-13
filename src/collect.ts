@@ -194,14 +194,6 @@ type AstNode = {
   [key: string]: unknown;
 };
 
-const DYNAMIC_APIS = new Set<UnresolvedDynamicApi>([
-  "import",
-  "loadRemote",
-  "loadShare",
-  "loadShareSync",
-  "registerRemotes",
-]);
-
 function parserLanguage(file: string): "js" | "jsx" | "ts" | "tsx" | "dts" {
   const normalized = file.toLowerCase();
   if (normalized.endsWith(".d.ts")) return "dts";
@@ -232,23 +224,401 @@ function propertyName(node: unknown): string | undefined {
   return identifierName(value.key) ?? literalString(value.key);
 }
 
-/** Keep source parsing and AST traversal bounded for untrusted project files. */
-function walkAst(program: AstNode, visit: (node: AstNode) => void): void {
+type FederationRuntimeApi = Exclude<UnresolvedDynamicApi, "import">;
+
+const FEDERATION_RUNTIME_APIS = new Set<FederationRuntimeApi>([
+  "loadRemote",
+  "loadShare",
+  "loadShareSync",
+  "registerRemotes",
+]);
+
+/** Runtime entry points exposed by the supported federation runtime package. */
+function isFederationRuntimeModule(specifier: string): boolean {
+  return (
+    specifier === "@module-federation/runtime" ||
+    specifier.startsWith("@module-federation/runtime/")
+  );
+}
+
+interface ImportedApiBindings {
+  direct: Map<string, FederationRuntimeApi>;
+  namespaces: Set<string>;
+}
+
+type BindingOrigin = "import" | "local";
+
+interface BindingScope {
+  parent: BindingScope | undefined;
+  functionScope: BindingScope;
+  bindings: Map<string, BindingOrigin>;
+}
+
+interface StaticImportAnalysisEntry {
+  importName: { kind?: string; name?: string | null };
+  localName: { value: string };
+  isType: boolean;
+}
+
+interface StaticImportAnalysis {
+  moduleRequest: { value: string };
+  entries: StaticImportAnalysisEntry[];
+}
+
+interface StaticExportAnalysisEntry {
+  moduleRequest: { value: string } | null;
+  isType: boolean;
+}
+
+interface StaticExportAnalysis {
+  entries: StaticExportAnalysisEntry[];
+}
+
+interface ModuleAnalysis {
+  staticImports: StaticImportAnalysis[];
+  staticExports: StaticExportAnalysis[];
+}
+
+function createBindingScope(parent?: BindingScope, functionBoundary = false): BindingScope {
+  const scope = {
+    parent,
+    functionScope: undefined as unknown as BindingScope,
+    bindings: new Map<string, BindingOrigin>(),
+  };
+  scope.functionScope = functionBoundary || !parent ? scope : parent.functionScope;
+  return scope;
+}
+
+function declareBinding(
+  scope: BindingScope,
+  name: string | undefined,
+  origin: BindingOrigin,
+): void {
+  if (!name) return;
+  const existing = scope.bindings.get(name);
+  if (!existing || origin === "local") scope.bindings.set(name, origin);
+}
+
+function declarePattern(node: unknown, scope: BindingScope): void {
+  if (!node || typeof node !== "object") return;
+  const value = node as AstNode;
+  switch (value.type) {
+    case "Identifier":
+      declareBinding(scope, identifierName(value), "local");
+      return;
+    case "RestElement":
+      declarePattern(value.argument, scope);
+      return;
+    case "AssignmentPattern":
+      declarePattern(value.left, scope);
+      return;
+    case "ArrayPattern":
+      for (const element of Array.isArray(value.elements) ? value.elements : [])
+        declarePattern(element, scope);
+      return;
+    case "ObjectPattern":
+      for (const property of Array.isArray(value.properties) ? value.properties : []) {
+        if (!property || typeof property !== "object") continue;
+        const item = property as AstNode;
+        if (item.type === "RestElement") declarePattern(item.argument, scope);
+        else if (item.type === "Property" || item.type === "ObjectProperty")
+          declarePattern(item.value, scope);
+      }
+      return;
+    case "TSParameterProperty":
+      declarePattern(value.parameter, scope);
+      return;
+    default:
+      return;
+  }
+}
+
+function declarationNode(node: AstNode): AstNode | undefined {
+  if (node.type === "ExportNamedDeclaration" || node.type === "ExportDefaultDeclaration") {
+    return node.declaration && typeof node.declaration === "object"
+      ? (node.declaration as AstNode)
+      : undefined;
+  }
+  return node;
+}
+
+function declareStatementBinding(node: unknown, scope: BindingScope): void {
+  if (!node || typeof node !== "object") return;
+  const value = declarationNode(node as AstNode);
+  if (!value) return;
+
+  switch (value.type) {
+    case "VariableDeclaration": {
+      const target = value.kind === "var" ? scope.functionScope : scope;
+      for (const declaration of Array.isArray(value.declarations) ? value.declarations : []) {
+        if (declaration && typeof declaration === "object")
+          declarePattern((declaration as AstNode).id, target);
+      }
+      return;
+    }
+    case "FunctionDeclaration":
+    case "ClassDeclaration":
+      declareBinding(scope, identifierName(value.id), "local");
+      return;
+    case "TSDeclareFunction":
+      declareBinding(scope, identifierName(value.id), "local");
+      return;
+    case "TSEnumDeclaration":
+      declareBinding(scope, identifierName(value.id), "local");
+      return;
+    case "TSModuleDeclaration":
+      if (value.declare !== true) declareBinding(scope, identifierName(value.id), "local");
+      return;
+    case "TSImportEqualsDeclaration":
+      if (value.importKind !== "type") declareBinding(scope, identifierName(value.id), "local");
+      return;
+    default:
+      return;
+  }
+}
+
+function declareStatementBindings(statements: unknown, scope: BindingScope): void {
+  if (!Array.isArray(statements)) return;
+  for (const statement of statements) declareStatementBinding(statement, scope);
+}
+
+function isFunctionNode(type: string | undefined): boolean {
+  return (
+    type === "FunctionDeclaration" ||
+    type === "FunctionExpression" ||
+    type === "ArrowFunctionExpression"
+  );
+}
+
+function isClassNode(type: string | undefined): boolean {
+  return type === "ClassDeclaration" || type === "ClassExpression";
+}
+
+/** Predeclare `var` bindings, whose function scope can span nested blocks. */
+function collectVarBindings(node: unknown, scope: BindingScope): void {
   let count = 0;
-  const visitNode = (node: unknown): void => {
-    if (!node || typeof node !== "object") return;
-    const value = node as AstNode;
+  const visit = (candidate: unknown): void => {
+    if (!candidate || typeof candidate !== "object") return;
+    const value = candidate as AstNode;
     if (typeof value.type !== "string") return;
+    if (isFunctionNode(value.type) || isClassNode(value.type)) return;
     count += 1;
     if (count > MAX_AST_NODES) throw new Error("AST node limit exceeded");
-    visit(value);
+    if (value.type === "VariableDeclaration" && value.kind === "var") {
+      for (const declaration of Array.isArray(value.declarations) ? value.declarations : []) {
+        if (declaration && typeof declaration === "object")
+          declarePattern((declaration as AstNode).id, scope.functionScope);
+      }
+    }
     for (const key of visitorKeys[value.type] ?? []) {
       const child = value[key];
-      if (Array.isArray(child)) for (const item of child) visitNode(item);
-      else visitNode(child);
+      if (Array.isArray(child)) for (const item of child) visit(item);
+      else visit(child);
     }
   };
-  visitNode(program);
+  visit(node);
+}
+
+function lookupBinding(scope: BindingScope, name: string): BindingOrigin | undefined {
+  for (let current: BindingScope | undefined = scope; current; current = current.parent) {
+    const binding = current.bindings.get(name);
+    if (binding) return binding;
+  }
+  return undefined;
+}
+
+function memberPropertyName(node: AstNode): string | undefined {
+  const property = node.property;
+  return node.computed ? literalString(property) : identifierName(property);
+}
+
+function importedApiForCallee(
+  callee: unknown,
+  scope: BindingScope,
+  imported: ImportedApiBindings,
+): FederationRuntimeApi | undefined {
+  if (!callee || typeof callee !== "object") return undefined;
+  const value = callee as AstNode;
+  const name = identifierName(value);
+  if (name && lookupBinding(scope, name) === "import") return imported.direct.get(name);
+  if (value.type !== "MemberExpression") return undefined;
+  const objectName = identifierName(value.object);
+  if (!objectName || lookupBinding(scope, objectName) !== "import") return undefined;
+  if (!imported.namespaces.has(objectName)) return undefined;
+  const property = memberPropertyName(value);
+  return property && FEDERATION_RUNTIME_APIS.has(property as FederationRuntimeApi)
+    ? (property as FederationRuntimeApi)
+    : undefined;
+}
+
+/** Walk the parsed AST with enough lexical scope to resolve imported runtime bindings. */
+function walkBoundedBindings(
+  program: AstNode,
+  root: BindingScope,
+  visit: (node: AstNode, scope: BindingScope) => void,
+): void {
+  let count = 0;
+  const walkChildren = (node: AstNode, scope: BindingScope): void => {
+    for (const key of visitorKeys[node.type ?? ""] ?? []) {
+      const child = node[key];
+      if (Array.isArray(child)) for (const item of child) walk(item, scope);
+      else walk(child, scope);
+    }
+  };
+  const walk = (candidate: unknown, scope: BindingScope): void => {
+    if (!candidate || typeof candidate !== "object") return;
+    const node = candidate as AstNode;
+    if (typeof node.type !== "string") return;
+    count += 1;
+    if (count > MAX_AST_NODES) throw new Error("AST node limit exceeded");
+
+    if (isFunctionNode(node.type)) {
+      visit(node, scope);
+      const functionScope = createBindingScope(scope, true);
+      declareBinding(functionScope, identifierName(node.id), "local");
+      for (const parameter of Array.isArray(node.params) ? node.params : [])
+        declarePattern(parameter, functionScope);
+      collectVarBindings(node.body, functionScope);
+      for (const key of visitorKeys[node.type] ?? []) {
+        const child = node[key];
+        if (Array.isArray(child)) for (const item of child) walk(item, functionScope);
+        else walk(child, functionScope);
+      }
+      return;
+    }
+
+    if (isClassNode(node.type)) {
+      const classScope = createBindingScope(scope);
+      declareBinding(classScope, identifierName(node.id), "local");
+      visit(node, classScope);
+      walkChildren(node, classScope);
+      return;
+    }
+
+    if (
+      node.type === "BlockStatement" ||
+      node.type === "StaticBlock" ||
+      node.type === "TSModuleBlock"
+    ) {
+      const blockScope = createBindingScope(scope);
+      declareStatementBindings(node.body, blockScope);
+      visit(node, blockScope);
+      walkChildren(node, blockScope);
+      return;
+    }
+
+    if (
+      node.type === "ForStatement" ||
+      node.type === "ForInStatement" ||
+      node.type === "ForOfStatement"
+    ) {
+      const loopScope = createBindingScope(scope);
+      const left = node.type === "ForStatement" ? node.init : node.left;
+      if (
+        left &&
+        typeof left === "object" &&
+        (left as AstNode).type === "VariableDeclaration" &&
+        (left as AstNode).kind !== "var"
+      ) {
+        const declarations = (left as AstNode).declarations;
+        for (const declaration of Array.isArray(declarations) ? declarations : []) {
+          if (declaration && typeof declaration === "object")
+            declarePattern((declaration as AstNode).id, loopScope);
+        }
+      }
+      visit(node, loopScope);
+      walkChildren(node, loopScope);
+      return;
+    }
+
+    if (node.type === "SwitchStatement") {
+      const switchScope = createBindingScope(scope);
+      const cases = Array.isArray(node.cases) ? node.cases : [];
+      for (const item of cases) {
+        if (!item || typeof item !== "object") continue;
+        declareStatementBindings((item as AstNode).consequent, switchScope);
+      }
+      visit(node, scope);
+      walk(node.discriminant, scope);
+      for (const item of cases) walk(item, switchScope);
+      return;
+    }
+
+    if (node.type === "CatchClause") {
+      const catchScope = createBindingScope(scope);
+      declarePattern(node.param, catchScope);
+      visit(node, catchScope);
+      walkChildren(node, catchScope);
+      return;
+    }
+
+    visit(node, scope);
+    walkChildren(node, scope);
+  };
+  walk(program, root);
+}
+
+function registerStaticImportBindings(
+  item: StaticImportAnalysis,
+  fileIsDeclaration: boolean,
+  root: BindingScope,
+  imported: ImportedApiBindings,
+): void {
+  if (fileIsDeclaration) return;
+  const specifier = item.moduleRequest.value;
+  for (const entry of item.entries) {
+    if (entry.isType) continue;
+    const local = entry.localName.value;
+    if (isFederationRuntimeModule(specifier)) {
+      if (entry.importName.kind === "NamespaceObject") {
+        imported.namespaces.add(local);
+        declareBinding(root, local, "import");
+        continue;
+      }
+      const api = entry.importName.name;
+      if (
+        entry.importName.kind === "Name" &&
+        api &&
+        FEDERATION_RUNTIME_APIS.has(api as FederationRuntimeApi)
+      ) {
+        imported.direct.set(local, api as FederationRuntimeApi);
+        declareBinding(root, local, "import");
+        continue;
+      }
+    }
+    declareBinding(root, local, "local");
+  }
+}
+
+function recordStaticModuleEvidence(
+  module: ModuleAnalysis,
+  file: string,
+  fileIsDeclaration: boolean,
+  scan: RawImportScan,
+  root: BindingScope,
+  imported: ImportedApiBindings,
+): void {
+  for (const item of module.staticImports) {
+    const specifier = item.moduleRequest.value;
+    const hasRuntimeEntry =
+      !fileIsDeclaration &&
+      (item.entries.length === 0 || item.entries.some((entry) => !entry.isType));
+    // Keep the established dependency evidence for ordinary type imports. A type-only
+    // federation runtime import does not prove that the runtime package is loaded.
+    if (hasRuntimeEntry || !isFederationRuntimeModule(specifier))
+      recordSpecifier(scan, specifier, false, file, "import");
+    registerStaticImportBindings(item, fileIsDeclaration, root, imported);
+  }
+
+  for (const item of module.staticExports) {
+    for (const entry of item.entries) {
+      const specifier = entry.moduleRequest?.value;
+      if (!specifier) continue;
+      const hasRuntimeEntry = !fileIsDeclaration && !entry.isType;
+      if (hasRuntimeEntry || !isFederationRuntimeModule(specifier))
+        recordSpecifier(scan, specifier, false, file, "reexport");
+    }
+  }
 }
 
 function recordSpecifier(
@@ -290,24 +660,21 @@ function scanSourceImports(source: string, file: string, scan: RawImportScan): b
       return false;
     }
 
-    walkAst(parsed.program as unknown as AstNode, (node) => {
-      if (node.type === "ImportDeclaration" || node.type === "ExportNamedDeclaration") {
-        const specifier = literalString(node.source);
-        if (specifier)
-          recordSpecifier(
-            scan,
-            specifier,
-            false,
-            file,
-            node.type === "ImportDeclaration" ? "import" : "reexport",
-          );
-        return;
-      }
-      if (node.type === "ExportAllDeclaration") {
-        const specifier = literalString(node.source);
-        if (specifier) recordSpecifier(scan, specifier, false, file, "reexport");
-        return;
-      }
+    const fileIsDeclaration = parserLanguage(file) === "dts";
+    const imported: ImportedApiBindings = { direct: new Map(), namespaces: new Set() };
+    const root = createBindingScope();
+    recordStaticModuleEvidence(
+      parsed.module as unknown as ModuleAnalysis,
+      file,
+      fileIsDeclaration,
+      scan,
+      root,
+      imported,
+    );
+    declareStatementBindings((parsed.program as unknown as AstNode).body, root);
+    collectVarBindings(parsed.program, root);
+
+    walkBoundedBindings(parsed.program as unknown as AstNode, root, (node, scope) => {
       if (node.type === "ImportExpression") {
         const specifier = literalString(node.source);
         if (specifier) recordSpecifier(scan, specifier, true, file, "import");
@@ -315,10 +682,8 @@ function scanSourceImports(source: string, file: string, scan: RawImportScan): b
         return;
       }
       if (node.type !== "CallExpression") return;
-
-      const apiName = identifierName(node.callee);
-      if (!apiName || !DYNAMIC_APIS.has(apiName as UnresolvedDynamicApi)) return;
-      const api = apiName as UnresolvedDynamicApi;
+      const api = importedApiForCallee(node.callee, scope, imported);
+      if (!api) return;
       const args = Array.isArray(node.arguments) ? node.arguments : [];
       const specifier = literalString(args[0]);
       if (api === "registerRemotes") {

@@ -204,6 +204,48 @@ describe("dynamic-import completeness", () => {
     expect(facts.imports.unresolvedDynamic).toEqual([]);
   });
 
+  it("respects parameter, var, and block shadowing of imported bindings", async () => {
+    const source = `
+      import { loadRemote as remote, loadShare as share } from "@module-federation/runtime";
+      import * as mf from "@module-federation/runtime";
+
+      export function shadowedByParameters(
+        remote: (id: string) => unknown,
+        mf: { loadRemote: (id: string) => unknown },
+      ) {
+        remote("local/parameter");
+        mf.loadRemote("local/namespace");
+      }
+
+      export function shadowedByVar() {
+        remote("local/var");
+        var remote = (id: string) => id;
+      }
+
+      export function shadowedByBlock() {
+        {
+          const share = (id: string) => id;
+          share("local/block");
+        }
+      }
+
+      remote("shop/App");
+      share("react");
+      mf.loadShare("react-dom");
+    `;
+    const { facts } = await projectWith({ "src/app.ts": source });
+
+    expect(facts.imports.remotes).toEqual(["shop"]);
+    expect(facts.imports.packages).toEqual(["@module-federation/runtime", "react", "react-dom"]);
+    expect(facts.imports.specifiers).toEqual([
+      "@module-federation/runtime",
+      "react",
+      "react-dom",
+      "shop/App",
+    ]);
+    expect(facts.imports.unresolvedDynamic).toEqual([]);
+  });
+
   it("does not treat unimported local functions with MF API names as federation APIs", async () => {
     const source = await fs.readFile(path.join(dynamicFixtures, "local-api-names.ts"), "utf8");
     const { facts } = await projectWith({ "src/app.ts": source });
