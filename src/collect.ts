@@ -348,6 +348,43 @@ function declarePattern(node: unknown, scope: BindingScope): void {
   }
 }
 
+function declareAmbientPattern(node: unknown, scope: BindingScope): void {
+  if (!node || typeof node !== "object") return;
+  const value = node as AstNode;
+  switch (value.type) {
+    case "Identifier": {
+      const name = identifierName(value);
+      const api = federationRuntimeApi(name);
+      declareBinding(scope, name, api ? { kind: "ambient-runtime-api", api } : LOCAL_BINDING);
+      return;
+    }
+    case "RestElement":
+      declareAmbientPattern(value.argument, scope);
+      return;
+    case "AssignmentPattern":
+      declareAmbientPattern(value.left, scope);
+      return;
+    case "ArrayPattern":
+      for (const element of Array.isArray(value.elements) ? value.elements : [])
+        declareAmbientPattern(element, scope);
+      return;
+    case "ObjectPattern":
+      for (const property of Array.isArray(value.properties) ? value.properties : []) {
+        if (!property || typeof property !== "object") continue;
+        const item = property as AstNode;
+        if (item.type === "RestElement") declareAmbientPattern(item.argument, scope);
+        else if (item.type === "Property" || item.type === "ObjectProperty")
+          declareAmbientPattern(item.value, scope);
+      }
+      return;
+    case "TSParameterProperty":
+      declareAmbientPattern(value.parameter, scope);
+      return;
+    default:
+      return;
+  }
+}
+
 function declarationNode(node: AstNode): AstNode | undefined {
   if (node.type === "ExportNamedDeclaration" || node.type === "ExportDefaultDeclaration") {
     return node.declaration && typeof node.declaration === "object"
@@ -410,11 +447,7 @@ function registerRequireBinding(
   bindRuntimeRequirePattern(declaration.id, specifier, targetScope);
 }
 
-function declareStatementBinding(
-  node: unknown,
-  scope: BindingScope,
-  context?: BindingRegistrationContext,
-): void {
+function declareStatementBinding(node: unknown, scope: BindingScope): void {
   if (!node || typeof node !== "object") return;
   const value = declarationNode(node as AstNode);
   if (!value) return;
@@ -425,8 +458,8 @@ function declareStatementBinding(
       for (const declaration of Array.isArray(value.declarations) ? value.declarations : []) {
         if (!declaration || typeof declaration !== "object") continue;
         const item = declaration as AstNode;
-        declarePattern(item.id, target);
-        registerRequireBinding(item, scope, target, context);
+        if (value.declare === true) declareAmbientPattern(item.id, target);
+        else declarePattern(item.id, target);
       }
       return;
     }
@@ -460,13 +493,9 @@ function declareStatementBinding(
   }
 }
 
-function declareStatementBindings(
-  statements: unknown,
-  scope: BindingScope,
-  context?: BindingRegistrationContext,
-): void {
+function declareStatementBindings(statements: unknown, scope: BindingScope): void {
   if (!Array.isArray(statements)) return;
-  for (const statement of statements) declareStatementBinding(statement, scope, context);
+  for (const statement of statements) declareStatementBinding(statement, scope);
 }
 
 function isFunctionNode(type: string | undefined): boolean {
@@ -482,11 +511,7 @@ function isClassNode(type: string | undefined): boolean {
 }
 
 /** Predeclare `var` bindings, whose function scope can span nested blocks. */
-function collectVarBindings(
-  node: unknown,
-  scope: BindingScope,
-  context?: BindingRegistrationContext,
-): void {
+function collectVarBindings(node: unknown, scope: BindingScope): void {
   let count = 0;
   const visit = (candidate: unknown): void => {
     if (Array.isArray(candidate)) {
@@ -509,8 +534,8 @@ function collectVarBindings(
       for (const declaration of Array.isArray(value.declarations) ? value.declarations : []) {
         if (!declaration || typeof declaration !== "object") continue;
         const item = declaration as AstNode;
-        declarePattern(item.id, scope.functionScope);
-        registerRequireBinding(item, scope, scope.functionScope, context);
+        if (value.declare === true) declareAmbientPattern(item.id, scope.functionScope);
+        else declarePattern(item.id, scope.functionScope);
       }
     }
     for (const key of visitorKeys[value.type] ?? []) {
@@ -585,6 +610,14 @@ function walkBoundedBindings(
     count += 1;
     if (count > MAX_AST_NODES) throw new Error("AST node limit exceeded");
 
+    if (node.type === "VariableDeclaration") {
+      const target = node.kind === "var" ? scope.functionScope : scope;
+      for (const declaration of Array.isArray(node.declarations) ? node.declarations : []) {
+        if (!declaration || typeof declaration !== "object") continue;
+        registerRequireBinding(declaration as AstNode, scope, target, context);
+      }
+    }
+
     if (isFunctionNode(node.type)) {
       visit(node, scope);
       const functionScope = createBindingScope(scope, true);
@@ -595,7 +628,7 @@ function walkBoundedBindings(
         declarePattern(parameter, functionScope);
       for (const parameter of Array.isArray(node.params) ? node.params : [])
         declarePattern(parameter, parameterScope);
-      collectVarBindings(node.body, functionScope, context);
+      collectVarBindings(node.body, functionScope);
       for (const key of visitorKeys[node.type] ?? []) {
         const child = node[key];
         const childScope = key === "params" ? parameterScope : functionScope;
@@ -620,8 +653,8 @@ function walkBoundedBindings(
     ) {
       const functionBoundary = node.type === "StaticBlock" || node.type === "TSModuleBlock";
       const blockScope = createBindingScope(scope, functionBoundary);
-      declareStatementBindings(node.body, blockScope, context);
-      if (functionBoundary) collectVarBindings(node.body, blockScope, context);
+      declareStatementBindings(node.body, blockScope);
+      if (functionBoundary) collectVarBindings(node.body, blockScope);
       visit(node, blockScope);
       walkChildren(node, blockScope);
       return;
@@ -635,7 +668,7 @@ function walkBoundedBindings(
       const loopScope = createBindingScope(scope);
       const left = node.type === "ForStatement" ? node.init : node.left;
       if (left && typeof left === "object" && (left as AstNode).type === "VariableDeclaration") {
-        declareStatementBinding(left, loopScope, context);
+        declareStatementBinding(left, loopScope);
       }
       visit(node, loopScope);
       walkChildren(node, loopScope);
@@ -647,7 +680,7 @@ function walkBoundedBindings(
       const cases = Array.isArray(node.cases) ? node.cases : [];
       for (const item of cases) {
         if (!item || typeof item !== "object") continue;
-        declareStatementBindings((item as AstNode).consequent, switchScope, context);
+        declareStatementBindings((item as AstNode).consequent, switchScope);
       }
       visit(node, scope);
       walk(node.discriminant, scope);
@@ -779,8 +812,8 @@ function scanSourceImports(source: string, file: string, scan: RawImportScan): b
       scan,
       root,
     );
-    declareStatementBindings((parsed.program as unknown as AstNode).body, root, context);
-    collectVarBindings(parsed.program, root, context);
+    declareStatementBindings((parsed.program as unknown as AstNode).body, root);
+    collectVarBindings(parsed.program, root);
 
     walkBoundedBindings(parsed.program as unknown as AstNode, root, context, (node, scope) => {
       if (node.type === "ImportExpression") {

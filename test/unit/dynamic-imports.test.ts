@@ -267,6 +267,30 @@ describe("dynamic-import completeness", () => {
     ]);
   });
 
+  it("keeps ambient MF API variable declarations unresolved", async () => {
+    const source = `
+      declare const loadRemote: (id: string) => Promise<unknown>;
+      declare let loadShare: (id: string) => Promise<unknown>;
+      declare var loadShareSync: (id: string) => Promise<unknown>;
+
+      export async function loadFederated(id: string) {
+        await loadRemote("shop/App");
+        await loadShare(id);
+        await loadShareSync("react");
+      }
+    `;
+    const { facts } = await projectWith({ "src/app.ts": source });
+
+    expect(facts.imports.specifiers).toEqual([]);
+    expect(facts.imports.packages).toEqual([]);
+    expect(facts.imports.remotes).toEqual([]);
+    expect(facts.imports.unresolvedDynamic).toEqual([
+      { api: "loadRemote", file: "src/app.ts" },
+      { api: "loadShare", file: "src/app.ts" },
+      { api: "loadShareSync", file: "src/app.ts" },
+    ]);
+  });
+
   it("resolves literal CommonJS runtime bindings with lexical shadowing", async () => {
     const source = `
       const { loadRemote, loadShare: share, loadShareSync: syncShare } =
@@ -301,6 +325,41 @@ describe("dynamic-import completeness", () => {
       "react-dom",
       "shop/App",
     ]);
+    expect(facts.imports.unresolvedDynamic).toEqual([]);
+  });
+
+  it("does not resolve CommonJS runtime bindings when require is shadowed later in scope", async () => {
+    const source = `
+      const { loadRemote: validRemote } = require("@module-federation/runtime");
+      const validRuntime = require("@module-federation/runtime");
+
+      validRemote("shop/App");
+      validRuntime.loadShare("react");
+
+      function shadowedByFunction() {
+        const { loadRemote } = require("@module-federation/runtime");
+        function require() {}
+        loadRemote("local/function");
+      }
+
+      function shadowedByVar() {
+        const { loadShare: share } = require("@module-federation/runtime");
+        var require;
+        share("local/var");
+      }
+
+      function shadowedByLexical() {
+        const runtime = require("@module-federation/runtime");
+        const require = () => ({ loadRemote() {} });
+        runtime.loadRemote("local/lexical");
+      }
+    `;
+    const { facts } = await projectWith({ "src/app.js": source });
+
+    expect(facts.imports.packages).toEqual(["@module-federation/runtime", "react"]);
+    expect(facts.imports.dynamicPackages).toEqual(["react"]);
+    expect(facts.imports.remotes).toEqual(["shop"]);
+    expect(facts.imports.specifiers).toEqual(["@module-federation/runtime", "react", "shop/App"]);
     expect(facts.imports.unresolvedDynamic).toEqual([]);
   });
 
