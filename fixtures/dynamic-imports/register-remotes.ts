@@ -1,4 +1,4 @@
-declare function registerRemotes(remotes: Array<{ name: string; entry: string }>): void;
+import { registerRemotes } from "@module-federation/runtime";
 
 export function registerCheckout() {
   registerRemotes([
