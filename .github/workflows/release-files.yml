@@ -25,7 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Verify release tag
@@ -39,6 +40,17 @@ jobs:
             echo "Tag $RELEASE_TAG does not match package $VERSION"
             exit 1
           }
+          RELEASE_COMMIT="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          CHECKED_OUT_COMMIT="$(git rev-parse HEAD)"
+          test "$RELEASE_COMMIT" = "$CHECKED_OUT_COMMIT" || {
+            echo "Tag $RELEASE_TAG resolves to $RELEASE_COMMIT, but checkout is $CHECKED_OUT_COMMIT"
+            exit 1
+          }
+          test "$(git tag --points-at HEAD --list "$RELEASE_TAG")" = "$RELEASE_TAG" || {
+            echo "$RELEASE_TAG is not an immutable tag at the checked-out commit"
+            exit 1
+          }
+          git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Record checked-out commit

@@ -190,16 +190,11 @@ baseline.failOnSuppressed is set. Baselines are tracked debt — shrink them.`;
 export function parseArgs(argv: string[]): Parsed {
   const command = argv[0];
   if (
-    command !== "check" &&
-    command !== "federation" &&
-    command !== "workspace" &&
-    command !== "probe" &&
-    command !== "compare" &&
-    command !== "runtime" &&
-    command !== "rules" &&
-    command !== "baseline" &&
-    command !== "prompt" &&
-    command !== "capabilities"
+    !command ||
+    command === "--help" ||
+    command === "-h" ||
+    command === "--version" ||
+    command === "-v"
   )
     return {
       command: "help",
@@ -216,6 +211,20 @@ export function parseArgs(argv: string[]): Parsed {
       stdoutJson: false,
       noWrite: false,
     };
+  if (
+    command !== "check" &&
+    command !== "federation" &&
+    command !== "workspace" &&
+    command !== "probe" &&
+    command !== "compare" &&
+    command !== "runtime" &&
+    command !== "rules" &&
+    command !== "baseline" &&
+    command !== "prompt" &&
+    command !== "capabilities" &&
+    command !== "help"
+  )
+    throw new Error(`Unknown command: ${command}`);
   const parsed: Parsed = {
     command,
     patterns: [],

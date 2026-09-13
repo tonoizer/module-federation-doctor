@@ -38,6 +38,21 @@ async function captureStdout(run: () => Promise<number>): Promise<{ code: number
   }
 }
 
+async function captureStderr(run: () => Promise<number>): Promise<{ code: number; text: string }> {
+  const chunks: string[] = [];
+  const write = process.stderr.write;
+  process.stderr.write = ((chunk: string | Uint8Array) => {
+    chunks.push(String(chunk));
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const code = await run();
+    return { code, text: chunks.join("") };
+  } finally {
+    process.stderr.write = write;
+  }
+}
+
 function stubLocalEnv(): void {
   vi.stubEnv("CI", "");
   for (const key of CI_PROVIDER_ENV_KEYS) vi.stubEnv(key, "");
@@ -410,6 +425,18 @@ describe("CLI arguments", () => {
     expect(() => parseArgs(["probe", "https://example.com/mf-manifest.json", "--ui"])).toThrow(
       "Unknown option: --ui",
     );
+  });
+
+  it("rejects unknown commands with usage errors while keeping help and version successful", async () => {
+    expect(() => parseArgs(["chek"])).toThrow("Unknown command: chek");
+
+    const unknown = await captureStderr(() => main(["chek"]));
+    expect(unknown.code).toBe(2);
+    expect(unknown.text).toContain("Unknown command: chek");
+    expect(unknown.text).toContain("Usage:");
+
+    await expect(main(["--help"])).resolves.toBe(0);
+    await expect(main(["--version"])).resolves.toBe(0);
   });
 
   it("parses probe safety flags and rejects unknown report formats", () => {
