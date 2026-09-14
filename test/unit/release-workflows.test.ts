@@ -131,7 +131,9 @@ describe("release workflow contracts", () => {
     expect(stageJob).not.toContain("sudo ");
     expect(stageJob).not.toContain("/usr/local");
     const installNpm = stageJob.indexOf("npm install --global npm@11.17.0");
-    const stagePublish = stageJob.indexOf('"$NPM" stage publish "$PWD/release-package/package.tgz"');
+    const stagePublish = stageJob.indexOf(
+      '"$NPM" stage publish "$PWD/release-package/package.tgz"',
+    );
     expect(installNpm).toBeGreaterThan(-1);
     expect(stagePublish).toBeGreaterThan(-1);
     expect(installNpm).toBeLessThan(stageJob.indexOf("npm view"));
