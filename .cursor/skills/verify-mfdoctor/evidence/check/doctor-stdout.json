@@ -263,6 +263,777 @@
       "--output"
     ]
   },
+  "operations": {
+    "commands": {
+      "baseline": {
+        "arguments": [
+          {
+            "description": "Baseline operation to perform.",
+            "name": "action",
+            "required": true,
+            "type": "enum",
+            "values": ["generate", "update", "prune"]
+          },
+          {
+            "description": "Saved MFDoctor report; defaults to .mf/doctor/report.json.",
+            "name": "report-path",
+            "required": false,
+            "type": "path"
+          }
+        ],
+        "description": "Generate, update, or prune a finding fingerprint baseline.",
+        "errorCodes": {
+          "invalid-report": {
+            "description": "The supplied report is not a valid MFDoctor report document.",
+            "exitCode": 2
+          },
+          "io-error": {
+            "description": "A required local file or output artifact could not be read or written.",
+            "exitCode": 2
+          },
+          "usage-error": {
+            "description": "Arguments or options are missing or invalid.",
+            "exitCode": 2
+          }
+        },
+        "network": {
+          "behavior": "Reads local files only; does not fetch URLs or contact a remote service.",
+          "mode": "offline",
+          "userInitiated": false
+        },
+        "options": [
+          {
+            "aliases": ["-o"],
+            "description": "Baseline output path; defaults to mfdoctor.baseline.json.",
+            "name": "--out",
+            "type": "path"
+          }
+        ],
+        "prerequisites": ["A schema-valid saved MFDoctor report is required."],
+        "writtenArtifacts": ["<out>"]
+      },
+      "capabilities": {
+        "arguments": [],
+        "description": "Print this machine-readable CLI discovery contract.",
+        "errorCodes": {
+          "io-error": {
+            "description": "A required local file or output artifact could not be read or written.",
+            "exitCode": 2
+          },
+          "usage-error": {
+            "description": "Arguments or options are missing or invalid.",
+            "exitCode": 2
+          }
+        },
+        "formats": ["json"],
+        "network": {
+          "behavior": "Reads local files only; does not fetch URLs or contact a remote service.",
+          "mode": "offline",
+          "userInitiated": false
+        },
+        "options": [
+          {
+            "description": "The capabilities contract is JSON only.",
+            "name": "--format",
+            "type": "enum",
+            "values": ["json"]
+          }
+        ],
+        "prerequisites": ["None; project configuration is not loaded."],
+        "writtenArtifacts": []
+      },
+      "check": {
+        "arguments": [
+          {
+            "description": "Project directory; defaults to the current working directory.",
+            "name": "root",
+            "required": false,
+            "type": "path"
+          }
+        ],
+        "description": "Analyze one project and apply its finding policy.",
+        "errorCodes": {
+          "analysis-incomplete": {
+            "description": "The operation completed with incomplete evidence; this is not a policy pass.",
+            "exitCode": 2
+          },
+          "io-error": {
+            "description": "A required local file or output artifact could not be read or written.",
+            "exitCode": 2
+          },
+          "policy-fail": {
+            "description": "The operation completed and its unsuppressed policy findings fail the selected threshold.",
+            "exitCode": 1
+          },
+          "usage-error": {
+            "description": "Arguments or options are missing or invalid.",
+            "exitCode": 2
+          }
+        },
+        "formats": ["terminal", "json", "sarif"],
+        "network": {
+          "behavior": "Reads local files only; does not fetch URLs or contact a remote service.",
+          "mode": "offline",
+          "userInitiated": false
+        },
+        "options": [
+          {
+            "description": "Use CI analysis and failure defaults.",
+            "name": "--ci",
+            "type": "boolean"
+          },
+          {
+            "description": "Print the legacy success line when there are no findings.",
+            "name": "--verbose",
+            "type": "boolean"
+          },
+          {
+            "description": "Omit the terminal health score.",
+            "name": "--no-score",
+            "type": "boolean"
+          },
+          {
+            "description": "Suppress terminal agent prompts.",
+            "name": "--no-prompt",
+            "type": "boolean"
+          },
+          {
+            "description": "Force terminal agent prompts on.",
+            "name": "--prompt",
+            "type": "boolean"
+          },
+          {
+            "description": "Write bounded agent diagnostics inside the project root.",
+            "name": "--diagnostics-dir",
+            "type": "path"
+          },
+          {
+            "description": "Select 1–25 prompt files for a diagnostics dump; terminal output stays top-3.",
+            "maximum": 25,
+            "minimum": 1,
+            "name": "--diagnostics-prompts",
+            "type": "integer"
+          },
+          {
+            "description": "Select one or more comma-separated output formats.",
+            "name": "--format",
+            "type": "enum",
+            "values": ["terminal", "json", "sarif"]
+          },
+          {
+            "description": "Use - to emit JSON on stdout.",
+            "name": "--output",
+            "type": "string",
+            "values": ["-"]
+          },
+          {
+            "description": "Skip report artifacts on disk while retaining stdout output behavior.",
+            "name": "--no-write",
+            "type": "boolean"
+          },
+          {
+            "description": "Apply a fingerprint baseline to the analysis findings.",
+            "name": "--baseline",
+            "type": "path"
+          }
+        ],
+        "prerequisites": [
+          "A readable project directory and its local MFDoctor/module-federation configuration.",
+          "A build is not required for static analysis, but emitted-artifact claims require adapter facts."
+        ],
+        "writtenArtifacts": [
+          ".mf/doctor/project.json (unless --no-write)",
+          ".mf/doctor/report.json (when JSON output is written)",
+          ".mf/doctor/results.sarif (when SARIF output is written)",
+          "<diagnostics-dir>/report.json",
+          "<diagnostics-dir>/verification-plan.json",
+          "<diagnostics-dir>/prompts/*.md",
+          "<diagnostics-dir>/summary.md"
+        ]
+      },
+      "compare": {
+        "arguments": [
+          {
+            "description": "Baseline manifest URL followed by zero or more candidate manifest URLs.",
+            "minimumCount": 1,
+            "name": "manifest-url",
+            "repeatable": true,
+            "required": true,
+            "type": "url"
+          }
+        ],
+        "description": "Diff deployed MF manifests for name, exposes, shared, publicPath, and remoteEntry.",
+        "errorCodes": {
+          "invalid-manifest": {
+            "description": "A fetched manifest is not a supported Module Federation manifest document.",
+            "exitCode": 2
+          },
+          "io-error": {
+            "description": "A required local file or output artifact could not be read or written.",
+            "exitCode": 2
+          },
+          "network-error": {
+            "description": "A guarded manifest request failed or returned an unusable response.",
+            "exitCode": 2
+          },
+          "policy-fail": {
+            "description": "The operation completed and its unsuppressed policy findings fail the selected threshold.",
+            "exitCode": 1
+          },
+          "ssrf-blocked": {
+            "description": "The requested URL was rejected by the network safety policy.",
+            "exitCode": 2
+          },
+          "usage-error": {
+            "description": "Arguments or options are missing or invalid.",
+            "exitCode": 2
+          }
+        },
+        "formats": ["terminal", "json", "sarif"],
+        "network": {
+          "behavior": "Performs network I/O only when this explicit command is invoked, subject to HTTPS, SSRF, redirect, credential, timeout, and size guards.",
+          "mode": "network",
+          "userInitiated": true
+        },
+        "options": [
+          {
+            "description": "Set the guarded request timeout in milliseconds.",
+            "name": "--timeout",
+            "type": "integer"
+          },
+          {
+            "description": "Set the guarded response-size limit in bytes.",
+            "name": "--max-bytes",
+            "type": "integer"
+          },
+          {
+            "description": "Also make the explicitly requested remoteEntry check.",
+            "name": "--remote-entry",
+            "type": "boolean"
+          },
+          {
+            "description": "Select one or more comma-separated output formats.",
+            "name": "--format",
+            "type": "enum",
+            "values": ["terminal", "json", "sarif"]
+          }
+        ],
+        "prerequisites": ["At least one deployed manifest URL supplied by the user."],
+        "writtenArtifacts": [
+          ".mf/doctor/compare.json (when JSON output is selected)",
+          ".mf/doctor/compare.sarif (when SARIF output is selected)"
+        ]
+      },
+      "federation": {
+        "arguments": [
+          {
+            "description": "Saved project-facts glob(s); use --workspace for root discovery.",
+            "name": "project-glob",
+            "repeatable": true,
+            "required": false,
+            "type": "glob"
+          }
+        ],
+        "description": "Analyze explicit project facts or a discovered workspace.",
+        "errorCodes": {
+          "analysis-incomplete": {
+            "description": "The operation completed with incomplete evidence; this is not a policy pass.",
+            "exitCode": 2
+          },
+          "invalid-project-facts": {
+            "description": "A project-facts input is missing, invalid, or belongs to an incompatible federation group.",
+            "exitCode": 2
+          },
+          "io-error": {
+            "description": "A required local file or output artifact could not be read or written.",
+            "exitCode": 2
+          },
+          "policy-fail": {
+            "description": "The operation completed and its unsuppressed policy findings fail the selected threshold.",
+            "exitCode": 1
+          },
+          "usage-error": {
+            "description": "Arguments or options are missing or invalid.",
+            "exitCode": 2
+          }
+        },
+        "formats": ["terminal", "json", "sarif"],
+        "network": {
+          "behavior": "Reads local files only; does not fetch URLs or contact a remote service.",
+          "mode": "offline",
+          "userInitiated": false
+        },
+        "options": [
+          {
+            "description": "Use CI analysis and failure defaults.",
+            "name": "--ci",
+            "type": "boolean"
+          },
+          {
+            "description": "Print the legacy success line when there are no findings.",
+            "name": "--verbose",
+            "type": "boolean"
+          },
+          {
+            "description": "Omit the terminal health score.",
+            "name": "--no-score",
+            "type": "boolean"
+          },
+          {
+            "description": "Suppress terminal agent prompts.",
+            "name": "--no-prompt",
+            "type": "boolean"
+          },
+          {
+            "description": "Force terminal agent prompts on.",
+            "name": "--prompt",
+            "type": "boolean"
+          },
+          {
+            "description": "Write bounded agent diagnostics inside the project root.",
+            "name": "--diagnostics-dir",
+            "type": "path"
+          },
+          {
+            "description": "Select 1–25 prompt files for a diagnostics dump; terminal output stays top-3.",
+            "maximum": 25,
+            "minimum": 1,
+            "name": "--diagnostics-prompts",
+            "type": "integer"
+          },
+          {
+            "description": "Select one or more comma-separated output formats.",
+            "name": "--format",
+            "type": "enum",
+            "values": ["terminal", "json", "sarif"]
+          },
+          {
+            "description": "Use - to emit JSON on stdout.",
+            "name": "--output",
+            "type": "string",
+            "values": ["-"]
+          },
+          {
+            "description": "Skip report artifacts on disk while retaining stdout output behavior.",
+            "name": "--no-write",
+            "type": "boolean"
+          },
+          {
+            "description": "Discover project facts below the supplied roots.",
+            "name": "--workspace",
+            "type": "boolean"
+          },
+          {
+            "description": "Override workspace project-facts discovery with a glob.",
+            "name": "--glob",
+            "type": "glob"
+          },
+          {
+            "description": "Select one federation group when a repository contains multiple graphs.",
+            "name": "--group",
+            "type": "string"
+          },
+          {
+            "description": "Apply a fingerprint baseline to the analysis findings.",
+            "name": "--baseline",
+            "type": "path"
+          }
+        ],
+        "prerequisites": [
+          "Explicit schema-valid .mf/doctor/project.json inputs, or roots containing adapter-emitted project facts with --workspace.",
+          "All projects intended for a federation graph must be included; missing evidence yields incomplete analysis."
+        ],
+        "writtenArtifacts": [
+          ".mf/doctor/report.json (when JSON output is written)",
+          ".mf/doctor/results.sarif (when SARIF output is written)",
+          "<diagnostics-dir>/report.json",
+          "<diagnostics-dir>/verification-plan.json",
+          "<diagnostics-dir>/prompts/*.md",
+          "<diagnostics-dir>/summary.md"
+        ]
+      },
+      "help": {
+        "arguments": [],
+        "description": "Print CLI usage and command guidance.",
+        "errorCodes": {},
+        "network": {
+          "behavior": "Reads local files only; does not fetch URLs or contact a remote service.",
+          "mode": "offline",
+          "userInitiated": false
+        },
+        "options": [],
+        "prerequisites": ["None; help is local and does not load project configuration."],
+        "writtenArtifacts": []
+      },
+      "probe": {
+        "arguments": [
+          {
+            "description": "Deployed manifest URL supplied by the user.",
+            "name": "manifest-url",
+            "required": true,
+            "type": "url"
+          }
+        ],
+        "description": "Validate a deployed manifest and optionally its remote entry.",
+        "errorCodes": {
+          "invalid-manifest": {
+            "description": "A fetched manifest is not a supported Module Federation manifest document.",
+            "exitCode": 2
+          },
+          "io-error": {
+            "description": "A required local file or output artifact could not be read or written.",
+            "exitCode": 2
+          },
+          "network-error": {
+            "description": "A guarded manifest request failed or returned an unusable response.",
+            "exitCode": 2
+          },
+          "ssrf-blocked": {
+            "description": "The requested URL was rejected by the network safety policy.",
+            "exitCode": 2
+          },
+          "usage-error": {
+            "description": "Arguments or options are missing or invalid.",
+            "exitCode": 2
+          }
+        },
+        "network": {
+          "behavior": "Performs network I/O only when this explicit command is invoked, subject to HTTPS, SSRF, redirect, credential, timeout, and size guards.",
+          "mode": "network",
+          "userInitiated": true
+        },
+        "options": [
+          {
+            "description": "Set the guarded request timeout in milliseconds.",
+            "name": "--timeout",
+            "type": "integer"
+          },
+          {
+            "description": "Set the guarded response-size limit in bytes.",
+            "name": "--max-bytes",
+            "type": "integer"
+          },
+          {
+            "description": "Also make the explicitly requested remoteEntry check.",
+            "name": "--remote-entry",
+            "type": "boolean"
+          }
+        ],
+        "prerequisites": ["One deployed manifest URL supplied by the user."],
+        "writtenArtifacts": []
+      },
+      "prompt": {
+        "arguments": [
+          {
+            "description": "Saved MFDoctor report; defaults to .mf/doctor/report.json.",
+            "name": "report-path",
+            "required": false,
+            "type": "path"
+          }
+        ],
+        "description": "Print offline fix prompts from a saved report.",
+        "errorCodes": {
+          "finding-not-found": {
+            "description": "No finding matched the requested rule id or fingerprint.",
+            "exitCode": 2
+          },
+          "invalid-report": {
+            "description": "The supplied report is not a valid MFDoctor report document.",
+            "exitCode": 2
+          },
+          "io-error": {
+            "description": "A required local file or output artifact could not be read or written.",
+            "exitCode": 2
+          },
+          "usage-error": {
+            "description": "Arguments or options are missing or invalid.",
+            "exitCode": 2
+          }
+        },
+        "network": {
+          "behavior": "Reads local files only; does not fetch URLs or contact a remote service.",
+          "mode": "offline",
+          "userInitiated": false
+        },
+        "options": [
+          {
+            "description": "Select a finding by fingerprint or rule id.",
+            "name": "--finding",
+            "type": "string"
+          }
+        ],
+        "prerequisites": ["A schema-valid saved MFDoctor report is required."],
+        "writtenArtifacts": []
+      },
+      "rules": {
+        "arguments": [
+          {
+            "description": "Optional built-in rule id.",
+            "name": "rule-id",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "description": "Print built-in rule metadata or one rule.",
+        "errorCodes": {
+          "rule-not-found": {
+            "description": "The requested rule id is not in the built-in rule catalog.",
+            "exitCode": 2
+          }
+        },
+        "network": {
+          "behavior": "Reads local files only; does not fetch URLs or contact a remote service.",
+          "mode": "offline",
+          "userInitiated": false
+        },
+        "options": [],
+        "prerequisites": ["None; rule metadata is shipped locally."],
+        "writtenArtifacts": []
+      },
+      "runtime": {
+        "arguments": [
+          {
+            "description": "User-supplied Observability/runtime trace JSON path.",
+            "name": "trace-path",
+            "required": true,
+            "type": "path"
+          },
+          {
+            "description": "Saved project-facts glob(s); defaults to .mf/doctor/**/project.json.",
+            "name": "project-glob",
+            "repeatable": true,
+            "required": false,
+            "type": "glob"
+          }
+        ],
+        "description": "Correlate a runtime trace with local project facts.",
+        "errorCodes": {
+          "analysis-incomplete": {
+            "description": "The operation completed with incomplete evidence; this is not a policy pass.",
+            "exitCode": 2
+          },
+          "invalid-project-facts": {
+            "description": "A project-facts input is missing, invalid, or belongs to an incompatible federation group.",
+            "exitCode": 2
+          },
+          "invalid-report": {
+            "description": "The supplied report is not a valid MFDoctor report document.",
+            "exitCode": 2
+          },
+          "io-error": {
+            "description": "A required local file or output artifact could not be read or written.",
+            "exitCode": 2
+          },
+          "policy-fail": {
+            "description": "The operation completed and its unsuppressed policy findings fail the selected threshold.",
+            "exitCode": 1
+          },
+          "usage-error": {
+            "description": "Arguments or options are missing or invalid.",
+            "exitCode": 2
+          }
+        },
+        "formats": ["terminal", "json", "sarif"],
+        "network": {
+          "behavior": "Reads local files only; does not fetch URLs or contact a remote service.",
+          "mode": "offline",
+          "userInitiated": false
+        },
+        "options": [
+          {
+            "description": "Print the legacy success line when there are no findings.",
+            "name": "--verbose",
+            "type": "boolean"
+          },
+          {
+            "description": "Omit the terminal health score.",
+            "name": "--no-score",
+            "type": "boolean"
+          },
+          {
+            "description": "Suppress terminal agent prompts.",
+            "name": "--no-prompt",
+            "type": "boolean"
+          },
+          {
+            "description": "Force terminal agent prompts on.",
+            "name": "--prompt",
+            "type": "boolean"
+          },
+          {
+            "description": "Write bounded agent diagnostics inside the project root.",
+            "name": "--diagnostics-dir",
+            "type": "path"
+          },
+          {
+            "description": "Select 1–25 prompt files for a diagnostics dump; terminal output stays top-3.",
+            "maximum": 25,
+            "minimum": 1,
+            "name": "--diagnostics-prompts",
+            "type": "integer"
+          },
+          {
+            "description": "Select one or more comma-separated output formats.",
+            "name": "--format",
+            "type": "enum",
+            "values": ["terminal", "json", "sarif"]
+          },
+          {
+            "description": "Use - to emit JSON on stdout.",
+            "name": "--output",
+            "type": "string",
+            "values": ["-"]
+          },
+          {
+            "description": "Skip report artifacts on disk while retaining stdout output behavior.",
+            "name": "--no-write",
+            "type": "boolean"
+          }
+        ],
+        "prerequisites": [
+          "A readable user-supplied runtime trace and matching local .mf/doctor/project.json files.",
+          "Runtime analysis is correlation only; it never fetches URLs from the trace."
+        ],
+        "writtenArtifacts": [
+          ".mf/doctor/report.json (when JSON output is written)",
+          ".mf/doctor/results.sarif (when SARIF output is written)",
+          "<diagnostics-dir>/report.json",
+          "<diagnostics-dir>/verification-plan.json",
+          "<diagnostics-dir>/prompts/*.md",
+          "<diagnostics-dir>/summary.md"
+        ]
+      },
+      "workspace": {
+        "arguments": [
+          {
+            "description": "Workspace root(s); defaults to the current working directory.",
+            "name": "root",
+            "repeatable": true,
+            "required": false,
+            "type": "path"
+          }
+        ],
+        "description": "Discover project facts and gate a federation workspace.",
+        "errorCodes": {
+          "analysis-incomplete": {
+            "description": "The operation completed with incomplete evidence; this is not a policy pass.",
+            "exitCode": 2
+          },
+          "invalid-project-facts": {
+            "description": "A project-facts input is missing, invalid, or belongs to an incompatible federation group.",
+            "exitCode": 2
+          },
+          "io-error": {
+            "description": "A required local file or output artifact could not be read or written.",
+            "exitCode": 2
+          },
+          "policy-fail": {
+            "description": "The operation completed and its unsuppressed policy findings fail the selected threshold.",
+            "exitCode": 1
+          },
+          "usage-error": {
+            "description": "Arguments or options are missing or invalid.",
+            "exitCode": 2
+          }
+        },
+        "formats": ["terminal", "json", "sarif"],
+        "network": {
+          "behavior": "Reads local files only; does not fetch URLs or contact a remote service.",
+          "mode": "offline",
+          "userInitiated": false
+        },
+        "options": [
+          {
+            "description": "Use CI analysis and failure defaults.",
+            "name": "--ci",
+            "type": "boolean"
+          },
+          {
+            "description": "Print the legacy success line when there are no findings.",
+            "name": "--verbose",
+            "type": "boolean"
+          },
+          {
+            "description": "Omit the terminal health score.",
+            "name": "--no-score",
+            "type": "boolean"
+          },
+          {
+            "description": "Suppress terminal agent prompts.",
+            "name": "--no-prompt",
+            "type": "boolean"
+          },
+          {
+            "description": "Force terminal agent prompts on.",
+            "name": "--prompt",
+            "type": "boolean"
+          },
+          {
+            "description": "Write bounded agent diagnostics inside the project root.",
+            "name": "--diagnostics-dir",
+            "type": "path"
+          },
+          {
+            "description": "Select 1–25 prompt files for a diagnostics dump; terminal output stays top-3.",
+            "maximum": 25,
+            "minimum": 1,
+            "name": "--diagnostics-prompts",
+            "type": "integer"
+          },
+          {
+            "description": "Select one or more comma-separated output formats.",
+            "name": "--format",
+            "type": "enum",
+            "values": ["terminal", "json", "sarif"]
+          },
+          {
+            "description": "Use - to emit JSON on stdout.",
+            "name": "--output",
+            "type": "string",
+            "values": ["-"]
+          },
+          {
+            "description": "Skip report artifacts on disk while retaining stdout output behavior.",
+            "name": "--no-write",
+            "type": "boolean"
+          },
+          {
+            "description": "Discover project facts below the supplied roots.",
+            "name": "--workspace",
+            "type": "boolean"
+          },
+          {
+            "description": "Override workspace project-facts discovery with a glob.",
+            "name": "--glob",
+            "type": "glob"
+          },
+          {
+            "description": "Select one federation group when a repository contains multiple graphs.",
+            "name": "--group",
+            "type": "string"
+          },
+          {
+            "description": "Apply a fingerprint baseline to the analysis findings.",
+            "name": "--baseline",
+            "type": "path"
+          }
+        ],
+        "prerequisites": [
+          "Workspace roots containing adapter-emitted .mf/doctor/project.json files.",
+          "Every intended federation project must be discoverable; omitted or partial facts keep the gate incomplete."
+        ],
+        "writtenArtifacts": [
+          ".mf/doctor/report.json (when JSON output is written)",
+          ".mf/doctor/results.sarif (when SARIF output is written)",
+          "<diagnostics-dir>/report.json",
+          "<diagnostics-dir>/verification-plan.json",
+          "<diagnostics-dir>/prompts/*.md",
+          "<diagnostics-dir>/summary.md"
+        ]
+      }
+    },
+    "schemaVersion": 1
+  },
   "package": {
     "name": "@tonoizer/mfdoctor",
     "version": "2.0.0"
@@ -275,6 +1046,7 @@
     "config": 1,
     "evidence": 2,
     "identity": 1,
+    "operations": 1,
     "probe": 1,
     "project": 1,
     "report": 1,

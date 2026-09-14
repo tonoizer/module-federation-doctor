@@ -9,6 +9,7 @@ documented loop can load structured fix guidance without inventing flags.
 
 - `prompt-finding` prints one copy-paste prompt for a rule ID present in the report.
 - `prompt-fingerprint` prints one prompt when `--finding` is an exact fingerprint.
+- `prompt-plan` includes `## Verification plan` and `## Repair context` before `## Finding` (context-faithful; unknown placeholders rather than invented facts).
 - `prompt-top` without `--finding` prints up to three highest-priority non-suppressed prompts.
 - `prompt-unknown` exits `2` when `--finding` matches no finding.
 
@@ -36,8 +37,11 @@ Preconditions:
 - **Print one finding.** Run
   `node dist/cli.js prompt --finding config/remote-http-insecure "$REPORT"`.
   Exit `0`. Stdout is markdown starting with `# Fix: config/remote-http-insecure`
-  and includes Finding / Impact / Fix / Evidence / Docs / Verify. It tells the
-  agent not to suggest suppressions or baseline entries unless the user asks.
+  then `## Verification plan` and `## Repair context`, then Finding / Impact /
+  Fix / Evidence / Docs / Verify. It tells the agent not to suggest suppressions
+  or baseline entries unless the user asks. Standalone `prompt` fills plan
+  fields such as project directory, report path, and completeness with
+  `unknown` rather than inventing analysis context.
 - **Print top prompts.** Run `node dist/cli.js prompt "$REPORT"` (no
   `--finding`). Exit `0`. Stdout starts with `Agent prompts (top N)` or
   `No agent prompts (no non-suppressed findings).`
@@ -54,6 +58,11 @@ Preconditions:
   federation.
 - `--finding` accepts a rule ID or an exact fingerprint — do not invent other
   selector flags.
+- Extra headings after `# Fix:` are expected: `## Verification plan` and
+  `## Repair context` come before `## Finding`. Do not treat them as scrape
+  failure. Standalone `mfdoctor prompt` does not thread the CLI report path
+  into that plan; `unknown` is the reprint command's contract, not a missing
+  file.
 - `check --output -` prints the report on stdout and does **not** write
   `report.json`. Capture that JSON to a file if you need `prompt` without a
   disk write from check, or omit `--output -` / `--no-write` on a temp copy.

@@ -7,3 +7,8 @@ exitCodes: {'0': 'success', '1': 'policy-fail', '2': 'usage-or-incomplete-analys
 extra-commands: ['help']
 bundlerMatrix.supported: ['vite', 'rspack', 'rsbuild', 'webpack']
 bundlerMatrix.partial: ['rolldown', 'modern', 'nuxt']
+operations.schemaVersion: 1
+operations.commands: ['baseline', 'capabilities', 'check', 'compare', 'federation', 'help', 'probe', 'prompt', 'rules', 'runtime', 'workspace']
+operations.check.options: ['--ci', '--verbose', '--no-score', '--no-prompt', '--prompt', '--diagnostics-dir', '--diagnostics-prompts', '--format', '--output', '--no-write', '--baseline']
+operations.prompt.writtenArtifacts: []
+operations.check.writtenArtifacts: ['.mf/doctor/project.json (unless --no-write)', '.mf/doctor/report.json (when JSON output is written)', '.mf/doctor/results.sarif (when SARIF output is written)', '<diagnostics-dir>/report.json', '<diagnostics-dir>/verification-plan.json', '<diagnostics-dir>/prompts/*.md', '<diagnostics-dir>/summary.md']

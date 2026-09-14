@@ -27,7 +27,7 @@ Preconditions:
 
 - **Run offline check.** From repo root:
   `node dist/cli.js check "$FIXTURE" --ci --format json --output - --no-write`.
-- **Observe findings.** Stdout JSON includes `findings` (e.g. `config/remote-http-insecure` or `config/expose-key-invalid`) and `status` (`complete` / `incompleteReasons`).
+- **Observe findings.** Stdout JSON includes `findings` (e.g. `config/remote-http-insecure` or `config/expose-key-invalid`), `status` (`complete` / `incompleteReasons`), and `summary.score` / `summary.scoreLabel`.
 - **Observe exit.** Warning-only fixtures may exit `0` under default CI `failOn: error`; error-severity fixtures exit `1`. Exit `2` is for analysis-budget incompleteness or usage/hard failure — `status.incompleteReasons` such as `missing-emit` can still appear with exit `0`/`1` and must not be treated as a full green claim.
 - **Confirm no-write.** Assert `$FIXTURE/.mf` was **not** created when `--no-write` was used.
 - **Optional write path.** On a temp copy only: omit `--no-write`, use `--format terminal,json,sarif` and optionally `--diagnostics-dir .mf/doctor/diagnostics`. Confirm `.mf/doctor/report.json` exists afterward.
@@ -46,5 +46,6 @@ Helper:
 - Do **not** claim the project is green from check alone — showcase/static check often reports `status.incompleteReasons` including `missing-emit` even when the process exits `0` or `1`.
 - `--diagnostics-dir` must stay inside the project root.
 - Prefer JSON over ANSI; with `--output -`, terminal findings move to stderr. `--output -` skips `report.json` but still writes `project.json` unless `--no-write` is also set.
+- Report JSON includes `summary.score` and `summary.scoreLabel`. A blocking error forces `scoreLabel` to `Needs work` even when the numeric score stays in a high band (workspace/federation conflict fixtures: `score` 99, `scoreLabel` `Needs work`). `--no-score` hides the terminal footer only.
 - Copying fixtures into `/tmp` avoids dirtying tracked `examples/` trees.
 - Showcase fixtures often turn `doctor/partial-analysis` **off**; rely on `status.incompleteReasons` / exit `2` (budget) rather than expecting that ruleId on every check.
