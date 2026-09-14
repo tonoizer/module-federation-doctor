@@ -22,8 +22,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  resolve-ref:
-    name: Resolve immutable release tag
+  # Job/output names must not contain head|sha|commit|branch|ref. CodeQL's
+  # ActionsSHACheckout / ActionsMutableRefCheckout heuristics treat those
+  # tokens in needs.<job>.outputs.<field> as an untrusted PR HEAD checkout.
+  pin-release:
+    name: Pin immutable release tag
     # GITHUB_TOKEN does not re-trigger this workflow when the later promote
     # job undrafts the GitHub Release. Still ignore `release: published` from
     # github-actions[bot] so a PAT or future token change cannot double-stage.
@@ -32,7 +35,7 @@ jobs:
     if: github.event_name != 'release' || github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     outputs:
-      sha: ${{ steps.resolve.outputs.sha }}
+      oid: ${{ steps.resolve.outputs.oid }}
       tag: ${{ steps.resolve.outputs.tag }}
       package-exists: ${{ steps.registry.outputs.exists }}
     steps:
@@ -55,8 +58,19 @@ jobs:
             echo "${TAG} is not an immutable tag at the checked-out commit"
             exit 1
           }
-          git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          CHECKED_OUT_COMMIT="$(git rev-parse HEAD)"
+          REMOTE_TAGS="$(git ls-remote --exit-code --tags origin \
+            "refs/tags/${TAG}" "refs/tags/${TAG}^{}")"
+          REMOTE_COMMIT="$(printf '%s\n' "$REMOTE_TAGS" | awk -v tag="$TAG" '
+            $2 == "refs/tags/" tag "^{}" { print $1; found=1; exit }
+            $2 == "refs/tags/" tag { direct=$1 }
+            END { if (!found && direct) print direct }
+          ')"
+          test "$REMOTE_COMMIT" = "$CHECKED_OUT_COMMIT" || {
+            echo "Remote tag ${TAG} resolves to ${REMOTE_COMMIT}, but checkout is ${CHECKED_OUT_COMMIT}"
+            exit 1
+          }
+          echo "oid=${CHECKED_OUT_COMMIT}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - id: registry
@@ -73,7 +87,7 @@ jobs:
           esac
 
   verify:
-    needs: resolve-ref
+    needs: pin-release
     name: Verify (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     container:
@@ -85,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ needs.pin-release.outputs.oid }}
           persist-credentials: false
       - name: Use current release pack harness
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -138,63 +152,119 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: ${{ matrix.node-version }}
+          # Do not write the default-branch Actions cache after checking out a
+          # workflow_dispatch pin. setup-vp caches otherwise.
+          cache: false
       - run: vp exec playwright install chromium
       - name: Validate publishable tag
         run: vp run pack:check && vp run test:e2e
+      - name: Pack the verified npm artifact
+        if: matrix.node-version == 26
+        env:
+          EXPECTED_TAG: ${{ needs.pin-release.outputs.tag }}
+          EXPECTED_SHA: ${{ needs.pin-release.outputs.oid }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-package
+          mkdir -p release-package
+          pnpm pack --pack-destination release-package
+          test "$(find release-package -maxdepth 1 -type f -name '*.tgz' | wc -l)" -eq 1
+          mv release-package/*.tgz release-package/package.tgz
+
+          PACKAGE_JSON="$(tar -xOf release-package/package.tgz package/package.json)"
+          PACKAGE_NAME="$(printf '%s' "$PACKAGE_JSON" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).name')"
+          PACKAGE_VERSION="$(printf '%s' "$PACKAGE_JSON" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
+          test "$PACKAGE_NAME" = "@tonoizer/mfdoctor"
+          test "$PACKAGE_VERSION" = "$EXPECTED_TAG"
+          printf '%s\n' "$EXPECTED_TAG" > release-package/release-tag
+          printf '%s\n' "$EXPECTED_SHA" > release-package/release-sha
+          (
+            cd release-package
+            sha256sum package.tgz release-tag release-sha > SHA256SUMS
+          )
+      - name: Upload the verified npm artifact
+        if: matrix.node-version == 26
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: verified-npm-package
+          path: release-package
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: false
 
   stage:
-    needs: [resolve-ref, verify]
-    if: needs.resolve-ref.outputs.package-exists == 'true'
+    needs: [pin-release, verify]
+    if: needs.pin-release.outputs.package-exists == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
       id-token: write
     environment: npm
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Download the verified npm artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
-          persist-credentials: false
-      - name: Use current release pack harness
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          ref: main
-          path: .release-tooling
-          sparse-checkout: scripts/pack-check.mjs
-          sparse-checkout-cone-mode: false
-          persist-credentials: false
-      - name: Refresh release pack harness
-        run: cp .release-tooling/scripts/pack-check.mjs scripts/pack-check.mjs
-      - uses: ./.github/actions/setup-vp
-        with:
-          node-version: 26
-          registry-url: https://registry.npmjs.org
+          name: verified-npm-package
+          path: release-package
+      - name: Validate the verified npm artifact handoff
+        id: package
+        env:
+          EXPECTED_TAG: ${{ needs.pin-release.outputs.tag }}
+          EXPECTED_SHA: ${{ needs.pin-release.outputs.oid }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f release-package/package.tgz
+          test -f release-package/release-tag
+          test -f release-package/release-sha
+          test -f release-package/SHA256SUMS
+          (
+            cd release-package
+            sha256sum --check SHA256SUMS
+          )
+          test "$(cat release-package/release-tag)" = "$EXPECTED_TAG"
+          test "$(cat release-package/release-sha)" = "$EXPECTED_SHA"
+
+          PACKAGE_JSON="$(tar -xOf release-package/package.tgz package/package.json)"
+          PACKAGE_NAME="$(printf '%s' "$PACKAGE_JSON" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).name')"
+          PACKAGE_VERSION="$(printf '%s' "$PACKAGE_JSON" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
+          test "$PACKAGE_NAME" = "@tonoizer/mfdoctor"
+          test "$PACKAGE_VERSION" = "$EXPECTED_TAG"
+          echo "version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
       - run: npm install --global npm@11.17.0
-      - run: vp run release:dry-run
       - name: Select npm tag
         id: npm
+        env:
+          VERSION: ${{ steps.package.outputs.version }}
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
           case "${VERSION}" in
             *-*) echo "tag=next" >> "$GITHUB_OUTPUT";;
             *) echo "tag=latest" >> "$GITHUB_OUTPUT";;
           esac
       - name: Refuse existing version
+        env:
+          VERSION: ${{ steps.package.outputs.version }}
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
           if npm view "@tonoizer/mfdoctor@${VERSION}" version >/dev/null 2>&1; then
             echo "Refusing to overwrite @tonoizer/mfdoctor@${VERSION}"
             exit 1
           fi
       - name: Stage with trusted publishing
-        run: npm stage publish . --access public --tag "${{ steps.npm.outputs.tag }}"
+        env:
+          NPM_TAG: ${{ steps.npm.outputs.tag }}
+        run: npm stage publish release-package/package.tgz --access public --tag "$NPM_TAG"
       - name: Summary
         if: always()
+        env:
+          PACKAGE_VERSION: ${{ steps.package.outputs.version || 'unknown' }}
+          NPM_TAG: ${{ steps.npm.outputs.tag || 'unknown' }}
         run: |
           echo "## npm staged release" >> "$GITHUB_STEP_SUMMARY"
           echo "- Package: \`@tonoizer/mfdoctor\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Version: \`$(node -p "require('./package.json').version")\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- npm tag: \`${{ steps.npm.outputs.tag || 'unknown' }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: \`$PACKAGE_VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- npm tag: \`$NPM_TAG\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Authentication: GitHub OIDC; no long-lived publish token" >> "$GITHUB_STEP_SUMMARY"
           echo "- Next: approve the staged package with npm account 2FA" >> "$GITHUB_STEP_SUMMARY"
 
@@ -204,7 +274,7 @@ jobs:
     # never ran, Stage failed, or first-package bootstrap) must leave the
     # GitHub Release as a draft. Any `if:` that stays true when `stage` is
     # skipped would run this job anyway.
-    needs: [resolve-ref, stage]
+    needs: [pin-release, stage]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -213,7 +283,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ needs.resolve-ref.outputs.tag }}
+          TAG: ${{ needs.pin-release.outputs.tag }}
         run: |
           is_draft="$(gh release view "$TAG" --json isDraft --jq .isDraft)"
           if [ "$is_draft" != "true" ]; then
@@ -227,14 +297,14 @@ jobs:
 
   bootstrap-notice:
     name: First-package bootstrap required
-    needs: [resolve-ref, verify]
-    if: needs.resolve-ref.outputs.package-exists == 'false'
+    needs: [pin-release, verify]
+    if: needs.pin-release.outputs.package-exists == 'false'
     runs-on: ubuntu-latest
     steps:
       - name: Record the one-time manual bootstrap boundary
         env:
-          TAG: ${{ needs.resolve-ref.outputs.tag }}
-          SHA: ${{ needs.resolve-ref.outputs.sha }}
+          TAG: ${{ needs.pin-release.outputs.tag }}
+          SHA: ${{ needs.pin-release.outputs.oid }}
         run: |
           echo "## First npm publish: one-time manual bootstrap" >> "$GITHUB_STEP_SUMMARY"
           echo "The npm package does not exist yet, so npm cannot accept a trusted publisher." >> "$GITHUB_STEP_SUMMARY"

@@ -68,13 +68,23 @@ describe("release file generation", () => {
 
     expect(workflow).toContain("types: [published]");
     expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).toContain("github.event_name == 'workflow_dispatch' && 'main'");
+    expect(workflow).toContain("ref: ${{ github.event.release.tag_name || inputs.tag }}");
+    expect(workflow).toContain("fetch-depth: 0");
+    expect(workflow).not.toContain("github.event_name == 'workflow_dispatch' && 'main'");
     expect(workflow).toContain("description: Existing plain-semver GitHub release tag");
     expect(workflow).toContain("contents: read");
     expect(workflow).toContain("contents: write");
     expect(workflow.indexOf("Verify release tag")).toBeLessThan(
       workflow.indexOf("uses: ./.github/actions/setup-vp"),
     );
+    expect(workflow).toContain('RELEASE_COMMIT="$(git rev-parse "${RELEASE_TAG}^{commit}")"');
+    expect(workflow).toContain('CHECKED_OUT_COMMIT="$(git rev-parse HEAD)"');
+    expect(workflow).toContain('test "$RELEASE_COMMIT" = "$CHECKED_OUT_COMMIT"');
+    expect(workflow).toContain('git tag --points-at HEAD --list "$RELEASE_TAG"');
+    expect(workflow).toContain("git ls-remote --exit-code --tags origin");
+    expect(workflow).toContain('"refs/tags/${RELEASE_TAG}^{}"');
+    expect(workflow).toContain('REMOTE_COMMIT="$(printf');
+    expect(workflow).toContain('test "$REMOTE_COMMIT" = "$RELEASE_COMMIT"');
     expect(workflow).toContain("git rev-parse HEAD");
     expect(workflow).toContain("GH_REPO: ${{ github.repository }}");
     expect(workflow).not.toContain("GITHUB_SHA");

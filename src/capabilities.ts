@@ -696,7 +696,7 @@ const DISCOVERY_CONTRACT = {
     "In-browser MFDoctor runtime agent or client-bundle injection",
     "MCP server schema or tool surface",
     "General --fix autofix for arbitrary findings",
-    "Unsolicited network probe or compare (both are explicit-only)",
+    "No network command (including compare and probe) unless explicitly requested",
     "Unsolicited suppressions or auto-waiving findings",
     "Scraping private Module Federation plugin internals",
     "Runtime-only Module Federation without a bundler MF build plugin",

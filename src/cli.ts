@@ -58,6 +58,7 @@ interface Parsed {
     | "baseline"
     | "prompt"
     | "capabilities"
+    | "version"
     | "help";
   baselineAction?: "generate" | "update" | "prune";
   root?: string;
@@ -133,6 +134,9 @@ Usage:
   mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,json
   mfdoctor rules [rule-id]
   mfdoctor capabilities [--format json]
+  mfdoctor --version
+  mfdoctor -v
+  mfdoctor --help
   mfdoctor probe https://host.example/mf-manifest.json
   mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
   mfdoctor compare https://a.example/mf-manifest.json https://b.example/mf-manifest.json
@@ -191,20 +195,10 @@ baseline.failOnSuppressed is set. Baselines are tracked debt — shrink them.`;
 
 export function parseArgs(argv: string[]): Parsed {
   const command = argv[0];
-  if (
-    command !== "check" &&
-    command !== "federation" &&
-    command !== "workspace" &&
-    command !== "probe" &&
-    command !== "compare" &&
-    command !== "runtime" &&
-    command !== "rules" &&
-    command !== "baseline" &&
-    command !== "prompt" &&
-    command !== "capabilities"
-  )
+  const isVersion = command === "--version" || command === "-v";
+  if (!command || command === "--help" || command === "-h" || isVersion)
     return {
-      command: "help",
+      command: isVersion ? "version" : "help",
       patterns: [],
       roots: [],
       globs: [],
@@ -218,6 +212,20 @@ export function parseArgs(argv: string[]): Parsed {
       stdoutJson: false,
       noWrite: false,
     };
+  if (
+    command !== "check" &&
+    command !== "federation" &&
+    command !== "workspace" &&
+    command !== "probe" &&
+    command !== "compare" &&
+    command !== "runtime" &&
+    command !== "rules" &&
+    command !== "baseline" &&
+    command !== "prompt" &&
+    command !== "capabilities" &&
+    command !== "help"
+  )
+    throw new Error(`Unknown command: ${command}`);
   const parsed: Parsed = {
     command,
     patterns: [],
@@ -567,6 +575,17 @@ async function runCapabilities(parsed: Parsed): Promise<number> {
   }
 }
 
+async function runVersion(): Promise<number> {
+  try {
+    const capabilities = await loadCliCapabilities();
+    process.stdout.write(`${capabilities.package.version}\n`);
+    return 0;
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return 2;
+  }
+}
+
 async function runFederationAnalysis(
   files: string[],
   formats: OutputFormat[] | undefined,
@@ -636,6 +655,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n${help()}\n`);
     return 2;
   }
+  if (parsed.command === "version") return runVersion();
   if (parsed.command === "help") {
     process.stdout.write(help() + "\n");
     return 0;

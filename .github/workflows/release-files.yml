@@ -25,7 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Verify release tag
@@ -37,6 +38,27 @@ jobs:
           case "$RELEASE_TAG" in v*) echo "Tag must not start with v"; exit 1;; esac
           test "$RELEASE_TAG" = "$VERSION" || {
             echo "Tag $RELEASE_TAG does not match package $VERSION"
+            exit 1
+          }
+          RELEASE_COMMIT="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          CHECKED_OUT_COMMIT="$(git rev-parse HEAD)"
+          test "$RELEASE_COMMIT" = "$CHECKED_OUT_COMMIT" || {
+            echo "Tag $RELEASE_TAG resolves to $RELEASE_COMMIT, but checkout is $CHECKED_OUT_COMMIT"
+            exit 1
+          }
+          test "$(git tag --points-at HEAD --list "$RELEASE_TAG")" = "$RELEASE_TAG" || {
+            echo "$RELEASE_TAG is not an immutable tag at the checked-out commit"
+            exit 1
+          }
+          REMOTE_TAGS="$(git ls-remote --exit-code --tags origin \
+            "refs/tags/${RELEASE_TAG}" "refs/tags/${RELEASE_TAG}^{}")"
+          REMOTE_COMMIT="$(printf '%s\n' "$REMOTE_TAGS" | awk -v tag="$RELEASE_TAG" '
+            $2 == "refs/tags/" tag "^{}" { print $1; found=1; exit }
+            $2 == "refs/tags/" tag { direct=$1 }
+            END { if (!found && direct) print direct }
+          ')"
+          test "$REMOTE_COMMIT" = "$RELEASE_COMMIT" || {
+            echo "Remote tag $RELEASE_TAG resolves to $REMOTE_COMMIT, but checkout is $CHECKED_OUT_COMMIT"
             exit 1
           }
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"

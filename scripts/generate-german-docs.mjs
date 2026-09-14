@@ -149,6 +149,7 @@ const headingTranslations = new Map([
   ["## Evidence protocol v2", "## Evidenzprotokoll v2"],
   ["## Dynamic-import completeness (v1)", "## Vollständigkeit dynamischer Imports (v1)"],
   ["## Discover CLI capabilities", "## CLI-Fähigkeiten ermitteln"],
+  ["## Print the package version", "## Paketversion ausgeben"],
   ["## Coverage map", "## Abdeckungskarte"],
   ["## Correlate a runtime trace", "## Eine Laufzeitspur korrelieren"],
   ["## Example", "## Beispiel"],

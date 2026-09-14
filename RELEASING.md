@@ -23,10 +23,12 @@ semver tags such as `1.0.0-rc.0`, never a `v` prefix.
    `Create GitHub release` workflow then creates the plain-semver tag and a
    **draft** GitHub Release, then dispatches the release-file and npm staging
    workflows on `main` with `tag=$VERSION`. The tag input is validated against
-   that trusted checkout and is never used as an executable ref. It does not
-   run for other branches. The GitHub Release stays draft until npm stage
-   succeeds, so a public release cannot exist when Verify fails or Stage never
-   runs.
+   that trusted checkout and is never used as an executable ref. Each
+   dispatched workflow resolves the requested plain-semver tag and verifies
+   that its checkout is exactly the immutable tag commit before it builds or
+   publishes. It does not run for other branches. The GitHub Release stays
+   draft until npm stage succeeds, so a public release cannot exist when Verify
+   fails or Stage never runs.
 
 ## Publish a release
 

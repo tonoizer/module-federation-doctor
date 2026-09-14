@@ -74,7 +74,9 @@ describe("CLI capabilities discovery contract", () => {
         expect.stringMatching(/in-browser/i),
         expect.stringMatching(/MCP/i),
         expect.stringMatching(/--fix/i),
-        expect.stringMatching(/Unsolicited network probe/i),
+        expect.stringMatching(
+          /No network command.*including.*compare.*probe.*explicitly requested/i,
+        ),
         expect.stringMatching(/Unsolicited suppressions/i),
       ]),
     );

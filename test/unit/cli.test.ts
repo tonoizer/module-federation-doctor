@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { main, parseArgs } from "../../src/cli.js";
+import { loadCliCapabilities } from "../../src/capabilities.js";
 import { CI_PROVIDER_ENV_KEYS } from "../../src/config.js";
 import reportFixture from "../../examples/evidence/v1-report.json";
 import v2ConflictFixture from "../../examples/evidence/v2-conflict.json";
@@ -35,6 +36,21 @@ async function captureStdout(run: () => Promise<number>): Promise<{ code: number
     return { code, text: chunks.join("") };
   } finally {
     process.stdout.write = write;
+  }
+}
+
+async function captureStderr(run: () => Promise<number>): Promise<{ code: number; text: string }> {
+  const chunks: string[] = [];
+  const write = process.stderr.write;
+  process.stderr.write = ((chunk: string | Uint8Array) => {
+    chunks.push(String(chunk));
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const code = await run();
+    return { code, text: chunks.join("") };
+  } finally {
+    process.stderr.write = write;
   }
 }
 
@@ -410,6 +426,31 @@ describe("CLI arguments", () => {
     expect(() => parseArgs(["probe", "https://example.com/mf-manifest.json", "--ui"])).toThrow(
       "Unknown option: --ui",
     );
+  });
+
+  it("rejects unknown commands and prints the package version for both version aliases", async () => {
+    expect(() => parseArgs(["chek"])).toThrow("Unknown command: chek");
+    expect(parseArgs(["--version"]).command).toBe("version");
+    expect(parseArgs(["-v"]).command).toBe("version");
+
+    const unknown = await captureStderr(() => main(["chek"]));
+    expect(unknown.code).toBe(2);
+    expect(unknown.text).toContain("Unknown command: chek");
+    expect(unknown.text).toContain("Usage:");
+
+    const helpOutput = await captureStdout(() => main(["--help"]));
+    expect(helpOutput.code).toBe(0);
+    expect(helpOutput.text).toContain("Usage:");
+
+    const expectedVersion = (await loadCliCapabilities()).package.version;
+    const longVersion = await captureStdout(() => main(["--version"]));
+    expect(longVersion.code).toBe(0);
+    expect(longVersion.text.trim()).toBe(expectedVersion);
+
+    const shortVersion = await captureStdout(() => main(["-v"]));
+    expect(shortVersion.code).toBe(0);
+    expect(shortVersion.text.trim()).toBe(expectedVersion);
+    expect(shortVersion.text).not.toContain("Usage:");
   });
 
   it("parses probe safety flags and rejects unknown report formats", () => {

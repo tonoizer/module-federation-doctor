@@ -4,8 +4,9 @@ description: >-
   MFDoctor (@tonoizer/mfdoctor) diagnosis and fix playbook. Use when the user
   asks to run mfdoctor, interpret findings, fix Module Federation doctor
   issues, or decide whether a project is green. Enforces capabilities → check
-  JSON → prompt → rebuild. Never add suppressions or run probe unless the user
-  asked. Never claim green from check alone.
+  JSON → prompt → rebuild. Never add suppressions or run network commands
+  (including `compare` and `probe`) unless explicitly requested. Never claim
+  green from check alone.
 ---
 
 # MFDoctor
@@ -46,9 +47,9 @@ over guessing or scraping terminal ANSI.
 - **No suppressions unless the user asked.** Do not add baselines, severity
   overrides, rule `off`, governance waivers, or allowlists to clear findings
   unless the user explicitly requested suppressions or accepted debt.
-- **No probe unless the user asked.** `mfdoctor probe` is the only network
-  command. Do not probe deployed manifests, CDN URLs, or remoteEntry endpoints
-  unless the user asked.
+- **No network command (including `compare` and `probe`) unless explicitly requested.**
+  Do not fetch deployed manifests, CDN URLs, or remoteEntry endpoints unless
+  the user explicitly requests a network operation.
 - **Do not claim green from `check` alone.** Offline `check` is config/static
   analysis. Before claiming green, require plugin emit evidence (a build with a
   MFDoctor adapter that writes `.mf/doctor/project.json`) and, in monorepos, the
@@ -57,7 +58,7 @@ over guessing or scraping terminal ANSI.
 
 ## Evidence v2 stays legacy by default
 
-All 112 built-in rules are `migrated` to the evidence-aware contract, but
+All 127 built-in rules are `migrated` to the evidence-aware contract, but
 default rollout is still `legacy` until #87. Do not treat
 `apps/docs/docs/evidence-aware-rules.md` or ADR 0083 as the live report: CLI,
 JSON, SARIF, fingerprints, and custom rules remain V1. Do not change env

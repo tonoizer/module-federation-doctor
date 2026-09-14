@@ -30,18 +30,18 @@ The examples below use the shorter `mfdoctor` form.
 
 ## Einen Befehl auswählen
 
-| Command                                      | Use it for                                                                                 | Network access |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------- |
-| [`check`](#check-one-project)                | Analyze one project or checkout (tier 1 — not a full green claim alone)                    | No             |
-| [`workspace`](#check-a-workspace)            | Discover built MFDoctor project facts below one or more roots and gate the full federation | No             |
-| [`federation`](#check-a-federation)          | Analyze explicit `project.json` globs, or use workspace discovery explicitly               | No             |
-| [`baseline`](#manage-a-baseline)             | Generate, extend, or prune accepted finding fingerprints                                   | No             |
-| [`runtime`](#correlate-a-runtime-trace)      | Correlate an Observability export with local MFDoctor project facts                        | No             |
-| [`prompt`](#print-agent-fix-prompts)         | Reprint fix prompts from a saved MFDoctor report                                           | No             |
-| [`rules`](#inspect-the-rule-catalog)         | Inspect all built-in rules or one rule's metadata                                          | No             |
-| [`capabilities`](#discover-cli-capabilities) | Print the versioned machine-readable CLI contract                                          | No             |
-| [`probe`](#probe-a-deployed-manifest)        | Validate a deployed manifest and optionally its remote entry                               | **Yes**        |
-| [`compare`](#compare-deployed-manifests)     | Diff two or more deployed manifests (name, exposes, shared, publicPath, remoteEntry)       | **Yes**        |
+| Command                                      | Use it for                                                                                 | Network access             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------- |
+| [`check`](#check-one-project)                | Analyze one project or checkout (tier 1 — not a full green claim alone)                    | No                         |
+| [`workspace`](#check-a-workspace)            | Discover built MFDoctor project facts below one or more roots and gate the full federation | No                         |
+| [`federation`](#check-a-federation)          | Analyze explicit `project.json` globs, or use workspace discovery explicitly               | No                         |
+| [`baseline`](#manage-a-baseline)             | Generate, extend, or prune accepted finding fingerprints                                   | No                         |
+| [`runtime`](#correlate-a-runtime-trace)      | Correlate an Observability export with local MFDoctor project facts                        | No                         |
+| [`prompt`](#print-agent-fix-prompts)         | Reprint fix prompts from a saved MFDoctor report                                           | No                         |
+| [`rules`](#inspect-the-rule-catalog)         | Inspect all built-in rules or one rule's metadata                                          | No                         |
+| [`capabilities`](#discover-cli-capabilities) | Print the versioned machine-readable CLI contract                                          | No                         |
+| [`probe`](#probe-a-deployed-manifest)        | Validate a deployed manifest and optionally its remote entry                               | **Yes — explicit request** |
+| [`compare`](#compare-deployed-manifests)     | Diff two or more deployed manifests (name, exposes, shared, publicPath, remoteEntry)       | **Yes — explicit request** |
 
 MFDoctor loads an optional `mfdoctor.config.ts`; command-line flags override its
 values. Use `extends` for [named presets and shareable policy packs](./policy-packs.md).
@@ -62,6 +62,16 @@ bundler matrix derived from
 Validate the payload with the shipped
 [`capabilities.schema.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/schemas/capabilities.schema.json)
 when integrating across package versions.
+
+## Paketversion ausgeben
+
+```bash
+mfdoctor --version
+mfdoctor -v
+```
+
+Both aliases print the installed `@tonoizer/mfdoctor` package version and exit
+without loading project configuration or accessing the network.
 
 ## Ein Projekt prüfen
 
@@ -280,10 +290,10 @@ mfdoctor probe https://cdn.example.com/mf-manifest.json
 mfdoctor probe http://localhost:3001/mf-manifest.json --remote-entry
 ```
 
-`probe` and `compare` are the only commands that make a network request. It downloads the
-manifest, validates that it looks like a federation manifest, and prints a
-small JSON summary. Query strings are removed from output so signed URLs do not
-leak into logs.
+`probe` is a network command and must be run only when explicitly requested. It
+downloads the manifest, validates that it looks like a federation manifest, and
+prints a small JSON summary. Query strings are removed from output so signed URLs
+do not leak into logs.
 
 `--remote-entry` sends a `HEAD` request to the entry named by the manifest and
 reports its status, content type, and size. MFDoctor does not download or execute
@@ -309,11 +319,12 @@ mfdoctor compare https://cdn.example.com/mf-manifest.json https://canary.example
 mfdoctor compare https://a.example/mf-manifest.json https://b.example/mf-manifest.json --remote-entry --format json,sarif
 ```
 
-`compare` reuses the same network policy as [`probe`](#probe-a-deployed-manifest):
-HTTPS (loopback HTTP only for the initial URL), SSRF blocking, redirect
-revalidation, timeout, and size limits. It never downloads or executes remote
-JavaScript. `--remote-entry` adds a `HEAD` check so remote entry HTTP status is
-part of the diff.
+`compare` is a network command and must be run only when explicitly requested. It
+reuses the same network policy as [`probe`](#probe-a-deployed-manifest): HTTPS
+(loopback HTTP only for the initial URL), SSRF blocking, redirect revalidation,
+timeout, and size limits. It never downloads or executes remote JavaScript.
+`--remote-entry` adds a `HEAD` check so remote entry HTTP status is part of the
+diff.
 
 The first URL is the baseline. Each remaining URL is a candidate. Diffs cover
 `name`, `exposes`, `shared` (name and version), `publicPath`, `remoteEntry`, and
