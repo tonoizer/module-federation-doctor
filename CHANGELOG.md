@@ -1,5 +1,14 @@
 # @tonoizer/mfdoctor
 
+## 2.0.1
+
+### Patch Changes
+
+- 8469777: Align terminal policy, completeness, and actionable health output with analysis results.
+- 90e208b: Keep the CLI release contract and packaged agent playbooks in sync.
+- cfd7c64: Add an opt-in strict completeness gate that fails incomplete analysis while preserving default exit semantics.
+- cfd7c64: Validate workspace evidence freshness and analysis benchmark scales, and treat name@url remotes as external instead of local missing participants.
+
 ## 2.0.0
 
 ### Major Changes
