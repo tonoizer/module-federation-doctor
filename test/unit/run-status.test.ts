@@ -3,7 +3,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ANALYSIS_BUDGETS } from "../../src/analysis-budgets.js";
-import { computeRunStatus, emptyRunStatus, INCOMPLETE_REASON_CODES } from "../../src/run-status.js";
+import {
+  computeRunStatus,
+  emptyRunStatus,
+  hasRequiredEvidence,
+  INCOMPLETE_REASON_CODES,
+  isRunStatusComplete,
+  isStrictlyComplete,
+  markRunIncomplete,
+} from "../../src/run-status.js";
 import { reportFromFindings } from "../../src/ui-graph.js";
 import type {
   AnalysisCapabilities,
@@ -229,6 +237,20 @@ describe("computeRunStatus", () => {
     });
   });
 
+  it.each(["invalid", "stale", "duplicate", "conflict"] as const)(
+    "reports %s workspace diagnostics as evidence-unknown",
+    (kind) => {
+      expect(
+        computeRunStatus([project()], {
+          workspaceDiagnostics: [{ kind, files: ["project.json"], message: "diagnostic" }],
+        }),
+      ).toEqual({
+        complete: false,
+        incompleteReasons: ["evidence-unknown"],
+      });
+    },
+  );
+
   it("reports evidence-unknown for budget, source-read, and unresolved dynamic gaps", () => {
     expect(
       computeRunStatus([
@@ -247,6 +269,26 @@ describe("computeRunStatus", () => {
           },
         }),
       ]),
+    ).toEqual({
+      complete: false,
+      incompleteReasons: ["evidence-unknown"],
+    });
+
+    expect(
+      computeRunStatus([project()], {
+        workspaceAnalysis: {
+          status: "partial",
+          limits: DEFAULT_ANALYSIS_BUDGETS,
+          usage: {
+            files: 1,
+            sourceBytes: 0,
+            artifacts: 0,
+            evidenceNodes: 0,
+            serializedBytes: 0,
+          },
+          exceeded: [{ kind: "files", limit: 1 }],
+        },
+      }),
     ).toEqual({
       complete: false,
       incompleteReasons: ["evidence-unknown"],
@@ -328,5 +370,47 @@ describe("computeRunStatus", () => {
       complete: false,
       incompleteReasons: ["missing-emit"],
     });
+    expect(reportFromFindings([], [], { requireProjects: true }).status).toEqual({
+      complete: false,
+      incompleteReasons: ["evidence-unknown"],
+    });
+    expect(
+      reportFromFindings([project()], [], {
+        workspaceAnalysis: {
+          status: "unknown",
+          limits: DEFAULT_ANALYSIS_BUDGETS,
+          usage: {
+            files: 0,
+            sourceBytes: 0,
+            artifacts: 0,
+            evidenceNodes: 0,
+            serializedBytes: 0,
+          },
+          exceeded: [],
+        },
+      }).status,
+    ).toEqual({ complete: false, incompleteReasons: ["evidence-unknown"] });
+  });
+
+  it("requires an explicit complete status and emitted build evidence for strict gates", () => {
+    const complete = project();
+    const status = emptyRunStatus();
+
+    expect(isRunStatusComplete(status)).toBe(true);
+    expect(hasRequiredEvidence([complete])).toBe(true);
+    expect(isStrictlyComplete([complete], status)).toBe(true);
+
+    expect(isRunStatusComplete(undefined)).toBe(false);
+    expect(isStrictlyComplete([complete], undefined)).toBe(false);
+    expect(isStrictlyComplete([project({ capabilities: { emittedAssets: false } })], status)).toBe(
+      false,
+    );
+    expect(isStrictlyComplete([], status)).toBe(false);
+  });
+
+  it("adds failure incompleteness without losing existing stable reasons", () => {
+    expect(
+      markRunIncomplete({ complete: false, incompleteReasons: ["missing-emit"] }, "probe-skipped"),
+    ).toEqual({ complete: false, incompleteReasons: ["missing-emit", "probe-skipped"] });
   });
 });

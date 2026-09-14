@@ -128,6 +128,19 @@ Findings may include `suppressed` / `suppressionReason` when a
 [fingerprint baseline](./baselines.md) matches. Report `summary.suppressed`
 counts those findings when present.
 
+## Run-Status (`status.incompleteReasons`)
+
+Aktuelle Reports enthalten das additive Objekt `status`.
+`status.complete` ist nur dann wahr, wenn `incompleteReasons` leer ist. Die
+stabilen Codes decken fehlenden Emit, fehlende Enhanced-Stats, partielle
+Bundler-Abdeckung, übersprungene Workspace-Probes und unbekannte Evidenz ab.
+Workspace-Diagnosen `invalid`, `stale`, `duplicate` und `conflict` sowie ein
+unvollständiges Discovery-Budget verwenden `evidence-unknown`.
+
+Legacy-Aufrufer behalten ihr bisheriges Exit-Verhalten. Die CLI-Option
+`--require-complete` ist für `check`, `workspace` und `federation` optional und
+ordnet jeden nichtleeren Statusgrund Exit-Code `1` zu.
+
 ## Gesundheitswert (`summary.score`)
 
 Report summaries include an offline federation health score:
@@ -180,10 +193,13 @@ existing findings.
 | `remotes.config.v1`          | `config/remote-entry-invalid`, `config/remote-http-insecure`, `config/remote-localhost-in-production`, `config/remote-alias-prefix-collision`, `config/remote-manifest-recommended`, `config/remote-capability-disabled` |
 | `artifact.v1`                | other first-batch `artifact/*` rules                                                                                                                                                                                     |
 | `doctor.partial-analysis.v1` | `doctor/partial-analysis`                                                                                                                                                                                                |
+| `doctor.run-failure.v1`      | Strukturierter Regel-, Evidence-Bridge- oder Analysefehler (`phase`, `errorCode`, `runId`, optional `ruleId` und redigierter `error`)                                                                                    |
 
 TypeScript exports: `FINDING_DETAILS_SCHEMAS`, `TYPED_DETAILS_RULE_IDS`,
 `readFindingDetails`, and per-family `*DetailsV1` types from
-`@tonoizer/mfdoctor`.
+`@tonoizer/mfdoctor`. Zusätzlich gibt es die typisierten Exporte
+`RunFailureDetails`, `RunFailurePhase`, `RunFailureErrorCode`,
+`RUN_FAILURE_DETAILS_SCHEMA` und `RUN_FAILURE_ERROR_CODES`.
 
 ### Agent-/CI-Beispiel (`details` statt Message-Regex bevorzugen)
 

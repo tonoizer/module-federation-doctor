@@ -212,6 +212,17 @@ describe("CLI arguments", () => {
     });
   });
 
+  it("parses --require-complete only for supported analysis commands", () => {
+    expect(parseArgs(["check", "--require-complete"]).requireComplete).toBe(true);
+    expect(parseArgs(["workspace", "apps", "--require-complete"]).requireComplete).toBe(true);
+    expect(parseArgs(["federation", "reports/*.json", "--require-complete"]).requireComplete).toBe(
+      true,
+    );
+    expect(() => parseArgs(["runtime", "--require-complete"])).toThrow(
+      "Unknown option: --require-complete",
+    );
+  });
+
   it("parses --output - and --no-write", () => {
     expect(parseArgs(["check", "--output", "-"])).toEqual({
       command: "check",
@@ -527,6 +538,43 @@ describe("CLI arguments", () => {
     }
   });
 
+  it("forwards strict completeness through check and workspace CLI paths", async () => {
+    const repository = path.resolve(import.meta.dirname, "../..");
+    const completeRoot = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-cli-complete-"));
+    const incompleteRoot = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-cli-incomplete-"));
+    roots.push(completeRoot, incompleteRoot);
+    await Promise.all(
+      [completeRoot, incompleteRoot].map((root) =>
+        fs.cp(path.join(repository, "fixtures/workspaces/clean"), root, { recursive: true }),
+      ),
+    );
+    for (const root of [completeRoot, incompleteRoot]) {
+      for (const app of ["host", "remote"]) {
+        const file = path.join(root, app, ".mf/doctor/project.json");
+        const facts = JSON.parse(await fs.readFile(file, "utf8")) as {
+          capabilities: { emittedAssets: boolean };
+        };
+        facts.capabilities.emittedAssets = root === completeRoot;
+        await fs.writeFile(file, JSON.stringify(facts));
+      }
+    }
+
+    const previous = process.cwd();
+    process.chdir(repository);
+    try {
+      await expect(main(["workspace", completeRoot, "--require-complete"])).resolves.toBe(0);
+      await expect(main(["workspace", incompleteRoot])).resolves.toBe(0);
+      await expect(main(["workspace", incompleteRoot, "--require-complete"])).resolves.toBe(1);
+
+      const projectRoot = await temporaryProject(
+        'export default { output: { formats: [] }, rules: { "doctor/partial-analysis": "off" } };',
+      );
+      await expect(main(["check", projectRoot, "--require-complete"])).resolves.toBe(1);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
   it("writes a federation report when workspace discovery only has diagnostics", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-cli-workspace-diagnostic-"));
     roots.push(root);
@@ -769,7 +817,7 @@ describe("CLI arguments", () => {
       commands: Record<string, unknown>;
       formats: string[];
       exitCodes: Record<string, string>;
-      nonInteractive: { commands: Record<string, string> };
+      nonInteractive: { flags: string[]; commands: Record<string, string> };
       schemas: Record<string, string>;
       nonGoals: string[];
       completeness: Record<string, string>;
@@ -786,6 +834,13 @@ describe("CLI arguments", () => {
     expect(capabilities.package.version).toMatch(/^\d+\.\d+\.\d+/);
     expect(capabilities.commands).toHaveProperty("check");
     expect(capabilities.commands).toHaveProperty("capabilities");
+    expect(capabilities.commands.check).toMatchObject({
+      description: expect.stringContaining("--require-complete"),
+    });
+    expect(capabilities.commands.workspace).toMatchObject({
+      description: expect.stringContaining("--require-complete"),
+    });
+    expect(capabilities.nonInteractive.flags).toContain("--require-complete");
     expect(capabilities.formats).toEqual(["terminal", "json", "sarif"]);
     expect(capabilities.exitCodes).toMatchObject({ "0": "success", "1": "policy-fail" });
     expect(capabilities.nonInteractive.commands.discover).toBe("mfdoctor capabilities");

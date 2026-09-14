@@ -83,6 +83,8 @@ interface Parsed {
   stdoutJson: boolean;
   /** Skip writing report artifacts to disk (`--no-write`). */
   noWrite: boolean;
+  /** Treat incomplete analysis as a policy failure (`--require-complete`). */
+  requireComplete?: boolean;
   finding?: string;
   diagnosticsDir?: string;
   /** Opt-in dump size for `--diagnostics-dir` (1–25). Terminal top-3 unchanged. */
@@ -116,15 +118,18 @@ Usage:
   mfdoctor check --no-score
   mfdoctor check --no-prompt
   mfdoctor check --prompt
+  mfdoctor check --require-complete
   mfdoctor check --diagnostics-dir .mf/doctor/diagnostics
   mfdoctor check --diagnostics-dir .mf/doctor/diagnostics --diagnostics-prompts 10
   mfdoctor prompt [--finding <fingerprint|ruleId>] [.mf/doctor/report.json]
   mfdoctor workspace [root...]
   mfdoctor workspace [root...] --glob "**/.mf/doctor/project.json"
   mfdoctor workspace [root...] --group <name>
+  mfdoctor workspace [root...] --require-complete
   mfdoctor federation --workspace [root...]
   mfdoctor federation --workspace [root...] --group <name>
   mfdoctor federation --workspace [root...] --format terminal,json,sarif
+  mfdoctor federation --workspace [root...] --require-complete
   mfdoctor federation ".mf/doctor/**/project.json"
   mfdoctor federation ".mf/doctor/**/project.json" --baseline ./mfdoctor.baseline.json
   mfdoctor baseline generate [.mf/doctor/report.json] [--out mfdoctor.baseline.json]
@@ -149,7 +154,8 @@ escape hatch. Set \`federationGroup\` in each app's MFDoctor options when one
 repository contains multiple independent federation graphs, then select one
 with \`--group <name>\`. Projects in different explicit groups are never
 compared by federation-wide rules. Exit codes: 0 pass, 1 policy fail, 2
-analysis incomplete.
+analysis incomplete. Pass --require-complete to check, workspace, or federation
+to turn any incomplete evidence into a policy failure (exit 1).
 
 CI tip: CI mode is auto-detected from CI / provider env vars (GitHub Actions,
 GitLab, Circle, Jenkins, …). No mode: "ci" needed in plugin config. Pass --ci
@@ -260,6 +266,11 @@ export function parseArgs(argv: string[]): Parsed {
     } else if (value === "--prompt") {
       parsed.prompt = true;
       parsed.forcePrompt = true;
+    } else if (
+      value === "--require-complete" &&
+      (command === "check" || command === "federation" || command === "workspace")
+    ) {
+      parsed.requireComplete = true;
     } else if (value === "--finding") {
       const next = argv[index + 1];
       if (!next || next.startsWith("-"))
@@ -602,10 +613,12 @@ async function runFederationAnalysis(
   ci = false,
   stdoutJson = false,
   noWrite = false,
+  requireComplete = false,
 ): Promise<number> {
+  const strict = requireComplete || config.requireComplete === true;
   if (files.length === 0 && !workspaceDiagnostics?.length && !isAnalysisIncomplete(analysis)) {
     process.stderr.write("No project reports matched.\n");
-    return 2;
+    return strict ? 1 : 2;
   }
   const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
   // CLI --no-score / --no-prompt win; --prompt force-enables over config / CI default.
@@ -630,6 +643,7 @@ async function runFederationAnalysis(
     ...(config.alwaysShared ? { alwaysShared: config.alwaysShared } : {}),
     ...(analysis ? { analysis } : {}),
     ...(workspaceDiagnostics?.length ? { workspaceDiagnostics } : {}),
+    ...(strict ? { requireComplete: true } : {}),
     root: process.cwd(),
   });
   const dumpDir = diagnosticsDir ?? config.diagnosticsDir;
@@ -750,6 +764,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           parsed.ci,
           parsed.stdoutJson,
           parsed.noWrite,
+          parsed.requireComplete,
         );
       }
       if (parsed.patterns.length === 0) {
@@ -775,6 +790,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         parsed.ci,
         parsed.stdoutJson,
         parsed.noWrite,
+        parsed.requireComplete,
       );
     } catch (error) {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
@@ -849,6 +865,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     if (!parsed.score) options.score = false;
     if (!parsed.prompt) options.prompt = false;
     if (parsed.forcePrompt) options.prompt = true;
+    if (parsed.requireComplete) options.requireComplete = true;
     if (parsed.diagnosticsDir) options.diagnosticsDir = parsed.diagnosticsDir;
     else if (config.diagnosticsDir) options.diagnosticsDir = config.diagnosticsDir;
     if (parsed.diagnosticsPromptLimit !== undefined)

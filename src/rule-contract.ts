@@ -7,6 +7,7 @@ import {
   type EvidenceValue,
 } from "./evidence.js";
 import type { AnalysisBudgetReport, AnalysisBudgetTracker } from "./analysis-budgets.js";
+import type { RunFailureErrorCode, RunFailurePhase } from "./run-status.js";
 
 /** A small, declarative selector for evidence a rule needs before it can judge. */
 export interface EvidenceSelector {
@@ -131,6 +132,12 @@ export interface RuleEngineErrorState {
   rule: { id: string; version: string };
   reason: string;
   error: string;
+  /** Structured failure phase when an engine orchestrator provides it. */
+  phase?: RunFailurePhase;
+  /** Stable machine-readable failure code when an engine orchestrator provides it. */
+  errorCode?: RunFailureErrorCode;
+  /** Per-run identity when an engine orchestrator provides it. */
+  runId?: string;
 }
 
 /** Execution states are not rule evaluation outcomes. */

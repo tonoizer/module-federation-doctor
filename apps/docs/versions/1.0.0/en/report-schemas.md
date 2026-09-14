@@ -124,6 +124,19 @@ Findings may include `suppressed` / `suppressionReason` when a
 [fingerprint baseline](./baselines.md) matches. Report `summary.suppressed`
 counts those findings when present.
 
+## Run status (`status.incompleteReasons`)
+
+Current reports include an additive `status` object. `status.complete` is true
+only when `incompleteReasons` is empty. The stable codes cover missing emit,
+missing enhanced stats, partial bundler coverage, skipped workspace probes, and
+unknown evidence. Workspace `invalid`, `stale`, `duplicate`, and `conflict`
+diagnostics, as well as an incomplete discovery budget, use
+`evidence-unknown`.
+
+Legacy callers keep their existing exit behavior. The `--require-complete` CLI
+option is opt-in for `check`, `workspace`, and `federation`; it maps every
+non-empty status reason to exit `1`.
+
 ## Health score (`summary.score`)
 
 Report summaries include an offline federation health score:
@@ -176,10 +189,13 @@ existing findings.
 | `remotes.config.v1`          | `config/remote-entry-invalid`, `config/remote-http-insecure`, `config/remote-localhost-in-production`, `config/remote-alias-prefix-collision`, `config/remote-manifest-recommended`, `config/remote-capability-disabled` |
 | `artifact.v1`                | other first-batch `artifact/*` rules                                                                                                                                                                                     |
 | `doctor.partial-analysis.v1` | `doctor/partial-analysis`                                                                                                                                                                                                |
+| `doctor.run-failure.v1`      | Structured rule, evidence-bridge, or analysis failure (`phase`, `errorCode`, `runId`, optional `ruleId` and redacted `error`)                                                                                            |
 
 TypeScript exports: `FINDING_DETAILS_SCHEMAS`, `TYPED_DETAILS_RULE_IDS`,
 `readFindingDetails`, and per-family `*DetailsV1` types from
-`@tonoizer/mfdoctor`.
+`@tonoizer/mfdoctor`. Run failures additionally expose the typed
+`RunFailureDetails`, `RunFailurePhase`, `RunFailureErrorCode`,
+`RUN_FAILURE_DETAILS_SCHEMA`, and `RUN_FAILURE_ERROR_CODES` exports.
 
 ### Agent / CI example (prefer `details`, not message regex)
 

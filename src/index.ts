@@ -7,17 +7,20 @@ export {
 } from "./finding-details.js";
 export type {
   ArtifactDetailsV1,
+  DoctorRunFailureDetailsV1,
   DoctorPartialAnalysisDetailsV1,
   FindingDetailsAttachment,
   FindingDetailsSchemaId,
   FindingDetailsV1,
   RemotesConfigDetailsV1,
+  RunFailureDetailsV1,
   SharedSingletonDetailsV1,
   SharedUnusedDetailsV1,
   SharedVersionMismatchDetailsV1,
   TypedDetailsRuleId,
 } from "./finding-details.js";
 export { analyze, analyzeFederation } from "./engine.js";
+export type { FederationAnalysisOptions } from "./engine.js";
 // DEFAULT_ANALYSIS_CACHE_OPTIONS stays in src/analysis-cache.ts for collect
 // and benchmarks. It is not re-exported from this root entry (BL-58).
 export {
@@ -59,8 +62,24 @@ export {
 } from "./baseline.js";
 export { computeHealthScore, isExcludedFromScore, labelForScore } from "./health-score.js";
 export type { HealthScoreResult } from "./health-score.js";
-export { computeRunStatus, emptyRunStatus, INCOMPLETE_REASON_CODES } from "./run-status.js";
-export type { ComputeRunStatusOptions } from "./run-status.js";
+export {
+  computeRunStatus,
+  emptyRunStatus,
+  hasRequiredEvidence,
+  INCOMPLETE_REASON_CODES,
+  isRunStatusComplete,
+  isStrictlyComplete,
+  markRunIncomplete,
+  RUN_FAILURE_DETAILS_SCHEMA,
+  RUN_FAILURE_ERROR_CODES,
+} from "./run-status.js";
+export type {
+  ComputeRunStatusOptions,
+  RequireCompleteOptions,
+  RunFailureDetails,
+  RunFailureErrorCode,
+  RunFailurePhase,
+} from "./run-status.js";
 export {
   buildAgentPrompt,
   DEFAULT_PROMPT_FINDINGS,

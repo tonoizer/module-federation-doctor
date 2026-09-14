@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
@@ -76,7 +77,167 @@ import {
 } from "./analysis-budgets.js";
 import { mapBounded } from "./async-map.js";
 import type { RuleExecutionState } from "./rule-contract.js";
-import { computeRunStatus } from "./run-status.js";
+import {
+  computeRunStatus,
+  isStrictlyComplete,
+  markRunIncomplete,
+  RUN_FAILURE_DETAILS_SCHEMA,
+  RUN_FAILURE_ERROR_CODES,
+  type RunFailureDetails,
+  type RunFailurePhase,
+} from "./run-status.js";
+
+const ANALYSIS_FAILURE_RULE_ID = "doctor/analysis-failed";
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function structuredExecutionState(
+  state: RuleExecutionState,
+  phase: RunFailurePhase,
+  runId: string,
+): RuleExecutionState {
+  if (state.state !== "engine-error") return state;
+  return {
+    ...state,
+    phase,
+    errorCode: RUN_FAILURE_ERROR_CODES[phase],
+    runId,
+  } as RuleExecutionState;
+}
+
+function structureExecutionFailures(
+  execution: readonly RuleExecutionState[],
+  phase: RunFailurePhase,
+  runId: string,
+): RuleExecutionState[] {
+  return execution.map((state) => structuredExecutionState(state, phase, runId));
+}
+
+function structureEvidenceRun<T extends { output: { execution: RuleExecutionState[] } }>(
+  run: T,
+  phase: RunFailurePhase,
+  runId: string,
+): T {
+  return {
+    ...run,
+    output: {
+      ...run.output,
+      execution: structureExecutionFailures(run.output.execution, phase, runId),
+    },
+  } as T;
+}
+
+function runFailureFinding(
+  root: string,
+  project: string,
+  details: RunFailureDetails,
+  message: string,
+  ruleId = ANALYSIS_FAILURE_RULE_ID,
+  documentation?: string,
+  federationInstanceId?: string,
+): DoctorFinding {
+  const safeMessage = redact(message, root) as string;
+  const safeDetails = redact(details, root) as Record<string, unknown>;
+  const base = {
+    schemaVersion: 1 as const,
+    ruleId,
+    severity: "error" as const,
+    message: safeMessage,
+    project,
+    ...(federationInstanceId ? { federationInstanceId } : {}),
+    evidence: {
+      phase: details.phase,
+      errorCode: details.errorCode,
+      ...(details.ruleId ? { ruleId: details.ruleId } : {}),
+    },
+    ...(documentation ? { documentation } : {}),
+    suggestion: "Fix the reported failure, then re-run MFDoctor to collect the full report.",
+  };
+  return {
+    ...base,
+    fingerprint: fingerprint(base),
+    detailsSchema: RUN_FAILURE_DETAILS_SCHEMA,
+    details: safeDetails,
+  };
+}
+
+function minimalFailureFacts(
+  root: string,
+  bundler: DoctorOptions["bundler"] = "unknown",
+  mode: "development" | "ci" = "development",
+): ProjectFacts {
+  return {
+    schemaVersion: 1,
+    project: { name: path.basename(root) || "unknown", root: "." },
+    bundler: { name: bundler ?? "unknown", mode },
+    capabilities: {
+      config: false,
+      sourceImports: false,
+      manifest: false,
+      stats: false,
+      emittedAssets: false,
+      installedVersions: false,
+    },
+    dependencies: { declared: {}, installed: {} },
+    imports: {
+      sourceFiles: [],
+      specifiers: [],
+      packages: [],
+      dynamicPackages: [],
+      remotes: [],
+      unresolvedDynamic: [],
+      evidenceSources: [],
+    },
+    artifacts: { emittedAssets: [] },
+  };
+}
+
+async function failureFacts(
+  resolved: ResolvedDoctorOptions | undefined,
+  existing: ProjectFacts | undefined,
+  options: DoctorOptions,
+): Promise<ProjectFacts> {
+  if (existing) return existing;
+  if (resolved) {
+    try {
+      return await collectProjectFacts({ ...resolved, include: [] });
+    } catch {
+      // Keep failure reporting independent from a second collection failure.
+    }
+  }
+  const root = path.resolve(options.root ?? process.cwd());
+  return minimalFailureFacts(root, options.bundler, options.mode);
+}
+
+async function persistFailureReport(
+  directory: string,
+  write: boolean,
+  report: DoctorReport,
+  formats: readonly OutputFormat[] = [],
+): Promise<void> {
+  if (!write) return;
+  const sarifPath = path.join(directory, "results.sarif");
+  try {
+    await fs.mkdir(directory, { recursive: true });
+    // A failed run must never leave a previous run's SARIF looking current. A
+    // caller that requested SARIF gets a fresh failure document below; all
+    // other callers get the stale artifact invalidated.
+    await fs.rm(sarifPath, { force: true });
+    await writeFederationReports(
+      report,
+      directory,
+      ["json", ...(formats.includes("sarif") ? (["sarif"] as const) : [])],
+      { write: true },
+    );
+  } catch (error) {
+    await fs.rm(sarifPath, { force: true }).catch(() => undefined);
+    process.stderr.write(
+      `MFDoctor could not write the current failure report: ${errorMessage(error)}\n`,
+    );
+  }
+}
 
 export function isAnalysisIncomplete(analysis: AnalysisBudgetReport | undefined): boolean {
   return Boolean(analysis && (analysis.status !== "complete" || analysis.exceeded.length > 0));
@@ -96,6 +257,7 @@ async function runRule(
   root: string,
   sharedPolicy?: ResolvedDoctorOptions["sharedPolicy"],
   recognizeMfToolkit?: boolean,
+  runId: string = randomUUID(),
 ): Promise<DoctorFinding[]> {
   const resolved = parseSetting(setting, rule.meta.defaultSeverity);
   // Unknown bundler means detection failed. Keep shared rules running; Vite-only
@@ -147,20 +309,23 @@ async function runRule(
     if (Array.isArray(returned)) for (const finding of returned) add(finding);
   } catch (error) {
     // Keep every other rule's findings; never abort the suite on the first rule failure.
-    const base = {
-      schemaVersion: 1 as const,
-      ruleId: rule.meta.id,
-      severity: "error" as const,
-      message: `Rule "${rule.meta.id}" failed during analysis: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-      project: facts.project.name,
-      ...(facts.federationInstanceId ? { federationInstanceId: facts.federationInstanceId } : {}),
-      evidence: { ruleId: rule.meta.id },
-      documentation: rule.meta.documentation,
-      suggestion: "Fix or disable this rule, then re-run MFDoctor to collect the full report.",
-    };
-    findings.push({ ...base, fingerprint: fingerprint(base) });
+    findings.push(
+      runFailureFinding(
+        root,
+        facts.project.name,
+        {
+          phase: "rule",
+          errorCode: RUN_FAILURE_ERROR_CODES.rule,
+          runId,
+          ruleId: rule.meta.id,
+          error: redact(errorMessage(error), root) as string,
+        },
+        `Rule "${rule.meta.id}" failed during analysis: ${errorMessage(error)}`,
+        rule.meta.id,
+        rule.meta.documentation,
+        facts.federationInstanceId,
+      ),
+    );
   }
   return findings;
 }
@@ -208,16 +373,23 @@ function bridgeEngineErrors(
   settings: Readonly<Record<string, RuleSetting>>,
   error: unknown,
   root: string,
+  runId: string,
 ): RuleExecutionState[] {
-  const message = redact(error instanceof Error ? error.message : String(error), root) as string;
+  const message = redact(errorMessage(error), root) as string;
   return migratedEvidenceRules
     .filter((rule) => settings[rule.meta.id] !== "off")
-    .map((rule) => ({
-      state: "engine-error" as const,
-      rule: { id: rule.meta.id, version: rule.meta.version },
-      reason: "Evidence bridge failed before rule evaluation.",
-      error: message,
-    }));
+    .map(
+      (rule) =>
+        ({
+          state: "engine-error" as const,
+          rule: { id: rule.meta.id, version: rule.meta.version },
+          reason: "Evidence bridge failed before rule evaluation.",
+          error: message,
+          phase: "evidence" as const,
+          errorCode: RUN_FAILURE_ERROR_CODES.evidence,
+          runId,
+        }) as RuleExecutionState,
+    );
 }
 
 async function legacyMigratedFallback(
@@ -226,13 +398,22 @@ async function legacyMigratedFallback(
   root: string,
   sharedPolicy: ResolvedDoctorOptions["sharedPolicy"],
   recognizeMfToolkit: boolean | undefined,
+  runId: string,
 ): Promise<DoctorFinding[]> {
   return (
     await Promise.all(
       builtInRules
         .filter((rule) => migratedEvidenceRuleIds.has(rule.meta.id))
         .map((rule) =>
-          runRule(rule, facts, settings[rule.meta.id], root, sharedPolicy, recognizeMfToolkit),
+          runRule(
+            rule,
+            facts,
+            settings[rule.meta.id],
+            root,
+            sharedPolicy,
+            recognizeMfToolkit,
+            runId,
+          ),
         ),
     )
   ).flat();
@@ -277,21 +458,26 @@ async function runAnalysis(
   diagnostics?: BuildDiagnostics,
   buildOutputs?: BuildOutputInput[],
 ): Promise<AnalysisResult> {
-  const resolved = await resolveOptions(
-    diagnostics?.moduleFederationInstances?.length
-      ? { ...options, moduleFederationInstances: diagnostics.moduleFederationInstances }
-      : options,
-  );
+  const runId = randomUUID();
+  let resolved: ResolvedDoctorOptions | undefined;
+  let facts: ProjectFacts | undefined;
+  let collectedFindings: DoctorFinding[] = [];
   try {
+    const resolvedOptions = await resolveOptions(
+      diagnostics?.moduleFederationInstances?.length
+        ? { ...options, moduleFederationInstances: diagnostics.moduleFederationInstances }
+        : options,
+    );
+    resolved = resolvedOptions;
     const boundedRoots = buildOutputs
       ? buildOutputs
           .filter((output) => output.buildWrite !== false)
           .map((output) => output.outputRoot)
           .filter((value): value is string => Boolean(value))
       : undefined;
-    const facts = await collectProjectFacts(resolved, boundedRoots);
+    facts = await collectProjectFacts(resolvedOptions, boundedRoots);
     if (emittedAssets)
-      await addBuildFacts(facts, emittedAssets, resolved.root, diagnostics, buildOutputs);
+      await addBuildFacts(facts, emittedAssets, resolvedOptions.root, diagnostics, buildOutputs);
     const rolloutDefaults = createEvidenceRolloutController();
     const rollout = rolloutDefaults.emergencyLegacy
       ? rolloutDefaults
@@ -305,14 +491,15 @@ async function runAnalysis(
     let legacyFindings = (
       await Promise.all(
         scopedFacts.flatMap((factsForRules) =>
-          [...legacyBuiltIns, ...resolved.extends].map((rule) =>
+          [...legacyBuiltIns, ...resolvedOptions.extends].map((rule) =>
             runRule(
               rule,
               factsForRules,
-              resolved.rules[rule.meta.id],
-              resolved.root,
-              resolved.sharedPolicy,
-              resolved.recognizeMfToolkit,
+              resolvedOptions.rules[rule.meta.id],
+              resolvedOptions.root,
+              resolvedOptions.sharedPolicy,
+              resolvedOptions.recognizeMfToolkit,
+              runId,
             ),
           ),
         ),
@@ -326,22 +513,28 @@ async function runAnalysis(
     const migratedExecutionErrors: RuleExecutionState[] = [];
     let legacyRuntimeFindings: DoctorFinding[] = [];
     const bridgeBudget =
-      rolloutMode === "legacy" ? undefined : new AnalysisBudgetTracker(resolved.analysisBudgets);
+      rolloutMode === "legacy"
+        ? undefined
+        : new AnalysisBudgetTracker(resolvedOptions.analysisBudgets);
     if (rolloutMode !== "legacy") {
       for (const scope of migratedEvidenceScopes(facts)) {
         try {
-          const run = await runMigratedEvidenceRules(
-            scope.facts,
-            resolved.rules,
-            bridgeBudget,
-            scope.build,
-            {
-              root: resolved.root,
-              sharedPolicy: resolved.sharedPolicy,
-              ...(resolved.recognizeMfToolkit !== undefined
-                ? { recognizeMfToolkit: resolved.recognizeMfToolkit }
-                : {}),
-            },
+          const run = structureEvidenceRun(
+            await runMigratedEvidenceRules(
+              scope.facts,
+              resolvedOptions.rules,
+              bridgeBudget,
+              scope.build,
+              {
+                root: resolvedOptions.root,
+                sharedPolicy: resolvedOptions.sharedPolicy,
+                ...(resolvedOptions.recognizeMfToolkit !== undefined
+                  ? { recognizeMfToolkit: resolvedOptions.recognizeMfToolkit }
+                  : {}),
+              },
+            ),
+            "evidence",
+            runId,
           );
           migratedRuns.push({ facts: scope.facts, run });
           const needsLegacyFallback =
@@ -351,56 +544,66 @@ async function runAnalysis(
             legacyFindings = legacyFindings.concat(
               await legacyMigratedFallback(
                 scope.facts,
-                resolved.rules,
-                resolved.root,
-                resolved.sharedPolicy,
-                resolved.recognizeMfToolkit,
+                resolvedOptions.rules,
+                resolvedOptions.root,
+                resolvedOptions.sharedPolicy,
+                resolvedOptions.recognizeMfToolkit,
+                runId,
               ),
             );
           } else migratedProjectionRuns.push({ facts: scope.facts, run });
         } catch (error) {
           // A migrated graph is additive. A malformed or budget-clipped bridge
           // must not discard the complete legacy V1 result.
-          migratedExecutionErrors.push(...bridgeEngineErrors(resolved.rules, error, resolved.root));
+          migratedExecutionErrors.push(
+            ...bridgeEngineErrors(resolvedOptions.rules, error, resolvedOptions.root, runId),
+          );
           if (rolloutMode === "v2-compat") {
             legacyFindings = legacyFindings.concat(
               await legacyMigratedFallback(
                 scope.facts,
-                resolved.rules,
-                resolved.root,
-                resolved.sharedPolicy,
-                resolved.recognizeMfToolkit,
+                resolvedOptions.rules,
+                resolvedOptions.root,
+                resolvedOptions.sharedPolicy,
+                resolvedOptions.recognizeMfToolkit,
+                runId,
               ),
             );
           }
         }
       }
-      if (resolved.runtimeTrace) {
+      if (resolvedOptions.runtimeTrace) {
         try {
           const { correlateRuntime, loadRuntimeTraceFile } = await import("./runtime-trace.js");
-          const runtimeTraces = await loadRuntimeTraceFile(resolved.runtimeTrace);
+          const runtimeTraces = await loadRuntimeTraceFile(resolvedOptions.runtimeTrace);
           if (runtimeTraces.length > 0) {
             const runtimeProjects = scopedFacts.length > 0 ? scopedFacts : [facts];
             legacyRuntimeFindings = correlateRuntime(runtimeTraces, runtimeProjects);
-            const run = await runMigratedRuntimeEvidenceRules(
-              facts,
-              runtimeProjects,
-              runtimeTraces,
-              resolved.rules,
-              bridgeBudget,
-              {
-                root: resolved.root,
-                sharedPolicy: resolved.sharedPolicy,
-                ...(resolved.recognizeMfToolkit !== undefined
-                  ? { recognizeMfToolkit: resolved.recognizeMfToolkit }
-                  : {}),
-              },
+            const run = structureEvidenceRun(
+              await runMigratedRuntimeEvidenceRules(
+                facts,
+                runtimeProjects,
+                runtimeTraces,
+                resolvedOptions.rules,
+                bridgeBudget,
+                {
+                  root: resolvedOptions.root,
+                  sharedPolicy: resolvedOptions.sharedPolicy,
+                  ...(resolvedOptions.recognizeMfToolkit !== undefined
+                    ? { recognizeMfToolkit: resolvedOptions.recognizeMfToolkit }
+                    : {}),
+                },
+              ),
+              "evidence",
+              runId,
             );
             migratedRuns.push({ facts, run });
             migratedProjectionRuns.push({ facts, run });
           }
         } catch (error) {
-          migratedExecutionErrors.push(...bridgeEngineErrors(resolved.rules, error, resolved.root));
+          migratedExecutionErrors.push(
+            ...bridgeEngineErrors(resolvedOptions.rules, error, resolvedOptions.root, runId),
+          );
         }
       }
     }
@@ -409,8 +612,8 @@ async function runAnalysis(
         projectMigratedFailures(
           run.output.evaluations,
           factsForEvidence,
-          resolved.rules,
-          resolved.root,
+          resolvedOptions.rules,
+          resolvedOptions.root,
           run.graph.subjects,
         ),
       ),
@@ -438,29 +641,47 @@ async function runAnalysis(
     const rawFindings = sortFindings(
       rolloutMode === "v2-compat" ? [...legacyFindings, ...migratedFindings] : legacyFindings,
     );
-    const { findings, failOnSuppressed } = await withBaseline(rawFindings, resolved.baseline);
-    const policyFailed = policyFails(findings, resolved.failOn, failOnSuppressed);
+    collectedFindings = rawFindings;
+    const { findings, failOnSuppressed } = await withBaseline(
+      rawFindings,
+      resolvedOptions.baseline,
+    );
+    collectedFindings = findings;
+    const policyFailed = policyFails(findings, resolvedOptions.failOn, failOnSuppressed);
     // Write the full report before any caller decides to fail the build.
     // Terminal showcase is the single print path (adapters must not re-print).
     const report = reportFor(facts, findings);
-    const safeFacts = redact(facts, resolved.root) as ProjectFacts;
-    await writeReports(safeFacts, report, resolved.output.directory, resolved.output.formats, {
-      quiet: resolved.quiet,
-      printLog: resolved.printLog,
-      score: resolved.score,
-      prompt: resolved.prompt,
-      policy: { failOn: resolved.failOn, failOnSuppressed },
-      write: resolved.output.write,
-      stdoutJson: resolved.output.stdout,
-    });
-    if (resolved.diagnosticsDir)
-      await writeDiagnosticsDump(report, resolved.diagnosticsDir, {
-        limit: resolved.diagnosticsPromptLimit,
+    const safeFacts = redact(facts, resolvedOptions.root) as ProjectFacts;
+    await writeReports(
+      safeFacts,
+      report,
+      resolvedOptions.output.directory,
+      resolvedOptions.output.formats,
+      {
+        quiet: resolvedOptions.quiet,
+        printLog: resolvedOptions.printLog,
+        score: resolvedOptions.score,
+        prompt: resolvedOptions.prompt,
+        policy: { failOn: resolvedOptions.failOn, failOnSuppressed },
+        write: resolvedOptions.output.write,
+        stdoutJson: resolvedOptions.output.stdout,
+      },
+    );
+    if (resolvedOptions.diagnosticsDir)
+      await writeDiagnosticsDump(report, resolvedOptions.diagnosticsDir, {
+        limit: resolvedOptions.diagnosticsPromptLimit,
       });
     return {
       facts: safeFacts,
       report,
-      exitCode: isAnalysisIncomplete(facts.analysis) ? 2 : policyFailed ? 1 : 0,
+      exitCode:
+        resolvedOptions.requireComplete && !isStrictlyComplete([facts], report.status)
+          ? 1
+          : isAnalysisIncomplete(facts.analysis)
+            ? 2
+            : policyFailed
+              ? 1
+              : 0,
       evidence: {
         rollout: { scope: "rules", mode: rolloutMode },
         evaluations: migratedRuns.flatMap(({ run }) => run.output.evaluations),
@@ -472,12 +693,39 @@ async function runAnalysis(
       },
     };
   } catch (error) {
-    if (resolved.output.formats.includes("terminal"))
-      process.stderr.write(
-        `MFDoctor could not complete: ${error instanceof Error ? error.message : String(error)}\n`,
-      );
-    const emptyFacts = await collectProjectFacts({ ...resolved, include: [] });
-    return { facts: emptyFacts, report: reportFor(emptyFacts, []), exitCode: 2 };
+    const message = errorMessage(error);
+    if (resolved?.output.formats.includes("terminal"))
+      process.stderr.write(`MFDoctor could not complete: ${message}\n`);
+    const failedFacts = await failureFacts(resolved, facts, options);
+    const failureRoot = resolved?.root ?? path.resolve(options.root ?? process.cwd());
+    const failureFinding = runFailureFinding(
+      failureRoot,
+      failedFacts.project.name,
+      {
+        phase: "analysis",
+        errorCode: RUN_FAILURE_ERROR_CODES.analysis,
+        runId,
+        error: redact(message, failureRoot) as string,
+      },
+      `MFDoctor analysis failed: ${message}`,
+    );
+    const failureFindings = sortFindings([...collectedFindings, failureFinding]);
+    const failureReport = reportFor(failedFacts, failureFindings);
+    failureReport.status = markRunIncomplete(failureReport.status, "evidence-unknown");
+    const fallbackRoot = path.resolve(options.root ?? process.cwd());
+    await persistFailureReport(
+      resolved?.output.directory ??
+        path.resolve(fallbackRoot, options.output?.directory ?? ".mf/doctor"),
+      resolved?.output.write ?? options.output?.write !== false,
+      failureReport,
+      resolved?.output.formats ?? options.output?.formats ?? [],
+    );
+    const safeFacts = redact(failedFacts, failureRoot) as ProjectFacts;
+    return {
+      facts: safeFacts,
+      report: failureReport,
+      exitCode: (resolved?.requireComplete ?? options.requireComplete) ? 1 : 2,
+    };
   }
 }
 
@@ -568,16 +816,23 @@ function federationBridgeEngineErrors(
   settings: Readonly<Record<string, RuleSetting>>,
   error: unknown,
   root: string,
+  runId: string,
 ): RuleExecutionState[] {
-  const message = redact(error instanceof Error ? error.message : String(error), root) as string;
+  const message = redact(errorMessage(error), root) as string;
   return [...migratedFederationEvidenceRuleIds]
     .filter((id) => settings[id] !== "off")
-    .map((id) => ({
-      state: "engine-error" as const,
-      rule: { id, version: "1" },
-      reason: "Federation evidence bridge failed before rule evaluation.",
-      error: message,
-    }));
+    .map(
+      (id) =>
+        ({
+          state: "engine-error" as const,
+          rule: { id, version: "1" },
+          reason: "Federation evidence bridge failed before rule evaluation.",
+          error: message,
+          phase: "evidence" as const,
+          errorCode: RUN_FAILURE_ERROR_CODES.evidence,
+          runId,
+        }) as RuleExecutionState,
+    );
 }
 
 function aggregateWorkspaceSourceReadFailures(
@@ -651,33 +906,38 @@ function federationProjectGroups(projects: ProjectFacts[]): ProjectFacts[][] {
     );
 }
 
-export async function analyzeFederation(
+export type FederationAnalysisOptions = {
+  outputDirectory?: string;
+  formats?: OutputFormat[];
+  /** When false, skip writing report artifacts to disk. Defaults to true. */
+  write?: boolean;
+  /** When true, emit the JSON report on stdout. */
+  stdoutJson?: boolean;
+  failOn?: "never" | "warning" | "error";
+  baseline?: string | { path: string; failOnSuppressed?: boolean; reportStale?: boolean };
+  root?: string;
+  quiet?: boolean;
+  printLog?: { success?: boolean };
+  /** When false, omit health score from terminal output. */
+  score?: boolean;
+  /** When false, omit top agent prompts from terminal output. */
+  prompt?: boolean;
+  /** Severity / off map (supports `rules: { "federation/ghost-shares": "off" }`). */
+  rules?: Record<string, RuleSetting>;
+  /** Packages excluded from host-gap / ghost-share heuristics. */
+  alwaysShared?: string[];
+  /** Opt in to failing when persisted workspace evidence is incomplete. */
+  requireComplete?: boolean;
+  analysis?: AnalysisBudgetReport;
+  workspaceDiagnostics?: WorkspaceProjectDiagnostic[];
+  /** @internal Evidence rollout injection for staged federation rule migration. */
+  evidenceRollout?: import("./evidence-rollout.js").EvidenceRolloutController;
+};
+
+async function analyzeFederationImpl(
   files: string[],
-  options: {
-    outputDirectory?: string;
-    formats?: OutputFormat[];
-    /** When false, skip writing report artifacts to disk. Defaults to true. */
-    write?: boolean;
-    /** When true, emit the JSON report on stdout. */
-    stdoutJson?: boolean;
-    failOn?: "never" | "warning" | "error";
-    baseline?: string | { path: string; failOnSuppressed?: boolean; reportStale?: boolean };
-    root?: string;
-    quiet?: boolean;
-    printLog?: { success?: boolean };
-    /** When false, omit health score from terminal output. */
-    score?: boolean;
-    /** When false, omit top agent prompts from terminal output. */
-    prompt?: boolean;
-    /** Severity / off map (supports `rules: { "federation/ghost-shares": "off" }`). */
-    rules?: Record<string, RuleSetting>;
-    /** Packages excluded from host-gap / ghost-share heuristics. */
-    alwaysShared?: string[];
-    analysis?: AnalysisBudgetReport;
-    workspaceDiagnostics?: WorkspaceProjectDiagnostic[];
-    /** @internal Evidence rollout injection for staged federation rule migration. */
-    evidenceRollout?: import("./evidence-rollout.js").EvidenceRolloutController;
-  } = {},
+  options: FederationAnalysisOptions,
+  runId: string,
 ): Promise<FederationAnalysisResult> {
   const orderedFiles = files.slice().sort(compareCodePoint);
   const projectRoots = orderedFiles.map(workspaceProjectRoot);
@@ -823,16 +1083,20 @@ export async function analyzeFederation(
 
     if (rolloutMode !== "legacy") {
       try {
-        const run = await runMigratedFederationRules(
-          {
-            projects: projectGroup,
-            groupKey,
-            ...(options.analysis ? { workspaceAnalysis: options.analysis } : {}),
-            groupEvidenceIncomplete,
-            alwaysShared,
-          },
-          rules,
-          bridgeBudget,
+        const run = structureEvidenceRun(
+          await runMigratedFederationRules(
+            {
+              projects: projectGroup,
+              groupKey,
+              ...(options.analysis ? { workspaceAnalysis: options.analysis } : {}),
+              groupEvidenceIncomplete,
+              alwaysShared,
+            },
+            rules,
+            bridgeBudget,
+          ),
+          "evidence",
+          runId,
         );
         migratedRuns.push(run);
         const needsLegacyFallback =
@@ -849,7 +1113,7 @@ export async function analyzeFederation(
           );
         } else migratedProjectionRuns.push(run);
       } catch (error) {
-        migratedExecutionErrors.push(...federationBridgeEngineErrors(rules, error, root));
+        migratedExecutionErrors.push(...federationBridgeEngineErrors(rules, error, root, runId));
         if (rolloutMode === "v2-compat") {
           legacyFederationFindings = legacyFederationFindings.concat(
             legacyFederationFindingsForGroup(
@@ -887,11 +1151,11 @@ export async function analyzeFederation(
     sortFindings(findings),
     baselineOptions,
   );
-  const report = reportFromFindings(
-    projects,
-    baselined,
-    options.workspaceDiagnostics ? { workspaceDiagnostics: options.workspaceDiagnostics } : {},
-  );
+  const report = reportFromFindings(projects, baselined, {
+    requireProjects: true,
+    ...(options.analysis ? { workspaceAnalysis: options.analysis } : {}),
+    ...(options.workspaceDiagnostics ? { workspaceDiagnostics: options.workspaceDiagnostics } : {}),
+  });
   const ui = buildUiPayload(projects, report);
   const failOn = options.failOn ?? "error";
   const formats = options.formats ?? [];
@@ -928,11 +1192,71 @@ export async function analyzeFederation(
     findings: baselined,
     report,
     ui,
-    exitCode: workspaceAnalysisIncomplete
-      ? 2
-      : policyFails(baselined, failOn, failOnSuppressed)
+    exitCode:
+      options.requireComplete && !isStrictlyComplete(projects, report.status)
         ? 1
-        : 0,
+        : workspaceAnalysisIncomplete
+          ? 2
+          : policyFails(baselined, failOn, failOnSuppressed)
+            ? 1
+            : 0,
     ...(evidence ? { evidence } : {}),
   };
+}
+
+export async function analyzeFederation(
+  files: string[],
+  options: FederationAnalysisOptions = {},
+): Promise<FederationAnalysisResult> {
+  const root = path.resolve(options.root ?? process.cwd());
+  const normalizedOptions: FederationAnalysisOptions = {
+    ...options,
+    root,
+    ...(options.outputDirectory !== undefined
+      ? { outputDirectory: path.resolve(root, options.outputDirectory) }
+      : {}),
+  };
+  const runId = randomUUID();
+  try {
+    return await analyzeFederationImpl(files, normalizedOptions, runId);
+  } catch (error) {
+    const message = errorMessage(error);
+    const failureRoot = normalizedOptions.root ?? process.cwd();
+    if (normalizedOptions.formats?.includes("terminal"))
+      process.stderr.write(`MFDoctor could not complete workspace analysis: ${message}\n`);
+    const finding = runFailureFinding(
+      failureRoot,
+      "workspace",
+      {
+        phase: "analysis",
+        errorCode: RUN_FAILURE_ERROR_CODES.analysis,
+        runId,
+        error: redact(message, failureRoot) as string,
+      },
+      `MFDoctor workspace analysis failed: ${message}`,
+    );
+    const findings = [finding];
+    const report = reportFromFindings([], findings, {
+      requireProjects: true,
+      ...(normalizedOptions.analysis ? { workspaceAnalysis: normalizedOptions.analysis } : {}),
+      ...(normalizedOptions.workspaceDiagnostics
+        ? { workspaceDiagnostics: normalizedOptions.workspaceDiagnostics }
+        : {}),
+    });
+    report.status = markRunIncomplete(report.status, "evidence-unknown");
+    if (normalizedOptions.outputDirectory)
+      await persistFailureReport(
+        normalizedOptions.outputDirectory,
+        normalizedOptions.write !== false,
+        report,
+        normalizedOptions.formats ?? [],
+      );
+    return {
+      projects: [],
+      findings,
+      report,
+      ui: buildUiPayload([], report),
+      exitCode: normalizedOptions.requireComplete ? 1 : 2,
+    };
+  }
 }

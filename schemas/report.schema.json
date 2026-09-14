@@ -110,8 +110,60 @@
           "suppressed": { "type": "boolean" },
           "suppressionReason": { "type": "string" }
         },
+        "allOf": [
+          {
+            "if": {
+              "required": ["detailsSchema"],
+              "properties": { "detailsSchema": { "const": "doctor.run-failure.v1" } }
+            },
+            "then": {
+              "required": ["details"],
+              "properties": { "details": { "$ref": "#/$defs/runFailureDetails" } }
+            }
+          }
+        ],
         "additionalProperties": false
       }
+    }
+  },
+  "$defs": {
+    "runFailureDetails": {
+      "type": "object",
+      "required": ["phase", "errorCode", "runId"],
+      "properties": {
+        "phase": { "enum": ["rule", "evidence", "analysis"] },
+        "errorCode": {
+          "enum": ["rule-execution-failed", "evidence-execution-failed", "analysis-failed"]
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "ruleId": { "type": "string", "minLength": 1 },
+        "error": { "type": "string" }
+      },
+      "oneOf": [
+        {
+          "required": ["ruleId"],
+          "properties": {
+            "phase": { "const": "rule" },
+            "errorCode": { "const": "rule-execution-failed" }
+          }
+        },
+        {
+          "properties": {
+            "phase": { "const": "evidence" },
+            "errorCode": { "const": "evidence-execution-failed" }
+          }
+        },
+        {
+          "properties": {
+            "phase": { "const": "analysis" },
+            "errorCode": { "const": "analysis-failed" }
+          }
+        }
+      ],
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
