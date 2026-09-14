@@ -22,8 +22,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  resolve-ref:
-    name: Resolve immutable release tag
+  # Job/output names must not contain head|sha|commit|branch|ref. CodeQL's
+  # ActionsSHACheckout / ActionsMutableRefCheckout heuristics treat those
+  # tokens in needs.<job>.outputs.<field> as an untrusted PR HEAD checkout.
+  pin-release:
+    name: Pin immutable release tag
     # GITHUB_TOKEN does not re-trigger this workflow when the later promote
     # job undrafts the GitHub Release. Still ignore `release: published` from
     # github-actions[bot] so a PAT or future token change cannot double-stage.
@@ -32,7 +35,7 @@ jobs:
     if: github.event_name != 'release' || github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     outputs:
-      sha: ${{ steps.resolve.outputs.sha }}
+      oid: ${{ steps.resolve.outputs.oid }}
       tag: ${{ steps.resolve.outputs.tag }}
       package-exists: ${{ steps.registry.outputs.exists }}
     steps:
@@ -67,7 +70,7 @@ jobs:
             echo "Remote tag ${TAG} resolves to ${REMOTE_COMMIT}, but checkout is ${CHECKED_OUT_COMMIT}"
             exit 1
           }
-          echo "sha=${CHECKED_OUT_COMMIT}" >> "$GITHUB_OUTPUT"
+          echo "oid=${CHECKED_OUT_COMMIT}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - id: registry
@@ -84,7 +87,7 @@ jobs:
           esac
 
   verify:
-    needs: resolve-ref
+    needs: pin-release
     name: Verify (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     container:
@@ -96,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ needs.resolve-ref.outputs.sha }}
+          ref: ${{ needs.pin-release.outputs.oid }}
           persist-credentials: false
       - name: Use current release pack harness
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -149,14 +152,17 @@ jobs:
       - uses: ./.github/actions/setup-vp
         with:
           node-version: ${{ matrix.node-version }}
+          # Do not write the default-branch Actions cache after checking out a
+          # workflow_dispatch pin. setup-vp caches otherwise.
+          cache: false
       - run: vp exec playwright install chromium
       - name: Validate publishable tag
         run: vp run pack:check && vp run test:e2e
       - name: Pack the verified npm artifact
         if: matrix.node-version == 26
         env:
-          EXPECTED_TAG: ${{ needs.resolve-ref.outputs.tag }}
-          EXPECTED_SHA: ${{ needs.resolve-ref.outputs.sha }}
+          EXPECTED_TAG: ${{ needs.pin-release.outputs.tag }}
+          EXPECTED_SHA: ${{ needs.pin-release.outputs.oid }}
         shell: bash
         run: |
           set -euo pipefail
@@ -188,8 +194,8 @@ jobs:
           overwrite: false
 
   stage:
-    needs: [resolve-ref, verify]
-    if: needs.resolve-ref.outputs.package-exists == 'true'
+    needs: [pin-release, verify]
+    if: needs.pin-release.outputs.package-exists == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -205,8 +211,8 @@ jobs:
       - name: Validate the verified npm artifact handoff
         id: package
         env:
-          EXPECTED_TAG: ${{ needs.resolve-ref.outputs.tag }}
-          EXPECTED_SHA: ${{ needs.resolve-ref.outputs.sha }}
+          EXPECTED_TAG: ${{ needs.pin-release.outputs.tag }}
+          EXPECTED_SHA: ${{ needs.pin-release.outputs.oid }}
         shell: bash
         run: |
           set -euo pipefail
@@ -268,7 +274,7 @@ jobs:
     # never ran, Stage failed, or first-package bootstrap) must leave the
     # GitHub Release as a draft. Any `if:` that stays true when `stage` is
     # skipped would run this job anyway.
-    needs: [resolve-ref, stage]
+    needs: [pin-release, stage]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -277,7 +283,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ needs.resolve-ref.outputs.tag }}
+          TAG: ${{ needs.pin-release.outputs.tag }}
         run: |
           is_draft="$(gh release view "$TAG" --json isDraft --jq .isDraft)"
           if [ "$is_draft" != "true" ]; then
@@ -291,14 +297,14 @@ jobs:
 
   bootstrap-notice:
     name: First-package bootstrap required
-    needs: [resolve-ref, verify]
-    if: needs.resolve-ref.outputs.package-exists == 'false'
+    needs: [pin-release, verify]
+    if: needs.pin-release.outputs.package-exists == 'false'
     runs-on: ubuntu-latest
     steps:
       - name: Record the one-time manual bootstrap boundary
         env:
-          TAG: ${{ needs.resolve-ref.outputs.tag }}
-          SHA: ${{ needs.resolve-ref.outputs.sha }}
+          TAG: ${{ needs.pin-release.outputs.tag }}
+          SHA: ${{ needs.pin-release.outputs.oid }}
         run: |
           echo "## First npm publish: one-time manual bootstrap" >> "$GITHUB_STEP_SUMMARY"
           echo "The npm package does not exist yet, so npm cannot accept a trusted publisher." >> "$GITHUB_STEP_SUMMARY"

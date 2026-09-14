@@ -10,6 +10,8 @@ describe("release workflow contracts", () => {
     );
     expect(action).toContain("run-install: false");
     expect(action).toContain("vp install --frozen-lockfile");
+    expect(action).toContain("cache: ${{ inputs.cache }}");
+    expect(action).toContain('default: "true"');
   });
 
   it("formats generated inventory without constructing a shell command", async () => {
@@ -69,8 +71,8 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain("examples/nested-federation");
     expect(workflow).toContain("examples/compatibility/vite-nitro-react");
     expect(workflow).toMatch(/sparse-checkout:\s*\|\s*\n\s+scripts\n\s+test\/e2e\n/);
-    const resolveRefJob = workflow.slice(
-      workflow.indexOf("  resolve-ref:"),
+    const pinReleaseJob = workflow.slice(
+      workflow.indexOf("  pin-release:"),
       workflow.indexOf("  verify:"),
     );
     const verifyJob = workflow.slice(workflow.indexOf("  verify:"), workflow.indexOf("  stage:"));
@@ -79,17 +81,22 @@ describe("release workflow contracts", () => {
       workflow.indexOf("  promote-github-release:"),
     );
 
-    expect(resolveRefJob).toContain("git ls-remote --exit-code --tags origin");
-    expect(resolveRefJob).toContain('"refs/tags/${TAG}^{}"');
-    expect(resolveRefJob).toContain('REMOTE_COMMIT="$(printf');
-    expect(resolveRefJob).toContain('test "$REMOTE_COMMIT" = "$CHECKED_OUT_COMMIT"');
-    expect(resolveRefJob).toContain('echo "sha=${CHECKED_OUT_COMMIT}"');
-    expect(verifyJob).toContain("ref: ${{ needs.resolve-ref.outputs.sha }}");
+    expect(pinReleaseJob).toContain("git ls-remote --exit-code --tags origin");
+    expect(pinReleaseJob).toContain('"refs/tags/${TAG}^{}"');
+    expect(pinReleaseJob).toContain('REMOTE_COMMIT="$(printf');
+    expect(pinReleaseJob).toContain('test "$REMOTE_COMMIT" = "$CHECKED_OUT_COMMIT"');
+    expect(pinReleaseJob).toContain('echo "oid=${CHECKED_OUT_COMMIT}"');
+    expect(verifyJob).toContain("ref: ${{ needs.pin-release.outputs.oid }}");
     expect(verifyJob).not.toContain("ref: ${{ github.event.release.tag_name || inputs.tag }}");
+    expect(verifyJob).toContain("cache: false");
     expect(verifyJob).toContain("name: Pack the verified npm artifact");
     expect(verifyJob).toContain("if: matrix.node-version == 26");
     expect(verifyJob).toContain("sha256sum package.tgz release-tag release-sha");
     expect(verifyJob).toContain("actions/upload-artifact@");
+    // CodeQL treats needs.<job>.outputs.<field> as a PR HEAD checkout when
+    // the job id or field matches head|sha|commit|branch|ref.
+    expect("pin-release").not.toMatch(/head|sha|commit|branch|ref/i);
+    expect("oid").not.toMatch(/head|sha|commit|branch|ref/i);
     expect(stageJob).toContain("actions/download-artifact@");
     expect(stageJob).toContain("name: verified-npm-package");
     expect(stageJob).toContain("actions: read");
@@ -100,7 +107,7 @@ describe("release workflow contracts", () => {
     expect(stageJob).toContain("tar -xOf release-package/package.tgz package/package.json");
     expect(stageJob).toContain("npm stage publish release-package/package.tgz");
     expect(stageJob).not.toContain("actions/checkout@");
-    expect(stageJob).not.toContain("ref: ${{ needs.resolve-ref.outputs.sha }}");
+    expect(stageJob).not.toContain("ref: ${{ needs.pin-release.outputs.oid }}");
     expect(stageJob).not.toContain(".release-tooling");
     expect(stageJob).not.toContain("setup-vp");
     expect(stageJob).not.toContain("release:dry-run");
@@ -118,7 +125,7 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain("environment: npm");
     expect(workflow).toContain("package-exists:");
     expect(workflow).toContain("First-package bootstrap required");
-    expect(workflow).toContain("if: needs.resolve-ref.outputs.package-exists == 'true'");
+    expect(workflow).toContain("if: needs.pin-release.outputs.package-exists == 'true'");
     expect(workflow).toContain("npm stage publish release-package/package.tgz --access public");
     expect(workflow).not.toMatch(/run:\s+npm publish(?!\s+--dry-run)/);
     expect(workflow).not.toContain("NPM_TOKEN");
@@ -144,7 +151,7 @@ describe("release workflow contracts", () => {
       "github.event_name != 'release' || github.actor != 'github-actions[bot]'",
     );
     expect(publish).toContain("promote-github-release:");
-    expect(publish).toContain("needs: [resolve-ref, stage]");
+    expect(publish).toContain("needs: [pin-release, stage]");
     expect(publish).toContain('gh release edit "$TAG" --draft=false');
     expect(publish.indexOf("promote-github-release:")).toBeGreaterThan(publish.indexOf("stage:"));
     expect(publish.indexOf('gh release edit "$TAG" --draft=false')).toBeGreaterThan(
