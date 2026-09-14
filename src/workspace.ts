@@ -828,8 +828,14 @@ function federationConfigRecords(envelope: ProjectEnvelope): JsonRecord[] {
   return records;
 }
 
+const EXTERNAL_REMOTE_ENTRY = /^(?:[a-z][a-z\d+.-]*:|\/\/|[\\/])/i;
+
+/** True for URL/absolute remotes, including NormalizedRemote `name@url` shorthands. */
 function isExternalRemoteEntry(entry: string): boolean {
-  return /^(?:[a-z][a-z\d+.-]*:|\/\/|[\\/])/i.test(entry);
+  if (EXTERNAL_REMOTE_ENTRY.test(entry)) return true;
+  const separator = entry.indexOf("@");
+  if (separator <= 0) return false;
+  return EXTERNAL_REMOTE_ENTRY.test(entry.slice(separator + 1).trim());
 }
 
 function expectedParticipantsForEnvelope(

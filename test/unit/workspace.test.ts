@@ -176,6 +176,12 @@ describe("workspace discovery", () => {
                 name: "externalRemote",
                 entry: "https://cdn.example.test/remote.js",
               },
+              // Persisted string remotes keep `name@url` on NormalizedRemote.entry.
+              webpackRemote: {
+                name: "webpackRemote",
+                entry: "nested_webpack_remote@http://127.0.0.1:3013/remoteEntry.js",
+              },
+              stringShorthand: "other_remote@https://cdn.example.test/mf-manifest.json",
             },
           },
         }),
@@ -195,8 +201,8 @@ describe("workspace discovery", () => {
           message: expect.stringContaining('local remote participant "localRemote"'),
         }),
       );
-      expect(missing.diagnostics.map((item) => item.message).join("\n")).not.toContain(
-        "externalRemote",
+      expect(missing.diagnostics.map((item) => item.message).join("\n")).not.toMatch(
+        /externalRemote|webpackRemote|other_remote|nested_webpack_remote/,
       );
 
       const remoteFile = path.join(root, "apps/localRemote/.mf/doctor/project.json");
