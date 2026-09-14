@@ -106,12 +106,19 @@ describe("release workflow contracts", () => {
     expect(stageJob).toContain("EXPECTED_SHA");
     expect(stageJob).toContain("tar -xOf release-package/package.tgz package/package.json");
     expect(stageJob).toContain("npm stage publish release-package/package.tgz");
+    expect(stageJob).toContain("actions/setup-node@");
+    expect(stageJob).toContain("node-version: 24");
+    expect(stageJob.indexOf("actions/setup-node@")).toBeLessThan(
+      stageJob.indexOf("npm install --global npm@11.17.0"),
+    );
     expect(stageJob).not.toContain("actions/checkout@");
     expect(stageJob).not.toContain("ref: ${{ needs.pin-release.outputs.oid }}");
     expect(stageJob).not.toContain(".release-tooling");
     expect(stageJob).not.toContain("setup-vp");
     expect(stageJob).not.toContain("release:dry-run");
     expect(stageJob).not.toContain("ref: ${{ github.event.release.tag_name || inputs.tag }}");
+    expect(stageJob).not.toMatch(/^\s+registry-url:/m);
+    expect(stageJob).not.toContain("NODE_AUTH_TOKEN");
     expect(workflow).toContain("description: Existing plain-semver tag");
     expect(workflow).not.toContain("description: Branch or plain semver tag");
     expect(workflow).toContain('test "${TAG}" = "${VERSION}"');
