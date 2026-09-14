@@ -17,6 +17,7 @@ overrides:
   react-router: 8.3.0
   nanoid@3: 3.3.18
   fast-uri@3: 3.1.6
+  adm-zip: 0.6.1
   vitest@4: 4.1.11
   '@vitest/browser@4': 4.1.11
   '@vitest/browser-preview@4': 4.1.11
@@ -3856,8 +3857,8 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  adm-zip@0.6.0:
-    resolution: {integrity: sha512-XleryMhbuksdKtofnWZ9Sk+4CUTbms4Mb/EU32SZwToAyZ5RgVos/ki8n+yr0LWHOGKuakbXTuuYNHLQjhddgg==}
+  adm-zip@0.6.1:
+    resolution: {integrity: sha512-Xwrja8nx9e5o2N1my4DsKCeKpdrnACyr1wtbPxBDgGzKzKyE9kRtBFA8mWldI+RVlD7CBZNWY/wQ2+ydwOR6kQ==}
     engines: {node: '>=14.0'}
 
   ajv-formats@2.1.1:
@@ -6715,7 +6716,7 @@ snapshots:
       '@module-federation/managers': 2.9.0
       '@module-federation/sdk': 2.9.0
       '@module-federation/third-party-dts-extractor': 2.9.0
-      adm-zip: 0.6.0
+      adm-zip: 0.6.1
       isomorphic-ws: 5.0.0(ws@8.21.0)
       typescript: 5.9.3
       undici: 7.29.0
@@ -8529,7 +8530,7 @@ snapshots:
 
   acorn@8.18.0: {}
 
-  adm-zip@0.6.0: {}
+  adm-zip@0.6.1: {}
 
   ajv-formats@2.1.1(ajv@8.20.0):
     optionalDependencies:

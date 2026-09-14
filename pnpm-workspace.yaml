@@ -64,6 +64,10 @@ minimumReleaseAgeExclude:
   # are still inside the ten-day window. Keep exact; drop when they age out.
   - obug@2.2.1
   - tinyexec@1.3.1
+  # Dependabot #56 / GHSA-vwc7-r8mq-g2x9 security exception. 0.6.1 published
+  # 2026-09-11, still inside the ten-day window. Keep exact; drop when the age
+  # gate clears / upstream dts-plugin pins >=0.6.1.
+  - adm-zip@0.6.1
 # Reject releases whose npm trust evidence is weaker than an earlier release.
 trustPolicy: no-downgrade
 # Vite 5.4.21 is the security backport for intentional Vite 5 compatibility cells.
@@ -95,10 +99,14 @@ dangerouslyAllowAllBuilds: false
 # <4.1.11 path traversal via redirect mock. Root is already vite-plus 0.3.0 +
 # vitest 4.1.11; remaining 4.1.10 came from examples/compatibility/rolldown
 # (vite-plus@0.2.9). Drop when that cell pins vite-plus that includes >=4.1.11.
+# Dependabot alert #56 / GHSA-vwc7-r8mq-g2x9 — adm-zip 0.5.9–0.6.0 follows
+# extraction-destination symlinks (CVE-2026-76845). Transitive via
+# @module-federation/dts-plugin@2.9.0. Drop when dts-plugin pins adm-zip >=0.6.1.
 overrides:
   react-router: 8.3.0
   "nanoid@3": 3.3.18
   "fast-uri@3": 3.1.6
+  adm-zip: 0.6.1
   "vitest@4": 4.1.11
   "@vitest/browser@4": 4.1.11
   "@vitest/browser-preview@4": 4.1.11
