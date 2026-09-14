@@ -63,6 +63,8 @@ Assert:
 - stdout is JSON with `schemaVersion`, `package.name` = `@tonoizer/mfdoctor`,
   and `commands` containing at least `capabilities`, `check`, `workspace`,
   `federation`, `baseline`, `runtime`, `prompt`, `rules`, `probe`, `compare`
+- optional: `operations.schemaVersion` is `1` and `operations.commands` includes
+  those same names
 - optional: `bundlerMatrix.partial` includes `nuxt`, `modern`, and `rolldown`
 - optional: `test -f dist/cli.js`
 
@@ -80,12 +82,12 @@ Two instances may run side by side (separate temp dirs / separate processes).
 
 Stable handles (prefer these; never coordinates or HTML selectors):
 
-| Handle         | Notes                                                                                               |
-| -------------- | --------------------------------------------------------------------------------------------------- |
-| Command names  | `capabilities`, `check`, `workspace`, `federation`, `prompt`, `baseline`, `runtime`, `rules`, …     |
-| Exit codes     | `0` pass, `1` policy fail, `2` incomplete / usage                                                   |
-| JSON keys      | `status`, `status.complete`, `status.incompleteReasons`, `findings`, `findings[].ruleId`, `summary` |
-| Artifact paths | `.mf/doctor/report.json`, `.mf/doctor/project.json`, `.mf/doctor/results.sarif`                     |
+| Handle         | Notes                                                                                                                                                    |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Command names  | `capabilities`, `check`, `workspace`, `federation`, `prompt`, `baseline`, `runtime`, `rules`, …                                                          |
+| Exit codes     | `0` pass, `1` policy fail, `2` incomplete / usage                                                                                                        |
+| JSON keys      | `status`, `status.complete`, `status.incompleteReasons`, `findings`, `findings[].ruleId`, `summary`, `summary.score`, `summary.scoreLabel`, `operations` |
+| Artifact paths | `.mf/doctor/report.json`, `.mf/doctor/project.json`, `.mf/doctor/results.sarif`                                                                          |
 
 Real flags from this CLI (see `apps/docs/docs/cli.md`):
 
