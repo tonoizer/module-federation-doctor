@@ -233,7 +233,17 @@ jobs:
           test "$PACKAGE_NAME" = "@tonoizer/mfdoctor"
           test "$PACKAGE_VERSION" = "$EXPECTED_TAG"
           echo "version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
-      - run: npm install --global npm@11.17.0
+      # ubuntu-latest ships Node 22 with npm 10. `npm stage` needs npm ≥ 11.15.
+      # Install into a user prefix so the runner does not need a system npm prefix.
+      - name: Install npm for staged publishing
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local"
+          npm config set prefix "$HOME/.local"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+          npm install --global npm@11.17.0
+          test "$(npm --version)" = "11.17.0"
       - name: Select npm tag
         id: npm
         env:
