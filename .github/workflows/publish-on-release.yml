@@ -243,7 +243,8 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.local/bin:$PATH"
           npm install --global npm@11.17.0
-          test "$(npm --version)" = "11.17.0"
+          hash -r
+          test "$("$HOME/.local/bin/npm" --version)" = "11.17.0"
       - name: Select npm tag
         id: npm
         env:

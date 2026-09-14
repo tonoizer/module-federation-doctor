@@ -121,7 +121,8 @@ describe("release workflow contracts", () => {
     expect(stageJob).toContain('echo "$HOME/.local/bin" >> "$GITHUB_PATH"');
     expect(stageJob).toContain('export PATH="$HOME/.local/bin:$PATH"');
     expect(stageJob).toContain("npm install --global npm@11.17.0");
-    expect(stageJob).toContain('test "$(npm --version)" = "11.17.0"');
+    expect(stageJob).toContain("hash -r");
+    expect(stageJob).toContain('test "$("$HOME/.local/bin/npm" --version)" = "11.17.0"');
     expect(stageJob).not.toContain("sudo ");
     expect(stageJob).not.toContain("/usr/local");
     const installNpm = stageJob.indexOf("npm install --global npm@11.17.0");
