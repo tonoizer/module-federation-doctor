@@ -24,6 +24,7 @@ import {
 } from "./analysis-regression-contract.mjs";
 import {
   artifactNamesFromFixtureFiles,
+  assertBenchmarkScaleConfig,
   assertLiteralFixturePath,
   highWaterRssBytes,
   sourceFilesFromFixtureFiles,
@@ -156,6 +157,349 @@ async function removeSafeAnalysisOutput(output) {
   await fs.rm(output.directory, { recursive: true, force: true });
 }
 
+function roundedMilliseconds(startedAt) {
+  return Math.round((performance.now() - startedAt) * 100) / 100;
+}
+
+async function writeSyntheticFiles(files) {
+  const batchSize = 128;
+  for (let offset = 0; offset < files.length; offset += batchSize)
+    await Promise.all(
+      files
+        .slice(offset, offset + batchSize)
+        .map(({ file, contents }) => fs.writeFile(file, contents)),
+    );
+}
+
+async function createSyntheticSourceScenario(scenario) {
+  const root = await createSafeAnalysisOutput(scenario.name, "synthetic-sources");
+  const sourceRoot = path.join(root.directory, "src");
+  await fs.mkdir(sourceRoot, { recursive: true });
+  await fs.writeFile(
+    path.join(root.directory, "package.json"),
+    JSON.stringify({ name: `mfdoctor-${scenario.name}`, private: true }),
+  );
+  const files = Array.from({ length: scenario.sourceCount }, (_, index) => {
+    const name = `source-${String(index).padStart(5, "0")}.ts`;
+    return {
+      file: path.join(sourceRoot, name),
+      contents: `export const value${index} = ${index};\n`,
+    };
+  });
+  await writeSyntheticFiles(files);
+  return { ...root, sourceCount: files.length };
+}
+
+function syntheticAnalysisOptions(scenario, root, output, cache) {
+  return {
+    root,
+    bundler: "unknown",
+    mode: "ci",
+    include: ["src/**/*.ts"],
+    artifactNames: { manifest: [], stats: [] },
+    moduleFederation: { name: `mfdoctor-${scenario.name}`, exposes: {}, remotes: {}, shared: {} },
+    output: { directory: output.directory, formats: [] },
+    analysisCache: cache,
+    quiet: true,
+    failOn: "error",
+    analysisBudgets: {
+      maxFiles: scenario.maxFiles,
+      maxSourceBytes: scenario.maxSourceBytes,
+      maxArtifacts: scenario.maxFiles,
+      maxEvidenceNodes: scenario.maxSerializedBytes,
+      maxSerializedBytes: scenario.maxSerializedBytes,
+      maxWallTimeMs: scenario.maxWallTimeMs,
+    },
+  };
+}
+
+async function runSyntheticAnalysisScale(scenario, failures) {
+  const generationStarted = performance.now();
+  const root = await createSyntheticSourceScenario(scenario);
+  const generationMs = roundedMilliseconds(generationStarted);
+  const cache = new AnalysisContentCache({
+    maxEntries: scenario.sourceCount + 32,
+    maxBytes: scenario.maxSerializedBytes,
+  });
+  const runs = [];
+  try {
+    for (const phase of ["cold", "warm"]) {
+      const output = await createSafeAnalysisOutput(scenario.name, phase);
+      try {
+        const started = performance.now();
+        const result = await analyze(
+          syntheticAnalysisOptions(scenario, root.directory, output, cache),
+        );
+        await validateSafeAnalysisOutput(output, scenario.name, phase);
+        const cacheStats = { ...cache.stats };
+        runs.push({
+          phase,
+          elapsedMs: roundedMilliseconds(started),
+          peakRssBytes: highWaterRssBytes(),
+          sourceCount: result.facts.imports.sourceFiles.length,
+          exitCode: result.exitCode,
+          digest: stableSerialize({ facts: result.facts, report: result.report }),
+          cache: cacheStats,
+          budget: result.facts.analysis,
+        });
+      } finally {
+        await removeSafeAnalysisOutput(output);
+      }
+    }
+  } finally {
+    await removeSafeAnalysisOutput(root);
+  }
+
+  const cold = runs[0];
+  const warm = runs[1];
+  const stable = cold.digest === warm.digest && cold.exitCode === warm.exitCode;
+  const warmHits = warm.cache.hits - cold.cache.hits;
+  const warmMisses = warm.cache.misses - cold.cache.misses;
+  if (cold.sourceCount !== scenario.sourceCount || warm.sourceCount !== scenario.sourceCount)
+    failures.push(`${scenario.name}: analyzed source count did not match ${scenario.sourceCount}`);
+  if (!stable) failures.push(`${scenario.name}: cold and warm analysis output differed`);
+  if (warmHits < scenario.sourceCount || warmMisses !== 0)
+    failures.push(`${scenario.name}: warm analysis did not reuse every source cache entry`);
+  for (const run of runs) {
+    if (run.elapsedMs > scenario.maxWallTimeMs)
+      failures.push(
+        `${scenario.name}/${run.phase}: wall time exceeded ${scenario.maxWallTimeMs}ms`,
+      );
+    if (run.peakRssBytes > scenario.maxRssBytes)
+      failures.push(`${scenario.name}/${run.phase}: RSS exceeded ${scenario.maxRssBytes} bytes`);
+    if (run.budget?.exceeded?.length)
+      failures.push(`${scenario.name}/${run.phase}: configured analysis budget was exceeded`);
+  }
+  return {
+    scenario,
+    generationMs,
+    phaseTimingsMs: {
+      coldAnalysis: cold.elapsedMs,
+      warmAnalysis: warm.elapsedMs,
+      total: Math.round((generationMs + cold.elapsedMs + warm.elapsedMs) * 100) / 100,
+    },
+    counts: {
+      sources: scenario.sourceCount,
+      projects: scenario.projectCount,
+      instances: scenario.instancesPerProject,
+    },
+    cache: {
+      coldHits: cold.cache.hits,
+      coldMisses: cold.cache.misses,
+      warmHits,
+      warmMisses,
+    },
+    runs: runs.map(
+      ({ phase, elapsedMs, peakRssBytes, sourceCount, exitCode, cache: cacheStats, budget }) => ({
+        phase,
+        elapsedMs,
+        peakRssBytes,
+        sourceCount,
+        exitCode,
+        cache: cacheStats,
+        budget,
+      }),
+    ),
+    parity: { stable },
+    limits: scenario,
+  };
+}
+
+function syntheticWorkspaceProject(projectIndex, instancesPerProject) {
+  const projectName = `benchmark-project-${String(projectIndex).padStart(3, "0")}`;
+  const instances = Array.from({ length: instancesPerProject }, (_, instanceIndex) => {
+    const instanceName = `${projectName}-instance-${String(instanceIndex).padStart(2, "0")}`;
+    const moduleFederation = { name: instanceName, exposes: {}, remotes: {}, shared: {} };
+    return {
+      id: `${projectName}:${instanceIndex}`,
+      pluginName: "synthetic-benchmark",
+      configDigest: `sha256:${String(instanceIndex).padStart(64, "0")}`,
+      registrationGroup: `${projectName}:${instanceIndex}`,
+      moduleFederation,
+      capabilities: {
+        config: true,
+        sourceImports: true,
+        manifest: false,
+        stats: false,
+        emittedAssets: false,
+        installedVersions: true,
+      },
+      imports: { sourceFiles: [], specifiers: [], packages: [], evidenceSources: [] },
+      artifacts: { emittedAssets: [] },
+    };
+  });
+  return {
+    schemaVersion: 1,
+    project: { name: projectName, root: ".", federationGroup: "benchmark" },
+    bundler: { name: "unknown", mode: "ci" },
+    capabilities: {
+      config: true,
+      sourceImports: true,
+      manifest: false,
+      stats: false,
+      emittedAssets: false,
+      installedVersions: true,
+    },
+    moduleFederation: instances[0].moduleFederation,
+    federationInstances: instances,
+    dependencies: { declared: {}, installed: {} },
+    imports: { sourceFiles: [], specifiers: [], packages: [], evidenceSources: [] },
+    artifacts: { emittedAssets: [] },
+  };
+}
+
+async function createSyntheticWorkspaceScenario(scenario) {
+  const root = await createSafeAnalysisOutput(scenario.name, "synthetic-workspace");
+  const files = [];
+  for (let projectIndex = 0; projectIndex < scenario.projectCount; projectIndex += 1) {
+    const projectRoot = path.join(
+      root.directory,
+      "apps",
+      `app-${String(projectIndex).padStart(3, "0")}`,
+    );
+    const projectFile = path.join(projectRoot, ".mf", "doctor", "project.json");
+    await fs.mkdir(path.dirname(projectFile), { recursive: true });
+    await fs.writeFile(
+      projectFile,
+      `${JSON.stringify(syntheticWorkspaceProject(projectIndex, scenario.instancesPerProject))}\n`,
+    );
+    files.push(projectFile);
+  }
+  return {
+    ...root,
+    projectCount: files.length,
+    instanceCount: scenario.projectCount * scenario.instancesPerProject,
+  };
+}
+
+async function runSyntheticWorkspaceScale(scenario, failures) {
+  const generationStarted = performance.now();
+  const root = await createSyntheticWorkspaceScenario(scenario);
+  const generationMs = roundedMilliseconds(generationStarted);
+  const runs = [];
+  try {
+    for (const phase of ["cold", "warm"]) {
+      const started = performance.now();
+      const discoveryStarted = performance.now();
+      const discovery = await discoverWorkspaceProjectsWithBudget({
+        cwd: root.directory,
+        group: "benchmark",
+        analysisBudgets: {
+          maxFiles: scenario.maxFiles,
+          maxSerializedBytes: scenario.maxSerializedBytes,
+          maxWallTimeMs: scenario.maxWallTimeMs,
+        },
+      });
+      const discoveryMs = roundedMilliseconds(discoveryStarted);
+      const federationStarted = performance.now();
+      const result = await analyzeFederation(discovery.files, {
+        analysis: discovery.budget,
+        workspaceDiagnostics: discovery.diagnostics,
+        formats: [],
+        quiet: true,
+        failOn: "error",
+      });
+      const federationAnalysisMs = roundedMilliseconds(federationStarted);
+      runs.push({
+        phase,
+        elapsedMs: roundedMilliseconds(started),
+        phaseTimingsMs: { discovery: discoveryMs, federationAnalysis: federationAnalysisMs },
+        peakRssBytes: highWaterRssBytes(),
+        projectCount: discovery.files.length,
+        instanceCount: result.projects.reduce(
+          (total, project) => total + (project.federationInstances?.length ?? 0),
+          0,
+        ),
+        budget: discovery.budget,
+        diagnostics: discovery.diagnostics,
+        semantic: stableSerialize({
+          exitCode: result.exitCode,
+          projects: result.projects.map((project) => ({
+            name: project.project.name,
+            instances: project.federationInstances?.map((instance) => instance.id) ?? [],
+          })),
+          report: result.report,
+        }),
+      });
+    }
+  } finally {
+    await removeSafeAnalysisOutput(root);
+  }
+  const cold = runs[0];
+  const warm = runs[1];
+  const stable = cold.semantic === warm.semantic;
+  if (cold.projectCount !== scenario.projectCount || warm.projectCount !== scenario.projectCount)
+    failures.push(
+      `${scenario.name}: discovered project count did not match ${scenario.projectCount}`,
+    );
+  if (cold.instanceCount !== root.instanceCount || warm.instanceCount !== root.instanceCount)
+    failures.push(`${scenario.name}: analyzed instance count did not match ${root.instanceCount}`);
+  if (!stable) failures.push(`${scenario.name}: cold and warm workspace output differed`);
+  for (const run of runs) {
+    if (run.elapsedMs > scenario.maxWallTimeMs)
+      failures.push(
+        `${scenario.name}/${run.phase}: wall time exceeded ${scenario.maxWallTimeMs}ms`,
+      );
+    if (run.peakRssBytes > scenario.maxRssBytes)
+      failures.push(`${scenario.name}/${run.phase}: RSS exceeded ${scenario.maxRssBytes} bytes`);
+    if (run.budget.exceeded.length)
+      failures.push(`${scenario.name}/${run.phase}: workspace budget was exceeded`);
+    if (run.diagnostics.length)
+      failures.push(`${scenario.name}/${run.phase}: synthetic workspace emitted diagnostics`);
+  }
+  return {
+    scenario,
+    generationMs,
+    phaseTimingsMs: {
+      coldDiscovery: cold.phaseTimingsMs.discovery,
+      coldFederationAnalysis: cold.phaseTimingsMs.federationAnalysis,
+      warmDiscovery: warm.phaseTimingsMs.discovery,
+      warmFederationAnalysis: warm.phaseTimingsMs.federationAnalysis,
+      total: Math.round((generationMs + cold.elapsedMs + warm.elapsedMs) * 100) / 100,
+    },
+    counts: {
+      sources: scenario.sourceCount,
+      projects: scenario.projectCount,
+      instances: root.instanceCount,
+    },
+    runs: runs.map(
+      ({
+        phase,
+        elapsedMs,
+        phaseTimingsMs,
+        peakRssBytes,
+        projectCount,
+        instanceCount,
+        budget,
+      }) => ({
+        phase,
+        elapsedMs,
+        phaseTimingsMs,
+        peakRssBytes,
+        projectCount,
+        instanceCount,
+        budget,
+      }),
+    ),
+    cache: { cold: "filesystem", warm: "filesystem" },
+    parity: { stable },
+    limits: scenario,
+  };
+}
+
+async function runSyntheticScaleBenchmarks(scales, failures) {
+  const results = [];
+  for (const name of Object.keys(scales).sort()) {
+    const scenario = { ...scales[name], name };
+    results.push(
+      scenario.kind === "analysis"
+        ? await runSyntheticAnalysisScale(scenario, failures)
+        : await runSyntheticWorkspaceScale(scenario, failures),
+    );
+  }
+  return results;
+}
+
 async function validateFixtureFiles(root, rootRealPath, fixture, label, sourceBytesLimit) {
   if (!Array.isArray(fixture.files) || fixture.files.length === 0)
     throw new Error(`${label}.files must list the committed fixture files`);
@@ -263,7 +607,8 @@ async function assertBaseline(value) {
       assertLimit(fixture[key], `workspaces.${name}.${key}`);
     workspaceRoots.set(name, await validateRootFixture(`workspaces.${name}`, fixture, true));
   }
-  return { fixtureRoots, workspaceRoots };
+  const scales = assertBenchmarkScaleConfig(value.scales, "scales");
+  return { fixtureRoots, workspaceRoots, scales };
 }
 
 function controllerFor(mode) {
@@ -376,7 +721,7 @@ async function runWorkspaceFixture(fixtureName, fixture, rootInfo, failures) {
   };
 }
 
-const { fixtureRoots, workspaceRoots } = await assertBaseline(baseline);
+const { fixtureRoots, workspaceRoots, scales } = await assertBaseline(baseline);
 const expectedPath = await validateOutputDestination(expectedRelativePath, "golden expectation");
 const outputPath = outputRelativePath
   ? await validateOutputDestination(outputRelativePath, "--output destination")
@@ -498,6 +843,8 @@ for (const fixtureName of REQUIRED_WORKSPACE_FIXTURES) {
   workspaceResults.push(result.detail);
 }
 
+const scaleResults = await runSyntheticScaleBenchmarks(scales, failures);
+
 const semantic = {
   schemaVersion: 1,
   analysis: results.map((row) =>
@@ -532,6 +879,7 @@ const report = {
   semantic,
   results,
   workspaceResults,
+  scaleResults,
   failures,
 };
 if (outputPath) {

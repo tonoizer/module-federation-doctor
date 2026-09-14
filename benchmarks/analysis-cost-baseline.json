@@ -44,6 +44,40 @@
     }
   },
   "modes": ["legacy", "shadow", "v2-compat"],
+  "scales": {
+    "sources-1k": {
+      "kind": "analysis",
+      "sourceCount": 1000,
+      "projectCount": 1,
+      "instancesPerProject": 1,
+      "maxFiles": 1100,
+      "maxSourceBytes": 16777216,
+      "maxSerializedBytes": 16777216,
+      "maxWallTimeMs": 120000,
+      "maxRssBytes": 805306368
+    },
+    "sources-10k": {
+      "kind": "analysis",
+      "sourceCount": 10000,
+      "projectCount": 1,
+      "instancesPerProject": 1,
+      "maxFiles": 10100,
+      "maxSourceBytes": 67108864,
+      "maxSerializedBytes": 67108864,
+      "maxWallTimeMs": 300000,
+      "maxRssBytes": 1073741824
+    },
+    "workspace-many": {
+      "kind": "workspace",
+      "sourceCount": 0,
+      "projectCount": 64,
+      "instancesPerProject": 8,
+      "maxFiles": 128,
+      "maxSerializedBytes": 67108864,
+      "maxWallTimeMs": 120000,
+      "maxRssBytes": 1073741824
+    }
+  },
   "workspaces": {
     "clean": {
       "root": "fixtures/workspaces/clean",

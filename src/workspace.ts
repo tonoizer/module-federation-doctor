@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
@@ -48,6 +49,15 @@ export interface WorkspaceProjectDiscovery {
   selectedGroup?: string;
   budget: AnalysisBudgetReport;
   diagnostics: WorkspaceProjectDiagnostic[];
+  /** Local host/remote expectations inferred from logical remote entries. */
+  expectedParticipants: WorkspaceExpectedParticipant[];
+}
+
+export interface WorkspaceExpectedParticipant {
+  host: string;
+  remote: string;
+  source: string;
+  federationGroup?: string;
 }
 
 export type WorkspaceProjectDiagnosticKind =
@@ -55,7 +65,8 @@ export type WorkspaceProjectDiagnosticKind =
   | "duplicate"
   | "conflict"
   | "invalid"
-  | "probe";
+  | "probe"
+  | "missing-participant";
 
 export interface WorkspaceProjectDiagnostic {
   kind: WorkspaceProjectDiagnosticKind;
@@ -70,6 +81,11 @@ interface ProjectEnvelope {
     identityKey?: unknown;
     federationGroup?: unknown;
   };
+  moduleFederation?: unknown;
+  federationInstances?: unknown;
+  imports?: unknown;
+  artifacts?: unknown;
+  builds?: unknown;
 }
 
 const GROUP_PROBE_MAX_BYTES = 16 * 1024;
@@ -535,13 +551,357 @@ function projectRootForFile(file: string): string {
   return path.dirname(path.dirname(path.dirname(file)));
 }
 
+type JsonRecord = Record<string, unknown>;
+
+interface WorkspaceEvidenceTarget {
+  kind: "source" | "artifact";
+  absolutePath: string;
+  relativePath: string;
+  expectedDigest?: string;
+  buildId?: string;
+}
+
+interface WorkspaceEvidenceObservation {
+  target: WorkspaceEvidenceTarget;
+  exists: boolean;
+  mtimeMs?: number;
+  digestMatches?: boolean;
+}
+
+function asJsonRecord(value: unknown): JsonRecord | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonRecord)
+    : undefined;
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function stringValues(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+}
+
+function normalizeEvidenceDigest(value: unknown): string | undefined {
+  const digest = stringValue(value)
+    ?.replace(/^sha256:/i, "")
+    .toLowerCase();
+  return digest && /^[a-f0-9]{64}$/.test(digest) ? digest : undefined;
+}
+
+function digestForPath(digests: unknown, candidate: string): string | undefined {
+  const values = asJsonRecord(digests);
+  if (!values) return undefined;
+  const normalized = candidate.replaceAll("\\", "/");
+  return normalizeEvidenceDigest(values[candidate] ?? values[normalized]);
+}
+
+function safeProjectEvidencePath(
+  projectRoot: string,
+  candidate: unknown,
+): { absolutePath: string; relativePath: string } | undefined {
+  const value = stringValue(candidate);
+  if (!value) return undefined;
+  if (/^(?:[a-z][a-z\d+.-]*:\/\/|[a-z]:[\\/])/i.test(value)) return undefined;
+  const absolutePath = path.resolve(projectRoot, value);
+  const relativeEvidencePath = path.relative(projectRoot, absolutePath);
+  if (
+    relativeEvidencePath === "" ||
+    relativeEvidencePath === ".." ||
+    relativeEvidencePath.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeEvidencePath)
+  )
+    return undefined;
+  return {
+    absolutePath,
+    relativePath: relativeEvidencePath.replaceAll(path.sep, "/"),
+  };
+}
+
+function collectWorkspaceEvidenceTargets(
+  envelope: ProjectEnvelope,
+  projectRoot: string,
+): WorkspaceEvidenceTarget[] {
+  const targets = new Map<string, WorkspaceEvidenceTarget>();
+  const add = (
+    kind: WorkspaceEvidenceTarget["kind"],
+    candidate: unknown,
+    expectedDigest?: string,
+    buildId?: string,
+  ): void => {
+    const resolved = safeProjectEvidencePath(projectRoot, candidate);
+    if (!resolved) return;
+    const key = `${kind}\0${resolved.absolutePath}`;
+    const current = targets.get(key);
+    if (current) {
+      if (!current.expectedDigest && expectedDigest) current.expectedDigest = expectedDigest;
+      if (!current.buildId && buildId) current.buildId = buildId;
+      return;
+    }
+    targets.set(key, {
+      kind,
+      ...resolved,
+      ...(expectedDigest ? { expectedDigest } : {}),
+      ...(buildId ? { buildId } : {}),
+    });
+  };
+
+  const imports = asJsonRecord(envelope.imports);
+  for (const sourceFile of stringValues(imports?.sourceFiles)) {
+    add("source", sourceFile, digestForPath(imports?.sourceDigests, sourceFile));
+  }
+
+  const artifacts = asJsonRecord(envelope.artifacts);
+  const addArtifact = (value: unknown, buildId?: string): void => {
+    if (typeof value === "string") {
+      add("artifact", value, undefined, buildId);
+      return;
+    }
+    const record = asJsonRecord(value);
+    if (!record) return;
+    add(
+      "artifact",
+      record.path,
+      normalizeEvidenceDigest(record.digest ?? record.contentDigest ?? record.artifactDigest),
+      buildId ?? stringValue(record.buildId),
+    );
+  };
+  for (const record of Array.isArray(artifacts?.records) ? artifacts.records : [])
+    addArtifact(record);
+  for (const key of ["manifest", "stats"] as const) addArtifact(artifacts?.[key]);
+
+  const builds = Array.isArray(envelope.builds) ? envelope.builds : [];
+  for (const build of builds) {
+    const buildRecord = asJsonRecord(build);
+    if (!buildRecord) continue;
+    const buildId = stringValue(buildRecord.id);
+    for (const record of Array.isArray(buildRecord.artifacts) ? buildRecord.artifacts : [])
+      addArtifact(record, buildId);
+    for (const asset of stringValues(buildRecord.emittedAssets))
+      add("artifact", asset, undefined, buildId);
+  }
+  return [...targets.values()].sort((left, right) =>
+    compareCodePoint(`${left.kind}:${left.relativePath}`, `${right.kind}:${right.relativePath}`),
+  );
+}
+
+async function digestWorkspaceEvidenceFile(file: string): Promise<string | undefined> {
+  let handle: Awaited<ReturnType<typeof fs.open>> | undefined;
+  try {
+    handle = await fs.open(file, "r");
+    const hash = createHash("sha256");
+    const buffer = Buffer.alloc(64 * 1024);
+    while (true) {
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, null);
+      if (bytesRead <= 0) break;
+      hash.update(buffer.subarray(0, bytesRead));
+    }
+    return hash.digest("hex");
+  } catch {
+    return undefined;
+  } finally {
+    await handle?.close().catch(() => undefined);
+  }
+}
+
+function buildRecords(envelope: ProjectEnvelope): JsonRecord[] {
+  return (Array.isArray(envelope.builds) ? envelope.builds : [])
+    .map(asJsonRecord)
+    .filter((value): value is JsonRecord => value !== undefined);
+}
+
+async function workspaceEvidenceDiagnostics(
+  projectFile: string,
+  projectRoot: string,
+  workspaceRoot: string,
+  envelope: ProjectEnvelope,
+  tracker: AnalysisBudgetTracker,
+): Promise<WorkspaceProjectDiagnostic[]> {
+  if (!tracker.checkWallTime()) return [];
+  const reportMtimeMs = await fs
+    .stat(projectFile)
+    .then((stat) => stat.mtimeMs)
+    .catch(() => undefined);
+  if (reportMtimeMs === undefined) return [];
+  const targets = collectWorkspaceEvidenceTargets(envelope, projectRoot);
+  if (targets.length === 0) return [];
+  const observations = await mapBounded(
+    targets,
+    async (target): Promise<WorkspaceEvidenceObservation> => {
+      try {
+        const stat = await fs.stat(target.absolutePath);
+        if (!stat.isFile()) return { target, exists: false };
+        const digestMatches = target.expectedDigest
+          ? (await digestWorkspaceEvidenceFile(target.absolutePath)) === target.expectedDigest
+          : undefined;
+        return {
+          target,
+          exists: true,
+          mtimeMs: stat.mtimeMs,
+          ...(digestMatches !== undefined ? { digestMatches } : {}),
+        };
+      } catch {
+        return { target, exists: false };
+      }
+    },
+  );
+  const builds = buildRecords(envelope);
+  const knownBuildIds = new Set(builds.map((build) => stringValue(build.id)).filter(Boolean));
+  const hasBuildIdentity = builds.some(
+    (build) => stringValue(build.id) || stringValue(build.hash) || stringValue(build.revision),
+  );
+  const artifactObservations = observations.filter(
+    (observation) => observation.target.kind === "artifact" && observation.exists,
+  );
+  const diagnostics: WorkspaceProjectDiagnostic[] = [];
+  for (const observation of observations) {
+    const { target } = observation;
+    if (!observation.exists) {
+      diagnostics.push({
+        kind: "stale",
+        files: [relativePath(workspaceRoot, target.absolutePath)],
+        message: `Project evidence references a missing ${target.kind}: ${target.relativePath}`,
+      });
+      continue;
+    }
+    if (target.expectedDigest && observation.digestMatches === false) {
+      diagnostics.push({
+        kind: "stale",
+        files: [relativePath(workspaceRoot, target.absolutePath)],
+        message: `Project evidence digest does not match ${target.kind}: ${target.relativePath}`,
+      });
+      continue;
+    }
+    if (
+      target.kind === "source" &&
+      observation.mtimeMs !== undefined &&
+      observation.mtimeMs > reportMtimeMs &&
+      !(target.expectedDigest && observation.digestMatches === true)
+    ) {
+      const hasLinkedArtifact = artifactObservations.some(
+        (artifact) =>
+          artifact.target.buildId &&
+          knownBuildIds.has(artifact.target.buildId) &&
+          artifact.mtimeMs !== undefined &&
+          artifact.mtimeMs >= observation.mtimeMs!,
+      );
+      if (!hasBuildIdentity || !hasLinkedArtifact) {
+        diagnostics.push({
+          kind: "stale",
+          files: [relativePath(workspaceRoot, target.absolutePath)],
+          message: `Project evidence is stale: source input "${target.relativePath}" is newer than project facts.`,
+        });
+      }
+    }
+  }
+  for (const observation of observations) {
+    const buildId = observation.target.buildId;
+    if (
+      observation.target.kind === "artifact" &&
+      buildId &&
+      builds.length > 0 &&
+      !knownBuildIds.has(buildId)
+    ) {
+      diagnostics.push({
+        kind: "stale",
+        files: [relativePath(workspaceRoot, observation.target.absolutePath)],
+        message: `Project evidence references build "${buildId}" that is not present in the build records.`,
+      });
+    }
+  }
+  return diagnostics;
+}
+
+function federationConfigRecords(envelope: ProjectEnvelope): JsonRecord[] {
+  const records: JsonRecord[] = [];
+  const topLevel = asJsonRecord(envelope.moduleFederation);
+  if (topLevel) records.push(topLevel);
+  for (const instance of Array.isArray(envelope.federationInstances)
+    ? envelope.federationInstances
+    : []) {
+    const record = asJsonRecord(instance);
+    const config = asJsonRecord(record?.moduleFederation);
+    if (config) records.push(config);
+  }
+  return records;
+}
+
+const EXTERNAL_REMOTE_ENTRY = /^(?:[a-z][a-z\d+.-]*:|\/\/|[\\/])/i;
+
+/** True for URL/absolute remotes, including NormalizedRemote `name@url` shorthands. */
+function isExternalRemoteEntry(entry: string): boolean {
+  if (EXTERNAL_REMOTE_ENTRY.test(entry)) return true;
+  const separator = entry.indexOf("@");
+  if (separator <= 0) return false;
+  return EXTERNAL_REMOTE_ENTRY.test(entry.slice(separator + 1).trim());
+}
+
+function expectedParticipantsForEnvelope(
+  envelope: ProjectEnvelope,
+  workspaceRoot: string,
+  projectFile: string,
+  federationGroup: string | undefined,
+): { names: string[]; expected: WorkspaceExpectedParticipant[] } {
+  const configs = federationConfigRecords(envelope);
+  const projectName = stringValue(envelope.project?.name);
+  const names = [
+    ...new Set([projectName, ...configs.map((config) => stringValue(config.name)).filter(Boolean)]),
+  ] as string[];
+  const expected = new Map<string, WorkspaceExpectedParticipant>();
+  for (const config of configs) {
+    const host = stringValue(config.name) ?? projectName;
+    if (!host) continue;
+    const remotes = asJsonRecord(config.remotes);
+    if (!remotes) continue;
+    for (const [key, value] of Object.entries(remotes)) {
+      let remoteName = key;
+      let entry: string | undefined;
+      if (typeof value === "string") {
+        const separator = value.indexOf("@");
+        if (separator > 0) {
+          remoteName = value.slice(0, separator).trim() || key;
+          entry = value.slice(separator + 1).trim();
+        } else entry = value.trim();
+      } else {
+        const remote = asJsonRecord(value);
+        remoteName = stringValue(remote?.name) ?? key;
+        entry = stringValue(remote?.entry) ?? stringValue(remote?.url);
+      }
+      if (!remoteName || !entry || isExternalRemoteEntry(entry)) continue;
+      const source = relativePath(workspaceRoot, projectFile);
+      const identity = `${federationGroup ?? ""}\0${host}\0${remoteName}`;
+      expected.set(identity, {
+        host,
+        remote: remoteName,
+        source,
+        ...(federationGroup ? { federationGroup } : {}),
+      });
+    }
+  }
+  return {
+    names,
+    expected: [...expected.values()].sort((left, right) =>
+      compareCodePoint(
+        `${left.federationGroup ?? ""}:${left.host}:${left.remote}:${left.source}`,
+        `${right.federationGroup ?? ""}:${right.host}:${right.remote}:${right.source}`,
+      ),
+    ),
+  };
+}
+
 async function inspectWorkspaceProjects(
   files: Array<{ file: string; reservedBytes: number }>,
   workspaceRoot: string,
   tracker: AnalysisBudgetTracker,
   preloadedContents: Map<string, string | undefined>,
   selectedGroup?: string,
-): Promise<{ files: string[]; diagnostics: WorkspaceProjectDiagnostic[] }> {
+): Promise<{
+  files: string[];
+  diagnostics: WorkspaceProjectDiagnostic[];
+  expectedParticipants: WorkspaceExpectedParticipant[];
+}> {
   const diagnostics: WorkspaceProjectDiagnostic[] = [];
   const identities = new Map<string, string[]>();
   const inspected = await mapBounded(files, async (file) => {
@@ -561,6 +921,8 @@ async function inspectWorkspaceProjects(
         contents: read.contents,
         identity: undefined,
         included: false,
+        participantNames: [],
+        expectedParticipants: [],
         diagnostics: [
           {
             kind: "invalid",
@@ -584,15 +946,31 @@ async function inspectWorkspaceProjects(
       typeof envelope.project.identityKey === "string" && envelope.project.identityKey.length > 0
         ? envelope.project.identityKey
         : `${envelope.project.name}:${relativeProjectRoot}`;
+    const participants =
+      included && rootExists
+        ? expectedParticipantsForEnvelope(envelope, workspaceRoot, file.file, federationGroup)
+        : { names: [], expected: [] };
+    const evidenceDiagnostics =
+      included && rootExists
+        ? await workspaceEvidenceDiagnostics(
+            file.file,
+            resolvedRoot,
+            workspaceRoot,
+            envelope,
+            tracker,
+          )
+        : [];
     return {
       file: file.file,
       contents: read.contents,
       identity: included ? identity : undefined,
       included,
+      participantNames: participants.names,
+      expectedParticipants: participants.expected,
       diagnostics: !included
         ? []
         : rootExists
-          ? []
+          ? evidenceDiagnostics
           : [
               {
                 kind: "stale",
@@ -602,11 +980,21 @@ async function inspectWorkspaceProjects(
             ],
     };
   });
+  const discoveredParticipants = new Set<string>();
+  const expectedParticipants = new Map<string, WorkspaceExpectedParticipant>();
   for (const item of inspected) {
     if (!item) continue;
     diagnostics.push(...item.diagnostics);
     if (item.identity)
       identities.set(item.identity, [...(identities.get(item.identity) ?? []), item.file]);
+    if (item.included) {
+      for (const name of item.participantNames)
+        discoveredParticipants.add(`${federationGroupFromContents(item.contents) ?? ""}\0${name}`);
+      for (const participant of item.expectedParticipants) {
+        const key = `${participant.federationGroup ?? ""}\0${participant.host}\0${participant.remote}`;
+        expectedParticipants.set(key, participant);
+      }
+    }
   }
   for (const [identity, matches] of identities) {
     if (matches.length < 2) continue;
@@ -625,6 +1013,25 @@ async function inspectWorkspaceProjects(
       });
     }
   }
+  const missingParticipants = new Map<
+    string,
+    { participant: WorkspaceExpectedParticipant; files: Set<string> }
+  >();
+  for (const participant of expectedParticipants.values()) {
+    const participantKey = `${participant.federationGroup ?? ""}\0${participant.remote}`;
+    if (discoveredParticipants.has(participantKey)) continue;
+    const key = `${participant.federationGroup ?? ""}\0${participant.host}\0${participant.remote}`;
+    const current = missingParticipants.get(key);
+    if (current) current.files.add(participant.source);
+    else missingParticipants.set(key, { participant, files: new Set([participant.source]) });
+  }
+  for (const { participant, files: missingFiles } of missingParticipants.values()) {
+    diagnostics.push({
+      kind: "missing-participant",
+      files: [...missingFiles].sort(compareCodePoint),
+      message: `Workspace host "${participant.host}" expects local remote participant "${participant.remote}" in federation group "${participant.federationGroup ?? "<ungrouped>"}", but it was not discovered.`,
+    });
+  }
   return {
     files: inspected
       .filter((item): item is NonNullable<typeof item> => !!item && item.included)
@@ -633,6 +1040,12 @@ async function inspectWorkspaceProjects(
       compareCodePoint(
         `${left.kind}:${left.files.join(",")}`,
         `${right.kind}:${right.files.join(",")}`,
+      ),
+    ),
+    expectedParticipants: [...expectedParticipants.values()].sort((left, right) =>
+      compareCodePoint(
+        `${left.federationGroup ?? ""}:${left.host}:${left.remote}:${left.source}`,
+        `${right.federationGroup ?? ""}:${right.host}:${right.remote}:${right.source}`,
       ),
     ),
   };
@@ -768,6 +1181,7 @@ export async function discoverWorkspaceProjectsWithBudget(
     ungrouped,
     ...(options.group ? { selectedGroup: options.group } : {}),
     budget: budget.exceeded.length > 0 ? { ...budget, status: "unknown" } : budget,
+    expectedParticipants: budget.exceeded.length > 0 ? [] : inspected.expectedParticipants,
     diagnostics: [
       ...probeDiagnostics,
       ...(budget.exceeded.length > 0 ? [] : inspected.diagnostics),
