@@ -105,7 +105,8 @@ describe("release workflow contracts", () => {
     expect(stageJob).toContain("EXPECTED_TAG");
     expect(stageJob).toContain("EXPECTED_SHA");
     expect(stageJob).toContain("tar -xOf release-package/package.tgz package/package.json");
-    expect(stageJob).toContain("npm stage publish release-package/package.tgz");
+    expect(stageJob).toContain('"$NPM" stage publish "$PWD/release-package/package.tgz"');
+    expect(stageJob).not.toContain("npm stage publish release-package/package.tgz");
     expect(stageJob).not.toContain("actions/checkout@");
     expect(stageJob).not.toContain("ref: ${{ needs.pin-release.outputs.oid }}");
     expect(stageJob).not.toContain(".release-tooling");
@@ -123,12 +124,21 @@ describe("release workflow contracts", () => {
     expect(stageJob).toContain("npm install --global npm@11.17.0");
     expect(stageJob).toContain("hash -r");
     expect(stageJob).toContain('test "$("$HOME/.local/bin/npm" --version)" = "11.17.0"');
+    expect(stageJob).toContain('NPM="$HOME/.local/bin/npm"');
+    expect(stageJob).toContain('test -x "$NPM"');
+    expect(stageJob).toContain('"$NPM" help stage');
+    expect(stageJob).toContain('test -f "$PWD/release-package/package.tgz"');
     expect(stageJob).not.toContain("sudo ");
     expect(stageJob).not.toContain("/usr/local");
     const installNpm = stageJob.indexOf("npm install --global npm@11.17.0");
+    const stagePublish = stageJob.indexOf(
+      '"$NPM" stage publish "$PWD/release-package/package.tgz"',
+    );
     expect(installNpm).toBeGreaterThan(-1);
+    expect(stagePublish).toBeGreaterThan(-1);
     expect(installNpm).toBeLessThan(stageJob.indexOf("npm view"));
-    expect(installNpm).toBeLessThan(stageJob.indexOf("npm stage publish"));
+    expect(installNpm).toBeLessThan(stagePublish);
+    expect(stageJob.indexOf('"$NPM" help stage')).toBeLessThan(stagePublish);
     expect(workflow).toContain("node-version: [22, 24, 26]");
     expect(workflow).toContain("vp run pack:check && vp run test:e2e");
     expect(workflow).not.toContain("vp run check");
@@ -138,7 +148,9 @@ describe("release workflow contracts", () => {
     expect(workflow).toContain("package-exists:");
     expect(workflow).toContain("First-package bootstrap required");
     expect(workflow).toContain("if: needs.pin-release.outputs.package-exists == 'true'");
-    expect(workflow).toContain("npm stage publish release-package/package.tgz --access public");
+    expect(workflow).toContain(
+      '"$NPM" stage publish "$PWD/release-package/package.tgz" --access public',
+    );
     expect(workflow).not.toMatch(/run:\s+npm publish(?!\s+--dry-run)/);
     expect(workflow).not.toContain("NPM_TOKEN");
   });
@@ -167,7 +179,7 @@ describe("release workflow contracts", () => {
     expect(publish).toContain('gh release edit "$TAG" --draft=false');
     expect(publish.indexOf("promote-github-release:")).toBeGreaterThan(publish.indexOf("stage:"));
     expect(publish.indexOf('gh release edit "$TAG" --draft=false')).toBeGreaterThan(
-      publish.indexOf("npm stage publish"),
+      publish.indexOf('"$NPM" stage publish "$PWD/release-package/package.tgz"'),
     );
     expect(publish.indexOf("contents: write")).toBeGreaterThan(
       publish.indexOf("promote-github-release:"),

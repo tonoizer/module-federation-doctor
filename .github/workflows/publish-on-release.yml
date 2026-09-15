@@ -265,7 +265,19 @@ jobs:
       - name: Stage with trusted publishing
         env:
           NPM_TAG: ${{ steps.npm.outputs.tag }}
-        run: npm stage publish release-package/package.tgz --access public --tag "$NPM_TAG"
+        run: |
+          set -euo pipefail
+          # `owner/repo` is GitHub shorthand. A relative
+          # `release-package/package.tgz` matches that shape, so npm runs
+          # `git ls-remote ssh://git@github.com/release-package/package.tgz.git`
+          # instead of publishing the local tarball.
+          export PATH="$HOME/.local/bin:$PATH"
+          NPM="$HOME/.local/bin/npm"
+          test -x "$NPM"
+          test "$("$NPM" --version)" = "11.17.0"
+          "$NPM" help stage >/dev/null
+          test -f "$PWD/release-package/package.tgz"
+          "$NPM" stage publish "$PWD/release-package/package.tgz" --access public --tag "$NPM_TAG"
       - name: Summary
         if: always()
         env:
