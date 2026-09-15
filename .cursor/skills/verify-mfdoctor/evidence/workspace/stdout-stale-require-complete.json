@@ -1,0 +1,54 @@
+{
+  "capabilities": {
+    "config": true,
+    "emittedAssets": false,
+    "installedVersions": true,
+    "manifest": false,
+    "sourceImports": true,
+    "stats": false
+  },
+  "findings": [
+    {
+      "details": {
+        "missing": [],
+        "workspaceDiagnostics": [
+          {
+            "files": ["host/src/index.ts"],
+            "kind": "stale",
+            "message": "Project evidence is stale: source input \"src/index.ts\" is newer than project facts."
+          }
+        ]
+      },
+      "detailsSchema": "doctor.partial-analysis.v1",
+      "documentation": "/rules/doctor/partial-analysis",
+      "evidence": {
+        "workspaceDiagnostics": [
+          {
+            "files": ["host/src/index.ts"],
+            "kind": "stale",
+            "message": "Project evidence is stale: source input \"src/index.ts\" is newer than project facts."
+          }
+        ]
+      },
+      "fingerprint": "695c86328ba256cb66e444429655fb01d238a72796c664b28d05002b31df8f22",
+      "message": "MFDoctor found workspace diagnostics; analysis is incomplete.",
+      "project": "workspace",
+      "ruleId": "doctor/partial-analysis",
+      "schemaVersion": 1,
+      "severity": "warning"
+    }
+  ],
+  "schemaVersion": 1,
+  "status": {
+    "complete": false,
+    "incompleteReasons": ["missing-emit", "evidence-unknown"]
+  },
+  "summary": {
+    "errors": 0,
+    "info": 0,
+    "projects": 2,
+    "score": null,
+    "scoreLabel": null,
+    "warnings": 1
+  }
+}

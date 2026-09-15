@@ -9,7 +9,7 @@ entry point — prove that path with [Workspace](./workspace.md), not this file.
 
 - `federation-glob` expands quoted `*.project.json` / `**/.mf/doctor/project.json` patterns via the CLI, not the shell.
 - `federation-conflict` fails CI policy on a known red glob (version conflict).
-- `federation-unmatched` exits `2` when no project reports match.
+- `federation-unmatched` exits `2` when no project reports match (exit `1` with `--require-complete`).
 
 ## How to get to it (user POV)
 
@@ -31,7 +31,7 @@ Preconditions:
   Exit code `1`. JSON `findings` includes `federation/version-conflict`.
 - **Unmatched glob.** Run
   `node dist/cli.js federation "examples/showcase/federation/version-conflict/*.does-not-exist.json" --ci --format json --output - --no-write`.
-  Exit code `2` (no project reports matched).
+  Exit code `2` (no project reports matched). The same command plus `--require-complete` exits `1`.
 - **Proof.** Save stdout/stderr/exit under
   `.cursor/skills/verify-mfdoctor/evidence/federation/`. Note at least one
   `findings[].ruleId` in `notes.txt`. Confirm `--no-write` did not create
@@ -48,4 +48,5 @@ Preconditions:
   pass here is not a full green claim for a real app — still require emit +
   workspace when claiming green on built hosts/remotes.
 - Empty or unmatched patterns are incomplete (`exit 2`), not a silent green
-  federation.
+  federation. `--require-complete` turns that unmatched case into policy-fail
+  `exit 1`. The flag also applies to glob federation, not only `--workspace`.

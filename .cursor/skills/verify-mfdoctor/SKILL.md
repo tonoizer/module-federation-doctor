@@ -65,6 +65,8 @@ Assert:
   `federation`, `baseline`, `runtime`, `prompt`, `rules`, `probe`, `compare`
 - optional: `operations.schemaVersion` is `1` and `operations.commands` includes
   those same names
+- optional: `operations.commands.{check,workspace,federation}` list
+  `--require-complete`, and `nonInteractive.flags` includes it
 - optional: `bundlerMatrix.partial` includes `nuxt`, `modern`, and `rolldown`
 - optional: `test -f dist/cli.js`
 
@@ -85,7 +87,7 @@ Stable handles (prefer these; never coordinates or HTML selectors):
 | Handle         | Notes                                                                                                                                                    |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Command names  | `capabilities`, `check`, `workspace`, `federation`, `prompt`, `baseline`, `runtime`, `rules`, …                                                          |
-| Exit codes     | `0` pass, `1` policy fail, `2` incomplete / usage                                                                                                        |
+| Exit codes     | `0` pass, `1` policy fail, `2` incomplete / usage. `--require-complete` on `check` / `workspace` / `federation` turns incomplete evidence into `1`.      |
 | JSON keys      | `status`, `status.complete`, `status.incompleteReasons`, `findings`, `findings[].ruleId`, `summary`, `summary.score`, `summary.scoreLabel`, `operations` |
 | Artifact paths | `.mf/doctor/report.json`, `.mf/doctor/project.json`, `.mf/doctor/results.sarif`                                                                          |
 
@@ -95,6 +97,9 @@ Real flags from this CLI (see `apps/docs/docs/cli.md`):
 # Tier-1 one-project analysis (do NOT claim green from check alone)
 node dist/cli.js check <project> --ci --format terminal,json,sarif \
   --output - --no-write
+
+# Opt-in: incomplete evidence (missing-emit, stale facts, unmatched globs) fails policy
+node dist/cli.js check <project> --ci --require-complete --format json --output - --no-write
 
 # Same check writing artifacts under the project (use a temp copy)
 node dist/cli.js check <project> --ci --format terminal,json,sarif \

@@ -61,9 +61,9 @@ handles, required state, commands, and observable proof.
 ## Features
 
 - [Capabilities](./capabilities.md) — versioned JSON CLI contract (commands, operations, exit codes, bundlerMatrix; no config, no network).
-- [Check](./check.md) — one-project offline analysis on a showcase/example fixture.
-- [Workspace](./workspace.md) — cross-project federation gate on nested examples or workspace fixtures.
-- [Federation glob](./federation.md) — explicit `project.json` globs (`mfdoctor federation` without `--workspace`).
+- [Check](./check.md) — one-project offline analysis on a showcase/example fixture (`--require-complete` turns incomplete evidence into exit `1`).
+- [Workspace](./workspace.md) — cross-project federation gate on nested examples or workspace fixtures (freshness / `--require-complete` / `--glob`).
+- [Federation glob](./federation.md) — explicit `project.json` globs (`mfdoctor federation` without `--workspace`; `--require-complete` on unmatched globs).
 - [Prompt](./prompt.md) — offline fix prompts from a saved report (`mfdoctor prompt --finding`), including verification-plan / repair-context sections.
 - [Baseline](./baseline.md) — generate / update / prune fingerprint baselines (debt tracking, not a mute).
 - [Runtime](./runtime.md) — offline Observability trace correlation (`mfdoctor runtime`).

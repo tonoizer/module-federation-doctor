@@ -161,7 +161,7 @@
       "network": false
     },
     "check": {
-      "description": "Analyze one project and apply its finding policy.",
+      "description": "Analyze one project and apply its finding policy; --require-complete turns incomplete evidence into a policy failure.",
       "formats": ["terminal", "json", "sarif"],
       "network": false
     },
@@ -171,7 +171,7 @@
       "network": true
     },
     "federation": {
-      "description": "Analyze explicit project facts or a discovered workspace.",
+      "description": "Analyze explicit project facts or a discovered workspace; --require-complete turns incomplete evidence into a policy failure.",
       "formats": ["terminal", "json", "sarif"],
       "network": false
     },
@@ -197,7 +197,7 @@
       "network": false
     },
     "workspace": {
-      "description": "Discover project facts and gate a federation workspace.",
+      "description": "Discover project facts and gate a federation workspace; --require-complete turns incomplete evidence into a policy failure.",
       "formats": ["terminal", "json", "sarif"],
       "network": false
     }
@@ -240,7 +240,7 @@
     "In-browser MFDoctor runtime agent or client-bundle injection",
     "MCP server schema or tool surface",
     "General --fix autofix for arbitrary findings",
-    "Unsolicited network probe or compare (both are explicit-only)",
+    "No network command (including compare and probe) unless explicitly requested",
     "Unsolicited suppressions or auto-waiving findings",
     "Scraping private Module Federation plugin internals",
     "Runtime-only Module Federation without a bundler MF build plugin"
@@ -260,7 +260,8 @@
       "--no-prompt",
       "--no-score",
       "--no-write",
-      "--output"
+      "--output",
+      "--require-complete"
     ]
   },
   "operations": {
@@ -351,7 +352,7 @@
             "type": "path"
           }
         ],
-        "description": "Analyze one project and apply its finding policy.",
+        "description": "Analyze one project and apply its finding policy; --require-complete turns incomplete evidence into a policy failure.",
         "errorCodes": {
           "analysis-incomplete": {
             "description": "The operation completed with incomplete evidence; this is not a policy pass.",
@@ -429,6 +430,11 @@
           {
             "description": "Skip report artifacts on disk while retaining stdout output behavior.",
             "name": "--no-write",
+            "type": "boolean"
+          },
+          {
+            "description": "Turn incomplete evidence into a policy failure.",
+            "name": "--require-complete",
             "type": "boolean"
           },
           {
@@ -534,7 +540,7 @@
             "type": "glob"
           }
         ],
-        "description": "Analyze explicit project facts or a discovered workspace.",
+        "description": "Analyze explicit project facts or a discovered workspace; --require-complete turns incomplete evidence into a policy failure.",
         "errorCodes": {
           "analysis-incomplete": {
             "description": "The operation completed with incomplete evidence; this is not a policy pass.",
@@ -632,6 +638,11 @@
             "description": "Select one federation group when a repository contains multiple graphs.",
             "name": "--group",
             "type": "string"
+          },
+          {
+            "description": "Turn incomplete evidence into a policy failure.",
+            "name": "--require-complete",
+            "type": "boolean"
           },
           {
             "description": "Apply a fingerprint baseline to the analysis findings.",
@@ -913,7 +924,7 @@
             "type": "path"
           }
         ],
-        "description": "Discover project facts and gate a federation workspace.",
+        "description": "Discover project facts and gate a federation workspace; --require-complete turns incomplete evidence into a policy failure.",
         "errorCodes": {
           "analysis-incomplete": {
             "description": "The operation completed with incomplete evidence; this is not a policy pass.",
@@ -1013,6 +1024,11 @@
             "type": "string"
           },
           {
+            "description": "Turn incomplete evidence into a policy failure.",
+            "name": "--require-complete",
+            "type": "boolean"
+          },
+          {
             "description": "Apply a fingerprint baseline to the analysis findings.",
             "name": "--baseline",
             "type": "path"
@@ -1036,7 +1052,7 @@
   },
   "package": {
     "name": "@tonoizer/mfdoctor",
-    "version": "2.0.0"
+    "version": "2.0.1"
   },
   "schemaVersion": 1,
   "schemaVersions": {

@@ -1,1 +1,1 @@
-Updated baseline at /tmp/mfdoctor-verify-maintain-4588/remote-http-insecure/mfdoctor.baseline.json (2 entries)
+Updated baseline at /tmp/mfdoctor-verify-maintain-rest-5062/prompt-baseline/mfdoctor.baseline.json (2 entries)
