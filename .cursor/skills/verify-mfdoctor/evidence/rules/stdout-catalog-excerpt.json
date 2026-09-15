@@ -1,11 +1,14 @@
 {
   "schemaVersion": 1,
   "ruleCount": 127,
-  "sampleRuleIds": [
+  "sampleIds": [
     "artifact/dts-disabled",
     "artifact/expose-missing",
     "artifact/manifest-assets-disabled",
     "artifact/manifest-disabled",
-    "artifact/manifest-expose-assets-empty"
+    "artifact/manifest-expose-assets-empty",
+    "artifact/manifest-invalid",
+    "artifact/manifest-name-mismatch",
+    "artifact/manifest-remote-entry-missing"
   ]
 }

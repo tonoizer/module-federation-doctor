@@ -3,3 +3,11 @@ conflict-exit: 1
 conflict-rule-ids: ['federation/version-conflict']
 clean-exit: 0
 clean-rule-ids: []
+require-complete-clean-exit: 1
+require-complete-clean-status: {'complete': False, 'incompleteReasons': ['missing-emit']}
+glob-conflict-exit: 1
+glob-conflict-rule-ids: ['federation/version-conflict']
+stale-exit: 2
+stale-require-complete-exit: 1
+stale-status: {'complete': False, 'incompleteReasons': ['missing-emit', 'evidence-unknown']}
+stale-rule-ids: ['doctor/partial-analysis']

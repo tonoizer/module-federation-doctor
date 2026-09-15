@@ -3,5 +3,6 @@ entry-point: node dist/cli.js federation <quoted-project.json-glob> --ci --forma
 conflict-exit: 1
 conflict-rule-ids: ['federation/version-conflict']
 unmatched-exit: 2
+unmatched-require-complete-exit: 1
 no-write-side-effect: repo-root .mf absent (observed)
 status: {'complete': False, 'incompleteReasons': ['missing-emit']}

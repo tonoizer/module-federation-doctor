@@ -1,33 +1,16 @@
 {
-  "schemaVersion": 1,
   "bundler": {
-    "federationInstances": "<list 1>",
-    "lifecycle": "...",
-    "mode": "development",
     "name": "vite",
     "version": "8.1.5",
-    "viteConfig": "..."
+    "lifecycle": {
+      "engine": "rolldown",
+      "evidence": ["meta.rolldownVersion"],
+      "flavor": "rolldown-vite",
+      "postEmitHook": "closeBundle"
+    }
   },
   "project": {
     "name": "@mfdoctor-standalone/vite",
     "root": "."
-  },
-  "moduleFederation": {
-    "dev": "...",
-    "dts": "...",
-    "experiments": "...",
-    "exposes": "...",
-    "manifest": "...",
-    "name": "standalone_vite",
-    "remotes": "...",
-    "runtimePlugins": "<list 0>"
-  },
-  "capabilities": {
-    "config": true,
-    "emittedAssets": true,
-    "installedVersions": true,
-    "manifest": true,
-    "sourceImports": true,
-    "stats": true
   }
 }

@@ -24,14 +24,14 @@ Preconditions:
 
 - **Print contract.** Run `node dist/cli.js capabilities`. Exit code is `0`. Stdout is JSON with `schemaVersion`, `package.name` = `@tonoizer/mfdoctor`, and a `commands` object.
 - **Assert command list.** Confirm `commands` includes `capabilities`, `check`, `workspace`, `federation`, `baseline`, `runtime`, `prompt`, `rules`, `probe`, and `compare`.
-- **Assert operations contract.** Confirm `operations.schemaVersion` is `1` and `operations.commands` includes those same names (plus `help`). Each command object has `arguments`, `options`, `network`, `writtenArtifacts`, and `errorCodes`. `operations.commands.check.writtenArtifacts` includes `<diagnostics-dir>/verification-plan.json`.
+- **Assert operations contract.** Confirm `operations.schemaVersion` is `1` and `operations.commands` includes those same names (plus `help`). Each command object has `arguments`, `options`, `network`, `writtenArtifacts`, and `errorCodes`. `operations.commands.check.writtenArtifacts` includes `<diagnostics-dir>/verification-plan.json`. `operations.commands.{check,workspace,federation}.options` include `--require-complete`. `nonInteractive.flags` also includes `--require-complete`.
 - **Assert bundler matrix.** Confirm `bundlerMatrix.supported` is `vite`, `rspack`, `rsbuild`, `webpack` and `bundlerMatrix.partial` includes `rolldown`, `modern`, and `nuxt`.
-- **Assert exit semantics.** Confirm `exitCodes` maps `0` / `1` / `2` (success / policy-fail / usage-or-incomplete-analysis).
+- **Assert exit semantics.** Confirm `exitCodes` maps `0` / `1` / `2` (success / policy-fail / usage-or-incomplete-analysis). `--require-complete` turns incomplete evidence into policy-fail (`1`) instead of usage-or-incomplete (`2`) on `check` / `workspace` / `federation`.
 - **Proof.** Save stdout to `.cursor/skills/verify-mfdoctor/evidence/capabilities/stdout.json` with `exit-code.txt` containing `0`.
 
 ## Gotchas
 
 - This command does not analyze a project. A green capabilities run does not mean the federation is healthy.
 - Do not scrape ANSI — capabilities is JSON-only on stdout.
-- `commands` is the short discovery map; `operations` is the detailed per-command contract. Do not treat a missing `operations` key as a complete capabilities payload.
+- `commands` is the short discovery map; `operations` is the detailed per-command contract. Do not treat a missing `operations` key as a complete capabilities payload. `--require-complete` is not a `capabilities` flag; it appears on `check` / `workspace` / `federation` operations and in `nonInteractive.flags`.
 - If the binary is missing, rebuild; do not invent a stub contract.
