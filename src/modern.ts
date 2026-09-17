@@ -4,6 +4,7 @@ import { moduleFederationDoctorPlugin as rspackModuleFederationDoctorPlugin } fr
 import { observeSourceTransformImportFromConfigs } from "./share-rewrite.js";
 import type { DoctorOptions } from "./types.js";
 import type { ModernContextFacts } from "./types.js";
+import { callPublicConfig } from "./utils.js";
 
 /** Minimal bundler-chain surface used by Modern.js `modifyBundlerChain`. */
 export type BundlerChainLike = {
@@ -47,15 +48,6 @@ type AfterEmitDoctorPlugin = {
   name: string;
   apply: (compiler: CompilerLike) => void;
 };
-
-function callPublicConfig<T>(fn: (() => T) | undefined): T | undefined {
-  if (typeof fn !== "function") return undefined;
-  try {
-    return fn();
-  } catch {
-    return undefined;
-  }
-}
 
 function createAfterEmitPlugin(
   options: DoctorOptions,

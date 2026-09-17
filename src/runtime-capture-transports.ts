@@ -349,9 +349,8 @@ function fallbackHasOwnKnownKey(value: unknown, keys: readonly string[], path: s
   return keys.some((key) => fallbackProperty(value, key, path).present);
 }
 
-function fallbackDisableSnapshot(value: unknown, path: string): boolean {
-  const direct = fallbackBooleanProperty(value, "disableSnapshot", path);
-  let disabled = direct.value === true;
+function fallbackNestedDisableSnapshot(value: unknown, path: string): boolean {
+  let disabled = false;
   for (const containerKey of ["experiments", "vite"] as const) {
     const container = fallbackProperty(value, containerKey, path);
     if (!container.present || container.value === undefined || container.value === null) continue;
@@ -362,6 +361,13 @@ function fallbackDisableSnapshot(value: unknown, path: string): boolean {
     );
     disabled ||= nested.value === true;
   }
+  return disabled;
+}
+
+function fallbackDisableSnapshot(value: unknown, path: string): boolean {
+  const direct = fallbackBooleanProperty(value, "disableSnapshot", path);
+  const nested = fallbackNestedDisableSnapshot(value, path);
+  let disabled = direct.value === true || nested;
   const config = fallbackProperty(value, "config", path);
   if (config.present && config.value !== undefined && config.value !== null) {
     const configDisabled = fallbackBooleanProperty(
@@ -369,17 +375,8 @@ function fallbackDisableSnapshot(value: unknown, path: string): boolean {
       "disableSnapshot",
       `${path}.config`,
     );
-    disabled ||= configDisabled.value === true;
-    for (const containerKey of ["experiments", "vite"] as const) {
-      const container = fallbackProperty(config.value, containerKey, `${path}.config`);
-      if (!container.present || container.value === undefined || container.value === null) continue;
-      const nested = fallbackBooleanProperty(
-        container.value,
-        "disableSnapshot",
-        `${path}.config.${containerKey}`,
-      );
-      disabled ||= nested.value === true;
-    }
+    const configNested = fallbackNestedDisableSnapshot(config.value, `${path}.config`);
+    disabled ||= configDisabled.value === true || configNested;
   }
   return disabled;
 }
