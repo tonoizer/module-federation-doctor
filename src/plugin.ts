@@ -15,7 +15,7 @@ import type {
   ModernContextFacts,
   OutputPublicPathKind,
 } from "./types.js";
-import { normalizePath, relativePath } from "./utils.js";
+import { callPublicConfig, normalizePath, relativePath } from "./utils.js";
 import { detectViteLifecycle, withPostEmitHook, type ViteHookMeta } from "./vite-lifecycle.js";
 import {
   observeResolveAlias,
@@ -317,15 +317,6 @@ function publicPathDiagnostics(observation: {
 }): BuildDiagnostics {
   if (!observation.observed) return {};
   return { outputPublicPathKind: observation.kind ?? "unknown" };
-}
-
-function callPublicConfig<T>(fn: (() => T) | undefined): T | undefined {
-  if (typeof fn !== "function") return undefined;
-  try {
-    return fn();
-  } catch {
-    return undefined;
-  }
 }
 
 type RsbuildExternalsObserver = (config: { externals?: unknown }) => { externals?: unknown };

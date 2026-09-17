@@ -16,6 +16,15 @@ export function compareCodePoint(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
+export function callPublicConfig<T>(fn: (() => T) | undefined): T | undefined {
+  if (typeof fn !== "function") return undefined;
+  try {
+    return fn();
+  } catch {
+    return undefined;
+  }
+}
+
 export function relativePath(root: string, value: string): string {
   const result = normalizePath(path.relative(root, value));
   return result.startsWith("../") ? "[external]/" + path.basename(value) : result || ".";
