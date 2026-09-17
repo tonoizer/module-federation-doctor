@@ -228,7 +228,6 @@ function parseRuntimeCapture(raw: RuntimeCaptureEnvelope): RuntimeTraceReport[] 
   return raw.reports
     .map(captureRecordToRawReport)
     .map(normalizeReport)
-    .filter((report): report is RuntimeTraceReport => report !== undefined)
     .map((report, index) => {
       const record = raw.reports[index]!;
       if (truncated || record.completeness.status !== "complete") report.evidenceClipped = true;
@@ -559,7 +558,7 @@ function readEvents(raw: unknown): RuntimeTraceReport["events"] {
   return events;
 }
 
-function normalizeReport(raw: unknown): RuntimeTraceReport | undefined {
+function normalizeReport(raw: unknown): RuntimeTraceReport {
   const record = asRecord(raw);
   if (!record)
     throw new RuntimeTraceError("Invalid runtime trace report: every report must be an object.");
