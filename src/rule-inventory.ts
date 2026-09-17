@@ -2255,7 +2255,7 @@ export function supportedBundlersFromInventory(id: string): BundlerName[] {
   });
 }
 
-export function isRuleDemoCoverage(value: unknown): value is RuleDemoCoverage {
+function isRuleDemoCoverage(value: unknown): value is RuleDemoCoverage {
   return value === "showcase" || value === "unit" || value === "emit";
 }
 

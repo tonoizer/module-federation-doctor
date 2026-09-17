@@ -19,7 +19,7 @@ const LOCAL_PREFIX = /^[./]/;
 const EXT_CANDIDATES = ["", ".ts", ".tsx", ".js", ".mjs", ".cjs", "/index.ts", "/index.js"];
 
 /** True when the configured plugin path is a project-local module we may read. */
-export function isLocalPluginPath(plugin: string): boolean {
+function isLocalPluginPath(plugin: string): boolean {
   return LOCAL_PREFIX.test(plugin);
 }
 
@@ -27,7 +27,7 @@ export function isLocalPluginPath(plugin: string): boolean {
  * Resolve a local runtimePlugins path against the project root and scanned files.
  * Returns undefined when no candidate exists on disk (caller should skip — do not invent).
  */
-export async function resolveLocalPluginFile(
+async function resolveLocalPluginFile(
   root: string,
   plugin: string,
   sourceFiles: readonly string[],
@@ -61,7 +61,7 @@ export async function resolveLocalPluginFile(
   return undefined;
 }
 
-export async function readPluginSource(filePath: string): Promise<string | undefined> {
+async function readPluginSource(filePath: string): Promise<string | undefined> {
   try {
     return await fs.readFile(filePath, "utf8");
   } catch {
