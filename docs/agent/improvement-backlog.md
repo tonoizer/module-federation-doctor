@@ -8,6 +8,10 @@ Scored, mini-PR-sized follow-ups from an audit of `@tonoizer/mfdoctor`
 Do not treat it as a license to add suppressions, probe the network, bump
 versions, or claim green from `mfdoctor check` alone.
 
+**Historical snapshot:** this is a handoff from the 2026-09-06 audit, not a
+live issue tracker. Reconcile item status against the current tree before
+starting work; completed items remain in the detailed history below.
+
 Canonical product docs stay under `apps/docs/docs/` (localized). This file
 lives next to ADRs so it is **not** on the Rspress site and does not need a
 German twin.
@@ -25,7 +29,7 @@ swarm from this analysis PR.
 ## Kurzfassung
 
 MFDoctor ist **governance-ready für Vite / Rspack / Rsbuild / Webpack**:
-112 Rules, echte Adapter-Emits, ehrliche Partial-Zellen für Rolldown,
+127 Rules, echte Adapter-Emits, ehrliche Partial-Zellen für Rolldown,
 Modern.js und Nuxt. Die größten Löcher sind nicht „fehlendes Dashboard“,
 sondern (1) **Rule-Metadaten lügen über Bundler**, (2) **Vite-Quirks ohne
 Enhanced-Geschwister**, (3) **Agent-Fixtures**: Showcase-README driftet,
@@ -135,9 +139,10 @@ new example app or adapter evidence.
 
 Low-confidence items are marked in `why`.
 
-Audit date: 2026-09-06. Checkout: `main` @ `80a08b6` (and this branch).
-Rule count: 112 built-ins in `src/rule-inventory.ts`. No knip/ts-prune in
-`package.json`. Dist was not required for this inventory.
+Audit date: 2026-09-06. Audited checkout: `main` @ `80a08b6` (and this branch).
+Current tree note: 127 built-ins are listed in `src/rule-inventory.ts`, and
+the Knip gate is present in `package.json`. Dist was not required for the
+original inventory.
 
 ---
 
@@ -186,7 +191,7 @@ that path is correct.
 | 22   | BL-22 | 76    | P2  | M      | coverage  | rspack, webpack, rsbuild         | splitChunks / cacheGroups vs MF runtime                                       |
 | 23   | BL-23 | 76    | P2  | S      | overeng   | all                              | Stop exporting unused `capability-packs` from `.`                             |
 | 24   | BL-24 | 75    | P2  | M      | coverage  | vite, rsbuild                    | Duplicate MF plugin registration facts                                        |
-| 25   | BL-25 | 74    | P2  | M      | dx        | all                              | Add knip (or ts-prune) to CI                                                  |
+| 25   | BL-25 | 74    | P2  | M      | dx        | all                              | Add knip (or ts-prune) to CI (**done**)                                       |
 | 26   | BL-26 | 74    | P2  | L      | coverage  | modern                           | Real `@modern-js/app-tools` CI evidence                                       |
 | 27   | BL-27 | 73    | P2  | M      | overeng   | all                              | Slim public identity factories on `.`                                         |
 | 28   | BL-28 | 73    | P2  | L      | coverage  | vite                             | Rolldown / Vite Plus smoke build cell                                         |
@@ -216,10 +221,10 @@ that path is correct.
 | 52   | BL-52 | 60    | P3  | S      | docs      | all                              | Mark semantic-graph / identity APIs experimental on the `.` export            |
 | 53   | BL-53 | 59    | P3  | M      | coverage  | vite                             | Rules or honest skips for `ignoreOrigin` / `virtualModuleDir`                 |
 | 54   | BL-54 | 58    | P2  | L      | overeng   | all                              | Split `src/capture.ts` (~3.7k LOC) along used vs unused transports (**done**) |
-| 55   | BL-55 | 55    | P3  | S      | dead-code | all                              | Internalize `MIGRATED_GROUP*` exports                                         |
+| 55   | BL-55 | 55    | P3  | S      | dead-code | all                              | Internalize `MIGRATED_GROUP*` exports (**done**)                              |
 | 56   | BL-56 | 54    | P3  | S      | docs      | all                              | `buildUiPayload` is not an HTML UI (cross-link only)                          |
 | 57   | BL-57 | 52    | P3  | L      | coverage  | all                              | `dataPrefetch` / prefetch remotes (low confidence)                            |
-| 58   | BL-58 | 48    | P3  | S      | dead-code | all                              | Un-export `DEFAULT_ANALYSIS_CACHE_OPTIONS`                                    |
+| 58   | BL-58 | 48    | P3  | S      | dead-code | all                              | Un-export `DEFAULT_ANALYSIS_CACHE_OPTIONS` (**done**)                         |
 
 ---
 
@@ -561,7 +566,7 @@ that path is correct.
 | **suggested PR title** | feat: count public Vite/Rsbuild federation plugins for duplicate-registration                                                                                                                                                                                                                                                                    |
 | **acceptance**         | Two identical unnamed registrations → finding. Explicit `moduleFederationInstances` with distinct configs → no finding. Multi-instance example stays green.                                                                                                                                                                                      |
 
-### BL-25 — knip (or ts-prune) in CI
+### BL-25 — completed: knip (or ts-prune) in CI
 
 |                        |                                                                                                                                                                        |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -983,7 +988,7 @@ that path is correct.
 | **suggested PR title** | refactor: split runtime-capture file-import from unused transports                                                                                                                                                                                                           |
 | **acceptance**         | File-import path used by `mfdoctor runtime` in a smaller module. Unused transports deleted **or** isolated with tests. No in-browser injection. ADR 0084 closeout not in scope.                                                                                              |
 
-### BL-55 — Internalize `MIGRATED_GROUP*` exports
+### BL-55 — completed: Internalize `MIGRATED_GROUP*` exports
 
 |                        |                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------ |
@@ -1025,7 +1030,7 @@ that path is correct.
 | **suggested PR title** | docs: add dataPrefetch to the configuration audit checklist                                                                                                                                                           |
 | **acceptance**         | Audit table row with official docs link. Rule only in a later PR with a fixture.                                                                                                                                      |
 
-### BL-58 — Un-export `DEFAULT_ANALYSIS_CACHE_OPTIONS`
+### BL-58 — completed: Un-export `DEFAULT_ANALYSIS_CACHE_OPTIONS`
 
 |                        |                                                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------------- |
