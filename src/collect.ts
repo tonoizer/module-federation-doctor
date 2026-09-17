@@ -2217,7 +2217,6 @@ export async function collectProjectFacts(
     imports,
     artifacts,
     ...(canonicalConfig ? { canonicalConfig } : {}),
-    analysis: tracker.report(scan.sourceReadFailures.length > 0 ? "unknown" : "complete"),
   };
   if (normalizedMf) facts.moduleFederation = normalizedMf;
   if (instanceScoped && normalizedInstances.length > 0) {
