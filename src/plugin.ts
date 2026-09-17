@@ -231,7 +231,7 @@ export function countViteFamilyFederationPlugins(plugins: unknown[] | undefined)
 }
 
 /** Record webpack/rspack `output.filename` only when it is a public string template. */
-export function readOutputFilename(filename: unknown): string | undefined {
+function readOutputFilename(filename: unknown): string | undefined {
   return typeof filename === "string" && filename.length > 0 ? filename : undefined;
 }
 

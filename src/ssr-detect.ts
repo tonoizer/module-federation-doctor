@@ -137,7 +137,7 @@ export function hasNodeRuntimePlugin(runtimePlugins: string[] | undefined): bool
   });
 }
 
-export function isCommonjsLikeLibraryType(type: string | undefined): boolean {
+function isCommonjsLikeLibraryType(type: string | undefined): boolean {
   if (!type) return false;
   return COMMONJS_LIBRARY_TYPES.has(type);
 }

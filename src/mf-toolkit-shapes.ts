@@ -9,10 +9,10 @@
 import type { NormalizedMFConfig, ProjectFacts, RuleContext } from "./types.js";
 
 /** Bridge entry public key used by mf-bridge remotes. */
-export const MF_BRIDGE_ENTRY_EXPOSE = "./entry";
+const MF_BRIDGE_ENTRY_EXPOSE = "./entry";
 
 /** Fragment expose key used by mf-ssr fragment producers. */
-export const MF_SSR_FRAGMENT_EXPOSE = "./fragment";
+const MF_SSR_FRAGMENT_EXPOSE = "./fragment";
 
 const FRAGMENT_PATH_RE = /\/(?:api\/)?fragments\//i;
 const CLASSIC_REMOTE_ENTRY_RE = /remoteEntry(?:\.[cm]?js)?(?:[?#]|$)/i;
