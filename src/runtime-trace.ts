@@ -471,13 +471,6 @@ function sharedCompletenessFor(report: RuntimeTraceReport): "complete" | "partia
       ? "complete"
       : "partial";
   }
-  const runtimeVersion = report.runtimeVersion;
-  const previewOrMissing =
-    !runtimeVersion ||
-    /preview|canary|nightly/i.test(runtimeVersion) ||
-    (semver.valid(runtimeVersion) !== null && semver.lt(runtimeVersion, "2.5.0"));
-  // Chrome DevTools compatibility reports and older runtimes omit shared lifecycle evidence.
-  if (report.sourceContract === "partial" || previewOrMissing) return "unknown";
   return "unknown";
 }
 
