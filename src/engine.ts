@@ -93,28 +93,6 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function structuredExecutionState(
-  state: RuleExecutionState,
-  phase: RunFailurePhase,
-  runId: string,
-): RuleExecutionState {
-  if (state.state !== "engine-error") return state;
-  return {
-    ...state,
-    phase,
-    errorCode: RUN_FAILURE_ERROR_CODES[phase],
-    runId,
-  } as RuleExecutionState;
-}
-
-function structureExecutionFailures(
-  execution: readonly RuleExecutionState[],
-  phase: RunFailurePhase,
-  runId: string,
-): RuleExecutionState[] {
-  return execution.map((state) => structuredExecutionState(state, phase, runId));
-}
-
 function structureEvidenceRun<T extends { output: { execution: RuleExecutionState[] } }>(
   run: T,
   phase: RunFailurePhase,
@@ -124,7 +102,15 @@ function structureEvidenceRun<T extends { output: { execution: RuleExecutionStat
     ...run,
     output: {
       ...run.output,
-      execution: structureExecutionFailures(run.output.execution, phase, runId),
+      execution: run.output.execution.map((state) => {
+        if (state.state !== "engine-error") return state;
+        return {
+          ...state,
+          phase,
+          errorCode: RUN_FAILURE_ERROR_CODES[phase],
+          runId,
+        } as RuleExecutionState;
+      }),
     },
   } as T;
 }
