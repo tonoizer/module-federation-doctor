@@ -1,5 +1,6 @@
+import dns from "node:dns/promises";
 import { createServer, type RequestListener, type Server } from "node:http";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProbeError, probeManifest } from "../../src/probe.js";
 
 const servers: Server[] = [];
@@ -86,6 +87,19 @@ describe("manifest probe", () => {
     await expect(probeManifest(`${origin}/manifest.json`, { maxBytes: 20 })).rejects.toThrow(
       "larger than 20 bytes",
     );
+  });
+
+  it("rejects public hostnames that resolve to restricted addresses", async () => {
+    const lookup = vi.spyOn(dns, "lookup").mockResolvedValue([
+      { address: "127.0.0.1", family: 4 },
+    ]);
+    try {
+      await expect(probeManifest("https://cdn.example.com/mf-manifest.json")).rejects.toThrow(
+        /private, link-local, metadata, or loopback/,
+      );
+    } finally {
+      lookup.mockRestore();
+    }
   });
 
   it("rejects malformed federation manifests", async () => {
