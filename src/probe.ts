@@ -358,6 +358,7 @@ async function readBounded(response: Response, maxBytes: number): Promise<Uint8A
   }
   return bytes;
 }
+
 function record(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
