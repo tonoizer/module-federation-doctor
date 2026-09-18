@@ -16,8 +16,6 @@ import type {
 } from "./types.js";
 import { stableStringify } from "./utils.js";
 
-export { DOCTOR_DOCS_ORIGIN } from "./docs-url.js";
-
 /** Atomically replace a report artifact; previous contents stay if the write fails. */
 export async function writeFileAtomic(filePath: string, contents: string): Promise<void> {
   await writeFileAtomicBase(filePath, contents, {
