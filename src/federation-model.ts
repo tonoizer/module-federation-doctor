@@ -1,6 +1,6 @@
 import type { FederationInstanceFacts, NormalizedMFConfig, ProjectFacts } from "./types.js";
 
-export interface FederationDtsFacts {
+interface FederationDtsFacts {
   enabled: boolean;
   extractRemoteTypes: boolean;
   outputDir?: string;
@@ -9,7 +9,7 @@ export interface FederationDtsFacts {
   emittedTypeAssets: string[];
 }
 
-export interface FederationProjectNode {
+interface FederationProjectNode {
   id: string;
   project: ProjectFacts;
   projectName: string;
@@ -25,7 +25,7 @@ export interface FederationProjectNode {
   dts: FederationDtsFacts;
 }
 
-export interface FederationRemoteEdge {
+interface FederationRemoteEdge {
   id: string;
   fromId: string;
   fromProject: string;
@@ -49,7 +49,7 @@ export interface FederationModel {
   unmatchedRemotes: FederationRemoteEdge[];
 }
 
-export interface FederationCycleGroup {
+interface FederationCycleGroup {
   members: FederationProjectNode[];
   edges: FederationRemoteEdge[];
   riskMembers: FederationProjectNode[];
