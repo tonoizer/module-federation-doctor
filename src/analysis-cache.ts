@@ -23,9 +23,9 @@ export const DEFAULT_ANALYSIS_CACHE_OPTIONS: Required<AnalysisCacheOptions> = Ob
 });
 
 /** Bump when the cached projection shape or its interpretation changes. */
-export const ANALYSIS_CACHE_SCHEMA_VERSION = 1;
+const ANALYSIS_CACHE_SCHEMA_VERSION = 1;
 /** Bump when source/artifact collection semantics change. */
-export const ANALYSIS_COLLECTOR_REVISION = "source-artifact-collector-v3";
+const ANALYSIS_COLLECTOR_REVISION = "source-artifact-collector-v3";
 
 function assertBound(name: string, value: unknown): asserts value is number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
