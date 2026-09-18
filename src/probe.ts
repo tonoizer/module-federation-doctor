@@ -1,4 +1,8 @@
-import { BlockList, isIP } from "node:net";
+import dns from "node:dns/promises";
+import http from "node:http";
+import https from "node:https";
+import { BlockList, isIP, type LookupFunction } from "node:net";
+import { Readable } from "node:stream";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
@@ -24,6 +28,7 @@ export interface ProbeOptions {
   remoteEntry?: boolean;
   /** Allow private, link-local, metadata, and loopback targets (off by default). */
   allowPrivateNetworks?: boolean;
+  /** Override the transport for tests or callers that provide their own policy. */
   fetch?: typeof globalThis.fetch;
 }
 
@@ -131,6 +136,157 @@ function assertProbeUrlAllowed(url: URL, options: ProbeUrlOptions): void {
     );
 }
 
+interface ProbeAddress {
+  address: string;
+  family: 4 | 6;
+}
+
+function restrictedAddress(address: ProbeAddress): boolean {
+  const host = normalizeHostname(address.address);
+  const version = isIP(host);
+  if (version === 4) return RESTRICTED_NETWORKS.check(host, "ipv4");
+  if (version === 6) return RESTRICTED_NETWORKS.check(host, "ipv6");
+  return false;
+}
+
+async function resolveProbeAddresses(hostname: string): Promise<ProbeAddress[]> {
+  const host = normalizeHostname(hostname);
+  const version = isIP(host);
+  if (version === 4 || version === 6) return [{ address: host, family: version }];
+
+  try {
+    const addresses = await dns.lookup(host, { all: true, verbatim: true });
+    return addresses.map(({ address, family }) => ({
+      address,
+      family: family === 6 ? 6 : 4,
+    }));
+  } catch {
+    throw new ProbeError(`Unable to resolve probe host: ${host}`);
+  }
+}
+
+function assertResolvedProbeAddresses(
+  url: URL,
+  addresses: ProbeAddress[],
+  options: ProbeUrlOptions,
+): void {
+  if (addresses.length === 0) throw new ProbeError(`Unable to resolve probe host: ${url.hostname}`);
+  if (options.allowPrivateNetworks) return;
+  if (url.protocol === "http:" && options.allowLoopbackHttp && isLoopback(url.hostname)) return;
+  if (addresses.some(restrictedAddress))
+    throw new ProbeError(
+      "URLs targeting private, link-local, metadata, or loopback networks are not allowed.",
+    );
+}
+
+function responseHeaders(response: http.IncomingMessage): Headers {
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(response.headers)) {
+    if (value === undefined) continue;
+    headers.set(name, Array.isArray(value) ? value.join(", ") : value);
+  }
+  return headers;
+}
+
+function abortError(): Error {
+  const error = new Error("The operation was aborted.");
+  error.name = "AbortError";
+  return error;
+}
+
+/**
+ * Fetch through a socket whose address was resolved and checked by this call.
+ * Passing the selected address through Node's lookup hook avoids a second DNS
+ * lookup between the policy check and the connection.
+ */
+async function pinnedFetch(
+  url: URL,
+  init: RequestInit,
+  urlOptions: ProbeUrlOptions,
+): Promise<Response> {
+  const addresses = await resolveProbeAddresses(url.hostname);
+  assertResolvedProbeAddresses(url, addresses, urlOptions);
+  if (init.body !== undefined && init.body !== null)
+    throw new ProbeError("Probe requests do not support request bodies.");
+
+  const selected = addresses[0]!;
+  const method = init.method ?? "GET";
+  const headers: Record<string, string> = {};
+  new Headers(init.headers).forEach((value, name) => {
+    headers[name] = value;
+  });
+  const hostname = unbracketHostname(url.hostname);
+  const requestOptions = {
+    protocol: url.protocol,
+    hostname,
+    ...(url.port ? { port: url.port } : {}),
+    path: `${url.pathname}${url.search}`,
+    method,
+    headers,
+    lookup: ((
+      _hostname: string,
+      _options: Parameters<LookupFunction>[1],
+      callback: Parameters<LookupFunction>[2],
+    ) => callback(null, selected.address, selected.family)) as LookupFunction,
+    ...(url.protocol === "https:" && isIP(hostname) === 0 ? { servername: hostname } : {}),
+  };
+
+  return await new Promise<Response>((resolve, reject) => {
+    let request: http.ClientRequest;
+    let settled = false;
+    const signal = init.signal ?? undefined;
+    const cleanup = () => signal?.removeEventListener("abort", onAbort);
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const onAbort = () => request.destroy(abortError());
+    const onResponse = (response: http.IncomingMessage) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      const status = response.statusCode ?? 0;
+      const bodyless = method.toUpperCase() === "HEAD" || [204, 205, 304].includes(status);
+      try {
+        const body = bodyless ? null : (Readable.toWeb(response) as ReadableStream<Uint8Array>);
+        if (bodyless) response.resume();
+        const responseInit: ResponseInit = { status, headers: responseHeaders(response) };
+        if (response.statusMessage) responseInit.statusText = response.statusMessage;
+        resolve(new Response(body, responseInit));
+      } catch (error) {
+        response.resume();
+        reject(error);
+      }
+    };
+
+    if (signal?.aborted) {
+      reject(abortError());
+      return;
+    }
+    try {
+      request =
+        url.protocol === "https:"
+          ? https.request(requestOptions, onResponse)
+          : http.request(requestOptions, onResponse);
+      request.once("error", fail);
+      signal?.addEventListener("abort", onAbort, { once: true });
+      request.end();
+    } catch (error) {
+      fail(error);
+    }
+  });
+}
+
+function createPinnedFetcher(urlOptions: ProbeUrlOptions): typeof globalThis.fetch {
+  return (input, init) => {
+    const url =
+      input instanceof URL ? input : new URL(typeof input === "string" ? input : input.url);
+    return pinnedFetch(url, init ?? {}, urlOptions);
+  };
+}
+
 function safeUrl(value: string, options: ProbeUrlOptions = {}): URL {
   let url: URL;
   try {
@@ -166,6 +322,7 @@ async function guardedFetch(
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
     const response = await fetcher(url, { ...init, redirect: "manual" });
     if (response.status < 300 || response.status >= 400) return { response, url };
+    await response.body?.cancel().catch(() => undefined);
     const location = response.headers.get("location");
     if (!location) throw new ProbeError(`Redirect from ${publicUrl(url)} has no Location header.`);
     if (redirects === MAX_REDIRECTS) throw new ProbeError("Too many redirects.");
@@ -298,7 +455,6 @@ export async function loadManifestContract(
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 20 * 1024 * 1024)
     throw new ProbeError("maxBytes must be an integer from 1 to 20971520.");
 
-  const fetcher = options.fetch ?? globalThis.fetch;
   const urlOptions: ProbeUrlOptions =
     options.allowPrivateNetworks === undefined
       ? {}
@@ -308,6 +464,12 @@ export async function loadManifestContract(
   try {
     // HTTP loopback exception is for the user-supplied URL only; redirects use urlOptions.
     const initial = safeUrl(value, { ...urlOptions, allowLoopbackHttp: true });
+    const fetcher =
+      options.fetch ??
+      createPinnedFetcher({
+        ...urlOptions,
+        allowLoopbackHttp: initial.protocol === "http:" && isLoopback(initial.hostname),
+      });
     const { response, url } = await guardedFetch(
       initial,
       { headers: { accept: "application/json" }, signal: controller.signal },
