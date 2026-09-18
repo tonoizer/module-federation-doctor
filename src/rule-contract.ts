@@ -121,7 +121,7 @@ export type RuleEvaluationResult =
   | RuleUnknownResult
   | RuleNotApplicableResult;
 
-export interface RuleDisabledState {
+interface RuleDisabledState {
   state: "disabled";
   rule: { id: string; version: string };
   reason: string;
