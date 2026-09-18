@@ -281,7 +281,8 @@ async function pinnedFetch(
 
 function createPinnedFetcher(urlOptions: ProbeUrlOptions): typeof globalThis.fetch {
   return (input, init) => {
-    const url = input instanceof URL ? input : new URL(typeof input === "string" ? input : input.url);
+    const url =
+      input instanceof URL ? input : new URL(typeof input === "string" ? input : input.url);
     return pinnedFetch(url, init ?? {}, urlOptions);
   };
 }
@@ -357,7 +358,6 @@ async function readBounded(response: Response, maxBytes: number): Promise<Uint8A
   }
   return bytes;
 }
-
 function record(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
