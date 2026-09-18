@@ -90,9 +90,7 @@ describe("manifest probe", () => {
   });
 
   it("rejects public hostnames that resolve to restricted addresses", async () => {
-    const lookup = vi.spyOn(dns, "lookup").mockResolvedValue([
-      { address: "127.0.0.1", family: 4 },
-    ]);
+    const lookup = vi.spyOn(dns, "lookup").mockResolvedValue([{ address: "127.0.0.1", family: 4 }]);
     try {
       await expect(probeManifest("https://cdn.example.com/mf-manifest.json")).rejects.toThrow(
         /private, link-local, metadata, or loopback/,
