@@ -9,7 +9,7 @@ For whole-rule `"off"`, severity overrides, packs, and `failOn`, see
 
 **Baselines are debt, not a permanent mute.** Prefer fixing findings. Use a
 baseline only for incremental adoption, and prune entries as debt is paid. Do
-not add per-line `eslint-disable`-style source comments — fingerprint baselines
+not add per-line `eslint-disable`-style source comments, fingerprint baselines
 are enough for v1.
 
 ## File format
@@ -96,7 +96,7 @@ federationDoctor({
 - Set `baseline.failOnSuppressed: true` if suppressed findings should still
   fail the gate.
 - Unused baseline fingerprints emit `doctor/stale-baseline` info findings when
-  `reportStale` is true (default). Remove those entries — the debt is paid.
+  `reportStale` is true (default). Remove those entries, the debt is paid.
 
 ## Incremental adoption recipe
 
@@ -105,4 +105,4 @@ federationDoctor({
 2. `mfdoctor baseline generate` and commit the file.
 3. Turn on CI `failOn: "error"` (or rely on CI auto-detect).
 4. Fix or intentionally baseline only new regressions; prune as you clear debt.
-5. Treat a growing baseline as a process smell — shrink it.
+5. Treat a growing baseline as a process smell, shrink it.

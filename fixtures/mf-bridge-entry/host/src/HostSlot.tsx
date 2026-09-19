@@ -1,5 +1,5 @@
 /**
- * Host-side mf-bridge lazy register shape (stubs — no mf-toolkit dependency).
+ * Host-side mf-bridge lazy register shape (stubs, no mf-toolkit dependency).
  * Mirrors: register={() => import('remote/entry').then((m) => m.register)}
  */
 

@@ -32,6 +32,6 @@ Preconditions:
 ## Gotchas
 
 - This command does not analyze a project. A green capabilities run does not mean the federation is healthy.
-- Do not scrape ANSI — capabilities is JSON-only on stdout.
+- Do not scrape ANSI, capabilities is JSON-only on stdout.
 - `commands` is the short discovery map; `operations` is the detailed per-command contract. Do not treat a missing `operations` key as a complete capabilities payload. `--require-complete` is not a `capabilities` flag; it appears on `check` / `workspace` / `federation` operations and in `nonInteractive.flags`.
 - If the binary is missing, rebuild; do not invent a stub contract.

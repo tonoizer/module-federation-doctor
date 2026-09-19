@@ -15,7 +15,7 @@ Module Federation 2.5+ projects can opt into runtime health correlation, but a d
 
 Add `@module-federation/observability-plugin` and register its browser/runtime entry through `runtimePlugins` or the runtime `plugins` option. The build-only `/build` entry does not provide runtime reporting. Use `off` or a fingerprint baseline when this environment intentionally does not collect runtime reports.
 
-Suppress or retarget with `rules["config/observability-plugin-recommended"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/observability-plugin-recommended"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

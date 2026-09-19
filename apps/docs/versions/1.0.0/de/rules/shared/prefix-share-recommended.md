@@ -15,7 +15,7 @@ Observed `react/...` or `react-dom/...` imports are not covered by the root shar
 
 Add `"react/"` / `"react-dom/"` to `shared`, or add only the exact observed subpaths. Turn `rules["shared/prefix-share-recommended"]` off or baseline the fingerprint when the import boundary is intentional.
 
-Suppress or retarget with `rules["shared/prefix-share-recommended"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["shared/prefix-share-recommended"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

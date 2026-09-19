@@ -15,7 +15,7 @@ The manifest cannot advertise generated type archives to consumers.
 
 Fix DTS generation and ensure its metadata reaches the manifest.
 
-Suppress or retarget with `rules["artifact/types-metadata-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["artifact/types-metadata-missing"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

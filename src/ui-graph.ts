@@ -402,7 +402,7 @@ function buildOrchestrationGraph(findings: DoctorFinding[], federation: Federati
 
 /**
  * Build the programmatic federation graph payload (`DoctorUiPayload`).
- * This is not an HTML report — use it for custom visualizations or validators
+ * This is not an HTML report, use it for custom visualizations or validators
  * against `schemas/ui.schema.json`. Supported CLI/plugin report surfaces remain
  * terminal, JSON, and SARIF only.
  */

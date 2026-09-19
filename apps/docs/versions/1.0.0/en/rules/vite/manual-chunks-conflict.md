@@ -11,7 +11,7 @@ Custom manualChunks / codeSplitting.groups can fight federation bootstrap chunk 
 
 Keep federation runtime chunks isolated; move general splitting outside that graph or allowlist a proven layout. Treat the finding as informational until a production build or runtime trace confirms an ordering problem.
 
-Suppress or retarget with `rules["vite/manual-chunks-conflict"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["vite/manual-chunks-conflict"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

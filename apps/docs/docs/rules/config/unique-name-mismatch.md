@@ -11,7 +11,7 @@ Webpack/Rspack `output.uniqueName` namespaces the compiler runtime. When it disa
 
 Set `output.uniqueName` to the same value as Module Federation `name`. Omit uniqueName when you do not need an override.
 
-Suppress or retarget with `rules["config/unique-name-mismatch"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/unique-name-mismatch"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

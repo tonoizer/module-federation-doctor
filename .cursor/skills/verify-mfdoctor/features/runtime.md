@@ -47,7 +47,7 @@ Preconditions:
 ## Gotchas
 
 - Quote project globs so the CLI expands them.
-- Default project glob is `.mf/doctor/**/project.json` relative to cwd — a
+- Default project glob is `.mf/doctor/**/project.json` relative to cwd, a
   repo-root run without an explicit glob will not see showcase `*.project.json`
   files.
 - Error-severity runtime findings exit `1` even without `--ci`.

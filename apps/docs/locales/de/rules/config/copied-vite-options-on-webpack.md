@@ -15,7 +15,7 @@ Vite-only Module Federation options pasted onto Enhanced / webpack-family config
 
 Remove the listed Vite-only keys from webpack, Rspack, Rsbuild, or Modern.js federation options. They are `@module-federation/vite` controls and have no Enhanced equivalent.
 
-Suppress or retarget with `rules["config/copied-vite-options-on-webpack"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/copied-vite-options-on-webpack"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

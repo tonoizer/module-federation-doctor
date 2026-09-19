@@ -1,13 +1,13 @@
 ---
 title: Observability latest.json → mfdoctor runtime
-description: Feed Module Federation Observability latest.json into mfdoctor runtime offline — no in-browser agent.
+description: Feed Module Federation Observability latest.json into mfdoctor runtime offline, no in-browser agent.
 ---
 
 # Observability latest.json → mfdoctor runtime
 
 Module Federation Observability writes runtime reports such as
 `.mf/observability/latest.json`. MFDoctor consumes that file through the
-**offline** CLI — not by injecting a doctor agent into the browser.
+**offline** CLI, not by injecting a doctor agent into the browser.
 
 ```text
 Observability Plugin  →  .mf/observability/latest.json  →  mfdoctor runtime
@@ -31,7 +31,7 @@ mfdoctor runtime ./.mf/observability/latest.json
 ```
 
 Or set `runtimeTrace` in `mfdoctor.config` and omit the path on the command
-line. Supported report formats are **terminal**, **JSON**, and **SARIF** only —
+line. Supported report formats are **terminal**, **JSON**, and **SARIF** only,
 there is no HTML report or `--ui` dashboard.
 
 ## Expected inputs
@@ -50,7 +50,7 @@ there is no HTML report or `--ui` dashboard.
 Current upstream Observability 2.5.3 reports and the legacy MFDoctor v1 shape
 are supported. Partial reports import as partial evidence; missing fields never
 count as a pass. Unknown future shapes and Observability **build** reports
-(`.mf/observability/build-report.json` / `build-info.json`) are rejected — those
+(`.mf/observability/build-report.json` / `build-info.json`) are rejected, those
 are build telemetry, not runtime traces.
 
 Prefer `latest.json` for the latest complete runtime report. Use
@@ -89,7 +89,7 @@ incomplete. Invalid or missing opt-in traces do not break ordinary
 
 - [CLI: correlate a runtime trace](./cli.md#correlate-a-runtime-trace)
 - [Runtime and manifests](./runtime-manifests.md#observability)
-- [External runtime capture contract](./runtime-capture.md) — validated capture
+- [External runtime capture contract](./runtime-capture.md), validated capture
   envelopes and adapters
-- [Limitations](./limitations.md#permanent-guarantees--non-goals) — no client
+- [Limitations](./limitations.md#permanent-guarantees--non-goals), no client
   injection, no in-browser agent

@@ -1053,7 +1053,7 @@ async function inspectWorkspaceProjects(
 
 /**
  * Discover MFDoctor `project.json` files under workspace roots.
- * Offline only — does not fetch remotes or replace per-app build plugins.
+ * Offline only, does not fetch remotes or replace per-app build plugins.
  */
 export async function discoverWorkspaceProjectsWithBudget(
   options: DiscoverWorkspaceProjectsOptions = {},

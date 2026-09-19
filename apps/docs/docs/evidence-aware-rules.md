@@ -3,7 +3,7 @@
 Built-in rules in MFDoctor now declare prerequisites, applicability,
 confidence ceilings, and typed evaluation outcomes. This guide is for maintainers
 and custom-rule authors who need to understand how evidence-aware semantics differ
-from the legacy `defineRule` “report or stay silent” model.
+from the legacy `defineRule` "report or stay silent" model.
 
 The machine-checked migration inventory lives in
 [`fixtures/rule-inventory/v1.json`](https://github.com/tonoizer/module-federation-doctor/blob/main/fixtures/rule-inventory/v1.json)
@@ -83,7 +83,7 @@ public v2 author API stabilizes ([#83](https://github.com/tonoizer/module-federa
 
 ## Related docs
 
-- [Report schemas](./report-schemas.md) — v1 surfaces vs additive v2 evidence
-- [Runtime capture](./runtime-capture.md) — imported runtime evidence and unknown handling
-- [Security policy](https://github.com/tonoizer/module-federation-doctor/blob/main/SECURITY.md) — reporting, privacy, and redaction behavior
-- [ADR 0083](https://github.com/tonoizer/module-federation-doctor/blob/main/docs/adr/0083-evidence-aware-rule-contract.md) — contract decision record
+- [Report schemas](./report-schemas.md), v1 surfaces vs additive v2 evidence
+- [Runtime capture](./runtime-capture.md), imported runtime evidence and unknown handling
+- [Security policy](https://github.com/tonoizer/module-federation-doctor/blob/main/SECURITY.md), reporting, privacy, and redaction behavior
+- [ADR 0083](https://github.com/tonoizer/module-federation-doctor/blob/main/docs/adr/0083-evidence-aware-rule-contract.md), contract decision record

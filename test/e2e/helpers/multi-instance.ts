@@ -97,7 +97,7 @@ export function expectDoctorReport(fixture: MatrixFixture): void {
   expect(report.summary?.errors, `${fixture.name} MFDoctor errors`).toBe(0);
 }
 
-/** Assert instance identity and artifact ownership, not just that a browser page rendered. */
+/** Assert instance identity and artifact ownership, alongside browser rendering. */
 export function expectDoctorInstanceScope(fixture: MatrixFixture): void {
   const project = readDoctorProject(fixture);
   const instances = projectInstances(project);

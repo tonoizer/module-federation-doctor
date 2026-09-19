@@ -14,6 +14,6 @@ with `version: undefined` and break runtime share matching.
 
 `shared/subpath-version-unresolved` is Vite-only (`@module-federation/vite`
 `normalizeSharedKey` / `searchPackageVersion`). Webpack and Rspack Enhanced
-prefix/`react/` keys do not inherit a parent provider version — do not copy the
+prefix/`react/` keys do not inherit a parent provider version, do not copy the
 Vite fix onto those bundlers. `shared/prefix-share-recommended` remains
 all-bundler and still fires when observed `react/...` imports are uncovered.

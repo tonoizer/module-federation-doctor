@@ -114,7 +114,7 @@ function staleFinding(entry: BaselineEntry): DoctorFinding {
       ...(entry.project ? { project: entry.project } : {}),
     },
     suggestion:
-      "Remove this entry from the baseline file — the finding is gone and the debt is paid.",
+      "Remove this entry from the baseline file, the finding is gone and the debt is paid.",
     documentation: "/baselines",
   };
   return { ...base, fingerprint: fingerprint(base) };

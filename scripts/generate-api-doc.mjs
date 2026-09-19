@@ -48,7 +48,7 @@ function importTarget(value) {
 
 function schemaPurpose(key) {
   if (key === "./schemas/ui.schema.json") {
-    return "Programmatic graph (`buildUiPayload`) — not an HTML dashboard or `--ui` flag.";
+    return "Programmatic graph (`buildUiPayload`), not an HTML dashboard or `--ui` flag.";
   }
   return "Public JSON Schema contract.";
 }

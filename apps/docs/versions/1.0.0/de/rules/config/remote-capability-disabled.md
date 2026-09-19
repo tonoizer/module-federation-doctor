@@ -15,7 +15,7 @@ Tree-shaken remote-consumption code cannot load configured remotes.
 
 Remove `disableRemote` or remove all consumed remotes.
 
-Suppress or retarget with `rules["config/remote-capability-disabled"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/remote-capability-disabled"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

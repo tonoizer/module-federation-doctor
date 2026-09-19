@@ -11,7 +11,7 @@
 
 Prefer `enableBridgeRouter: false` (or true) over `disableAlias`, or set the rule to `"off"`.
 
-Suppress or retarget with `rules["bridge/disable-alias-deprecated"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["bridge/disable-alias-deprecated"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

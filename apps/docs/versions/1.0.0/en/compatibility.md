@@ -2,7 +2,7 @@
 
 Documented and CI-exercised support for every bundler and runtime MFDoctor claims
 in v1. Status labels are tied to analysis capabilities and real build+MFDoctor
-paths — not fixture-only confidence.
+paths, not fixture-only confidence.
 
 Related: [capabilities](./capabilities.md) ·
 [limitations](./limitations.md) ·
@@ -11,11 +11,11 @@ Related: [capabilities](./capabilities.md) ·
 
 ## Status labels
 
-| Status          | Meaning                                                                                         |
-| --------------- | ----------------------------------------------------------------------------------------------- |
-| **supported**   | First-class adapter + real bundler build writes MFDoctor facts; exercised in CI                 |
-| **partial**     | Usable with honest gaps — emits `doctor/partial-analysis` (or weaker evidence) instead of lying |
-| **unsupported** | Out of v1 scope (post-v1 or permanent non-goal)                                                 |
+| Status          | Meaning                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| **supported**   | First-class adapter + real bundler build writes MFDoctor facts; exercised in CI                |
+| **partial**     | Usable with honest gaps, emits `doctor/partial-analysis` (or weaker evidence) instead of lying |
+| **unsupported** | Out of v1 scope (post-v1 or permanent non-goal)                                                |
 
 ## Bundlers
 
@@ -56,7 +56,7 @@ application build remains dependent on the upstream package-resolution issue
 tracked in [nuxt/nuxt#36009](https://github.com/nuxt/nuxt/issues/36009).
 
 Runtime-only Module Federation (no bundler MF **build** plugin) is
-**unsupported** as a first-class path — see
+**unsupported** as a first-class path, see
 [limitations](./limitations.md#permanent-guarantees--non-goals) and
 [#34](https://github.com/tonoizer/module-federation-doctor/issues/34).
 
@@ -90,8 +90,8 @@ certainty (`shared/unused`, invented remotes, scraped private plugin fields).
 | Manager                | Status        | Notes                                                                                                                                                                                                                                    |
 | ---------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **pnpm** (primary)     | **supported** | Vite+ delegates to pnpm 11 (`packageManager: "pnpm@11.17.0"`; `engines.pnpm: ">=11.0.0 <12.0.0"`); CI uses `vp install --frozen-lockfile`; workspace filters for examples; ten-day release-age and explicit build approvals are enforced |
-| npm                    | **partial**   | Published package installs with `npm i -D @tonoizer/mfdoctor`; CLI via `npx mfdoctor`. This monorepo’s lockfile and filters are pnpm-only — do not expect `npm install` at the repo root to reproduce CI.                                |
-| yarn (classic / Berry) | **partial**   | Same published-package install/CLI story as npm. Yarn workspaces are not the repo’s CI path; use pnpm for contributing and matrix jobs.                                                                                                  |
+| npm                    | **partial**   | Published package installs with `npm i -D @tonoizer/mfdoctor`; CLI via `npx mfdoctor`. This monorepo's lockfile and filters are pnpm-only, do not expect `npm install` at the repo root to reproduce CI.                                 |
+| yarn (classic / Berry) | **partial**   | Same published-package install/CLI story as npm. Yarn workspaces are not the repo's CI path; use pnpm for contributing and matrix jobs.                                                                                                  |
 
 Where paths differ: contributors and CI always use **pnpm**. Consumers of the
 published tarball may use npm or yarn to install MFDoctor into their own app; the
@@ -127,13 +127,13 @@ Reds that **block** a release claim for supported cells:
 
 Reds that **do not** block other cells:
 
-1. npm/yarn consumer-path differences — documented partial; monorepo CI stays
+1. npm/yarn consumer-path differences, documented partial; monorepo CI stays
    pnpm.
-2. Expected `doctor/partial-analysis` warnings on partial analysis paths —
+2. Expected `doctor/partial-analysis` warnings on partial analysis paths,
    honest gaps, not matrix failures.
-3. Rolldown / Vite Plus — documented **partial** (unit lifecycle coverage only;
+3. Rolldown / Vite Plus, documented **partial** (unit lifecycle coverage only;
    no release claim until a real smoke build is in `compatibility.yml`).
-4. Modern.js — documented **partial** (adapter API + Rspack-under-the-hood
+4. Modern.js, documented **partial** (adapter API + Rspack-under-the-hood
    smoke; no full **supported** claim until a real `@modern-js/app-tools`
    build is in `compatibility.yml`).
 

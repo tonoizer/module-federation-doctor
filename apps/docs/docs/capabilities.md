@@ -13,21 +13,21 @@ Analysis depth per supported bundler. For supported / partial / unsupported
 | Emitted assets                         | On-disk `writeBundle` / `closeBundle` (Rolldown-safe)           | Compilation hooks     | Rspack when available | Compilation hooks     | Via Rspack/Webpack `afterEmit`                           | Same Vite emit hooks via `vite:extendConfig`; dual client/SSR |
 | Opt-in runtime traces                  | Correlated when `runtimeTrace` / `mfdoctor runtime` is supplied | Same                  | Same                  | Same                  | Same                                                     | Same                                                          |
 | Cross-project checks                   | Yes                                                             | Yes                   | Yes                   | Yes                   | Yes                                                      | Yes                                                           |
-| Lifecycle recording                    | `bundler.lifecycle` (`vite` / `rolldown-vite` / `vite-plus`)    | —                     | —                     | —                     | —                                                        | Vite lifecycle via `vite:extendConfig` (client + SSR)         |
+| Lifecycle recording                    | `bundler.lifecycle` (`vite` / `rolldown-vite` / `vite-plus`)    | Not recorded          | Not recorded          | Not recorded          | Not recorded                                             | Vite lifecycle via `vite:extendConfig` (client + SSR)         |
 
 Rules consult recorded capabilities. Missing optional input creates
 `doctor/partial-analysis` instead of pretending full analysis happened.
-Agents must not claim green while that finding (or exit code `2`) remains —
+Agents must not claim green while that finding (or exit code `2`) remains,
 see the [agent loop](./agent-loop.md).
-The “Manifest and stats” row is **not** a blanket Yes: Vite/Rolldown omit
+The "Manifest and stats" row is **not** a blanket Yes: Vite/Rolldown omit
 `mf-manifest.json` / `mf-stats.json` unless `manifest: true`, and missing
 webpack compilation stats on those bundlers is expected. Enhanced
 Webpack/Rspack/Rsbuild builds with remotes and `capabilities.stats: false`
-are incomplete (`missing-stats` or `artifact/manifest-disabled`) — not the
+are incomplete (`missing-stats` or `artifact/manifest-disabled`), not the
 Vite opt-in path. See the
 [per-bundler matrix](./runtime-manifests.md#per-bundler-expectations).
 Adapters must not scrape private Module Federation plugin fields to invent
-coverage — see
+coverage, see
 [permanent guarantees / non-goals](./limitations.md#permanent-guarantees--non-goals).
 
 `mfdoctor capabilities` is the versioned CLI contract (commands, formats, exit
@@ -37,7 +37,7 @@ engine, adapters, or other CLI commands.
 
 ## Dynamic-import completeness (v1)
 
-MFDoctor’s import/shared analysis is **not** “static only.” Offline `check` /
+MFDoctor's import/shared analysis is **not** "static only." Offline `check` /
 adapter runs resolve the patterns below when evidence exists in source, config,
 manifest facts, or an opt-in Observability export. Unresolvable dynamics yield
 `doctor/partial-analysis` rather than fabricated certainty. MFDoctor still does
@@ -70,7 +70,7 @@ aliases are not treated as shared packages.
 | Executing remote JS or fetching live remotes during `check` / `federation`    | Out of scope (use `probe` / Observability separately)                 |
 
 When unresolved package-capable dynamics exist, `shared/unused` does **not**
-claim a package is unused — prefer `doctor/partial-analysis` over a false pass
+claim a package is unused, prefer `doctor/partial-analysis` over a false pass
 or false unused finding.
 
 ## Library contracts (1.1.0+)

@@ -407,7 +407,7 @@ export function renderVerificationPlan(plan: VerificationPlan): string {
     ...(plan.requiredArtifacts.length > 0
       ? plan.requiredArtifacts.map((artifact) => `  - \`${artifact}\``)
       : ["  - (none explicitly supplied)"]),
-    `- Rebuild required: ${plan.rebuildRequired ? "yes" : "no"} — ${plan.rebuildReason}`,
+    `- Rebuild required: ${plan.rebuildRequired ? "yes" : "no"}, ${plan.rebuildReason}`,
     `- Build command: ${buildCommand}`,
     `- Follow-up (${plan.followUp.kind}, ${plan.followUp.required ? "required" : "not required"}): ${followUpCommand}`,
     `  ${plan.followUp.reason}`,
@@ -465,7 +465,7 @@ function locationLine(finding: DoctorFinding): string | undefined {
 
 /**
  * Build a stable, copy-paste markdown prompt for exactly one finding.
- * Patterns only — no licensed React Doctor source. Does not suggest suppressions.
+ * Patterns only, no licensed React Doctor source. Does not suggest suppressions.
  */
 export function buildAgentPrompt(finding: DoctorFinding, options: AgentPromptOptions = {}): string {
   const guidance = ruleGuidance[finding.ruleId];
@@ -607,7 +607,7 @@ export interface DiagnosticsDumpResult {
  * Prompt count defaults to {@link DEFAULT_PROMPT_FINDINGS}; pass `limit` (or
  * resolve via {@link resolveDiagnosticsPromptLimit}) to dump more, up to
  * {@link MAX_DIAGNOSTICS_PROMPT_FINDINGS}. No secrets, env dumps, or
- * node_modules trees — report paths stay as stored.
+ * node_modules trees, report paths stay as stored.
  */
 export async function writeDiagnosticsDump(
   report: DoctorReport,
@@ -663,7 +663,7 @@ export async function writeDiagnosticsDump(
       : "## Top findings";
 
   const summaryLines = [
-    "# MFDoctor — agent diagnostics",
+    "# MFDoctor, agent diagnostics",
     "",
     scoreLine,
     `${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info` +
@@ -674,7 +674,7 @@ export async function writeDiagnosticsDump(
       ? ["- (none)"]
       : top.map(
           (finding, index) =>
-            `${index + 1}. \`${finding.ruleId}\` (${finding.severity}) — ${finding.message}`,
+            `${index + 1}. \`${finding.ruleId}\` (${finding.severity}), ${finding.message}`,
         )),
     "",
     "## Prompt files",

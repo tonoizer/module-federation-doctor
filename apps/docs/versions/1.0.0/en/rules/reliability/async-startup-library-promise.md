@@ -11,7 +11,7 @@ Async startup changes synchronous library entry exports into a Promise contract.
 
 Make consumers await it or keep synchronous startup for that library.
 
-Suppress or retarget with `rules["reliability/async-startup-library-promise"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["reliability/async-startup-library-promise"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

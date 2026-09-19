@@ -68,14 +68,14 @@ Accepted formats are `terminal`, `json`, and `sarif`. JSON and SARIF artifacts
 are written below `.mf/doctor/`. A format list containing only `json` or `sarif`
 does not add human-readable terminal output.
 
-### Vollständige Evidenz verlangen
+### Require complete evidence
 
-`--require-complete` ist ein optionales Gate für `check`, `workspace` und
-`federation`. Es liefert Exit-Code `1`, sobald der Report unvollständig ist:
-fehlende Post-Emit-Evidenz, partielle Bundler-Abdeckung, fehlende Enhanced-Stats,
-Quell- oder Budget-Unsicherheit oder ein Workspace-Diagnoseeintrag. Ohne das
-Flag bleibt das Legacy-Verhalten einschließlich Exit-Code `2` für unvollständige
-Workspace-Analysen erhalten.
+`--require-complete` is an opt-in gate for `check`, `workspace`, and
+`federation`. It returns exit `1` whenever the report is incomplete: missing
+post-emit evidence, partial bundler coverage, missing enhanced stats, source or
+budget uncertainty, or any workspace discovery diagnostic. Omit the flag to
+preserve the legacy behavior, including exit `2` for incomplete workspace
+analysis.
 
 ```bash
 mfdoctor check --require-complete
@@ -159,7 +159,7 @@ Override the discovery layout only when the defaults do not fit:
 mfdoctor workspace --glob "packages/*/.mf/doctor/project.json"
 ```
 
-Quote globs so the CLI—not the shell—expands them consistently.
+Quote globs so the CLI, not the shell, expands them consistently.
 
 ## Eine Federation prüfen
 

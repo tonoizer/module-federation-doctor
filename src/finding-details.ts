@@ -7,7 +7,7 @@ import { redact } from "./utils.js";
  * Versioned, machine-readable finding detail payloads (#136).
  *
  * `detailsSchema` + `details` are top-level finding fields only. They are never
- * written into `evidence` and are never inputs to `fingerprint()` — baselines,
+ * written into `evidence` and are never inputs to `fingerprint()`, baselines,
  * SARIF partial fingerprints, and fingerprint stability stay unchanged.
  */
 

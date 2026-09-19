@@ -15,7 +15,7 @@ A remote cycle is valid Module Federation topology by itself. MFDoctor warns onl
 
 Keep valid `loaded-first` bi-directional setups. For a risky cycle, use `loaded-first`, add startup fallback handling, or make the remote edge on the startup path lazy.
 
-Suppress or retarget with `rules["federation/circular-remote-graph"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["federation/circular-remote-graph"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

@@ -15,7 +15,7 @@ A remote that both exposes modules and consumes remotes publishes an incomplete 
 
 Enable `dts.generateTypes.extractRemoteTypes` on nested producers. Host-only consumers do not need this flag.
 
-Suppress or retarget with `rules["config/nested-producer-dts-extract"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/nested-producer-dts-extract"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

@@ -11,7 +11,7 @@ Browser-only Vue Bridge entries in node/SSR builds miss the server/hydration con
 
 Import `@module-federation/bridge-vue3/server` (or the documented SSR entry). Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.
 
-Suppress or retarget with `rules["bridge/vue-server-entry"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["bridge/vue-server-entry"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

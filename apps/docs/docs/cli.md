@@ -12,7 +12,7 @@ source scanner and does not inject an agent into the browser. The build plugin
 remains the primary integration; use the CLI for tasks outside a bundler emit.
 
 Agents: `mfdoctor check` is tier 1 (config/static). Do **not** claim green from
-check alone — finish plugin emit plus the workspace gate, and never ignore
+check alone, finish plugin emit plus the workspace gate, and never ignore
 `doctor/partial-analysis`. See the [agent loop](./agent-loop.md).
 
 After installing `@tonoizer/mfdoctor` as a development dependency, run the
@@ -26,18 +26,18 @@ The examples below use the shorter `mfdoctor` form.
 
 ## Choose a command
 
-| Command                                      | Use it for                                                                                 | Network access             |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------- |
-| [`check`](#check-one-project)                | Analyze one project or checkout (tier 1 — not a full green claim alone)                    | No                         |
-| [`workspace`](#check-a-workspace)            | Discover built MFDoctor project facts below one or more roots and gate the full federation | No                         |
-| [`federation`](#check-a-federation)          | Analyze explicit `project.json` globs, or use workspace discovery explicitly               | No                         |
-| [`baseline`](#manage-a-baseline)             | Generate, extend, or prune accepted finding fingerprints                                   | No                         |
-| [`runtime`](#correlate-a-runtime-trace)      | Correlate an Observability export with local MFDoctor project facts                        | No                         |
-| [`prompt`](#print-agent-fix-prompts)         | Reprint fix prompts from a saved MFDoctor report                                           | No                         |
-| [`rules`](#inspect-the-rule-catalog)         | Inspect all built-in rules or one rule's metadata                                          | No                         |
-| [`capabilities`](#discover-cli-capabilities) | Print the versioned machine-readable CLI contract                                          | No                         |
-| [`probe`](#probe-a-deployed-manifest)        | Validate a deployed manifest and optionally its remote entry                               | **Yes — explicit request** |
-| [`compare`](#compare-deployed-manifests)     | Diff two or more deployed manifests (name, exposes, shared, publicPath, remoteEntry)       | **Yes — explicit request** |
+| Command                                      | Use it for                                                                                 | Network access            |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------- |
+| [`check`](#check-one-project)                | Analyze one project or checkout (tier 1, not a full green claim alone)                     | No                        |
+| [`workspace`](#check-a-workspace)            | Discover built MFDoctor project facts below one or more roots and gate the full federation | No                        |
+| [`federation`](#check-a-federation)          | Analyze explicit `project.json` globs, or use workspace discovery explicitly               | No                        |
+| [`baseline`](#manage-a-baseline)             | Generate, extend, or prune accepted finding fingerprints                                   | No                        |
+| [`runtime`](#correlate-a-runtime-trace)      | Correlate an Observability export with local MFDoctor project facts                        | No                        |
+| [`prompt`](#print-agent-fix-prompts)         | Reprint fix prompts from a saved MFDoctor report                                           | No                        |
+| [`rules`](#inspect-the-rule-catalog)         | Inspect all built-in rules or one rule's metadata                                          | No                        |
+| [`capabilities`](#discover-cli-capabilities) | Print the versioned machine-readable CLI contract                                          | No                        |
+| [`probe`](#probe-a-deployed-manifest)        | Validate a deployed manifest and optionally its remote entry                               | **Yes, explicit request** |
+| [`compare`](#compare-deployed-manifests)     | Diff two or more deployed manifests (name, exposes, shared, publicPath, remoteEntry)       | **Yes, explicit request** |
 
 MFDoctor loads an optional `mfdoctor.config.ts`; command-line flags override its
 values. Use `extends` for [named presets and shareable policy packs](./policy-packs.md).
@@ -221,7 +221,7 @@ Override the discovery layout only when the defaults do not fit:
 mfdoctor workspace --glob "packages/*/.mf/doctor/project.json"
 ```
 
-Quote globs so the CLI—not the shell—expands them consistently.
+Quote globs so the CLI, not the shell, expands them consistently.
 
 ## Check a federation
 
@@ -363,7 +363,7 @@ stdout.
 
 ## GitHub Actions
 
-Host teams copy this consumer workflow — ordinary Node + your package manager.
+Host teams copy this consumer workflow, ordinary Node + your package manager.
 It does **not** use Vite Plus, `vp`, or this repository's `setup-vp` action.
 
 Run the workspace gate only after every federated app that registers an

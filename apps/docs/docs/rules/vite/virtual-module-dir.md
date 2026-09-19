@@ -11,7 +11,7 @@ A `virtualModuleDir` with slashes is not a single virtual folder. Nested names c
 
 Use one simple directory name without slashes, for example `__mf__`.
 
-Suppress or retarget with `rules["vite/virtual-module-dir"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["vite/virtual-module-dir"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

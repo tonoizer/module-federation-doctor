@@ -1,6 +1,6 @@
 ---
 title: Agent loop
-description: Two-tier MFDoctor loop — mfdoctor check vs plugin emit plus workspace before claiming green.
+description: Two-tier MFDoctor loop, mfdoctor check vs plugin emit plus workspace before claiming green.
 ---
 
 # Agent loop
@@ -12,10 +12,10 @@ pass, and never treat incomplete analysis as a pass.
 
 ## Two tiers
 
-| Tier                     | What to run                                                                            | What it proves                                                                        | What it does **not** prove                                                                       |
-| ------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **1 — Config / static**  | `mfdoctor check` (JSON/SARIF + diagnostics when handing off)                           | Offline config, imports, and other facts available without a bundler emit             | Emitted manifests, stats, assets, or cross-app federation contracts                              |
-| **2 — Emit + workspace** | Build with a MFDoctor adapter, then `mfdoctor workspace` (or `federation --workspace`) | Post-emit project facts (`.mf/doctor/project.json`) and host↔remote / shared topology | Nothing further is required for a local/CI green claim; optional `runtime` / `probe` stay opt-in |
+| Tier                    | What to run                                                                            | What it proves                                                                        | What it does **not** prove                                                                       |
+| ----------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **1, Config / static**  | `mfdoctor check` (JSON/SARIF + diagnostics when handing off)                           | Offline config, imports, and other facts available without a bundler emit             | Emitted manifests, stats, assets, or cross-app federation contracts                              |
+| **2, Emit + workspace** | Build with a MFDoctor adapter, then `mfdoctor workspace` (or `federation --workspace`) | Post-emit project facts (`.mf/doctor/project.json`) and host↔remote / shared topology | Nothing further is required for a local/CI green claim; optional `runtime` / `probe` stay opt-in |
 
 Hard rule: **do not claim green from `mfdoctor check` alone.**
 
@@ -58,14 +58,14 @@ Quiet success prints nothing. Exit codes: `0` policy passed, `1` policy failed,
 ## `doctor/partial-analysis` is not green
 
 [`doctor/partial-analysis`](./rules/doctor/partial-analysis.md) means MFDoctor
-lacked facts it needed — missing MF options, unresolved dynamic imports, unread
+lacked facts it needed, missing MF options, unresolved dynamic imports, unread
 sources, budget-limited projects, omitted workspace projects, or missing emit
 capabilities (for example Vite without `manifest: true`).
 
 Treat it as **incomplete analysis**, not a soft warning you can ignore:
 
 - Do not claim green while a non-suppressed `doctor/partial-analysis` remains.
-- Exit code `2` means analysis incomplete — same rule: not a pass.
+- Exit code `2` means analysis incomplete, same rule: not a pass.
 - Prefer restoring evidence (pass `moduleFederation`, enable emit/manifests,
   fix source reads, raise budgets, or use an opt-in runtime trace) over muting
   the rule. Suppress only when the user asked for intentional governance.
@@ -79,7 +79,7 @@ partial analysis. See the
 
 | Audience  | Takeaway                                                                |
 | --------- | ----------------------------------------------------------------------- |
-| **Agent** | “Am I done?” = tier 1 **and** tier 2; partial analysis blocks green     |
+| **Agent** | "Am I done?" = tier 1 **and** tier 2; partial analysis blocks green     |
 | **Human** | `check` ≠ plugin emit ≠ workspace; the plugin remains the primary DX    |
 | **CI**    | Why builds register adapters and why a workspace job follows app builds |
 
@@ -91,7 +91,7 @@ MFDoctor does not ship, and agents must not invent:
 - In-browser doctor or runtime agent injection
 - A general `--fix` that mutates the project without a finding-driven change
 - MCP servers, VS Code problem matchers, or `check --watch` (tracked separately)
-- A Next.js (`@module-federation/nextjs-mf`) adapter — **unsupported**; prefer
+- A Next.js (`@module-federation/nextjs-mf`) adapter, **unsupported**; prefer
   Rsbuild or Modern.js ([limitations](./limitations.md#permanent-guarantees--non-goals))
 
 For Module Federation concepts (shared, remotes, Bridge, observability), use the

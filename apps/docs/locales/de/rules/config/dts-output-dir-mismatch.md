@@ -15,7 +15,7 @@ A nested remote-entry `filename` that disagrees with `dts.generateTypes.outputDi
 
 Align `filename` directory layout with `dts.generateTypes.outputDir`, or keep both at the output root.
 
-Suppress or retarget with `rules["config/dts-output-dir-mismatch"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/dts-output-dir-mismatch"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

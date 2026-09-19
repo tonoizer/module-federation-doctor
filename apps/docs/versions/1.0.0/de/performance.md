@@ -173,7 +173,7 @@ MFDoctor reports a hard error when a removed capability is still configured. It
 reports snapshot loss as reliability risk because the build may run while
 important tooling silently disappears.
 
-## Vite-specific costs
+## Vite-spezifische Kosten
 
 - `bundleAllCSS: true` attaches all CSS to every expose. Use it only when each
   expose needs the full style set.

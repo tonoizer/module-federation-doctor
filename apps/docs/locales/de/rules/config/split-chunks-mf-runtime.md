@@ -15,7 +15,7 @@ User cacheGroups that target mf-* / remoteEntry / shared-runtime chunks can stea
 
 Exclude federation runtime chunks from cacheGroups (name, test, and filename). Leave MF-owned remoteEntry and shared-runtime chunks to the federation plugin, or allowlist a proven layout with `allowSplitChunks: true`.
 
-Suppress or retarget with `rules["config/split-chunks-mf-runtime"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/split-chunks-mf-runtime"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

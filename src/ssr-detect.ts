@@ -27,7 +27,7 @@ export function optionSsrMode(options: Record<string, unknown>): SsrModeOption |
 /**
  * True when MFDoctor should apply node/SSR dual-env rules.
  *
- * Do not trust `builds[].targetKind` alone — Vite browser builds often record a
+ * Do not trust `builds[].targetKind` alone, Vite browser builds often record a
  * single `targetKind=node` output from default `ssr.target`. Require an explicit
  * MF node target (`experiments.target` / `vite.target`) or `ssrMode`.
  */
@@ -80,7 +80,7 @@ export function remoteEntryImpliedTarget(entry: string): RemoteEntryTargetKind |
  * Consumer target for remoteEntry pairing. Requires an explicit MF target,
  * `ssrMode`, or unambiguous `builds.targetKind`. Mixed web+ssr/node outputs
  * (dual-env Nitro pairing) and bare `targetKind=node` (Vite default `ssr.target`)
- * are skipped — not a producer/consumer contract.
+ * are skipped, not a producer/consumer contract.
  */
 export function consumerRemoteTargetKind(
   facts: ProjectFacts,

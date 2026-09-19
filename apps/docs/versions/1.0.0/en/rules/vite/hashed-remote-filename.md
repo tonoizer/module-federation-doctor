@@ -11,7 +11,7 @@ Hashed remote entry filenames invalidate consumer URLs whenever the producer reb
 
 Use a stable `filename` such as `remoteEntry.js` for the container entry.
 
-Suppress or retarget with `rules["vite/hashed-remote-filename"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["vite/hashed-remote-filename"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

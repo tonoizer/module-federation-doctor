@@ -11,7 +11,7 @@ Hand-rolled `loadRemote` mounts skip Vue Bridge lifecycle helpers and documented
 
 Prefer `createRemoteAppComponent` from `@module-federation/bridge-vue3`, or set the rule to `"off"`.
 
-Suppress or retarget with `rules["bridge/vue-consumer-manual"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["bridge/vue-consumer-manual"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

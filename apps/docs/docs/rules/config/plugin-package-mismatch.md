@@ -11,7 +11,7 @@ Using the wrong integration can skip required bundler hooks and runtime generati
 
 Use the official package for Vite, Rspack, Rsbuild, Webpack, or Modern.js. For Rspack, depend on `@module-federation/enhanced` (or `@module-federation/enhanced/rspack`) and remove leftover `@module-federation/rspack`.
 
-Suppress or retarget with `rules["config/plugin-package-mismatch"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/plugin-package-mismatch"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

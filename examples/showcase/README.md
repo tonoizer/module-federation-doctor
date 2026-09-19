@@ -9,7 +9,7 @@ For per-bundler **build+MFDoctor** demos with visible findings, use
 
 Showcase fixtures prefer cases Module Federation plugins often allow through to
 a build (or only warn about later). Rules that duplicate a hard plugin
-failure—such as a missing `name`—stay in the catalog but are not demoed here.
+failure, such as a missing `name`, stay in the catalog but are not demoed here.
 
 ## Config
 

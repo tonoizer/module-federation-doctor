@@ -24,7 +24,7 @@ pnpm add -D @tonoizer/mfdoctor
 **Name clash:** `npx mf-doctor` is a different package (tiagocastro070), not this
 project. This package is `@tonoizer/mfdoctor` (CLI binary `mfdoctor`). Install as
 a dependency and run via package-manager exec (`pnpm exec mfdoctor`,
-`npx mfdoctor`, etc.) — not `npx mf-doctor`.
+`npx mfdoctor`, etc.), not `npx mf-doctor`.
 
 Use npm or Yarn if that is what the project already uses. Supported versions
 are listed in the [compatibility matrix](./compatibility.md).
@@ -71,7 +71,7 @@ JSON, and SARIF reports.
 
 Use this loop:
 
-1. Build the project (plugin emit — strongest evidence).
+1. Build the project (plugin emit, strongest evidence).
 2. Fix each policy-failing finding.
 3. Rebuild until the process exits `0`.
 4. In a monorepo, run `mfdoctor workspace` after every app has built.
@@ -79,7 +79,7 @@ Use this loop:
    fingerprint. Do not remove MFDoctor to make CI green.
 
 `mfdoctor check` alone is offline config/static analysis. Do not claim green
-from check alone — see the [agent loop](./agent-loop.md) (check vs emit +
+from check alone, see the [agent loop](./agent-loop.md) (check vs emit +
 workspace) and treat [`doctor/partial-analysis`](./rules/doctor/partial-analysis.md)
 as incomplete analysis.
 

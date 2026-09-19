@@ -7,11 +7,11 @@ under the hood (what Modern.js does internally) so CI stays light without
 pulling `@modern-js/app-tools`.
 
 This is a **documented stub** of the Modern adapter afterEmit path with
-intentional findings and `failOn: "never"`. Matrix status stays **partial** —
+intentional findings and `failOn: "never"`. Matrix status stays **partial**,
 not a first-class `@modern-js/app-tools` claim (that is #130 / BL-26). Green
 adapter wiring smoke lives in [`../../compatibility/modern`](../../compatibility/modern).
 
-**Not** a replacement for `@tonoizer/mfdoctor/rspack` — bare Rspack apps keep
+**Not** a replacement for `@tonoizer/mfdoctor/rspack`, bare Rspack apps keep
 using that entry (see `rspack/` in this folder).
 
 ```bash

@@ -3,7 +3,7 @@
 Custom rules use `defineRule` and receive frozen normalized facts only. A rule
 may be async. It reports findings through `context.report` and cannot mutate
 facts. Facts come from public MF options, manifests, stats, and recorded
-capabilities — not private plugin state
+capabilities, not private plugin state
 ([limitations](./limitations.md#permanent-guarantees--non-goals)).
 
 ```ts
@@ -21,7 +21,7 @@ export const requireManifest = defineRule({
       context.report({
         message: "Manifest missing.",
         evidence: {},
-        // Optional (#136): detailsSchema + details — never put schema version in evidence
+        // Optional (#136): detailsSchema + details, never put schema version in evidence
         // detailsSchema: "custom.team.topic.v1",
         // details: { path: "mf-manifest.json" },
       });

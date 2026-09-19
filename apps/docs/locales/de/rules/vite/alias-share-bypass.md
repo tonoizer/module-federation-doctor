@@ -15,7 +15,7 @@ resolve.alias can rewrite imports around the share scope and duplicate singleton
 
 Remove the overlapping alias, drop the package from shared, or allowlist intentional bypasses.
 
-Suppress or retarget with `rules["vite/alias-share-bypass"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["vite/alias-share-bypass"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

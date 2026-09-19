@@ -173,7 +173,7 @@ prompts on that stream (terminal findings move to stderr). \`--no-write\` skips
 report files on disk; with JSON formats it still emits JSON on stdout.
 
 Agent prompts: after the score, terminal prints up to three copy-paste fix
-prompts (severity then impact) for local runs. CI hides them by default —
+prompts (severity then impact) for local runs. CI hides them by default,
 pass --prompt / prompt: true to print, or --diagnostics-dir to dump
 prompts/*.md without terminal noise. Pass --no-prompt / prompt: false to
 hide locally. \`mfdoctor prompt --finding <fingerprint|ruleId>\` reads
@@ -196,7 +196,7 @@ never downloads or executes remote JavaScript. Exit 0 = no material diff,
 
 Baselines: use fingerprint baselines for incremental adoption. Suppressed
 findings still appear in reports but do not fail policy unless
-baseline.failOnSuppressed is set. Baselines are tracked debt — shrink them.`;
+baseline.failOnSuppressed is set. Baselines are tracked debt, shrink them.`;
 }
 
 export function parseArgs(argv: string[]): Parsed {

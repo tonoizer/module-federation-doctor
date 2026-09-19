@@ -15,7 +15,7 @@ A createScript hook without createLink can waste preload work when link-based lo
 
 Add createLink when preloadRemote or CSS/JS link loading is in play, or suppress if preload is unused.
 
-Suppress or retarget with `rules["runtime-plugins/create-script-without-link"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["runtime-plugins/create-script-without-link"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

@@ -32,7 +32,7 @@ vp run --filter @mfdoctor-standalone/modern build
 Each cell sets `failOn: "never"` so the build still completes and writes
 `.mf/doctor/report.json`. The demo script asserts the expected rule IDs are
 present. The Modern cell also asserts `project.json` records `bundler: "modern"`.
-It does **not** change the compatibility matrix status — Modern.js stays
+It does **not** change the compatibility matrix status, Modern.js stays
 **partial** until a real `@modern-js/app-tools` build lands ([#130](https://github.com/tonoizer/module-federation-doctor/issues/130)).
 
 For one-rule CLI fixtures, see the [one-rule showcase](./showcase.md).

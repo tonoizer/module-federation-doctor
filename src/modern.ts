@@ -63,13 +63,13 @@ function createAfterEmitPlugin(
 }
 
 /**
- * Modern.js-oriented MFDoctor plugin — register next to `moduleFederationPlugin`
+ * Modern.js-oriented MFDoctor plugin, register next to `moduleFederationPlugin`
  * from `@module-federation/modern-js` / `@module-federation/modern-js-v3`.
  *
  * Modern.js sits on Rspack (or Webpack). This adapter records `bundler: "modern"`
  * and attaches the **same** post-emit analysis used by the direct Rspack/Webpack
  * adapters via `modifyBundlerChain`. It does **not** replace or deprecate
- * `@tonoizer/mfdoctor/rspack` — bare `@rspack/core` projects should keep
+ * `@tonoizer/mfdoctor/rspack`, bare `@rspack/core` projects should keep
  * using that entry.
  */
 export function moduleFederationDoctorPlugin(options: DoctorOptions = {}): ModernDoctorPlugin {

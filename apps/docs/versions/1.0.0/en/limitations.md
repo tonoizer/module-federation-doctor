@@ -1,9 +1,9 @@
 # Limitations
 
 MVP supports Vite (including Rolldown-integrated Vite and Vite Plus as a
-**partial** matrix cell — lifecycle coverage without a dedicated CI smoke
+**partial** matrix cell, lifecycle coverage without a dedicated CI smoke
 build yet), direct Rspack, Rsbuild, Webpack, and Modern.js as a **partial**
-matrix cell — adapter API plus an Rspack-under-the-hood smoke (not a full
+matrix cell, adapter API plus an Rspack-under-the-hood smoke (not a full
 `@modern-js/app-tools` build yet). Gaps below are tracked as GitHub issues and
 milestones so each one can be removed from this page when it ships.
 
@@ -22,7 +22,7 @@ package managers, and report surfaces has shipped
 Dynamic Module Federation import patterns are covered at the documented
 [completeness bar](./capabilities.md#dynamic-import-completeness-v1): supported
 literals and runtime/manifest hints when evidence exists, with honest
-`doctor/partial-analysis` for unresolved dynamics — not a claim of 100%
+`doctor/partial-analysis` for unresolved dynamics, not a claim of 100%
 arbitrary runtime JS
 ([#14](https://github.com/tonoizer/module-federation-doctor/issues/14),
 `MFDOCTOR-105`).
@@ -42,7 +42,7 @@ fetching URLs or executing remote JavaScript.
 
 MFDoctor does not ship an HTML dashboard or `--ui` server. Use terminal, JSON, and
 SARIF reports. `buildUiPayload` / `schemas/ui.schema.json` remain as a
-programmatic federation graph contract for custom tooling — see
+programmatic federation graph contract for custom tooling, see
 [report schemas](./report-schemas.md). An HTML analysis UI
 ([#13](https://github.com/tonoizer/module-federation-doctor/issues/13)) was
 closed as not planned.
@@ -50,14 +50,14 @@ closed as not planned.
 ## post-v1
 
 No open post-v1 adapter gaps right now. Rolldown / Vite Plus (#11) and Modern.js
-(#12) shipped as **partial** matrix cells — see
+(#12) shipped as **partial** matrix cells, see
 [compatibility](./compatibility.md).
 
 ## What MFDoctor covers
 
 | Path                                                                                   | Covered?                                      |
 | -------------------------------------------------------------------------------------- | --------------------------------------------- |
-| Bundler MF plugin + MFDoctor adapter + shared `mfOptions` (including `runtimePlugins`) | Yes — primary                                 |
+| Bundler MF plugin + MFDoctor adapter + shared `mfOptions` (including `runtimePlugins`) | Yes, primary                                  |
 | CLI `check` with explicit `moduleFederation` / `module-federation.config`              | Partial (config/imports; weaker without emit) |
 | On-disk / deployed `mf-manifest.json` (`check` discover / `probe`)                     | Producer/deploy evidence only                 |
 | `mfdoctor runtime` + Observability export                                              | Opt-in live correlation, offline              |
@@ -94,7 +94,7 @@ These rules are implemented; a few need compiler-observed facts that CLI-only
 | Remaining topology rules                   | Config / `project.json` / remotes graph (`mfdoctor federation`)                                                                                                      |
 
 MFDoctor does **not** scrape private Module Federation plugin fields for these
-checks — only public plugin `name` / `constructor.name` and public bundler
+checks, only public plugin `name` / `constructor.name` and public bundler
 `output.publicPath`. Vite/Rsbuild have no plugin-count or `publicPath` surface
 today (intentional deferral).
 
@@ -106,9 +106,9 @@ emit in Node and must not appear in the client bundle
 `MFDOCTOR-116`). MFDoctor stays plugin-primary, with a complementary CLI, and is
 never injected as an in-browser agent.
 
-**Runtime-only** Module Federation apps — `@module-federation/runtime` /
+**Runtime-only** Module Federation apps, `@module-federation/runtime` /
 `createInstance` / runtime plugins **without** a Vite, Rspack, Rsbuild,
-Webpack, or Modern.js Module Federation **build** plugin — are **out of scope**
+Webpack, or Modern.js Module Federation **build** plugin, are **out of scope**
 for first-class support
 ([#34](https://github.com/tonoizer/module-federation-doctor/issues/34),
 `MFDOCTOR-117`).
@@ -116,8 +116,8 @@ for first-class support
 Without a bundler MF plugin there is usually no MFDoctor post-emit hook, no
 reliable emit/manifest from that app, and MFDoctor does not parse
 `createInstance(...)` from source. Manifest and `probe` coverage apply to
-**producer artifacts** that emit `mf-manifest.json`, not to “we inferred the
-whole runtime-only host.”
+**producer artifacts** that emit `mf-manifest.json`, not to "we inferred the
+whole runtime-only host."
 
 MFDoctor analysis and the terminal findings showcase run **only post-emit /
 after-build** (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild` /
@@ -135,5 +135,5 @@ MFDoctor closes high-value `shared` config gaps inspired by
 `@mf-toolkit/shared-inspector` (deep-import bypass, local-graph import depth,
 federation host gaps / ghost shares, expandable singleton/candidate lists via
 policy packs). MFDoctor does **not** duplicate RS Doctor duplicate-package
-treemaps, chunk graphs, or general bundle-size visualization — use RS Doctor or
+treemaps, chunk graphs, or general bundle-size visualization, use RS Doctor or
 a bundler analyzer for those questions.

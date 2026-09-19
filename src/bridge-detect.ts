@@ -101,7 +101,7 @@ function classifyBridgeReactSignal(signal: string): ReactBridgeEntryMajor {
 /**
  * Resolve the Bridge React entry major.
  * Versioned `/v18` `/v19` may come from deps or import paths.
- * `"bare"` only when an import/specifier exactly uses the unversioned package — not merely
+ * `"bare"` only when an import/specifier exactly uses the unversioned package, not merely
  * because the package is installed or appears as an `imports.packages` root.
  */
 export function reactBridgeEntryMajor(facts: ProjectFacts): ReactBridgeEntryMajor {
@@ -153,7 +153,7 @@ export function hasReactDomPrefixShare(
   shared: Record<string, NormalizedShared> | undefined,
 ): boolean {
   if (!shared) return false;
-  // Only the Bridge-documented share keys — not e.g. `react-dom/server`.
+  // Only the Bridge-documented share keys, not e.g. `react-dom/server`.
   return Object.keys(shared).some((key) => key === "react-dom/" || key === "react-dom/client");
 }
 
@@ -235,7 +235,7 @@ export function isNodeOrSsrTarget(
 /** Specifiers that are browser-only Bridge React entries (not `/server`). */
 export function browserBridgeReactEntries(facts: ProjectFacts): string[] {
   const hits: string[] = [];
-  // Use specifiers/deepImports only — `imports.packages` are package roots via
+  // Use specifiers/deepImports only, `imports.packages` are package roots via
   // packageName(), so `@module-federation/bridge-react/server` collapses to the
   // bare package and would false-positive as a browser leak.
   for (const signal of [

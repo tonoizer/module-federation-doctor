@@ -73,7 +73,7 @@ export interface BundlerFacts {
    * Classification of bundler `output.publicPath` (webpack/rspack/rsbuild) or
    * Vite MF `publicPath` from public adapter config. Absent when MFDoctor did
    * not observe those public surfaces (CLI-only, or adapter emit that could not
-   * read them — Vite/Rsbuild then emit `doctor/partial-analysis`).
+   * read them, Vite/Rsbuild then emit `doctor/partial-analysis`).
    */
   outputPublicPathKind?: OutputPublicPathKind;
   /**
@@ -89,12 +89,12 @@ export interface BundlerFacts {
   outputUniqueName?: string;
   /**
    * Additive Vite resolved-config snapshot from `configResolved` (plugin path).
-   * Absent on CLI-only runs — rules that need these facts skip honestly.
+   * Absent on CLI-only runs, rules that need these facts skip honestly.
    */
   viteConfig?: ViteBundlerConfigFacts;
   /**
    * Public webpack/rspack `optimization.splitChunks` (or Rsbuild chunkSplit)
-   * snapshot from the adapter. Absent on CLI-only runs — the splitChunks
+   * snapshot from the adapter. Absent on CLI-only runs, the splitChunks
    * advisory skips when this field is missing rather than inventing defaults.
    */
   splitChunks?: SplitChunksFacts;
@@ -112,7 +112,7 @@ export interface BundlerFacts {
   /**
    * Static string `resolve.alias` object entries from webpack/rspack/rsbuild
    * (plugin compiler options, or explicit DoctorOptions). Absent means unknown.
-   * Function aliases are never invoked — see `resolveAliasFunction`.
+   * Function aliases are never invoked, see `resolveAliasFunction`.
    */
   resolveAliases?: Record<string, string>;
   /**
@@ -609,7 +609,7 @@ export interface DoctorFinding {
   fingerprint: string;
   /**
    * Optional versioned details schema id (e.g. `shared.unused.v1`).
-   * Top-level only — never put this in `evidence` (fingerprints hash evidence).
+   * Top-level only, never put this in `evidence` (fingerprints hash evidence).
    */
   detailsSchema?: string;
   /**
@@ -863,7 +863,7 @@ export type DoctorExtendEntry = DoctorPresetName | DoctorPolicyPack | DoctorRule
 export interface DoctorPrintLog {
   /**
    * When true, print the green "no findings" line on a complete clean run.
-   * Default false — quiet success.
+   * Default false, quiet success.
    */
   success?: boolean;
 }
@@ -905,20 +905,20 @@ export interface DoctorOptions {
   splitChunksFacts?: SplitChunksFacts;
   /**
    * Library names from bundler/framework `transformImport` (Modern/Rsbuild).
-   * Adapters also collect public `source.transformImport`. Omit when unknown —
+   * Adapters also collect public `source.transformImport`. Omit when unknown,
    * rules skip rather than inventing rewrite lists. Function-form values are
    * not invoked.
    */
   transformImport?: Array<string | { libraryName: string }>;
   /**
    * Public bundler `externals` (webpack / rspack / rsbuild `output.externals`).
-   * String, array of strings/objects, or object keys only — functions and regex
+   * String, array of strings/objects, or object keys only, functions and regex
    * are skipped. Omit when unknown; `config/shared-externals-conflict` skips.
    */
   externals?: string | Array<string | Record<string, unknown>> | Record<string, unknown>;
   /**
    * Static string `resolve.alias` object entries (webpack/rspack/rsbuild).
-   * Omit when unknown — `config/alias-share-bypass` skips rather than inventing keys.
+   * Omit when unknown, `config/alias-share-bypass` skips rather than inventing keys.
    */
   resolveAliases?: Record<string, string>;
   /**
@@ -1105,7 +1105,7 @@ export interface ResolvedDoctorOptions {
     deepImportAllowlist: string[];
   };
   /**
-   * Soft-recognize mf-toolkit shapes. Undefined means “auto when signals present”.
+   * Soft-recognize mf-toolkit shapes. Undefined means "auto when signals present".
    */
   recognizeMfToolkit?: boolean;
 }

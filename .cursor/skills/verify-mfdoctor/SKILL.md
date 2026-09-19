@@ -1,13 +1,13 @@
 ---
 name: verify-mfdoctor
-description: Verify @tonoizer/mfdoctor the way a user does — CLI (mfdoctor) and post-emit build plugin. Use when proving check/workspace/federation/prompt/baseline/runtime/capabilities/plugin-emit behavior, not the docs site or an HTML UI.
+description: Verify @tonoizer/mfdoctor the way a user does, CLI (mfdoctor) and post-emit build plugin. Use when proving check/workspace/federation/prompt/baseline/runtime/capabilities/plugin-emit behavior, not the docs site or an HTML UI.
 ---
 
 # Verify MFDoctor
 
 Drive `@tonoizer/mfdoctor` the way a user does: short-lived `mfdoctor` CLI
 invocations and (when proving emit) a child-process example build that registers
-`federationDoctor`. Primary surface is **CLI + post-emit build plugin** — not
+`federationDoctor`. Primary surface is **CLI + post-emit build plugin**, not
 the docs site (`docs:dev`), not an HTML dashboard, not an in-browser doctor, and
 not a general `--fix`.
 
@@ -32,7 +32,7 @@ node dist/cli.js capabilities
 ```
 
 exits `0` and prints JSON (versioned CLI contract). After build you may also use
-`pnpm exec mfdoctor` — prefer `node dist/cli.js` in this skill so the checkout
+`pnpm exec mfdoctor`, prefer `node dist/cli.js` in this skill so the checkout
 binary is explicit.
 
 Teardown for the binary: none (short-lived CLI; no long-lived server).
@@ -134,7 +134,7 @@ CLI rejects it.
 **Two-tier loop:** offline `check` is config/static analysis. Before claiming
 green, require plugin emit evidence (`.mf/doctor/project.json` from a build with
 `federationDoctor`) and, in monorepos, the workspace/federation gate. Treat exit
-`2` and `doctor/partial-analysis` / `status.incompleteReasons` as incomplete —
+`2` and `doctor/partial-analysis` / `status.incompleteReasons` as incomplete,
 not a pass.
 
 Network commands `probe` and `compare` are out of default proof scope. Do not
@@ -172,7 +172,7 @@ Proof standards:
   build), not internal test setters.
 - Capture the action **and** resulting state (JSON status/findings; presence or
   absence of `.mf/doctor/` when using `--no-write`).
-- Observe side effects — never trust a dry-run _name_; verify `--no-write` by
+- Observe side effects, never trust a dry-run _name_; verify `--no-write` by
   confirming `.mf/doctor` was not created.
 - Mocks only at production boundaries (do not mock the doctor itself).
 
@@ -201,9 +201,9 @@ Invocation from repo root (script must be executable):
 
 Optional env:
 
-- `MFDOCTOR_VERIFY_REPO` — repo root (default: detected from script location)
-- `MFDOCTOR_VERIFY_EVIDENCE` — evidence dir (default: skill `evidence/check`)
-- `MFDOCTOR_VERIFY_FIXTURE` — source fixture to copy (default:
+- `MFDOCTOR_VERIFY_REPO`, repo root (default: detected from script location)
+- `MFDOCTOR_VERIFY_EVIDENCE`, evidence dir (default: skill `evidence/check`)
+- `MFDOCTOR_VERIFY_FIXTURE`, source fixture to copy (default:
   `examples/showcase/config/remote-http-insecure`)
 
 ## Non-goals

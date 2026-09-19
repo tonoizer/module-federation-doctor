@@ -19,7 +19,7 @@ the federation plugin so it can inspect the completed output.
 - **Rspack:** `@tonoizer/mfdoctor/rspack`
 - **Rsbuild:** `@tonoizer/mfdoctor/rsbuild`
 - **Webpack:** `@tonoizer/mfdoctor/webpack`
-- **Modern.js:** `@tonoizer/mfdoctor/modern` (**partial** — App Tools CI emit blocked by lockfile trust policy)
+- **Modern.js:** `@tonoizer/mfdoctor/modern` (**partial**, App Tools CI emit blocked by lockfile trust policy)
 
 There is **no** Next.js adapter. `@module-federation/nextjs-mf` is
 **unsupported** (Pages Router only, unmaintained). Prefer Rsbuild or Modern.js.

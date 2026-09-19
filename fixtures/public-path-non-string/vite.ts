@@ -1,4 +1,4 @@
-/** Vite MF `publicPath` that is not a string — skips upstream manifest generation. */
+/** Vite MF `publicPath` that is not a string, skips upstream manifest generation. */
 export const viteNonStringPublicPath = (): string => "/";
 
 export const viteFederationOptions = {

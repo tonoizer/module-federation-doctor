@@ -15,7 +15,7 @@ Duplicate container names collide in runtime data and global chunk storage.
 
 Give every participating container a unique stable name.
 
-Suppress or retarget with `rules["federation/name-conflict"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["federation/name-conflict"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

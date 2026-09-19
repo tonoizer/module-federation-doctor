@@ -740,7 +740,7 @@ function pushFederationFinding(
   const meta = federationRuleMeta.find((rule) => rule.id === ruleId);
   const resolved = parseSetting(rules?.[ruleId], meta?.severity ?? "warning");
   if (!resolved || !meta) return;
-  // Fingerprint excludes detailsSchema/details — never put schema version in evidence.
+  // Fingerprint excludes detailsSchema/details, never put schema version in evidence.
   const base = {
     schemaVersion: 1 as const,
     ruleId,

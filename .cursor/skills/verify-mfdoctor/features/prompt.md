@@ -30,7 +30,7 @@ Preconditions:
   `/tmp/mfdoctor-verify-$RUN_ID/`: run
   `node dist/cli.js check "$FIXTURE" --format json` there so
   `$FIXTURE/.mf/doctor/report.json` is written. Do not use `--no-write` or
-  `--output -` for this step — both skip writing `report.json`, and `prompt`
+  `--output -` for this step, both skip writing `report.json`, and `prompt`
   reads that file.
 - Or pass a report path produced by a prior plugin-emit / diagnostics dump.
 
@@ -56,7 +56,7 @@ Preconditions:
 
 - `prompt` never analyzes a project. A missing report is exit `2`, not a green
   federation.
-- `--finding` accepts a rule ID or an exact fingerprint — do not invent other
+- `--finding` accepts a rule ID or an exact fingerprint, do not invent other
   selector flags.
 - Extra headings after `# Fix:` are expected: `## Verification plan` and
   `## Repair context` come before `## Finding`. Do not treat them as scrape

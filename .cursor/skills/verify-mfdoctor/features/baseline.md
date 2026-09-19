@@ -3,7 +3,7 @@
 `mfdoctor baseline` generate / update / prune writes a fingerprint baseline
 from a saved report. Baselines are **checked-in debt**, not a mute and not a
 substitute for fixing findings. Agents must not generate or apply a baseline
-to “clear” a gate unless the user asked for suppressions / accepted debt.
+to "clear" a gate unless the user asked for suppressions / accepted debt.
 
 ## Sub-features
 
@@ -51,4 +51,4 @@ Preconditions:
 - Review baseline diffs like code. Do not auto-update on every CI run.
 - This command does not re-analyze the project; a missing or corrupt report
   exits `2`. Applying a baseline on `check` / `federation` is a separate flag
-  (`--baseline`) — prove generate/update/prune here, not silent suppression.
+  (`--baseline`), prove generate/update/prune here, not silent suppression.

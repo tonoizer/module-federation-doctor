@@ -57,7 +57,7 @@ export default defineConfig({
       },
     }),
   ],
-  // Bind IPv4 loopback explicitly — `localhost` can resolve to ::1 in CI while
+  // Bind IPv4 loopback explicitly, `localhost` can resolve to ::1 in CI while
   // the rspack static server (and Playwright probes) use 127.0.0.1.
   server: {
     host: "127.0.0.1",

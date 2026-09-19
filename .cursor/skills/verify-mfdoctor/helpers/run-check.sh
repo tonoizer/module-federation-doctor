@@ -21,7 +21,7 @@ trap cleanup EXIT
 mkdir -p "$EVIDENCE_DIR"
 
 if [[ ! -f "$CLI" ]]; then
-  echo "missing $CLI — run: pnpm install && pnpm build" >&2
+  echo "missing $CLI, run: pnpm install && pnpm build" >&2
   exit 2
 fi
 

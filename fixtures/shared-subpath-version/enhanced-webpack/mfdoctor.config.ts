@@ -14,7 +14,7 @@ export default {
     manifest: true,
     exposes: { "./Widget": "./src/Widget.ts" },
     shared: {
-      // Root share only — `react/jsx-runtime` is uncovered, so prefix-share-recommended fires.
+      // Root share only, `react/jsx-runtime` is uncovered, so prefix-share-recommended fires.
       react: { singleton: true },
       // Vite-style prefix/subpath keys with no parent install. Enhanced does not inherit
       // provider version from the parent package; subpath-version-unresolved must stay quiet.

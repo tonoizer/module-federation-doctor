@@ -31,7 +31,7 @@ missing, it leaves `capabilities.emittedAssets` false so
 [`doctor/partial-analysis`](./rules/doctor/partial-analysis.md) reports the gap
 honestly.
 
-Direct Rolldown **without** `@module-federation/vite` is unsupported — Rolldown
+Direct Rolldown **without** `@module-federation/vite` is unsupported, Rolldown
 dropped built-in Module Federation in favor of the Vite plugin.
 
 ## Vite-only options

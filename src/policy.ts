@@ -63,7 +63,7 @@ const STRICT_KEEP: Record<string, RuleSetting> = {
   "doctor/partial-analysis": "warning",
   "shared/candidate": "warning",
   "config/implementation-suspicious": "warning",
-  // Low-signal federation hygiene — align with MFDOCTOR-130 heuristic noise guidance.
+  // Low-signal federation hygiene, align with MFDOCTOR-130 heuristic noise guidance.
   "federation/ghost-shares": "warning",
   // Bridge info advisories stay soft under strict (#140 / #131).
   "bridge/ssr-instanceid-hydration": "info",

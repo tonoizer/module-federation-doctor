@@ -63,7 +63,7 @@ Manual globs remain available when you need an escape hatch:
 mfdoctor federation "packages/*/.mf/doctor/project.json"
 ```
 
-Share org policy with a workspace package (or path) and `extends` — see
+Share org policy with a workspace package (or path) and `extends`, see
 [policy packs and presets](./policy-packs.md). Example fixture:
 `fixtures/policy-packs/acme-mfdoctor-policy`.
 

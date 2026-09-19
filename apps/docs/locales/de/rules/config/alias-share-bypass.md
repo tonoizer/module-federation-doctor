@@ -15,7 +15,7 @@ Webpack/Rspack/Rsbuild resolve.alias can rewrite imports around the share scope 
 
 Remove the overlapping alias, drop the package from shared, or allowlist intentional bypasses via `allowPackages`. Function aliases stay unknown.
 
-Suppress or retarget with `rules["config/alias-share-bypass"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/alias-share-bypass"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

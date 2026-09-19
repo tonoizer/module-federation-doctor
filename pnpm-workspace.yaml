@@ -89,16 +89,16 @@ strictDepBuilds: true
 # Keep the escape hatch visible and disabled in the committed policy.
 dangerouslyAllowAllBuilds: false
 
-# GHSA-qwww-vcr4-c8h2 / issue #61 — Rspress still depends on react-router-dom ^7
+# GHSA-qwww-vcr4-c8h2 / issue #61, Rspress still depends on react-router-dom ^7
 # (which pins react-router 7.x). Drop this override when @rspress/core depends on
 # react-router >=8.3.0. react-router-dom has no 8.x release yet.
-# Dependabot alert #48 / GHSA-2v37-7h3g-55p8 — nanoid <3.3.18 infinite loop when size is zero. Drop when upstream pins >=3.3.18.
-# Dependabot alerts #49–#52 — fast-uri <3.1.6 (GHSA-jqff-g426-hqxp, GHSA-f65p-4m7j-42xc, GHSA-5jgf-p345-68v8, GHSA-fph4-wmhf-6fwf). Drop when upstream pins >=3.1.6.
-# Dependabot alerts #54/#55 / GHSA-82fw-gwwq-j7x9 — vitest/@vitest/mocker
+# Dependabot alert #48 / GHSA-2v37-7h3g-55p8, nanoid <3.3.18 infinite loop when size is zero. Drop when upstream pins >=3.3.18.
+# Dependabot alerts #49–#52, fast-uri <3.1.6 (GHSA-jqff-g426-hqxp, GHSA-f65p-4m7j-42xc, GHSA-5jgf-p345-68v8, GHSA-fph4-wmhf-6fwf). Drop when upstream pins >=3.1.6.
+# Dependabot alerts #54/#55 / GHSA-82fw-gwwq-j7x9, vitest/@vitest/mocker
 # <4.1.11 path traversal via redirect mock. Root is already vite-plus 0.3.0 +
 # vitest 4.1.11; remaining 4.1.10 came from examples/compatibility/rolldown
 # (vite-plus@0.2.9). Drop when that cell pins vite-plus that includes >=4.1.11.
-# Dependabot alert #56 / GHSA-vwc7-r8mq-g2x9 — adm-zip 0.5.9–0.6.0 follows
+# Dependabot alert #56 / GHSA-vwc7-r8mq-g2x9, adm-zip 0.5.9–0.6.0 follows
 # extraction-destination symlinks (CVE-2026-76845). Transitive via
 # @module-federation/dts-plugin@2.9.0. Drop when dts-plugin pins adm-zip >=0.6.1.
 overrides:

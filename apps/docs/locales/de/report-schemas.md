@@ -7,7 +7,7 @@
 > Host teams usually need the build artifacts below and the
 > [Setup](./setup.md) / [CI](./production-readiness.md) path. Additive 1.1.0+
 > library contracts (identity, waivers, graph, capture schemas) are listed in
-> the table for authors extending Doctor — see also
+> the table for authors extending Doctor, see also
 > [Library / extension](./capabilities.md#library-contracts-110).
 
 MFDoctor writes:
@@ -21,7 +21,7 @@ MFDoctor writes:
 Comparable content has no timestamps. Paths are workspace relative. Schema
 version 1 changes only through an intentional compatibility change. Additive
 import-analysis fields (`dynamicPackages`, `remotes`, `unresolvedDynamic`,
-`evidenceSources`) document MFDoctor’s dynamic-import completeness bar without
+`evidenceSources`) document MFDoctor's dynamic-import completeness bar without
 breaking older `project.json` files that omit them.
 
 ## Öffentliche v1-Schema-Verträge
@@ -100,7 +100,7 @@ opening punctuation such as `(`, `[` or `{`. Other strings are left unchanged.
 
 `ui.schema.json` is **not** a persisted CLI artifact (MFDoctor no longer ships an
 HTML dashboard). It remains the published shape for programmatic consumers of
-`buildUiPayload` / graph payloads — see below. Do not treat it as an HTML report
+`buildUiPayload` / graph payloads, see below. Do not treat it as an HTML report
 format.
 
 `finding-lineage.schema.json` and `governance-waiver.schema.json` are
@@ -170,16 +170,16 @@ run was incomplete without scraping findings:
 
 | Code               | Meaning                                                                                                                                                                                         |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `missing-emit`     | No emitted-asset facts (`capabilities.emittedAssets` is false) — typically CLI check without a bundler emit                                                                                     |
+| `missing-emit`     | No emitted-asset facts (`capabilities.emittedAssets` is false), typically CLI check without a bundler emit                                                                                      |
 | `missing-stats`    | Enhanced emit with remotes but `capabilities.stats` is false. Explicit `manifest: false` uses `artifact/manifest-disabled`. Vite without `manifest: true` is opt-in and does not set this code. |
 | `partial-bundler`  | Bundler cell is partial in the public matrix (`modern`, `unknown`, Rolldown/Vite Plus lifecycle)                                                                                                |
 | `probe-skipped`    | Workspace group pre-probe could not classify one or more project files (`diagnostics.kind: probe`)                                                                                              |
-| `evidence-unknown` | Source/budget evidence is partial or unknown (read failures, budget cutoff, unresolved dynamics), or a workspace diagnostic is `invalid`, `stale`, `duplicate` oder `conflict`                  |
+| `evidence-unknown` | Source/budget evidence is partial or unknown (read failures, budget cutoff, unresolved dynamics), or a workspace diagnostic is `invalid`, `stale`, `duplicate`, or `conflict`                   |
 
 Current reporters always write `status`. Older reports may omit it. This field
 does not change rule evaluation or fingerprints. Legacy callers keep their
-existing exit behavior; callers with `requireComplete` treat every non-empty
-reason list as a policy failure (exit `1`).
+existing exit behavior; callers that opt into `requireComplete` treat every
+non-empty reason list as a policy failure (exit `1`).
 
 ## Gesundheitswert (`summary.score`)
 
@@ -197,9 +197,14 @@ score = clamp(0, round(100 − 1.5×|unique error rules| − 0.75×|unique warni
 
 Excluded from the score surface by default: `info` findings, tooling-category
 rules, `doctor/*` advisories, and baseline-suppressed findings. Bands: **≥75
-Great**, **≥50 OK**, else **Needs work**. The score does not change `failOn`
-semantics. Terminal printing can be disabled with `--no-score` / `score: false`
-while JSON still includes the fields. After the score footer, MFDoctor prints
+Great**, **≥50 OK**, else **Needs work**. `labelForScore(score)` is the numeric
+band mapping. `summary.scoreLabel` is the actionable label and can be stricter:
+a non-suppressed blocking error keeps it at **Needs work** even when the numeric
+band would otherwise be **Great** or **OK**; suppressed errors do not. Consumers
+should use `score` for numeric comparisons and `scoreLabel` for action. The score
+does not change `failOn` semantics. Terminal printing can be disabled with
+`--no-score` / `score: false` while JSON still includes the fields. After the
+score footer, MFDoctor prints
 [top-3 agent fix prompts](./cli.md) (`--no-prompt` to hide; CI hides by default;
 `mfdoctor prompt` and `--diagnostics-dir` for offline handoff;
 `--diagnostics-prompts` / `MFDOCTOR_DIAGNOSTICS_PROMPTS` to dump more than top-3,
@@ -221,7 +226,7 @@ Unknown `detailsSchema` values must be ignored by readers (do not fail the pipel
 
 `fingerprint()` hashes only `ruleId`, `project`, `location`, and `evidence`
 (`src/utils.ts`). **`detailsSchema` and `details` are never fingerprint inputs.**
-Never put a schema version into `evidence` — that would churn baselines and SARIF
+Never put a schema version into `evidence`, that would churn baselines and SARIF
 `partialFingerprints`. Adding typed details does not change fingerprints for
 existing findings.
 
@@ -235,19 +240,19 @@ existing findings.
 | `remotes.config.v1`          | `config/remote-entry-invalid`, `config/remote-http-insecure`, `config/remote-localhost-in-production`, `config/remote-alias-prefix-collision`, `config/remote-manifest-recommended`, `config/remote-capability-disabled` |
 | `artifact.v1`                | other first-batch `artifact/*` rules                                                                                                                                                                                     |
 | `doctor.partial-analysis.v1` | `doctor/partial-analysis`                                                                                                                                                                                                |
-| `doctor.run-failure.v1`      | Strukturierter Regel-, Evidence-Bridge- oder Analysefehler (`phase`, `errorCode`, `runId`, optional `ruleId` und redigierter `error`)                                                                                    |
+| `doctor.run-failure.v1`      | Structured rule, evidence-bridge, or analysis failure (`phase`, `errorCode`, `runId`, optional `ruleId` and redacted `error`)                                                                                            |
 
 TypeScript exports: `FINDING_DETAILS_SCHEMAS`, `TYPED_DETAILS_RULE_IDS`,
 `readFindingDetails`, and per-family `*DetailsV1` types from
-`@tonoizer/mfdoctor`. Zusätzlich gibt es die typisierten Exporte
+`@tonoizer/mfdoctor`. Run failures also expose the typed
 `RunFailureDetails`, `RunFailurePhase`, `RunFailureErrorCode`,
-`RUN_FAILURE_DETAILS_SCHEMA` und `RUN_FAILURE_ERROR_CODES`.
+`RUN_FAILURE_DETAILS_SCHEMA`, and `RUN_FAILURE_ERROR_CODES` exports.
 
-Die GitHub-Workspace-Action validiert die erforderliche Report-Struktur, löscht
-Artefakte aus dem vorherigen Lauf und prüft vor dem Upload eine Laufmarke sowie
-die Aktualität des Reports. Strikte Action-Läufe ergänzen außerdem `json`, wenn
-es in der Formatliste fehlt. Ein Legacy-Lauf bleibt fail-open; seine
-Vollständigkeitsausgaben zeigen dennoch fehlerhafte oder unvollständige Reports.
+The GitHub workspace action validates the required report shape, clears files
+from the prior invocation, and checks a per-run marker plus report freshness
+before exposing JSON/SARIF upload paths. Strict action runs also add `json` when
+the requested format list omitted it. A legacy action run remains fail-open, but
+its completeness outputs still identify malformed or incomplete reports.
 
 ### Agent-/CI-Beispiel (`details` statt Message-Regex bevorzugen)
 
@@ -260,7 +265,7 @@ import {
 
 for (const finding of report.findings) {
   const typed = readFindingDetails(finding);
-  if (!typed) continue; // old report or unknown schema — skip
+  if (!typed) continue; // old report or unknown schema, skip
 
   if (typed.detailsSchema === FINDING_DETAILS_SCHEMAS.SHARED_UNUSED) {
     const details = typed.details as SharedUnusedDetailsV1;

@@ -15,7 +15,7 @@ An eager non-singleton can add copies to initial chunks without guaranteeing reu
 
 Make it singleton when safe, or remove eager loading.
 
-Suppress or retarget with `rules["shared/eager-without-singleton"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["shared/eager-without-singleton"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

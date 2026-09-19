@@ -48,7 +48,7 @@ regenerated.
 | `@tonoizer/mfdoctor/schemas/runtime-identity-correlation.schema.json` | `schemas/runtime-identity-correlation.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/runtime-trace.schema.json` | `schemas/runtime-trace.schema.json` | Public JSON Schema contract. |
 | `@tonoizer/mfdoctor/schemas/semantic-graph.schema.json` | `schemas/semantic-graph.schema.json` | Public JSON Schema contract. |
-| `@tonoizer/mfdoctor/schemas/ui.schema.json` | `schemas/ui.schema.json` | Programmatic graph (`buildUiPayload`) — not an HTML dashboard or `--ui` flag. |
+| `@tonoizer/mfdoctor/schemas/ui.schema.json` | `schemas/ui.schema.json` | Programmatic graph (`buildUiPayload`), not an HTML dashboard or `--ui` flag. |
 
 The package's declaration files are published alongside the runtime targets.
 Use the [CLI capabilities contract](./cli.md#discover-cli-capabilities) for

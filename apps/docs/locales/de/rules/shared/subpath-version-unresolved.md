@@ -15,7 +15,7 @@ On Vite, prefix and package-subpath shared keys inherit provider `version` from 
 
 Set an explicit `version` (or a concrete `requiredVersion` such as `"^19.1.0"`) on the prefix/subpath shared key, or ensure the parent package is installed so `@module-federation/vite` can inherit its version. Non-Vite adapters are out of scope for this rule.
 
-Suppress or retarget with `rules["shared/subpath-version-unresolved"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["shared/subpath-version-unresolved"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

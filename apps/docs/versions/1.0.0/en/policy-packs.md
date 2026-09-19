@@ -1,6 +1,6 @@
 # Policy packs and named presets
 
-Encode Module Federation governance once and reuse it across hosts and remotes —
+Encode Module Federation governance once and reuse it across hosts and remotes,
 the same idea as ESLint shareable configs. For per-app `"off"` / severity
 overrides, baselines, and `failOn`, see
 [Suppressions and allowlists](./suppressions.md).
@@ -115,7 +115,7 @@ export default definePolicyPack({
 ```
 
 Publish the pack as a workspace or npm package and depend on it from each app.
-Load it by import or by package/path string (resolved from the project root —
+Load it by import or by package/path string (resolved from the project root,
 no remote HTTP download):
 
 ```ts
@@ -180,8 +180,8 @@ entries or as `plugins` on a pack.
 
 ## API
 
-- `definePolicyPack` — author a pack
+- `definePolicyPack`, author a pack
 - `presets` / `recommendedPreset` / `strictPreset` / `demoPreset` /
-  `productionPreset` — built-in packs and recommendation overlays
-- `resolvePolicy` / `resolveOptions` — resolve `extends` + merge `rules`
+  `productionPreset`, built-in packs and recommendation overlays
+- `resolvePolicy` / `resolveOptions`, resolve `extends` + merge `rules`
 - Subpath: `@tonoizer/mfdoctor/policy`

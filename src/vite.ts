@@ -11,7 +11,7 @@ export interface ViteDoctorPlugin {
 }
 
 /**
- * Vite-family MFDoctor plugin — register next to `federation` from
+ * Vite-family MFDoctor plugin, register next to `federation` from
  * `@module-federation/vite`.
  *
  * Supported entry path for classic Vite, Rolldown-integrated Vite
