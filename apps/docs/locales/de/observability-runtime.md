@@ -3,14 +3,14 @@ title: Observability latest.json → mfdoctor runtime
 description: Module-Federation-Observability-latest.json offline in mfdoctor runtime einlesen, kein In-Browser-Agent.
 ---
 
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Observability latest.json → mfdoctor runtime
 
 Module Federation Observability writes runtime reports such as
-`.mf/observability/latest.json`. MFDoctor consumes that file through the
+`.mf/observability/latest.json`. mfdoctor consumes that file through the
 **offline** CLI, not by injecting a doctor agent into the browser.
 
 ```text
@@ -20,7 +20,7 @@ Observability Plugin  →  .mf/observability/latest.json  →  mfdoctor runtime
 ## Beispiel
 
 After Observability has written a report (Node/SSR `fileOutput`, browser export,
-collector, or `onReport` handoff), correlate it with local MFDoctor project
+collector, or `onReport` handoff), correlate it with local mfdoctor project
 facts:
 
 ```bash
@@ -43,7 +43,7 @@ there is no HTML report or `--ui` dashboard.
 | Input                                                                  | Role                                                  |
 | ---------------------------------------------------------------------- | ----------------------------------------------------- |
 | `.mf/observability/latest.json` (or another Observability export path) | Runtime report from the official Observability Plugin |
-| `.mf/doctor/**/project.json` (default glob)                            | Build/check project facts from MFDoctor               |
+| `.mf/doctor/**/project.json` (default glob)                            | Build/check project facts from mfdoctor               |
 
 `mfdoctor runtime` accepts:
 
@@ -51,7 +51,7 @@ there is no HTML report or `--ui` dashboard.
 - an array of reports;
 - a `{"report": ...}` or `{"reports": [...]}` envelope.
 
-Current upstream Observability 2.5.3 reports and the legacy MFDoctor v1 shape
+Current upstream Observability 2.5.3 reports and the legacy mfdoctor v1 shape
 are supported. Partial reports import as partial evidence; missing fields never
 count as a pass. Unknown future shapes and Observability **build** reports
 (`.mf/observability/build-report.json` / `build-info.json`) are rejected, those
@@ -65,11 +65,11 @@ the default `mfdoctor runtime` input.
 
 Analysis stays **post-build / CLI**:
 
-- Do **not** inject MFDoctor into the page or client bundle.
+- Do **not** inject mfdoctor into the page or client bundle.
 - Do **not** look for an HTML doctor UI or `--ui` flag.
-- MFDoctor never fetches URLs found in a report, never opens a browser, and
+- mfdoctor never fetches URLs found in a report, never opens a browser, and
   never executes report contents.
-- An in-browser MFDoctor runtime agent is **not planned**
+- An in-browser mfdoctor runtime agent is **not planned**
   ([#33](https://github.com/tonoizer/module-federation-doctor/issues/33)).
 
 For live loading failures, use the official
@@ -78,7 +78,7 @@ For live loading failures, use the official
 
 ## Optionaler CI-Schritt
 
-In CI, after a job that produces both Observability output and MFDoctor
+In CI, after a job that produces both Observability output and mfdoctor
 `project.json` files:
 
 ```bash

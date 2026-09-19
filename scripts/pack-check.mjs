@@ -268,24 +268,24 @@ assert.equal(typeof policy.definePolicyPack, "function");
 assert.equal(typeof policy.presets.recommended, "object");
 assert.equal(typeof policy.presets.strict, "object");
 const schemaTitles = {
-  baseline: "MFDoctor fingerprint baseline",
-  "build-artifact-deployment": "MFDoctor build artifact deployment correlation",
-  capabilities: "MFDoctor CLI capabilities",
-  config: "MFDoctor canonical config v1",
-  evidence: "MFDoctor evidence protocol v2",
-  "finding-lineage": "MFDoctor finding lineage and history",
-  "governance-waiver": "MFDoctor governance waiver and audit decision",
-  identity: "MFDoctor semantic identity",
-  "identity-correlation": "MFDoctor semantic identity correlation",
-  "identity-governance": "MFDoctor identity governance",
-  "semantic-graph": "MFDoctor additive semantic graph",
-  probe: "MFDoctor manifest probe result",
-  project: "MFDoctor project facts",
-  report: "MFDoctor report",
-  "runtime-capture": "MFDoctor external runtime capture v1",
-  "runtime-identity-correlation": "MFDoctor runtime identity correlation",
-  "runtime-trace": "MFDoctor runtime trace correlation summary",
-  ui: "MFDoctor federation graph payload",
+  baseline: "mfdoctor fingerprint baseline",
+  "build-artifact-deployment": "mfdoctor build artifact deployment correlation",
+  capabilities: "mfdoctor CLI capabilities",
+  config: "mfdoctor canonical config v1",
+  evidence: "mfdoctor evidence protocol v2",
+  "finding-lineage": "mfdoctor finding lineage and history",
+  "governance-waiver": "mfdoctor governance waiver and audit decision",
+  identity: "mfdoctor semantic identity",
+  "identity-correlation": "mfdoctor semantic identity correlation",
+  "identity-governance": "mfdoctor identity governance",
+  "semantic-graph": "mfdoctor additive semantic graph",
+  probe: "mfdoctor manifest probe result",
+  project: "mfdoctor project facts",
+  report: "mfdoctor report",
+  "runtime-capture": "mfdoctor external runtime capture v1",
+  "runtime-identity-correlation": "mfdoctor runtime identity correlation",
+  "runtime-trace": "mfdoctor runtime trace correlation summary",
+  ui: "mfdoctor federation graph payload",
 };
 const schemaImports = {
   baseline: await import("@tonoizer/mfdoctor/schemas/baseline.schema.json", { with: { type: "json" } }),
@@ -379,7 +379,7 @@ assert.equal(rspackChain[0][0], "module-federation-doctor");
 `,
   );
   const consumerPnpmArgs = [...packageManagerArgs, "--dir", consumer];
-  // Keep pnpm's project lookup anchored at the MFDoctor workspace. A temp
+  // Keep pnpm's project lookup anchored at the mfdoctor workspace. A temp
   // consumer can otherwise inherit an unrelated parent packageManager field
   // (for example yarn in a user's home package.json).
   run(packageManager, [...consumerPnpmArgs, "install", "--ignore-scripts"], root);

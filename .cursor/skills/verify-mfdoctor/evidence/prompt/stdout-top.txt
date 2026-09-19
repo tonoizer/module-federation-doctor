@@ -3,7 +3,7 @@ Agent prompts (top 2)
 --- prompt 1/2 ---
 # Fix: config/remote-http-insecure
 
-Fix exactly this MFDoctor finding. Do not change unrelated rules.
+Fix exactly this mfdoctor finding. Do not change unrelated rules.
 Do not suggest suppressions or baseline entries unless the user asks.
 
 ## Verification plan
@@ -13,7 +13,7 @@ Do not suggest suppressions or baseline entries unless the user asks.
 - Required artifacts:
   - `.mf/doctor/report.json`
   - `.mf/doctor/project.json (post-emit adapter facts)`
-- Rebuild required: yes — A check is config/static analysis; rebuild with the MFDoctor adapter before claiming emitted-artifact or federation coverage.
+- Rebuild required: yes — A check is config/static analysis; rebuild with the mfdoctor adapter before claiming emitted-artifact or federation coverage.
 - Build command: unknown (not provided; do not invent one)
 - Follow-up (workspace, required): `mfdoctor workspace`
   Run the post-emit workspace gate after the narrow fix; mfdoctor check alone is not a green claim.
@@ -21,7 +21,7 @@ Do not suggest suppressions or baseline entries unless the user asks.
 - Complete when:
   - The narrow finding fix is applied and no non-suppressed findings remain.
   - A current report.status with complete: true is available; older reports do not prove completeness.
-  - A post-emit MFDoctor adapter build has produced the required project/artifact facts.
+  - A post-emit mfdoctor adapter build has produced the required project/artifact facts.
   - The workspace/federation follow-up passes.
 
 ## Repair context
@@ -52,7 +52,7 @@ Use HTTPS so remote code cannot be changed in transit.
 - name: shop
 
 ## Docs
-- MFDoctor: https://mfdoctor.kevinbeier.com/rules/config/remote-http-insecure
+- mfdoctor: https://mfdoctor.kevinbeier.com/rules/config/remote-http-insecure
 - Source: https://module-federation.io/configure/remotes.html
 
 ## Verify
@@ -63,7 +63,7 @@ mfdoctor check
 --- prompt 2/2 ---
 # Fix: config/js-remote-without-type-urls
 
-Fix exactly this MFDoctor finding. Do not change unrelated rules.
+Fix exactly this mfdoctor finding. Do not change unrelated rules.
 Do not suggest suppressions or baseline entries unless the user asks.
 
 ## Verification plan
@@ -73,7 +73,7 @@ Do not suggest suppressions or baseline entries unless the user asks.
 - Required artifacts:
   - `.mf/doctor/report.json`
   - `.mf/doctor/project.json (post-emit adapter facts)`
-- Rebuild required: yes — A check is config/static analysis; rebuild with the MFDoctor adapter before claiming emitted-artifact or federation coverage.
+- Rebuild required: yes — A check is config/static analysis; rebuild with the mfdoctor adapter before claiming emitted-artifact or federation coverage.
 - Build command: unknown (not provided; do not invent one)
 - Follow-up (workspace, required): `mfdoctor workspace`
   Run the post-emit workspace gate after the narrow fix; mfdoctor check alone is not a green claim.
@@ -81,7 +81,7 @@ Do not suggest suppressions or baseline entries unless the user asks.
 - Complete when:
   - The narrow finding fix is applied and no non-suppressed findings remain.
   - A current report.status with complete: true is available; older reports do not prove completeness.
-  - A post-emit MFDoctor adapter build has produced the required project/artifact facts.
+  - A post-emit mfdoctor adapter build has produced the required project/artifact facts.
   - The workspace/federation follow-up passes.
 
 ## Repair context
@@ -113,7 +113,7 @@ Point the remote at `mf-manifest.json` so type URLs come from the manifest, or s
 - remote: shop
 
 ## Docs
-- MFDoctor: https://mfdoctor.kevinbeier.com/rules/config/js-remote-without-type-urls
+- mfdoctor: https://mfdoctor.kevinbeier.com/rules/config/js-remote-without-type-urls
 - Source: https://module-federation.io/configure/dts.html
 - Source: https://module-federation.io/configure/remotes.html
 

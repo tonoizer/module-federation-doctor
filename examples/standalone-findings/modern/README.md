@@ -1,7 +1,7 @@
 # Standalone Modern findings cell
 
 Exercises `@tonoizer/mfdoctor/modern` the way Modern.js registers plugins:
-`modifyBundlerChain` attaches the same post-emit MFDoctor hook used by direct
+`modifyBundlerChain` attaches the same post-emit mfdoctor hook used by direct
 Rspack. The build uses `@rspack/core` + `@module-federation/enhanced/rspack`
 under the hood (what Modern.js does internally) so CI stays light without
 pulling `@modern-js/app-tools`.

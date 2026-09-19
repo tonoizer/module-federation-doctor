@@ -1,4 +1,4 @@
-# Releasing MFDoctor
+# Releasing mfdoctor
 
 This is the maintainer flow for `@tonoizer/mfdoctor`. Public releases use plain
 semver tags such as `1.0.0-rc.0`, never a `v` prefix.

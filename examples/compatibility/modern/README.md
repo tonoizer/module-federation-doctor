@@ -6,7 +6,7 @@ as first-class Modern.js App Tools support. Matrix status stays **partial**
 (App Tools CI lockfile-blocked; upstream core-demo re-soak is #130).
 
 Exercises `@tonoizer/mfdoctor/modern` the way Modern.js registers plugins:
-`modifyBundlerChain` attaches the same post-emit MFDoctor hook used by direct
+`modifyBundlerChain` attaches the same post-emit mfdoctor hook used by direct
 Rspack. The smoke build uses `@rspack/core` + `@module-federation/enhanced/rspack`
 under the hood (what Modern.js does internally) so CI stays inside this
 repository's lockfile policy.

@@ -10,7 +10,7 @@ Gaps below are tracked as GitHub issues and milestones so each one can be
 removed from this page when it ships.
 
 Next.js Module Federation (`@module-federation/nextjs-mf` /
-`NextFederationPlugin`) is **unsupported**. No MFDoctor adapter is planned.
+`NextFederationPlugin`) is **unsupported**. No mfdoctor adapter is planned.
 Prefer Rsbuild or Modern.js. See [compatibility](./compatibility.md).
 
 Roadmap: [v1.0](https://github.com/tonoizer/module-federation-doctor/milestone/1)
@@ -33,7 +33,7 @@ arbitrary runtime JS
 ([#14](https://github.com/tonoizer/module-federation-doctor/issues/14),
 `MFDOCTOR-105`).
 
-The MFDoctor plugin analyzes the **current** app (config + emit). Cross-app
+The mfdoctor plugin analyzes the **current** app (config + emit). Cross-app
 host↔remote shared/integration issues need each app's `.mf/doctor/project.json`
 plus the one-shot workspace gate (`mfdoctor workspace` /
 `mfdoctor federation --workspace`) or manual `mfdoctor federation` globs
@@ -42,11 +42,11 @@ plus the one-shot workspace gate (`mfdoctor workspace` /
 
 Opt-in browser runtime trace import is available through `mfdoctor runtime` when
 you supply an Observability Plugin export. Default `check` and `federation`
-analysis stay offline. When `runtimeTrace` is set on MFDoctor options, `check`
+analysis stay offline. When `runtimeTrace` is set on mfdoctor options, `check`
 also merges shared/remote hints from that export into import facts without
 fetching URLs or executing remote JavaScript.
 
-MFDoctor does not ship an HTML dashboard or `--ui` server. Use terminal, JSON, and
+mfdoctor does not ship an HTML dashboard or `--ui` server. Use terminal, JSON, and
 SARIF reports. `buildUiPayload` / `schemas/ui.schema.json` remain as a
 programmatic federation graph contract for custom tooling, see
 [report schemas](./report-schemas.md) and the [public API surface](./api.md).
@@ -63,16 +63,16 @@ blocked by lockfile `trustPolicy: no-downgrade` (last provenance-attested stable
 is `2.63.3`); the upstream core-demo re-soak is #130. Next.js is a **permanent
 non-goal**, not a deferred adapter.
 
-## What MFDoctor covers
+## What mfdoctor covers
 
 | Path                                                                                   | Covered?                                      |
 | -------------------------------------------------------------------------------------- | --------------------------------------------- |
-| Bundler MF plugin + MFDoctor adapter + shared `mfOptions` (including `runtimePlugins`) | Yes, primary                                  |
+| Bundler MF plugin + mfdoctor adapter + shared `mfOptions` (including `runtimePlugins`) | Yes, primary                                  |
 | CLI `check` with explicit `moduleFederation` / `module-federation.config`              | Partial (config/imports; weaker without emit) |
 | On-disk / deployed `mf-manifest.json` (`check` on-disk manifests / `probe`)            | Producer/deploy evidence only                 |
 | `mfdoctor runtime` + Observability export                                              | Opt-in live correlation, offline              |
 
-MF `runtimePlugins` declared in bundler MF config **are** first-class: MFDoctor
+MF `runtimePlugins` declared in bundler MF config **are** first-class: mfdoctor
 reads them from the shared `mfOptions` object at build time. That is not the
 same as analyzing a runtime-only host.
 
@@ -88,21 +88,21 @@ federation bootstrap would otherwise be skipped. See
 Rsbuild and Modern.js SSR hosts inject federation bootstrap through **different
 public APIs**. They do not have Vite's HTML-vs-entry switch:
 
-| Bundler                                              | Public SSR inject surface MFDoctor uses today                                            | Host-init analogue of `hostInitInjectLocation`                                                                                      |
+| Bundler                                              | Public SSR inject surface mfdoctor uses today                                            | Host-init analogue of `hostInitInjectLocation`                                                                                      |
 | ---------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Vite (including Nuxt / Rolldown Vite-under-the-hood) | `hostInitInjectLocation` (`html` vs `entry`)                                             | [`vite/host-init-inject-ssr`](./rules/vite/host-init-inject-ssr.md)                                                                 |
 | Rsbuild                                              | `pluginModuleFederation` second argument (`target` / `environment` / `ssrDir`)           | None. Wrong placement is [`config/rsbuild-mf-api-generation`](./rules/config/rsbuild-mf-api-generation.md), not a host-init sibling |
 | Modern.js                                            | `@module-federation/modern-js` SSR plugin (partial adapter; Rspack-under-the-hood smoke) | None until a documented public option and failing fixture exist                                                                     |
 | Webpack / Rspack (Enhanced)                          | No Vite HTML/entry inject switch                                                         | Copied Vite keys → [`config/copied-vite-options-on-webpack`](./rules/config/copied-vite-options-on-webpack.md)                      |
 
-MFDoctor **skips** `vite/host-init-inject-ssr` on non-Vite bundlers. That skip
+mfdoctor **skips** `vite/host-init-inject-ssr` on non-Vite bundlers. That skip
 is intentional, not [`doctor/partial-analysis`](./rules/doctor/partial-analysis.md).
 Do not invent an Rsbuild or Modern.js finding for a missing
 `hostInitInjectLocation`. A follow-up rule needs a public option plus a fixture.
 
 ## Permanent guarantees / non-goals
 
-MFDoctor does not rely on undocumented private Module Federation plugin fields.
+mfdoctor does not rely on undocumented private Module Federation plugin fields.
 That is a stability guarantee and permanent non-goal, not removable follow-up
 work. See [#18](https://github.com/tonoizer/module-federation-doctor/issues/18).
 
@@ -127,17 +127,17 @@ These rules are implemented; a few need compiler-observed facts that CLI-only
 | `artifact/public-path-non-string-manifest` | Webpack/Rspack/Rsbuild adapters classify public `output.publicPath`; Vite adapters classify public MF `publicPath`. Unobserved Vite/Rsbuild surfaces emit `doctor/partial-analysis`                                                                                                                                                                                                                                        |
 | Remaining topology rules                   | Config / `project.json` / remotes graph (`mfdoctor federation`)                                                                                                                                                                                                                                                                                                                                                            |
 
-MFDoctor does **not** scrape private Module Federation plugin fields for these
+mfdoctor does **not** scrape private Module Federation plugin fields for these
 checks, only public plugin `name` / `constructor.name`, public bundler
 `output.publicPath`, and Vite MF `publicPath`. When those adapters cannot observe a public
 `publicPath` field, they record `doctor/partial-analysis` instead of a silent skip.
 
-MFDoctor is **build/CI-only**. Install it as a `devDependency`. Adapters run after
+mfdoctor is **build/CI-only**. Install it as a `devDependency`. Adapters run after
 emit in Node and must not appear in the client bundle
 ([#32](https://github.com/tonoizer/module-federation-doctor/issues/32),
-`MFDOCTOR-115`). An in-browser MFDoctor runtime agent is **not planned**
+`MFDOCTOR-115`). An in-browser mfdoctor runtime agent is **not planned**
 ([#33](https://github.com/tonoizer/module-federation-doctor/issues/33),
-`MFDOCTOR-116`). MFDoctor stays plugin-primary, with a complementary CLI, and is
+`MFDOCTOR-116`). mfdoctor stays plugin-primary, with a complementary CLI, and is
 never injected as an in-browser agent.
 
 **Runtime-only** Module Federation apps, `@module-federation/runtime` /
@@ -147,34 +147,34 @@ for first-class support
 ([#34](https://github.com/tonoizer/module-federation-doctor/issues/34),
 `MFDOCTOR-117`).
 
-Without a bundler MF plugin there is usually no MFDoctor post-emit hook, no
-reliable emit/manifest from that app, and MFDoctor does not parse
+Without a bundler MF plugin there is usually no mfdoctor post-emit hook, no
+reliable emit/manifest from that app, and mfdoctor does not parse
 `createInstance(...)` from source. Manifest and `probe` coverage apply to
 **producer artifacts** that emit `mf-manifest.json`, not to "we inferred the
 whole runtime-only host."
 
-MFDoctor analysis and the terminal findings showcase run **only post-emit /
+mfdoctor analysis and the terminal findings showcase run **only post-emit /
 after-build** (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild` /
 Modern.js `modifyBundlerChain` → `afterEmit`). Adapters never register
 `transform` / `load` / client-injection hooks
 ([#54](https://github.com/tonoizer/module-federation-doctor/issues/54)).
 
-Do **not** ship MFDoctor into the browser to close that gap. Prefer Observability
-exports + `mfdoctor runtime`, or add a bundler MF plugin + MFDoctor adapter. See
+Do **not** ship mfdoctor into the browser to close that gap. Prefer Observability
+exports + `mfdoctor runtime`, or add a bundler MF plugin + mfdoctor adapter. See
 [Observability latest.json → mfdoctor runtime](./observability-runtime.md) and
 [setup](./setup.md).
 
 **Next.js** Module Federation (`@module-federation/nextjs-mf` /
 `NextFederationPlugin`) is **out of scope**. Upstream support is Pages Router
-only and is no longer actively maintained. MFDoctor does **not** ship a Next.js
+only and is no longer actively maintained. mfdoctor does **not** ship a Next.js
 adapter, and **no Next adapter is planned**. Prefer **Rsbuild** or **Modern.js**
 for new Module Federation apps. Do not start a Next.js adapter.
 
 ## Shared-usage governance (non-goals)
 
-MFDoctor closes high-value `shared` config gaps inspired by
+mfdoctor closes high-value `shared` config gaps inspired by
 `@mf-toolkit/shared-inspector` (deep-import bypass, local-graph import depth,
 federation host gaps / ghost shares, expandable singleton/candidate lists via
-policy packs). MFDoctor does **not** duplicate RS Doctor duplicate-package
+policy packs). mfdoctor does **not** duplicate RS Doctor duplicate-package
 treemaps, chunk graphs, or general bundle-size visualization, use RS Doctor or
 a bundler analyzer for those questions.

@@ -876,7 +876,7 @@ const plans: Record<string, RulePlan> = {
     "declared",
     "project",
     "medium",
-    "Declared shareStrategy, remotes, and runtimePlugins are exact; demo soft-path uses MFDoctor analysis mode.",
+    "Declared shareStrategy, remotes, and runtimePlugins are exact; demo soft-path uses mfdoctor analysis mode.",
   ),
   "reliability/shared-import-false": plan(
     6,
@@ -1002,7 +1002,7 @@ const plans: Record<string, RulePlan> = {
     "declared",
     "project",
     "high",
-    "Only fires when remoteHmr is explicitly false in MFDoctor development mode or a single unscoped project build effectiveMode; unknown skips.",
+    "Only fires when remoteHmr is explicitly false in mfdoctor development mode or a single unscoped project build effectiveMode; unknown skips.",
     VITE,
   ),
   "vite/alias-share-bypass": plan(
@@ -2205,7 +2205,7 @@ export const ruleInventory: readonly RuleInventoryEntry[] = ids.map((id) => {
   return {
     id,
     version: "1",
-    owner: { name: "MFDoctor maintainers" },
+    owner: { name: "mfdoctor maintainers" },
     remediation: {
       summary: guidance.impact,
       documentation: `/rules/${id}`,

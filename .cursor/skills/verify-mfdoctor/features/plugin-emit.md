@@ -1,6 +1,6 @@
 # Plugin emit
 
-The post-emit build plugin is the primary MFDoctor DX. Vite registers
+The post-emit build plugin is the primary mfdoctor DX. Vite registers
 `federationDoctor` from `@tonoizer/mfdoctor/vite`; sibling adapters export
 bundler-idiomatic names (`ModuleFederationDoctorPlugin` / webpack,
 `moduleFederationDoctorPlugin` / rspack+modern,

@@ -48,7 +48,7 @@ export interface ProjectIdentity {
   federationGroup?: string;
 }
 
-/** How the bundler `output.publicPath` was typed when MFDoctor observed the compiler. */
+/** How the bundler `output.publicPath` was typed when mfdoctor observed the compiler. */
 export type OutputPublicPathKind = "string" | "non-string" | "auto" | "unknown";
 
 export interface BundlerFacts {
@@ -59,7 +59,7 @@ export interface BundlerFacts {
   lifecycle?: ViteLifecycleFacts;
   /**
    * Count of Module Federation plugins observed on the compiler (webpack/rspack)
-   * or the public Vite/Rsbuild federation plugin list. Absent when MFDoctor did
+   * or the public Vite/Rsbuild federation plugin list. Absent when mfdoctor did
    * not observe those plugin lists (CLI-only runs).
    */
   moduleFederationPluginCount?: number;
@@ -71,7 +71,7 @@ export interface BundlerFacts {
   federationInstances?: FederationInstanceRef[];
   /**
    * Classification of bundler `output.publicPath` (webpack/rspack/rsbuild) or
-   * Vite MF `publicPath` from public adapter config. Absent when MFDoctor did
+   * Vite MF `publicPath` from public adapter config. Absent when mfdoctor did
    * not observe those public surfaces (CLI-only, or adapter emit that could not
    * read them, Vite/Rsbuild then emit `doctor/partial-analysis`).
    */
@@ -84,7 +84,7 @@ export interface BundlerFacts {
   /**
    * Webpack/Rspack `output.uniqueName` when the adapter observed a non-empty string.
    * Absent on CLI-only runs and when uniqueName is unset. Webpack may fill a
-   * default after config resolution; MFDoctor records the value it sees.
+   * default after config resolution; mfdoctor records the value it sees.
    */
   outputUniqueName?: string;
   /**
@@ -325,7 +325,7 @@ export interface DependencyFacts {
 /** How a resolved import/specifier entered project facts. */
 export type ImportEvidenceSource = "source" | "manifest" | "runtime-trace";
 
-/** Dynamic/runtime call sites MFDoctor could not resolve to a string specifier. */
+/** Dynamic/runtime call sites mfdoctor could not resolve to a string specifier. */
 export type UnresolvedDynamicApi =
   | "import"
   | "loadRemote"

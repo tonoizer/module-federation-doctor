@@ -1,12 +1,12 @@
 name: Bug report
-description: Report an MFDoctor problem
+description: Report an mfdoctor problem
 title: "[Bug]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve MFDoctor.
+        Thanks for helping improve mfdoctor.
   - type: textarea
     id: what-happened
     attributes:
@@ -20,8 +20,8 @@ body:
     id: version
     attributes:
       label: Version
-      description: Which MFDoctor, Node, and bundler versions are you running?
-      placeholder: MFDoctor 0.1.0, Node 24, Vite 8
+      description: Which mfdoctor, Node, and bundler versions are you running?
+      placeholder: mfdoctor 0.1.0, Node 24, Vite 8
     validations:
       required: true
   - type: input
@@ -45,7 +45,7 @@ body:
       label: Validations
       description: Before submitting the issue, please make sure you do the following
       options:
-        - label: I read the MFDoctor docs.
+        - label: I read the mfdoctor docs.
           required: true
         - label: I removed secrets and private paths from attached reports.
           required: true

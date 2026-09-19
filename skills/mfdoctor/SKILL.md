@@ -1,7 +1,7 @@
 ---
 name: mfdoctor
 description: >-
-  MFDoctor (@tonoizer/mfdoctor) diagnosis and fix playbook. Use when the user
+  mfdoctor (@tonoizer/mfdoctor) diagnosis and fix playbook. Use when the user
   asks to run mfdoctor, interpret findings, fix Module Federation doctor
   issues, or decide whether a project is green. Enforces capabilities → check
   JSON → prompt → rebuild. Never add suppressions or run network commands
@@ -9,7 +9,7 @@ description: >-
   green from check alone.
 ---
 
-# MFDoctor
+# mfdoctor
 
 Follow this playbook when using `@tonoizer/mfdoctor`. Prefer CLI/plugin JSON
 over guessing or scraping terminal ANSI.
@@ -39,7 +39,7 @@ over guessing or scraping terminal ANSI.
    ```
 
 4. **rebuild / re-check**, apply a narrow fix for that finding, rebuild with a
-   MFDoctor adapter when emit evidence is needed, then re-run `check` (and
+   mfdoctor adapter when emit evidence is needed, then re-run `check` (and
    `workspace` / `federation` in monorepos) until policy passes.
 
 ## Hard rules
@@ -52,7 +52,7 @@ over guessing or scraping terminal ANSI.
   the user explicitly requests a network operation.
 - **Do not claim green from `check` alone.** Offline `check` is config/static
   analysis. Before claiming green, require plugin emit evidence (a build with a
-  MFDoctor adapter that writes `.mf/doctor/project.json`) and, in monorepos, the
+  mfdoctor adapter that writes `.mf/doctor/project.json`) and, in monorepos, the
   workspace/federation gate. Treat exit code `2` and `doctor/partial-analysis`
   as incomplete analysis, not a pass.
 
@@ -75,7 +75,7 @@ bridges. See `EVIDENCE_ROLLOUT_V2.md`.
 
 ## Out of scope (do not invent)
 
-- MCP servers for MFDoctor
+- MCP servers for mfdoctor
 - VS Code problem matchers
 - `check --watch`
 - HTML UI / `--ui` dashboard

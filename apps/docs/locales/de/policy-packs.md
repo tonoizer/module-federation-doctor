@@ -1,6 +1,6 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Policy packs and named presets
 
@@ -60,7 +60,7 @@ export default {
 
 `profile` is appended after `extends` and before local `rules`. The effective
 order is `default < extends (left to right) < profile < local rules`. When
-`profile: "demo"` is used in CI, MFDoctor resolves the safer `production` overlay
+`profile: "demo"` is used in CI, mfdoctor resolves the safer `production` overlay
 instead of hiding demo-only recommendations. The resolved overlay is visible
 in `appliedPolicies`.
 

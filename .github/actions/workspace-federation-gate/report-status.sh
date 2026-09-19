@@ -304,7 +304,7 @@ try {
   outputs["incomplete-reasons"] = uniqueReasons.join(",");
 } catch (error) {
   process.stderr.write(
-    `MFDoctor report status unavailable: ${error instanceof Error ? error.message : String(error)}\n`,
+    `mfdoctor report status unavailable: ${error instanceof Error ? error.message : String(error)}\n`,
   );
 }
 

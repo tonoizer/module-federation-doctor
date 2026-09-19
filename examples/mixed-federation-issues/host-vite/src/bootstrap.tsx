@@ -14,8 +14,8 @@ const RsbuildCard = lazy(() => import("rsbuildRemote/Card"));
 function App() {
   return (
     <main>
-      <h1>MFDoctor mixed issues example</h1>
-      <p>This host is intentionally misconfigured for MFDoctor demos.</p>
+      <h1>mfdoctor mixed issues example</h1>
+      <p>This host is intentionally misconfigured for mfdoctor demos.</p>
       <Suspense fallback={<p data-testid="remote-loading">Loading remotes…</p>}>
         <section data-testid="rspack-remote">
           <RspackCard />

@@ -188,7 +188,7 @@ const ANALYSIS_INCOMPLETE: CliOperationError = {
 };
 const INVALID_REPORT: CliOperationError = {
   exitCode: 2,
-  description: "The supplied report is not a valid MFDoctor report document.",
+  description: "The supplied report is not a valid mfdoctor report document.",
 };
 const INVALID_PROJECT_FACTS: CliOperationError = {
   exitCode: 2,
@@ -365,7 +365,7 @@ export const CLI_OPERATIONS = {
         name: "report-path",
         type: "path",
         required: false,
-        description: "Saved MFDoctor report; defaults to .mf/doctor/report.json.",
+        description: "Saved mfdoctor report; defaults to .mf/doctor/report.json.",
       },
     ],
     options: [
@@ -376,7 +376,7 @@ export const CLI_OPERATIONS = {
         description: "Baseline output path; defaults to mfdoctor.baseline.json.",
       },
     ],
-    prerequisites: ["A schema-valid saved MFDoctor report is required."],
+    prerequisites: ["A schema-valid saved mfdoctor report is required."],
     network: OFFLINE_NETWORK,
     writtenArtifacts: ["<out>"],
     errorCodes: {
@@ -416,7 +416,7 @@ export const CLI_OPERATIONS = {
     ],
     options: [...ANALYSIS_OPTIONS, REQUIRE_COMPLETE_OPTION, REPORT_BASELINE_OPTION],
     prerequisites: [
-      "A readable project directory and its local MFDoctor/module-federation configuration.",
+      "A readable project directory and its local mfdoctor/module-federation configuration.",
       "A build is not required for static analysis, but emitted-artifact claims require adapter facts.",
     ],
     network: OFFLINE_NETWORK,
@@ -530,7 +530,7 @@ export const CLI_OPERATIONS = {
         name: "report-path",
         type: "path",
         required: false,
-        description: "Saved MFDoctor report; defaults to .mf/doctor/report.json.",
+        description: "Saved mfdoctor report; defaults to .mf/doctor/report.json.",
       },
     ],
     options: [
@@ -540,7 +540,7 @@ export const CLI_OPERATIONS = {
         description: "Select a finding by fingerprint or rule id.",
       },
     ],
-    prerequisites: ["A schema-valid saved MFDoctor report is required."],
+    prerequisites: ["A schema-valid saved mfdoctor report is required."],
     network: OFFLINE_NETWORK,
     writtenArtifacts: [],
     errorCodes: {
@@ -713,7 +713,7 @@ const DISCOVERY_CONTRACT = {
   },
   nonGoals: [
     "HTML report UI or interactive web dashboard",
-    "In-browser MFDoctor runtime agent or client-bundle injection",
+    "In-browser mfdoctor runtime agent or client-bundle injection",
     "MCP server schema or tool surface",
     "General --fix autofix for arbitrary findings",
     "No network command (including compare and probe) unless explicitly requested",
@@ -724,7 +724,7 @@ const DISCOVERY_CONTRACT = {
   completeness: {
     check:
       "One-project offline analysis of config, imports, and on-disk artifacts; weaker without emit/manifest facts.",
-    emit: "Post-emit adapter facts (manifest, stats, emitted assets) when MFDoctor runs in the bundler after build.",
+    emit: "Post-emit adapter facts (manifest, stats, emitted assets) when mfdoctor runs in the bundler after build.",
     workspace:
       "Cross-project federation gate over discovered .mf/doctor/project.json facts; does not invent missing emit evidence.",
     probe:
@@ -819,7 +819,7 @@ export async function loadCliCapabilities(): Promise<CliCapabilities> {
     await fs.readFile(new URL("../package.json", import.meta.url), "utf8"),
   ) as PackageJson;
   if (packageJson.name !== PACKAGE_NAME || typeof packageJson.version !== "string")
-    throw new Error("MFDoctor package metadata is missing a valid name or version.");
+    throw new Error("mfdoctor package metadata is missing a valid name or version.");
   const bundlerMatrix = deriveBundlerMatrix(await loadCompatibilityMatrix());
   return {
     ...DISCOVERY_CONTRACT,

@@ -722,7 +722,7 @@ describe("adapter quiet success and failure terminal path", () => {
       const clean = await run(cleanRoot, "clean");
       const cleanOut = clean.writes.join("");
       if (bundler.id === "vite" || bundler.id === "rsbuild") {
-        expect(cleanOut).toContain("MFDoctor");
+        expect(cleanOut).toContain("mfdoctor");
         expect(cleanOut).toContain("Analysis: incomplete");
         expect(cleanOut).toContain("Next action:");
       } else expect(cleanOut).toBe("");
@@ -731,7 +731,7 @@ describe("adapter quiet success and failure terminal path", () => {
       const failed = await run(errorRoot, "error");
       const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
       const out = failed.writes.join("").replace(ansi, "");
-      expect(out).toContain("MFDoctor");
+      expect(out).toContain("mfdoctor");
       expect(out).toContain("config/expose-key-invalid");
       expect(out).toContain("error");
       expect(out).toContain(

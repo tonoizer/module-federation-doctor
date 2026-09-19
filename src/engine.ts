@@ -139,7 +139,7 @@ function runFailureFinding(
       ...(details.ruleId ? { ruleId: details.ruleId } : {}),
     },
     ...(documentation ? { documentation } : {}),
-    suggestion: "Fix the reported failure, then re-run MFDoctor to collect the full report.",
+    suggestion: "Fix the reported failure, then re-run mfdoctor to collect the full report.",
   };
   return {
     ...base,
@@ -220,7 +220,7 @@ async function persistFailureReport(
   } catch (error) {
     await fs.rm(sarifPath, { force: true }).catch(() => undefined);
     process.stderr.write(
-      `MFDoctor could not write the current failure report: ${errorMessage(error)}\n`,
+      `mfdoctor could not write the current failure report: ${errorMessage(error)}\n`,
     );
   }
 }
@@ -681,7 +681,7 @@ async function runAnalysis(
   } catch (error) {
     const message = errorMessage(error);
     if (resolved?.output.formats.includes("terminal"))
-      process.stderr.write(`MFDoctor could not complete: ${message}\n`);
+      process.stderr.write(`mfdoctor could not complete: ${message}\n`);
     const failedFacts = await failureFacts(resolved, facts, options);
     const failureRoot = resolved?.root ?? path.resolve(options.root ?? process.cwd());
     const failureFinding = runFailureFinding(
@@ -693,7 +693,7 @@ async function runAnalysis(
         runId,
         error: redact(message, failureRoot) as string,
       },
-      `MFDoctor analysis failed: ${message}`,
+      `mfdoctor analysis failed: ${message}`,
     );
     const failureFindings = sortFindings([...collectedFindings, failureFinding]);
     const failureReport = reportFor(failedFacts, failureFindings);
@@ -992,8 +992,8 @@ async function analyzeFederationImpl(
     pushWorkspacePartialFinding(
       findings,
       workspaceAnalysis.status === "unknown"
-        ? "MFDoctor completed with unknown workspace input due to an analysis budget."
-        : "MFDoctor completed with partial workspace input.",
+        ? "mfdoctor completed with unknown workspace input due to an analysis budget."
+        : "mfdoctor completed with partial workspace input.",
       { analysisBudget: workspaceAnalysis },
       { missing: [], analysisBudget: workspaceAnalysis },
     );
@@ -1002,7 +1002,7 @@ async function analyzeFederationImpl(
   if (incompleteProjects.length > 0) {
     pushWorkspacePartialFinding(
       findings,
-      "MFDoctor found persisted project facts with incomplete source analysis.",
+      "mfdoctor found persisted project facts with incomplete source analysis.",
       { projectAnalysis: incompleteProjects },
       { missing: [], projectAnalysis: incompleteProjects },
     );
@@ -1010,7 +1010,7 @@ async function analyzeFederationImpl(
   if (sourceReadFailures.length > 0) {
     pushWorkspacePartialFinding(
       findings,
-      "MFDoctor encountered unreadable source input in workspace; analysis is unknown.",
+      "mfdoctor encountered unreadable source input in workspace; analysis is unknown.",
       { sourceReadFailures },
       { missing: [], sourceReadFailures },
     );
@@ -1018,7 +1018,7 @@ async function analyzeFederationImpl(
   if (workspaceDiagnostics.length > 0) {
     pushWorkspacePartialFinding(
       findings,
-      "MFDoctor found workspace diagnostics; analysis is incomplete.",
+      "mfdoctor found workspace diagnostics; analysis is incomplete.",
       { workspaceDiagnostics },
       { missing: [], workspaceDiagnostics },
     );
@@ -1209,7 +1209,7 @@ export async function analyzeFederation(
     const message = errorMessage(error);
     const failureRoot = normalizedOptions.root ?? process.cwd();
     if (normalizedOptions.formats?.includes("terminal"))
-      process.stderr.write(`MFDoctor could not complete workspace analysis: ${message}\n`);
+      process.stderr.write(`mfdoctor could not complete workspace analysis: ${message}\n`);
     const finding = runFailureFinding(
       failureRoot,
       "workspace",
@@ -1219,7 +1219,7 @@ export async function analyzeFederation(
         runId,
         error: redact(message, failureRoot) as string,
       },
-      `MFDoctor workspace analysis failed: ${message}`,
+      `mfdoctor workspace analysis failed: ${message}`,
     );
     const findings = [finding];
     const report = reportFromFindings([], findings, {

@@ -1,4 +1,4 @@
-name: MFDoctor dogfood
+name: mfdoctor dogfood
 
 on:
   push:

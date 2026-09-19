@@ -1,11 +1,11 @@
 ---
 title: Documentation lifecycle
-description: Release, language, and API-reference ownership rules for MFDoctor documentation.
+description: Release, language, and API-reference ownership rules for mfdoctor documentation.
 ---
 
 # Documentation lifecycle
 
-MFDoctor keeps one canonical documentation surface: the English content at
+mfdoctor keeps one canonical documentation surface: the English content at
 `mfdoctor.kevinbeier.com`. Release metadata, localization, and API references
 are backed by maintained inputs before they become navigation surfaces.
 

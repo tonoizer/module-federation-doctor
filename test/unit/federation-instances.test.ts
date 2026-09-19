@@ -574,7 +574,7 @@ describe("multiple Module Federation instances", () => {
     ).toEqual(["nested"]);
   });
 
-  it("keeps explicit Vite MFDoctor config ahead of resolved plugin defaults", () => {
+  it("keeps explicit Vite mfdoctor config ahead of resolved plugin defaults", () => {
     const explicit = instanceConfig("vite", "remoteEntry.js");
     const detected = [
       {

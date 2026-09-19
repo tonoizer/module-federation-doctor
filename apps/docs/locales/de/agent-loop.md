@@ -1,11 +1,11 @@
 ---
 title: Agenten-Schleife
-description: Zweistufige MFDoctor-Schleife, mfdoctor check vs. Plugin-Emit plus Workspace, bevor Grün beansprucht wird.
+description: Zweistufige mfdoctor-Schleife, mfdoctor check vs. Plugin-Emit plus Workspace, bevor Grün beansprucht wird.
 ---
 
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Agenten-Schleife
 
@@ -19,7 +19,7 @@ pass, and never treat incomplete analysis as a pass.
 | Tier                    | What to run                                                                            | What it proves                                                                        | What it does **not** prove                                                                       |
 | ----------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | **1, Config / static**  | `mfdoctor check` (JSON/SARIF + diagnostics when handing off)                           | Offline config, imports, and other facts available without a bundler emit             | Emitted manifests, stats, assets, or cross-app federation contracts                              |
-| **2, Emit + workspace** | Build with a MFDoctor adapter, then `mfdoctor workspace` (or `federation --workspace`) | Post-emit project facts (`.mf/doctor/project.json`) and host↔remote / shared topology | Nothing further is required for a local/CI green claim; optional `runtime` / `probe` stay opt-in |
+| **2, Emit + workspace** | Build with a mfdoctor adapter, then `mfdoctor workspace` (or `federation --workspace`) | Post-emit project facts (`.mf/doctor/project.json`) and host↔remote / shared topology | Nothing further is required for a local/CI green claim; optional `runtime` / `probe` stay opt-in |
 
 Hard rule: **do not claim green from `mfdoctor check` alone.**
 
@@ -45,13 +45,13 @@ Hard rule: **do not claim green from `mfdoctor check` alone.**
    mfdoctor prompt --finding <ruleId|fingerprint> .mf/doctor/report.json
    ```
 
-4. Apply a narrow fix for that finding. Rebuild with a MFDoctor adapter so emit
+4. Apply a narrow fix for that finding. Rebuild with a mfdoctor adapter so emit
    evidence exists, then re-run tier 1 as needed.
 
 5. **Before claiming green**, finish tier 2:
 
    ```bash
-   # each host/remote already built with its MFDoctor adapter
+   # each host/remote already built with its mfdoctor adapter
    mfdoctor workspace
    # or: mfdoctor federation --workspace
    ```
@@ -61,7 +61,7 @@ Quiet success prints nothing. Exit codes: `0` policy passed, `1` policy failed,
 
 ## `doctor/partial-analysis` ist kein Grün
 
-[`doctor/partial-analysis`](./rules/doctor/partial-analysis.md) means MFDoctor
+[`doctor/partial-analysis`](./rules/doctor/partial-analysis.md) means mfdoctor
 lacked facts it needed, missing MF options, unresolved dynamic imports, unread
 sources, budget-limited projects, omitted workspace projects, or missing emit
 capabilities (for example Vite without `manifest: true`).
@@ -89,7 +89,7 @@ partial analysis. See the
 
 ## Außerhalb des Umfangs (nicht erfinden)
 
-MFDoctor does not ship, and agents must not invent:
+mfdoctor does not ship, and agents must not invent:
 
 - HTML UI / `--ui` dashboard
 - In-browser doctor or runtime agent injection
@@ -99,5 +99,5 @@ MFDoctor does not ship, and agents must not invent:
   Rsbuild or Modern.js ([limitations](./limitations.md#permanent-guarantees--non-goals))
 
 For Module Federation concepts (shared, remotes, Bridge, observability), use the
-upstream `mf` skill. For MFDoctor commands, formats, and exit codes, see the
+upstream `mf` skill. For mfdoctor commands, formats, and exit codes, see the
 [CLI reference](./cli.md) and [Get started](./setup.md).

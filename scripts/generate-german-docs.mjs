@@ -53,7 +53,7 @@ const headingTranslations = new Map([
   ["## Limitations", "## Einschränkungen"],
   ["## Performance", "## Leistung"],
   ["## Suppressions and allowlists", "## Unterdrückungen und Allow-Listen"],
-  ["## What MFDoctor covers", "## Was MFDoctor abdeckt"],
+  ["## What mfdoctor covers", "## Was mfdoctor abdeckt"],
   ["## Run the first check", "## Die erste Prüfung ausführen"],
   ["## Gate all apps", "## Alle Apps absichern"],
   ["## Add an adapter", "## Einen Adapter hinzufügen"],
@@ -195,22 +195,22 @@ const frontmatterTranslations = new Map([
   ["CLI command reference", "CLI-Befehlsreferenz"],
   ["Agent loop", "Agenten-Schleife"],
   [
-    "Two-tier MFDoctor loop, mfdoctor check vs plugin emit plus workspace before claiming green.",
-    "Zweistufige MFDoctor-Schleife, mfdoctor check vs. Plugin-Emit plus Workspace, bevor Grün beansprucht wird.",
+    "Two-tier mfdoctor loop, mfdoctor check vs plugin emit plus workspace before claiming green.",
+    "Zweistufige mfdoctor-Schleife, mfdoctor check vs. Plugin-Emit plus Workspace, bevor Grün beansprucht wird.",
   ],
   ["Public API surface", "Öffentliche API-Oberfläche"],
   ["Documentation lifecycle", "Lebenszyklus der Dokumentation"],
   [
-    "Install MFDoctor, add the build adapter, and run the first local and workspace checks.",
-    "MFDoctor installieren, den Build-Adapter hinzufügen und die ersten lokalen und Workspace-Prüfungen ausführen.",
+    "Install mfdoctor, add the build adapter, and run the first local and workspace checks.",
+    "mfdoctor installieren, den Build-Adapter hinzufügen und die ersten lokalen und Workspace-Prüfungen ausführen.",
   ],
   [
-    "Add MFDoctor to Vite, Vite Plus, Nuxt, Rspack, Rsbuild, Webpack, or Modern.js.",
-    "MFDoctor zu Vite, Vite Plus, Nuxt, Rspack, Rsbuild, Webpack oder Modern.js hinzufügen.",
+    "Add mfdoctor to Vite, Vite Plus, Nuxt, Rspack, Rsbuild, Webpack, or Modern.js.",
+    "mfdoctor zu Vite, Vite Plus, Nuxt, Rspack, Rsbuild, Webpack oder Modern.js hinzufügen.",
   ],
   [
-    "Run MFDoctor locally and in CI, across a workspace, against runtime traces, or against a deployed manifest.",
-    "MFDoctor lokal und in der CI ausführen, für einen Workspace, gegen Laufzeitspuren oder gegen ein bereitgestelltes Manifest.",
+    "Run mfdoctor locally and in CI, across a workspace, against runtime traces, or against a deployed manifest.",
+    "mfdoctor lokal und in der CI ausführen, für einen Workspace, gegen Laufzeitspuren oder gegen ein bereitgestelltes Manifest.",
   ],
   ["Observability latest.json → mfdoctor runtime", "Observability latest.json → mfdoctor runtime"],
   [
@@ -222,8 +222,8 @@ const frontmatterTranslations = new Map([
     "Generierter Katalog der öffentlichen Einstiegspunkte und JSON-Schemas des Pakets.",
   ],
   [
-    "Release, language, and API-reference ownership rules for MFDoctor documentation.",
-    "Regeln für Releases, Sprachen und Zuständigkeiten der MFDoctor-Dokumentation.",
+    "Release, language, and API-reference ownership rules for mfdoctor documentation.",
+    "Regeln für Releases, Sprachen und Zuständigkeiten der mfdoctor-Dokumentation.",
   ],
 ]);
 
@@ -262,9 +262,9 @@ function renderGerman(relativePath, source) {
 
   const insertion = frontmatterEndIndex >= 0 ? frontmatterEndIndex + 1 : 0;
   const marker = [
-    "<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->",
+    "<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->",
     "",
-    "> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.",
+    "> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.",
     "",
   ];
   const bodyStart = insertion >= 0 ? insertion : 0;
@@ -305,7 +305,7 @@ for (const snapshot of snapshots) {
           `Generated German doc is missing: ${path.relative(repository, output)}\n`,
         );
         drift = true;
-      } else if (!current.includes("<!-- MFDoctor locale: de.")) {
+      } else if (!current.includes("<!-- mfdoctor locale: de.")) {
         process.stderr.write(
           `Generated German doc is missing its locale marker: ${path.relative(repository, output)}\n`,
         );

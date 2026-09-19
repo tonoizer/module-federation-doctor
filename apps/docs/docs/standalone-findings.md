@@ -1,7 +1,7 @@
 # Standalone per-bundler findings
 
 `examples/standalone-findings` has five **standalone** cells that run a real
-`vp run build` with the matching MFDoctor adapter and emit intentional findings.
+`vp run build` with the matching mfdoctor adapter and emit intentional findings.
 Vite, Webpack, Rspack, and Rsbuild are first-class. `modern/` is a documented
 **partial** stub using the same `modifyBundlerChain` afterEmit path as
 [`examples/compatibility/modern`](https://github.com/tonoizer/module-federation-doctor/tree/main/examples/compatibility/modern)

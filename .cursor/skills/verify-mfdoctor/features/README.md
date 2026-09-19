@@ -1,4 +1,4 @@
-# MFDoctor verification map
+# mfdoctor verification map
 
 This directory is the maintained source for verifying user-facing
 `@tonoizer/mfdoctor` behavior (CLI `mfdoctor` + post-emit `federationDoctor`

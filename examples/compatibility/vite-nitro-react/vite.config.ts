@@ -32,7 +32,7 @@ const mfOptions = {
 
 export default defineConfig({
   // Keep Nitro's official plugin/React setup intact, then attach Federation
-  // and MFDoctor so both the browser and SSR environments are observed.
+  // and mfdoctor so both the browser and SSR environments are observed.
   plugins: [
     nitro(),
     react(),

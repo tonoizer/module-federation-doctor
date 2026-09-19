@@ -279,13 +279,13 @@ describe("reporters", () => {
 
   it("prints the legacy success line when printLog.success is true", () => {
     expect(formatTerminalReport(emptyReport(), { printLog: { success: true } })).toContain(
-      "MFDoctor: no findings.",
+      "mfdoctor: no findings.",
     );
   });
 
   it("honors MFDOCTOR_QUIET=0 to restore the success line", () => {
     vi.stubEnv("MFDOCTOR_QUIET", "0");
-    expect(formatTerminalReport(emptyReport())).toContain("MFDoctor: no findings.");
+    expect(formatTerminalReport(emptyReport())).toContain("mfdoctor: no findings.");
   });
 
   it("formats severity, ruleId, message, suggestion, and doc links", () => {
@@ -304,7 +304,7 @@ describe("reporters", () => {
         },
       ]),
     );
-    expect(text).toContain("MFDoctor");
+    expect(text).toContain("mfdoctor");
     expect(text).toContain("error");
     expect(text).toContain("config/expose-key-invalid");
     expect(text).toContain('Expose key "Widget" must start with "./".');
@@ -335,7 +335,7 @@ describe("reporters", () => {
     const policy = text.indexOf("Policy: failed");
     const analysis = text.indexOf("Analysis: incomplete (missing-emit, evidence-unknown)");
     const action = text.indexOf(
-      "Next action: Fix the policy errors, then rebuild with the MFDoctor adapter and rerun the check.",
+      "Next action: Fix the policy errors, then rebuild with the mfdoctor adapter and rerun the check.",
     );
     const score = text.indexOf("Score: n/a (analysis incomplete)");
 
@@ -355,7 +355,7 @@ describe("reporters", () => {
     expect(text).toContain("Policy: passed");
     expect(text).toContain("Analysis: incomplete (missing-emit)");
     expect(text).toContain(
-      "Next action: Rebuild with the MFDoctor adapter and rerun the check to complete analysis.",
+      "Next action: Rebuild with the mfdoctor adapter and rerun the check to complete analysis.",
     );
     expect(text).toContain("Score: n/a (analysis incomplete)");
     expect(text).not.toBe("");
@@ -493,7 +493,7 @@ describe("reporters", () => {
 
   it("includes score on verbose success", () => {
     const text = formatTerminalReport(emptyReport(), { printLog: { success: true } });
-    expect(text).toContain("MFDoctor: no findings.");
+    expect(text).toContain("mfdoctor: no findings.");
     expect(text).toContain("Score: 100/100 (Great)");
   });
 

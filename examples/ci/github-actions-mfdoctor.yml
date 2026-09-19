@@ -1,9 +1,9 @@
-# Consumer copy-paste: MFDoctor workspace gate without Vite Plus / setup-vp.
+# Consumer copy-paste: mfdoctor workspace gate without Vite Plus / setup-vp.
 #
 # Paste into your host repo as `.github/workflows/mfdoctor.yml` (or merge the
 # job into an existing workflow). Adjust install/build to match your package
 # manager and monorepo layout. This file is documentation only, it is not a
-# live workflow in the MFDoctor repository.
+# live workflow in the mfdoctor repository.
 #
 # Pin workspace-federation-gate to a release tag (for example @1.1.0), not @main.
 #
@@ -13,7 +13,7 @@
 #    (`@tonoizer/mfdoctor/{vite,webpack,rspack,rsbuild}`)
 # 3. `build` (below) emits `.mf/doctor/project.json` for every host/remote
 
-name: MFDoctor
+name: mfdoctor
 
 on:
   push:
@@ -40,7 +40,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      # Production build for each host/remote that registers an MFDoctor adapter.
+      # Production build for each host/remote that registers an mfdoctor adapter.
       - run: pnpm run build
 
       - uses: tonoizer/module-federation-doctor/.github/actions/workspace-federation-gate@1.1.0

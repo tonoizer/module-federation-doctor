@@ -1,6 +1,6 @@
 /**
  * Documented Modern.js config shape for the standalone red emit cell.
- * The CI build (`build.mjs`) applies the same MFDoctor plugin via the
+ * The CI build (`build.mjs`) applies the same mfdoctor plugin via the
  * Modern.js `modifyBundlerChain` surface without requiring `@modern-js/app-tools`.
  *
  * This cell stays **partial**: Rspack-under-the-hood + adapter API, not a

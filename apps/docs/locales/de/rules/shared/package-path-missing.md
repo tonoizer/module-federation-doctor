@@ -1,6 +1,6 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # `shared/package-path-missing`
 
@@ -9,7 +9,7 @@
 
 ## Problem
 
-`shared[pkg].packagePath` redirects where the bundler reads the shared package (version, singleton fallback). A path that is missing on disk makes version/singleton negotiation fail at build or runtime with no other MFDoctor finding.
+`shared[pkg].packagePath` redirects where the bundler reads the shared package (version, singleton fallback). A path that is missing on disk makes version/singleton negotiation fail at build or runtime with no other mfdoctor finding.
 
 ## So beheben Sie das Problem
 

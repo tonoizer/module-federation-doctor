@@ -260,10 +260,10 @@ function defaultRebuildRequired(
 
 function defaultRebuildReason(kind: AgentAnalysisKind, rebuildRequired: boolean): string {
   if (kind === "check")
-    return "A check is config/static analysis; rebuild with the MFDoctor adapter before claiming emitted-artifact or federation coverage.";
+    return "A check is config/static analysis; rebuild with the mfdoctor adapter before claiming emitted-artifact or federation coverage.";
   if (kind === "workspace" || kind === "federation") {
     if (rebuildRequired)
-      return "Post-emit project facts are missing or their completeness is unknown; rebuild with the MFDoctor adapter before the federation gate.";
+      return "Post-emit project facts are missing or their completeness is unknown; rebuild with the mfdoctor adapter before the federation gate.";
     return "The report records no missing post-emit facts; keep the existing project artifacts and re-run the federation gate after the fix.";
   }
   if (rebuildRequired)
@@ -327,7 +327,7 @@ function defaultCompletenessConditions(kind: AgentAnalysisKind, report: DoctorRe
     return [
       "The narrow finding fix is applied and no non-suppressed findings remain.",
       statusCondition,
-      "A post-emit MFDoctor adapter build has produced the required project/artifact facts.",
+      "A post-emit mfdoctor adapter build has produced the required project/artifact facts.",
       "The workspace/federation follow-up passes.",
     ];
   if (kind === "workspace" || kind === "federation")
@@ -469,7 +469,7 @@ function locationLine(finding: DoctorFinding): string | undefined {
  */
 export function buildAgentPrompt(finding: DoctorFinding, options: AgentPromptOptions = {}): string {
   const guidance = ruleGuidance[finding.ruleId];
-  const fix = finding.suggestion ?? guidance?.fix ?? "Address this finding, then re-run MFDoctor.";
+  const fix = finding.suggestion ?? guidance?.fix ?? "Address this finding, then re-run mfdoctor.";
   const impact = guidance?.impact ?? "This finding affects Module Federation correctness or DX.";
   const sources = guidance?.sources ?? [];
   const plan = planForPrompt(finding, options);
@@ -497,7 +497,7 @@ export function buildAgentPrompt(finding: DoctorFinding, options: AgentPromptOpt
   const lines = [
     `# Fix: ${finding.ruleId}`,
     "",
-    "Fix exactly this MFDoctor finding. Do not change unrelated rules.",
+    "Fix exactly this mfdoctor finding. Do not change unrelated rules.",
     "Do not suggest suppressions or baseline entries unless the user asks.",
     "",
     renderVerificationPlan(plan),
@@ -530,7 +530,7 @@ export function buildAgentPrompt(finding: DoctorFinding, options: AgentPromptOpt
     ...(evidenceLines.length > 0 ? evidenceLines : ["- (none)"]),
     "",
     "## Docs",
-    `- MFDoctor: ${doctorRuleDocUrl(finding)}`,
+    `- mfdoctor: ${doctorRuleDocUrl(finding)}`,
     ...sources.map((source) => `- Source: ${source}`),
     "",
     "## Verify",
@@ -663,7 +663,7 @@ export async function writeDiagnosticsDump(
       : "## Top findings";
 
   const summaryLines = [
-    "# MFDoctor, agent diagnostics",
+    "# mfdoctor, agent diagnostics",
     "",
     scoreLine,
     `${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info` +

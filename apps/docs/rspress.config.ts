@@ -15,7 +15,7 @@ const siteOrigin = (process.env.SITE_ORIGIN || "https://mfdoctor.kevinbeier.com"
 );
 const siteIcon = "/mfdoctor-mark.svg";
 const socialImageUrl = `${siteOrigin}/mfdoctor-social.svg`;
-const socialImageAlt = "MFDoctor icon";
+const socialImageAlt = "mfdoctor icon";
 
 const guideSidebar = [
   { sectionHeaderText: "Guide" },
@@ -123,7 +123,7 @@ const ruleLabels: Record<string, string> = {
   performance: "Performance",
   vite: "Vite",
   security: "Security",
-  doctor: "MFDoctor",
+  doctor: "mfdoctor",
 };
 
 const rulesRoot = path.join(docsAppDir, "docs", "rules");
@@ -217,7 +217,7 @@ const nav: MenuNode[] = [
         text: "Library / extension",
         link: "/capabilities#library-contracts-110",
       },
-      { text: `MFDoctor v${docsRelease.version}`, link: docsRelease.releaseUrl },
+      { text: `mfdoctor v${docsRelease.version}`, link: docsRelease.releaseUrl },
       {
         text: "Module Federation",
         link: "https://module-federation.io/",
@@ -351,7 +351,7 @@ export default defineConfig({
       }
     : {}),
   llms: true,
-  title: "MFDoctor",
+  title: "mfdoctor",
   description: "Diagnostics for Vite, Rspack, Rsbuild, Webpack, and Modern.js federation projects",
   icon: siteIcon,
   logo: {
@@ -360,7 +360,7 @@ export default defineConfig({
   },
   outDir: "doc_build",
   head: [
-    ["meta", { property: "og:site_name", content: "MFDoctor" }],
+    ["meta", { property: "og:site_name", content: "mfdoctor" }],
     ["meta", { property: "og:image", content: socialImageUrl }],
     ["meta", { property: "og:image:type", content: "image/svg+xml" }],
     ["meta", { property: "og:image:width", content: "1200" }],

@@ -608,7 +608,7 @@ try {
       );
       await run("build package", vitePlus, ["run", "--filter", ".", "build"], environment);
       await run(
-        "clean E2E MFDoctor artifacts",
+        "clean E2E mfdoctor artifacts",
         process.execPath,
         ["scripts/clean-e2e-artifacts.mjs"],
         environment,

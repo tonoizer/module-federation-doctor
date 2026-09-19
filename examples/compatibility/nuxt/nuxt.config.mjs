@@ -1,5 +1,5 @@
 /**
- * Documented Nuxt config shape for MFDoctor.
+ * Documented Nuxt config shape for mfdoctor.
  * Nuxt auto-imports `defineNuxtConfig`; the smoke keeps a local identity so
  * this file stays copyable without a Nuxt dependency.
  */

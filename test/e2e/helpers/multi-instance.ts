@@ -71,7 +71,7 @@ type JsonRecord = Record<string, any>;
 
 function readDoctorProject(fixture: MatrixFixture): JsonRecord {
   const projectFile = path.resolve(process.cwd(), fixture.projectPath, ".mf/doctor/project.json");
-  expect(fs.existsSync(projectFile), `${fixture.name} MFDoctor project is missing`).toBe(true);
+  expect(fs.existsSync(projectFile), `${fixture.name} mfdoctor project is missing`).toBe(true);
   return JSON.parse(fs.readFileSync(projectFile, "utf8")) as JsonRecord;
 }
 
@@ -87,21 +87,21 @@ function assetNames(instance: JsonRecord): string[] {
 
 function readDoctorReport(fixture: MatrixFixture): JsonRecord {
   const reportFile = path.resolve(process.cwd(), fixture.projectPath, ".mf/doctor/report.json");
-  expect(fs.existsSync(reportFile), `${fixture.name} MFDoctor report is missing`).toBe(true);
+  expect(fs.existsSync(reportFile), `${fixture.name} mfdoctor report is missing`).toBe(true);
   return JSON.parse(fs.readFileSync(reportFile, "utf8")) as JsonRecord;
 }
 
-/** Assert the production build itself completed without MFDoctor errors. */
+/** Assert the production build itself completed without mfdoctor errors. */
 export function expectDoctorReport(fixture: MatrixFixture): void {
   const report = readDoctorReport(fixture);
-  expect(report.summary?.errors, `${fixture.name} MFDoctor errors`).toBe(0);
+  expect(report.summary?.errors, `${fixture.name} mfdoctor errors`).toBe(0);
 }
 
 /** Assert instance identity and artifact ownership, alongside browser rendering. */
 export function expectDoctorInstanceScope(fixture: MatrixFixture): void {
   const project = readDoctorProject(fixture);
   const instances = projectInstances(project);
-  expect(instances, `${fixture.name} MFDoctor instance count`).toHaveLength(
+  expect(instances, `${fixture.name} mfdoctor instance count`).toHaveLength(
     fixture.instances.length,
   );
 

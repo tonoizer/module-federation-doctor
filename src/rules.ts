@@ -602,7 +602,7 @@ function isLocalDemo(context: RuleContext): boolean {
   return context.options.localDemoOnly === true && context.facts.bundler.mode === "development";
 }
 
-/** True when MFDoctor analysis mode or a single unscoped project build reports development. */
+/** True when mfdoctor analysis mode or a single unscoped project build reports development. */
 function isDevelopmentBuild(context: RuleContext): boolean {
   if (context.facts.bundler.mode === "development") return true;
   const builds = context.facts.builds;
@@ -1189,7 +1189,7 @@ export const builtInRules: DoctorRule[] = [
       if (!isLoopbackRemoteUrl(url)) continue;
       report(
         context,
-        `Remote "${name}" points at localhost in a CI/production MFDoctor run.`,
+        `Remote "${name}" points at localhost in a CI/production mfdoctor run.`,
         { name, entry: remote.entry, mode: context.facts.bundler.mode },
         "Use deployed remote URLs for CI and production builds; keep localhost for local development mode.",
         findingDetails(FINDING_DETAILS_SCHEMAS.REMOTES_CONFIG, {
@@ -1529,7 +1529,7 @@ export const builtInRules: DoctorRule[] = [
           context,
           `Runtime plugin "${plugin}" does not resolve to a scanned source file or on-disk plugin file.`,
           { plugin },
-          "Fix the runtime plugin path or include that file in MFDoctor's source scan.",
+          "Fix the runtime plugin path or include that file in mfdoctor's source scan.",
         );
     }
   }),
@@ -2368,7 +2368,7 @@ export const builtInRules: DoctorRule[] = [
         context,
         "The emitted manifest belongs to a different federation container name.",
         { configName, manifestName },
-        "Clean the output directory and make the plugin and MFDoctor use the same options object.",
+        "Clean the output directory and make the plugin and mfdoctor use the same options object.",
         findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { configName, manifestName }),
       );
   }),
@@ -2526,17 +2526,17 @@ export const builtInRules: DoctorRule[] = [
         ? "Vite/@module-federation/vite does not emit `mf-manifest.json` / `mf-stats.json` unless `manifest: true` is set. Enable `manifest: true` for those artifacts; webpack-style compilation `stats.json` is not expected on Vite."
         : undefined;
     const enhancedStatsSuggestion = enhancedRemotesMissingStats(context.facts)
-      ? "Webpack/Rspack/Rsbuild emit `mf-stats.json` by default when `manifest !== false`. Remotes are configured but stats were not collected. Run the MFDoctor bundler adapter after emit so stats facts exist, or do not set `manifest: false`. Vite without `manifest: true` is a documented opt-in and is not this Enhanced path."
+      ? "Webpack/Rspack/Rsbuild emit `mf-stats.json` by default when `manifest !== false`. Remotes are configured but stats were not collected. Run the mfdoctor bundler adapter after emit so stats facts exist, or do not set `manifest: false`. Vite without `manifest: true` is a documented opt-in and is not this Enhanced path."
       : undefined;
     report(
       context,
       sourceReadFailures.length > 0
-        ? "MFDoctor encountered unreadable source input; analysis is unknown."
+        ? "mfdoctor encountered unreadable source input; analysis is unknown."
         : budget?.status === "unknown"
-          ? "MFDoctor completed with unknown input due to an analysis budget."
+          ? "mfdoctor completed with unknown input due to an analysis budget."
           : unresolvedDynamic.length > 0 && missing.length === 0
-            ? "MFDoctor completed with unresolved dynamic import patterns."
-            : "MFDoctor completed with partial input.",
+            ? "mfdoctor completed with unresolved dynamic import patterns."
+            : "mfdoctor completed with partial input.",
       {
         ...(missing.length > 0 ? { missing } : {}),
         ...(unresolvedDynamic.length > 0 ? { unresolvedDynamic } : {}),
@@ -2547,16 +2547,16 @@ export const builtInRules: DoctorRule[] = [
           : {}),
       },
       sourceReadFailures.length > 0
-        ? "Restore access to unreadable source input and re-run MFDoctor."
+        ? "Restore access to unreadable source input and re-run mfdoctor."
         : unresolvedDynamic.length > 0
           ? "Prefer string-literal `import()` / `loadRemote` / `loadShare`, or pass an opt-in Observability export via `runtimeTrace` / `mfdoctor runtime`."
           : configMissing
             ? "Pass explicit MF options."
             : missing.includes("outputPublicPath")
-              ? "Expose public bundler `output.publicPath` (Rsbuild) or Vite MF `publicPath` on the resolved plugin config so MFDoctor can classify it."
+              ? "Expose public bundler `output.publicPath` (Rsbuild) or Vite MF `publicPath` on the resolved plugin config so mfdoctor can classify it."
               : (enhancedStatsSuggestion ??
                 viteArtifactSuggestion ??
-                "Run MFDoctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
+                "Run mfdoctor through the bundler adapter after emit, or complete the missing inputs listed in evidence."),
       findingDetails(FINDING_DETAILS_SCHEMAS.DOCTOR_PARTIAL_ANALYSIS, {
         missing,
         ...(unresolvedDynamic.length > 0

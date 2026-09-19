@@ -102,14 +102,14 @@ describe("agent prompts", () => {
       }),
     );
     expect(prompt).toContain("# Fix: config/name-required");
-    expect(prompt).toContain("Fix exactly this MFDoctor finding");
+    expect(prompt).toContain("Fix exactly this mfdoctor finding");
     expect(prompt).toContain("Do not suggest suppressions");
     expect(prompt).toContain("- Fingerprint: `fp-name`");
     expect(prompt).toContain("- Location: `module-federation.config.ts:3:1`");
     expect(prompt).toContain('Set name to "host".');
     expect(prompt).toContain("mfdoctor check");
     expect(prompt).toContain(
-      "- MFDoctor: https://mfdoctor.kevinbeier.com/rules/config/name-required",
+      "- mfdoctor: https://mfdoctor.kevinbeier.com/rules/config/name-required",
     );
     // Evidence values are bounded
     expect(prompt).toMatch(/note: x{120}…/);

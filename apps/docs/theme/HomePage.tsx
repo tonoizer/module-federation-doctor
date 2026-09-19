@@ -4,7 +4,7 @@ const startLinks = [
   {
     href: "/setup",
     title: "Setup",
-    detail: "Install MFDoctor, add a bundler adapter, and run the first check.",
+    detail: "Install mfdoctor, add a bundler adapter, and run the first check.",
   },
   {
     href: "/production-readiness",
@@ -101,7 +101,7 @@ export function HomePage() {
           href: "/setup",
           title: "Einrichtung",
           detail:
-            "MFDoctor installieren, einen Bundler-Adapter hinzufügen und die erste Prüfung ausführen.",
+            "mfdoctor installieren, einen Bundler-Adapter hinzufügen und die erste Prüfung ausführen.",
         },
         {
           href: "/production-readiness",
@@ -150,7 +150,7 @@ export function HomePage() {
   return (
     <main className="kb-home">
       <section className="kb-intro">
-        <h1>MFDoctor</h1>
+        <h1>mfdoctor</h1>
         <div className="kb-copy">
           {isGerman ? (
             <>
@@ -161,13 +161,13 @@ export function HomePage() {
                 Erklärung enthält.
               </p>
               <p>
-                Registrieren Sie MFDoctor neben Ihrem Federation-Plugin. Erfolgreiche Builds bleiben
+                Registrieren Sie mfdoctor neben Ihrem Federation-Plugin. Erfolgreiche Builds bleiben
                 ruhig; Befunde enthalten eine Regel, Auswirkungen, einen Lösungsvorschlag und einen
                 direkten Dokumentationslink. Fehler lassen die CI erst scheitern, nachdem alle
                 Befunde gesammelt wurden.
               </p>
               <p>
-                MFDoctor läuft nach der Ausgabe in Node und fügt dem Browser-Bundle nichts hinzu.
+                mfdoctor läuft nach der Ausgabe in Node und fügt dem Browser-Bundle nichts hinzu.
                 Beginnen Sie mit <a href={localizeHref("/setup")}>Einrichtung</a>,{" "}
                 <a href={localizeHref("/production-readiness")}>CI</a>, dem{" "}
                 <a href={localizeHref("/rules/")}>Regelkatalog</a> und den{" "}
@@ -182,12 +182,12 @@ export function HomePage() {
                 problems while the build still has enough evidence to explain them.
               </p>
               <p>
-                Register MFDoctor next to your federation plugin. Clean builds stay quiet; findings
+                Register mfdoctor next to your federation plugin. Clean builds stay quiet; findings
                 include a rule, impact, suggested fix, and a direct documentation link. Errors fail
                 CI only after every finding has been collected.
               </p>
               <p>
-                MFDoctor runs in Node after emit and adds nothing to the browser bundle. Start with{" "}
+                mfdoctor runs in Node after emit and adds nothing to the browser bundle. Start with{" "}
                 <a href={localizeHref("/setup")}>Setup</a>,{" "}
                 <a href={localizeHref("/production-readiness")}>CI</a>, the{" "}
                 <a href={localizeHref("/rules/")}>rule catalog</a>, and{" "}

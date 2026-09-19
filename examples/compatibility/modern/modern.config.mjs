@@ -1,6 +1,6 @@
 /**
- * Documented Modern.js config shape for MFDoctor.
- * The CI smoke build (`build.mjs`) applies the same MFDoctor plugin via the
+ * Documented Modern.js config shape for mfdoctor.
+ * The CI smoke build (`build.mjs`) applies the same mfdoctor plugin via the
  * Modern.js `modifyBundlerChain` surface without requiring `@modern-js/app-tools`.
  * Current App Tools releases cannot enter this lockfile under
  * `trustPolicy: no-downgrade` (last provenance-attested stable is `2.63.3`).

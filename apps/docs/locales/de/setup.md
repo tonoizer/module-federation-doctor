@@ -1,15 +1,15 @@
 ---
 title: Erste Schritte
-description: MFDoctor installieren, den Build-Adapter hinzufügen und die ersten lokalen und Workspace-Prüfungen ausführen.
+description: mfdoctor installieren, den Build-Adapter hinzufügen und die ersten lokalen und Workspace-Prüfungen ausführen.
 ---
 
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Get started
 
-MFDoctor runs after your Module Federation build, while the bundler still has the
+mfdoctor runs after your Module Federation build, while the bundler still has the
 configuration and emitted files needed to explain a problem. It adds nothing to
 the browser bundle.
 
@@ -19,7 +19,7 @@ Vite Plus, `vp`, or this repository's `setup-vp` GitHub Action.
 
 ## Installation
 
-Add MFDoctor as a development dependency:
+Add mfdoctor as a development dependency:
 
 ```bash
 pnpm add -D @tonoizer/mfdoctor
@@ -35,8 +35,8 @@ are listed in the [compatibility matrix](./compatibility.md).
 
 ## Einen Adapter hinzufügen
 
-Keep one `mfOptions` object and pass it to both Module Federation and MFDoctor.
-This gives MFDoctor the complete build-time config, including `runtimePlugins`.
+Keep one `mfOptions` object and pass it to both Module Federation and mfdoctor.
+This gives mfdoctor the complete build-time config, including `runtimePlugins`.
 
 For Vite:
 
@@ -60,17 +60,17 @@ Plus examples.
 
 ## Die erste Prüfung ausführen
 
-Run the normal production build. MFDoctor waits until emit is complete, then
+Run the normal production build. mfdoctor waits until emit is complete, then
 prints one findings block. A finding includes:
 
 - severity and rule ID
 - the problem and its impact
 - a short fix
-- a direct MFDoctor rule link
+- a direct mfdoctor rule link
 - official Module Federation sources when available
 
 Clean local builds stay quiet. Local findings do not fail the build unless you
-change `failOn`. In CI, MFDoctor defaults to `failOn: "error"` and writes terminal,
+change `failOn`. In CI, mfdoctor defaults to `failOn: "error"` and writes terminal,
 JSON, and SARIF reports.
 
 Use this loop:
@@ -80,7 +80,7 @@ Use this loop:
 3. Rebuild until the process exits `0`.
 4. In a monorepo, run `mfdoctor workspace` after every app has built.
 5. If a finding is intentional, suppress the rule or baseline that exact
-   fingerprint. Do not remove MFDoctor to make CI green.
+   fingerprint. Do not remove mfdoctor to make CI green.
 
 `mfdoctor check` alone is offline config/static analysis. Do not claim green
 from check alone, see the [agent loop](./agent-loop.md) (check vs emit +
@@ -110,18 +110,18 @@ analysis cannot finish. See the [CLI command reference](./cli.md) for explicit
 federation globs, baselines, runtime traces, deployed probes, and a
 [Plus-free GitHub Actions snippet](./cli.md#github-actions).
 
-## Was MFDoctor abdeckt
+## Was mfdoctor abdeckt
 
 | Path                                                   | Coverage                                                            |
 | ------------------------------------------------------ | ------------------------------------------------------------------- |
-| Build plugin plus MFDoctor adapter sharing `mfOptions` | Primary, with config and emitted-file evidence                      |
+| Build plugin plus mfdoctor adapter sharing `mfOptions` | Primary, with config and emitted-file evidence                      |
 | `mfdoctor workspace` after all apps build              | Cross-app names, shared packages, providers, and topology           |
 | `mfdoctor check` without a build adapter               | Partial; config and imports are available, emitted facts may not be |
 | `mfdoctor runtime` with an Observability export        | Opt-in runtime correlation, performed offline                       |
 | `mfdoctor probe` against a deployed manifest           | Producer and deployment evidence only                               |
 
 Runtime-only apps that call `@module-federation/runtime` without a supported
-build plugin are not first-class MFDoctor targets. MFDoctor does not parse runtime
+build plugin are not first-class mfdoctor targets. mfdoctor does not parse runtime
 initialization from source or inject a runtime agent. See
 [Observability latest.json → mfdoctor runtime](./observability-runtime.md) and
 [Limitations](./limitations.md).

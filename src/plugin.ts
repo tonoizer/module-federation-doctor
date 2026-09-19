@@ -31,14 +31,14 @@ import { extractCompilerSplitChunksFacts, extractRsbuildSplitChunksFacts } from 
 export function failAfterCollect(result: AnalysisResult): void {
   if (result.exitCode === 0) return;
   if (result.exitCode === 2) {
-    throw new Error("MFDoctor could not complete analysis.");
+    throw new Error("mfdoctor could not complete analysis.");
   }
   const { errors, warnings, info } = result.report.summary;
   const details = result.report.findings
     .map((finding) => `  - [${finding.severity}] ${finding.ruleId}: ${finding.message}`)
     .join("\n");
   throw new Error(
-    `MFDoctor policy failed (${errors} error(s), ${warnings} warning(s), ${info} info). See .mf/doctor/report.json.\n${details}`,
+    `mfdoctor policy failed (${errors} error(s), ${warnings} warning(s), ${info} info). See .mf/doctor/report.json.\n${details}`,
   );
 }
 
@@ -182,7 +182,7 @@ export function collectViteModuleFederationPluginInstances(
 }
 
 /**
- * Keep an explicit MFDoctor config authoritative over the Vite plugin's
+ * Keep an explicit mfdoctor config authoritative over the Vite plugin's
  * resolved defaults (for example `remoteEntry-[hash]`). Additional plugin
  * instances still retain their independently discovered configuration.
  */
@@ -223,7 +223,7 @@ export function countModuleFederationPlugins(compiler: {
  *
  * Counts plugins with a known top-level public name, or with `federation` in
  * the public name plus a readable public config. Internal helper plugins and
- * the MFDoctor adapter are excluded so one `federation()` / `pluginModuleFederation()`
+ * the mfdoctor adapter are excluded so one `federation()` / `pluginModuleFederation()`
  * call stays a single registration.
  */
 export function countViteFamilyFederationPlugins(plugins: unknown[] | undefined): number {
@@ -717,7 +717,7 @@ export function attachDoctorAfterEmit(
     const ErrorCtor = compiler.webpack?.WebpackError ?? Error;
     // Single policy failure diagnostic, findings already printed by writeReports.
     compilation.errors.push(
-      new ErrorCtor(`MFDoctor policy failed. See terminal output and .mf/doctor/report.json.`),
+      new ErrorCtor(`mfdoctor policy failed. See terminal output and .mf/doctor/report.json.`),
     );
     failAfterCollect(result);
   });
@@ -1168,7 +1168,7 @@ function createViteFamilyHooks(configured: DoctorOptions) {
  * build hooks (`configResolved` / `buildStart`) and analyze only on post-emit
  * surfaces (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild`).
  * Never register `transform` / `load` / `banner` (or similar) hooks that inject
- * MFDoctor into client assets. Findings print once via the shared terminal
+ * mfdoctor into client assets. Findings print once via the shared terminal
  * reporter at the end of analysis, adapters must not re-emit per-finding
  * bundler logs (#46).
  */

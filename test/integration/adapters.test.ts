@@ -140,7 +140,7 @@ describe("adapter cases", () => {
           env: baseEnvironment,
         },
       );
-      expect(stderr).not.toContain("MFDoctor could not complete");
+      expect(stderr).not.toContain("mfdoctor could not complete");
       // Incomplete zero-finding builds show status; complete zero-finding builds stay quiet.
       expect(stdout).not.toMatch(terminalFindingLine);
     }

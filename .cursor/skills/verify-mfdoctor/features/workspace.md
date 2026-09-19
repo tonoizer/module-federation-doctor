@@ -1,6 +1,6 @@
 # Workspace
 
-`mfdoctor workspace` discovers `.mf/doctor/project.json` trees under one or more roots and runs the cross-project federation gate. Users run it after building federated apps with MFDoctor adapters (or against checked-in workspace fixtures).
+`mfdoctor workspace` discovers `.mf/doctor/project.json` trees under one or more roots and runs the cross-project federation gate. Users run it after building federated apps with mfdoctor adapters (or against checked-in workspace fixtures).
 
 ## Sub-features
 

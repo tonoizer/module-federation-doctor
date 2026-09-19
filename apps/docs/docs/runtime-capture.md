@@ -1,12 +1,12 @@
 # External runtime capture contract
 
 > Library / extension docs for authors wiring an external capture tool. Host
-> teams integrating MFDoctor should start with [Setup](./setup.md),
+> teams integrating mfdoctor should start with [Setup](./setup.md),
 > [CI](./production-readiness.md), [Rules](./rules/), and
 > [Limitations](./limitations.md).
 
 The runtime capture contract is an explicit handoff boundary for an external
-capture/export tool. It is not a MFDoctor runtime agent.
+capture/export tool. It is not a mfdoctor runtime agent.
 
 The design record is [ADR 0084: External runtime capture boundary](https://github.com/tonoizer/module-federation-doctor/blob/main/docs/adr/0084-external-runtime-capture-boundary.md).
 
@@ -105,7 +105,7 @@ validation or the rename fails.
 ## Explicit browser transport
 
 An external browser tool may provide a narrow connector to an explicitly
-approved target. MFDoctor calls only `readObservabilityExport` or
+approved target. mfdoctor calls only `readObservabilityExport` or
 `readDevtoolsExport`; the connector must not expose arbitrary page evaluation,
 plugin injection, runtime mutation, or DevTools overrides.
 

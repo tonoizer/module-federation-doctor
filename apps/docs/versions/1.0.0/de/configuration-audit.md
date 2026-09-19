@@ -1,6 +1,6 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Configuration audit
 
@@ -32,7 +32,7 @@ Use it as a review checklist even when a rule does not yet automate the check.
 | `dts.generateTypes.outputDir`   | Type zip path drifts from nested `filename`        | Align outputDir with the remote-entry directory layout         |
 | Direct `.js` remotes + DTS      | No type URL without manifests/`remoteTypeUrls`     | Prefer manifests or set `remoteTypeUrls`                       |
 | Non-string `output.publicPath`  | Manifest generation is skipped upstream            | Use a string/`auto` publicPath when manifests are required     |
-| Localhost remotes in CI         | Deployed builds cannot reach loopback remotes      | Use deployed URLs for CI/production MFDoctor runs              |
+| Localhost remotes in CI         | Deployed builds cannot reach loopback remotes      | Use deployed URLs for CI/production mfdoctor runs              |
 | `experiments.asyncStartup`      | Entry exports become async                         | Ensure direct/UMD consumers await the Promise                  |
 | `externalRuntime` pair          | Hard load-order dependency                         | One pure provider; externalize only downstream browser remotes |
 | snapshot/remote/shared removal  | Tree-shaken capability still used                  | Never disable a configured capability                          |

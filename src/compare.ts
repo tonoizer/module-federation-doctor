@@ -245,7 +245,7 @@ export function compareToSarif(result: ManifestCompareResult): Record<string, un
       {
         tool: {
           driver: {
-            name: "MFDoctor",
+            name: "mfdoctor",
             rules: fields.map((field) => ({
               id: `compare/${field}`,
               shortDescription: { text: `Manifest ${field} drift` },

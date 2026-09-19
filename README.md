@@ -1,7 +1,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tonoizer/module-federation-doctor/main/assets/mfdoctor-readme-logo-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tonoizer/module-federation-doctor/main/assets/mfdoctor-readme-logo-light.svg">
-  <img alt="MFDoctor" src="https://raw.githubusercontent.com/tonoizer/module-federation-doctor/main/assets/mfdoctor-readme-logo-light.svg" width="180" height="40">
+  <img alt="mfdoctor" src="https://raw.githubusercontent.com/tonoizer/module-federation-doctor/main/assets/mfdoctor-readme-logo-light.svg" width="180" height="40">
 </picture>
 
 [![version](https://img.shields.io/npm/v/%40tonoizer%2Fmfdoctor?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@tonoizer/mfdoctor)
@@ -10,7 +10,7 @@
 
 `@tonoizer/mfdoctor` finds config, sharing, runtime, manifest, and output
 problems in Module Federation projects. **Supported** bundlers (first-class
-adapter + real build+MFDoctor CI gate): Vite, Rspack, Rsbuild, and Webpack.
+adapter + real build+mfdoctor CI gate): Vite, Rspack, Rsbuild, and Webpack.
 **Partial** (adapter present, limited rules/fixtures, not a full CI gate):
 Modern.js, Nuxt 3/4, and Rolldown-integrated Vite / Vite Plus. Machine-readable
 status:
@@ -18,14 +18,14 @@ status:
 human matrix:
 [compatibility](https://mfdoctor.kevinbeier.com/compatibility).
 
-Install as a **devDependency**. MFDoctor is **build/CI-only**: adapters run after
+Install as a **devDependency**. mfdoctor is **build/CI-only**: adapters run after
 emit in Node and are not part of the browser bundle. They add CI time, not
 runtime size or performance cost. The build plugin is the primary integration;
 the CLI complements it for config, workspace, runtime, and deployed checks.
 
 **Agents:** follow the [two-tier loop](https://mfdoctor.kevinbeier.com/agent-loop).
 `mfdoctor check` is config/static only, **do not claim green from check alone**.
-After fixes, require plugin emit (build with a MFDoctor adapter) and, in
+After fixes, require plugin emit (build with a mfdoctor adapter) and, in
 monorepos, `mfdoctor workspace`. Treat exit `2` and
 [`doctor/partial-analysis`](https://mfdoctor.kevinbeier.com/rules/doctor/partial-analysis)
 as incomplete, not a pass. Read findings (or JSON/diagnostics), open the linked
@@ -35,7 +35,7 @@ rebuild until policy exits **0**. Quiet success prints nothing.
 
 ## Primary DX: build plugin
 
-Register MFDoctor next to your Module Federation plugin. It runs **after emit**,
+Register mfdoctor next to your Module Federation plugin. It runs **after emit**,
 prints **all** findings once at the end of the build (severity, rule, message,
 fix, docs links), then fails when policy says so, only after every finding is
 collected. Clean builds stay quiet by default.
@@ -45,7 +45,7 @@ collected. Clean builds stay quiet by default.
 | Bundler                    | Status        | Notes                                                                  |
 | -------------------------- | ------------- | ---------------------------------------------------------------------- |
 | Vite / Vite 5 CommonJS     | **supported** | Primary CI cells in `fixtures/compatibility-matrix.json`               |
-| Rspack / Rsbuild / Webpack | **supported** | First-class adapters; production build+MFDoctor gates                  |
+| Rspack / Rsbuild / Webpack | **supported** | First-class adapters; production build+mfdoctor gates                  |
 | Rolldown / Vite Plus       | **partial**   | Same `@tonoizer/mfdoctor/vite` entry; no dedicated Rolldown CI smoke   |
 | Modern.js                  | **partial**   | Rspack-under-the-hood smoke; App Tools blocked by lockfile trustPolicy |
 | Nuxt 3/4                   | **partial**   | Adapter + unit contract; upstream app build baseline-blocked           |
@@ -76,7 +76,7 @@ export default defineNuxtConfig({
 ```
 
 The official Nuxt Module Federation module still owns federation. The
-MFDoctor module observes both client and SSR Vite builds without owning the
+mfdoctor module observes both client and SSR Vite builds without owning the
 federation plugin or duplicating its configuration.
 
 **Multiple Module Federation instances**
@@ -95,7 +95,7 @@ federationDoctor({
 ```
 
 Webpack, Rspack, and Vite-family adapters also read public plugin configs when
-available. MFDoctor derives stable per-instance IDs, keeps manifests/stats/build
+available. mfdoctor derives stable per-instance IDs, keeps manifests/stats/build
 outputs and shared-version evidence scoped, and reports identical duplicate
 registrations separately. Workspace and UI federation graphs include the
 instance scope in every affected edge and node; Nuxt client/SSR outputs are
@@ -156,7 +156,7 @@ A real `@modern-js/app-tools` CI cell is blocked by this repo's
 `2.63.3`). The compatibility smoke stays Rspack-under-the-hood.
 
 CI is auto-detected from the environment (`CI`, `GITHUB_ACTIONS`, and other
-common provider signals). In CI, MFDoctor fails on error findings and includes
+common provider signals). In CI, mfdoctor fails on error findings and includes
 SARIF by default, you do **not** need `mode: "ci"` in plugin config. Local
 development defaults to `failOn: "never"` so findings print without breaking
 the build. Override with `--ci`, `mode: "ci"`, `mode: "development"`, or
@@ -171,7 +171,7 @@ Use `--verbose`, `printLog: { success: true }`, `quiet: false`, or
 ### Noisy finding? Mute intentionally
 
 When a rule is known and accepted (for example a host that keeps direct
-`remoteEntry` URLs), turn that rule off, do not disable MFDoctor:
+`remoteEntry` URLs), turn that rule off, do not disable mfdoctor:
 
 ```ts
 federationDoctor({
@@ -284,7 +284,7 @@ and [`examples/ci/github-actions-mfdoctor.yml`](./examples/ci/github-actions-mfd
 
 `runtime` accepts one JSON Observability report, an array of reports, or a
 `{"report": ...}` / `{"reports": [...]}` envelope. Current upstream
-Observability 2.5.3 reports are supported, along with the legacy MFDoctor v1
+Observability 2.5.3 reports are supported, along with the legacy mfdoctor v1
 shape (`success`, `init`, `factory`, and old diagnosis/module fields). Partial
 reports are imported as partial evidence; missing fields never count as a
 pass. Missing shared lifecycle data on partial/old/preview runtimes is marked
@@ -294,7 +294,7 @@ reports fail with a typed error. The general evidence reader
 `parseRuntimeTraces` / `loadRuntimeTraceFile`. Docs:
 [Observability latest.json → mfdoctor runtime](https://mfdoctor.kevinbeier.com/observability-runtime).
 
-Runtime imports are opt-in and local only. MFDoctor does not fetch, upload, open
+Runtime imports are opt-in and local only. mfdoctor does not fetch, upload, open
 a browser, or execute report contents. Stored/output evidence is bounded and
 redacts credentials, secret query values, private paths, and stack traces.
 Invalid opt-in `runtimeTrace` paths do not break offline `check`; they simply
@@ -325,7 +325,7 @@ correctness findings stay on. Packs can ship severity maps plus custom
 MF `runtimePlugins` in bundler config are checked at build time. **Runtime-only**
 apps (`createInstance` / runtime plugins without a Vite/Rspack/Rsbuild/Webpack MF
 **build** plugin) are out of scope for first-class support, use Observability +
-`mfdoctor runtime` instead of shipping MFDoctor into the browser. See
+`mfdoctor runtime` instead of shipping mfdoctor into the browser. See
 [Observability → runtime](https://mfdoctor.kevinbeier.com/observability-runtime),
 [limitations](https://mfdoctor.kevinbeier.com/limitations), and
 [#34](https://github.com/tonoizer/module-federation-doctor/issues/34).
@@ -360,13 +360,13 @@ Examples:
 - `examples/mixed-federation`, healthy Vite + Rspack + Rsbuild e2e path
 - `examples/nested-federation`, nested Vite host → Vite/Rsbuild → Rspack/Webpack;
   run `vp run demo:nested` or `vp run test:nested`
-- `examples/compatibility/webpack`, Webpack build+MFDoctor smoke for the matrix
+- `examples/compatibility/webpack`, Webpack build+mfdoctor smoke for the matrix
 - `examples/compatibility/nuxt`, Nuxt module adapter smoke (partial; Vite-under-the-hood)
 - `examples/compatibility/rolldown`, Vite Plus / Rolldown smoke (partial; same Vite entry)
-- `examples/mixed-federation-issues`, same flat topology with intentional MFDoctor
+- `examples/mixed-federation-issues`, same flat topology with intentional mfdoctor
   findings; run `vp run demo:mixed-issues`
 - `examples/standalone-findings`, per-bundler Vite/Webpack/Rspack/Rsbuild
-  cells plus a **partial** Modern.js afterEmit stub that emit visible MFDoctor
+  cells plus a **partial** Modern.js afterEmit stub that emit visible mfdoctor
   findings; run `vp run demo:standalone`
 - `examples/showcase`, one-rule CLI fixtures + runtime green/fail demos; run
   `vp run demo:showcase`
@@ -380,8 +380,8 @@ Examples:
   and executes the green and negative Playwright runtime paths. `vp run test:giga`
   remains as a compatibility alias for existing automation.
 
-MFDoctor-specific agent UX prefers CLI/plugin finding output (rule id, fix,
-MFDoctor docs URL, official MF sources, exit codes) plus a terminal header for
+mfdoctor-specific agent UX prefers CLI/plugin finding output (rule id, fix,
+mfdoctor docs URL, official MF sources, exit codes) plus a terminal header for
 policy result, analysis completeness, and next action before the offline health
 score (`Score: N/100`). Blocking errors keep the score label at `Needs work`;
 incomplete analysis is shown as `Score: n/a`. Top-3 copy-paste agent prompts
@@ -412,7 +412,7 @@ to bring that kind of focused diagnostic experience to Module Federation.
 Presets and targeted scans make the nitty-gritty visible early, without
 requiring users to dive deeply into federation or bundler internals first.
 
-That idea shaped MFDoctor into a diagnostics tool focused on
+That idea shaped mfdoctor into a diagnostics tool focused on
 the configuration, sharing, runtime, manifest, and output problems unique to
 Module Federation projects. Thanks to the Rsdoctor team for the inspiration.
 

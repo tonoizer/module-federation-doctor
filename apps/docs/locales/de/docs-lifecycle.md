@@ -1,15 +1,15 @@
 ---
 title: Lebenszyklus der Dokumentation
-description: Regeln für Releases, Sprachen und Zuständigkeiten der MFDoctor-Dokumentation.
+description: Regeln für Releases, Sprachen und Zuständigkeiten der mfdoctor-Dokumentation.
 ---
 
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Lebenszyklus der Dokumentation
 
-MFDoctor keeps one canonical documentation surface: the English content at
+mfdoctor keeps one canonical documentation surface: the English content at
 `mfdoctor.kevinbeier.com`. Release metadata, localization, and API references
 are backed by maintained inputs before they become navigation surfaces.
 

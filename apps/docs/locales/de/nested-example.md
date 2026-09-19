@@ -1,6 +1,6 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Nested federation example
 
@@ -14,7 +14,7 @@ A multi-level Module Federation graph across bundlers:
 | Leaf                | Rspack  | Exposes a card                        |
 | Leaf                | Webpack | Exposes a widget                      |
 
-Each app wires the MFDoctor adapter for its bundler. Build the suite, then gate
+Each app wires the mfdoctor adapter for its bundler. Build the suite, then gate
 cross-app facts:
 
 ```bash
@@ -31,5 +31,5 @@ does not fire. Consumers that use `remoteEntry.js` turn off
 pattern as the [mixed example](./mixed-example.md).
 
 For intentional red findings, use [mixed issues](./mixed-issues-example.md) or
-the [one-rule showcase](./showcase.md). Per-bundler build+MFDoctor demos:
+the [one-rule showcase](./showcase.md). Per-bundler build+mfdoctor demos:
 [standalone findings](./standalone-findings.md).

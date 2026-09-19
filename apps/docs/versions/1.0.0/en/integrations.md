@@ -1,12 +1,12 @@
 ---
 title: Bundler integrations
-description: Add MFDoctor to Vite, Vite Plus, Nuxt, Rspack, Rsbuild, Webpack, or Modern.js.
+description: Add mfdoctor to Vite, Vite Plus, Nuxt, Rspack, Rsbuild, Webpack, or Modern.js.
 ---
 
 # Bundler integrations
 
 Choose the adapter owned by the build tool. In every example, the same
-`mfOptions` object goes to Module Federation and MFDoctor. Register MFDoctor after
+`mfOptions` object goes to Module Federation and mfdoctor. Register mfdoctor after
 the federation plugin so it can inspect the completed output.
 
 - **Vite, Rolldown-integrated Vite, or Vite Plus:** `@tonoizer/mfdoctor/vite`
@@ -33,14 +33,14 @@ export default {
 ```
 
 The same adapter covers classic Vite, Rolldown-integrated Vite (`rolldown-vite`
-and Vite 8+), and Vite Plus. MFDoctor selects the matching post-emit hook and
+and Vite 8+), and Vite Plus. mfdoctor selects the matching post-emit hook and
 avoids duplicate analysis when a build exposes more than one lifecycle hook.
 See [Vite integration](./vite-integration.md) for lifecycle and configuration
 details.
 
 ## Nuxt 3 and Nuxt 4
 
-Register MFDoctor next to the official Module Federation Nuxt module:
+Register mfdoctor next to the official Module Federation Nuxt module:
 
 ```ts
 import moduleFederationDoctor from "@tonoizer/mfdoctor/nuxt";
@@ -55,9 +55,9 @@ export default defineNuxtConfig({
 });
 ```
 
-MFDoctor uses Nuxt's public `vite:extendConfig` hook for client and SSR builds.
+mfdoctor uses Nuxt's public `vite:extendConfig` hook for client and SSR builds.
 The official Nuxt module still owns Module Federation. If that integration
-already exposes `nuxt.options.moduleFederation.config`, you may omit MFDoctor's
+already exposes `nuxt.options.moduleFederation.config`, you may omit mfdoctor's
 explicit `moduleFederation` option.
 
 ## Rspack
@@ -125,7 +125,7 @@ export default {
 };
 ```
 
-MFDoctor runs in `afterEmit`, after the enhanced Module Federation plugin has
+mfdoctor runs in `afterEmit`, after the enhanced Module Federation plugin has
 produced the files used as evidence.
 
 ## Modern.js

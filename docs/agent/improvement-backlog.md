@@ -1,4 +1,4 @@
-# MFDoctor improvement backlog
+# mfdoctor improvement backlog
 
 Scored, mini-PR-sized follow-ups from an audit of `@tonoizer/mfdoctor`
 (tonoizer/module-federation-doctor) against Module Federation surfaces
@@ -28,7 +28,7 @@ swarm from this analysis PR.
 
 ## Kurzfassung
 
-MFDoctor ist **governance-ready für Vite / Rspack / Rsbuild / Webpack**:
+mfdoctor ist **governance-ready für Vite / Rspack / Rsbuild / Webpack**:
 127 Rules, echte Adapter-Emits, ehrliche Partial-Zellen für Rolldown,
 Modern.js und Nuxt. Die größten Löcher sind nicht „fehlendes Dashboard",
 sondern (1) **Rule-Metadaten lügen über Bundler**, (2) **Vite-Quirks ohne
