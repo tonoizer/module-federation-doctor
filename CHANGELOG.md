@@ -1,5 +1,11 @@
 # @tonoizer/mfdoctor
 
+## 2.0.3
+
+### Patch Changes
+
+- b7aa69e: Normalize the product brand to lowercase `mfdoctor` across CLI output, documentation, integrations, schemas, fixtures, and release metadata without changing the package name, CLI command, or public API identifiers.
+
 ## 2.0.2
 
 ### Patch Changes
