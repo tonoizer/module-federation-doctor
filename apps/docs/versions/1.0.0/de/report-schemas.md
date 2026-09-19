@@ -15,7 +15,7 @@ MFDoctor writes:
 Comparable content has no timestamps. Paths are workspace relative. Schema
 version 1 changes only through an intentional compatibility change. Additive
 import-analysis fields (`dynamicPackages`, `remotes`, `unresolvedDynamic`,
-`evidenceSources`) document MFDoctor’s dynamic-import completeness bar without
+`evidenceSources`) document MFDoctor's dynamic-import completeness bar without
 breaking older `project.json` files that omit them.
 
 ## Öffentliche v1-Schema-Verträge
@@ -85,7 +85,7 @@ opening punctuation such as `(`, `[` or `{`. Other strings are left unchanged.
 
 `ui.schema.json` is **not** a persisted CLI artifact (MFDoctor no longer ships an
 HTML dashboard). It remains the published shape for programmatic consumers of
-`buildUiPayload` / graph payloads — see below. Do not treat it as an HTML report
+`buildUiPayload` / graph payloads, see below. Do not treat it as an HTML report
 format.
 
 ## Laufzeit-Observability-Quell-Fixtures
@@ -128,18 +128,18 @@ Findings may include `suppressed` / `suppressionReason` when a
 [fingerprint baseline](./baselines.md) matches. Report `summary.suppressed`
 counts those findings when present.
 
-## Run-Status (`status.incompleteReasons`)
+## Run status (`status.incompleteReasons`)
 
-Aktuelle Reports enthalten das additive Objekt `status`.
-`status.complete` ist nur dann wahr, wenn `incompleteReasons` leer ist. Die
-stabilen Codes decken fehlenden Emit, fehlende Enhanced-Stats, partielle
-Bundler-Abdeckung, übersprungene Workspace-Probes und unbekannte Evidenz ab.
-Workspace-Diagnosen `invalid`, `stale`, `duplicate` und `conflict` sowie ein
-unvollständiges Discovery-Budget verwenden `evidence-unknown`.
+Current reports include an additive `status` object. `status.complete` is true
+only when `incompleteReasons` is empty. The stable codes cover missing emit,
+missing enhanced stats, partial bundler coverage, skipped workspace probes, and
+unknown evidence. Workspace `invalid`, `stale`, `duplicate`, and `conflict`
+diagnostics, as well as an incomplete discovery budget, use
+`evidence-unknown`.
 
-Legacy-Aufrufer behalten ihr bisheriges Exit-Verhalten. Die CLI-Option
-`--require-complete` ist für `check`, `workspace` und `federation` optional und
-ordnet jeden nichtleeren Statusgrund Exit-Code `1` zu.
+Legacy callers keep their existing exit behavior. The `--require-complete` CLI
+option is opt-in for `check`, `workspace`, and `federation`; it maps every
+non-empty status reason to exit `1`.
 
 ## Gesundheitswert (`summary.score`)
 
@@ -179,7 +179,7 @@ Unknown `detailsSchema` values must be ignored by readers (do not fail the pipel
 
 `fingerprint()` hashes only `ruleId`, `project`, `location`, and `evidence`
 (`src/utils.ts`). **`detailsSchema` and `details` are never fingerprint inputs.**
-Never put a schema version into `evidence` — that would churn baselines and SARIF
+Never put a schema version into `evidence`, that would churn baselines and SARIF
 `partialFingerprints`. Adding typed details does not change fingerprints for
 existing findings.
 
@@ -193,13 +193,13 @@ existing findings.
 | `remotes.config.v1`          | `config/remote-entry-invalid`, `config/remote-http-insecure`, `config/remote-localhost-in-production`, `config/remote-alias-prefix-collision`, `config/remote-manifest-recommended`, `config/remote-capability-disabled` |
 | `artifact.v1`                | other first-batch `artifact/*` rules                                                                                                                                                                                     |
 | `doctor.partial-analysis.v1` | `doctor/partial-analysis`                                                                                                                                                                                                |
-| `doctor.run-failure.v1`      | Strukturierter Regel-, Evidence-Bridge- oder Analysefehler (`phase`, `errorCode`, `runId`, optional `ruleId` und redigierter `error`)                                                                                    |
+| `doctor.run-failure.v1`      | Structured rule, evidence-bridge, or analysis failure (`phase`, `errorCode`, `runId`, optional `ruleId` and redacted `error`)                                                                                            |
 
 TypeScript exports: `FINDING_DETAILS_SCHEMAS`, `TYPED_DETAILS_RULE_IDS`,
 `readFindingDetails`, and per-family `*DetailsV1` types from
-`@tonoizer/mfdoctor`. Zusätzlich gibt es die typisierten Exporte
+`@tonoizer/mfdoctor`. Run failures also expose the typed
 `RunFailureDetails`, `RunFailurePhase`, `RunFailureErrorCode`,
-`RUN_FAILURE_DETAILS_SCHEMA` und `RUN_FAILURE_ERROR_CODES`.
+`RUN_FAILURE_DETAILS_SCHEMA`, and `RUN_FAILURE_ERROR_CODES` exports.
 
 ### Agent-/CI-Beispiel (`details` statt Message-Regex bevorzugen)
 
@@ -212,7 +212,7 @@ import {
 
 for (const finding of report.findings) {
   const typed = readFindingDetails(finding);
-  if (!typed) continue; // old report or unknown schema — skip
+  if (!typed) continue; // old report or unknown schema, skip
 
   if (typed.detailsSchema === FINDING_DETAILS_SCHEMAS.SHARED_UNUSED) {
     const details = typed.details as SharedUnusedDetailsV1;

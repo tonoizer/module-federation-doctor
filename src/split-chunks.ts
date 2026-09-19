@@ -141,7 +141,7 @@ export function extractRsbuildSplitChunksFacts(config: unknown): SplitChunksFact
 
 /**
  * Webpack/Rspack compiler `optimization` snapshot. Missing `optimization` is
- * unobserved (`undefined`). Present optimization — even without `splitChunks` —
+ * unobserved (`undefined`). Present optimization, even without `splitChunks`,
  * is observed so the rule can pass instead of skipping.
  */
 export function extractCompilerSplitChunksFacts(

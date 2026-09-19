@@ -15,7 +15,7 @@ A package is declared in `shared` by only one project and is unused elsewhere in
 
 Remove the unused shared entry, or add matching `shared` declarations where other projects actually consume the package.
 
-Suppress or retarget with `rules["federation/ghost-shares"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["federation/ghost-shares"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

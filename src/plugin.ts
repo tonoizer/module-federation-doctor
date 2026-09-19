@@ -690,7 +690,7 @@ export function compilerBuildOutput(
 /**
  * Post-emit only: analyze emitted assets, print via the shared terminal reporter
  * inside analyzeBuild, then fail the compilation once if policy requires it.
- * Do not push per-finding warnings — that double-prints with the terminal block.
+ * Do not push per-finding warnings, that double-prints with the terminal block.
  * Shared by Rspack, Webpack, and the Modern.js adapter (which composes this hook).
  */
 export function attachDoctorAfterEmit(
@@ -715,7 +715,7 @@ export function attachDoctorAfterEmit(
     const result = await analyzeBuild(configured, emittedAssets, diagnostics, [output]);
     if (result.exitCode === 0) return;
     const ErrorCtor = compiler.webpack?.WebpackError ?? Error;
-    // Single policy failure diagnostic — findings already printed by writeReports.
+    // Single policy failure diagnostic, findings already printed by writeReports.
     compilation.errors.push(
       new ErrorCtor(`MFDoctor policy failed. See terminal output and .mf/doctor/report.json.`),
     );
@@ -1169,7 +1169,7 @@ function createViteFamilyHooks(configured: DoctorOptions) {
  * surfaces (`writeBundle` / `closeBundle` / `afterEmit` / `onAfterBuild`).
  * Never register `transform` / `load` / `banner` (or similar) hooks that inject
  * MFDoctor into client assets. Findings print once via the shared terminal
- * reporter at the end of analysis — adapters must not re-emit per-finding
+ * reporter at the end of analysis, adapters must not re-emit per-finding
  * bundler logs (#46).
  */
 function createDoctorPlugin(bundler: BundlerName) {

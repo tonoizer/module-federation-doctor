@@ -155,7 +155,7 @@ Override the discovery layout only when the defaults do not fit:
 mfdoctor workspace --glob "packages/*/.mf/doctor/project.json"
 ```
 
-Quote globs so the CLI—not the shell—expands them consistently.
+Quote globs so the CLI, not the shell, expands them consistently.
 
 ## Check a federation
 

@@ -1,6 +1,6 @@
 # Modern.js compatibility smoke
 
-**Warning — partial, not supported.** This example is a **Rspack stub**, not a
+**Warning, partial, not supported.** This example is a **Rspack stub**, not a
 full `@modern-js/app-tools` app. Do not treat a green `modern-smoke` / this tree
 as first-class Modern.js App Tools support. Matrix status stays **partial**
 (App Tools CI lockfile-blocked; upstream core-demo re-soak is #130).
@@ -23,6 +23,6 @@ whole `@modern-js/*@3.8.2` family is out of scope for this cell.
 The upstream core-demo re-soak remains
 [#130](https://github.com/tonoizer/module-federation-doctor/issues/130).
 
-**Not** a replacement for `@tonoizer/mfdoctor/rspack` — bare Rspack apps
+**Not** a replacement for `@tonoizer/mfdoctor/rspack`, bare Rspack apps
 keep using that entry. See `modern.config.mjs` for the real Modern.js config
 shape.

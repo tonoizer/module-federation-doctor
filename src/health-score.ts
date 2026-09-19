@@ -39,7 +39,7 @@ function uniqueRuleIds(findings: DoctorFinding[], severity: Severity): Set<strin
  * - ≥50 OK
  * - else Needs work
  *
- * `computeHealthScore` additionally uses Needs work for any non-suppressed
+ * `computeHealthScore` also uses Needs work for any non-suppressed
  * blocking error, even when the numeric band would otherwise be Great or OK.
  */
 export function labelForScore(score: number): HealthScoreLabel {

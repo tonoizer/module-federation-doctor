@@ -1,6 +1,6 @@
 /**
  * Public bundler `externals` names (webpack / rspack / rsbuild / modern).
- * String, array, and object-key forms only — functions and regex are skipped.
+ * String, array, and object-key forms only, functions and regex are skipped.
  */
 
 const MAX_DEPTH = 8;

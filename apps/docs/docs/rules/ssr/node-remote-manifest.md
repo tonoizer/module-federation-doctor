@@ -11,7 +11,7 @@ Node/SSR consumers that load the browser `mf-manifest.json` miss the server remo
 
 Point node/SSR remotes at `/ssr/mf-manifest.json` (or another env-specific path). Set `ssrMode: "browser-only"` when the build is not SSR, or turn the rule `"off"`.
 
-Suppress or retarget with `rules["ssr/node-remote-manifest"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["ssr/node-remote-manifest"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

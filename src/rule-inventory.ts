@@ -17,7 +17,7 @@ export type RuleDemoCoverage = (typeof RULE_DEMO_COVERAGE)[number];
 export interface RuleInventoryEntry extends EvidenceAwareRuleMeta {
   group: RuleMigrationGroup;
   status: RuleMigrationStatus;
-  /** How agents can exercise this rule. Required — `inventory:check` fails when missing. */
+  /** How agents can exercise this rule. Required, `inventory:check` fails when missing. */
   demo: RuleDemoCoverage;
   migrationNote: string;
   /** Fact paths read by the legacy implementation; prerequisites must cover every path. */

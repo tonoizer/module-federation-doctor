@@ -53,20 +53,20 @@ It runs the same full E2E gate; there is no separate Giga test suite anymore.
 Mixed-federation e2e is sensitive to preview-server boot order and remote entry
 availability. When a run fails:
 
-1. **Read the assertion message** — each expect includes the remote name and URL
+1. **Read the assertion message**, each expect includes the remote name and URL
    (for example `rspack remote (http://127.0.0.1:3001/remoteEntry.js)`).
-2. **Check `test-results/` and `playwright-report/`** — traces, screenshots, and
+2. **Check `test-results/` and `playwright-report/`**, traces, screenshots, and
    video are retained on failure (`trace: retain-on-failure`).
-3. **Confirm which webServer failed** — `playwright.config.ts` starts ten
+3. **Confirm which webServer failed**, `playwright.config.ts` starts ten
    servers: three healthy (`rspack-remote`, `rsbuild-remote`, `host-vite`),
    three intentional-issues servers (`issues-rspack-remote`,
    `issues-rsbuild-remote`, `issues-host-vite`) and four compatibility matrix
    servers (`multi-instance-webpack`, `multi-instance-vite`, `adapter-rspack`,
    `adapter-rsbuild`). A timeout on `webServer.url` means that preview process
    never became ready. Startup logs are prefixed with `[mfdoctor-e2e:<name>]`.
-4. **Inspect CI artifacts** — the `playwright-failures` artifact uploads
+4. **Inspect CI artifacts**, the `playwright-failures` artifact uploads
    `test-results/` and `playwright-report/` from `.github/workflows/e2e.yml`.
-5. **Retry behavior** — CI runs with `retries: 2` to absorb short-lived boot
+5. **Retry behavior**, CI runs with `retries: 2` to absorb short-lived boot
    races. Local runs use `retries: 0` so failures surface immediately.
 
 ### Manual server checks
@@ -90,13 +90,13 @@ curl -fsS http://127.0.0.1:5183/ | head
 
 ### Common causes
 
-- **Remote entry 404** — example not built; run `vp run test:examples` or full
+- **Remote entry 404**, example not built; run `vp run test:examples` or full
   `vp run test:e2e` so builds run first.
-- **Port already in use** — the full runner automatically selects another range;
+- **Port already in use**, the full runner automatically selects another range;
   if you supplied `MFDOCTOR_E2E_PORT_OFFSET` manually, clear it or choose a free
   offset.
-- **`localhost` vs `127.0.0.1`** — preview servers bind IPv4 loopback; probing
+- **`localhost` vs `127.0.0.1`**, preview servers bind IPv4 loopback; probing
   `localhost` can fail in CI when it resolves to `::1`.
-- **Slow CI cold start** — webServer timeout is 120s; readiness polling in
+- **Slow CI cold start**, webServer timeout is 120s; readiness polling in
   `test/e2e/helpers/federation-servers.ts` waits up to 30s per attempt before
   the browser navigates.

@@ -27,7 +27,7 @@ both expose and consume remotes enable `dts.generateTypes.extractRemoteTypes` so
 
 Comments in each config explain why. For intentional red findings, use
 [`mixed-federation-issues`](../mixed-federation-issues) or the one-rule
-[`showcase`](../showcase) demos — not this tree.
+[`showcase`](../showcase) demos, not this tree.
 
 ## Commands
 

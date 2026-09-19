@@ -9,7 +9,7 @@ the recipe.
 
 - Repo root has a built binary: `pnpm install && pnpm build` → `dist/cli.js`.
 - Doctor passes: `node dist/cli.js capabilities` exits `0` with JSON.
-- Put nothing on a shared long-lived server — the CLI is short-lived.
+- Put nothing on a shared long-lived server, the CLI is short-lived.
 - Prefer disposable fixture copies under `/tmp/mfdoctor-verify-$RUN_ID/` (or
   `--output - --no-write`) so tracked trees stay clean.
 - Never drive a binary you have not Doctor-checked since the last failed Drive
@@ -60,15 +60,15 @@ handles, required state, commands, and observable proof.
 
 ## Features
 
-- [Capabilities](./capabilities.md) — versioned JSON CLI contract (commands, operations, exit codes, bundlerMatrix; no config, no network).
-- [Check](./check.md) — one-project offline analysis on a showcase/example fixture (`--require-complete` turns incomplete evidence into exit `1`).
-- [Workspace](./workspace.md) — cross-project federation gate on nested examples or workspace fixtures (freshness / `--require-complete` / `--glob`).
-- [Federation glob](./federation.md) — explicit `project.json` globs (`mfdoctor federation` without `--workspace`; `--require-complete` on unmatched globs).
-- [Prompt](./prompt.md) — offline fix prompts from a saved report (`mfdoctor prompt --finding`), including verification-plan / repair-context sections.
-- [Baseline](./baseline.md) — generate / update / prune fingerprint baselines (debt tracking, not a mute).
-- [Runtime](./runtime.md) — offline Observability trace correlation (`mfdoctor runtime`).
-- [Plugin emit](./plugin-emit.md) — build with `federationDoctor` and observe `.mf/doctor/project.json`.
-- [Rules](./rules.md) — built-in rule catalog via `mfdoctor rules` (including per-rule `supportedBundlers`).
+- [Capabilities](./capabilities.md), versioned JSON CLI contract (commands, operations, exit codes, bundlerMatrix; no config, no network).
+- [Check](./check.md), one-project offline analysis on a showcase/example fixture (`--require-complete` turns incomplete evidence into exit `1`).
+- [Workspace](./workspace.md), cross-project federation gate on nested examples or workspace fixtures (freshness / `--require-complete` / `--glob`).
+- [Federation glob](./federation.md), explicit `project.json` globs (`mfdoctor federation` without `--workspace`; `--require-complete` on unmatched globs).
+- [Prompt](./prompt.md), offline fix prompts from a saved report (`mfdoctor prompt --finding`), including verification-plan / repair-context sections.
+- [Baseline](./baseline.md), generate / update / prune fingerprint baselines (debt tracking, not a mute).
+- [Runtime](./runtime.md), offline Observability trace correlation (`mfdoctor runtime`).
+- [Plugin emit](./plugin-emit.md), build with `federationDoctor` and observe `.mf/doctor/project.json`.
+- [Rules](./rules.md), built-in rule catalog via `mfdoctor rules` (including per-rule `supportedBundlers`).
 
 ## Explicitly not mapped
 
@@ -76,4 +76,4 @@ handles, required state, commands, and observable proof.
 - In-browser runtime agent
 - Docs site (`docs:dev`)
 - Network `probe` / `compare` (not default proof; network-required if added later)
-- `federation --workspace` — same discovery + gate as [Workspace](./workspace.md); prove it there, not via [Federation glob](./federation.md)
+- `federation --workspace`, same discovery + gate as [Workspace](./workspace.md); prove it there, not via [Federation glob](./federation.md)

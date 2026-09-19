@@ -195,8 +195,8 @@ const frontmatterTranslations = new Map([
   ["CLI command reference", "CLI-Befehlsreferenz"],
   ["Agent loop", "Agenten-Schleife"],
   [
-    "Two-tier MFDoctor loop — mfdoctor check vs plugin emit plus workspace before claiming green.",
-    "Zweistufige MFDoctor-Schleife — mfdoctor check vs. Plugin-Emit plus Workspace, bevor Grün beansprucht wird.",
+    "Two-tier MFDoctor loop, mfdoctor check vs plugin emit plus workspace before claiming green.",
+    "Zweistufige MFDoctor-Schleife, mfdoctor check vs. Plugin-Emit plus Workspace, bevor Grün beansprucht wird.",
   ],
   ["Public API surface", "Öffentliche API-Oberfläche"],
   ["Documentation lifecycle", "Lebenszyklus der Dokumentation"],
@@ -214,8 +214,8 @@ const frontmatterTranslations = new Map([
   ],
   ["Observability latest.json → mfdoctor runtime", "Observability latest.json → mfdoctor runtime"],
   [
-    "Feed Module Federation Observability latest.json into mfdoctor runtime offline — no in-browser agent.",
-    "Module-Federation-Observability-latest.json offline in mfdoctor runtime einlesen — kein In-Browser-Agent.",
+    "Feed Module Federation Observability latest.json into mfdoctor runtime offline, no in-browser agent.",
+    "Module-Federation-Observability-latest.json offline in mfdoctor runtime einlesen, kein In-Browser-Agent.",
   ],
   [
     "Generated catalog of the package's public entry points and JSON schemas.",

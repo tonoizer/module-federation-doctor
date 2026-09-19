@@ -45,7 +45,7 @@ Vite-only; it does not pretend the setting exists in every bundler.
 
 ## Produktionsrichtlinie
 
-Recommended CI policy — register the plugin and let CI env auto-detect do the
+Recommended CI policy, register the plugin and let CI env auto-detect do the
 rest (`failOn: "error"` + SARIF when `CI` / provider vars are set):
 
 ```ts
@@ -63,19 +63,19 @@ a CI provider.
 Use `mfdoctor federation ".mf/doctor/**/project.json"` after every application
 has produced `project.json`. This is where name collisions, version/scope
 conflicts, missing providers, and external-runtime provider gaps become visible.
-Together with plugin emit, that is the green bar — not `mfdoctor check` alone
+Together with plugin emit, that is the green bar, not `mfdoctor check` alone
 (see the [agent loop](./agent-loop.md)).
 
 For incremental adoption, check in a
 [fingerprint baseline](./baselines.md) so known debt stays visible in reports
-without failing the gate. Baselines are debt — prune them as findings are fixed.
+without failing the gate. Baselines are debt, prune them as findings are fixed.
 
 MFDoctor stays offline by default. It records normalized config and artifact
 metadata, not source bodies, secrets, or live remote responses.
 
 Install MFDoctor as a `devDependency`. Adapters analyze after emit in Node; they
 are not part of the client bundle. MF `runtimePlugins` are covered through the
-shared bundler `mfOptions` object — not by shipping MFDoctor into the runtime.
+shared bundler `mfOptions` object, not by shipping MFDoctor into the runtime.
 
 ## Research sources
 

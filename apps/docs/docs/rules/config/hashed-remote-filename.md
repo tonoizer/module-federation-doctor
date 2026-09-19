@@ -11,7 +11,7 @@ Hashed remote entry filenames invalidate consumer URLs whenever the producer reb
 
 Use a stable Module Federation `filename` such as `remoteEntry.js`. Keep hashing on chunk filenames instead of the container entry.
 
-Suppress or retarget with `rules["config/hashed-remote-filename"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/hashed-remote-filename"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

@@ -11,7 +11,7 @@ Workspace evidence shows consumers disabled their fallback and no build provides
 
 Let at least one build provide the package or restore a local fallback.
 
-Suppress or retarget with `rules["federation/missing-provider"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["federation/missing-provider"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

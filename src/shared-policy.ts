@@ -14,7 +14,7 @@ export const DEFAULT_IMPORT_DEPTH: ImportDepth = "local-graph";
 export const DEFAULT_ALWAYS_SHARED: readonly string[] = ["react", "react-dom"];
 
 /**
- * Packages with global state — should be shared with `singleton: true`.
+ * Packages with global state, should be shared with `singleton: true`.
  * Built-in list is broader than the historic react/vue/angular regex.
  */
 export const DEFAULT_SINGLETON_RISK_PACKAGES: readonly string[] = [

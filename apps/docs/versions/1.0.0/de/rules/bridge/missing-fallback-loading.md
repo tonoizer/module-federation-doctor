@@ -15,7 +15,7 @@ Bridge remotes without `fallback`/`loading` leave consumers with a blank screen 
 
 Pass `fallback` and `loading` to `createRemoteAppComponent`, or set `rules["bridge/missing-fallback-loading"]` to `"off"`.
 
-Suppress or retarget with `rules["bridge/missing-fallback-loading"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["bridge/missing-fallback-loading"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

@@ -95,7 +95,7 @@ describe("modern.js adapter", () => {
     );
     expect(registered).toHaveLength(1);
     expect(registered[0]?.[0]).toBe("module-federation-doctor");
-    // Public Rspack entry factory — escape hatch must not invent a private plugin.
+    // Public Rspack entry factory, escape hatch must not invent a private plugin.
     expect(typeof rspackModuleFederationDoctorPlugin).toBe("function");
     expect(registered[0]?.[1]).toMatchObject({ apply: expect.any(Function) });
   });

@@ -17,32 +17,31 @@ Analysis depth per supported bundler. For supported / partial / unsupported
 | Emitted assets                         | On-disk `writeBundle` / `closeBundle` (Rolldown-safe)           | Compilation hooks     | Rspack when available | Compilation hooks     | Via Rspack/Webpack `afterEmit`                           | Same Vite emit hooks via `vite:extendConfig`; dual client/SSR |
 | Opt-in runtime traces                  | Correlated when `runtimeTrace` / `mfdoctor runtime` is supplied | Same                  | Same                  | Same                  | Same                                                     | Same                                                          |
 | Cross-project checks                   | Yes                                                             | Yes                   | Yes                   | Yes                   | Yes                                                      | Yes                                                           |
-| Lifecycle recording                    | `bundler.lifecycle` (`vite` / `rolldown-vite` / `vite-plus`)    | —                     | —                     | —                     | —                                                        | Vite lifecycle via `vite:extendConfig` (client + SSR)         |
+| Lifecycle recording                    | `bundler.lifecycle` (`vite` / `rolldown-vite` / `vite-plus`)    | Not recorded          | Not recorded          | Not recorded          | Not recorded                                             | Vite lifecycle via `vite:extendConfig` (client + SSR)         |
 
 Rules consult recorded capabilities. Missing optional input creates
 `doctor/partial-analysis` instead of pretending full analysis happened.
-Agents must not claim green while that finding (or exit code `2`) remains —
+Agents must not claim green while that finding (or exit code `2`) remains,
 see the [agent loop](./agent-loop.md).
-The “Manifest and stats” row is **not** a blanket Yes: Vite/Rolldown omit
+The "Manifest and stats" row is **not** a blanket Yes: Vite/Rolldown omit
 `mf-manifest.json` / `mf-stats.json` unless `manifest: true`, and missing
 webpack compilation stats on those bundlers is expected. Enhanced
 Webpack/Rspack/Rsbuild builds with remotes and `capabilities.stats: false`
-are incomplete (`missing-stats` or `artifact/manifest-disabled`) — not the
+are incomplete (`missing-stats` or `artifact/manifest-disabled`), not the
 Vite opt-in path. See the
 [per-bundler matrix](./runtime-manifests.md#per-bundler-expectations).
 Adapters must not scrape private Module Federation plugin fields to invent
-coverage — see
+coverage, see
 [permanent guarantees / non-goals](./limitations.md#permanent-guarantees--non-goals).
 
-`mfdoctor capabilities` ist der versionierte CLI-Vertrag (Befehle, Formate,
-Exit-Codes). Der Befehl lädt **keine** Module-Federation-Capability-Pack-Tabellen.
-Diese Tabellen gehören nicht zum öffentlichen Root-Export von
-`@tonoizer/mfdoctor` und werden weder von Engine, Adaptern noch anderen
-CLI-Befehlen abgefragt.
+`mfdoctor capabilities` is the versioned CLI contract (commands, formats, exit
+codes). It does **not** load Module Federation capability-pack tables. Those
+tables are not re-exported from `@tonoizer/mfdoctor` and are not queried by the
+engine, adapters, or other CLI commands.
 
 ## Vollständigkeit dynamischer Imports (v1)
 
-MFDoctor’s import/shared analysis is **not** “static only.” Offline `check` /
+MFDoctor's import/shared analysis is **not** "static only." Offline `check` /
 adapter runs resolve the patterns below when evidence exists in source, config,
 manifest facts, or an opt-in Observability export. Unresolvable dynamics yield
 `doctor/partial-analysis` rather than fabricated certainty. MFDoctor still does
@@ -75,7 +74,7 @@ aliases are not treated as shared packages.
 | Executing remote JS or fetching live remotes during `check` / `federation`    | Out of scope (use `probe` / Observability separately)                 |
 
 When unresolved package-capable dynamics exist, `shared/unused` does **not**
-claim a package is unused — prefer `doctor/partial-analysis` over a false pass
+claim a package is unused, prefer `doctor/partial-analysis` over a false pass
 or false unused finding.
 
 ## Library contracts (1.1.0+)
@@ -87,12 +86,11 @@ integrating MFDoctor can stay on [Setup](./setup.md), [CI](./production-readines
 separate [runtime capture](./runtime-capture.md) page; JSON Schema exports are
 listed under [report schemas](./report-schemas.md).
 
-Der Root-Export von `@tonoizer/mfdoctor` stellt die **experimentellen**
-Identitätshelfer `createApplicationIdentity` und `unknownIdentity` bereit
-(ADR 0086, nur Bibliothek). Weitere Identitätsfabriken bleiben im Quellcode
-für Tests und gehören **nicht** zum öffentlichen `.`-Export. Engine und
-Workspace nutzen `createWorkspaceApplicationIdentity`. Diese Helfer ändern
-keine V1-Reports, Fingerprints oder Exit-Codes.
+The `@tonoizer/mfdoctor` root re-exports **experimental** identity helpers
+`createApplicationIdentity` and `unknownIdentity` (ADR 0086, library-only).
+Other identity factories remain in source for tests and are **not** advertised
+on `.`. Engine/workspace code uses `createWorkspaceApplicationIdentity`. These
+helpers do not change V1 reports, fingerprints, or exit codes.
 
 ## Korrelation semantischer Identitäten
 
@@ -175,9 +173,8 @@ snapshots. They report new, persistent, resolved, regressed, improved, and
 unknown/unconfirmed changes. A missing or partial later snapshot cannot prove a
 finding resolved; only complete comparable evidence can do that. The contract is
 offline and library-only: it adds no telemetry service, hosted history store,
-default CLI behavior, or rule suppression. Die Helfer gehören **nicht** zum
-öffentlichen Root-Export von `@tonoizer/mfdoctor`, bis die CLI sie verwendet;
-das JSON-Schema bleibt veröffentlicht.
+default CLI behavior, or rule suppression. Helpers are **not** re-exported from
+`@tonoizer/mfdoctor` until the CLI uses them; JSON Schema stays published.
 
 ## Governance-Waiver und Audit-Entscheidungen
 
@@ -197,20 +194,19 @@ missing dimension, and conflict. Multiple overlapping approvals with different
 owner/reason/ticket metadata remain `ambiguous` instead of selecting a winner.
 This contract is additive and library-only: it does not change finding lineage,
 the V1 fingerprint, `baseline.schema.json`, report projections, or exit codes.
-Die Helfer gehören **nicht** zum öffentlichen Root-Export von
-`@tonoizer/mfdoctor` und fügen keine CLI-Flags hinzu.
+Helpers are **not** re-exported from `@tonoizer/mfdoctor` and do not add CLI
+flags.
 
 ## V1-Kompatibilitätsbrücke
 
 `projectV1Suppression` is the explicit compatibility seam for ADR tests that
-have both a legacy `DoctorFinding` and additive lineage/waiver evidence. It
+have both a legacy `DoctorFinding` and additive lineage/waiver evidence. It is
+**not** re-exported from `@tonoizer/mfdoctor` and is not used by the baseline
+CLI; the helper remains in `src/v1-compatibility.ts` for relative import. It
 delegates baseline matching to the existing V1 matcher, records whether the
 baseline, a governed waiver, or both supplied suppression, and exposes the
 waiver outcome without changing the finding, baseline file, fingerprint,
 terminal/JSON/SARIF projection, or exit policy.
-Die Helfer gehören **nicht** zum öffentlichen Root-Export von
-`@tonoizer/mfdoctor` und werden nicht von der Baseline-CLI verwendet; sie
-bleiben in `src/v1-compatibility.ts` für relative Imports.
 
 Waiver suppression is accepted only when its resolution is `suppressed` and its
 finding lineage ID exactly matches the supplied lineage. Ambiguous, unknown, or

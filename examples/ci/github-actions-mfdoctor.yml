@@ -2,7 +2,7 @@
 #
 # Paste into your host repo as `.github/workflows/mfdoctor.yml` (or merge the
 # job into an existing workflow). Adjust install/build to match your package
-# manager and monorepo layout. This file is documentation only — it is not a
+# manager and monorepo layout. This file is documentation only, it is not a
 # live workflow in the MFDoctor repository.
 #
 # Pin workspace-federation-gate to a release tag (for example @1.1.0), not @main.

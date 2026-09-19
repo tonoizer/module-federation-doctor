@@ -15,7 +15,7 @@ The runtime cannot resolve a remote without a usable entry or manifest address.
 
 Use a valid URL/object entry or the `name@url` form supported by the bundler.
 
-Suppress or retarget with `rules["config/remote-entry-invalid"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/remote-entry-invalid"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

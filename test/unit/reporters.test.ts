@@ -109,7 +109,7 @@ describe("reporters", () => {
       { kind: "external", justification: "legacy debt" },
     ]);
     await expect(fs.access(path.join(output, "report.html"))).rejects.toThrow();
-    // Atomic replace leaves only final paths — no leftover temp files.
+    // Atomic replace leaves only final paths, no leftover temp files.
     expect((await fs.readdir(output)).sort()).toEqual(
       ["project.json", "report.json", "results.sarif"].sort(),
     );

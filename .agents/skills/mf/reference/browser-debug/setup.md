@@ -15,13 +15,13 @@ DevTools remote debugging requires a non-default data directory.
 
 The workaround: copy your real profile to a non-default path. Because macOS Chrome
 encrypts cookies using the system Keychain (`Chrome Safe Storage` key), a copied
-profile can still decrypt cookies — so you stay logged into all your sites.
+profile can still decrypt cookies, so you stay logged into all your sites.
 
 ---
 
 ## One-time setup (macOS)
 
-**Step 1 — See which profiles you have:**
+**Step 1, See which profiles you have:**
 ```bash
 node -e "
 const fs = require('fs');
@@ -38,7 +38,7 @@ console.log('\nDefault: ' + last);
 "
 ```
 
-**Step 2 — Sync the chosen profile to the debug location:**
+**Step 2, Sync the chosen profile to the debug location:**
 ```bash
 # Set PROFILE to the dir you want (default: current profile, usually "Default")
 PROFILE="Default"   # ← change to e.g. "Profile 1" if needed
@@ -49,7 +49,7 @@ rsync -a --delete "$REAL/" "$DEBUG_DIR/Default/"
 echo "Debug profile ready: $DEBUG_DIR (sourced from $PROFILE)"
 ```
 
-> **Note:** `rsync --delete` is incremental — fast after the first sync. Re-run any time
+> **Note:** `rsync --delete` is incremental, fast after the first sync. Re-run any time
 > sessions have expired. The Keychain entry (`Chrome Safe Storage`) is shared, so
 > encrypted cookies still decrypt correctly from the copied profile.
 
@@ -65,7 +65,7 @@ killall "Google Chrome" 2>/dev/null; sleep 1
 "$CHROME" --remote-debugging-port=9222 --user-data-dir="$DEBUG_DIR" &
 ```
 
-**One-time alias** — add to `~/.zshrc`:
+**One-time alias**, add to `~/.zshrc`:
 ```bash
 # Usage: chrome-debug [ProfileDir]   e.g. chrome-debug "Profile 1"
 chrome-debug() {
@@ -112,7 +112,7 @@ Should return something like:
 
 ## Prerequisites
 
-- **Node.js 21+** — required for built-in WebSocket support
+- **Node.js 21+**, required for built-in WebSocket support
 
 ## Usage
 
@@ -142,7 +142,7 @@ create `~/Library/Application Support/Google/ChromeDebug`.
 → Upgrade Node.js: `nvm install 21 && nvm use 21` (or install from nodejs.org).
 
 **`PUT /json/new` fails (older Chrome)**
-→ Try downgrading to Node's `fetch` with `GET /json/new` — edit the `fetch(..., { method: 'PUT' })` line in `browser-capture.mjs` to remove the method option (defaults to GET).
+→ Try downgrading to Node's `fetch` with `GET /json/new`, edit the `fetch(..., { method: 'PUT' })` line in `browser-capture.mjs` to remove the method option (defaults to GET).
 
 **Page loads but no logs captured**
 → The page may have errored before CDP attached. Try increasing timeout, or check if the error only triggers on user interaction.

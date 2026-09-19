@@ -1,6 +1,6 @@
 # Check
 
-`mfdoctor check` runs tier-1 offline analysis on one project (config/static). It can print findings and write `.mf/doctor` artifacts, but a green or quiet check alone is **not** a full health claim — plugin emit and workspace gates still apply.
+`mfdoctor check` runs tier-1 offline analysis on one project (config/static). It can print findings and write `.mf/doctor` artifacts, but a green or quiet check alone is **not** a full health claim, plugin emit and workspace gates still apply.
 
 ## Sub-features
 
@@ -30,7 +30,7 @@ Preconditions:
 - **Run offline check.** From repo root:
   `node dist/cli.js check "$FIXTURE" --ci --format json --output - --no-write`.
 - **Observe findings.** Stdout JSON includes `findings` (e.g. `config/remote-http-insecure` or `config/expose-key-invalid`), `status` (`complete` / `incompleteReasons`), and `summary.score` / `summary.scoreLabel`.
-- **Observe exit.** Warning-only fixtures may exit `0` under default CI `failOn: error`; error-severity fixtures exit `1`. Exit `2` is for analysis-budget incompleteness or usage/hard failure — `status.incompleteReasons` such as `missing-emit` can still appear with exit `0`/`1` and must not be treated as a full green claim.
+- **Observe exit.** Warning-only fixtures may exit `0` under default CI `failOn: error`; error-severity fixtures exit `1`. Exit `2` is for analysis-budget incompleteness or usage/hard failure, `status.incompleteReasons` such as `missing-emit` can still appear with exit `0`/`1` and must not be treated as a full green claim.
 - **Require complete evidence.** Same command plus `--require-complete` on a showcase fixture with `missing-emit` exits `1` (policy fail) even when `--ci` alone exited `0`. Omit the flag to keep the legacy incomplete exit.
 - **Confirm no-write.** Assert `$FIXTURE/.mf` was **not** created when `--no-write` was used.
 - **Optional write path.** On a temp copy only: omit `--no-write`, use `--format terminal,json,sarif` and optionally `--diagnostics-dir .mf/doctor/diagnostics`. Confirm `.mf/doctor/report.json` exists afterward.
@@ -46,7 +46,7 @@ Helper:
 
 ## Gotchas
 
-- Do **not** claim the project is green from check alone — showcase/static check often reports `status.incompleteReasons` including `missing-emit` even when the process exits `0` or `1`. `--require-complete` is the opt-in that turns that incomplete report into exit `1`.
+- Do **not** claim the project is green from check alone, showcase/static check often reports `status.incompleteReasons` including `missing-emit` even when the process exits `0` or `1`. `--require-complete` is the opt-in that turns that incomplete report into exit `1`.
 - `--diagnostics-dir` must stay inside the project root.
 - Prefer JSON over ANSI; with `--output -`, terminal findings move to stderr. `--output -` skips `report.json` but still writes `project.json` unless `--no-write` is also set.
 - Report JSON includes `summary.score` and `summary.scoreLabel`. A blocking error forces `scoreLabel` to `Needs work` even when the numeric score stays in a high band (workspace/federation conflict fixtures: `score` 99, `scoreLabel` `Needs work`). `--no-score` hides the terminal footer only.

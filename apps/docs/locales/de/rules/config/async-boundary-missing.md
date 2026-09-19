@@ -15,7 +15,7 @@ A host entry that synchronously imports non-eager shared packages can hit RUNTIM
 
 Move app startup behind a dynamic import (for example `import('./bootstrap')`), enable `experiments.asyncStartup`, or mark those shared packages `eager: true` when intentional.
 
-Suppress or retarget with `rules["config/async-boundary-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/async-boundary-missing"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

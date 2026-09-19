@@ -15,7 +15,7 @@ Vite string remotes and missing/`var` type default to script-style loading. Vite
 
 Prefer object remotes with `type: 'module'` for Vite↔Vite ESM. For webpack/rspack remotes, set an explicit type such as `global`, or keep `varFilename` when this app intentionally emits a var entry for var hosts.
 
-Suppress or retarget with `rules["vite/remotes-prefer-module"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["vite/remotes-prefer-module"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

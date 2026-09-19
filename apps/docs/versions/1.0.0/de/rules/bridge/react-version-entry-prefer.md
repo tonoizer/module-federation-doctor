@@ -15,7 +15,7 @@ The bare `@module-federation/bridge-react` entry can pick the wrong React Bridge
 
 Import `@module-federation/bridge-react/v18` or `/v19` to match your React major. Override majors with `reactMajors`, or set the rule to `"off"` when the bare entry is intentional.
 
-Suppress or retarget with `rules["bridge/react-version-entry-prefer"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["bridge/react-version-entry-prefer"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

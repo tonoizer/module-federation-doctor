@@ -15,7 +15,7 @@ Hosts that consume types cannot resolve a stable type archive URL from a direct 
 
 Point remotes at `mf-manifest.json`, or set `dts.consumeTypes.remoteTypeUrls` for each direct `.js` remote. Disable `dts.consumeTypes` when the host does not consume federated types.
 
-Suppress or retarget with `rules["config/js-remote-without-type-urls"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/js-remote-without-type-urls"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

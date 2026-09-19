@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// capture.mjs — collect browser logs + JS variables via Chrome DevTools Protocol
+// capture.mjs, collect browser logs + JS variables via Chrome DevTools Protocol
 //
 // New tab:      node capture.mjs <url> [timeout_ms] [--vars v1,v2] [--keep-tab] [--click "text"] [--dump-dom] [--action-wait auto|networkidle|domcontentloaded|timeout|none] [--no-entries]
 // Existing tab: node capture.mjs --tab-id <id> [--click "text"] [--fill "ph::text"] [--select "ph::value"] [--vars v1,v2] [--dump-dom] [--close] [--action-wait auto|networkidle|domcontentloaded|timeout|none]
@@ -229,7 +229,7 @@ try {
       '  CHROME=$(find /Applications ~/Applications -name "Google Chrome" -path "*/MacOS/Google Chrome" 2>/dev/null | head -1)\n' +
       '  killall "Google Chrome" 2>/dev/null; sleep 1\n' +
       '  "$CHROME" --remote-debugging-port=9222 --user-data-dir="$HOME/Library/Application Support/Google/Chrome" &\n\n' +
-      'This uses your REAL Chrome profile — all cookies and login sessions are preserved.\n',
+      'This uses your REAL Chrome profile, all cookies and login sessions are preserved.\n',
   );
   process.exit(1);
 }
@@ -299,7 +299,7 @@ session.on('Network.responseReceived', ({ response }) => {
   logs.push({
     t: stamp(),
     level: response.status >= 500 ? 'error' : 'warn',
-    msg: `[HTTP] ${response.status} ${response.statusText} — ${response.url}`,
+    msg: `[HTTP] ${response.status} ${response.statusText}, ${response.url}`,
     stack: null,
   });
 });
@@ -315,7 +315,7 @@ session.on(
     logs.push({
       t: stamp(),
       level: 'error',
-      msg: `[network] ${blockedReason ?? errorText} — ${pendingUrls.get(requestId) ?? '?'}`,
+      msg: `[network] ${blockedReason ?? errorText}, ${pendingUrls.get(requestId) ?? '?'}`,
       stack: null,
     });
     pendingUrls.delete(requestId);

@@ -11,7 +11,7 @@ Stale output can register a different container than the current config.
 
 Clean output and make the federation plugin and MFDoctor share one options object.
 
-Suppress or retarget with `rules["artifact/manifest-name-mismatch"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["artifact/manifest-name-mismatch"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

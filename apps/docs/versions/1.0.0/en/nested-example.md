@@ -21,7 +21,7 @@ pnpm test:nested
 
 This path stays green. Consumers that use `remoteEntry.js` turn off
 `config/remote-manifest-recommended` (and Vite consumers also turn off
-`reliability/version-first-offline-remotes`) with comments — same suppression
+`reliability/version-first-offline-remotes`) with comments, same suppression
 pattern as the [mixed example](./mixed-example.md).
 
 For intentional red findings, use [mixed issues](./mixed-issues-example.md) or

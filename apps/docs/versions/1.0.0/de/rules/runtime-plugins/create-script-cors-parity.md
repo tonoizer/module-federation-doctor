@@ -15,7 +15,7 @@ CORS on createScript without matching createLink makes preload and load use diff
 
 Mirror crossorigin (and credentials where applicable) on createLink; keep fetch credentials consistent.
 
-Suppress or retarget with `rules["runtime-plugins/create-script-cors-parity"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["runtime-plugins/create-script-cors-parity"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

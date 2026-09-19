@@ -107,7 +107,7 @@ export function markRunIncomplete(
   return { complete: false, incompleteReasons: [...incompleteReasons] };
 }
 
-/** True for Webpack/Rspack/Rsbuild/Modern — stats emit by default. */
+/** True for Webpack/Rspack/Rsbuild/Modern, stats emit by default. */
 function isEnhancedStatsDefaultOn(name: BundlerName): boolean {
   return ENHANCED_STATS_DEFAULT_ON.has(name);
 }
@@ -123,7 +123,7 @@ function projectHasConfiguredRemotes(project: ProjectFacts): boolean {
 /**
  * Enhanced family has remotes but `capabilities.stats` is false.
  * Explicit `manifest: false` is `artifact/manifest-disabled` instead of this gap.
- * Vite-family missing stats is documented opt-in — not this predicate.
+ * Vite-family missing stats is documented opt-in, not this predicate.
  */
 export function enhancedRemotesMissingStats(
   project: ProjectFacts,

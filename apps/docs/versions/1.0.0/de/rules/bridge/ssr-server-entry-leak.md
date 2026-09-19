@@ -15,7 +15,7 @@ Browser-only Bridge React entries must not load inside node/SSR builds; doing so
 
 Import the Bridge `/server` entry (or a node-safe path) for SSR/node targets. Override with `ssrMode: "browser-only"` when the build is not SSR, or set the rule to `"off"`.
 
-Suppress or retarget with `rules["bridge/ssr-server-entry-leak"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["bridge/ssr-server-entry-leak"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

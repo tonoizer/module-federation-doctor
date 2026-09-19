@@ -1,6 +1,6 @@
 ---
 title: Observability latest.json → mfdoctor runtime
-description: Module-Federation-Observability-latest.json offline in mfdoctor runtime einlesen — kein In-Browser-Agent.
+description: Module-Federation-Observability-latest.json offline in mfdoctor runtime einlesen, kein In-Browser-Agent.
 ---
 
 <!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
@@ -9,10 +9,9 @@ description: Module-Federation-Observability-latest.json offline in mfdoctor run
 
 # Observability latest.json → mfdoctor runtime
 
-Module Federation Observability schreibt Laufzeitberichte wie
-`.mf/observability/latest.json`. MFDoctor liest diese Datei über die
-**offline**-CLI ein — nicht durch Injizieren eines Doctor-Agenten in den
-Browser.
+Module Federation Observability writes runtime reports such as
+`.mf/observability/latest.json`. MFDoctor consumes that file through the
+**offline** CLI, not by injecting a doctor agent into the browser.
 
 ```text
 Observability Plugin  →  .mf/observability/latest.json  →  mfdoctor runtime
@@ -20,84 +19,81 @@ Observability Plugin  →  .mf/observability/latest.json  →  mfdoctor runtime
 
 ## Beispiel
 
-Nachdem Observability einen Bericht geschrieben hat (Node/SSR `fileOutput`,
-Browser-Export, Collector oder `onReport`-Übergabe), korrelieren Sie ihn mit
-lokalen MFDoctor-Projektdaten:
+After Observability has written a report (Node/SSR `fileOutput`, browser export,
+collector, or `onReport` handoff), correlate it with local MFDoctor project
+facts:
 
 ```bash
 mfdoctor check --format json
 mfdoctor runtime ./.mf/observability/latest.json ".mf/doctor/**/project.json"
 ```
 
-Minimale Form, wenn Projektdaten bereits unter `.mf/doctor/**/project.json`
-liegen:
+Minimal form when project facts already live under `.mf/doctor/**/project.json`:
 
 ```bash
 mfdoctor runtime ./.mf/observability/latest.json
 ```
 
-Oder setzen Sie `runtimeTrace` in `mfdoctor.config` und lassen Sie den Pfad auf
-der Kommandozeile weg. Unterstützte Report-Formate sind nur **terminal**,
-**JSON** und **SARIF** — es gibt keinen HTML-Report und kein `--ui`-Dashboard.
+Or set `runtimeTrace` in `mfdoctor.config` and omit the path on the command
+line. Supported report formats are **terminal**, **JSON**, and **SARIF** only,
+there is no HTML report or `--ui` dashboard.
 
 ## Erwartete Eingaben
 
-| Eingabe                                                                     | Rolle                                                |
-| --------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `.mf/observability/latest.json` (oder ein anderer Observability-Exportpfad) | Laufzeitbericht vom offiziellen Observability Plugin |
-| `.mf/doctor/**/project.json` (Standard-Glob)                                | Build-/Check-Projektdaten von MFDoctor               |
+| Input                                                                  | Role                                                  |
+| ---------------------------------------------------------------------- | ----------------------------------------------------- |
+| `.mf/observability/latest.json` (or another Observability export path) | Runtime report from the official Observability Plugin |
+| `.mf/doctor/**/project.json` (default glob)                            | Build/check project facts from MFDoctor               |
 
-`mfdoctor runtime` akzeptiert:
+`mfdoctor runtime` accepts:
 
-- ein Observability-Report-Objekt;
-- ein Array von Reports;
-- eine `{"report": ...}`- oder `{"reports": [...]}`-Hülle.
+- one Observability report object;
+- an array of reports;
+- a `{"report": ...}` or `{"reports": [...]}` envelope.
 
-Aktuelle Upstream-Observability-2.5.3-Reports und die Legacy-MFDoctor-v1-Form
-werden unterstützt. Teilweise Reports werden als teilweise Evidenz importiert;
-fehlende Felder gelten nie als bestanden. Unbekannte zukünftige Formen und
-Observability-**Build**-Reports (`.mf/observability/build-report.json` /
-`build-info.json`) werden abgelehnt — das ist Build-Telemetrie, keine
-Laufzeitspuren.
+Current upstream Observability 2.5.3 reports and the legacy MFDoctor v1 shape
+are supported. Partial reports import as partial evidence; missing fields never
+count as a pass. Unknown future shapes and Observability **build** reports
+(`.mf/observability/build-report.json` / `build-info.json`) are rejected, those
+are build telemetry, not runtime traces.
 
-Bevorzugen Sie `latest.json` für den neuesten vollständigen Laufzeitbericht.
-Nutzen Sie `events.jsonl` nur, wenn Sie Ereignisreihenfolge oder mehrere Spuren
-brauchen; das ist nicht die Standard-Eingabe für `mfdoctor runtime`.
+Prefer `latest.json` for the latest complete runtime report. Use
+`events.jsonl` only when you need event ordering or multiple traces; it is not
+the default `mfdoctor runtime` input.
 
 ## Kein In-Browser-Agent
 
-Die Analyse bleibt **nach dem Build / in der CLI**:
+Analysis stays **post-build / CLI**:
 
-- Injizieren Sie MFDoctor **nicht** in die Seite oder das Client-Bundle.
-- Suchen Sie **nicht** nach einer HTML-Doctor-UI oder einem `--ui`-Flag.
-- MFDoctor lädt niemals URLs aus einem Report, öffnet keinen Browser und führt
-  Report-Inhalte nicht aus.
-- Ein In-Browser-MFDoctor-Laufzeitagent ist **nicht geplant**
+- Do **not** inject MFDoctor into the page or client bundle.
+- Do **not** look for an HTML doctor UI or `--ui` flag.
+- MFDoctor never fetches URLs found in a report, never opens a browser, and
+  never executes report contents.
+- An in-browser MFDoctor runtime agent is **not planned**
   ([#33](https://github.com/tonoizer/module-federation-doctor/issues/33)).
 
-Bei Live-Ladefehlern nutzen Sie das offizielle
+For live loading failures, use the official
 [Observability Plugin](https://module-federation.io/plugin/plugins/observability-plugin)
-(oder dessen Export-/Collector-Pfad) und führen Sie anschließend
-`mfdoctor runtime` auf dem gespeicherten JSON aus.
+(or its export/collector path), then run `mfdoctor runtime` on the saved JSON.
 
 ## Optionaler CI-Schritt
 
-In der CI, nachdem ein Job sowohl Observability-Ausgabe als auch MFDoctor-
-`project.json`-Dateien erzeugt hat:
+In CI, after a job that produces both Observability output and MFDoctor
+`project.json` files:
 
 ```bash
 mfdoctor runtime ./.mf/observability/latest.json ".mf/doctor/**/project.json" --format terminal,json
 ```
 
-Exit-Codes entsprechen dem Rest der CLI: `0` bestanden, `1` Richtlinienfehler,
-`2` Analyse unvollständig. Ungültige oder fehlende Opt-in-Spuren brechen
-gewöhnliches `mfdoctor check` nicht; sie lassen nur die Laufzeitkorrelation weg.
+Exit codes match the rest of the CLI: `0` pass, `1` policy fail, `2` analysis
+incomplete. Invalid or missing opt-in traces do not break ordinary
+`mfdoctor check`; they simply omit runtime correlation.
 
 ## Verwandte Seiten
 
-- [CLI: eine Laufzeitspur korrelieren](./cli.md#correlate-a-runtime-trace)
-- [Laufzeit und Manifeste](./runtime-manifests.md#observability)
-- [Vertrag für externe Laufzeitaufzeichnungen](./runtime-capture.md) — validierte
-  Capture-Hüllen und Adapter
-- [Einschränkungen](./limitations.md#permanent-guarantees--non-goals) — keine
-  Client-Injection, kein In-Browser-Agent
+- [CLI: correlate a runtime trace](./cli.md#correlate-a-runtime-trace)
+- [Runtime and manifests](./runtime-manifests.md#observability)
+- [External runtime capture contract](./runtime-capture.md), validated capture
+  envelopes and adapters
+- [Limitations](./limitations.md#permanent-guarantees--non-goals), no client
+  injection, no in-browser agent

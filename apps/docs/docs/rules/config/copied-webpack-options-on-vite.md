@@ -11,7 +11,7 @@ Webpack ModuleFederationPlugin-only options pasted onto `@module-federation/vite
 
 Remove the listed webpack-only keys. Prefer the Vite equivalent when one exists (`remotes.<name>.type` for `remoteType`; top-level `disableRemote` / `disableShared` / `disableSnapshot` / `target` for `experiments.optimization.*`). Keys without a Vite equivalent are not applicable and should be deleted.
 
-Suppress or retarget with `rules["config/copied-webpack-options-on-vite"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/copied-webpack-options-on-vite"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

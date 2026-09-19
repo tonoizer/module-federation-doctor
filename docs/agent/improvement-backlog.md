@@ -16,7 +16,7 @@ Canonical product docs stay under `apps/docs/docs/` (localized). This file
 lives next to ADRs so it is **not** on the Rspress site and does not need a
 German twin.
 
-Verify skill: `.cursor/skills/verify-mfdoctor/` — **note gaps, do not
+Verify skill: `.cursor/skills/verify-mfdoctor/`, **note gaps, do not
 regenerate the map in this workstream.**
 
 **Ownership:** Kevin handed the follow-up (maintain verify-mfdoctor plus
@@ -30,7 +30,7 @@ swarm from this analysis PR.
 
 MFDoctor ist **governance-ready für Vite / Rspack / Rsbuild / Webpack**:
 127 Rules, echte Adapter-Emits, ehrliche Partial-Zellen für Rolldown,
-Modern.js und Nuxt. Die größten Löcher sind nicht „fehlendes Dashboard“,
+Modern.js und Nuxt. Die größten Löcher sind nicht „fehlendes Dashboard",
 sondern (1) **Rule-Metadaten lügen über Bundler**, (2) **Vite-Quirks ohne
 Enhanced-Geschwister**, (3) **Agent-Fixtures**: Showcase-README driftet,
 halbe Rule-Familien ohne CLI-Leaf, Verify-Skill deckt `prompt` /
@@ -116,13 +116,13 @@ Do not open PRs that:
   general `--fix`.
 - Scrape private Module Federation plugin fields (CONTRIBUTING adapter
   contract; #18).
-- Add a Next.js (`nextjs-mf`) adapter — upstream is Pages-Router-only and
+- Add a Next.js (`nextjs-mf`) adapter, upstream is Pages-Router-only and
   unmaintained; document as unsupported instead (BL-22).
 - Treat runtime-only `@module-federation/runtime` hosts as first-class.
-- Add baselines, severity overrides, or rule `off` to “clear” findings.
+- Add baselines, severity overrides, or rule `off` to "clear" findings.
 - Bump versions / add changesets for doc-only or inventory-tag work unless
   a later fix PR actually ships user-facing behavior.
-- Regenerate `.cursor/skills/verify-mfdoctor/` wholesale — add **new**
+- Regenerate `.cursor/skills/verify-mfdoctor/` wholesale, add **new**
   feature files only (BL-03).
 
 ### Scoring
@@ -158,7 +158,7 @@ original inventory.
 |                                                    | HTML UI, in-browser agent, `docs:dev`                                |
 
 Gaps to **add files for**, not rewrite: BL-03, BL-45. Plugin-emit already
-points at `examples/standalone-findings/{vite,webpack,rspack,rsbuild}` —
+points at `examples/standalone-findings/{vite,webpack,rspack,rsbuild}`,
 that path is correct.
 
 ---
@@ -197,7 +197,7 @@ that path is correct.
 | 28   | BL-28 | 73    | P2  | L      | coverage  | vite                             | Rolldown / Vite Plus smoke build cell                                         |
 | 29   | BL-29 | 72    | P2  | M      | tests     | all                              | Adapter integration tests that actually emit                                  |
 | 30   | BL-30 | 72    | P2  | M      | coverage  | all                              | Remote `type: promise` / `script` contracts                                   |
-| 31   | BL-31 | 71    | P2  | S      | docs      | all                              | Agent-facing “evidence v2 is not default” banner                              |
+| 31   | BL-31 | 71    | P2  | S      | docs      | all                              | Agent-facing "evidence v2 is not default" banner                              |
 | 32   | BL-32 | 71    | P2  | M      | coverage  | vite, rspack                     | Browser vs SSR remoteEntry pairing                                            |
 | 33   | BL-33 | 70    | P2  | M      | coverage  | webpack, rspack                  | `don'tExpose` / expose filter surface                                         |
 | 34   | BL-34 | 70    | P2  | M      | coverage  | rspack                           | Legacy `@module-federation/rspack` vs Enhanced                                |
@@ -230,21 +230,21 @@ that path is correct.
 
 ## Items (score descending)
 
-### BL-01 — Wire `supportedBundlers` from inventory
+### BL-01, Wire `supportedBundlers` from inventory
 
-|                        |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **category**           | coverage                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| **bundlers**           | all                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| **severity**           | P1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| **effort**             | S                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| **score**              | 96                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| **why**                | Inventory correctly marks Vite-only rules with `VITE`, but `createRule` in `src/rules.ts` always sets `supportedBundlers` to every bundler including `unknown`. `src/engine.ts` gates on that field; `src/cli.ts` `toRuleMeta` hardcodes the same all-bundler list for `mfdoctor rules`. Agents and `mfdoctor rules` therefore advertise `vite/alias-share-bypass` and `shared/subpath-version-unresolved` as universal Enhanced behavior. Imperative `if (bundler.name !== "vite") return` is the real gate — meta is a lie. |
-| **evidence**           | `src/rules.ts` `createRule` (~69–85); `src/engine.ts` ~101; `src/cli.ts` `toRuleMeta` ~415–427; `src/rule-inventory.ts` `VITE` / `RSBUILD` / `ALL`                                                                                                                                                                                                                                                                                                                                                                            |
-| **suggested PR title** | fix: drive supportedBundlers from rule inventory                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **acceptance**         | Vite-only inventory plans report `supportedBundlers: ["vite"]` from `mfdoctor rules`. Engine still skips non-Vite projects. Unit test asserts catalog vs inventory adapters.                                                                                                                                                                                                                                                                                                                                                  |
+|                        |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **category**           | coverage                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **bundlers**           | all                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **severity**           | P1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **effort**             | S                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **score**              | 96                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **why**                | Inventory correctly marks Vite-only rules with `VITE`, but `createRule` in `src/rules.ts` always sets `supportedBundlers` to every bundler including `unknown`. `src/engine.ts` gates on that field; `src/cli.ts` `toRuleMeta` hardcodes the same all-bundler list for `mfdoctor rules`. Agents and `mfdoctor rules` therefore advertise `vite/alias-share-bypass` and `shared/subpath-version-unresolved` as universal Enhanced behavior. Imperative `if (bundler.name !== "vite") return` is the real gate, meta is a lie. |
+| **evidence**           | `src/rules.ts` `createRule` (~69–85); `src/engine.ts` ~101; `src/cli.ts` `toRuleMeta` ~415–427; `src/rule-inventory.ts` `VITE` / `RSBUILD` / `ALL`                                                                                                                                                                                                                                                                                                                                                                           |
+| **suggested PR title** | fix: drive supportedBundlers from rule inventory                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **acceptance**         | Vite-only inventory plans report `supportedBundlers: ["vite"]` from `mfdoctor rules`. Engine still skips non-Vite projects. Unit test asserts catalog vs inventory adapters.                                                                                                                                                                                                                                                                                                                                                 |
 
-### BL-02 — Sync showcase README with demo script
+### BL-02, Sync showcase README with demo script
 
 |                        |                                                                                                                                                                                                                                                                        |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -258,7 +258,7 @@ that path is correct.
 | **suggested PR title** | docs: list every showcase leaf that demo-showcase runs                                                                                                                                                                                                                 |
 | **acceptance**         | README tables match demo-showcase cases 1:1. Optional: small script or unit test that fails on drift.                                                                                                                                                                  |
 
-### BL-03 — Verify-skill recipes for prompt / baseline / runtime / federation glob
+### BL-03, Verify-skill recipes for prompt / baseline / runtime / federation glob
 
 |                        |                                                                                                                                                                                                                                                                                                                                                                  |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -268,25 +268,25 @@ that path is correct.
 | **effort**             | M                                                                                                                                                                                                                                                                                                                                                                |
 | **score**              | 92                                                                                                                                                                                                                                                                                                                                                               |
 | **why**                | AGENTS.md and `apps/docs/docs/agent-loop.md` require `mfdoctor prompt --finding` after check. The verify skill explicitly leaves `prompt` / `baseline` / `runtime` unmapped and folds `federation` into workspace. Agents invent flags or skip the documented loop. Do **not** regenerate existing feature files; add new ones. Stay offline (no probe/compare). |
-| **evidence**           | `.cursor/skills/verify-mfdoctor/features/README.md` “Explicitly not mapped”; `apps/docs/docs/cli.md`; `apps/docs/docs/agent-loop.md` step 3                                                                                                                                                                                                                      |
+| **evidence**           | `.cursor/skills/verify-mfdoctor/features/README.md` "Explicitly not mapped"; `apps/docs/docs/cli.md`; `apps/docs/docs/agent-loop.md` step 3                                                                                                                                                                                                                      |
 | **suggested PR title** | chore: map prompt, baseline, runtime, federation glob in verify-mfdoctor                                                                                                                                                                                                                                                                                         |
 | **acceptance**         | Four new feature files with the four H2 sections. Evidence dirs under `.cursor/skills/verify-mfdoctor/evidence/`. Existing check/workspace/plugin-emit/rules files unchanged in intent.                                                                                                                                                                          |
 
-### BL-04 — Nuxt in `compatibility-matrix.json` bundlers[]
+### BL-04, Nuxt in `compatibility-matrix.json` bundlers[]
 
-|                        |                                                                                                                                                                                                                                                                                                                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **category**           | docs                                                                                                                                                                                                                                                                                                                                                                     |
-| **bundlers**           | all                                                                                                                                                                                                                                                                                                                                                                      |
-| **severity**           | P1                                                                                                                                                                                                                                                                                                                                                                       |
-| **effort**             | S                                                                                                                                                                                                                                                                                                                                                                        |
-| **score**              | 90                                                                                                                                                                                                                                                                                                                                                                       |
-| **why**                | Human compatibility page lists Nuxt 3/4 as **partial**. Machine matrix `bundlers[]` only has vite/rolldown/rspack/rsbuild/webpack/modern. `src/capabilities.ts` builds CLI bundler matrix from that file. Agents reading `mfdoctor capabilities` miss Nuxt. `BundlerName` also omits `nuxt` (Nuxt rides the Vite adapter) — keep that, but the matrix cell should exist. |
-| **evidence**           | `fixtures/compatibility-matrix.json`; `apps/docs/docs/compatibility.md` Nuxt row; `src/capabilities.ts`; `src/types.ts` `BundlerName`                                                                                                                                                                                                                                    |
-| **suggested PR title** | fix: list Nuxt as partial in compatibility-matrix bundlers                                                                                                                                                                                                                                                                                                               |
-| **acceptance**         | `bundlers[]` includes `{ id: "nuxt", status: "partial", adapter: "@tonoizer/mfdoctor/nuxt" }`. `mfdoctor capabilities` JSON reflects it. No false “supported”.                                                                                                                                                                                                           |
+|                        |                                                                                                                                                                                                                                                                                                                                                                         |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **category**           | docs                                                                                                                                                                                                                                                                                                                                                                    |
+| **bundlers**           | all                                                                                                                                                                                                                                                                                                                                                                     |
+| **severity**           | P1                                                                                                                                                                                                                                                                                                                                                                      |
+| **effort**             | S                                                                                                                                                                                                                                                                                                                                                                       |
+| **score**              | 90                                                                                                                                                                                                                                                                                                                                                                      |
+| **why**                | Human compatibility page lists Nuxt 3/4 as **partial**. Machine matrix `bundlers[]` only has vite/rolldown/rspack/rsbuild/webpack/modern. `src/capabilities.ts` builds CLI bundler matrix from that file. Agents reading `mfdoctor capabilities` miss Nuxt. `BundlerName` also omits `nuxt` (Nuxt rides the Vite adapter), keep that, but the matrix cell should exist. |
+| **evidence**           | `fixtures/compatibility-matrix.json`; `apps/docs/docs/compatibility.md` Nuxt row; `src/capabilities.ts`; `src/types.ts` `BundlerName`                                                                                                                                                                                                                                   |
+| **suggested PR title** | fix: list Nuxt as partial in compatibility-matrix bundlers                                                                                                                                                                                                                                                                                                              |
+| **acceptance**         | `bundlers[]` includes `{ id: "nuxt", status: "partial", adapter: "@tonoizer/mfdoctor/nuxt" }`. `mfdoctor capabilities` JSON reflects it. No false "supported".                                                                                                                                                                                                          |
 
-### BL-05 — Vite/Rsbuild publicPath facts
+### BL-05, Vite/Rsbuild publicPath facts
 
 |                        |                                                                                                                                                                                                                                                                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -300,7 +300,7 @@ that path is correct.
 | **suggested PR title** | feat: record Vite/Rsbuild publicPath kind for manifest rules                                                                                                                                                                                                                                                                         |
 | **acceptance**         | Vite and Rsbuild adapters populate `outputPublicPathKind` from **public** config (`output.publicPath` / Vite MF `publicPath`) or emit `doctor/partial-analysis` when unobserved. Fixture covers non-string path. No private plugin scrape.                                                                                           |
 
-### BL-06 — Alias ∩ shared on Webpack/Rspack/Rsbuild
+### BL-06, Alias ∩ shared on Webpack/Rspack/Rsbuild
 
 |                        |                                                                                                                                                                                                                                                        |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -314,7 +314,7 @@ that path is correct.
 | **suggested PR title** | feat: flag resolve.alias overlapping shared on webpack family                                                                                                                                                                                          |
 | **acceptance**         | Public `resolve.alias` object entries overlapping `shared` keys warn on webpack/rspack/rsbuild. Function aliases stay unknown/partial. Vite rule unchanged. Showcase or unit fixture per bundler family.                                               |
 
-### BL-07 — shared ∩ bundler externals
+### BL-07, shared ∩ bundler externals
 
 |                        |                                                                                                                                                                                                                                                          |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -328,7 +328,7 @@ that path is correct.
 | **suggested PR title** | feat: detect shared packages also listed in externals                                                                                                                                                                                                    |
 | **acceptance**         | Adapter or collect path records public `externals` (string/array/object keys only). Finding when a shared package name matches. Skip when externals unobserved (`partial-analysis` or silent skip documented).                                           |
 
-### BL-08 — Omitted shareStrategy must not look aligned
+### BL-08, Omitted shareStrategy must not look aligned
 
 |                        |                                                                                                                                                                                                                                                                                                              |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -337,12 +337,12 @@ that path is correct.
 | **severity**           | P1                                                                                                                                                                                                                                                                                                           |
 | **effort**             | S                                                                                                                                                                                                                                                                                                            |
 | **score**              | 85                                                                                                                                                                                                                                                                                                           |
-| **why**                | `normalize.ts` and `federation-model.ts` default omitted `shareStrategy` to `"version-first"`. `federation/share-strategy-mismatch` then sees two “version-first” sides even when one plugin family would have behaved as loaded-first or the author never chose. False quiet on mixed Vite/Enhanced graphs. |
+| **why**                | `normalize.ts` and `federation-model.ts` default omitted `shareStrategy` to `"version-first"`. `federation/share-strategy-mismatch` then sees two "version-first" sides even when one plugin family would have behaved as loaded-first or the author never chose. False quiet on mixed Vite/Enhanced graphs. |
 | **evidence**           | `src/normalize.ts` ~165; `src/federation-model.ts` ~114; `examples/showcase/federation/share-strategy-mismatch/`                                                                                                                                                                                             |
 | **suggested PR title** | fix: treat omitted shareStrategy as unknown in federation compare                                                                                                                                                                                                                                            |
 | **acceptance**         | Omitted vs omitted → no mismatch (or info). Omitted vs explicit other → warning or partial. Explicit version-first vs loaded-first still mismatches. Showcase updated.                                                                                                                                       |
 
-### BL-09 — Rspack asyncStartup version gate
+### BL-09, Rspack asyncStartup version gate
 
 |                        |                                                                                                                                                                                                                                                                        |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -356,7 +356,7 @@ that path is correct.
 | **suggested PR title** | feat: warn asyncStartup on Rspack versions that cannot honor it                                                                                                                                                                                                        |
 | **acceptance**         | When asyncStartup is true and installed `@rspack/core` / rsbuild rspack is ≤ 1.7.4 (or unknown → partial), emit a finding. No network. Pin the version cutoff to a cited upstream note.                                                                                |
 
-### BL-10 — Inventory flag: showcase-covered vs unit-only
+### BL-10, Inventory flag: showcase-covered vs unit-only
 
 |                        |                                                                                                                                                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -370,7 +370,7 @@ that path is correct.
 | **suggested PR title** | feat: tag rules as showcase or unit-only in inventory                                                                                                                                                                                               |
 | **acceptance**         | Each inventory entry has `demo: "showcase" \| "unit" \| "emit"`. `inventory:check` fails if a new rule has none. Existing rules can be tagged without adding fixtures in the same PR.                                                               |
 
-### BL-11 — Nuxt example app (partial, real emit)
+### BL-11, Nuxt example app (partial, real emit)
 
 |                        |                                                                                                                                                                                                                                                                 |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -384,7 +384,7 @@ that path is correct.
 | **suggested PR title** | test: add a partial Nuxt emit fixture for the doctor module                                                                                                                                                                                                     |
 | **acceptance**         | A workspace example (or fixture) registers the Nuxt module, production-builds, writes `.mf/doctor/project.json`. Matrix `localCi` or unitContracts updated. Status stays **partial** until upstream unblocks.                                                   |
 
-### BL-12 — Showcase leaves for `vite/*`
+### BL-12, Showcase leaves for `vite/*`
 
 |                        |                                                                                                                                                                                                                                                  |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -398,7 +398,7 @@ that path is correct.
 | **suggested PR title** | test: add showcase fixtures for Vite dialect rules                                                                                                                                                                                               |
 | **acceptance**         | At least hashed-remote-filename, remotes-prefer-module, copied-webpack-options-on-vite, alias-share-bypass leaves in demo-showcase + README. CLI-only is enough (not full Vite apps).                                                            |
 
-### BL-13 — Hashed remoteEntry filename outside Vite
+### BL-13, Hashed remoteEntry filename outside Vite
 
 |                        |                                                                                                                                                                                            |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -412,7 +412,7 @@ that path is correct.
 | **suggested PR title** | feat: warn hashed remoteEntry filename on webpack/rspack                                                                                                                                   |
 | **acceptance**         | Pattern check on public MF `filename` (and documented webpack output filename when observed). Vite rule can stay or share a helper. Showcase or unit fixture.                              |
 
-### BL-14 — Normalize `shared.packagePath`
+### BL-14, Normalize `shared.packagePath`
 
 |                        |                                                                                                                                                                             |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -426,7 +426,7 @@ that path is correct.
 | **suggested PR title** | feat: preserve and validate shared.packagePath                                                                                                                              |
 | **acceptance**         | packagePath round-trips in normalize. Missing path on disk → finding (or partial when unresolvable). Unknown bundlers skip honestly.                                        |
 
-### BL-15 — Showcase leaves for `bridge/*`
+### BL-15, Showcase leaves for `bridge/*`
 
 |                        |                                                                                                                                                                                                                |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -440,7 +440,7 @@ that path is correct.
 | **suggested PR title** | test: add CLI showcase fixtures for Bridge rules                                                                                                                                                               |
 | **acceptance**         | At least two leaves (React export-app missing, Vue share missing or provider-shape) in demo-showcase. No need for a full Bridge app in this PR.                                                                |
 
-### BL-16 — `extractRemoteTypes` collected, never ruled
+### BL-16, `extractRemoteTypes` collected, never ruled
 
 |                        |                                                                                                                                                                                                           |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -450,11 +450,11 @@ that path is correct.
 | **effort**             | S                                                                                                                                                                                                         |
 | **score**              | 79                                                                                                                                                                                                        |
 | **why**                | Configuration-audit tells humans to enable `dts.generateTypes.extractRemoteTypes` for nested producers. `federation-model.ts` records the boolean. No rule consumes it. Nested federation examples exist. |
-| **evidence**           | `src/federation-model.ts` `FederationDtsFacts.extractRemoteTypes`; `apps/docs/docs/configuration-audit.md` “Nested producer DTS”; `examples/nested-federation/`                                           |
+| **evidence**           | `src/federation-model.ts` `FederationDtsFacts.extractRemoteTypes`; `apps/docs/docs/configuration-audit.md` "Nested producer DTS"; `examples/nested-federation/`                                           |
 | **suggested PR title** | feat: advise extractRemoteTypes for nested remote producers                                                                                                                                               |
 | **acceptance**         | Remote that both exposes and consumes remotes with dts on, and extractRemoteTypes false → warning. Host-only skips. Nested example stays green or documents waiver.                                       |
 
-### BL-17 — Showcase leaves for artifact / ssr / runtime-plugins
+### BL-17, Showcase leaves for artifact / ssr / runtime-plugins
 
 |                        |                                                                                                                                                                                                                             |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -468,7 +468,7 @@ that path is correct.
 | **suggested PR title** | test: add showcase leaves for artifact, ssr, and runtime-plugin rules                                                                                                                                                       |
 | **acceptance**         | Minimum one leaf per family in demo-showcase + README. CLI/config or committed project.json is enough.                                                                                                                      |
 
-### BL-18 — Delete unused adapter `doctor` aliases
+### BL-18, Delete unused adapter `doctor` aliases
 
 |                        |                                                                                                                                                                                                                                                             |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -480,9 +480,9 @@ that path is correct.
 | **why**                | `export const doctor = …` on vite/rspack/rsbuild/webpack/modern is `@deprecated`. Examples and docs use idiomatic names. pack-check does not assert `.doctor`. Safe delete after a changelog note in a later release PR (this backlog PR does not ship it). |
 | **evidence**           | `src/vite.ts` ~28–29; `src/rspack.ts` ~6–7; `src/rsbuild.ts` ~6–7; `src/webpack.ts` ~9–10; `src/modern.ts` ~117; grep: no example imports `doctor` from adapters                                                                                            |
 | **suggested PR title** | chore: remove deprecated adapter doctor aliases                                                                                                                                                                                                             |
-| **acceptance**         | Named exports gone. Docs/examples already clean. Pack-check still passes. Semver: breaking for anyone still importing `doctor` — confirm changelog; if 1.x compat required, keep one minor with a runtime warning instead of delete.                        |
+| **acceptance**         | Named exports gone. Docs/examples already clean. Pack-check still passes. Semver: breaking for anyone still importing `doctor`, confirm changelog; if 1.x compat required, keep one minor with a runtime warning instead of delete.                         |
 
-### BL-19 — consumeTypes / remoteTypeUrls vs `.js` remotes
+### BL-19, consumeTypes / remoteTypeUrls vs `.js` remotes
 
 |                        |                                                                                                                                                                                                              |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -496,7 +496,7 @@ that path is correct.
 | **suggested PR title** | feat: flag .js remotes without consumeTypes remoteTypeUrls                                                                                                                                                   |
 | **acceptance**         | Host with dts consume on, remotes pointing at `.js` (not manifest), and no remoteTypeUrls → warning. Manifest remotes skip.                                                                                  |
 
-### BL-20 — Vite-only keys on Enhanced / Webpack
+### BL-20, Vite-only keys on Enhanced / Webpack
 
 |                        |                                                                                                                                                                                                                                       |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -510,7 +510,7 @@ that path is correct.
 | **suggested PR title** | feat: warn Vite-only federation keys on webpack-family configs                                                                                                                                                                        |
 | **acceptance**         | Finding lists the ignored keys. Quiet when none present. Vite projects unaffected.                                                                                                                                                    |
 
-### BL-21 — Standalone Modern findings cell
+### BL-21, Standalone Modern findings cell
 
 |                        |                                                                                                                                                                                                                                |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -524,7 +524,7 @@ that path is correct.
 | **suggested PR title** | test: add standalone-findings cell for the Modern adapter                                                                                                                                                                      |
 | **acceptance**         | A fifth cell (or documented stub using the same afterEmit path) writes `.mf/doctor/report.json` with at least one finding and `failOn: "never"`. Status remains partial.                                                       |
 
-### BL-22 — splitChunks / cacheGroups vs MF runtime
+### BL-22, splitChunks / cacheGroups vs MF runtime
 
 |                        |                                                                                                                                                                                                                                                                                                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -536,9 +536,9 @@ that path is correct.
 | **why**                | Vite has `vite/manual-chunks-conflict`. Webpack/Rspack `optimization.splitChunks.chunks = "all"` plus aggressive cacheGroups commonly break MF runtime/shared chunks. MF perf skill mentions splitChunks for Rsbuild/Rspack as a _perf_ hint; the doctor should warn when it **conflicts**, not nag every project to set `chunks: "async"`. |
 | **evidence**           | `src/rules.ts` `vite/manual-chunks-conflict`; `.claude/skills/mf/reference/perf.md`; no splitChunks on bundler facts                                                                                                                                                                                                                        |
 | **suggested PR title** | feat: advisory when splitChunks cacheGroups target MF runtime                                                                                                                                                                                                                                                                               |
-| **acceptance**         | Detect public cacheGroups that match `mf-*` / remoteEntry / shared runtime chunk names when those facts exist. Info/warning, skip when optimization unobserved. Do not implement the perf skill’s blanket “set chunks async” nag.                                                                                                           |
+| **acceptance**         | Detect public cacheGroups that match `mf-*` / remoteEntry / shared runtime chunk names when those facts exist. Info/warning, skip when optimization unobserved. Do not implement the perf skill's blanket "set chunks async" nag.                                                                                                           |
 
-### BL-23 — Stop exporting unused capability-packs from `.`
+### BL-23, Stop exporting unused capability-packs from `.`
 
 |                        |                                                                                                                                                                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -552,21 +552,21 @@ that path is correct.
 | **suggested PR title** | chore: stop exporting capability-packs from the root entry                                                                                                                                                                           |
 | **acceptance**         | Root `index` no longer re-exports packs. Unit test can import the module directly. Docs/capabilities.md does not claim CLI integration. Semver note if this is considered public.                                                    |
 
-### BL-24 — Duplicate MF plugin registration on Vite/Rsbuild
+### BL-24, Duplicate MF plugin registration on Vite/Rsbuild
 
-|                        |                                                                                                                                                                                                                                                                                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **category**           | coverage                                                                                                                                                                                                                                                                                                                                         |
-| **bundlers**           | vite, rsbuild                                                                                                                                                                                                                                                                                                                                    |
-| **severity**           | P2                                                                                                                                                                                                                                                                                                                                               |
-| **effort**             | M                                                                                                                                                                                                                                                                                                                                                |
-| **score**              | 75                                                                                                                                                                                                                                                                                                                                               |
-| **why**                | `config/duplicate-plugin-registration` counts Webpack/Rspack plugins via public `.name`. Limitations: Vite/Rsbuild have no count surface. Vite **does** collect federation plugin instances (`collectViteModuleFederationPluginInstances`) for multi-instance — that can feed duplicate-registration vs intentional `moduleFederationInstances`. |
-| **evidence**           | `apps/docs/docs/limitations.md` MFDOCTOR-123 table; `src/plugin.ts` `MF_PLUGIN_NAMES` + Vite instance collect ~812; `examples/compatibility/vite-multi-instance/`                                                                                                                                                                                |
-| **suggested PR title** | feat: count public Vite/Rsbuild federation plugins for duplicate-registration                                                                                                                                                                                                                                                                    |
-| **acceptance**         | Two identical unnamed registrations → finding. Explicit `moduleFederationInstances` with distinct configs → no finding. Multi-instance example stays green.                                                                                                                                                                                      |
+|                        |                                                                                                                                                                                                                                                                                                                                                 |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **category**           | coverage                                                                                                                                                                                                                                                                                                                                        |
+| **bundlers**           | vite, rsbuild                                                                                                                                                                                                                                                                                                                                   |
+| **severity**           | P2                                                                                                                                                                                                                                                                                                                                              |
+| **effort**             | M                                                                                                                                                                                                                                                                                                                                               |
+| **score**              | 75                                                                                                                                                                                                                                                                                                                                              |
+| **why**                | `config/duplicate-plugin-registration` counts Webpack/Rspack plugins via public `.name`. Limitations: Vite/Rsbuild have no count surface. Vite **does** collect federation plugin instances (`collectViteModuleFederationPluginInstances`) for multi-instance, that can feed duplicate-registration vs intentional `moduleFederationInstances`. |
+| **evidence**           | `apps/docs/docs/limitations.md` MFDOCTOR-123 table; `src/plugin.ts` `MF_PLUGIN_NAMES` + Vite instance collect ~812; `examples/compatibility/vite-multi-instance/`                                                                                                                                                                               |
+| **suggested PR title** | feat: count public Vite/Rsbuild federation plugins for duplicate-registration                                                                                                                                                                                                                                                                   |
+| **acceptance**         | Two identical unnamed registrations → finding. Explicit `moduleFederationInstances` with distinct configs → no finding. Multi-instance example stays green.                                                                                                                                                                                     |
 
-### BL-25 — completed: knip (or ts-prune) in CI
+### BL-25, completed: knip (or ts-prune) in CI
 
 |                        |                                                                                                                                                                        |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -576,11 +576,11 @@ that path is correct.
 | **effort**             | M                                                                                                                                                                      |
 | **score**              | 74                                                                                                                                                                     |
 | **why**                | No unused-export tool. Public `.` surface keeps growing (identity, waivers, semantic-graph). A knip config with a tight allowlist prevents re-bloat after BL-18/23/27. |
-| **evidence**           | `package.json` scripts/devDependencies — no knip/ts-prune/unimported                                                                                                   |
+| **evidence**           | `package.json` scripts/devDependencies, no knip/ts-prune/unimported                                                                                                    |
 | **suggested PR title** | chore: add knip unused-export gate                                                                                                                                     |
 | **acceptance**         | `pnpm`/`vp` script + CI step. Initial allowlist documented. Fails on new unused exports from `src/index.ts`.                                                           |
 
-### BL-26 — Real Modern.js app-tools CI evidence
+### BL-26, Real Modern.js app-tools CI evidence
 
 |                        |                                                                                                                                                                                        |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -594,21 +594,21 @@ that path is correct.
 | **suggested PR title** | test: add Modern.js app-tools production emit cell                                                                                                                                     |
 | **acceptance**         | A build using App Tools + `@tonoizer/mfdoctor/modern` writes project.json in CI **or** the matrix note stays partial with a pinned blocker issue. No status upgrade without the build. |
 
-### BL-27 — Slim public identity factories on `.`
+### BL-27, Slim public identity factories on `.`
 
-|                        |                                                                                                                                                                                                                                                                                                                         |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **category**           | overeng                                                                                                                                                                                                                                                                                                                 |
-| **bundlers**           | all                                                                                                                                                                                                                                                                                                                     |
-| **severity**           | P2                                                                                                                                                                                                                                                                                                                      |
-| **effort**             | M                                                                                                                                                                                                                                                                                                                       |
-| **score**              | 73                                                                                                                                                                                                                                                                                                                      |
-| **why**                | `src/identity.ts` (~912 LOC) exports many factories. Production `src/` consumers need `createApplicationIdentity` / `unknownIdentity` (`monorepo-identity.ts`) and a few runtime-identity types. Rest is tests + public re-export. ADR 0086 says library-only — keep the module, stop advertising every factory on `.`. |
-| **evidence**           | `src/index.ts` identity re-exports; grep `from "./identity.js"`; `docs/adr/0086-correlation-and-governance.md`                                                                                                                                                                                                          |
-| **suggested PR title** | chore: narrow identity exports on the root entry                                                                                                                                                                                                                                                                        |
-| **acceptance**         | Root export list matches actual engine/CLI needs + a documented `experimental` comment. Deep imports from `src/` in tests still work. No report/fingerprint change.                                                                                                                                                     |
+|                        |                                                                                                                                                                                                                                                                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **category**           | overeng                                                                                                                                                                                                                                                                                                                |
+| **bundlers**           | all                                                                                                                                                                                                                                                                                                                    |
+| **severity**           | P2                                                                                                                                                                                                                                                                                                                     |
+| **effort**             | M                                                                                                                                                                                                                                                                                                                      |
+| **score**              | 73                                                                                                                                                                                                                                                                                                                     |
+| **why**                | `src/identity.ts` (~912 LOC) exports many factories. Production `src/` consumers need `createApplicationIdentity` / `unknownIdentity` (`monorepo-identity.ts`) and a few runtime-identity types. Rest is tests + public re-export. ADR 0086 says library-only, keep the module, stop advertising every factory on `.`. |
+| **evidence**           | `src/index.ts` identity re-exports; grep `from "./identity.js"`; `docs/adr/0086-correlation-and-governance.md`                                                                                                                                                                                                         |
+| **suggested PR title** | chore: narrow identity exports on the root entry                                                                                                                                                                                                                                                                       |
+| **acceptance**         | Root export list matches actual engine/CLI needs + a documented `experimental` comment. Deep imports from `src/` in tests still work. No report/fingerprint change.                                                                                                                                                    |
 
-### BL-28 — Rolldown / Vite Plus smoke build
+### BL-28, Rolldown / Vite Plus smoke build
 
 |                        |                                                                                                                                                                                                                        |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -622,7 +622,7 @@ that path is correct.
 | **suggested PR title** | test: add Rolldown or Vite Plus production smoke cell                                                                                                                                                                  |
 | **acceptance**         | localCi row **or** explicit remaining-blocker comment. Status stays partial until emit evidence exists.                                                                                                                |
 
-### BL-29 — Adapter integration tests that actually emit
+### BL-29, Adapter integration tests that actually emit
 
 |                        |                                                                                                                                                                                                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -636,7 +636,7 @@ that path is correct.
 | **suggested PR title** | test: assert standalone-findings emit reports in integration CI                                                                                                                                                                             |
 | **acceptance**         | Integration (or existing demo:standalone gate) asserts `.mf/doctor/project.json` + expected rule IDs per bundler cell. Mock compiler tests can remain for hook shape.                                                                       |
 
-### BL-30 — Remote `type: promise` / `script` contracts
+### BL-30, Remote `type: promise` / `script` contracts
 
 |                        |                                                                                                                                                                                                                                                |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -650,7 +650,7 @@ that path is correct.
 | **suggested PR title** | feat: advise on promise and script remote types                                                                                                                                                                                                |
 | **acceptance**         | `type: "promise"` without asyncStartup/bootstrap → warning. `script` + ESM library mismatch already covered or extended. Unknown types → no crash.                                                                                             |
 
-### BL-31 — Agent banner: evidence v2 is not default
+### BL-31, Agent banner: evidence v2 is not default
 
 |                        |                                                                                                                                                                                                                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -664,7 +664,7 @@ that path is correct.
 | **suggested PR title** | docs: state that evidence v2 rollout stays legacy by default                                                                                                                                                                                                                                      |
 | **acceptance**         | One paragraph in AGENTS.md or `docs/agent/` (not a product rewrite). No env default change.                                                                                                                                                                                                       |
 
-### BL-32 — Browser vs SSR remoteEntry pairing
+### BL-32, Browser vs SSR remoteEntry pairing
 
 |                        |                                                                                                                                                                                                                                                                                                          |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -678,21 +678,21 @@ that path is correct.
 | **suggested PR title** | feat: flag browser remotes that target SSR entries                                                                                                                                                                                                                                                       |
 | **acceptance**         | When both sides have targetKind facts, mismatched remoteEntry suffix / target → finding. Missing targetKind → skip/partial, no SvelteKit false positive.                                                                                                                                                 |
 
-### BL-33 — `don'tExpose` / expose filters
+### BL-33, `don'tExpose` / expose filters
 
-|                        |                                                                                                                                                                                                                                                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **category**           | coverage                                                                                                                                                                                                                                                                                                                  |
-| **bundlers**           | webpack, rspack                                                                                                                                                                                                                                                                                                           |
-| **severity**           | P2                                                                                                                                                                                                                                                                                                                        |
-| **effort**             | M                                                                                                                                                                                                                                                                                                                         |
-| **score**              | 70                                                                                                                                                                                                                                                                                                                        |
-| **why**                | Exposes normalize to `Record<string, string>` only. Enhanced expose objects can carry filters / don't-expose semantics. Dropped fields mean accidental public exposes with no signal. **Low-medium confidence** on exact upstream option names — confirm against the SDK types cited in CONTRIBUTING before implementing. |
-| **evidence**           | `src/normalize.ts` exposes; `src/types.ts` `exposes: Record<string, string>`                                                                                                                                                                                                                                              |
-| **suggested PR title** | feat: preserve expose object filters in normalize                                                                                                                                                                                                                                                                         |
-| **acceptance**         | Unknown expose object keys recorded as canonical unknown fields. Documented don't-expose / filter, once confirmed, does not appear in public expose list used by `config/expose-key-invalid`.                                                                                                                             |
+|                        |                                                                                                                                                                                                                                                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **category**           | coverage                                                                                                                                                                                                                                                                                                                 |
+| **bundlers**           | webpack, rspack                                                                                                                                                                                                                                                                                                          |
+| **severity**           | P2                                                                                                                                                                                                                                                                                                                       |
+| **effort**             | M                                                                                                                                                                                                                                                                                                                        |
+| **score**              | 70                                                                                                                                                                                                                                                                                                                       |
+| **why**                | Exposes normalize to `Record<string, string>` only. Enhanced expose objects can carry filters / don't-expose semantics. Dropped fields mean accidental public exposes with no signal. **Low-medium confidence** on exact upstream option names, confirm against the SDK types cited in CONTRIBUTING before implementing. |
+| **evidence**           | `src/normalize.ts` exposes; `src/types.ts` `exposes: Record<string, string>`                                                                                                                                                                                                                                             |
+| **suggested PR title** | feat: preserve expose object filters in normalize                                                                                                                                                                                                                                                                        |
+| **acceptance**         | Unknown expose object keys recorded as canonical unknown fields. Documented don't-expose / filter, once confirmed, does not appear in public expose list used by `config/expose-key-invalid`.                                                                                                                            |
 
-### BL-34 — Legacy `@module-federation/rspack` vs Enhanced
+### BL-34, Legacy `@module-federation/rspack` vs Enhanced
 
 |                        |                                                                                                                                                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -706,7 +706,7 @@ that path is correct.
 | **suggested PR title** | feat: warn mixed legacy rspack MF package with Enhanced adapter                                                                                                                                                                                     |
 | **acceptance**         | Declared `@module-federation/rspack` without enhanced (or both) → warning with expected package. Direct Enhanced-only stays quiet.                                                                                                                  |
 
-### BL-35 — Drop webpack `moduleFederationDoctorPlugin` alias
+### BL-35, Drop webpack `moduleFederationDoctorPlugin` alias
 
 |                        |                                                                                                                                                                                              |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -715,12 +715,12 @@ that path is correct.
 | **severity**           | P3                                                                                                                                                                                           |
 | **effort**             | S                                                                                                                                                                                            |
 | **score**              | 70                                                                                                                                                                                           |
-| **why**                | Webpack entry exports `ModuleFederationDoctorPlugin` plus deprecated `moduleFederationDoctorPlugin` (Rspack’s name). pack-check equality only. Confuses agents copying the wrong identifier. |
+| **why**                | Webpack entry exports `ModuleFederationDoctorPlugin` plus deprecated `moduleFederationDoctorPlugin` (Rspack's name). pack-check equality only. Confuses agents copying the wrong identifier. |
 | **evidence**           | `src/webpack.ts`; `scripts/pack-check.mjs`                                                                                                                                                   |
 | **suggested PR title** | chore: remove webpack moduleFederationDoctorPlugin alias                                                                                                                                     |
 | **acceptance**         | Canonical `ModuleFederationDoctorPlugin` remains. Docs already use it. Semver same caveat as BL-18.                                                                                          |
 
-### BL-36 — Name Next.js as unsupported in limitations
+### BL-36, Name Next.js as unsupported in limitations
 
 |                        |                                                                                                                                                                                                                                           |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -730,11 +730,11 @@ that path is correct.
 | **effort**             | S                                                                                                                                                                                                                                         |
 | **score**              | 69                                                                                                                                                                                                                                        |
 | **why**                | MF skill still mentions `@module-federation/nextjs-mf` (Pages Router, unmaintained). Product limitations discuss runtime-only and Nuxt/Modern partials but never say **NextFederation is out of scope**. Agents may start a Next adapter. |
-| **evidence**           | `apps/docs/docs/limitations.md`; `.claude/skills/mf/reference/integrate.md` deprecation; grep `apps/docs` for nextjs — no hits                                                                                                            |
+| **evidence**           | `apps/docs/docs/limitations.md`; `.claude/skills/mf/reference/integrate.md` deprecation; grep `apps/docs` for nextjs, no hits                                                                                                             |
 | **suggested PR title** | docs: mark Next.js Module Federation as out of scope                                                                                                                                                                                      |
 | **acceptance**         | Limitations + compatibility unsupported row: no Next adapter planned; prefer Rsbuild/Modern. No code adapter.                                                                                                                             |
 
-### BL-37 — Drop Nuxt `nuxtDoctor` / `federationDoctorNuxt` aliases
+### BL-37, Drop Nuxt `nuxtDoctor` / `federationDoctorNuxt` aliases
 
 |                        |                                                                                                                                 |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
@@ -748,7 +748,7 @@ that path is correct.
 | **suggested PR title** | chore: remove Nuxt adapter alias exports                                                                                        |
 | **acceptance**         | One public factory + default. Tests updated.                                                                                    |
 
-### BL-38 — Capabilities matrix Nuxt column
+### BL-38, Capabilities matrix Nuxt column
 
 |                        |                                                                                                                                                                            |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -762,7 +762,7 @@ that path is correct.
 | **suggested PR title** | docs: add Nuxt column to the capabilities matrix                                                                                                                           |
 | **acceptance**         | Nuxt column: same Vite emit hooks via `vite:extendConfig`; partial; dual client/SSR. German locale parity (docs lifecycle).                                                |
 
-### BL-39 — Un-export lineage/waivers from `.` until CLI uses them
+### BL-39, Un-export lineage/waivers from `.` until CLI uses them
 
 |                        |                                                                                                                                                                                                                                                                                           |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -776,7 +776,7 @@ that path is correct.
 | **suggested PR title** | chore: treat lineage and waivers as non-CLI library modules                                                                                                                                                                                                                               |
 | **acceptance**         | Root export slimmed or marked experimental in `apps/docs/docs/api.md`. Baseline CLI unchanged.                                                                                                                                                                                            |
 
-### BL-40 — Prefix-share / subpath tests on Enhanced
+### BL-40, Prefix-share / subpath tests on Enhanced
 
 |                        |                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -790,7 +790,7 @@ that path is correct.
 | **suggested PR title** | test: cover prefix shares on webpack/rspack without Vite inheritance                                                                                                                                                                |
 | **acceptance**         | Tests show Enhanced does **not** fire the Vite-only unresolved-version rule (after BL-01). Prefix-share-recommended still fires on deep imports.                                                                                    |
 
-### BL-41 — `mfdoctor rules` proof of per-rule bundlers
+### BL-41, `mfdoctor rules` proof of per-rule bundlers
 
 |                        |                                                                                                                                            |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -804,7 +804,7 @@ that path is correct.
 | **suggested PR title** | test: assert Vite-only rules in mfdoctor rules catalog                                                                                     |
 | **acceptance**         | Unit or skill evidence: `vite/server-origin.supportedBundlers` is `["vite"]`. Do not rewrite the whole skill file.                         |
 
-### BL-42 — Shared `layer` (low confidence)
+### BL-42, Shared `layer` (low confidence)
 
 |                        |                                                                                                                                                                                                                                                                                    |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -819,35 +819,35 @@ that path is correct.
 | **acceptance**         | layer round-trips. Cross-layer mismatch rule only if two projects both declare layers; otherwise stop at normalize. Mark rule PR as follow-up if evidence is thin.                                                                                                                 |
 | **follow-up**          | Normalize + canonical unknown-field recording shipped. **No mismatch rule in this PR:** this repo has no two-project fixture where both sides declare `layer`, public docs omit the option, and Vite ignores it. Revisit only with emit evidence from two webpack-family projects. |
 
-### BL-43 — dts `compilerInstance` / tsgo advisory
+### BL-43, dts `compilerInstance` / tsgo advisory
 
-|                        |                                                                                                                                                                                                                                                                                                                 |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **category**           | coverage                                                                                                                                                                                                                                                                                                        |
-| **bundlers**           | all                                                                                                                                                                                                                                                                                                             |
-| **severity**           | P3                                                                                                                                                                                                                                                                                                              |
-| **effort**             | M                                                                                                                                                                                                                                                                                                               |
-| **score**              | 66                                                                                                                                                                                                                                                                                                              |
-| **why**                | MF perf skill walks `dts.generateTypes.compilerInstance = "tsgo"`. Doctor only checks outputDir / dts disabled. A **perf info** rule is optional and easy to over-nag. Prefer documenting in configuration-audit first, rule only if dts generation is observed slow — **low confidence** as a default warning. |
-| **evidence**           | `.claude/skills/mf/reference/perf.md`; `src/rules.ts` `generateTypesOptions`                                                                                                                                                                                                                                    |
-| **suggested PR title** | docs: mention tsgo compilerInstance on the DTS audit page                                                                                                                                                                                                                                                       |
-| **acceptance**         | Configuration-audit row. Optional later info rule behind recommended profile, not error.                                                                                                                                                                                                                        |
+|                        |                                                                                                                                                                                                                                                                                                                |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **category**           | coverage                                                                                                                                                                                                                                                                                                       |
+| **bundlers**           | all                                                                                                                                                                                                                                                                                                            |
+| **severity**           | P3                                                                                                                                                                                                                                                                                                             |
+| **effort**             | M                                                                                                                                                                                                                                                                                                              |
+| **score**              | 66                                                                                                                                                                                                                                                                                                             |
+| **why**                | MF perf skill walks `dts.generateTypes.compilerInstance = "tsgo"`. Doctor only checks outputDir / dts disabled. A **perf info** rule is optional and easy to over-nag. Prefer documenting in configuration-audit first, rule only if dts generation is observed slow, **low confidence** as a default warning. |
+| **evidence**           | `.claude/skills/mf/reference/perf.md`; `src/rules.ts` `generateTypesOptions`                                                                                                                                                                                                                                   |
+| **suggested PR title** | docs: mention tsgo compilerInstance on the DTS audit page                                                                                                                                                                                                                                                      |
+| **acceptance**         | Configuration-audit row. Optional later info rule behind recommended profile, not error.                                                                                                                                                                                                                       |
 
-### BL-44 — Modern smoke README: not full app-tools
+### BL-44, Modern smoke README: not full app-tools
 
-|                        |                                                                                                                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **category**           | docs                                                                                                                                                                                        |
-| **bundlers**           | modern                                                                                                                                                                                      |
-| **severity**           | P2                                                                                                                                                                                          |
-| **effort**             | S                                                                                                                                                                                           |
-| **score**              | 66                                                                                                                                                                                          |
-| **why**                | Agents treat `examples/compatibility/modern` green as full Modern support. README should shout Rspack-stub + #130 in the first paragraph (if not already loud enough — verify and tighten). |
-| **evidence**           | `examples/compatibility/modern/README.md`; matrix modern coverage string                                                                                                                    |
-| **suggested PR title** | docs: lead Modern smoke README with partial-status warning                                                                                                                                  |
-| **acceptance**         | First paragraph: partial, not app-tools, do not claim supported.                                                                                                                            |
+|                        |                                                                                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **category**           | docs                                                                                                                                                                                       |
+| **bundlers**           | modern                                                                                                                                                                                     |
+| **severity**           | P2                                                                                                                                                                                         |
+| **effort**             | S                                                                                                                                                                                          |
+| **score**              | 66                                                                                                                                                                                         |
+| **why**                | Agents treat `examples/compatibility/modern` green as full Modern support. README should shout Rspack-stub + #130 in the first paragraph (if not already loud enough, verify and tighten). |
+| **evidence**           | `examples/compatibility/modern/README.md`; matrix modern coverage string                                                                                                                   |
+| **suggested PR title** | docs: lead Modern smoke README with partial-status warning                                                                                                                                 |
+| **acceptance**         | First paragraph: partial, not app-tools, do not claim supported.                                                                                                                           |
 
-### BL-45 — transformImport facts from Modern adapter
+### BL-45, transformImport facts from Modern adapter
 
 |                        |                                                                                                                                                                                                                                                 |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -861,7 +861,7 @@ that path is correct.
 | **suggested PR title** | test: prove Modern/Rsbuild adapters pass transformImport libraries                                                                                                                                                                              |
 | **acceptance**         | Adapter test with public transformImport + shared antd/arco-style package emits the rule (or documented skip).                                                                                                                                  |
 
-### BL-46 — `RULE_COMPATIBILITY_EXCEPTIONS` empty noise
+### BL-46, `RULE_COMPATIBILITY_EXCEPTIONS` empty noise
 
 |                        |                                                                                                                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -870,40 +870,40 @@ that path is correct.
 | **severity**           | P3                                                                                                                                                                                   |
 | **effort**             | S                                                                                                                                                                                    |
 | **score**              | 65                                                                                                                                                                                   |
-| **why**                | Empty array “by design for V1 closeout” is still public and tested. Either delete the export or keep a one-line comment in inventory without a public type if nothing will be added. |
+| **why**                | Empty array "by design for V1 closeout" is still public and tested. Either delete the export or keep a one-line comment in inventory without a public type if nothing will be added. |
 | **evidence**           | `src/rule-inventory.ts` ~20–23; `test/unit/rule-inventory-closeout.test.ts`                                                                                                          |
 | **suggested PR title** | chore: drop empty RULE_COMPATIBILITY_EXCEPTIONS export                                                                                                                               |
 | **acceptance**         | Closeout test still proves every built-in is migrated without a public empty list.                                                                                                   |
 
-### BL-47 — `output.uniqueName` vs MF `name`
+### BL-47, `output.uniqueName` vs MF `name`
 
-|                        |                                                                                                                                                                                                                                         |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **category**           | coverage                                                                                                                                                                                                                                |
-| **bundlers**           | webpack, rspack                                                                                                                                                                                                                         |
-| **severity**           | P2                                                                                                                                                                                                                                      |
-| **effort**             | S                                                                                                                                                                                                                                       |
-| **score**              | 64                                                                                                                                                                                                                                      |
-| **why**                | Webpack smoke sets `uniqueName`. Federation `name-conflict` is cross-project. A single compiler with `output.uniqueName` ≠ MF `name` causes global/runtime surprises. **Medium confidence** — uniqueName is often set equal on purpose. |
-| **evidence**           | `examples/compatibility/webpack/webpack.config.mjs`; `src/plugin.ts` compiler options                                                                                                                                                   |
-| **suggested PR title** | feat: info when output.uniqueName disagrees with federation name                                                                                                                                                                        |
-| **acceptance**         | Info finding when both observed and unequal. Quiet when uniqueName absent. Webpack smoke stays green (aligned).                                                                                                                         |
+|                        |                                                                                                                                                                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **category**           | coverage                                                                                                                                                                                                                               |
+| **bundlers**           | webpack, rspack                                                                                                                                                                                                                        |
+| **severity**           | P2                                                                                                                                                                                                                                     |
+| **effort**             | S                                                                                                                                                                                                                                      |
+| **score**              | 64                                                                                                                                                                                                                                     |
+| **why**                | Webpack smoke sets `uniqueName`. Federation `name-conflict` is cross-project. A single compiler with `output.uniqueName` ≠ MF `name` causes global/runtime surprises. **Medium confidence**, uniqueName is often set equal on purpose. |
+| **evidence**           | `examples/compatibility/webpack/webpack.config.mjs`; `src/plugin.ts` compiler options                                                                                                                                                  |
+| **suggested PR title** | feat: info when output.uniqueName disagrees with federation name                                                                                                                                                                       |
+| **acceptance**         | Info finding when both observed and unequal. Quiet when uniqueName absent. Webpack smoke stays green (aligned).                                                                                                                        |
 
-### BL-48 — SSR host-init analogues on Rsbuild/Modern
+### BL-48, SSR host-init analogues on Rsbuild/Modern
 
-|                        |                                                                                                                                                                                                                                       |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **category**           | coverage                                                                                                                                                                                                                              |
-| **bundlers**           | rsbuild, modern                                                                                                                                                                                                                       |
-| **severity**           | P2                                                                                                                                                                                                                                    |
-| **effort**             | M                                                                                                                                                                                                                                     |
-| **score**              | 63                                                                                                                                                                                                                                    |
-| **why**                | `vite/host-init-inject-ssr` is Vite-specific. Modern.js / Rsbuild SSR hosts have different inject points. **Low-medium confidence** without a failing fixture — start with docs + skip reason, then a rule if a public option exists. |
-| **evidence**           | `src/rules.ts` `vite/host-init-inject-ssr`; `apps/docs/docs/vite-integration.md`                                                                                                                                                      |
-| **suggested PR title** | docs: document SSR host-init as Vite-only until Rsbuild/Modern facts exist                                                                                                                                                            |
-| **acceptance**         | Limitations or vite-integration cross-link. No fake Rsbuild finding. Follow-up rule only with a public option + fixture.                                                                                                              |
+|                        |                                                                                                                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **category**           | coverage                                                                                                                                                                                                                             |
+| **bundlers**           | rsbuild, modern                                                                                                                                                                                                                      |
+| **severity**           | P2                                                                                                                                                                                                                                   |
+| **effort**             | M                                                                                                                                                                                                                                    |
+| **score**              | 63                                                                                                                                                                                                                                   |
+| **why**                | `vite/host-init-inject-ssr` is Vite-specific. Modern.js / Rsbuild SSR hosts have different inject points. **Low-medium confidence** without a failing fixture, start with docs + skip reason, then a rule if a public option exists. |
+| **evidence**           | `src/rules.ts` `vite/host-init-inject-ssr`; `apps/docs/docs/vite-integration.md`                                                                                                                                                     |
+| **suggested PR title** | docs: document SSR host-init as Vite-only until Rsbuild/Modern facts exist                                                                                                                                                           |
+| **acceptance**         | Limitations or vite-integration cross-link. No fake Rsbuild finding. Follow-up rule only with a public option + fixture.                                                                                                             |
 
-### BL-49 — Un-export `projectV1Suppression`
+### BL-49, Un-export `projectV1Suppression`
 
 |                        |                                                                                                                             |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
@@ -917,7 +917,7 @@ that path is correct.
 | **suggested PR title** | chore: stop exporting unused v1-compatibility helpers                                                                       |
 | **acceptance**         | Module can remain for ADR tests via relative import. Root `.` export gone.                                                  |
 
-### BL-50 — Stats expected (Enhanced) vs unexpected (Vite)
+### BL-50, Stats expected (Enhanced) vs unexpected (Vite)
 
 |                        |                                                                                                                                                                                                                                                                                        |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -926,12 +926,12 @@ that path is correct.
 | **severity**           | P2                                                                                                                                                                                                                                                                                     |
 | **effort**             | M                                                                                                                                                                                                                                                                                      |
 | **score**              | 61                                                                                                                                                                                                                                                                                     |
-| **why**                | Capabilities/runtime-manifests already explain Vite opt-in vs Enhanced default. Rules focus on manifest disabled/assets, not “Enhanced build with stats:false” vs “Vite with stats present”. Easy to over-warn. Prefer tightening `doctor/partial-analysis` messages over a new error. |
+| **why**                | Capabilities/runtime-manifests already explain Vite opt-in vs Enhanced default. Rules focus on manifest disabled/assets, not "Enhanced build with stats:false" vs "Vite with stats present". Easy to over-warn. Prefer tightening `doctor/partial-analysis` messages over a new error. |
 | **evidence**           | `apps/docs/docs/capabilities.md` Manifest row; `apps/docs/docs/runtime-manifests.md`; `artifact/manifest-*` rules                                                                                                                                                                      |
 | **suggested PR title** | fix: incompleteReasons when Enhanced stats are off but remotes exist                                                                                                                                                                                                                   |
 | **acceptance**         | Enhanced/Rspack/Webpack with remotes and stats capability false → incomplete reason or existing manifest rule. Vite without manifest stays the documented opt-in path.                                                                                                                 |
 
-### BL-51 — Share evidence projection helpers (do not merge runners)
+### BL-51, Share evidence projection helpers (do not merge runners)
 
 |                        |                                                                                                                                                                                                                                                                              |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -945,7 +945,7 @@ that path is correct.
 | **suggested PR title** | refactor: share evidence projection helpers between bridges                                                                                                                                                                                                                  |
 | **acceptance**         | Net LOC down, tests green, no rollout default change, no report fingerprint change.                                                                                                                                                                                          |
 
-### BL-52 — Mark semantic-graph / identity APIs experimental
+### BL-52, Mark semantic-graph / identity APIs experimental
 
 |                        |                                                                                                                                                                                                                                       |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -954,12 +954,12 @@ that path is correct.
 | **severity**           | P3                                                                                                                                                                                                                                    |
 | **effort**             | S                                                                                                                                                                                                                                     |
 | **score**              | 60                                                                                                                                                                                                                                    |
-| **why**                | `apps/docs/docs/capabilities.md` already demotes 1.1.0 library contracts, but `src/index.ts` still looks like a second product. A one-line `@experimental` in api.md + index comment stops agents from “finishing” graph integration. |
+| **why**                | `apps/docs/docs/capabilities.md` already demotes 1.1.0 library contracts, but `src/index.ts` still looks like a second product. A one-line `@experimental` in api.md + index comment stops agents from "finishing" graph integration. |
 | **evidence**           | `src/semantic-graph.ts`; `apps/docs/docs/api.md`; `docs/adr/0086-correlation-and-governance.md`                                                                                                                                       |
 | **suggested PR title** | docs: label semantic-graph and identity correlation experimental                                                                                                                                                                      |
 | **acceptance**         | api.md + index file comment. No runtime change.                                                                                                                                                                                       |
 
-### BL-53 — `ignoreOrigin` / `virtualModuleDir` honest skips
+### BL-53, `ignoreOrigin` / `virtualModuleDir` honest skips
 
 |                        |                                                                                                                                                                                    |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -973,11 +973,11 @@ that path is correct.
 | **suggested PR title** | feat: warn invalid virtualModuleDir and untested ignoreOrigin                                                                                                                      |
 | **acceptance**         | Slash in virtualModuleDir → warning. ignoreOrigin true without server.origin fact → info/partial.                                                                                  |
 
-### BL-54 — Split `src/capture.ts` (~3.7k LOC)
+### BL-54, Split `src/capture.ts` (~3.7k LOC)
 
 |                        |                                                                                                                                                                                                                                                                              |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **status**             | **done** — file-import contract is `src/runtime-capture-contract.ts`; unused browser/fallback/network transports isolated in `src/runtime-capture-transports.ts` with tests. No in-browser injection. ADR 0084 closeout not in this PR.                                      |
+| **status**             | **done**, file-import contract is `src/runtime-capture-contract.ts`; unused browser/fallback/network transports isolated in `src/runtime-capture-transports.ts` with tests. No in-browser injection. ADR 0084 closeout not in this PR.                                       |
 | **category**           | overeng                                                                                                                                                                                                                                                                      |
 | **bundlers**           | all                                                                                                                                                                                                                                                                          |
 | **severity**           | P2                                                                                                                                                                                                                                                                           |
@@ -988,7 +988,7 @@ that path is correct.
 | **suggested PR title** | refactor: split runtime-capture file-import from unused transports                                                                                                                                                                                                           |
 | **acceptance**         | File-import path used by `mfdoctor runtime` in a smaller module. Unused transports deleted **or** isolated with tests. No in-browser injection. ADR 0084 closeout not in scope.                                                                                              |
 
-### BL-55 — completed: Internalize `MIGRATED_GROUP*` exports
+### BL-55, completed: Internalize `MIGRATED_GROUP*` exports
 
 |                        |                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------ |
@@ -1002,35 +1002,35 @@ that path is correct.
 | **suggested PR title** | chore: stop exporting migrated rule-group constants                                  |
 | **acceptance**         | Bridges import from `rule-inventory.js` internally. Root `.` export gone.            |
 
-### BL-56 — `buildUiPayload` is not an HTML UI
+### BL-56, `buildUiPayload` is not an HTML UI
 
-|                        |                                                                                                                                                                                                                |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **category**           | docs                                                                                                                                                                                                           |
-| **bundlers**           | all                                                                                                                                                                                                            |
-| **severity**           | P3                                                                                                                                                                                                             |
-| **effort**             | S                                                                                                                                                                                                              |
-| **score**              | 54                                                                                                                                                                                                             |
-| **why**                | limitations.md already says no dashboard; `schemas/ui.schema.json` remains. Agents still grep `ui` and invent `--ui`. A single cross-link from api.md / this backlog is enough — **do not** delete the schema. |
-| **evidence**           | `apps/docs/docs/limitations.md`; `src/ui-graph.ts`; `schemas/ui.schema.json`                                                                                                                                   |
-| **suggested PR title** | docs: stress that ui schema is not a shipped dashboard                                                                                                                                                         |
-| **acceptance**         | api.md one-liner. Schema kept.                                                                                                                                                                                 |
+|                        |                                                                                                                                                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **category**           | docs                                                                                                                                                                                                          |
+| **bundlers**           | all                                                                                                                                                                                                           |
+| **severity**           | P3                                                                                                                                                                                                            |
+| **effort**             | S                                                                                                                                                                                                             |
+| **score**              | 54                                                                                                                                                                                                            |
+| **why**                | limitations.md already says no dashboard; `schemas/ui.schema.json` remains. Agents still grep `ui` and invent `--ui`. A single cross-link from api.md / this backlog is enough, **do not** delete the schema. |
+| **evidence**           | `apps/docs/docs/limitations.md`; `src/ui-graph.ts`; `schemas/ui.schema.json`                                                                                                                                  |
+| **suggested PR title** | docs: stress that ui schema is not a shipped dashboard                                                                                                                                                        |
+| **acceptance**         | api.md one-liner. Schema kept.                                                                                                                                                                                |
 
-### BL-57 — `dataPrefetch` / prefetch remotes (low confidence)
+### BL-57, `dataPrefetch` / prefetch remotes (low confidence)
 
-|                        |                                                                                                                                                                                                                       |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **category**           | coverage                                                                                                                                                                                                              |
-| **bundlers**           | all                                                                                                                                                                                                                   |
-| **severity**           | P3                                                                                                                                                                                                                    |
-| **effort**             | L                                                                                                                                                                                                                     |
-| **score**              | 52                                                                                                                                                                                                                    |
-| **why**                | Prefetch/preload misconfig can break load order. No normalize field. Easy to over-build. **Low confidence** — confirm option is still public and failure-prone before a rule. Prefer a configuration-audit row first. |
-| **evidence**           | configuration-audit (no prefetch row); runtime-plugin createLink guidance only                                                                                                                                        |
-| **suggested PR title** | docs: add dataPrefetch to the configuration audit checklist                                                                                                                                                           |
-| **acceptance**         | Audit table row with official docs link. Rule only in a later PR with a fixture.                                                                                                                                      |
+|                        |                                                                                                                                                                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **category**           | coverage                                                                                                                                                                                                             |
+| **bundlers**           | all                                                                                                                                                                                                                  |
+| **severity**           | P3                                                                                                                                                                                                                   |
+| **effort**             | L                                                                                                                                                                                                                    |
+| **score**              | 52                                                                                                                                                                                                                   |
+| **why**                | Prefetch/preload misconfig can break load order. No normalize field. Easy to over-build. **Low confidence**, confirm option is still public and failure-prone before a rule. Prefer a configuration-audit row first. |
+| **evidence**           | configuration-audit (no prefetch row); runtime-plugin createLink guidance only                                                                                                                                       |
+| **suggested PR title** | docs: add dataPrefetch to the configuration audit checklist                                                                                                                                                          |
+| **acceptance**         | Audit table row with official docs link. Rule only in a later PR with a fixture.                                                                                                                                     |
 
-### BL-58 — completed: Un-export `DEFAULT_ANALYSIS_CACHE_OPTIONS`
+### BL-58, completed: Un-export `DEFAULT_ANALYSIS_CACHE_OPTIONS`
 
 |                        |                                                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------------- |

@@ -9,7 +9,7 @@ proves both remotes render without console errors.
 
 This path stays clean on purpose so e2e and adapter dogfood stay green. The Vite
 host intentionally turns off `config/remote-manifest-recommended` and
-`reliability/version-first-offline-remotes` with comments — that is the
+`reliability/version-first-offline-remotes` with comments, that is the
 canonical suppression pattern for accepted host choices (see
 [Suppressions and allowlists](./suppressions.md)).
 
@@ -18,7 +18,7 @@ see [Nested federation example](./nested-example.md).
 
 For intentional MFDoctor findings:
 
-- [Examples overview](./examples.md) — full catalog
-- [One-rule showcase](./showcase.md) — CLI one-rule fixtures
-- [Standalone findings](./standalone-findings.md) — per-bundler build+MFDoctor demos
-- [Mixed federation issues](./mixed-issues-example.md) — same multi-bundler shape, red on purpose
+- [Examples overview](./examples.md), full catalog
+- [One-rule showcase](./showcase.md), CLI one-rule fixtures
+- [Standalone findings](./standalone-findings.md), per-bundler build+MFDoctor demos
+- [Mixed federation issues](./mixed-issues-example.md), same multi-bundler shape, red on purpose

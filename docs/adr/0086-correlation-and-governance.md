@@ -104,11 +104,11 @@ promotion path.
 
 Every attempted relationship returns a typed result:
 
-- `exact` — an explicit shared ID, digest, or documented compound key proves it;
-- `strong` — multiple stable dimensions agree under compatible scope;
-- `weak` — a bounded locator or source-local alias creates a candidate;
-- `ambiguous` — more than one candidate remains possible;
-- `unknown` — required evidence is missing, unsupported, or incompatible.
+- `exact`, an explicit shared ID, digest, or documented compound key proves it;
+- `strong`, multiple stable dimensions agree under compatible scope;
+- `weak`, a bounded locator or source-local alias creates a candidate;
+- `ambiguous`, more than one candidate remains possible;
+- `unknown`, required evidence is missing, unsupported, or incompatible.
 
 Candidate lists, confidence, missing fields, source evidence, and conflict
 diagnostics are retained. A resolver must never choose an alphabetical or
@@ -154,38 +154,38 @@ is introduced by this ADR.
 The implementation must follow this order and keep each PR independently
 reviewable:
 
-1. **Identity ADR and canonical-key grammar** — this document; no runtime
+1. **Identity ADR and canonical-key grammar**, this document; no runtime
    behavior (merged as #293).
-2. **Identity schemas/types/helpers** — extend only where the existing contract
+2. **Identity schemas/types/helpers**, extend only where the existing contract
    has a proven gap; add deterministic and redaction tests (implemented in the
    first #86 slice).
-3. **Capability edges and scoped coverage** — additive graph facts and legacy
+3. **Capability edges and scoped coverage**, additive graph facts and legacy
    projections (implemented in the first #86 slice).
-4. **Correlation candidate engine** — exact/strong/weak/ambiguous/unknown
+4. **Correlation candidate engine**, exact/strong/weak/ambiguous/unknown
    results, candidate retention, conflict fixtures; no CLI integration
    (implemented in the first #86 slice).
-5. **Build/artifact/deployment correlation** — consume exact #81 evidence and
+5. **Build/artifact/deployment correlation**, consume exact #81 evidence and
    offline deployment metadata; add rollback/redeploy/environment cases
    (implemented in the additive build/deployment slice).
-6. **Runtime/realm correlation** — consume #82/#84 evidence; enforce browser,
+6. **Runtime/realm correlation**, consume #82/#84 evidence; enforce browser,
    SSR, worker, Node, frame, and partial-snapshot boundaries (implemented in the
    additive runtime identity slice).
-7. **Ownership resolver** — governance file, responsibility edges,
+7. **Ownership resolver**, governance file, responsibility edges,
    precedence/conflict behavior; no waivers yet (implemented in the governance
    slice).
-8. **Finding lineage and history** — bridge #83 rule identity dimensions and
+8. **Finding lineage and history**, bridge #83 rule identity dimensions and
    comparable-evidence diff states (implemented in the additive finding-lineage
    slice; V1 fingerprints and report projections remain unchanged).
-9. **Governance waivers** — validation, scope, injected clock, expiry, and
+9. **Governance waivers**, validation, scope, injected clock, expiry, and
    audit decisions; no baseline schema changes (implemented in the additive
    waiver slice).
-10. **V1 compatibility bridge and integration** — preserve fingerprints,
+10. **V1 compatibility bridge and integration**, preserve fingerprints,
     terminal/JSON/SARIF/UI projections, and exit semantics with parity proof
     (implemented by the additive V1 suppression projection).
-11. **Semantic graph/workspace/UI integration** — expose explicit semantic
+11. **Semantic graph/workspace/UI integration**, expose explicit semantic
     graph queries beside the unchanged V1 graph; retain mixed legacy projects
     as unknown/ambiguous legacy nodes rather than promoting name matches.
-12. **Fixtures, docs, and end-to-end closeout** — add representative mixed,
+12. **Fixtures, docs, and end-to-end closeout**, add representative mixed,
     cross-target, and governance examples with package/schema/build gates.
 
 Do not merge a later stage before its dependency stage has a stable contract.

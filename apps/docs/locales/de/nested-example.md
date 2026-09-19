@@ -27,7 +27,7 @@ This path stays green. Nested remotes that both expose and consume remotes set
 `dts.generateTypes.extractRemoteTypes` so `config/nested-producer-dts-extract`
 does not fire. Consumers that use `remoteEntry.js` turn off
 `config/remote-manifest-recommended` (and Vite consumers also turn off
-`reliability/version-first-offline-remotes`) with comments — same suppression
+`reliability/version-first-offline-remotes`) with comments, same suppression
 pattern as the [mixed example](./mixed-example.md).
 
 For intentional red findings, use [mixed issues](./mixed-issues-example.md) or

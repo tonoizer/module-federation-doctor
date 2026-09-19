@@ -605,7 +605,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     category: "tooling",
     impact:
       "Missing facts, unresolved dynamic imports, unreadable source files recorded in `imports.sourceReadFailures`, budget-limited persisted projects, or omitted workspace projects reduce confidence and can hide relevant findings. Source read failures make project or workspace input `unknown`; a pure analysis-budget cutoff is `partial`. Incomplete workspace evidence suppresses absence-based federation rules (`host-gaps`, `ghost-shares`, `missing-provider`, and `external-runtime-provider-missing`) while positive mismatches remain useful. Package-capable unresolved dynamics suppress workspace absence certainty without changing the ordinary project exit code.",
-    fix: "When MF options are missing, pass them explicitly. On Vite, missing `mf-manifest.json` / `mf-stats.json` usually means enable `manifest: true` — not missing options; an explicit `manifest: false` is reported by `artifact/manifest-disabled` instead. On Webpack/Rspack/Rsbuild, remotes with `capabilities.stats` false after emit is incomplete (`missing-stats` on `status.incompleteReasons`, or this rule): those bundlers emit stats by default (`manifest !== false`). Fix source permissions or transient read races when `imports.sourceReadFailures` is present, or raise the analysis budget when only a budget cutoff made the workspace `partial`. Prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
+    fix: "When MF options are missing, pass them explicitly. On Vite, missing `mf-manifest.json` / `mf-stats.json` usually means enable `manifest: true`, not missing options; an explicit `manifest: false` is reported by `artifact/manifest-disabled` instead. On Webpack/Rspack/Rsbuild, remotes with `capabilities.stats` false after emit is incomplete (`missing-stats` on `status.incompleteReasons`, or this rule): those bundlers emit stats by default (`manifest !== false`). Fix source permissions or transient read races when `imports.sourceReadFailures` is present, or raise the analysis budget when only a budget cutoff made the workspace `partial`. Prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
     sources: [configure],
   },
   "config/plugin-package-mismatch": {
@@ -706,7 +706,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "artifact/react-dom-server-in-web": {
     category: "correctness",
     impact:
-      "react-dom/server (and related server entries) in a web/client Module Federation bundle crash or mis-target the browser runtime — a common MF/SSR boundary failure.",
+      "react-dom/server (and related server entries) in a web/client Module Federation bundle crash or mis-target the browser runtime, a common MF/SSR boundary failure.",
     fix: 'Keep `react-dom/server` (and `react-dom/server.*`) on the SSR/server build only. Use a client entry such as `react-dom/client` for web remotes/hosts, or mark the target with `ssrMode: "node"` / `experiments.target: "node"` when the artifact is server-only. Set `rules["artifact/react-dom-server-in-web"]` to `"off"` when intentional.',
     sources: [
       "https://react.dev/reference/react-dom/server",
@@ -925,7 +925,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "ssr/remote-entry-target-mismatch": {
     category: "correctness",
     impact:
-      "A browser host that loads `remoteEntry.ssr.js` (or an SSR-specific path) executes the server container in the client. The reverse — an SSR host loading a browser `remoteEntry.js` — misses the server runtime contract. Dual-env Nitro pairing of client+server outputs is not this check.",
+      "A browser host that loads `remoteEntry.ssr.js` (or an SSR-specific path) executes the server container in the client. The reverse, an SSR host loading a browser `remoteEntry.js`, misses the server runtime contract. Dual-env Nitro pairing of client+server outputs is not this check.",
     fix: 'Point browser remotes at `remoteEntry.js` (or the client `mf-manifest.json`) and node/SSR remotes at `remoteEntry.ssr.js` or `/ssr/...`. Requires `experiments.target` / `vite.target` / unambiguous `builds.targetKind` on the consumer; missing targetKind skips. Set `ssrMode: "browser-only"` or `"node"` to force a side, or turn the rule `"off"`.',
     sources: [
       "https://module-federation.io/guide/basic/manifest-snapshot.html",

@@ -15,7 +15,7 @@ A malformed asset base makes remote chunks and styles resolve from the wrong URL
 
 Use `auto`, a root-relative path, HTTPS URL, or reviewed dynamic getter.
 
-Suppress or retarget with `rules["artifact/public-path-suspicious"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["artifact/public-path-suspicious"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

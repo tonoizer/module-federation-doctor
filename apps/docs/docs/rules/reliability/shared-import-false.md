@@ -11,7 +11,7 @@ With `import: false`, a federation participant has no local fallback if another 
 
 Guarantee a provider loads first or restore a local fallback.
 
-Suppress or retarget with `rules["reliability/shared-import-false"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["reliability/shared-import-false"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

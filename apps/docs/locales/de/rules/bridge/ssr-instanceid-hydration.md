@@ -15,7 +15,7 @@ Without a stable `bridge.instanceId`, SSR Bridge hydration registries can collid
 
 Set `bridge.instanceId` for SSR builds, use `ssrMode: "browser-only"` when not SSR, or set the rule to `"off"`.
 
-Suppress or retarget with `rules["bridge/ssr-instanceid-hydration"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["bridge/ssr-instanceid-hydration"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

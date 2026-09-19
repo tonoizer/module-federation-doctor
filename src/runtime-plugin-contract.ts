@@ -25,7 +25,7 @@ function isLocalPluginPath(plugin: string): boolean {
 
 /**
  * Resolve a local runtimePlugins path against the project root and scanned files.
- * Returns undefined when no candidate exists on disk (caller should skip — do not invent).
+ * Returns undefined when no candidate exists on disk (caller should skip, do not invent).
  */
 async function resolveLocalPluginFile(
   root: string,
@@ -95,7 +95,7 @@ export function inspectPluginFactory(source: string): PluginContractStatus {
   if (!text.trim()) return { kind: "invalid-factory", reason: "no-export" };
   if (!hasUsableExport(text)) return { kind: "invalid-factory", reason: "no-export" };
 
-  // Default export of a primitive / empty object — clear silent no-op.
+  // Default export of a primitive / empty object, clear silent no-op.
   if (/\bexport\s+default\s+(?:null|undefined|true|false|\d+|['"`])/.test(text))
     return { kind: "invalid-factory", reason: "non-factory-export" };
   if (/\bexport\s+default\s*\{\s*\}/.test(text))
@@ -126,7 +126,7 @@ export function inspectPluginFactory(source: string): PluginContractStatus {
     return { kind: "ok" };
   }
 
-  // Named `export function foo` / `export const foo =` without a default — MF expects
+  // Named `export function foo` / `export const foo =` without a default, MF expects
   // the module default (or CJS exports) to be the factory. Clear when only type exports.
   if (
     /\bexport\s+type\b/.test(text) &&
@@ -137,7 +137,7 @@ export function inspectPluginFactory(source: string): PluginContractStatus {
   )
     return { kind: "invalid-factory", reason: "no-export" };
 
-  // Readable but not confidently broken — do not invent a fail.
+  // Readable but not confidently broken, do not invent a fail.
   if (factoryLike || /\bexport\s+default\b/.test(text) || /\bmodule\.exports\b/.test(text))
     return { kind: "skip", reason: "ambiguous" };
 
@@ -150,7 +150,7 @@ function hookDefined(source: string, hook: "createScript" | "createLink" | "fetc
 }
 
 function mentionsCors(source: string): boolean {
-  // Require an explicit CORS/credentials signal — not bare "anonymous"/"include" strings.
+  // Require an explicit CORS/credentials signal, not bare "anonymous"/"include" strings.
   return /\bcrossOrigin\b|\bcrossorigin\b|credentials\s*:\s*['"`](?:include|same-origin|omit)['"`]|setAttribute\(\s*['"`]crossorigin['"`]|['"`]use-credentials['"`]/.test(
     source,
   );

@@ -61,7 +61,7 @@ async function packageEvidence(root: string, names: readonly string[]): Promise<
 }
 
 /**
- * Optional plugin-hook meta from Rolldown / Vite. Public fields only — never
+ * Optional plugin-hook meta from Rolldown / Vite. Public fields only, never
  * scrape private Module Federation plugin state.
  */
 export type ViteHookMeta = {

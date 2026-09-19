@@ -16,14 +16,14 @@ over guessing or scraping terminal ANSI.
 
 ## Intended loop
 
-1. **capabilities** — discover the versioned CLI contract (no project config, no
+1. **capabilities**, discover the versioned CLI contract (no project config, no
    network):
 
    ```bash
    mfdoctor capabilities
    ```
 
-2. **check (JSON)** — run offline analysis and keep machine-readable artifacts
+2. **check (JSON)**, run offline analysis and keep machine-readable artifacts
    on disk:
 
    ```bash
@@ -31,14 +31,14 @@ over guessing or scraping terminal ANSI.
      --diagnostics-dir .mf/doctor/diagnostics
    ```
 
-3. **prompt** — load structured fix guidance for a finding from the saved
+3. **prompt**, load structured fix guidance for a finding from the saved
    report:
 
    ```bash
    mfdoctor prompt --finding <ruleId|fingerprint> .mf/doctor/report.json
    ```
 
-4. **rebuild / re-check** — apply a narrow fix for that finding, rebuild with a
+4. **rebuild / re-check**, apply a narrow fix for that finding, rebuild with a
    MFDoctor adapter when emit evidence is needed, then re-run `check` (and
    `workspace` / `federation` in monorepos) until policy passes.
 
@@ -54,7 +54,7 @@ over guessing or scraping terminal ANSI.
   analysis. Before claiming green, require plugin emit evidence (a build with a
   MFDoctor adapter that writes `.mf/doctor/project.json`) and, in monorepos, the
   workspace/federation gate. Treat exit code `2` and `doctor/partial-analysis`
-  as incomplete analysis — not a pass.
+  as incomplete analysis, not a pass.
 
 ## Evidence v2 stays legacy by default
 
@@ -83,4 +83,4 @@ bridges. See `EVIDENCE_ROLLOUT_V2.md`.
 - A general `--fix` that mutates the project without a finding-driven change
 
 For Module Federation concepts (shared, remotes, Bridge, observability), use the
-upstream `mf` skill — not this playbook.
+upstream `mf` skill, not this playbook.

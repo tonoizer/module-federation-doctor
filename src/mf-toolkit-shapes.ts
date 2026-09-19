@@ -1,6 +1,6 @@
 /**
  * Soft recognition of mf-toolkit config shapes (mf-bridge, mf-ssr fragment URLs,
- * shared-inspector MF2 shared arrays). Used to skip false findings — never to
+ * shared-inspector MF2 shared arrays). Used to skip false findings, never to
  * mutate existing finding evidence (fingerprint stability).
  *
  * Fixtures: fixtures/mf-bridge-entry, fixtures/mf-ssr-fragment, fixtures/shared-inspector-mf2.
@@ -56,7 +56,7 @@ function isBridgeEntryTarget(target: string | undefined): boolean {
 /**
  * True when exposes are mf-bridge entry shaped: public key `./entry` whose target
  * is an `entry` module (toolkit register / createMFEntry / defineMFEntry contract),
- * optionally alongside `./fragment` only — no classic component-style exposes.
+ * optionally alongside `./fragment` only, no classic component-style exposes.
  * Used to quiet component/DTS producer guidance for intentional bridge remotes.
  *
  * Note: MFDoctor project facts do not carry export graphs, so `register` is inferred
@@ -108,7 +108,7 @@ export function hasMf2SharedArrayManifest(facts: ProjectFacts): boolean {
 }
 
 /**
- * Manifest-only shared evidence without source import scan — shared-inspector /
+ * Manifest-only shared evidence without source import scan, shared-inspector /
  * MF2 shared-array inputs where unused heuristics would false-positive.
  */
 export function isMf2SharedArrayManifestOnly(facts: ProjectFacts): boolean {

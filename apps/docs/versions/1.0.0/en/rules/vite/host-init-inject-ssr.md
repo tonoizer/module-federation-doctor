@@ -11,7 +11,7 @@ SSR and HTML-less frameworks need host init injected into the entry, not the HTM
 
 Set `hostInitInjectLocation: 'entry'` for SSR / Nitro / Nuxt-style apps.
 
-Suppress or retarget with `rules["vite/host-init-inject-ssr"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["vite/host-init-inject-ssr"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

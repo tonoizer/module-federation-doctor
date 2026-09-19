@@ -84,7 +84,7 @@ const referenceSidebar = [
   { text: "Performance", link: "/performance" },
 ];
 
-// 1.1.0+ additive library contracts for authors extending Doctor — not the
+// 1.1.0+ additive library contracts for authors extending Doctor, not the
 // host-team onboarding path (Setup / CI / Rules / Limitations).
 const librarySidebar = [
   { sectionHeaderText: "Library / extension" },

@@ -15,7 +15,7 @@ Promise remotes resolve asynchronously. Without `experiments.asyncStartup` or an
 
 Enable `experiments.asyncStartup`, or move application startup behind a dynamic `import('./bootstrap')` (or another async app-shell import).
 
-Suppress or retarget with `rules["config/promise-remote-async-boundary"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/promise-remote-async-boundary"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

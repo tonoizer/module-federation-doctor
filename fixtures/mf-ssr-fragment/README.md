@@ -10,4 +10,4 @@ In-repo stand-in for **mf-toolkit mf-ssr** fragment URL mode (no toolkit checkou
 | `remote/.mf/doctor/project.json` | Remote exposes `./fragment` instead of a component widget                                                           |
 
 #127 should treat these remotes as intentional fragment SSR based on **entry URL shape**
-(and host source `url=` usage), not an invented remote `type` field — real MF configs do not emit `type: "mf-ssr-fragment"`.
+(and host source `url=` usage), not an invented remote `type` field, real MF configs do not emit `type: "mf-ssr-fragment"`.

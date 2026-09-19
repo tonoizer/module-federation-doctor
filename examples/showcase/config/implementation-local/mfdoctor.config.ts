@@ -11,7 +11,7 @@ export default {
     name: "implementation_local",
     manifest: true,
     exposes: { "./Widget": "./src/Widget.ts" },
-    // Local path — heuristic does not fire (intentional non-firing).
+    // Local path, heuristic does not fire (intentional non-firing).
     implementation: "./runtime-tools",
     shared: {},
   },

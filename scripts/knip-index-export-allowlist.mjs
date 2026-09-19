@@ -4,17 +4,17 @@
  *
  * The allowlist is library-only public `.` surface (ADR 0086) that later
  * slim PRs should remove. Do not add a name here to land a new unused
- * export — import it from a test via `src/index.js`, or omit it from `.`.
+ * export, import it from a test via `src/index.js`, or omit it from `.`.
  */
 
 /** @typedef {import("knip").ReporterOptions} ReporterOptions */
 
 export const INDEX_UNUSED_EXPORT_ALLOWLIST = Object.freeze([
-  // BL-27 — identity schema helpers still on `.` after #399 dropped factories.
+  // BL-27, identity schema helpers still on `.` after #399 dropped factories.
   "IDENTITY_SCHEMA_VERSION",
   "IdentityValidationError",
   "unknownIdentity",
-  // ADR 0086 — correlation, ownership, build/deployment, runtime identity
+  // ADR 0086, correlation, ownership, build/deployment, runtime identity
   // still on `.` until later slim PRs. Lineage/waiver value exports were
   // dropped from `.` in BL-39. V1 compatibility helpers were dropped in BL-49.
   "BUILD_ARTIFACT_DEPLOYMENT_SCHEMA_VERSION",
@@ -30,7 +30,7 @@ export const INDEX_UNUSED_EXPORT_ALLOWLIST = Object.freeze([
   "isSemanticIdentityKey",
   "projectRuntimeCaptureIdentity",
   "resolveIdentityGovernance",
-  // BL-52 — semantic-graph stays experimental on `.`; schema const is unused.
+  // BL-52, semantic-graph stays experimental on `.`; schema const is unused.
   "SEMANTIC_GRAPH_SCHEMA_VERSION",
   // BL-55 dropped MIGRATED_GROUP* from `.`. ALL_MIGRATED_RULE_IDS stays
   // until a later slim (`generate-rule-inventory.mjs` still reads it).

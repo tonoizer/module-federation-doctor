@@ -11,7 +11,7 @@ Bridge router aliasing plus `@tanstack/react-router` can duplicate navigation ow
 
 Disable Bridge router or isolate TanStack Router, or set `rules["bridge/tanstack-router-conflict"]` to `"off"`.
 
-Suppress or retarget with `rules["bridge/tanstack-router-conflict"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["bridge/tanstack-router-conflict"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

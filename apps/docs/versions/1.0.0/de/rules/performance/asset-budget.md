@@ -15,7 +15,7 @@ Federation assets that exceed project budgets slow startup and transfer more byt
 
 Reduce the oversized entry, expose, or shared assets, or raise `rules["performance/asset-budget"]` byte limits. Review the reported asset list before changing the budget.
 
-Suppress or retarget with `rules["performance/asset-budget"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["performance/asset-budget"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

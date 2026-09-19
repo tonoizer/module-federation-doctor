@@ -15,7 +15,7 @@ Without `remoteHmr`, local Vite remotes miss cross-container hot updates.
 
 Enable `remoteHmr` in development profiles when remotes/exposes are active.
 
-Suppress or retarget with `rules["vite/remote-hmr-dev"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["vite/remote-hmr-dev"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

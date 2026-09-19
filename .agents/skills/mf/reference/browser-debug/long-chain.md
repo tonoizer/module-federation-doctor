@@ -1,18 +1,18 @@
 # Long-Chain Capture
 
-Keep a tab alive across multiple steps — navigate, click through interactions, then capture.
+Keep a tab alive across multiple steps, navigate, click through interactions, then capture.
 
 ## Usage
 
 ```bash
-# Step 1 — open tab, keep it alive
+# Step 1, open tab, keep it alive
 TAB=$(node ../scripts/browser-capture.mjs "https://example.com" --keep-tab | jq -r .tabId)
 
-# Step 2 — click through the interaction chain (faster: domcontentloaded/none)
+# Step 2, click through the interaction chain (faster: domcontentloaded/none)
 node ../scripts/browser-capture.mjs --tab-id "$TAB" --click "Profile" --action-wait domcontentloaded
 node ../scripts/browser-capture.mjs --tab-id "$TAB" --click "Favorites" --action-wait none
 
-# Step 3 — final action, capture variables, close tab
+# Step 3, final action, capture variables, close tab
 node ../scripts/browser-capture.mjs --tab-id "$TAB" --click "Add" --vars __FEDERATION__ --action-wait networkidle --close
 ```
 
@@ -40,7 +40,7 @@ Applied in order:
 
 ## Fill (input/textarea)
 
-Locates the field by `placeholder` attribute, injects text using native value setter — compatible with React and Vue controlled inputs.
+Locates the field by `placeholder` attribute, injects text using native value setter, compatible with React and Vue controlled inputs.
 
 ```bash
 node ../scripts/browser-capture.mjs --tab-id "$TAB" --fill "Enter keyword::Module Federation"
@@ -49,8 +49,8 @@ node ../scripts/browser-capture.mjs --tab-id "$TAB" --fill "Enter keyword::Modul
 ## Select (dropdown)
 
 Locates by `placeholder` attribute or default option text, then:
-- **Native `<select>`** — sets value directly and dispatches `change`
-- **Custom dropdown** — clicks the trigger to open, then clicks the matching option
+- **Native `<select>`**, sets value directly and dispatches `change`
+- **Custom dropdown**, clicks the trigger to open, then clicks the matching option
 
 ```bash
 node ../scripts/browser-capture.mjs --tab-id "$TAB" --select "Select environment::Production"

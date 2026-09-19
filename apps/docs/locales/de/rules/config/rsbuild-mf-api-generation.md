@@ -15,7 +15,7 @@ Rsbuild Module Federation 1.5 (`moduleFederation.options`) and `@module-federati
 
 Use `@module-federation/rsbuild-plugin` with a flat `pluginModuleFederation({ ... })` config for MF 2.0 generation options (`dts`, `manifest`, `getPublicPath`, …). Keep Rsbuild `moduleFederation.options` for MF 1.5 only. Pass `target` / `environment` / `ssrDir` as the plugin second argument, never under a nested `options` bag.
 
-Suppress or retarget with `rules["config/rsbuild-mf-api-generation"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/rsbuild-mf-api-generation"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

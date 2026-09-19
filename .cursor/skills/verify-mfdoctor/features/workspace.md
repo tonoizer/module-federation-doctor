@@ -33,7 +33,7 @@ Preconditions:
 - **Stale evidence.** Copy `fixtures/workspaces/clean` to a temp tree. Add `host/src/index.ts`, set `host/.mf/doctor/project.json` `imports.sourceFiles` to `["src/index.ts"]`, and make that source file newer than `project.json`. Run
   `node dist/cli.js workspace "$TMP" --format json --output - --no-write`.
   Exit code `2`. Findings include `doctor/partial-analysis` with `details.workspaceDiagnostics` `kind: "stale"` and message `Project evidence is stale: source input "src/index.ts" is newer than project facts.` `status.incompleteReasons` includes `evidence-unknown`. Add `--require-complete` → exit `1`.
-- **Glob override (optional).** `node dist/cli.js workspace fixtures/workspaces/conflict --glob "**/.mf/doctor/project.json" --ci --format json --output - --no-write` still finds the conflict (exit `1`). Quote the glob; it is resolved relative to each root and must name `.mf` — a `**/project.json` pattern skips hidden directories.
+- **Glob override (optional).** `node dist/cli.js workspace fixtures/workspaces/conflict --glob "**/.mf/doctor/project.json" --ci --format json --output - --no-write` still finds the conflict (exit `1`). Quote the glob; it is resolved relative to each root and must name `.mf`, a `**/project.json` pattern skips hidden directories.
 - **Nested example (optional, heavier).** Build with
   `vp run --filter './examples/nested-federation/**' build`, then
   `node dist/cli.js workspace examples/nested-federation --format terminal,json`.
@@ -42,7 +42,7 @@ Preconditions:
 
 ## Gotchas
 
-- Discovery looks for emitted (or fixture) `project.json` files — an empty root yields incomplete/empty analysis, not a silent green federation.
+- Discovery looks for emitted (or fixture) `project.json` files, an empty root yields incomplete/empty analysis, not a silent green federation.
 - Nested example builds are multi-package and slow; prefer `fixtures/workspaces/*` for a quick offline proof.
 - A workspace pass still depends on honest emit facts; do not skip plugin-emit when claiming full green on real apps.
 - `--group <name>` filters by `federationGroup`; omitting it analyzes all discovered projects under the roots.

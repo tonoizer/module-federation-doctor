@@ -3,7 +3,7 @@
 > Host teams usually need the build artifacts below and the
 > [Setup](./setup.md) / [CI](./production-readiness.md) path. Additive 1.1.0+
 > library contracts (identity, waivers, graph, capture schemas) are listed in
-> the table for authors extending Doctor — see also
+> the table for authors extending Doctor, see also
 > [Library / extension](./capabilities.md#library-contracts-110).
 
 MFDoctor writes:
@@ -17,7 +17,7 @@ MFDoctor writes:
 Comparable content has no timestamps. Paths are workspace relative. Schema
 version 1 changes only through an intentional compatibility change. Additive
 import-analysis fields (`dynamicPackages`, `remotes`, `unresolvedDynamic`,
-`evidenceSources`) document MFDoctor’s dynamic-import completeness bar without
+`evidenceSources`) document MFDoctor's dynamic-import completeness bar without
 breaking older `project.json` files that omit them.
 
 ## Public v1 schema contracts
@@ -96,7 +96,7 @@ opening punctuation such as `(`, `[` or `{`. Other strings are left unchanged.
 
 `ui.schema.json` is **not** a persisted CLI artifact (MFDoctor no longer ships an
 HTML dashboard). It remains the published shape for programmatic consumers of
-`buildUiPayload` / graph payloads — see below. Do not treat it as an HTML report
+`buildUiPayload` / graph payloads, see below. Do not treat it as an HTML report
 format.
 
 `finding-lineage.schema.json` and `governance-waiver.schema.json` are
@@ -166,7 +166,7 @@ run was incomplete without scraping findings:
 
 | Code               | Meaning                                                                                                                                                                                         |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `missing-emit`     | No emitted-asset facts (`capabilities.emittedAssets` is false) — typically CLI check without a bundler emit                                                                                     |
+| `missing-emit`     | No emitted-asset facts (`capabilities.emittedAssets` is false), typically CLI check without a bundler emit                                                                                      |
 | `missing-stats`    | Enhanced emit with remotes but `capabilities.stats` is false. Explicit `manifest: false` uses `artifact/manifest-disabled`. Vite without `manifest: true` is opt-in and does not set this code. |
 | `partial-bundler`  | Bundler cell is partial in the public matrix (`modern`, `unknown`, Rolldown/Vite Plus lifecycle)                                                                                                |
 | `probe-skipped`    | Workspace group pre-probe could not classify one or more project files (`diagnostics.kind: probe`)                                                                                              |
@@ -222,7 +222,7 @@ Unknown `detailsSchema` values must be ignored by readers (do not fail the pipel
 
 `fingerprint()` hashes only `ruleId`, `project`, `location`, and `evidence`
 (`src/utils.ts`). **`detailsSchema` and `details` are never fingerprint inputs.**
-Never put a schema version into `evidence` — that would churn baselines and SARIF
+Never put a schema version into `evidence`, that would churn baselines and SARIF
 `partialFingerprints`. Adding typed details does not change fingerprints for
 existing findings.
 
@@ -240,7 +240,7 @@ existing findings.
 
 TypeScript exports: `FINDING_DETAILS_SCHEMAS`, `TYPED_DETAILS_RULE_IDS`,
 `readFindingDetails`, and per-family `*DetailsV1` types from
-`@tonoizer/mfdoctor`. Run failures additionally expose the typed
+`@tonoizer/mfdoctor`. Run failures also expose the typed
 `RunFailureDetails`, `RunFailurePhase`, `RunFailureErrorCode`,
 `RUN_FAILURE_DETAILS_SCHEMA`, and `RUN_FAILURE_ERROR_CODES` exports.
 
@@ -261,7 +261,7 @@ import {
 
 for (const finding of report.findings) {
   const typed = readFindingDetails(finding);
-  if (!typed) continue; // old report or unknown schema — skip
+  if (!typed) continue; // old report or unknown schema, skip
 
   if (typed.detailsSchema === FINDING_DETAILS_SCHEMAS.SHARED_UNUSED) {
     const details = typed.details as SharedUnusedDetailsV1;

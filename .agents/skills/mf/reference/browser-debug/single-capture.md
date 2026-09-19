@@ -64,7 +64,7 @@ node ../scripts/browser-capture.mjs "https://example.com" 12000 --vars __VMOK__.
   },
   "entries": [
     { "t": "2026-03-20T10:00:01.234Z", "level": "error", "msg": "Cannot read properties of undefined (reading 'user')", "stack": "https://example.com/assets/app.js:1:84231" },
-    { "t": "2026-03-20T10:00:02.100Z", "level": "warn",  "msg": "[HTTP] 404 Not Found — https://api.example.com/user/profile", "stack": null }
+    { "t": "2026-03-20T10:00:02.100Z", "level": "warn",  "msg": "[HTTP] 404 Not Found, https://api.example.com/user/profile", "stack": null }
   ]
 }
 ```
@@ -76,11 +76,11 @@ node ../scripts/browser-capture.mjs "https://example.com" 12000 --vars __VMOK__.
 
 ## Log levels captured
 
-- `error` / `warn` / `log` / `info` / `debug` — from `console.*`
-- `error` — uncaught JS exceptions (includes stack trace when available)
-- `warn` / `error` — HTTP 4xx / 5xx responses
-- `error` — network failures (CORS, DNS, connection refused)
-- `warn` / `error` — browser-native entries (CSP violations, deprecations)
+- `error` / `warn` / `log` / `info` / `debug`, from `console.*`
+- `error`, uncaught JS exceptions (includes stack trace when available)
+- `warn` / `error`, HTTP 4xx / 5xx responses
+- `error`, network failures (CORS, DNS, connection refused)
+- `warn` / `error`, browser-native entries (CSP violations, deprecations)
 
 ## Variable serialization
 

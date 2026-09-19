@@ -13,7 +13,7 @@ export default {
     name: "shared_candidate_suppressed",
     manifest: true,
     exposes: { "./Widget": "./src/Widget.ts" },
-    // react is imported + declared but not shared — would fire shared/candidate.
+    // react is imported + declared but not shared, would fire shared/candidate.
     shared: {},
   },
 };

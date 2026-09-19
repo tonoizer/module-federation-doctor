@@ -3,7 +3,7 @@
 `mfdoctor federation` with quoted `project.json` patterns analyzes an explicit
 set of project-fact files **without** workspace discovery. Use this when CI (or
 a showcase) already selected the files. `federation --workspace` is a different
-entry point — prove that path with [Workspace](./workspace.md), not this file.
+entry point, prove that path with [Workspace](./workspace.md), not this file.
 
 ## Sub-features
 
@@ -45,7 +45,7 @@ Preconditions:
   (those discover `**/.mf/doctor/project.json` under roots). Do not fold this
   proof into the workspace recipe.
 - Showcase `*.project.json` files are static facts, not plugin emit. A glob
-  pass here is not a full green claim for a real app — still require emit +
+  pass here is not a full green claim for a real app, still require emit +
   workspace when claiming green on built hosts/remotes.
 - Empty or unmatched patterns are incomplete (`exit 2`), not a silent green
   federation. `--require-complete` turns that unmatched case into policy-fail

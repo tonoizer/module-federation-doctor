@@ -2,7 +2,7 @@
 
 Documented and CI-exercised support for every bundler and runtime MFDoctor claims
 in v1. Status labels are tied to analysis capabilities and real build+MFDoctor
-paths — not fixture-only confidence.
+paths, not fixture-only confidence.
 
 Related: [capabilities](./capabilities.md) ·
 [limitations](./limitations.md) ·
@@ -11,11 +11,11 @@ Related: [capabilities](./capabilities.md) ·
 
 ## Status labels
 
-| Status          | Meaning                                                                                         |
-| --------------- | ----------------------------------------------------------------------------------------------- |
-| **supported**   | First-class adapter + real bundler build writes MFDoctor facts; exercised in CI                 |
-| **partial**     | Usable with honest gaps — emits `doctor/partial-analysis` (or weaker evidence) instead of lying |
-| **unsupported** | Out of v1 scope (post-v1 or permanent non-goal)                                                 |
+| Status          | Meaning                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| **supported**   | First-class adapter + real bundler build writes MFDoctor facts; exercised in CI                |
+| **partial**     | Usable with honest gaps, emits `doctor/partial-analysis` (or weaker evidence) instead of lying |
+| **unsupported** | Out of v1 scope (post-v1 or permanent non-goal)                                                |
 
 ## Bundlers
 
@@ -29,7 +29,7 @@ Related: [capabilities](./capabilities.md) ·
 | Webpack              | **supported**   | `@tonoizer/mfdoctor/webpack` | `compatibility` workflow → `webpack-smoke` build + MFDoctor                            | `@module-federation/enhanced/webpack` (#10 shipped)                                                                                                                                                                                                                                                                                          |
 | Modern.js            | **partial**     | `@tonoizer/mfdoctor/modern`  | `compatibility` workflow → `modern-smoke` (Rspack-under-the-hood stub)                 | Adapter API + Rspack stub in CI. A real `@modern-js/app-tools@3.8.2` + `@module-federation/modern-js-v3@2.8.2` production emit works outside this lockfile, but current App Tools releases fail `trustPolicy: no-downgrade` (last provenance-attested stable is `2.63.3`). Status stays **partial**. Upstream core-demo re-soak remains #130 |
 | Nuxt 3/4             | **partial**     | `@tonoizer/mfdoctor/nuxt`    | `compatibility` workflow → `nuxt-smoke` (Vite-under-the-hood) + pinned upstream record | Public `vite:extendConfig` adapter + local emit cell; full `@module-federation/nuxt` app build remains baseline-blocked upstream ([nuxt/nuxt#36009](https://github.com/nuxt/nuxt/issues/36009))                                                                                                                                              |
-| Next.js              | **unsupported** | —                            | none                                                                                   | `@module-federation/nextjs-mf` is Pages Router only and unmaintained. No MFDoctor adapter is planned. Prefer Rsbuild or Modern.js. See [limitations](./limitations.md#permanent-guarantees--non-goals).                                                                                                                                      |
+| Next.js              | **unsupported** | Not applicable               | none                                                                                   | `@module-federation/nextjs-mf` is Pages Router only and unmaintained. No MFDoctor adapter is planned. Prefer Rsbuild or Modern.js. See [limitations](./limitations.md#permanent-guarantees--non-goals).                                                                                                                                      |
 
 ## Variant coverage
 
@@ -59,7 +59,7 @@ It hooks the public `vite:extendConfig` API. The local emit cell at
 [`examples/compatibility/nuxt`](https://github.com/tonoizer/module-federation-doctor/tree/main/examples/compatibility/nuxt)
 registers that module and production-builds (Vite-under-the-hood). A full `@module-federation/nuxt` application build remains
 dependent on the upstream package-resolution issue tracked in
-[nuxt/nuxt#36009](https://github.com/nuxt/nuxt/issues/36009) — so Nuxt is not a
+[nuxt/nuxt#36009](https://github.com/nuxt/nuxt/issues/36009), so Nuxt is not a
 first-class **supported** CI gate.
 
 Rolldown / Vite Plus use the **same** `@tonoizer/mfdoctor/vite` entry as classic
@@ -69,12 +69,12 @@ aliases `vite` to Vite Plus and production-builds. Reports keep
 `partial-bundler` for this lifecycle, so the matrix cell stays **partial**.
 
 Runtime-only Module Federation (no bundler MF **build** plugin) is
-**unsupported** as a first-class path — see
+**unsupported** as a first-class path, see
 [limitations](./limitations.md#permanent-guarantees--non-goals) and
 [#34](https://github.com/tonoizer/module-federation-doctor/issues/34).
 
 Next.js Module Federation (`@module-federation/nextjs-mf`) is **unsupported**.
-There is no adapter and none is planned — prefer Rsbuild or Modern.js. See
+There is no adapter and none is planned, prefer Rsbuild or Modern.js. See
 [limitations](./limitations.md#permanent-guarantees--non-goals).
 
 ## Analysis depth (partial honesty)
@@ -129,8 +129,8 @@ the package.
 | Manager                | Status        | Notes                                                                                                                                                                                                                                    |
 | ---------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **pnpm** (primary)     | **supported** | Vite+ delegates to pnpm 11 (`packageManager: "pnpm@11.17.0"`; `engines.pnpm: ">=11.0.0 <12.0.0"`); CI uses `vp install --frozen-lockfile`; workspace filters for examples; ten-day release-age and explicit build approvals are enforced |
-| npm                    | **partial**   | Published package installs with `npm i -D @tonoizer/mfdoctor`; CLI via `npx mfdoctor`. This monorepo’s lockfile and filters are pnpm-only — do not expect `npm install` at the repo root to reproduce CI.                                |
-| yarn (classic / Berry) | **partial**   | Same published-package install/CLI story as npm. Yarn workspaces are not the repo’s CI path; use pnpm for contributing and matrix jobs.                                                                                                  |
+| npm                    | **partial**   | Published package installs with `npm i -D @tonoizer/mfdoctor`; CLI via `npx mfdoctor`. This monorepo's lockfile and filters are pnpm-only, do not expect `npm install` at the repo root to reproduce CI.                                 |
+| yarn (classic / Berry) | **partial**   | Same published-package install/CLI story as npm. Yarn workspaces are not the repo's CI path; use pnpm for contributing and matrix jobs.                                                                                                  |
 
 Where paths differ: contributors and CI always use **pnpm**. Consumers of the
 published tarball may use npm or yarn to install MFDoctor into their own app; the
@@ -166,20 +166,20 @@ Reds that **block** a release claim for supported cells:
 
 Reds that **do not** block other cells:
 
-1. npm/yarn consumer-path differences — documented partial; monorepo CI stays
+1. npm/yarn consumer-path differences, documented partial; monorepo CI stays
    pnpm.
-2. Expected `doctor/partial-analysis` warnings on partial analysis paths —
+2. Expected `doctor/partial-analysis` warnings on partial analysis paths,
    honest gaps, not matrix failures.
-3. Rolldown / Vite Plus — documented **partial** (Vite Plus production smoke
+3. Rolldown / Vite Plus, documented **partial** (Vite Plus production smoke
    plus unit lifecycle hooks; not a **supported** release gate).
-4. Modern.js — documented **partial** (adapter API + Rspack-under-the-hood
+4. Modern.js, documented **partial** (adapter API + Rspack-under-the-hood
    smoke in `compatibility.yml`). A real `@modern-js/app-tools` cell is blocked
    by this repo's `trustPolicy: no-downgrade` (current App Tools dropped npm
    provenance after `2.63.3`). Upstream core-demo re-soak remains #130.
-5. Nuxt 3/4 — documented **partial** (adapter + local emit smoke; upstream
+5. Nuxt 3/4, documented **partial** (adapter + local emit smoke; upstream
    `@module-federation/nuxt` app build remains baseline-blocked; not a
    **supported** release gate).
-6. Next.js (`@module-federation/nextjs-mf`) — documented **unsupported**
+6. Next.js (`@module-federation/nextjs-mf`), documented **unsupported**
    (permanent non-goal; no adapter planned).
 
 ## CI map

@@ -15,7 +15,7 @@ Lazy Bridge React loading requires `@module-federation/bridge-react/plugin` in `
 
 Add `@module-federation/bridge-react/plugin` to `runtimePlugins`. Soften with `requireRuntimePlugin: false` or turn the rule `"off"` for non-lazy Bridge setups.
 
-Suppress or retarget with `rules["bridge/lazy-plugin-unregistered"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["bridge/lazy-plugin-unregistered"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

@@ -11,7 +11,7 @@ Module Federation skips manifest generation when bundler `output.publicPath` (or
 
 Set `output.publicPath` or Vite MF `publicPath` to a string URL, root-relative path, or `auto` when manifests are required.
 
-Suppress or retarget with `rules["artifact/public-path-non-string-manifest"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["artifact/public-path-non-string-manifest"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Sources
 

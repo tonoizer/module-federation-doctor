@@ -15,7 +15,7 @@ Bridge React v18/v19 needs `react-dom/` (or `react-dom/client`) in `shared` so r
 
 Add `'react-dom/': { singleton: true, ... }` (or `react-dom/client`) to `shared`. Disable with `requireReactDomPrefix: false` or `rules["bridge/react-dom-prefix-missing"]: "off"` when intentional.
 
-Suppress or retarget with `rules["bridge/react-dom-prefix-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["bridge/react-dom-prefix-missing"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

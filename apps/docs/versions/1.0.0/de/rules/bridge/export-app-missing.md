@@ -15,7 +15,7 @@ Bridge producers without `./export-app` break the conventional Bridge remote con
 
 Expose `"./export-app"` via `createBridgeComponent` (render/destroy), or set the rule to `"off"`.
 
-Suppress or retarget with `rules["bridge/export-app-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["bridge/export-app-missing"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

@@ -69,7 +69,7 @@ export async function waitForFederationServers(
     for (const server of servers) {
       try {
         // Probe via Playwright's request client (same stack as webServer), not
-        // global fetch — Node fetch to `localhost` can miss IPv4-only binds in CI.
+        // global fetch, Node fetch to `localhost` can miss IPv4-only binds in CI.
         const response = await request.get(server.entryUrl);
         if (response.status() !== 200) {
           lastFailures.push(`${server.name} (${server.entryUrl}): HTTP ${response.status()}`);

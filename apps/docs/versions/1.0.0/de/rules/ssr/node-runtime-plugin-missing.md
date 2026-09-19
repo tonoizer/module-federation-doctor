@@ -15,7 +15,7 @@ Without `@module-federation/node/runtimePlugin`, Node Federation hosts cannot lo
 
 Add `@module-federation/node/runtimePlugin` to `runtimePlugins`. Set `ssrMode: "browser-only"` when not SSR, or turn the rule `"off"`.
 
-Suppress or retarget with `rules["ssr/node-runtime-plugin-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["ssr/node-runtime-plugin-missing"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

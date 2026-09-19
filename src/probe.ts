@@ -36,7 +36,7 @@ interface ProbeUrlOptions {
   allowPrivateNetworks?: boolean;
   /**
    * Allow plain HTTP to loopback hosts. Only set for the user-supplied initial
-   * URL (local probe DX). Redirect hops must not set this — public →
+   * URL (local probe DX). Redirect hops must not set this, public →
    * `http://127.0.0.1` requires `allowPrivateNetworks`.
    */
   allowLoopbackHttp?: boolean;

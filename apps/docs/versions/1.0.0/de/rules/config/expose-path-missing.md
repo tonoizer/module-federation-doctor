@@ -15,7 +15,7 @@ The producer build cannot include a module that does not exist at the configured
 
 Correct the path, including its exact extension, or create the source file.
 
-Suppress or retarget with `rules["config/expose-path-missing"]` set to `"off"` or a severity — see [Suppressions and allowlists](../../suppressions.md).
+Suppress or retarget with `rules["config/expose-path-missing"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 
 ## Quellen
 

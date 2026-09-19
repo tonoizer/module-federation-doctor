@@ -1,8 +1,8 @@
 # Governance: suppressions and allowlists
 
 MFDoctor already supports intentional allow/deny of specific rules. Use this page
-when a finding is **known and accepted** — for example enterprise nesting that
-keeps direct `remoteEntry` URLs — so CI stays green without disabling MFDoctor.
+when a finding is **known and accepted**, for example enterprise nesting that
+keeps direct `remoteEntry` URLs, so CI stays green without disabling MFDoctor.
 
 This is the short **Governance** reference for `rules: { "id": "off" }`,
 severity overrides, policy packs, fingerprint baselines, and `failOn`.
@@ -45,16 +45,16 @@ export default {
 These rules use package-name or path heuristics. Defaults stay advisory so teams
 (and agents) do not learn to ignore MFDoctor:
 
-| Rule                               | Default   | Why it stays soft                                      |
-| ---------------------------------- | --------- | ------------------------------------------------------ |
-| `shared/candidate`                 | `info`    | Likely-share guess from framework package names        |
-| `config/implementation-suspicious` | `info`    | Custom `implementation` string is not a hard contract  |
-| `shared/singleton-risk`            | `warning` | Framework shared without `singleton` — config evidence |
-| `shared/unused`                    | `warning` | Fires only when import evidence is complete enough     |
+| Rule                               | Default   | Why it stays soft                                     |
+| ---------------------------------- | --------- | ----------------------------------------------------- |
+| `shared/candidate`                 | `info`    | Likely-share guess from framework package names       |
+| `config/implementation-suspicious` | `info`    | Custom `implementation` string is not a hard contract |
+| `shared/singleton-risk`            | `warning` | Framework shared without `singleton`, config evidence |
+| `shared/unused`                    | `warning` | Fires only when import evidence is complete enough    |
 
 Mute intentional exceptions with `rules: { "<id>": "off" }` (comment why). When
 dynamic `import()` / `loadShare*` cannot be resolved, MFDoctor prefers
-`doctor/partial-analysis` over a confident `shared/unused` finding — see
+`doctor/partial-analysis` over a confident `shared/unused` finding, see
 [capabilities](./capabilities.md#dynamic-import-completeness-v1). Showcase
 fixtures under `examples/showcase/shared/*-suppressed` and
 `shared/unused-unresolved` prove quiet suppression and the partial-analysis path.
@@ -174,10 +174,10 @@ collected:
 CI env vars turn on `failOn: "error"` and SARIF automatically. Override with
 `failOn`, `mode: "ci"` / `mode: "development"`, or `--ci`. Baselines suppress
 policy failure for matched fingerprints unless `baseline.failOnSuppressed` is
-true — they do not change which severities `failOn` considers.
+true, they do not change which severities `failOn` considers.
 
 ## What v1 does not include
 
 - No per-line source comments (`// mfdoctor-disable`, eslint-disable style).
-- No structured `reason` field on `rules: { id: "off" }` yet — use a comment, or
+- No structured `reason` field on `rules: { id: "off" }` yet, use a comment, or
   baseline `reason` when the mute is fingerprint debt.

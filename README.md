@@ -24,7 +24,7 @@ runtime size or performance cost. The build plugin is the primary integration;
 the CLI complements it for config, workspace, runtime, and deployed checks.
 
 **Agents:** follow the [two-tier loop](https://mfdoctor.kevinbeier.com/agent-loop).
-`mfdoctor check` is config/static only — **do not claim green from check alone**.
+`mfdoctor check` is config/static only, **do not claim green from check alone**.
 After fixes, require plugin emit (build with a MFDoctor adapter) and, in
 monorepos, `mfdoctor workspace`. Treat exit `2` and
 [`doctor/partial-analysis`](https://mfdoctor.kevinbeier.com/rules/doctor/partial-analysis)
@@ -37,7 +37,7 @@ rebuild until policy exits **0**. Quiet success prints nothing.
 
 Register MFDoctor next to your Module Federation plugin. It runs **after emit**,
 prints **all** findings once at the end of the build (severity, rule, message,
-fix, docs links), then fails when policy says so — only after every finding is
+fix, docs links), then fails when policy says so, only after every finding is
 collected. Clean builds stay quiet by default.
 
 ### Bundler matrix
@@ -51,12 +51,12 @@ collected. Clean builds stay quiet by default.
 | Nuxt 3/4                   | **partial**   | Adapter + unit contract; upstream app build baseline-blocked           |
 
 **Partial** means an adapter exists and some coverage is present, but rule depth,
-fixtures, and CI evidence are not on par with the supported cells — a green
+fixtures, and CI evidence are not on par with the supported cells, a green
 `mfdoctor check` / plugin emit on a partial stack is not as trustworthy as on
 Vite / Rspack / Rsbuild / Webpack. See the matrix fixture and
 [compatibility](https://mfdoctor.kevinbeier.com/compatibility) for the live rows.
 
-**Vite** (**supported**; Rolldown-integrated Vite and Vite Plus are **partial** — same entry)
+**Vite** (**supported**; Rolldown-integrated Vite and Vite Plus are **partial**, same entry)
 
 ```ts
 import { federation } from "@module-federation/vite";
@@ -65,7 +65,7 @@ import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 plugins: [federation(mfOptions), federationDoctor({ moduleFederation: mfOptions })];
 ```
 
-**Nuxt 3/4** (**partial** — public `vite:extendConfig` adapter; limited CI evidence)
+**Nuxt 3/4** (**partial**, public `vite:extendConfig` adapter; limited CI evidence)
 
 ```ts
 import moduleFederationDoctor from "@tonoizer/mfdoctor/nuxt";
@@ -101,7 +101,7 @@ registrations separately. Workspace and UI federation graphs include the
 instance scope in every affected edge and node; Nuxt client/SSR outputs are
 aggregated deterministically.
 
-**Rspack** (**supported** — direct `@rspack/core`; not replaced by Modern.js)
+**Rspack** (**supported**, direct `@rspack/core`; not replaced by Modern.js)
 
 ```ts
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
@@ -137,7 +137,7 @@ plugins: [
 ];
 ```
 
-**Modern.js** (**partial** — adapter + Rspack-under-the-hood smoke; does not hide `/rspack`)
+**Modern.js** (**partial**, adapter + Rspack-under-the-hood smoke; does not hide `/rspack`)
 
 ```ts
 import { appTools } from "@modern-js/app-tools";
@@ -157,7 +157,7 @@ A real `@modern-js/app-tools` CI cell is blocked by this repo's
 
 CI is auto-detected from the environment (`CI`, `GITHUB_ACTIONS`, and other
 common provider signals). In CI, MFDoctor fails on error findings and includes
-SARIF by default — you do **not** need `mode: "ci"` in plugin config. Local
+SARIF by default, you do **not** need `mode: "ci"` in plugin config. Local
 development defaults to `failOn: "never"` so findings print without breaking
 the build. Override with `--ci`, `mode: "ci"`, `mode: "development"`, or
 `failOn`.
@@ -171,7 +171,7 @@ Use `--verbose`, `printLog: { success: true }`, `quiet: false`, or
 ### Noisy finding? Mute intentionally
 
 When a rule is known and accepted (for example a host that keeps direct
-`remoteEntry` URLs), turn that rule off — do not disable MFDoctor:
+`remoteEntry` URLs), turn that rule off, do not disable MFDoctor:
 
 ```ts
 federationDoctor({
@@ -196,7 +196,7 @@ deployed checks.
 **Name clash:** `npx mf-doctor` is a different package (tiagocastro070), not this
 project. This package is `@tonoizer/mfdoctor` (CLI binary `mfdoctor`). Install as
 a dependency and run via package-manager exec (`pnpm exec mfdoctor`,
-`npx mfdoctor`, etc.) — not `npx mf-doctor`.
+`npx mfdoctor`, etc.), not `npx mf-doctor`.
 
 ```bash
 pnpm add -D @tonoizer/mfdoctor
@@ -241,7 +241,7 @@ passes, `1` when policy fails, and `2` when analysis is incomplete. The diagnost
 dump more). JSON and SARIF remain stable machine-readable contracts, so agents
 do not need to scrape terminal output.
 
-Supported report formats are **terminal**, **JSON**, and **SARIF** only — there
+Supported report formats are **terminal**, **JSON**, and **SARIF** only, there
 is no HTML report or `--ui` dashboard. For a programmatic remotes/shared graph,
 use `buildUiPayload` and `schemas/ui.schema.json` (see report schemas in the
 docs).
@@ -263,7 +263,7 @@ docs).
 request, and neither executes remote JavaScript. Exit codes: `0` pass, `1`
 policy fail (or compare drift), `2` analysis incomplete.
 Fingerprint baselines keep known debt visible in reports without failing policy
-by default — see [baselines](https://mfdoctor.kevinbeier.com/baselines) and
+by default, see [baselines](https://mfdoctor.kevinbeier.com/baselines) and
 [governance](https://mfdoctor.kevinbeier.com/suppressions).
 
 ## Consumer CI (no Vite Plus)
@@ -324,7 +324,7 @@ correctness findings stay on. Packs can ship severity maps plus custom
 
 MF `runtimePlugins` in bundler config are checked at build time. **Runtime-only**
 apps (`createInstance` / runtime plugins without a Vite/Rspack/Rsbuild/Webpack MF
-**build** plugin) are out of scope for first-class support — use Observability +
+**build** plugin) are out of scope for first-class support, use Observability +
 `mfdoctor runtime` instead of shipping MFDoctor into the browser. See
 [Observability → runtime](https://mfdoctor.kevinbeier.com/observability-runtime),
 [limitations](https://mfdoctor.kevinbeier.com/limitations), and
@@ -357,20 +357,20 @@ vp run release:dry-run
 
 Examples:
 
-- `examples/mixed-federation` — healthy Vite + Rspack + Rsbuild e2e path
-- `examples/nested-federation` — nested Vite host → Vite/Rsbuild → Rspack/Webpack;
+- `examples/mixed-federation`, healthy Vite + Rspack + Rsbuild e2e path
+- `examples/nested-federation`, nested Vite host → Vite/Rsbuild → Rspack/Webpack;
   run `vp run demo:nested` or `vp run test:nested`
-- `examples/compatibility/webpack` — Webpack build+MFDoctor smoke for the matrix
-- `examples/compatibility/nuxt` — Nuxt module adapter smoke (partial; Vite-under-the-hood)
-- `examples/compatibility/rolldown` — Vite Plus / Rolldown smoke (partial; same Vite entry)
-- `examples/mixed-federation-issues` — same flat topology with intentional MFDoctor
+- `examples/compatibility/webpack`, Webpack build+MFDoctor smoke for the matrix
+- `examples/compatibility/nuxt`, Nuxt module adapter smoke (partial; Vite-under-the-hood)
+- `examples/compatibility/rolldown`, Vite Plus / Rolldown smoke (partial; same Vite entry)
+- `examples/mixed-federation-issues`, same flat topology with intentional MFDoctor
   findings; run `vp run demo:mixed-issues`
-- `examples/standalone-findings` — per-bundler Vite/Webpack/Rspack/Rsbuild
+- `examples/standalone-findings`, per-bundler Vite/Webpack/Rspack/Rsbuild
   cells plus a **partial** Modern.js afterEmit stub that emit visible MFDoctor
   findings; run `vp run demo:standalone`
-- `examples/showcase` — one-rule CLI fixtures + runtime green/fail demos; run
+- `examples/showcase`, one-rule CLI fixtures + runtime green/fail demos; run
   `vp run demo:showcase`
-- `examples/ci/github-actions-mfdoctor.yml` — copy-paste consumer CI (no Vite Plus /
+- `examples/ci/github-actions-mfdoctor.yml`, copy-paste consumer CI (no Vite Plus /
   `setup-vp`); see [CLI / GitHub Actions](https://mfdoctor.kevinbeier.com/cli#github-actions)
 - From `examples/`: `vp run demo` runs showcase + standalone + mixed-issues +
   nested (or `vp run demo:examples` from the repo root)
@@ -403,7 +403,7 @@ New contributors are welcome. Please read the [Contributing Guide](https://githu
 
 The initial idea was inspired by [Rsdoctor](https://rsdoctor.rs/):
 
-> “Something like RS Doctor, but just for Module Federation.”
+> "Something like RS Doctor, but just for Module Federation."
 
 Getting something useful out of Module Federation can be tricky during initial
 setup: the important details are spread across configuration, shared

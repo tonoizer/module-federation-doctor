@@ -513,7 +513,7 @@ function deepImportAllowlist(context: RuleContext): Set<string> {
 }
 
 /** Bundler entry basenames for RUNTIME-005 async-boundary checks.
- * PascalCase `App.tsx` components are excluded — only lowercase `app.*` counts as an entry.
+ * PascalCase `App.tsx` components are excluded, only lowercase `app.*` counts as an entry.
  */
 const APP_ENTRY_BASENAME = /(?:^|\/)(?:index|main|entry|client)(?:\.[^./]+)*\.[cm]?[jt]sx?$/i;
 const LOWERCASE_APP_ENTRY = /(?:^|\/)app(?:\.[^./]+)*\.[cm]?[jt]sx?$/;
@@ -877,7 +877,7 @@ function parentPackageForViteSharedKey(key: string): string {
   return npmPackageName(trimmed);
 }
 
-/** Mirror Vite `inferVersionFromRequiredVersion` — concrete semver only. */
+/** Mirror Vite `inferVersionFromRequiredVersion`, concrete semver only. */
 function canInferSharedVersionFromRequiredVersion(
   requiredVersion: NormalizedShared["requiredVersion"],
 ): boolean {
@@ -906,7 +906,7 @@ function detectNitroSignal(facts: ProjectFacts): boolean {
 function detectViteSsrSignal(facts: ProjectFacts): { detected: boolean; signals: string[] } {
   const signals: string[] = [];
   // Prefer MF-declared SSR targets and framework deps. Do not treat
-  // `builds.targetKind=node` alone as SSR — Vite's default `ssr.target` is
+  // `builds.targetKind=node` alone as SSR, Vite's default `ssr.target` is
   // `node`, so client builds often record that kind without being SSR apps.
   if (facts.moduleFederation?.vite?.target === "node") signals.push("vite.target=node");
   if (facts.moduleFederation?.experiments?.target === "node")
@@ -1568,7 +1568,7 @@ export const builtInRules: DoctorRule[] = [
         "Keep it static, review it like executable code, and never build it from untrusted input.",
       );
   }),
-  // Heuristic package/path check — advisory `info` unless teams elevate it.
+  // Heuristic package/path check, advisory `info` unless teams elevate it.
   createRule("config/implementation-suspicious", "info", (context) => {
     const implementation = mf(context)?.implementation;
     if (
@@ -1662,7 +1662,7 @@ export const builtInRules: DoctorRule[] = [
   createRule("config/async-boundary-missing", "error", async (context) => {
     const config = mf(context);
     if (!config) return;
-    // Hosts only — remotes/producers without remotes are out of scope.
+    // Hosts only, remotes/producers without remotes are out of scope.
     const remotes = Object.keys(config.remotes);
     const sharedEntries = Object.entries(config.shared ?? {});
     if (remotes.length === 0) return;
@@ -2048,7 +2048,7 @@ export const builtInRules: DoctorRule[] = [
       return false;
     });
     const loader = config.vite?.ssrEntryLoader;
-    // Honest skip when there is no externals/loader fact to correlate — only
+    // Honest skip when there is no externals/loader fact to correlate, only
     // Nitro/SSR with shared React and either overlap or an explicit loader.
     if (overlapping.length === 0 && !loader) return;
 
@@ -2781,7 +2781,7 @@ export const builtInRules: DoctorRule[] = [
       `Add ${sharedSnippet} to Module Federation shared config, or set rules["shared/react-host-missing"] to "off" when intentional.`,
     );
   }),
-  // Package-name heuristic — advisory `info` (strict keeps it from becoming a hard error).
+  // Package-name heuristic, advisory `info` (strict keeps it from becoming a hard error).
   createRule("shared/candidate", "info", (context) => {
     const shared = new Set(Object.keys(mf(context)?.shared ?? {}));
     const candidates = shareCandidateSet(context);
