@@ -37,10 +37,10 @@ engine, adapters, or other CLI commands.
 
 ## Dynamic-import completeness (v1)
 
-MFDoctor's import/shared analysis is **not** "static only." Offline `check` /
+mfdoctor's import/shared analysis is **not** "static only." Offline `check` /
 adapter runs resolve the patterns below when evidence exists in source, config,
 manifest facts, or an opt-in Observability export. Unresolvable dynamics yield
-`doctor/partial-analysis` rather than fabricated certainty. MFDoctor still does
+`doctor/partial-analysis` rather than fabricated certainty. mfdoctor still does
 **not** claim 100% of arbitrary runtime JavaScript.
 
 ### Supported (resolved when evidence exists)
@@ -53,7 +53,7 @@ manifest facts, or an opt-in Observability export. Unresolvable dynamics yield
 | `loadRemote("alias/expose")`                                                              | Source scan (recorded under `imports.remotes`)                  |
 | `loadShare("pkg")` / `loadShareSync("pkg")`                                               | Source scan (`imports.packages` / `dynamicPackages`)            |
 | `registerRemotes([{ name: "…", … }])` with string `name` / `alias`                        | Source scan                                                     |
-| Conditional / runtime remotes named in an opt-in Observability trace                      | `runtimeTrace` on MFDoctor options or `mfdoctor runtime`        |
+| Conditional / runtime remotes named in an opt-in Observability trace                      | `runtimeTrace` on mfdoctor options or `mfdoctor runtime`        |
 | Remotes listed on an on-disk `mf-manifest.json`                                           | Manifest facts (`imports.remotes`, `evidenceSources: manifest`) |
 
 Shared usage for `shared/unused` includes static imports, resolved dynamic /
@@ -77,7 +77,7 @@ or false unused finding.
 
 The sections below document additive library APIs for authors extending Doctor
 (identity, ownership, lineage, waivers, and the semantic graph). Host teams
-integrating MFDoctor can stay on [Setup](./setup.md), [CI](./production-readiness.md),
+integrating mfdoctor can stay on [Setup](./setup.md), [CI](./production-readiness.md),
 [Rules](./rules/), and [Limitations](./limitations.md). Capture lives on the
 separate [runtime capture](./runtime-capture.md) page; JSON Schema exports are
 listed under [report schemas](./report-schemas.md).

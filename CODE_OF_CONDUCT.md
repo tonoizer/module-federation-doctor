@@ -2,7 +2,7 @@
 
 ## Our Pledge
 
-We want MFDoctor to be a welcoming, respectful, and inclusive
+We want mfdoctor to be a welcoming, respectful, and inclusive
 community. Everyone should be able to participate without discrimination,
 harassment, or intimidation.
 

@@ -1,6 +1,6 @@
 # Mixed federation issues
 
-Intentionally broken Vite host + Rspack/Rsbuild remotes. Builds emit MFDoctor
+Intentionally broken Vite host + Rspack/Rsbuild remotes. Builds emit mfdoctor
 project facts so `check` and `federation` can surface shared and cross-project
 conflicts. Not part of Playwright e2e.
 

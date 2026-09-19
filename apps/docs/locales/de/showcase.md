@@ -1,17 +1,17 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # One-rule CLI showcase
 
 `examples/showcase` holds themed, intentional misconfigs for the **CLI**. Run
-them to see the exact rule IDs MFDoctor reports one fixture at a time:
+them to see the exact rule IDs mfdoctor reports one fixture at a time:
 
 ```bash
 vp run demo:showcase
 ```
 
-For **per-bundler build+MFDoctor** demos (Vite / Webpack / Rspack / Rsbuild, plus a
+For **per-bundler build+mfdoctor** demos (Vite / Webpack / Rspack / Rsbuild, plus a
 partial Modern.js stub), see
 [standalone findings](./standalone-findings.md) (`vp run demo:standalone`).
 

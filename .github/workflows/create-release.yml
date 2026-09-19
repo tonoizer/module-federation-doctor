@@ -55,7 +55,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag --annotate "$VERSION" --message "MFDoctor $VERSION"
+          git tag --annotate "$VERSION" --message "mfdoctor $VERSION"
           git push origin "refs/tags/$VERSION"
 
       - name: Create draft release with generated notes
@@ -71,7 +71,7 @@ jobs:
 
           # Stay draft until publish-on-release.yml stages npm. A public GitHub
           # Release must not exist when Verify fails or Stage never runs.
-          args=("$VERSION" --draft --verify-tag --generate-notes --title "MFDoctor $VERSION")
+          args=("$VERSION" --draft --verify-tag --generate-notes --title "mfdoctor $VERSION")
           case "$VERSION" in *-*) args+=(--prerelease);; esac
           gh release create "${args[@]}"
 

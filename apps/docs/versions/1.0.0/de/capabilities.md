@@ -1,6 +1,6 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Capability matrix
 
@@ -31,10 +31,10 @@ coverage, see
 
 ## Vollständigkeit dynamischer Imports (v1)
 
-MFDoctor's import/shared analysis is **not** "static only." Offline `check` /
+mfdoctor's import/shared analysis is **not** "static only." Offline `check` /
 adapter runs resolve the patterns below when evidence exists in source, config,
 manifest facts, or an opt-in Observability export. Unresolvable dynamics yield
-`doctor/partial-analysis` rather than fabricated certainty. MFDoctor still does
+`doctor/partial-analysis` rather than fabricated certainty. mfdoctor still does
 **not** claim 100% of arbitrary runtime JavaScript.
 
 ### Supported (resolved when evidence exists)
@@ -47,7 +47,7 @@ manifest facts, or an opt-in Observability export. Unresolvable dynamics yield
 | `loadRemote("alias/expose")`                                                              | Source scan (recorded under `imports.remotes`)                  |
 | `loadShare("pkg")` / `loadShareSync("pkg")`                                               | Source scan (`imports.packages` / `dynamicPackages`)            |
 | `registerRemotes([{ name: "…", … }])` with string `name` / `alias`                        | Source scan                                                     |
-| Conditional / runtime remotes named in an opt-in Observability trace                      | `runtimeTrace` on MFDoctor options or `mfdoctor runtime`        |
+| Conditional / runtime remotes named in an opt-in Observability trace                      | `runtimeTrace` on mfdoctor options or `mfdoctor runtime`        |
 | Remotes listed on an on-disk `mf-manifest.json`                                           | Manifest facts (`imports.remotes`, `evidenceSources: manifest`) |
 
 Shared usage for `shared/unused` includes static imports, resolved dynamic /

@@ -5,7 +5,7 @@
 
 ## Issue
 
-The trace names a remote that is absent from loaded MFDoctor project facts.
+The trace names a remote that is absent from loaded mfdoctor project facts.
 
 ## How to fix it
 

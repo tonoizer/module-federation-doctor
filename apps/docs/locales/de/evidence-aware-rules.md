@@ -1,10 +1,10 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Evidence-aware rules
 
-Built-in rules in MFDoctor now declare prerequisites, applicability,
+Built-in rules in mfdoctor now declare prerequisites, applicability,
 confidence ceilings, and typed evaluation outcomes. This guide is for maintainers
 and custom-rule authors who need to understand how evidence-aware semantics differ
 from the legacy `defineRule` "report or stay silent" model.
@@ -55,7 +55,7 @@ Each entry also has `demo`: `showcase` (one-rule CLI fixture in `demo:showcase`)
 
 ## V1-Kompatibilität und Einführung
 
-Default MFDoctor output remains on the legacy V1 path (`legacy` rollout mode). Shadow and
+Default mfdoctor output remains on the legacy V1 path (`legacy` rollout mode). Shadow and
 `v2-compat` modes run the evidence-aware bridges beside V1 and compare outputs before
 promotion. Set `MFDOCTOR_EVIDENCE_LEGACY=1` to force every scope back to legacy without
 rebuilding old artifacts.

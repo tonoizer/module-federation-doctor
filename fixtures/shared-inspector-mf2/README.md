@@ -7,6 +7,6 @@ Minimal **MF2 shared-array** evidence shaped like `@mf-toolkit/shared-inspector`
 | `shell.mf-manifest.json`            | Host MF2 manifest with `shared: [...]` array (**primary #127 input**)                                                                        |
 | `checkout.mf-manifest.json`         | Remote MF2 manifest with local shared + expose                                                                                               |
 | `inherited-shared.mf-manifest.json` | Inherited `from: "host"` entry mixed with local shared (filter signal)                                                                       |
-| `.mf/doctor/project.json`           | Golden MFDoctor project facts with **normalized** `artifacts.manifest` (MFDoctor drops MF2 `from`; load the standalone JSON for inheritance) |
+| `.mf/doctor/project.json`           | Golden mfdoctor project facts with **normalized** `artifacts.manifest` (mfdoctor drops MF2 `from`; load the standalone JSON for inheritance) |
 
 No toolkit packages are vendored; JSON shapes only for offline #127 alignment.

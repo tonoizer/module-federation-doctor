@@ -31,7 +31,7 @@
         ]
       },
       "fingerprint": "695c86328ba256cb66e444429655fb01d238a72796c664b28d05002b31df8f22",
-      "message": "MFDoctor found workspace diagnostics; analysis is incomplete.",
+      "message": "mfdoctor found workspace diagnostics; analysis is incomplete.",
       "project": "workspace",
       "ruleId": "doctor/partial-analysis",
       "schemaVersion": 1,

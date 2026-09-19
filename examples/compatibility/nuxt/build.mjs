@@ -47,7 +47,7 @@ for (const entry of nuxtConfig.modules ?? []) {
 }
 
 // Official MF Nuxt module owns federation; this smoke attaches the same Vite
-// plugin before firing `vite:extendConfig` so MFDoctor still registers after it.
+// plugin before firing `vite:extendConfig` so mfdoctor still registers after it.
 viteConfig.plugins.push(federation(mfOptions));
 
 // Nuxt invokes this hook for client and SSR. The adapter de-duplicates.

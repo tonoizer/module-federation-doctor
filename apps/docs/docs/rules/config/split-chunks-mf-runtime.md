@@ -5,7 +5,7 @@
 
 ## Issue
 
-User cacheGroups that target mf-* / remoteEntry / shared-runtime chunks can steal Module Federation runtime and shared ownership, breaking init order or duplicate-share isolation. This is an advisory for observed public splitChunks only; MFDoctor does not nag every project to set chunks: "async".
+User cacheGroups that target mf-* / remoteEntry / shared-runtime chunks can steal Module Federation runtime and shared ownership, breaking init order or duplicate-share isolation. This is an advisory for observed public splitChunks only; mfdoctor does not nag every project to set chunks: "async".
 
 ## How to fix it
 

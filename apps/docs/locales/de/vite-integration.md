@@ -1,23 +1,23 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Vite integration notes
 
-The Vite plugin is not a thin copy of the Rspack plugin. MFDoctor keeps its
+The Vite plugin is not a thin copy of the Rspack plugin. mfdoctor keeps its
 Vite-only facts under the `vite` section of `project.json`.
 
 ## Rolldown und Vite Plus
 
 Module Federation on Rolldown-integrated Vite and Vite Plus uses the **same**
-MFDoctor entry as classic Vite:
+mfdoctor entry as classic Vite:
 
 ```ts
 import { federation } from "@module-federation/vite";
 import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 ```
 
-| Flavor                    | How MFDoctor detects it                                                         | Emit engine |
+| Flavor                    | How mfdoctor detects it                                                         | Emit engine |
 | ------------------------- | ------------------------------------------------------------------------------- | ----------- |
 | Classic Vite              | Default when no strong Rolldown / Vite Plus markers                             | `rollup`    |
 | `rolldown-vite` / Vite 8+ | Declared `rolldown-vite`, `vite→rolldown-vite` alias, or `meta.rolldownVersion` | `rolldown`  |
@@ -26,11 +26,11 @@ import { federationDoctor } from "@tonoizer/mfdoctor/vite";
 Bare `rolldown` in `package.json` is weak evidence only (common in monorepo
 tooling roots) and does **not** reclassify classic Vite by itself.
 
-MFDoctor records `bundler.lifecycle` (`flavor`, `engine`, `postEmitHook`,
+mfdoctor records `bundler.lifecycle` (`flavor`, `engine`, `postEmitHook`,
 `evidence`) on `project.json`. Emit analysis prefers **on-disk** `dist/**` /
 `build/**` assets over the in-memory Rollup `bundle` object, because Rolldown
 does not share that object across hooks. When Rolldown has not finished writing
-on `writeBundle`, MFDoctor defers to `closeBundle`. If emit facts are still
+on `writeBundle`, mfdoctor defers to `closeBundle`. If emit facts are still
 missing, it leaves `capabilities.emittedAssets` false so
 [`doctor/partial-analysis`](./rules/doctor/partial-analysis.md) reports the gap
 honestly.
@@ -46,7 +46,7 @@ until emit evidence is enough to promote.
 
 ## Vite-spezifische Optionen
 
-| Option                                       | Risk or opportunity                                     | MFDoctor guidance                                                                                     |
+| Option                                       | Risk or opportunity                                     | mfdoctor guidance                                                                                     |
 | -------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `publicPath`                                 | Wrong base breaks remote chunks and CSS                 | Compare with manifest output                                                                          |
 | `bundleAllCSS`                               | Full CSS set can repeat for every expose                | Warn for multi-expose producers                                                                       |
@@ -62,7 +62,7 @@ until emit evidence is enough to promote.
 `hostInitInjectLocation` is a `@module-federation/vite` control.
 [`vite/host-init-inject-ssr`](./rules/vite/host-init-inject-ssr.md) does **not**
 run on Rsbuild, Modern.js, Rspack, or Webpack. Those SSR hosts inject
-federation bootstrap through different public APIs, and MFDoctor does not invent
+federation bootstrap through different public APIs, and mfdoctor does not invent
 a sibling finding without a documented option and fixture. Copied Vite keys on
 webpack-family configs are
 [`config/copied-vite-options-on-webpack`](./rules/config/copied-vite-options-on-webpack.md).
@@ -70,7 +70,7 @@ See [Limitations](./limitations.md#ssr-host-init-inject-vite-only).
 
 ### Typisierung von Remotes
 
-Vite string remotes and object remotes without `type` default to **`var`**. MFDoctor warns via
+Vite string remotes and object remotes without `type` default to **`var`**. mfdoctor warns via
 [`vite/remotes-prefer-module`](./rules/vite/remotes-prefer-module.md) unless you set explicit
 `type: 'module'` (Vite↔Vite ESM), another explicit type such as `global` for webpack/rspack
 remotes, or configure producer `varFilename` for var-host interop
@@ -112,7 +112,7 @@ Source:
 `manifest.disableAssetsAnalyze` is not the same as
 `dev.disableAssetsAnalyze`. The manifest option can speed a development
 consumer, but on a producer it omits shared/expose asset detail. The official
-`mf` skill currently describes this under `dev`; MFDoctor follows the actual
+`mf` skill currently describes this under `dev`; mfdoctor follows the actual
 plugin type and implementation.
 
 Fix: keep full asset analysis for production producer manifests. If it is

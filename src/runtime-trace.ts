@@ -1594,7 +1594,7 @@ export function correlateRuntime(
             ),
             projects: hosts.map((project) => project.project.name).sort(),
           },
-          "Verify async startup, external runtime provider order, and runtime plugins against MFDoctor project facts.",
+          "Verify async startup, external runtime provider order, and runtime plugins against mfdoctor project facts.",
           uniqueFederationInstanceId(hosts),
         ),
       );
@@ -1712,7 +1712,7 @@ export function correlateRuntime(
             ? "error"
             : "warning",
           projectName,
-          `Runtime error ${trace.errorCode} correlated with MFDoctor project evidence.`,
+          `Runtime error ${trace.errorCode} correlated with mfdoctor project evidence.`,
           {
             errorCode: trace.errorCode,
             ...(trace.traceId ? { traceId: trace.traceId } : {}),

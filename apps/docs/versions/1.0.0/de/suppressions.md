@@ -1,12 +1,12 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Governance: suppressions and allowlists
 
-MFDoctor already supports intentional allow/deny of specific rules. Use this page
+mfdoctor already supports intentional allow/deny of specific rules. Use this page
 when a finding is **known and accepted**, for example enterprise nesting that
-keeps direct `remoteEntry` URLs, so CI stays green without disabling MFDoctor.
+keeps direct `remoteEntry` URLs, so CI stays green without disabling mfdoctor.
 
 This is the short **Governance** reference for `rules: { "id": "off" }`,
 severity overrides, policy packs, fingerprint baselines, and `failOn`.
@@ -47,7 +47,7 @@ export default {
 ### Heuristic shared / config rules
 
 These rules use package-name or path heuristics. Defaults stay advisory so teams
-(and agents) do not learn to ignore MFDoctor:
+(and agents) do not learn to ignore mfdoctor:
 
 | Rule                               | Default   | Why it stays soft                                     |
 | ---------------------------------- | --------- | ----------------------------------------------------- |
@@ -57,7 +57,7 @@ These rules use package-name or path heuristics. Defaults stay advisory so teams
 | `shared/unused`                    | `warning` | Fires only when import evidence is complete enough    |
 
 Mute intentional exceptions with `rules: { "<id>": "off" }` (comment why). When
-dynamic `import()` / `loadShare*` cannot be resolved, MFDoctor prefers
+dynamic `import()` / `loadShare*` cannot be resolved, mfdoctor prefers
 `doctor/partial-analysis` over a confident `shared/unused` finding, see
 [capabilities](./capabilities.md#dynamic-import-completeness-v1). Showcase
 fixtures under `examples/showcase/shared/*-suppressed` and
@@ -101,7 +101,7 @@ federationDoctor({
 ```
 
 Copy that shape for production hosts that **knowingly** keep direct remote
-entries or skip version-first offline remotes: keep MFDoctor on, mute only the
+entries or skip version-first offline remotes: keep mfdoctor on, mute only the
 accepted rules, and leave a comment explaining the choice.
 
 ## Richtlinien-Voreinstellungen und Pakete

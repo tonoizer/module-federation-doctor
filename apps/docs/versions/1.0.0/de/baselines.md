@@ -1,6 +1,6 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Fingerprint baselines
 
@@ -41,7 +41,7 @@ onto the finding as `suppressionReason` for reports.
 
 ## Generieren und aktualisieren
 
-1. Run MFDoctor so `.mf/doctor/report.json` exists (plugin build or
+1. Run mfdoctor so `.mf/doctor/report.json` exists (plugin build or
    `mfdoctor check` / `mfdoctor federation`).
 2. Create a baseline from that report:
 
@@ -104,7 +104,7 @@ federationDoctor({
 
 ## Rezept für die schrittweise Einführung
 
-1. Enable the MFDoctor plugin and collect a full report with `failOn: "never"`
+1. Enable the mfdoctor plugin and collect a full report with `failOn: "never"`
    (or local defaults).
 2. `mfdoctor baseline generate` and commit the file.
 3. Turn on CI `failOn: "error"` (or rely on CI auto-detect).

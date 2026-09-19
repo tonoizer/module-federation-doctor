@@ -24,7 +24,7 @@
         "traceId": "mf-shared-fail-003"
       },
       "fingerprint": "0b872b959b4c31dc8a4d5048673fd3f4d8f40c190c03d542190b2e7db4025a85",
-      "message": "Runtime error RUNTIME-021 correlated with MFDoctor project evidence.",
+      "message": "Runtime error RUNTIME-021 correlated with mfdoctor project evidence.",
       "project": "runtime",
       "ruleId": "runtime/error-correlated",
       "schemaVersion": 1,

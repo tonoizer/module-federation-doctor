@@ -147,10 +147,10 @@ function formatNextAction(
   policyFailed: boolean,
 ): string {
   if (policyFailed && status.incomplete)
-    return "Next action: Fix the policy errors, then rebuild with the MFDoctor adapter and rerun the check.";
+    return "Next action: Fix the policy errors, then rebuild with the mfdoctor adapter and rerun the check.";
   if (policyFailed) return "Next action: Fix the policy errors, then rerun the check.";
   if (status.incomplete)
-    return "Next action: Rebuild with the MFDoctor adapter and rerun the check to complete analysis.";
+    return "Next action: Rebuild with the mfdoctor adapter and rerun the check to complete analysis.";
   if (report.summary.warnings > 0)
     return "Next action: Review the warnings and rerun the check after making any changes.";
   return "Next action: No action required.";
@@ -187,7 +187,7 @@ function formatLocation(finding: DoctorFinding): string {
 }
 
 /**
- * Format the single end-of-build MFDoctor findings block for humans and agents.
+ * Format the single end-of-build mfdoctor findings block for humans and agents.
  * Returns an empty string when quiet success applies to complete zero findings.
  */
 export function formatTerminalReport(
@@ -206,7 +206,7 @@ export function formatTerminalReport(
   if (report.findings.length === 0) {
     if (!status.incomplete && (quiet || !printLog.success)) return "";
     const lines = [
-      pc.bold("MFDoctor"),
+      pc.bold("mfdoctor"),
       formatPolicyResult(policyFailed),
       formatAnalysisStatus(status),
       formatNextAction(report, status, policyFailed),
@@ -216,12 +216,12 @@ export function formatTerminalReport(
       const footer = formatScoreFooter(report, status);
       if (footer) lines.push(footer);
     }
-    lines.push(pc.green("MFDoctor: no findings."));
+    lines.push(pc.green("mfdoctor: no findings."));
     return lines.join("\n");
   }
 
   const lines: string[] = [
-    pc.bold("MFDoctor"),
+    pc.bold("mfdoctor"),
     formatPolicyResult(policyFailed),
     formatAnalysisStatus(status),
     formatNextAction(report, status, policyFailed),
@@ -294,7 +294,7 @@ function sarif(report: DoctorReport): Record<string, unknown> {
     $schema: "https://json.schemastore.org/sarif-2.1.0.json",
     runs: [
       {
-        tool: { driver: { name: "MFDoctor", rules } },
+        tool: { driver: { name: "mfdoctor", rules } },
         results: report.findings.map((finding) => ({
           ruleId: finding.ruleId,
           level:

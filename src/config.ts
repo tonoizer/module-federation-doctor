@@ -81,7 +81,7 @@ function hasCiProviderSignal(env: NodeJS.ProcessEnv): boolean {
 }
 
 /**
- * Detect CI without requiring `mode: "ci"` in MFDoctor config.
+ * Detect CI without requiring `mode: "ci"` in mfdoctor config.
  * Honors common provider env vars and truthy `CI` values (`true`, `1`, …).
  * A falsey `CI` does not opt out of provider detection.
  */
@@ -108,7 +108,7 @@ export function resolvePrompt(
 }
 
 /**
- * Resolve MFDoctor options, including preset / policy-pack `extends`.
+ * Resolve mfdoctor options, including preset / policy-pack `extends`.
  *
  * Severity precedence (later wins):
  * 1. Built-in rule `defaultSeverity`

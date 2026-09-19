@@ -117,7 +117,7 @@ const COLLECTIONS = new Set(["exposes", "remotes", "shared"]);
 const KNOWN_EXPOSE_CONFIG_KEYS = new Set(["import", "name"]);
 /**
  * Confirmed SDK `SharedConfig` keys (module-federation/core@641a0b6) plus
- * MFDoctor `packagePath`. `layer` / `issuerLayer` are webpack-family.
+ * mfdoctor `packagePath`. `layer` / `issuerLayer` are webpack-family.
  */
 const KNOWN_SHARED_CONFIG_KEYS = new Set([
   "eager",

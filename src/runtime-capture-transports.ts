@@ -1805,7 +1805,7 @@ export interface RuntimeCaptureBrowserReadRequest {
 
 /**
  * Narrow read-only connector contract for an external browser tool. The
- * connector owns Playwright/CDP/browser lifecycle details; MFDoctor receives
+ * connector owns Playwright/CDP/browser lifecycle details; mfdoctor receives
  * only an existing official export and never evaluates arbitrary page code.
  */
 export interface RuntimeCaptureBrowserConnection {

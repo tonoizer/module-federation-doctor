@@ -162,7 +162,7 @@ describe("release workflow contracts", () => {
 
     expect(create).toContain("--draft");
     expect(create).toContain(
-      'args=("$VERSION" --draft --verify-tag --generate-notes --title "MFDoctor $VERSION")',
+      'args=("$VERSION" --draft --verify-tag --generate-notes --title "mfdoctor $VERSION")',
     );
     expect(create).not.toContain("--draft=false");
     expect(create.indexOf('git tag --annotate "$VERSION"')).toBeLessThan(create.indexOf("--draft"));

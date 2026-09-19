@@ -1,16 +1,16 @@
 ---
 title: Bundler-Integrationen
-description: MFDoctor zu Vite, Vite Plus, Nuxt, Rspack, Rsbuild, Webpack oder Modern.js hinzufügen.
+description: mfdoctor zu Vite, Vite Plus, Nuxt, Rspack, Rsbuild, Webpack oder Modern.js hinzufügen.
 ---
 
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Bundler integrations
 
 Choose the adapter owned by the build tool. In every example, the same
-`mfOptions` object goes to Module Federation and MFDoctor. Register MFDoctor after
+`mfOptions` object goes to Module Federation and mfdoctor. Register mfdoctor after
 the federation plugin so it can inspect the completed output.
 
 - **Vite, Rolldown-integrated Vite, or Vite Plus:** `@tonoizer/mfdoctor/vite`
@@ -42,7 +42,7 @@ export default {
 ```
 
 The same adapter covers classic Vite, Rolldown-integrated Vite (`rolldown-vite`
-and Vite 8+), and Vite Plus. MFDoctor selects the matching post-emit hook and
+and Vite 8+), and Vite Plus. mfdoctor selects the matching post-emit hook and
 avoids duplicate analysis when a build exposes more than one lifecycle hook.
 See [Vite integration](./vite-integration.md) for lifecycle and configuration
 details.
@@ -53,7 +53,7 @@ The matrix cell stays **partial**.
 
 ## Nuxt 3 und Nuxt 4
 
-Register MFDoctor next to the official Module Federation Nuxt module:
+Register mfdoctor next to the official Module Federation Nuxt module:
 
 ```ts
 import moduleFederationDoctor from "@tonoizer/mfdoctor/nuxt";
@@ -68,9 +68,9 @@ export default defineNuxtConfig({
 });
 ```
 
-MFDoctor uses Nuxt's public `vite:extendConfig` hook for client and SSR builds.
+mfdoctor uses Nuxt's public `vite:extendConfig` hook for client and SSR builds.
 The official Nuxt module still owns Module Federation. If that integration
-already exposes `nuxt.options.moduleFederation.config`, you may omit MFDoctor's
+already exposes `nuxt.options.moduleFederation.config`, you may omit mfdoctor's
 explicit `moduleFederation` option.
 
 A copyable local emit cell lives in
@@ -144,7 +144,7 @@ export default {
 };
 ```
 
-MFDoctor runs in `afterEmit`, after the enhanced Module Federation plugin has
+mfdoctor runs in `afterEmit`, after the enhanced Module Federation plugin has
 produced the files used as evidence.
 
 ## Modern.js

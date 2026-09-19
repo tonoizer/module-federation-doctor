@@ -4,7 +4,7 @@ function App() {
   return (
     <main>
       <h1>Standalone Vite findings cell</h1>
-      <p>Intentional MFDoctor misconfig for the Vite adapter demo.</p>
+      <p>Intentional mfdoctor misconfig for the Vite adapter demo.</p>
     </main>
   );
 }

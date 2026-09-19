@@ -17,4 +17,4 @@ for (const file of files.sort()) {
     process.stdout.write(`::${command} ${location}title=${finding.ruleId}::${finding.message}\n`);
   }
 }
-process.stdout.write(`## MFDoctor\n\n- Errors: ${errors}\n- Warnings: ${warnings}\n`);
+process.stdout.write(`## mfdoctor\n\n- Errors: ${errors}\n- Warnings: ${warnings}\n`);

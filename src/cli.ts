@@ -147,10 +147,10 @@ Usage:
   mfdoctor compare https://a.example/mf-manifest.json https://b.example/mf-manifest.json
   mfdoctor compare https://a.example/mf-manifest.json https://b.example/mf-manifest.json --format json,sarif --remote-entry
 
-Workspace: after each app builds with the MFDoctor plugin, \`workspace\` (or
+Workspace: after each app builds with the mfdoctor plugin, \`workspace\` (or
 \`federation --workspace\`) auto-discovers \`.mf/doctor/project.json\` under the
 given roots. Pass explicit globs to \`federation\` only when you need a manual
-escape hatch. Set \`federationGroup\` in each app's MFDoctor options when one
+escape hatch. Set \`federationGroup\` in each app's mfdoctor options when one
 repository contains multiple independent federation graphs, then select one
 with \`--group <name>\`. Projects in different explicit groups are never
 compared by federation-wide rules. Exit codes: 0 pass, 1 policy fail, 2
@@ -470,7 +470,7 @@ async function loadReport(reportPath: string): Promise<DoctorReport> {
         failureCode: "wrong-document-kind",
         pointer: "/",
       },
-      `${reportPath}: Expected a MFDoctor report document at /; received ${document.kind}.`,
+      `${reportPath}: Expected a mfdoctor report document at /; received ${document.kind}.`,
     );
   try {
     return isReportGraph

@@ -2,12 +2,12 @@
 pageType: home
 
 hero:
-  name: MFDoctor
+  name: mfdoctor
   text: Diagnostics for federation projects
   tagline: Post-build findings for Module Federation projects.
   actions:
     - theme: brand
-      text: Install MFDoctor
+      text: Install mfdoctor
       link: /setup
     - theme: alt
       text: Explore 82 rules

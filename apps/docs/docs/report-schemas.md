@@ -6,7 +6,7 @@
 > the table for authors extending Doctor, see also
 > [Library / extension](./capabilities.md#library-contracts-110).
 
-MFDoctor writes:
+mfdoctor writes:
 
 - `.mf/doctor/project.json`: portable, schema-versioned project facts.
 - `.mf/doctor/report.json`: capabilities, status, summary, and sorted findings.
@@ -17,14 +17,14 @@ MFDoctor writes:
 Comparable content has no timestamps. Paths are workspace relative. Schema
 version 1 changes only through an intentional compatibility change. Additive
 import-analysis fields (`dynamicPackages`, `remotes`, `unresolvedDynamic`,
-`evidenceSources`) document MFDoctor's dynamic-import completeness bar without
+`evidenceSources`) document mfdoctor's dynamic-import completeness bar without
 breaking older `project.json` files that omit them.
 
 ## Public v1 schema contracts
 
 These JSON Schema files are **public contracts for schema version 1**. They are
 exported from the npm package and enforced in CI via `vp run schema:check` (also
-wired into `vp run pack:check`) against representative MFDoctor output. Breaking
+wired into `vp run pack:check`) against representative mfdoctor output. Breaking
 changes require a new `schemaVersion` (or an intentional, documented exception).
 
 ## Evidence protocol v2
@@ -94,7 +94,7 @@ opening punctuation such as `(`, `[` or `{`. Other strings are left unchanged.
 | `@tonoizer/mfdoctor/schemas/semantic-graph.schema.json`               | `buildSemanticGraph` / `querySemanticGraph`      | Additive semantic graph       |
 | `@tonoizer/mfdoctor/schemas/ui.schema.json`                           | `buildUiPayload`                                 | Programmatic graph only       |
 
-`ui.schema.json` is **not** a persisted CLI artifact (MFDoctor no longer ships an
+`ui.schema.json` is **not** a persisted CLI artifact (mfdoctor no longer ships an
 HTML dashboard). It remains the published shape for programmatic consumers of
 `buildUiPayload` / graph payloads, see below. Do not treat it as an HTML report
 format.
@@ -116,10 +116,10 @@ fixture set lives in `fixtures/runtime-traces/`:
   DevTools result; omitted report data is unknown/not collected.
 - `fixtures/runtime-traces/provenance.json` records the exact upstream commit,
   replay commands, test names, and raw/sanitized digests.
-- The other fixtures are legacy MFDoctor input and are kept separate for the
+- The other fixtures are legacy mfdoctor input and are kept separate for the
   later migration adapter.
 
-The upstream report has no schema-version field. MFDoctor must track the source
+The upstream report has no schema-version field. mfdoctor must track the source
 contract separately from `runtimeVersion`, which identifies the MF runtime.
 
 Use the schemas in editors, artifact validators, or deployment gates. They are
@@ -139,7 +139,7 @@ without allowing ambiguous V1 project names to become semantic identities.
 
 ## Programmatic federation graph (`buildUiPayload`)
 
-MFDoctor does **not** ship an HTML dashboard. The retired `--ui` / HTML report path
+mfdoctor does **not** ship an HTML dashboard. The retired `--ui` / HTML report path
 is gone. What remains is a **programmatic** graph contract:
 
 - Export: `buildUiPayload(projects, report)` from `@tonoizer/mfdoctor`
@@ -200,7 +200,7 @@ band would otherwise be **Great** or **OK**; suppressed errors do not. Consumers
 should use `score` for numeric comparisons and `scoreLabel` for action. The score
 does not change `failOn` semantics. Terminal printing can be disabled with
 `--no-score` / `score: false` while JSON still includes the fields. After the
-score footer, MFDoctor prints
+score footer, mfdoctor prints
 [top-3 agent fix prompts](./cli.md) (`--no-prompt` to hide; CI hides by default;
 `mfdoctor prompt` and `--diagnostics-dir` for offline handoff;
 `--diagnostics-prompts` / `MFDOCTOR_DIAGNOSTICS_PROMPTS` to dump more than top-3,

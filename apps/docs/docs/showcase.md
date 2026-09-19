@@ -1,13 +1,13 @@
 # One-rule CLI showcase
 
 `examples/showcase` holds themed, intentional misconfigs for the **CLI**. Run
-them to see the exact rule IDs MFDoctor reports one fixture at a time:
+them to see the exact rule IDs mfdoctor reports one fixture at a time:
 
 ```bash
 vp run demo:showcase
 ```
 
-For **per-bundler build+MFDoctor** demos (Vite / Webpack / Rspack / Rsbuild, plus a
+For **per-bundler build+mfdoctor** demos (Vite / Webpack / Rspack / Rsbuild, plus a
 partial Modern.js stub), see
 [standalone findings](./standalone-findings.md) (`vp run demo:standalone`).
 

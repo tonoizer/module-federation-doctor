@@ -32,7 +32,7 @@ Use it as a review checklist even when a rule does not yet automate the check.
 | `dts.generateTypes.compilerInstance` | Default `tsc` can make DTS generation the bottleneck                                | Set `"tsgo"` when type generation is slow                                                                                                                                                                                                   |
 | Direct `.js` remotes + DTS           | No type URL without manifests/`remoteTypeUrls`                                      | Prefer manifests or set `remoteTypeUrls`                                                                                                                                                                                                    |
 | Non-string `output.publicPath`       | Manifest generation is skipped upstream                                             | Use a string/`auto` publicPath when manifests are required                                                                                                                                                                                  |
-| Localhost remotes in CI              | Deployed builds cannot reach loopback remotes                                       | Use deployed URLs for CI/production MFDoctor runs                                                                                                                                                                                           |
+| Localhost remotes in CI              | Deployed builds cannot reach loopback remotes                                       | Use deployed URLs for CI/production mfdoctor runs                                                                                                                                                                                           |
 | `experiments.asyncStartup`           | Entry exports become async; ignored on old Rspack                                   | Requires Rspack > 1.7.4; await Promise consumers                                                                                                                                                                                            |
 | `externalRuntime` pair               | Hard load-order dependency                                                          | One pure provider; externalize only downstream browser remotes                                                                                                                                                                              |
 | snapshot/remote/shared removal       | Tree-shaken capability still used                                                   | Never disable a configured capability                                                                                                                                                                                                       |
@@ -73,7 +73,7 @@ and
 
 Webpack, Rspack, Rsbuild, and Modern.js ignore Vite-only keys such as
 `virtualModuleDir`, `hostInitInjectLocation`, `bundleAllCSS`, `remoteHmr`,
-and `varFilename`. MFDoctor reports them as
+and `varFilename`. mfdoctor reports them as
 [`config/copied-vite-options-on-webpack`](./rules/config/copied-vite-options-on-webpack.md).
 There is no Rsbuild or Modern.js analogue of
 [`vite/host-init-inject-ssr`](./rules/vite/host-init-inject-ssr.md) until those

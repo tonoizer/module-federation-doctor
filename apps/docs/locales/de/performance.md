@@ -1,6 +1,6 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Performance checks
 
@@ -10,7 +10,7 @@ harmful.
 
 ## Analysebudgets
 
-MFDoctor bounds source and workspace collection before parsing. Configure the
+mfdoctor bounds source and workspace collection before parsing. Configure the
 typed `analysisBudgets` option when a repository needs tighter limits:
 
 ```ts
@@ -88,9 +88,9 @@ Source:
 
 ## Asset-Budgets
 
-MFDoctor can fail (or warn on) federation assets whose on-disk sizes exceed project
+mfdoctor can fail (or warn on) federation assets whose on-disk sizes exceed project
 budgets. Sizes come from joining `mf-manifest.json` asset names to files under
-the project root (and emitted assets from a MFDoctor adapter build). Manifest and
+the project root (and emitted assets from a mfdoctor adapter build). Manifest and
 stats JSON do not carry byte sizes by themselves.
 
 Default limits for [`performance/asset-budget`](./rules/performance/asset-budget.md):
@@ -130,7 +130,7 @@ remotes enable `externalRuntime`. The provider must run first. Do not add
 combination.
 
 This can reduce duplicate runtime code, but it changes deployment order into a
-hard contract. MFDoctor checks both local invalid combinations and the
+hard contract. mfdoctor checks both local invalid combinations and the
 federation-wide provider.
 
 Source:
@@ -169,7 +169,7 @@ exposes matching optimization flags under `experiments.optimization`.
 - `disableSnapshot` removes manifest remotes, preload, dynamic type hints, HMR,
   and DevTools integration.
 
-MFDoctor reports a hard error when a removed capability is still configured. It
+mfdoctor reports a hard error when a removed capability is still configured. It
 reports snapshot loss as reliability risk because the build may run while
 important tooling silently disappears.
 
@@ -186,7 +186,7 @@ important tooling silently disappears.
 ## Webpack, Rspack und Rsbuild `splitChunks`
 
 Aggressive `optimization.splitChunks.cacheGroups` can steal Module Federation
-runtime, `remoteEntry`, and shared-runtime chunks. MFDoctor warns when a public
+runtime, `remoteEntry`, and shared-runtime chunks. mfdoctor warns when a public
 cacheGroup **name or test** targets those chunks
 ([`config/split-chunks-mf-runtime`](./rules/config/split-chunks-mf-runtime.md)).
 It does **not** nag every project to set `chunks: "async"`.

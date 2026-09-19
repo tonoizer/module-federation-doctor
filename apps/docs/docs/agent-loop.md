@@ -1,6 +1,6 @@
 ---
 title: Agent loop
-description: Two-tier MFDoctor loop, mfdoctor check vs plugin emit plus workspace before claiming green.
+description: Two-tier mfdoctor loop, mfdoctor check vs plugin emit plus workspace before claiming green.
 ---
 
 # Agent loop
@@ -15,7 +15,7 @@ pass, and never treat incomplete analysis as a pass.
 | Tier                    | What to run                                                                            | What it proves                                                                        | What it does **not** prove                                                                       |
 | ----------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | **1, Config / static**  | `mfdoctor check` (JSON/SARIF + diagnostics when handing off)                           | Offline config, imports, and other facts available without a bundler emit             | Emitted manifests, stats, assets, or cross-app federation contracts                              |
-| **2, Emit + workspace** | Build with a MFDoctor adapter, then `mfdoctor workspace` (or `federation --workspace`) | Post-emit project facts (`.mf/doctor/project.json`) and host↔remote / shared topology | Nothing further is required for a local/CI green claim; optional `runtime` / `probe` stay opt-in |
+| **2, Emit + workspace** | Build with a mfdoctor adapter, then `mfdoctor workspace` (or `federation --workspace`) | Post-emit project facts (`.mf/doctor/project.json`) and host↔remote / shared topology | Nothing further is required for a local/CI green claim; optional `runtime` / `probe` stay opt-in |
 
 Hard rule: **do not claim green from `mfdoctor check` alone.**
 
@@ -41,13 +41,13 @@ Hard rule: **do not claim green from `mfdoctor check` alone.**
    mfdoctor prompt --finding <ruleId|fingerprint> .mf/doctor/report.json
    ```
 
-4. Apply a narrow fix for that finding. Rebuild with a MFDoctor adapter so emit
+4. Apply a narrow fix for that finding. Rebuild with a mfdoctor adapter so emit
    evidence exists, then re-run tier 1 as needed.
 
 5. **Before claiming green**, finish tier 2:
 
    ```bash
-   # each host/remote already built with its MFDoctor adapter
+   # each host/remote already built with its mfdoctor adapter
    mfdoctor workspace
    # or: mfdoctor federation --workspace
    ```
@@ -57,7 +57,7 @@ Quiet success prints nothing. Exit codes: `0` policy passed, `1` policy failed,
 
 ## `doctor/partial-analysis` is not green
 
-[`doctor/partial-analysis`](./rules/doctor/partial-analysis.md) means MFDoctor
+[`doctor/partial-analysis`](./rules/doctor/partial-analysis.md) means mfdoctor
 lacked facts it needed, missing MF options, unresolved dynamic imports, unread
 sources, budget-limited projects, omitted workspace projects, or missing emit
 capabilities (for example Vite without `manifest: true`).
@@ -85,7 +85,7 @@ partial analysis. See the
 
 ## Out of scope (do not invent)
 
-MFDoctor does not ship, and agents must not invent:
+mfdoctor does not ship, and agents must not invent:
 
 - HTML UI / `--ui` dashboard
 - In-browser doctor or runtime agent injection
@@ -95,5 +95,5 @@ MFDoctor does not ship, and agents must not invent:
   Rsbuild or Modern.js ([limitations](./limitations.md#permanent-guarantees--non-goals))
 
 For Module Federation concepts (shared, remotes, Bridge, observability), use the
-upstream `mf` skill. For MFDoctor commands, formats, and exit codes, see the
+upstream `mf` skill. For mfdoctor commands, formats, and exit codes, see the
 [CLI reference](./cli.md) and [Get started](./setup.md).

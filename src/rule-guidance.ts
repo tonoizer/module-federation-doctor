@@ -19,7 +19,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "config/name-required": {
     category: "correctness",
     impact:
-      "The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so MFDoctor keeps this for offline checks rather than a showcase fixture.",
+      "The runtime uses the container name for global state and module lookup. Official plugins also reject a missing name at startup, so mfdoctor keeps this for offline checks rather than a showcase fixture.",
     fix: 'Set `name` to a stable, federation-wide unique id such as "host" or "shop".',
     sources: ["https://module-federation.io/configure/name.html"],
   },
@@ -196,7 +196,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "config/runtime-plugin-missing": {
     category: "correctness",
     impact: "A missing runtime plugin stops injected runtime behavior from loading.",
-    fix: "Correct the path/package and include local plugin files in the MFDoctor scan.",
+    fix: "Correct the path/package and include local plugin files in the mfdoctor scan.",
     sources: [runtimePlugins],
   },
   "runtime-plugins/invalid-factory": {
@@ -358,7 +358,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "federation/circular-remote-graph": {
     category: "reliability",
     impact:
-      "A remote cycle is valid Module Federation topology by itself. MFDoctor warns only when a strongly connected group contains a `version-first` member that eagerly loads a remote during startup.",
+      "A remote cycle is valid Module Federation topology by itself. mfdoctor warns only when a strongly connected group contains a `version-first` member that eagerly loads a remote during startup.",
     fix: "Keep valid `loaded-first` bi-directional setups. For a risky cycle, use `loaded-first`, add startup fallback handling, or make the remote edge on the startup path lazy.",
     sources: [
       "https://module-federation.io/configure/shareStrategy.html",
@@ -442,7 +442,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "config/split-chunks-mf-runtime": {
     category: "reliability",
     impact:
-      'User cacheGroups that target mf-* / remoteEntry / shared-runtime chunks can steal Module Federation runtime and shared ownership, breaking init order or duplicate-share isolation. This is an advisory for observed public splitChunks only; MFDoctor does not nag every project to set chunks: "async".',
+      'User cacheGroups that target mf-* / remoteEntry / shared-runtime chunks can steal Module Federation runtime and shared ownership, breaking init order or duplicate-share isolation. This is an advisory for observed public splitChunks only; mfdoctor does not nag every project to set chunks: "async".',
     fix: "Exclude federation runtime chunks from cacheGroups (name, test, and filename). Leave MF-owned remoteEntry and shared-runtime chunks to the federation plugin, or allowlist a proven layout with `allowSplitChunks: true`.",
     sources: [
       "https://webpack.js.org/plugins/split-chunks-plugin/",
@@ -486,7 +486,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     category: "reliability",
     impact:
       "Without `server.origin`, remote consumers may resolve assets against the wrong public origin in development.",
-    fix: 'Set Vite `server.origin` to the URL remotes should publish for consumers. MFDoctor recommends `http://localhost:<server.port>` (default port 5173); configure `rules["vite/server-origin"].recommendedOrigin` or turn off `requireServerOrigin` when your topology differs.',
+    fix: 'Set Vite `server.origin` to the URL remotes should publish for consumers. mfdoctor recommends `http://localhost:<server.port>` (default port 5173); configure `rules["vite/server-origin"].recommendedOrigin` or turn off `requireServerOrigin` when your topology differs.',
     sources: [vite],
   },
   "vite/virtual-module-dir": {
@@ -536,7 +536,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "artifact/manifest-disabled": {
     category: "tooling",
     impact:
-      "When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. MFDoctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis.",
+      "When a project has exposes or remotes but explicitly disables manifests, consumers lose metadata-powered preloading, dynamic type hints, and richer inspection. mfdoctor reports this as one warning rather than treating the deliberately disabled manifest as generic partial analysis.",
     fix: "For a producer, set `manifest: true` to publish the metadata. For a consumer, point remotes at the producer's `mf-manifest.json` when those capabilities are wanted. If direct `remoteEntry.js` URLs are intentional, document that choice and turn this rule off.",
     sources: [manifest],
   },
@@ -562,7 +562,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "artifact/manifest-name-mismatch": {
     category: "correctness",
     impact: "Stale output can register a different container than the current config.",
-    fix: "Clean output and make the federation plugin and MFDoctor share one options object.",
+    fix: "Clean output and make the federation plugin and mfdoctor share one options object.",
     sources: [manifest],
   },
   "artifact/manifest-remote-entry-missing": {
@@ -677,7 +677,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "shared/package-path-missing": {
     category: "correctness",
     impact:
-      "`shared[pkg].packagePath` redirects where the bundler reads the shared package (version, singleton fallback). A path that is missing on disk makes version/singleton negotiation fail at build or runtime with no other MFDoctor finding.",
+      "`shared[pkg].packagePath` redirects where the bundler reads the shared package (version, singleton fallback). A path that is missing on disk makes version/singleton negotiation fail at build or runtime with no other mfdoctor finding.",
     fix: "Point `packagePath` at an existing package directory or entry file (relative to the project root, or an absolute path). Remove the field when Node module resolution should be used instead. Unknown bundlers skip this check rather than inventing a disk finding.",
     sources: [shared, "https://github.com/originjs/vite-plugin-federation/blob/main/README.md"],
   },
@@ -774,7 +774,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "runtime/init-failed": {
     category: "reliability",
     impact: "Container initialization failed before exposes or shared resolution could finish.",
-    fix: "Verify async startup, external runtime provider order, and runtime plugins against MFDoctor project facts.",
+    fix: "Verify async startup, external runtime provider order, and runtime plugins against mfdoctor project facts.",
     sources: ["https://module-federation.io/plugin/plugins/observability-plugin", experiments],
   },
   "runtime/shared-mismatch": {
@@ -786,7 +786,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   },
   "runtime/remote-unknown": {
     category: "tooling",
-    impact: "The trace names a remote that is absent from loaded MFDoctor project facts.",
+    impact: "The trace names a remote that is absent from loaded mfdoctor project facts.",
     fix: "Collect project.json for every host and remote, or correct the remote name in the trace source.",
     sources: ["https://module-federation.io/plugin/plugins/observability-plugin"],
   },

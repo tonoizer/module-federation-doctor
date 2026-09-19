@@ -6,7 +6,7 @@ export default {
     "doctor/partial-analysis": "off",
     "config/plugin-package-mismatch": "off",
     "artifact/remote-entry-missing": "off",
-    // Intentional: custom runtime is reviewed and pinned outside MFDoctor heuristics.
+    // Intentional: custom runtime is reviewed and pinned outside mfdoctor heuristics.
     "config/implementation-suspicious": "off",
   },
   moduleFederation: {

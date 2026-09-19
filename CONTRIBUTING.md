@@ -1,4 +1,4 @@
-# MFDoctor Contributing Guide
+# mfdoctor Contributing Guide
 
 Thanks for your interest in contributing. New contributors are welcome. Read
 the [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
@@ -45,7 +45,7 @@ vp run check
 ```
 
 `vp run demo:showcase` is a release gate for the one-rule CLI fixtures under
-`examples/showcase`. Per-bundler build and MFDoctor demos live under
+`examples/showcase`. Per-bundler build and mfdoctor demos live under
 `examples/standalone-findings`; keep them current when adapter wiring or
 catchable configuration rules change.
 
@@ -73,8 +73,8 @@ export, import it from a test via `src/index.js` (see
 
 ## Adapter contract
 
-MFDoctor is plugin-primary and CLI-complementary. Bundler adapters run after emit
-in Node and must never inject MFDoctor into browser assets.
+mfdoctor is plugin-primary and CLI-complementary. Bundler adapters run after emit
+in Node and must never inject mfdoctor into browser assets.
 
 When adding or extending an adapter:
 

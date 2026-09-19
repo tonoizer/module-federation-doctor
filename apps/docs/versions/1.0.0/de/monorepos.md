@@ -1,10 +1,10 @@
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # Monorepos
 
-Build each federation app with the MFDoctor plugin so it writes
+Build each federation app with the mfdoctor plugin so it writes
 `.mf/doctor/project.json`. Then run the one-shot workspace gate from the
 monorepo root (or scoped roots):
 
@@ -24,7 +24,7 @@ or several deliberate federation groups. Keep those cases explicit:
 
 - A real monorepo may use the default workspace gate.
 - Independent fixtures should use separate roots/globs, or assign each fixture
-  a group in its MFDoctor options.
+  a group in its mfdoctor options.
 - Multiple graphs should set the same `federationGroup` on every app in one
   graph and use `--group` when running a focused gate.
 
@@ -45,14 +45,14 @@ rules. `workspace` still reports the available group metadata so CI can keep
 the gate aligned with the repository topology. Legacy project facts without a
 group remain in the ungrouped scope for backwards compatibility.
 
-MFDoctor keeps project display names for v1 reports, but workspace federation uses
+mfdoctor keeps project display names for v1 reports, but workspace federation uses
 a stable application identity based on the workspace-relative app path. This
 means two apps with the same package name stay separate. The gate also follows
 Node's normal package resolution chain, so pnpm hoists, nested installs, and
 workspace links are checked from each app's own context.
 
 If a project report points at a missing root, or duplicate reports share an
-identity with different contents, MFDoctor reports partial analysis and exits `2`.
+identity with different contents, mfdoctor reports partial analysis and exits `2`.
 Keep workspace roots scoped to the monorepo and rely on the default ignores for
 `node_modules`, build output, caches, and coverage directories.
 

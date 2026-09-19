@@ -41,7 +41,7 @@ must preserve its original provenance.
   `pkg-pr-new` CLI because Vite+ has no `dlx` command.
 - `scripts/capture-runtime-devtools-partial.mjs` runs inside a separate pinned
   upstream checkout, so it uses that checkout's package manager rather than the
-  MFDoctor workspace toolchain.
+  mfdoctor workspace toolchain.
 
 ## Historical or consumer-facing pnpm
 

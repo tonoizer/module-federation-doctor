@@ -3,7 +3,7 @@ name: verify-mfdoctor
 description: Verify @tonoizer/mfdoctor the way a user does, CLI (mfdoctor) and post-emit build plugin. Use when proving check/workspace/federation/prompt/baseline/runtime/capabilities/plugin-emit behavior, not the docs site or an HTML UI.
 ---
 
-# Verify MFDoctor
+# Verify mfdoctor
 
 Drive `@tonoizer/mfdoctor` the way a user does: short-lived `mfdoctor` CLI
 invocations and (when proving emit) a child-process example build that registers

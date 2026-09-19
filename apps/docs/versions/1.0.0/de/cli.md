@@ -1,17 +1,17 @@
 ---
 title: CLI-Befehlsreferenz
-description: MFDoctor lokal und in der CI ausführen, für einen Workspace, gegen Laufzeitspuren oder gegen ein bereitgestelltes Manifest.
+description: mfdoctor lokal und in der CI ausführen, für einen Workspace, gegen Laufzeitspuren oder gegen ein bereitgestelltes Manifest.
 ---
 
-<!-- MFDoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
+<!-- mfdoctor locale: de. Technische Bezeichner, CLI-Flags, Regel-IDs, Links und Codebeispiele bleiben byte-kompatibel mit dem kanonischen englischen Vertrag. -->
 
-> Dies ist die deutsche MFDoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
+> Dies ist die deutsche mfdoctor-Dokumentation. Technische Bezeichner, CLI-Flags, Regel-IDs und Codebeispiele bleiben unverändert, damit die Inhalte zwischen den Sprachen vollständig kompatibel bleiben. Verwenden Sie den Sprachumschalter für die kanonische englische Fassung.
 
 # CLI command reference
 
-The **build plugin** is the primary MFDoctor experience. Use the CLI for a local
+The **build plugin** is the primary mfdoctor experience. Use the CLI for a local
 check, a cross-project federation gate, baseline maintenance, runtime trace
-correlation, or a deliberate deployed-manifest probe. MFDoctor is not a CLI-only
+correlation, or a deliberate deployed-manifest probe. mfdoctor is not a CLI-only
 source scanner and does not inject an agent into the browser. The build plugin
 remains the primary integration; use the CLI for tasks outside a bundler emit.
 
@@ -29,15 +29,15 @@ The examples below use the shorter `mfdoctor` form.
 | Command                                 | Use it for                                                                                 | Network access |
 | --------------------------------------- | ------------------------------------------------------------------------------------------ | -------------- |
 | [`check`](#check-one-project)           | Analyze one project or checkout                                                            | No             |
-| [`workspace`](#check-a-workspace)       | Discover built MFDoctor project facts below one or more roots and gate the full federation | No             |
+| [`workspace`](#check-a-workspace)       | Discover built mfdoctor project facts below one or more roots and gate the full federation | No             |
 | [`federation`](#check-a-federation)     | Analyze explicit `project.json` globs, or use workspace discovery explicitly               | No             |
 | [`baseline`](#manage-a-baseline)        | Generate, extend, or prune accepted finding fingerprints                                   | No             |
-| [`runtime`](#correlate-a-runtime-trace) | Correlate an Observability export with local MFDoctor project facts                        | No             |
-| [`prompt`](#print-agent-fix-prompts)    | Reprint fix prompts from a saved MFDoctor report                                           | No             |
+| [`runtime`](#correlate-a-runtime-trace) | Correlate an Observability export with local mfdoctor project facts                        | No             |
+| [`prompt`](#print-agent-fix-prompts)    | Reprint fix prompts from a saved mfdoctor report                                           | No             |
 | [`rules`](#inspect-the-rule-catalog)    | Inspect all built-in rules or one rule's metadata                                          | No             |
 | [`probe`](#probe-a-deployed-manifest)   | Validate a deployed manifest and optionally its remote entry                               | **Yes**        |
 
-MFDoctor loads an optional `mfdoctor.config.ts`; command-line flags override its
+mfdoctor loads an optional `mfdoctor.config.ts`; command-line flags override its
 values. Use `extends` for [named presets and shareable policy packs](./policy-packs.md).
 
 ## Ein Projekt prüfen
@@ -53,7 +53,7 @@ different project:
 mfdoctor check packages/host --ci
 ```
 
-`--ci` applies CI policy even when MFDoctor does not detect a CI environment. It
+`--ci` applies CI policy even when mfdoctor does not detect a CI environment. It
 defaults `failOn` to `error` and output to terminal, JSON, and SARIF. Local
 development defaults `failOn` to `never`, so findings print without breaking
 the build.
@@ -102,7 +102,7 @@ mfdoctor check --no-prompt
 mfdoctor check --prompt
 ```
 
-- MFDoctor is quiet when a check has no findings. `--verbose` restores the green
+- mfdoctor is quiet when a check has no findings. `--verbose` restores the green
   success line.
 - `--no-score` hides the terminal health score. Report JSON still contains
   `summary.score` and `summary.scoreLabel`.
@@ -120,7 +120,7 @@ mfdoctor check --diagnostics-dir .mf/doctor/diagnostics
 ```
 
 Writes `report.json`, `summary.md`, and `prompts/*.md` to a directory inside the
-project root. MFDoctor rejects a diagnostics path that escapes the project.
+project root. mfdoctor rejects a diagnostics path that escapes the project.
 
 ## Agenten-Lösungsprompts ausgeben
 
@@ -137,7 +137,7 @@ does not re-run analysis.
 
 ## Einen Workspace prüfen
 
-Build each app with its MFDoctor adapter first so it emits
+Build each app with its mfdoctor adapter first so it emits
 `.mf/doctor/project.json`, then run one cross-project gate:
 
 ```bash
@@ -214,11 +214,11 @@ mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format terminal,jso
 ```
 
 `runtime` reads a user-supplied Module Federation Observability export and
-correlates it with local MFDoctor project facts. Project files default to
+correlates it with local mfdoctor project facts. Project files default to
 `.mf/doctor/**/project.json`. You may instead set `runtimeTrace` in
 `mfdoctor.config` and omit the trace path.
 
-MFDoctor never fetches URLs found in a trace and never executes remote
+mfdoctor never fetches URLs found in a trace and never executes remote
 JavaScript. It collapses trace URLs to origin plus basename and redacts token,
 cookie, authorization, password, and secret fields before emitting findings.
 
@@ -246,7 +246,7 @@ small JSON summary. Query strings are removed from output so signed URLs do not
 leak into logs.
 
 `--remote-entry` sends a `HEAD` request to the entry named by the manifest and
-reports its status, content type, and size. MFDoctor does not download or execute
+reports its status, content type, and size. mfdoctor does not download or execute
 that JavaScript.
 
 Safety defaults:
@@ -272,7 +272,7 @@ remote entry returns an HTTP error exits `1`.
 
 ## GitHub Actions
 
-Run the workspace gate after the federated apps have emitted their MFDoctor
+Run the workspace gate after the federated apps have emitted their mfdoctor
 project facts. Pin the Action to a **release tag** (not `@main`) so CI stays
 reproducible:
 

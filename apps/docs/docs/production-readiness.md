@@ -1,6 +1,6 @@
 # Production readiness
 
-MFDoctor treats Module Federation as three linked surfaces:
+mfdoctor treats Module Federation as three linked surfaces:
 
 1. build configuration,
 2. emitted manifest/stats/type artifacts,
@@ -8,7 +8,7 @@ MFDoctor treats Module Federation as three linked surfaces:
 
 A config can be valid by itself and still fail after deployment. For example,
 an `externalRuntime` remote is only safe when a pure top-level consumer provides
-the runtime first. MFDoctor therefore keeps local and cross-project checks
+the runtime first. mfdoctor therefore keeps local and cross-project checks
 separate.
 
 ## Coverage map
@@ -36,7 +36,7 @@ snapshot optimization, and shared tree shaking.
 Vite has its own integration and extra options. Its
 [normalized option type](https://github.com/module-federation/vite/blob/321d7db8a4b2a1764b3a7cdc16246222d97231ac/src/utils/normalizeModuleFederationOptions.ts)
 adds `publicPath`, `bundleAllCSS`, parser timeouts, injection location, SSR
-externals, and direct runtime capability flags. A MFDoctor rule says when it is
+externals, and direct runtime capability flags. A mfdoctor rule says when it is
 Vite-only; it does not pretend the setting exists in every bundler.
 
 ## Production policy
@@ -66,12 +66,12 @@ For incremental adoption, check in a
 [fingerprint baseline](./baselines.md) so known debt stays visible in reports
 without failing the gate. Baselines are debt, prune them as findings are fixed.
 
-MFDoctor stays offline by default. It records normalized config and artifact
+mfdoctor stays offline by default. It records normalized config and artifact
 metadata, not source bodies, secrets, or live remote responses.
 
-Install MFDoctor as a `devDependency`. Adapters analyze after emit in Node; they
+Install mfdoctor as a `devDependency`. Adapters analyze after emit in Node; they
 are not part of the client bundle. MF `runtimePlugins` are covered through the
-shared bundler `mfOptions` object, not by shipping MFDoctor into the runtime.
+shared bundler `mfOptions` object, not by shipping mfdoctor into the runtime.
 
 ## Research sources
 
@@ -86,7 +86,7 @@ keeps the maintainer source list. High-level entry points:
 - [Module Federation Vite](https://github.com/module-federation/vite)
 - [Vitest docs and UI](https://github.com/vitest-dev/vitest)
 
-The official agent-skill repository currently has no license file. MFDoctor does
-not vendor its code or browser asset. MFDoctor-specific agent UX prefers CLI and
+The official agent-skill repository currently has no license file. mfdoctor does
+not vendor its code or browser asset. mfdoctor-specific agent UX prefers CLI and
 plugin finding output; `.agents/skills/mf` remains for Module Federation
 concepts.
