@@ -1,5 +1,13 @@
 # @tonoizer/mfdoctor
 
+## 2.0.2
+
+### Patch Changes
+
+- 575e130: Pin manifest probe and compare requests to their validated DNS addresses to
+  prevent public hostnames from rebinding to restricted networks between policy
+  checks and socket connection.
+
 ## 2.0.1
 
 ### Patch Changes
