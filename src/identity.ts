@@ -214,8 +214,6 @@ export interface IdentityDimensionsByKind {
   "runtime-realm": RuntimeRealmDimensions;
   "runtime-instance": RuntimeInstanceDimensions;
 }
-export type IdentityDimensions = IdentityDimensionsByKind[IdentityKind];
-
 const MAX_DIMENSIONS = 32;
 const MAX_DIMENSION_LENGTH = 256;
 const MAX_DIMENSION_BYTES = 4096;
