@@ -33,15 +33,15 @@ export const MAX_DIAGNOSTICS_PROMPT_FINDINGS = 25;
 /** Env override for diagnostics dump prompt count (CLI flag wins). */
 export const DIAGNOSTICS_PROMPTS_ENV = "MFDOCTOR_DIAGNOSTICS_PROMPTS";
 
-export const VERIFICATION_PLAN_SCHEMA_VERSION = 1;
+const VERIFICATION_PLAN_SCHEMA_VERSION = 1;
 export const UNKNOWN_AGENT_VALUE = "unknown";
 
 /** Analysis surfaces that have different safe verification follow-ups. */
-export type AgentAnalysisKind = "check" | "workspace" | "federation" | "runtime" | "unknown";
+type AgentAnalysisKind = "check" | "workspace" | "federation" | "runtime" | "unknown";
 
-export type VerificationFollowUpKind = "workspace" | "federation" | "runtime" | "none";
+type VerificationFollowUpKind = "workspace" | "federation" | "runtime" | "none";
 
-export interface VerificationFollowUp {
+interface VerificationFollowUp {
   kind: VerificationFollowUpKind;
   required: boolean;
   /** Absent commands are rendered as `unknown`; no build command is invented. */
@@ -53,7 +53,7 @@ export interface VerificationFollowUp {
  * Context retained by an analysis caller. Every field is optional so existing
  * callers and reports remain source-compatible; the built plan is explicit.
  */
-export interface AgentAnalysisContext {
+interface AgentAnalysisContext {
   analysisKind?: AgentAnalysisKind;
   projectDirectory?: string;
   reportPath?: string;
@@ -71,7 +71,7 @@ export interface AgentAnalysisContext {
   federationFollowUp?: string;
 }
 
-export interface VerificationPlan {
+interface VerificationPlan {
   schemaVersion: 1;
   analysisKind: AgentAnalysisKind;
   projectDirectory: string;
@@ -137,11 +137,7 @@ export function resolveDiagnosticsPromptLimitFromEnv(
   return resolveDiagnosticsPromptLimit(raw);
 }
 
-/**
- * Rank for top-N selection: severity first, then guidance category impact,
- * then fingerprint for stability. Higher is more urgent.
- */
-export function findingPriority(finding: DoctorFinding): number {
+function findingPriority(finding: DoctorFinding): number {
   const severity = SEVERITY_RANK[finding.severity] ?? 0;
   const category = ruleGuidance[finding.ruleId]?.category;
   const impact = category ? (CATEGORY_RANK[category] ?? 0) : 0;

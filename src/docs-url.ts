@@ -1,7 +1,6 @@
 import type { DoctorFinding } from "./types.js";
 
-/** Published mfdoctor docs origin. */
-export const DOCTOR_DOCS_ORIGIN = "https://mfdoctor.kevinbeier.com";
+const DOCTOR_DOCS_ORIGIN = "https://mfdoctor.kevinbeier.com";
 
 /** Absolute docs URL for a finding's rule page. */
 export function doctorRuleDocUrl(finding: Pick<DoctorFinding, "documentation" | "ruleId">): string {
