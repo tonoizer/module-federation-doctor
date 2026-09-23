@@ -12,7 +12,7 @@ const schemasDir = path.join(root, "schemas");
 /** Schemas that are programmatic contracts (not persisted CLI artifacts). */
 const PROGRAMMATIC_SCHEMA_FILES = new Set(["ui.schema.json"]);
 
-export type SchemaKind = "artifact" | "programmatic";
+type SchemaKind = "artifact" | "programmatic";
 
 export type SchemaContract = {
   file: string;
@@ -139,8 +139,7 @@ export async function assertPackageExportsMatchSchemas(): Promise<void> {
   }
 }
 
-/** Representative on-disk fixtures for pack:check (no mfdoctor runtime required). */
-export async function validateFixturePayloads(): Promise<void> {
+async function validateFixturePayloads(): Promise<void> {
   const evidence: unknown = JSON.parse(
     await fs.readFile(path.join(root, "examples/evidence/v2-conflict.json"), "utf8"),
   );
