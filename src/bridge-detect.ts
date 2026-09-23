@@ -1,8 +1,8 @@
 import type { NormalizedMFConfig, NormalizedShared, ProjectFacts } from "./types.js";
 
-export const BRIDGE_REACT_PKG = "@module-federation/bridge-react";
-export const BRIDGE_REACT_PLUGIN = "@module-federation/bridge-react/plugin";
-export const BRIDGE_VUE3_PKG = "@module-federation/bridge-vue3";
+const BRIDGE_REACT_PKG = "@module-federation/bridge-react";
+const BRIDGE_REACT_PLUGIN = "@module-federation/bridge-react/plugin";
+const BRIDGE_VUE3_PKG = "@module-federation/bridge-vue3";
 
 export type ReactBridgeEntryMajor = 18 | 19 | "bare" | undefined;
 

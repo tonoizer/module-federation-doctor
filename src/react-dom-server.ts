@@ -16,8 +16,7 @@ export function isReactDomServerSpecifier(specifier: string): boolean {
   );
 }
 
-/** Emitted asset names that look like a bundled react-dom/server chunk. */
-export function isReactDomServerAssetPath(asset: string): boolean {
+function isReactDomServerAssetPath(asset: string): boolean {
   const normalized = asset.replaceAll("\\", "/");
   return /react-dom[/._-]server/i.test(normalized);
 }

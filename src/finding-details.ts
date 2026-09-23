@@ -35,14 +35,10 @@ export function findingRuleFamily(ruleId: string): FindingRuleFamily {
   return family.trim() || "unknown";
 }
 
-/** Compatibility aliases for callers that prefer a noun-first helper name. */
-export const ruleFamilyForFinding = findingRuleFamily;
-export const ruleFamily = findingRuleFamily;
-
 /** Bounds shared by repair context and rendered agent evidence. */
 export const MAX_REPAIR_EVIDENCE_KEYS = 8;
-export const MAX_REPAIR_EVIDENCE_VALUE_CHARS = 120;
-export const MAX_REPAIR_EVIDENCE_KEY_CHARS = 120;
+const MAX_REPAIR_EVIDENCE_VALUE_CHARS = 120;
+const MAX_REPAIR_EVIDENCE_KEY_CHARS = 120;
 
 /** Inventory of built-in or engine rule IDs that emit typed details. */
 export const TYPED_DETAILS_RULE_IDS = [

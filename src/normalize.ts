@@ -13,7 +13,7 @@ import type {
  * and webpack `ExposesConfig`. Docs list `import` and optional chunk `name`.
  * There is no documented don't-expose / filter field at that commit.
  */
-export const KNOWN_EXPOSE_CONFIG_KEYS = new Set(["import", "name"]);
+const KNOWN_EXPOSE_CONFIG_KEYS = new Set(["import", "name"]);
 
 /** Public expose keys after normalize (confirmed `import` targets only). */
 export function publicExposeKeys(

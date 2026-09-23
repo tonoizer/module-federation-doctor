@@ -52,7 +52,7 @@ export function graphScopeFor(graphScope: EvidenceScope, scope: EvidenceRuleScop
   };
 }
 
-export function graphEvaluationFor(
+function graphEvaluationFor(
   evaluation: RuleEvaluationResult,
   graphScope: EvidenceScope,
 ): EvidenceRuleEvaluation {

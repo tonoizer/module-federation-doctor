@@ -26,7 +26,7 @@ import {
   type EvidenceProjectionRun,
 } from "./evidence-graph-projection.js";
 
-export type MigratedFederationEvidenceRuleId = (typeof MIGRATED_GROUP4_RULE_IDS)[number];
+type MigratedFederationEvidenceRuleId = (typeof MIGRATED_GROUP4_RULE_IDS)[number];
 
 function toOracleEvidenceFinding(value: FederationOracleFinding) {
   const suggestion = federationRuleMeta.find((meta) => meta.id === value.ruleId)?.fix;
@@ -105,8 +105,9 @@ function federationEvidenceRule(id: MigratedFederationEvidenceRuleId): EvidenceA
   };
 }
 
-export const migratedFederationEvidenceRules: readonly EvidenceAwareRule[] =
-  MIGRATED_GROUP4_RULE_IDS.map((id) => federationEvidenceRule(id));
+const migratedFederationEvidenceRules: readonly EvidenceAwareRule[] = MIGRATED_GROUP4_RULE_IDS.map(
+  (id) => federationEvidenceRule(id),
+);
 
 export const migratedFederationEvidenceRuleIds: ReadonlySet<string> = new Set(
   migratedFederationEvidenceRules.map((rule) => rule.meta.id),
