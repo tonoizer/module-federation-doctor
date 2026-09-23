@@ -385,9 +385,6 @@ export function buildVerificationPlan(
   };
 }
 
-/** Alias used by integrations that describe the plan as an agent handoff. */
-export const createVerificationPlan = buildVerificationPlan;
-
 /** Render the plan as stable Markdown for prompts and diagnostics summaries. */
 export function renderVerificationPlan(plan: VerificationPlan): string {
   const followUpCommand =
