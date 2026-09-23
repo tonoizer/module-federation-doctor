@@ -116,9 +116,6 @@ importers:
         specifier: 'catalog:'
         version: 19.2.8(react@19.2.8)
     devDependencies:
-      '@tonoizer/mfdoctor':
-        specifier: workspace:*
-        version: link:../..
       '@types/node':
         specifier: 26.2.0
         version: 26.2.0
