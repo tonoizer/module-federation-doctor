@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, type Page } from "@playwright/test";
 
-export type RuntimeInstance = {
+type RuntimeInstance = {
   name: string;
   identity: string;
   entry: string;
@@ -53,7 +53,6 @@ function matrixFixture(id: string): MatrixFixture {
   };
 }
 
-/** Frameworks with a production plugin that can emit two containers in one config. */
 const runtimeFixtures = localMatrix
   .filter((cell) => cell.runtime)
   .map((cell) => matrixFixture(cell.id));
@@ -62,10 +61,7 @@ export const MULTI_INSTANCE_FIXTURES = runtimeFixtures.filter(
   (fixture) => fixture.instances.length > 1,
 );
 
-/** Adapter cells that keep the supported single-plugin Rspack/Rsbuild contract covered. */
 export const ADAPTER_FIXTURES = runtimeFixtures.filter((fixture) => fixture.instances.length === 1);
-
-export const ALL_MATRIX_FIXTURES = [...MULTI_INSTANCE_FIXTURES, ...ADAPTER_FIXTURES] as const;
 
 type JsonRecord = Record<string, any>;
 
