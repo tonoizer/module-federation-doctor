@@ -66,6 +66,16 @@ function manifestBody(
 }
 
 describe("manifest compare", () => {
+  it("does not include malformed caller URLs in errors", async () => {
+    const token = "compare-secret-token";
+    await expect(
+      compareManifests([`https://[invalid]/mf-manifest.json?token=${token}`]),
+    ).rejects.toMatchObject({
+      name: "ProbeError",
+      message: "Invalid URL.",
+    });
+  });
+
   it("reports no diffs for matching manifests", async () => {
     const { origin } = await serve((_request, response) => {
       const body = manifestBody(origin);

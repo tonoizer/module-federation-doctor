@@ -292,7 +292,7 @@ function safeUrl(value: string, options: ProbeUrlOptions = {}): URL {
   try {
     url = new URL(value);
   } catch {
-    throw new ProbeError(`Invalid URL: ${value}`);
+    throw new ProbeError("Invalid URL.");
   }
   assertProbeUrlAllowed(url, options);
   return url;
