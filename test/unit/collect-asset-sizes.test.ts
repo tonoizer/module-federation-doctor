@@ -6,9 +6,13 @@ import { attachAssetSizes, lookupAssetSize, sumAssetSizes } from "../../src/coll
 import type { ProjectFacts } from "../../src/types.js";
 
 const roots: string[] = [];
+const outsidePaths: string[] = [];
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    outsidePaths.splice(0).map((outside) => fs.rm(outside, { recursive: true, force: true })),
+  );
 });
 
 function baseFacts(): ProjectFacts {
@@ -74,5 +78,77 @@ describe("asset size collection", () => {
     };
     await attachAssetSizes(facts, root);
     expect(facts.artifacts.assetSizes).toBeUndefined();
+  });
+
+  it("does not size a manifest asset that escapes the project root", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-sizes-"));
+    roots.push(root);
+    const outside = path.join(path.dirname(root), `${path.basename(root)}-outside.txt`);
+    outsidePaths.push(outside);
+    await fs.writeFile(outside, Buffer.alloc(128));
+
+    const facts = baseFacts();
+    facts.artifacts.manifest = {
+      path: "dist/mf-manifest.json",
+      valid: true,
+      remoteEntry: { name: `../../${path.basename(outside)}`, path: "" },
+      exposes: [],
+      shared: [],
+    };
+
+    await attachAssetSizes(facts, root);
+    expect(facts.artifacts.assetSizes).toBeUndefined();
+  });
+
+  it("does not size an emitted asset that escapes an output root", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-sizes-"));
+    roots.push(root);
+    const outside = path.join(path.dirname(root), `${path.basename(root)}-outside.txt`);
+    outsidePaths.push(outside);
+    await fs.writeFile(outside, Buffer.alloc(128));
+
+    const facts = baseFacts();
+    facts.artifacts.emittedAssets = [`../../${path.basename(outside)}`];
+
+    await attachAssetSizes(facts, root, ["dist"]);
+    expect(facts.artifacts.assetSizes).toBeUndefined();
+  });
+
+  it("does not size an in-root asset path that resolves through a symlink outside", async ({
+    skip,
+  }) => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-sizes-"));
+    roots.push(root);
+    const outside = path.join(path.dirname(root), `${path.basename(root)}-outside`);
+    outsidePaths.push(outside);
+    await fs.mkdir(path.join(root, "dist"), { recursive: true });
+    await fs.mkdir(outside);
+    await fs.writeFile(path.join(outside, "remoteEntry.js"), Buffer.alloc(128));
+    try {
+      await fs.symlink(outside, path.join(root, "dist", "linked"), "junction");
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EPERM" || code === "EACCES" || code === "ENOTSUP") skip();
+      throw error;
+    }
+
+    const facts = baseFacts();
+    facts.artifacts.emittedAssets = ["dist/linked/remoteEntry.js"];
+
+    await attachAssetSizes(facts, root, ["dist"]);
+    expect(facts.artifacts.assetSizes).toBeUndefined();
+  });
+
+  it("preserves in-root output-root asset aliases", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-sizes-"));
+    roots.push(root);
+    await fs.mkdir(path.join(root, "dist"));
+    await fs.writeFile(path.join(root, "dist", "remoteEntry.js"), Buffer.alloc(128));
+    const facts = baseFacts();
+    facts.artifacts.emittedAssets = ["remoteEntry.js"];
+
+    await attachAssetSizes(facts, root, ["dist"]);
+    expect(lookupAssetSize(facts.artifacts.assetSizes, "dist/remoteEntry.js")).toBe(128);
+    expect(lookupAssetSize(facts.artifacts.assetSizes, "remoteEntry.js")).toBe(128);
   });
 });
