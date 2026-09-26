@@ -345,6 +345,31 @@ describe("agent prompts", () => {
     expect(summary).toContain("## Verification plan");
   });
 
+  it("rejects a diagnostics symlink outside the project and permits an in-root link", async () => {
+    const base = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-diag-links-"));
+    roots.push(base);
+    const root = path.join(base, "project");
+    const outside = path.join(base, "outside");
+    const inside = path.join(root, "inside");
+    await fs.mkdir(root);
+    await fs.mkdir(outside);
+    await fs.mkdir(inside);
+    await fs.mkdir(path.join(outside, "prompts"));
+    await fs.writeFile(path.join(outside, "prompts", "keep.txt"), "keep");
+
+    const linkType = process.platform === "win32" ? "junction" : "dir";
+    await fs.symlink(outside, path.join(root, "outside-link"), linkType);
+    expect(() => resolveDiagnosticsDir(root, "outside-link")).toThrow(/inside the project root/);
+    await expect(fs.readFile(path.join(outside, "prompts", "keep.txt"), "utf8")).resolves.toBe(
+      "keep",
+    );
+
+    await fs.symlink(inside, path.join(root, "inside-link"), linkType);
+    expect(resolveDiagnosticsDir(root, "inside-link/diagnostics")).toBe(
+      path.join(await fs.realpath(inside), "diagnostics"),
+    );
+  });
+
   it("infers runtime and workspace operation plans for diagnostics dumps", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-diag-context-"));
     roots.push(root);

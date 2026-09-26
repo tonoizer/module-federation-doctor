@@ -1,3 +1,4 @@
+import { lstatSync, realpathSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { writeFileAtomic } from "./atomic-write.js";
@@ -565,10 +566,7 @@ export function findPromptTarget(
   return selectTopFindings(byRule, 1)[0];
 }
 
-/**
- * Resolve a diagnostics dump directory that must stay inside `root`.
- * Rejects absolute escapes and `..` traversal outside the workspace root.
- */
+/** Resolve a diagnostics dump directory inside the physical project root. */
 export function resolveDiagnosticsDir(root: string, diagnosticsDir: string): string {
   const resolvedRoot = path.resolve(root);
   const resolved = path.resolve(resolvedRoot, diagnosticsDir);
@@ -578,7 +576,35 @@ export function resolveDiagnosticsDir(root: string, diagnosticsDir: string): str
       `--diagnostics-dir must stay inside the project root (${resolvedRoot}); got ${diagnosticsDir}`,
     );
   }
-  return resolved;
+
+  const physicalRoot = realpathSync(resolvedRoot);
+  let existing = resolved;
+  const missing: string[] = [];
+  while (true) {
+    try {
+      lstatSync(existing);
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      const parent = path.dirname(existing);
+      if (parent === existing) throw error;
+      missing.unshift(path.basename(existing));
+      existing = parent;
+    }
+  }
+  // realpathSync rejects dangling links and resolves every existing parent.
+  const physical = path.resolve(realpathSync(existing), ...missing);
+  const physicalRelative = path.relative(physicalRoot, physical);
+  if (
+    physicalRelative === ".." ||
+    physicalRelative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(physicalRelative)
+  ) {
+    throw new Error(
+      `--diagnostics-dir must stay inside the project root (${resolvedRoot}); got ${diagnosticsDir}`,
+    );
+  }
+  return physical;
 }
 
 function safePromptFilename(finding: DoctorFinding, index: number): string {
