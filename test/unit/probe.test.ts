@@ -28,6 +28,16 @@ async function serve(handler: RequestListener): Promise<{ server: Server; origin
 }
 
 describe("manifest probe", () => {
+  it("does not include malformed caller URLs in errors", async () => {
+    const token = "probe-secret-token";
+    await expect(
+      probeManifest(`https://[invalid]/mf-manifest.json?token=${token}`),
+    ).rejects.toMatchObject({
+      name: "ProbeError",
+      message: "Invalid URL.",
+    });
+  });
+
   it("reads a bounded manifest and checks its remote entry without executing it", async () => {
     const methods: string[] = [];
     const { origin } = await serve((request, response) => {
