@@ -1271,6 +1271,19 @@ export async function attachAssetSizes(
   const manifestDir = facts.artifacts.manifest?.path
     ? path.dirname(path.join(root, facts.artifacts.manifest.path))
     : root;
+  const rootAbsolute = path.resolve(root);
+  const rootReal = await fs.realpath(rootAbsolute).catch(() => undefined);
+  if (!rootReal) {
+    delete facts.artifacts.assetSizes;
+    return;
+  }
+  const isWithin = (parent: string, candidate: string): boolean => {
+    const relative = path.relative(parent, candidate);
+    return (
+      relative === "" ||
+      (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+    );
+  };
   const sizes: Record<string, number> = {};
 
   const orderedNames = [...names].sort(compareCodePoint);
@@ -1304,9 +1317,13 @@ export async function attachAssetSizes(
     const result: Record<string, number> = {};
     for (const candidate of candidates) {
       try {
-        const stat = await fs.stat(candidate);
+        const candidateAbsolute = path.resolve(rootAbsolute, candidate);
+        if (!isWithin(rootAbsolute, candidateAbsolute)) continue;
+        const candidateReal = await fs.realpath(candidateAbsolute);
+        if (!isWithin(rootReal, candidateReal)) continue;
+        const stat = await fs.stat(candidateReal);
         if (!stat.isFile()) continue;
-        const relative = relativePath(root, candidate);
+        const relative = relativePath(rootAbsolute, candidateAbsolute);
         result[relative] = stat.size;
         if (outputRoots === undefined || outputRoots.length === 1) {
           result[normalizedName] = stat.size;
