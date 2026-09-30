@@ -68,7 +68,9 @@ dangerouslyAllowAllBuilds: false
 # (which pins react-router 7.x). Drop this override when @rspress/core depends on
 # react-router >=8.3.0. react-router-dom has no 8.x release yet.
 # Dependabot alert #48 / GHSA-2v37-7h3g-55p8, nanoid <3.3.18 infinite loop when size is zero. Drop when upstream pins >=3.3.18.
-# Dependabot alerts #49–#52, fast-uri <3.1.6 (GHSA-jqff-g426-hqxp, GHSA-f65p-4m7j-42xc, GHSA-5jgf-p345-68v8, GHSA-fph4-wmhf-6fwf). Drop when upstream pins >=3.1.6.
+# Dependabot alerts #57/#59/#69, fast-uri <3.1.8 (GHSA-58mr-gqgx-xq4g,
+# GHSA-qw65-cvwx-89v3, GHSA-hrr3-gc8f-f4qj; also covers #49–#52). Drop when
+# upstream pins >=3.1.8.
 # Dependabot alerts #54/#55 / GHSA-82fw-gwwq-j7x9, vitest/@vitest/mocker
 # <4.1.11 path traversal via redirect mock. Root is already vite-plus 0.3.0 +
 # vitest 4.1.11; remaining 4.1.10 came from examples/compatibility/rolldown
@@ -76,11 +78,18 @@ dangerouslyAllowAllBuilds: false
 # Dependabot alert #56 / GHSA-vwc7-r8mq-g2x9, adm-zip 0.5.9–0.6.0 follows
 # extraction-destination symlinks (CVE-2026-76845). Transitive via
 # @module-federation/dts-plugin@2.9.0. Drop when dts-plugin pins adm-zip >=0.6.1.
+# Dependabot alerts #58–#68, undici <7.29.1 (GHSA-rfgv-xxqx-mfg5,
+# GHSA-w293-vg96-wgc3, GHSA-pmjh-fq2x-6v4x, GHSA-3xpg-4rpp-hhhm,
+# GHSA-2jfj-6hjv-fm6j, GHSA-rx4f-c7p8-82vq, GHSA-3wwx-pv8p-q78v,
+# GHSA-r53p-7pc4-xj5r, GHSA-2gqq-gqf2-x968, GHSA-8436-99hf-9mmv).
+# Transitive via @module-federation/dts-plugin@2.9.0. Drop when dts-plugin
+# pins undici >=7.29.1.
 overrides:
   react-router: 8.3.0
   "nanoid@3": 3.3.18
-  "fast-uri@3": 3.1.6
+  "fast-uri@3": 3.1.8
   adm-zip: 0.6.1
+  "undici@7": 7.29.1
   "vitest@4": 4.1.11
   "@vitest/browser@4": 4.1.11
   "@vitest/browser-preview@4": 4.1.11
