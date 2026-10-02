@@ -1,5 +1,12 @@
 # @tonoizer/mfdoctor
 
+## 2.0.4
+
+### Patch Changes
+
+- 4642782: Print structured CLI errors with capabilities error codes and concrete `fix:` / `next:` remediations. Terminal next-action lines and plugin policy failures now point at `mfdoctor prompt --finding <ruleId>`.
+- 4a7f1e8: Attach per-rule how-to-fix suggestions on findings, SARIF (`help.text`, `properties.fix`, incomplete-reason remediations), diagnostics dumps, and plugin incomplete failures. Engine stderr stays quiet when a failure report was already written.
+
 ## 2.0.3
 
 ### Patch Changes
