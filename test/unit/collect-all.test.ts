@@ -50,6 +50,9 @@ describe("collect-all-then-fail", () => {
     expect(result.report.findings.some((item) => item.ruleId === "config/name-required")).toBe(
       true,
     );
+    expect(
+      result.report.findings.find((item) => item.ruleId === "config/name-required")?.suggestion,
+    ).toMatch(/name/);
     expect(result.report.findings.some((item) => item.ruleId === "test/throws")).toBe(true);
     expect(result.report.findings.length).toBeGreaterThan(1);
     expect(result.exitCode).toBe(1);
@@ -127,5 +130,51 @@ describe("collect-all-then-fail", () => {
     ).toThrow(
       /mfdoctor prompt --finding config\/name-required[\s\S]*config\/name-required[\s\S]*shared\/singleton-risk[\s\S]*shared\/version-unsatisfied/,
     );
+  });
+
+  it("includes incomplete-reason remediations when analysis cannot complete", () => {
+    expect(() =>
+      failAfterCollect({
+        facts: {
+          schemaVersion: 1,
+          project: { name: "demo", root: "." },
+          bundler: { name: "vite", mode: "ci" },
+          capabilities: {
+            config: true,
+            sourceImports: false,
+            manifest: false,
+            stats: false,
+            emittedAssets: false,
+            installedVersions: false,
+          },
+          dependencies: { declared: {}, installed: {} },
+          imports: {
+            sourceFiles: [],
+            specifiers: [],
+            packages: [],
+            dynamicPackages: [],
+            remotes: [],
+            unresolvedDynamic: [],
+            evidenceSources: [],
+          },
+          artifacts: { emittedAssets: [] },
+        },
+        report: {
+          schemaVersion: 1,
+          capabilities: {
+            config: true,
+            sourceImports: false,
+            manifest: false,
+            stats: false,
+            emittedAssets: false,
+            installedVersions: false,
+          },
+          status: { complete: false, incompleteReasons: ["missing-emit"] },
+          summary: { projects: 1, info: 0, warnings: 0, errors: 0 },
+          findings: [],
+        },
+        exitCode: 2,
+      }),
+    ).toThrow(/missing-emit \(rebuild with a mfdoctor adapter/);
   });
 });

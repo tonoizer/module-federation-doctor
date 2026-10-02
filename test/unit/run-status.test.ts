@@ -6,9 +6,11 @@ import { DEFAULT_ANALYSIS_BUDGETS } from "../../src/analysis-budgets.js";
 import {
   computeRunStatus,
   emptyRunStatus,
+  fixForIncompleteReason,
   hasRequiredEvidence,
   INCOMPLETE_REASON_CODES,
   INCOMPLETE_REASON_FIX,
+  incompleteReasonRemediations,
   isRunStatusComplete,
   isStrictlyComplete,
   markRunIncomplete,
@@ -351,6 +353,14 @@ describe("computeRunStatus", () => {
     for (const code of INCOMPLETE_REASON_CODES) {
       expect(INCOMPLETE_REASON_FIX[code].length).toBeGreaterThan(10);
     }
+    expect(
+      incompleteReasonRemediations(["missing-emit", "missing-emit", "partial-bundler"]),
+    ).toEqual([
+      { code: "missing-emit", fix: INCOMPLETE_REASON_FIX["missing-emit"] },
+      { code: "partial-bundler", fix: INCOMPLETE_REASON_FIX["partial-bundler"] },
+    ]);
+    expect(fixForIncompleteReason("doctor/partial-analysis")).toMatch(/doctor\/partial-analysis/);
+    expect(incompleteReasonRemediations(undefined)).toEqual([]);
   });
 
   it("keeps report.schema.json incompleteReasons enum in sync", async () => {

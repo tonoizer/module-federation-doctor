@@ -65,8 +65,11 @@ export type { HealthScoreResult } from "./health-score.js";
 export {
   computeRunStatus,
   emptyRunStatus,
+  fixForIncompleteReason,
   hasRequiredEvidence,
   INCOMPLETE_REASON_CODES,
+  INCOMPLETE_REASON_FIX,
+  incompleteReasonRemediations,
   isRunStatusComplete,
   isStrictlyComplete,
   markRunIncomplete,
@@ -75,6 +78,7 @@ export {
 } from "./run-status.js";
 export type {
   ComputeRunStatusOptions,
+  IncompleteReasonRemediation,
   RequireCompleteOptions,
   RunFailureDetails,
   RunFailureErrorCode,

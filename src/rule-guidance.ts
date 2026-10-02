@@ -598,7 +598,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "artifact/expose-missing": {
     category: "correctness",
     impact: "The config promises an expose that the emitted manifest does not contain.",
-    fix: "Fix the expose build or remove the stale public contract.",
+    fix: "Rebuild the producer so the expose lands in `mf-manifest.json`, or remove the stale `exposes` key from the Module Federation config.",
     sources: ["https://module-federation.io/configure/exposes.html", manifest],
   },
   "doctor/partial-analysis": {
@@ -638,7 +638,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "shared/eager-without-singleton": {
     category: "performance",
     impact: "An eager non-singleton can add copies to initial chunks without guaranteeing reuse.",
-    fix: "Make it singleton when safe, or remove eager loading.",
+    fix: "Set `singleton: true` on that shared package when it holds framework state, or drop `eager: true` so the runtime can load a single copy.",
     sources: [shared],
   },
   "shared/unused": {
@@ -716,7 +716,7 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
   "federation/name-conflict": {
     category: "correctness",
     impact: "Duplicate container names collide in runtime data and global chunk storage.",
-    fix: "Give every participating container a unique stable name.",
+    fix: "Give every participating container a unique stable `name` in the Module Federation plugin options.",
     sources: ["https://module-federation.io/configure/name.html"],
   },
   "federation/version-conflict": {

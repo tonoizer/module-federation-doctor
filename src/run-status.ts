@@ -36,6 +36,27 @@ export function fixForIncompleteReason(reason: string): string {
   return `resolve ${reason}`;
 }
 
+/** One incomplete-reason code plus the matching how-to-fix string. */
+export interface IncompleteReasonRemediation {
+  code: string;
+  fix: string;
+}
+
+/** Deduplicated remediations for `status.incompleteReasons` (and partial-analysis labels). */
+export function incompleteReasonRemediations(
+  reasons: readonly string[] | undefined,
+): IncompleteReasonRemediation[] {
+  if (!reasons || reasons.length === 0) return [];
+  const seen = new Set<string>();
+  const items: IncompleteReasonRemediation[] = [];
+  for (const code of reasons) {
+    if (seen.has(code)) continue;
+    seen.add(code);
+    items.push({ code, fix: fixForIncompleteReason(code) });
+  }
+  return items;
+}
+
 /** Versioned detail payload used for failures produced by the analysis engine. */
 export const RUN_FAILURE_DETAILS_SCHEMA = "doctor.run-failure.v1" as const;
 

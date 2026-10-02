@@ -93,7 +93,7 @@
       "remediation": {
         "summary": "The config promises an expose that the emitted manifest does not contain.",
         "documentation": "/rules/artifact/expose-missing",
-        "fix": "Fix the expose build or remove the stale public contract."
+        "fix": "Rebuild the producer so the expose lands in `mf-manifest.json`, or remove the stale `exposes` key from the Module Federation config."
       },
       "prerequisites": {
         "allOf": [
@@ -6226,7 +6226,7 @@
       "remediation": {
         "summary": "Duplicate container names collide in runtime data and global chunk storage.",
         "documentation": "/rules/federation/name-conflict",
-        "fix": "Give every participating container a unique stable name."
+        "fix": "Give every participating container a unique stable `name` in the Module Federation plugin options."
       },
       "prerequisites": {
         "allOf": [
@@ -9265,7 +9265,7 @@
       "remediation": {
         "summary": "An eager non-singleton can add copies to initial chunks without guaranteeing reuse.",
         "documentation": "/rules/shared/eager-without-singleton",
-        "fix": "Make it singleton when safe, or remove eager loading."
+        "fix": "Set `singleton: true` on that shared package when it holds framework state, or drop `eager: true` so the runtime can load a single copy."
       },
       "prerequisites": {
         "allOf": [

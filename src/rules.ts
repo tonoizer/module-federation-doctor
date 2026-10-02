@@ -2551,7 +2551,7 @@ export const builtInRules: DoctorRule[] = [
         : unresolvedDynamic.length > 0
           ? "Prefer string-literal `import()` / `loadRemote` / `loadShare`, or pass an opt-in Observability export via `runtimeTrace` / `mfdoctor runtime`."
           : configMissing
-            ? "Pass explicit MF options."
+            ? "Pass `moduleFederation` options (at least `name`) to the mfdoctor adapter or CLI so config facts exist, then re-run."
             : missing.includes("outputPublicPath")
               ? "Expose public bundler `output.publicPath` (Rsbuild) or Vite MF `publicPath` on the resolved plugin config so mfdoctor can classify it."
               : (enhancedStatsSuggestion ??

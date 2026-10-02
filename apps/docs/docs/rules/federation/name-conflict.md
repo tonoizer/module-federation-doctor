@@ -9,7 +9,7 @@ Duplicate container names collide in runtime data and global chunk storage.
 
 ## How to fix it
 
-Give every participating container a unique stable name.
+Give every participating container a unique stable `name` in the Module Federation plugin options.
 
 Suppress or retarget with `rules["federation/name-conflict"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 

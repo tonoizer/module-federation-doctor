@@ -1196,3 +1196,12 @@ describe("evidence-aware rule contract", () => {
     );
   });
 });
+
+describe("rule guidance remediations", () => {
+  it("publishes an actionable how-to-fix for every built-in rule", () => {
+    for (const [id, guidance] of Object.entries(ruleGuidance)) {
+      expect(guidance.fix.trim().length, id).toBeGreaterThan(24);
+      expect(guidance.fix, id).not.toMatch(/^(fix it|see docs|n\/a|todo)\b/i);
+    }
+  });
+});

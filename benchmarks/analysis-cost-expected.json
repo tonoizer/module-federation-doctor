@@ -42,7 +42,7 @@
               "project": "small",
               "fingerprint": "a905e1cc07303353b80d505fc671541a0b46ec28ef80974044a91db3a9599c35",
               "documentation": "/rules/doctor/partial-analysis",
-              "suggestion": "Pass explicit MF options.",
+              "suggestion": "Pass `moduleFederation` options (at least `name`) to the mfdoctor adapter or CLI so config facts exist, then re-run.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
@@ -220,7 +220,7 @@
               "project": "small",
               "fingerprint": "a905e1cc07303353b80d505fc671541a0b46ec28ef80974044a91db3a9599c35",
               "documentation": "/rules/doctor/partial-analysis",
-              "suggestion": "Pass explicit MF options.",
+              "suggestion": "Pass `moduleFederation` options (at least `name`) to the mfdoctor adapter or CLI so config facts exist, then re-run.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
@@ -398,7 +398,7 @@
               "project": "small",
               "fingerprint": "a905e1cc07303353b80d505fc671541a0b46ec28ef80974044a91db3a9599c35",
               "documentation": "/rules/doctor/partial-analysis",
-              "suggestion": "Pass explicit MF options.",
+              "suggestion": "Pass `moduleFederation` options (at least `name`) to the mfdoctor adapter or CLI so config facts exist, then re-run.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
@@ -576,7 +576,7 @@
               "project": "medium",
               "fingerprint": "9deb1eb82b33ae9add6ddcce68fc2ade69f5a23f67cb374868355828788c578a",
               "documentation": "/rules/doctor/partial-analysis",
-              "suggestion": "Pass explicit MF options.",
+              "suggestion": "Pass `moduleFederation` options (at least `name`) to the mfdoctor adapter or CLI so config facts exist, then re-run.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
@@ -754,7 +754,7 @@
               "project": "medium",
               "fingerprint": "9deb1eb82b33ae9add6ddcce68fc2ade69f5a23f67cb374868355828788c578a",
               "documentation": "/rules/doctor/partial-analysis",
-              "suggestion": "Pass explicit MF options.",
+              "suggestion": "Pass `moduleFederation` options (at least `name`) to the mfdoctor adapter or CLI so config facts exist, then re-run.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
@@ -932,7 +932,7 @@
               "project": "medium",
               "fingerprint": "9deb1eb82b33ae9add6ddcce68fc2ade69f5a23f67cb374868355828788c578a",
               "documentation": "/rules/doctor/partial-analysis",
-              "suggestion": "Pass explicit MF options.",
+              "suggestion": "Pass `moduleFederation` options (at least `name`) to the mfdoctor adapter or CLI so config facts exist, then re-run.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
@@ -1110,7 +1110,7 @@
               "project": "large",
               "fingerprint": "d5ad1f9ebc00ac163a119d5aa4311b11ba78851e1010f789f30f482027469400",
               "documentation": "/rules/doctor/partial-analysis",
-              "suggestion": "Pass explicit MF options.",
+              "suggestion": "Pass `moduleFederation` options (at least `name`) to the mfdoctor adapter or CLI so config facts exist, then re-run.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
@@ -1295,7 +1295,7 @@
               "project": "large",
               "fingerprint": "d5ad1f9ebc00ac163a119d5aa4311b11ba78851e1010f789f30f482027469400",
               "documentation": "/rules/doctor/partial-analysis",
-              "suggestion": "Pass explicit MF options.",
+              "suggestion": "Pass `moduleFederation` options (at least `name`) to the mfdoctor adapter or CLI so config facts exist, then re-run.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],
@@ -1480,7 +1480,7 @@
               "project": "large",
               "fingerprint": "d5ad1f9ebc00ac163a119d5aa4311b11ba78851e1010f789f30f482027469400",
               "documentation": "/rules/doctor/partial-analysis",
-              "suggestion": "Pass explicit MF options.",
+              "suggestion": "Pass `moduleFederation` options (at least `name`) to the mfdoctor adapter or CLI so config facts exist, then re-run.",
               "detailsSchema": "doctor.partial-analysis.v1",
               "details": {
                 "evidenceSources": ["source"],

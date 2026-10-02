@@ -177,6 +177,27 @@ does not change rule evaluation or fingerprints. Legacy callers keep their
 existing exit behavior; callers that opt into `requireComplete` treat every
 non-empty reason list as a policy failure (exit `1`).
 
+Terminal next-action lines, plugin incomplete failures, `mfdoctor prompt`
+verification plans, and diagnostics dumps include the matching how-to-fix for
+each code. JSON `status` stays the stable code list (no extra schema fields).
+
+## SARIF remediations
+
+`.mf/doctor/results.sarif` carries the same remediations Code Scanning and
+agents can read without scraping terminal output:
+
+- Each rule descriptor includes `shortDescription`, `fullDescription`,
+  `help.text` (how to fix), and `helpUri`
+- Each result includes `properties.fix` when a suggestion exists (finding
+  suggestion, otherwise the rule catalog fix)
+- `runs[0].properties.incompleteReasons` is `{ code, fix }[]` for
+  `status.incompleteReasons`
+- `runs[0].invocations[0].toolExecutionNotifications` repeats those
+  incomplete-reason remediations for SARIF consumers that read notifications
+
+Fingerprints stay `partialFingerprints.primaryLocationLineHash`. Adding help
+text or `properties.fix` does not change fingerprints.
+
 ## Health score (`summary.score`)
 
 Report summaries include an offline federation health score:

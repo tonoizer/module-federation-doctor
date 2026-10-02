@@ -45,6 +45,12 @@ Hard rule: **do not claim green from `mfdoctor check` alone.**
    mfdoctor prompt --finding <ruleId|fingerprint> .mf/doctor/report.json
    ```
 
+   Prefer `findings[].suggestion` in the JSON report and SARIF
+   `properties.fix` / `runs[0].properties.incompleteReasons[].fix` over
+   scraping engine stderr. A failed run that already wrote `report.json`
+   prints the structured report instead of a duplicate `could not complete`
+   dump.
+
 4. Apply a narrow fix for that finding. Rebuild with a mfdoctor adapter so emit
    evidence exists, then re-run tier 1 as needed.
 

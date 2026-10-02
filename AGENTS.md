@@ -35,6 +35,19 @@ as a Cursor/agent skill at `skills/mfdoctor/SKILL.md`.
    mfdoctor adapter when emit evidence is needed, then re-run `check` (and
    `workspace` / `federation` in monorepos) until policy passes.
 
+## Read remediations
+
+Prefer the written report over engine stderr (a failure that already wrote
+`.mf/doctor/report.json` does not repeat a long `mfdoctor could not complete`
+dump):
+
+- `findings[].suggestion` — how to fix that rule
+- `status.incompleteReasons` plus SARIF
+  `runs[0].properties.incompleteReasons[].fix` (and Code Scanning
+  `invocations[].toolExecutionNotifications`)
+- `mfdoctor prompt --finding <ruleId|fingerprint> .mf/doctor/report.json`
+- `.mf/doctor/diagnostics/summary.md` when `--diagnostics-dir` was used
+
 ## Hard rules
 
 - **No suppressions unless the user asked.** Do not add baselines, severity

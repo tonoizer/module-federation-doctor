@@ -7,7 +7,7 @@ import { resolvePrintLog, resolveQuiet, resolvePrompt } from "./config.js";
 import { formatTopAgentPrompts } from "./agent-prompt.js";
 import { doctorRuleDocUrl } from "./docs-url.js";
 import { ruleGuidance } from "./rule-guidance.js";
-import { fixForIncompleteReason } from "./run-status.js";
+import { fixForIncompleteReason, incompleteReasonRemediations } from "./run-status.js";
 import type {
   DoctorFinding,
   DoctorPrintLog,
@@ -312,10 +312,34 @@ function writeTerminal(
   if (text) stream.write(text + "\n");
 }
 
-function sarif(report: DoctorReport): Record<string, unknown> {
-  const rules = [...new Set(report.findings.map((item) => item.ruleId))].sort().map((id) => ({
+function firstSentence(text: string): string {
+  const match = text.match(/^[^.!?]+[.!?]?/);
+  const sentence = (match?.[0] ?? text).trim();
+  return sentence.length > 0 ? sentence : text.trim();
+}
+
+function sarifRuleDescriptor(id: string): Record<string, unknown> {
+  const guidance = ruleGuidance[id];
+  const helpUri = `https://github.com/tonoizer/module-federation-doctor/blob/main/apps/docs/docs/rules/${id}.md`;
+  if (!guidance) return { id, helpUri };
+  return {
     id,
-    helpUri: `https://github.com/tonoizer/module-federation-doctor/blob/main/apps/docs/docs/rules/${id}.md`,
+    shortDescription: { text: firstSentence(guidance.impact) },
+    fullDescription: { text: guidance.impact },
+    help: { text: guidance.fix },
+    helpUri,
+  };
+}
+
+function sarif(report: DoctorReport): Record<string, unknown> {
+  const rules = [...new Set(report.findings.map((item) => item.ruleId))]
+    .sort()
+    .map(sarifRuleDescriptor);
+  const incompleteReasons = incompleteReasonRemediations(report.status?.incompleteReasons);
+  const notifications = incompleteReasons.map((item) => ({
+    descriptor: { id: item.code },
+    level: "warning",
+    message: { text: `${item.code}: ${item.fix}` },
   }));
   return {
     version: "2.1.0",
@@ -323,45 +347,59 @@ function sarif(report: DoctorReport): Record<string, unknown> {
     runs: [
       {
         tool: { driver: { name: "mfdoctor", rules } },
-        results: report.findings.map((finding) => ({
-          ruleId: finding.ruleId,
-          level:
-            finding.severity === "warning"
-              ? "warning"
-              : finding.severity === "error"
-                ? "error"
-                : "note",
-          message: { text: finding.message },
-          partialFingerprints: { primaryLocationLineHash: finding.fingerprint },
-          ...(finding.suppressed
-            ? {
-                suppressions: [
-                  {
-                    kind: "external",
-                    justification:
-                      finding.suppressionReason ?? "Matched checked-in fingerprint baseline",
-                  },
-                ],
-              }
-            : {}),
-          ...(finding.location
-            ? {
-                locations: [
-                  {
-                    physicalLocation: {
-                      artifactLocation: { uri: finding.location.path },
-                      region: {
-                        ...(finding.location.line ? { startLine: finding.location.line } : {}),
-                        ...(finding.location.column
-                          ? { startColumn: finding.location.column }
-                          : {}),
+        invocations: [
+          {
+            executionSuccessful: report.status ? report.status.complete : true,
+            ...(notifications.length > 0 ? { toolExecutionNotifications: notifications } : {}),
+          },
+        ],
+        properties: {
+          complete: report.status ? report.status.complete : true,
+          incompleteReasons,
+        },
+        results: report.findings.map((finding) => {
+          const suggestion = suggestionFor(finding);
+          return {
+            ruleId: finding.ruleId,
+            level:
+              finding.severity === "warning"
+                ? "warning"
+                : finding.severity === "error"
+                  ? "error"
+                  : "note",
+            message: { text: finding.message },
+            partialFingerprints: { primaryLocationLineHash: finding.fingerprint },
+            ...(suggestion ? { properties: { fix: suggestion } } : {}),
+            ...(finding.suppressed
+              ? {
+                  suppressions: [
+                    {
+                      kind: "external",
+                      justification:
+                        finding.suppressionReason ?? "Matched checked-in fingerprint baseline",
+                    },
+                  ],
+                }
+              : {}),
+            ...(finding.location
+              ? {
+                  locations: [
+                    {
+                      physicalLocation: {
+                        artifactLocation: { uri: finding.location.path },
+                        region: {
+                          ...(finding.location.line ? { startLine: finding.location.line } : {}),
+                          ...(finding.location.column
+                            ? { startColumn: finding.location.column }
+                            : {}),
+                        },
                       },
                     },
-                  },
-                ],
-              }
-            : {}),
-        })),
+                  ],
+                }
+              : {}),
+          };
+        }),
       },
     ],
   };
