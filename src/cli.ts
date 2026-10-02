@@ -396,7 +396,7 @@ export function parseArgs(argv: string[]): Parsed {
       if (next !== "-")
         throw usageError('--output only supports "-" for stdout JSON.', {
           command,
-          fix: 'Pass `--output -` to print report JSON on stdout. Combine with `--no-write` to skip disk artifacts.',
+          fix: "Pass `--output -` to print report JSON on stdout. Combine with `--no-write` to skip disk artifacts.",
         });
       parsed.stdoutJson = true;
       index += 1;
@@ -405,7 +405,7 @@ export function parseArgs(argv: string[]): Parsed {
       if (target !== "-")
         throw usageError('--output only supports "-" for stdout JSON.', {
           command,
-          fix: 'Pass `--output -` to print report JSON on stdout. Combine with `--no-write` to skip disk artifacts.',
+          fix: "Pass `--output -` to print report JSON on stdout. Combine with `--no-write` to skip disk artifacts.",
         });
       parsed.stdoutJson = true;
     } else if (value === "--no-write") {
@@ -461,8 +461,7 @@ export function parseArgs(argv: string[]): Parsed {
 function parseFormats(value: string): OutputFormat[] {
   const formats = value.split(",").filter(Boolean);
   const invalid = formats.filter((format) => !outputFormats.has(format as OutputFormat));
-  if (formats.length === 0 || invalid.length > 0)
-    throw unknownFormatError(invalid[0] ?? value);
+  if (formats.length === 0 || invalid.length > 0) throw unknownFormatError(invalid[0] ?? value);
   return formats as OutputFormat[];
 }
 
@@ -549,9 +548,7 @@ async function runPrompt(parsed: Parsed): Promise<number> {
     const report = await loadReport(reportPath);
     if (parsed.finding) {
       const target = findPromptTarget(report.findings, parsed.finding);
-      if (!target) {
       if (!target) return writeCliError(missingFindingError(parsed.finding, report.findings));
-      }
       process.stdout.write(buildAgentPrompt(target) + "\n");
       return 0;
     }
@@ -564,6 +561,10 @@ async function runPrompt(parsed: Parsed): Promise<number> {
     return 0;
   } catch (error) {
     return writeCliError(error);
+  }
+}
+
+async function runBaseline(parsed: Parsed): Promise<number> {
   const action = parsed.baselineAction;
   if (!action) {
     return writeCliError(

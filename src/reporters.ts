@@ -153,7 +153,7 @@ function formatIncompleteFixes(reasons: string[]): string {
     return "rebuild with the mfdoctor adapter and rerun the check to complete analysis";
   const detail = [...new Set(reasons)]
     .slice(0, 3)
-    .map((reason) => `${reason} (${fixForIncompleteReason(reason)})`)
+    .map((reason) => `${reason}: ${fixForIncompleteReason(reason)}`)
     .join("; ");
   return `complete analysis (${detail})`;
 }

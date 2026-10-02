@@ -172,8 +172,7 @@ export function missingFindingError(selector: string, findings: DoctorFinding[])
       ids.length > 0
         ? `Use a fingerprint or rule id from the saved report. Omit --finding to print the top prompts, or pick one of: ${ids.join(", ")}.`
         : "Re-run `mfdoctor check` if you expected findings, then call `mfdoctor prompt` without --finding.",
-    next:
-      ids.length > 0 ? `mfdoctor prompt --finding ${ids[0]}` : "mfdoctor prompt",
+    next: ids.length > 0 ? `mfdoctor prompt --finding ${ids[0]}` : "mfdoctor prompt",
     usage: commandUsage("prompt"),
   });
 }
@@ -259,6 +258,23 @@ export function classifyThrownError(error: unknown): CliError {
       message,
       fix: "Create the missing file or pass the correct path. Saved reports default to `.mf/doctor/report.json`; project facts live at `.mf/doctor/project.json` after a mfdoctor adapter build.",
       next: "mfdoctor check --format json --output - --no-write",
+    });
+  }
+  if (/Failed to parse baseline|baseline file/i.test(message) && /JSON/i.test(message)) {
+    return new CliError({
+      code: "io-error",
+      message,
+      fix: "The baseline file is not valid JSON. Re-run `mfdoctor baseline generate` from a schema-valid report, or restore the previous baseline file.",
+      next: "mfdoctor baseline generate .mf/doctor/report.json",
+      usage: commandUsage("baseline"),
+    });
+  }
+  if (/mfdoctor\.config|ParseError/i.test(message)) {
+    return new CliError({
+      code: "io-error",
+      message,
+      fix: "Fix syntax in `mfdoctor.config.ts` (or `.js` / `.mjs`) and retry. The config must `export default` a DoctorOptions object.",
+      next: "mfdoctor check",
     });
   }
   if (code === "EACCES" || /permission denied/i.test(message)) {
@@ -359,8 +375,11 @@ function classifyRuntimeTraceError(error: RuntimeTraceError): CliError {
 function optionNames(command: string): string[] {
   const operation = CLI_OPERATIONS[command as keyof typeof CLI_OPERATIONS];
   if (!operation) return [];
-  const names = operation.options.flatMap((option) => [option.name, ...(option.aliases ?? [])]);
-  names.push("--help", "-h");
+  const names: string[] = ["--help", "-h"];
+  for (const option of operation.options) {
+    names.push(option.name);
+    if (option.aliases) names.push(...option.aliases);
+  }
   return names;
 }
 

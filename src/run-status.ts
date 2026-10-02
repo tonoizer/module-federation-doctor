@@ -30,8 +30,7 @@ export const INCOMPLETE_REASON_FIX: Record<IncompleteReasonCode, string> = {
 
 /** Human remediations for incomplete-reason codes and the partial-analysis fallback label. */
 export function fixForIncompleteReason(reason: string): string {
-  if (reason in INCOMPLETE_REASON_FIX)
-    return INCOMPLETE_REASON_FIX[reason as IncompleteReasonCode];
+  if (reason in INCOMPLETE_REASON_FIX) return INCOMPLETE_REASON_FIX[reason as IncompleteReasonCode];
   if (reason === "doctor/partial-analysis")
     return "inspect the `doctor/partial-analysis` finding and restore the missing evidence";
   return `resolve ${reason}`;
