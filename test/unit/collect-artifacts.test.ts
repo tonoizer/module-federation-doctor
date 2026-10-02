@@ -8,6 +8,7 @@ import { analyze, analyzeBuild } from "../../src/engine.js";
 import { writeReports } from "../../src/reporters.js";
 import { AnalysisContentCache } from "../../src/analysis-cache.js";
 import { validatePayload } from "../helpers/schema-contract.js";
+import { countPathReads, mockUnreadablePath } from "../helpers/fs-io.js";
 import type { ArtifactRecord, ArtifactStats, BuildOutputInput } from "../../src/types.js";
 
 const validManifestRecord = {
@@ -77,20 +78,41 @@ describe("artifact collection", () => {
     expect(facts).not.toHaveProperty("budget");
   });
 
+  it("does not read a source that the byte budget skipped before read", async () => {
+    const small = 'import "first";\n';
+    const large = `import "${"x".repeat(4000)}";\n`;
+    const root = await fixture({
+      "src/a.ts": small,
+      "src/z.ts": large,
+    });
+    const spy = countPathReads(path.join(root, "src/z.ts"));
+    try {
+      const facts = await collectProjectFacts(
+        await resolveOptions({
+          root,
+          analysisBudgets: { maxSourceBytes: Buffer.byteLength(small) },
+        }),
+      );
+      expect(facts.imports.sourceFiles).toEqual(["src/a.ts"]);
+      expect(facts.analysis?.status).toBe("partial");
+      expect(facts.analysis?.exceeded).toEqual([
+        { kind: "sourceBytes", limit: Buffer.byteLength(small) },
+      ]);
+      expect(spy.reads()).toBe(0);
+    } finally {
+      spy.restore();
+    }
+  });
+
   it("keeps a disappearing source file unresolved without aborting the scan", async () => {
     const root = await fixture({
       "src/race.ts": 'import "remote";\n',
       "src/kept.ts": 'import "kept";\n',
     });
-    const originalReadFile = fs.readFile;
-    vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
-      if (String(file).endsWith(`${path.sep}src${path.sep}race.ts`)) {
-        const error = new Error("file disappeared");
-        (error as NodeJS.ErrnoException).code = "ENOENT";
-        throw error;
-      }
-      return originalReadFile(file, options);
-    });
+    mockUnreadablePath(
+      path.join(root, "src/race.ts"),
+      Object.assign(new Error("file disappeared"), { code: "ENOENT" }),
+    );
 
     const facts = await collectProjectFacts(await resolveOptions({ root }));
 
@@ -124,26 +146,22 @@ describe("artifact collection", () => {
       ],
     });
     const root = await fixture({ "dist/mf-manifest.json": manifest });
-    const originalReadFile = fs.readFile;
-    const reads: string[] = [];
-    vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
-      reads.push(String(file));
-      return originalReadFile(file, options);
-    });
+    const spy = countPathReads(path.join(root, "dist/mf-manifest.json"));
+    try {
+      const facts = await collectProjectFacts(await resolveOptions({ root }));
 
-    const facts = await collectProjectFacts(await resolveOptions({ root }));
-
-    expect(facts.moduleFederation).toMatchObject({
-      name: "manifest-name",
-      shared: { react: expect.anything(), "react-dom": expect.anything() },
-      remotes: {
-        catalogAlias: { entry: "https://example.test/catalog.js" },
-        checkoutContainer: { entry: "https://example.test/checkout.js" },
-      },
-    });
-    expect(reads.filter((file) => file === path.join(root, "dist/mf-manifest.json"))).toHaveLength(
-      1,
-    );
+      expect(facts.moduleFederation).toMatchObject({
+        name: "manifest-name",
+        shared: { react: expect.anything(), "react-dom": expect.anything() },
+        remotes: {
+          catalogAlias: { entry: "https://example.test/catalog.js" },
+          checkoutContainer: { entry: "https://example.test/checkout.js" },
+        },
+      });
+      expect(spy.reads()).toBe(1);
+    } finally {
+      spy.restore();
+    }
   });
 
   it("bounds artifact parsing and reports omitted records as partial", async () => {

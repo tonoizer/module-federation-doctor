@@ -1,10 +1,11 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { analyze } from "../../src/engine.js";
 import { builtInRules } from "../../src/rules.js";
 import type { DoctorFinding, ModuleFederationConfigLike } from "../../src/types.js";
+import { mockUnreadablePath } from "../helpers/fs-io.js";
 
 const roots: string[] = [];
 const ERROR_RULES = [
@@ -229,11 +230,7 @@ describe("bridge error batch (#139)", () => {
     );
     const unreadable = path.join(root, "src/unreadable.tsx");
     await fs.writeFile(unreadable, "export const hidden = true;\n");
-    const originalReadFile = fs.readFile;
-    const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
-      if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
-      return originalReadFile(file, options);
-    });
+    const readFileSpy = mockUnreadablePath(unreadable);
     try {
       const result = await analyze({
         root,
@@ -272,11 +269,7 @@ describe("bridge error batch (#139)", () => {
     );
     const unreadable = path.join(root, "src/unreadable.tsx");
     await fs.writeFile(unreadable, "export const hidden = true;\n");
-    const originalReadFile = fs.readFile;
-    const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
-      if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
-      return originalReadFile(file, options);
-    });
+    const readFileSpy = mockUnreadablePath(unreadable);
     try {
       const result = await analyze({
         root,
@@ -315,11 +308,7 @@ describe("bridge error batch (#139)", () => {
     );
     const unreadable = path.join(root, "src/unreadable.tsx");
     await fs.writeFile(unreadable, "export const hidden = true;\n");
-    const originalReadFile = fs.readFile;
-    const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
-      if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
-      return originalReadFile(file, options);
-    });
+    const readFileSpy = mockUnreadablePath(unreadable);
     try {
       const result = await analyze({
         root,

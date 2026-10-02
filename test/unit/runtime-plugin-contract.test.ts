@@ -3,7 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { analyze } from "../../src/engine.js";
-import { inspectCorsParity, inspectPluginFactory } from "../../src/runtime-plugin-contract.js";
+import {
+  analyzeLocalRuntimePlugin,
+  inspectCorsParity,
+  inspectPluginFactory,
+} from "../../src/runtime-plugin-contract.js";
+import { countPathReads } from "../helpers/fs-io.js";
 
 const roots: string[] = [];
 
@@ -234,5 +239,40 @@ describe("runtime-plugins rules via analyze", () => {
       },
     });
     expect(result.report.findings.some((f) => f.ruleId.startsWith("runtime-plugins/"))).toBe(false);
+  });
+});
+
+describe("analyzeLocalRuntimePlugin source reuse", () => {
+  it("uses collected source texts instead of reading the plugin file", async () => {
+    const root = await fixtureRoot();
+    const pluginFile = path.join(root, "src/cached-plugin.ts");
+    await fs.writeFile(pluginFile, "export default 1;\n");
+    const spy = countPathReads(pluginFile);
+    try {
+      const result = await analyzeLocalRuntimePlugin(
+        root,
+        "./src/cached-plugin.ts",
+        ["src/cached-plugin.ts"],
+        { "src/cached-plugin.ts": "export default null;\n" },
+      );
+      expect(result.factory).toEqual({ kind: "invalid-factory", reason: "non-factory-export" });
+      expect(spy.reads()).toBe(0);
+    } finally {
+      spy.restore();
+    }
+  });
+
+  it("falls back to disk when the plugin is outside the collected sources", async () => {
+    const root = await fixtureRoot();
+    const pluginFile = path.join(root, "runtimePlugin.ts");
+    await fs.writeFile(pluginFile, "export default null;\n");
+    const spy = countPathReads(pluginFile);
+    try {
+      const result = await analyzeLocalRuntimePlugin(root, "./runtimePlugin.ts", ["src/index.ts"]);
+      expect(result.factory).toEqual({ kind: "invalid-factory", reason: "non-factory-export" });
+      expect(spy.reads()).toBeGreaterThan(0);
+    } finally {
+      spy.restore();
+    }
   });
 });

@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { normalizePath } from "./utils.js";
 
 /** Outcome of static runtime-plugin contract inspection. */
 export type PluginContractStatus =
@@ -23,26 +24,51 @@ function isLocalPluginPath(plugin: string): boolean {
   return LOCAL_PREFIX.test(plugin);
 }
 
+function pluginCandidates(plugin: string): string[] {
+  const normalized = normalizePath(plugin);
+  return EXT_CANDIDATES.map((ext) => normalizePath(`${normalized}${ext}`));
+}
+
+function lookupCollectedPluginSource(
+  sourceTexts: Readonly<Record<string, string>> | undefined,
+  candidate: string,
+): string | undefined {
+  if (!sourceTexts) return undefined;
+  return sourceTexts[candidate] ?? sourceTexts[`./${candidate}`];
+}
+
+type ResolvedLocalPlugin = {
+  file: string;
+  source?: string;
+};
+
 /**
- * Resolve a local runtimePlugins path against the project root and scanned files.
- * Returns undefined when no candidate exists on disk (caller should skip, do not invent).
+ * Resolve a local runtimePlugins path against collected sources, then disk.
+ * Collected source texts skip access/read. Disk is for plugins outside the
+ * source scan (fixtures, persisted-facts callers without in-memory texts).
+ * Returns undefined when no candidate exists (caller should skip, do not invent).
  */
 async function resolveLocalPluginFile(
   root: string,
   plugin: string,
   sourceFiles: readonly string[],
-): Promise<string | undefined> {
+  sourceTexts?: Readonly<Record<string, string>>,
+): Promise<ResolvedLocalPlugin | undefined> {
   if (!isLocalPluginPath(plugin)) return undefined;
-  const normalized = plugin.replaceAll("\\", "/").replace(/^\.\/+/, "");
-  const files = new Set(sourceFiles.map((file) => file.replaceAll("\\", "/")));
-  const candidates = EXT_CANDIDATES.map((ext) => `${normalized}${ext}`.replace(/^\.\/+/, ""));
+  const files = new Set(sourceFiles.map((file) => normalizePath(file)));
+  const candidates = pluginCandidates(plugin);
+
+  for (const candidate of candidates) {
+    const cached = lookupCollectedPluginSource(sourceTexts, candidate);
+    if (cached !== undefined) return { file: path.resolve(root, candidate), source: cached };
+  }
 
   for (const candidate of candidates) {
     if (files.has(candidate) || files.has(`./${candidate}`)) {
       const absolute = path.resolve(root, candidate);
       try {
         await fs.access(absolute);
-        return absolute;
+        return { file: absolute };
       } catch {
         // Fall through to disk probe below.
       }
@@ -53,7 +79,7 @@ async function resolveLocalPluginFile(
     const absolute = path.resolve(root, candidate);
     try {
       await fs.access(absolute);
-      return absolute;
+      return { file: absolute };
     } catch {
       // Keep probing.
     }
@@ -208,6 +234,7 @@ export async function analyzeLocalRuntimePlugin(
   root: string,
   plugin: string,
   sourceFiles: readonly string[],
+  sourceTexts?: Readonly<Record<string, string>>,
 ): Promise<{
   plugin: string;
   file?: string;
@@ -221,26 +248,26 @@ export async function analyzeLocalRuntimePlugin(
       cors: { kind: "skip", reason: "not-local" },
     };
 
-  const file = await resolveLocalPluginFile(root, plugin, sourceFiles);
-  if (!file)
+  const resolved = await resolveLocalPluginFile(root, plugin, sourceFiles, sourceTexts);
+  if (!resolved)
     return {
       plugin,
       factory: { kind: "skip", reason: "unreadable" },
       cors: { kind: "skip", reason: "unreadable" },
     };
 
-  const source = await readPluginSource(file);
+  const source = resolved.source ?? (await readPluginSource(resolved.file));
   if (source === undefined)
     return {
       plugin,
-      file,
+      file: resolved.file,
       factory: { kind: "skip", reason: "unreadable" },
       cors: { kind: "skip", reason: "unreadable" },
     };
 
   return {
     plugin,
-    file,
+    file: resolved.file,
     factory: inspectPluginFactory(source),
     cors: inspectCorsParity(source),
   };
