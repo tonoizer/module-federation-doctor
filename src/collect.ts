@@ -107,6 +107,45 @@ async function findPackageFile(entry: string, root: string): Promise<string> {
   throw new Error(`Unable to find package.json for ${entry}`);
 }
 
+/**
+ * Read UTF-8 after skip-before-read reserved a follow-`stat` size.
+ * Uses the reserved byte count instead of `readFile`'s extra fstat.
+ * If the file grew, the remainder is read and the caller extra-reserves.
+ */
+async function readUtf8AfterStatSize(
+  absolutePath: string,
+  reservedBytes: number,
+): Promise<{ source: string; bytes: number } | undefined> {
+  let handle: Awaited<ReturnType<typeof fs.open>> | undefined;
+  try {
+    handle = await fs.open(absolutePath, "r");
+    const firstSize = reservedBytes + 1;
+    const first = Buffer.alloc(firstSize);
+    const { bytesRead } = await handle.read(first, 0, firstSize, 0);
+    let buffer: Buffer;
+    if (bytesRead < firstSize) {
+      buffer = first.subarray(0, bytesRead);
+    } else {
+      const chunks = [first];
+      let total = bytesRead;
+      const block = Buffer.alloc(64 * 1024);
+      while (true) {
+        const next = await handle.read(block, 0, block.length, total);
+        if (next.bytesRead <= 0) break;
+        chunks.push(Buffer.from(block.subarray(0, next.bytesRead)));
+        total += next.bytesRead;
+      }
+      buffer = Buffer.concat(chunks, total);
+    }
+    const source = buffer.toString("utf8");
+    return { source, bytes: Buffer.byteLength(source, "utf8") };
+  } catch {
+    return undefined;
+  } finally {
+    await handle?.close().catch(() => undefined);
+  }
+}
+
 interface RawImportScan {
   sourceFiles: string[];
   /**
@@ -907,16 +946,18 @@ async function scanProjectImports(
   const selected: Array<{ file: string; reservedBytes: number }> = [];
   for (const [index, file] of scan.sourceFiles.entries()) {
     const size = stats[index] ?? 0;
+    // Skip-before-read: reserve from follow-stat size so oversized files are
+    // never opened. `readUtf8AfterStatSize` then avoids `readFile`'s extra fstat.
     if (!tracker.reserve({ files: 1, sourceBytes: size })) continue;
     selected.push({ file, reservedBytes: size });
   }
   scan.sourceFiles = selected.map(({ file }) => file);
   const identity = createAnalysisCacheIdentity(options);
-  const contents = await mapBounded(selected, async ({ file }) => {
+  const contents = await mapBounded(selected, async ({ file, reservedBytes }) => {
     if (!tracker.checkWallTime()) return { kind: "skipped" as const };
-    const source = await fs.readFile(path.join(options.root, file), "utf8").catch(() => undefined);
-    if (source === undefined) return { kind: "read-failed" as const };
-    return { kind: "read" as const, source, bytes: Buffer.byteLength(source, "utf8") };
+    const read = await readUtf8AfterStatSize(path.join(options.root, file), reservedBytes);
+    if (read === undefined) return { kind: "read-failed" as const };
+    return { kind: "read" as const, source: read.source, bytes: read.bytes };
   });
   const parseable: Array<{ file: string; source: string; key: string }> = [];
   for (const [index, selectedFile] of selected.entries()) {
@@ -1470,11 +1511,11 @@ async function collectArtifacts(
       continue;
     selected.push({ ...candidate, reservedBytes: candidate.bytes });
   }
-  const contents = await mapBounded(selected, async ({ file }) => {
+  const contents = await mapBounded(selected, async ({ file, reservedBytes }) => {
     if (tracker && !tracker.checkWallTime()) return { kind: "skipped" as const };
-    const value = await fs.readFile(path.join(root, file), "utf8").catch(() => undefined);
-    if (value === undefined) return { kind: "read-failed" as const };
-    return { kind: "read" as const, value, bytes: Buffer.byteLength(value, "utf8") };
+    const read = await readUtf8AfterStatSize(path.join(root, file), reservedBytes);
+    if (read === undefined) return { kind: "read-failed" as const };
+    return { kind: "read" as const, value: read.source, bytes: read.bytes };
   });
   const parseable: Array<{ index: number; relative: string; value: string }> = [];
   const readFailed = new Set<number>();
@@ -1578,11 +1619,12 @@ async function collectRuntimePluginContracts(
   root: string,
   plugins: string[] | undefined,
   sourceFiles: readonly string[],
+  sourceTexts?: Readonly<Record<string, string>>,
 ): Promise<RuntimePluginContractFinding[]> {
   if (!plugins?.length) return [];
   const findings: RuntimePluginContractFinding[] = [];
   for (const plugin of plugins) {
-    const result = await analyzeLocalRuntimePlugin(root, plugin, sourceFiles);
+    const result = await analyzeLocalRuntimePlugin(root, plugin, sourceFiles, sourceTexts);
     const relativeFile = result.file ? relativePath(root, result.file) : undefined;
     const file = relativeFile && !relativeFile.startsWith("[external]/") ? relativeFile : undefined;
     if (result.factory.kind === "invalid-factory") {
@@ -2293,6 +2335,7 @@ export async function collectProjectAnalysis(
       options.root,
       normalizedMf?.runtimePlugins,
       imports.sourceFiles,
+      scan.sourceTexts,
     );
     if (runtimePluginContracts.length > 0) facts.runtimePluginContracts = runtimePluginContracts;
     if (facts.federationInstances) {
@@ -2302,6 +2345,7 @@ export async function collectProjectAnalysis(
           options.root,
           instance.moduleFederation.runtimePlugins,
           instance.imports.sourceFiles,
+          scan.sourceTexts,
         );
         if (contracts.length > 0) instance.runtimePluginContracts = contracts;
       }

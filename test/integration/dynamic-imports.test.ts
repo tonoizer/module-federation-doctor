@@ -2,8 +2,9 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { analyze } from "../../src/engine.js";
+import { mockUnreadablePath } from "../helpers/fs-io.js";
 
 const fixtures = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../fixtures");
 const roots: string[] = [];
@@ -121,11 +122,7 @@ describe("dynamic-import integration", () => {
     const unreadable = path.join(root, "src/unreadable.ts");
     await fs.writeFile(unreadable, "export const value = 1;\n");
 
-    const originalReadFile = fs.readFile;
-    const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
-      if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
-      return originalReadFile(file, options);
-    });
+    const readFileSpy = mockUnreadablePath(unreadable);
     try {
       const result = await analyze({
         root,

@@ -1,10 +1,11 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { analyze } from "../../src/engine.js";
 import { defineRule } from "../../src/rules.js";
 import type { ProjectFacts } from "../../src/types.js";
+import { countPathReads } from "../helpers/fs-io.js";
 
 const roots: string[] = [];
 
@@ -61,15 +62,7 @@ describe("analysis hot path", () => {
   it("reuses collected source texts instead of re-reading them in rules", async () => {
     const root = await fixture(incompleteProvider);
     const sourceFile = path.join(root, "src/index.tsx");
-    const originalReadFile = fs.readFile;
-    let reads = 0;
-    const spy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
-      if (path.resolve(String(file)) === sourceFile) {
-        reads += 1;
-        if (reads > 1) throw new Error("rules must not re-read collected sources");
-      }
-      return originalReadFile(file, options);
-    });
+    const spy = countPathReads(sourceFile);
     try {
       const result = await analyze({
         root,
@@ -87,9 +80,9 @@ describe("analysis hot path", () => {
       expect(result.report.findings.map((finding) => finding.ruleId)).toContain(
         "bridge/provider-shape-invalid",
       );
-      expect(reads).toBe(1);
+      expect(spy.reads()).toBe(1);
     } finally {
-      spy.mockRestore();
+      spy.restore();
     }
   });
 
@@ -161,5 +154,34 @@ describe("analysis hot path", () => {
     };
     expect(project.sourceTexts).toBeUndefined();
     expect(JSON.stringify(project)).not.toContain("uniqueHotpathMarker");
+  });
+
+  it("does not re-read a scanned runtime plugin during contract collection", async () => {
+    const root = await fixture("export {};\n");
+    const pluginSource = `export default function plugin() {
+  return { name: "hotpath-plugin" };
+}
+`;
+    const pluginFile = path.join(root, "src/runtime-plugin.ts");
+    await fs.writeFile(pluginFile, pluginSource);
+    const spy = countPathReads(pluginFile);
+    try {
+      const result = await analyze({
+        root,
+        bundler: "rspack",
+        mode: "ci",
+        failOn: "never",
+        output: { formats: [], write: false },
+        moduleFederation: {
+          ...moduleFederation,
+          runtimePlugins: ["./src/runtime-plugin.ts"],
+        },
+        rules: quiet,
+      });
+      expect(result.facts.runtimePluginContracts ?? []).toEqual([]);
+      expect(spy.reads()).toBe(1);
+    } finally {
+      spy.restore();
+    }
   });
 });

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AnalysisBudgetTracker, resolveAnalysisBudgets } from "../../src/analysis-budgets.js";
 import { analyze } from "../../src/engine.js";
 import { defineRule } from "../../src/rules.js";
+import { mockUnreadablePath } from "../helpers/fs-io.js";
 
 describe("diagnostic edge cases", () => {
   it("reports malformed artifacts", async () => {
@@ -72,15 +73,9 @@ describe("diagnostic edge cases", () => {
       await fs.mkdir(path.join(root, "src"));
       const badFile = path.join(root, "src/bad.ts");
       await fs.writeFile(badFile, "x");
-      const originalReadFile = fs.readFile;
-      const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
-        if (path.resolve(String(file)) === badFile) {
-          const error = new Error("fixture read failed");
-          (error as NodeJS.ErrnoException).code = "EACCES";
-          throw error;
-        }
-        return originalReadFile(file, options);
-      });
+      const error = new Error("fixture read failed");
+      (error as NodeJS.ErrnoException).code = "EACCES";
+      const readFileSpy = mockUnreadablePath(badFile, error);
       try {
         const result = await analyze({
           root,
@@ -155,11 +150,7 @@ describe("diagnostic edge cases", () => {
       const unreadable = path.join(root, "src/a.ts");
       await fs.writeFile(unreadable, 'import "react";\n');
       await fs.writeFile(path.join(root, "src/b.ts"), 'import "react";\n');
-      const originalReadFile = fs.readFile;
-      const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
-        if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
-        return originalReadFile(file, options);
-      });
+      const readFileSpy = mockUnreadablePath(unreadable);
       try {
         const result = await analyze({
           root,

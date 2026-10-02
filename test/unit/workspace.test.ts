@@ -10,6 +10,7 @@ import { analyzeFederation } from "../../src/engine.js";
 import { formatTerminalReport, writeReports } from "../../src/reporters.js";
 import { resolveAnalysisBudgets } from "../../src/analysis-budgets.js";
 import type { DoctorReport, ProjectFacts } from "../../src/types.js";
+import { mockUnreadablePath } from "../helpers/fs-io.js";
 import {
   DEFAULT_WORKSPACE_PROJECT_GLOBS,
   discoverWorkspaceProjects,
@@ -949,11 +950,7 @@ describe("workspace discovery", () => {
       }
 
       const hostSource = path.join(hostRoot, "src/index.ts");
-      const originalReadFile = fs.readFile;
-      const readFileSpy = vi.spyOn(fs, "readFile").mockImplementation(async (file, options) => {
-        if (path.resolve(String(file)) === hostSource) throw new Error("fixture read failed");
-        return originalReadFile(file, options);
-      });
+      const readFileSpy = mockUnreadablePath(hostSource);
       try {
         const host = await collectProjectFacts(
           await resolveOptions({

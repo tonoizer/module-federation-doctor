@@ -31,6 +31,7 @@ import type {
   ModuleFederationConfigLike,
   ProjectFacts,
 } from "../../src/types.js";
+import { mockUnreadablePath } from "../helpers/fs-io.js";
 import {
   MIGRATED_GROUP1_BRIDGE_SSR_RUNTIME_PLUGIN_RULE_IDS,
   MIGRATED_GROUP1_CONFIG_RULE_IDS,
@@ -1946,13 +1947,7 @@ describe("evidence-aware rule rollout bridge", () => {
       "src/unreadable.ts": "export const hidden = true;\n",
     });
     const unreadable = path.join(root, "src/unreadable.ts");
-    const originalReadFile = fs.readFile;
-    const readFileSpy = await import("vitest").then(({ vi }) =>
-      vi.spyOn(fs, "readFile").mockImplementation(async (file, readOptions) => {
-        if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
-        return originalReadFile(file, readOptions);
-      }),
-    );
+    const readFileSpy = mockUnreadablePath(unreadable);
     try {
       const analyzeOptions = {
         root,
@@ -2368,13 +2363,7 @@ describe("evidence-aware rule rollout bridge", () => {
       "src/unreadable.tsx": "export const hidden = true;\n",
     });
     const unreadable = path.join(root, "src/unreadable.tsx");
-    const originalReadFile = fs.readFile;
-    const readFileSpy = await import("vitest").then(({ vi }) =>
-      vi.spyOn(fs, "readFile").mockImplementation(async (file, readOptions) => {
-        if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
-        return originalReadFile(file, readOptions);
-      }),
-    );
+    const readFileSpy = mockUnreadablePath(unreadable);
     try {
       const analyzeOptions = {
         root,
@@ -2435,13 +2424,7 @@ describe("evidence-aware rule rollout bridge", () => {
       "src/unreadable.ts": "export const hidden = true;\n",
     });
     const unreadable = path.join(root, "src/unreadable.ts");
-    const originalReadFile = fs.readFile;
-    const readFileSpy = await import("vitest").then(({ vi }) =>
-      vi.spyOn(fs, "readFile").mockImplementation(async (file, readOptions) => {
-        if (path.resolve(String(file)) === unreadable) throw new Error("fixture read failed");
-        return originalReadFile(file, readOptions);
-      }),
-    );
+    const readFileSpy = mockUnreadablePath(unreadable);
     try {
       const analyzeOptions = {
         root,
