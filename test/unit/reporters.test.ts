@@ -334,9 +334,7 @@ describe("reporters", () => {
     const text = formatTerminalReport(report, { prompt: false });
     const policy = text.indexOf("Policy: failed");
     const analysis = text.indexOf("Analysis: incomplete (missing-emit, evidence-unknown)");
-    const action = text.indexOf(
-      "Next action: Fix the policy errors, then rebuild with the mfdoctor adapter and rerun the check.",
-    );
+    const action = text.indexOf("Next action:");
     const score = text.indexOf("Score: n/a (analysis incomplete)");
 
     expect(policy).toBeGreaterThanOrEqual(0);
@@ -344,6 +342,8 @@ describe("reporters", () => {
     expect(analysis).toBeLessThan(action);
     expect(action).toBeLessThan(score);
     expect(text).toContain("config/expose-key-invalid src/widget.ts:12:4");
+    expect(text).toContain("mfdoctor prompt --finding config/expose-key-invalid");
+    expect(text).toContain("missing-emit");
   });
 
   it("prints incomplete status and required action even when no findings exist", () => {
@@ -354,9 +354,9 @@ describe("reporters", () => {
 
     expect(text).toContain("Policy: passed");
     expect(text).toContain("Analysis: incomplete (missing-emit)");
-    expect(text).toContain(
-      "Next action: Rebuild with the mfdoctor adapter and rerun the check to complete analysis.",
-    );
+    expect(text).toContain("Next action:");
+    expect(text).toContain("missing-emit");
+    expect(text).toContain("mfdoctor adapter");
     expect(text).toContain("Score: n/a (analysis incomplete)");
     expect(text).not.toBe("");
   });

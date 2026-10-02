@@ -8,6 +8,7 @@ import {
   emptyRunStatus,
   hasRequiredEvidence,
   INCOMPLETE_REASON_CODES,
+  INCOMPLETE_REASON_FIX,
   isRunStatusComplete,
   isStrictlyComplete,
   markRunIncomplete,
@@ -343,6 +344,13 @@ describe("computeRunStatus", () => {
       ],
     });
     expect(status.incompleteReasons).toEqual([...INCOMPLETE_REASON_CODES]);
+  });
+
+  it("publishes a remediation for every incomplete-reason code", () => {
+    expect(Object.keys(INCOMPLETE_REASON_FIX).sort()).toEqual([...INCOMPLETE_REASON_CODES].sort());
+    for (const code of INCOMPLETE_REASON_CODES) {
+      expect(INCOMPLETE_REASON_FIX[code].length).toBeGreaterThan(10);
+    }
   });
 
   it("keeps report.schema.json incompleteReasons enum in sync", async () => {

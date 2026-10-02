@@ -125,7 +125,7 @@ describe("collect-all-then-fail", () => {
         exitCode: 1,
       }),
     ).toThrow(
-      /config\/name-required[\s\S]*shared\/singleton-risk[\s\S]*shared\/version-unsatisfied/,
+      /mfdoctor prompt --finding config\/name-required[\s\S]*config\/name-required[\s\S]*shared\/singleton-risk[\s\S]*shared\/version-unsatisfied/,
     );
   });
 });

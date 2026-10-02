@@ -31,14 +31,24 @@ import { extractCompilerSplitChunksFacts, extractRsbuildSplitChunksFacts } from 
 export function failAfterCollect(result: AnalysisResult): void {
   if (result.exitCode === 0) return;
   if (result.exitCode === 2) {
-    throw new Error("mfdoctor could not complete analysis.");
+    const reasons = result.report.status?.incompleteReasons ?? [];
+    const reasonText = reasons.length > 0 ? ` Incomplete reasons: ${reasons.join(", ")}.` : "";
+    throw new Error(
+      `mfdoctor could not complete analysis.${reasonText} Inspect \`.mf/doctor/report.json\` status.incompleteReasons and \`doctor/partial-analysis\`. Rebuild with a mfdoctor adapter so \`.mf/doctor/project.json\` exists, then rerun. Incomplete analysis is not a pass.`,
+    );
   }
   const { errors, warnings, info } = result.report.summary;
+  const target =
+    result.report.findings.find((finding) => finding.severity === "error" && !finding.suppressed)
+      ?.ruleId ?? result.report.findings.find((finding) => !finding.suppressed)?.ruleId;
   const details = result.report.findings
     .map((finding) => `  - [${finding.severity}] ${finding.ruleId}: ${finding.message}`)
     .join("\n");
+  const prompt = target
+    ? ` Run \`mfdoctor prompt --finding ${target} .mf/doctor/report.json\` for a copy-paste repair prompt.`
+    : " Run `mfdoctor prompt .mf/doctor/report.json` for copy-paste repair prompts.";
   throw new Error(
-    `mfdoctor policy failed (${errors} error(s), ${warnings} warning(s), ${info} info). See .mf/doctor/report.json.\n${details}`,
+    `mfdoctor policy failed (${errors} error(s), ${warnings} warning(s), ${info} info). See .mf/doctor/report.json.${prompt}\n${details}`,
   );
 }
 

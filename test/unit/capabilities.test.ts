@@ -49,6 +49,13 @@ describe("CLI capabilities discovery contract", () => {
       userInitiated: true,
     });
     expect(capabilities.operations.commands.probe?.errorCodes).toHaveProperty("ssrf-blocked");
+    for (const operation of Object.values(capabilities.operations.commands)) {
+      for (const [code, spec] of Object.entries(operation.errorCodes)) {
+        expect(spec.exitCode).toBeGreaterThanOrEqual(0);
+        expect(spec.description.length).toBeGreaterThan(0);
+        expect(spec.fix, code).toMatch(/\S/);
+      }
+    }
     expect(capabilities.operations.commands.compare?.options).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "--format" })]),
     );

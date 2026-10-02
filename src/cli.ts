@@ -32,9 +32,21 @@ import {
 } from "./evidence-reader.js";
 import { probeManifest } from "./probe.js";
 import { compareManifests, formatCompareTerminal, writeCompareReports } from "./compare.js";
-import { analyzeRuntime, RuntimeTraceError } from "./runtime-trace.js";
+import { analyzeRuntime } from "./runtime-trace.js";
 import { ruleCatalog } from "./rules.js";
 import { loadCliCapabilities } from "./capabilities.js";
+import {
+  commandUsage,
+  missingBaselineError,
+  missingFindingError,
+  noProjectReportsError,
+  unknownCommandError,
+  unknownFormatError,
+  unknownOptionError,
+  unknownRuleError,
+  usageError,
+  writeCliError,
+} from "./cli-errors.js";
 import type {
   BaselineOptions,
   DoctorFinding,
@@ -97,6 +109,8 @@ interface Parsed {
   baseline?: string;
   reportPath?: string;
   outPath?: string;
+  /** Original command when `mfdoctor <command> --help` was requested. */
+  helpCommand?: Parsed["command"];
 }
 
 const outputFormats = new Set<OutputFormat>(["terminal", "json", "sarif"]);
@@ -106,6 +120,10 @@ const DEFAULT_REPORT = ".mf/doctor/report.json";
 
 function help(): string {
   return `mfdoctor
+
+Usage errors print \`error: <code>\`, \`fix:\`, and \`next:\` on stderr (exit 2).
+Pass \`mfdoctor <command> --help\` for focused usage, or \`mfdoctor capabilities\`
+for the versioned machine-readable contract.
 
 Usage:
   mfdoctor check [root]
@@ -231,7 +249,7 @@ export function parseArgs(argv: string[]): Parsed {
     command !== "capabilities" &&
     command !== "help"
   )
-    throw new Error(`Unknown command: ${command}`);
+    throw unknownCommandError(command);
   const parsed: Parsed = {
     command,
     patterns: [],
@@ -250,14 +268,26 @@ export function parseArgs(argv: string[]): Parsed {
   let index = 1;
   if (command === "baseline") {
     const action = argv[1];
+    if (action === "--help" || action === "-h") {
+      parsed.command = "help";
+      parsed.helpCommand = "baseline";
+      return parsed;
+    }
     if (action !== "generate" && action !== "update" && action !== "prune")
-      throw new Error("baseline needs a subcommand: generate, update, or prune.");
+      throw usageError("baseline needs a subcommand: generate, update, or prune.", {
+        command: "baseline",
+        fix: "Pass generate, update, or prune. Example: `mfdoctor baseline generate .mf/doctor/report.json --out mfdoctor.baseline.json`.",
+      });
     parsed.baselineAction = action;
     index = 2;
   }
   for (; index < argv.length; index += 1) {
     const value = argv[index];
-    if (value === "--ci") parsed.ci = true;
+    if (value === "--help" || value === "-h") {
+      parsed.helpCommand = parsed.command;
+      parsed.command = "help";
+      return parsed;
+    } else if (value === "--ci") parsed.ci = true;
     else if (value === "--verbose") parsed.verbose = true;
     else if (value === "--no-score") parsed.score = false;
     else if (value === "--no-prompt") {
@@ -274,43 +304,45 @@ export function parseArgs(argv: string[]): Parsed {
     } else if (value === "--finding") {
       const next = argv[index + 1];
       if (!next || next.startsWith("-"))
-        throw new Error("--finding needs a fingerprint or rule id.");
+        throw usageError("--finding needs a fingerprint or rule id.", { command });
       parsed.finding = next;
       index += 1;
     } else if (value?.startsWith("--finding=")) {
       const finding = value.slice("--finding=".length);
-      if (!finding) throw new Error("--finding needs a fingerprint or rule id.");
+      if (!finding) throw usageError("--finding needs a fingerprint or rule id.", { command });
       parsed.finding = finding;
     } else if (value === "--diagnostics-dir") {
       const next = argv[index + 1];
       if (!next || next.startsWith("-"))
-        throw new Error("--diagnostics-dir needs a directory path.");
+        throw usageError("--diagnostics-dir needs a directory path.", { command });
       parsed.diagnosticsDir = next;
       index += 1;
     } else if (value?.startsWith("--diagnostics-dir=")) {
       const dir = value.slice("--diagnostics-dir=".length);
-      if (!dir) throw new Error("--diagnostics-dir needs a directory path.");
+      if (!dir) throw usageError("--diagnostics-dir needs a directory path.", { command });
       parsed.diagnosticsDir = dir;
     } else if (value === "--diagnostics-prompts") {
       const next = argv[index + 1];
       if (!next || next.startsWith("-"))
-        throw new Error(
+        throw usageError(
           `--diagnostics-prompts needs an integer between 1 and ${MAX_DIAGNOSTICS_PROMPT_FINDINGS}.`,
+          { command },
         );
       parsed.diagnosticsPromptLimit = resolveDiagnosticsPromptLimit(next);
       index += 1;
     } else if (value?.startsWith("--diagnostics-prompts=")) {
       const raw = value.slice("--diagnostics-prompts=".length);
       if (!raw)
-        throw new Error(
+        throw usageError(
           `--diagnostics-prompts needs an integer between 1 and ${MAX_DIAGNOSTICS_PROMPT_FINDINGS}.`,
+          { command },
         );
       parsed.diagnosticsPromptLimit = resolveDiagnosticsPromptLimit(raw);
     } else if (value === "--workspace" && (command === "federation" || command === "workspace")) {
       parsed.workspace = true;
     } else if (value === "--glob" && (command === "federation" || command === "workspace")) {
       const next = argv[index + 1];
-      if (!next) throw new Error("--glob needs a pattern.");
+      if (!next) throw usageError("--glob needs a pattern.", { command });
       parsed.globs.push(next);
       parsed.workspace = true;
       index += 1;
@@ -319,14 +351,15 @@ export function parseArgs(argv: string[]): Parsed {
       (command === "federation" || command === "workspace")
     ) {
       const glob = value.slice("--glob=".length);
-      if (!glob) throw new Error("--glob needs a pattern.");
+      if (!glob) throw usageError("--glob needs a pattern.", { command });
       parsed.globs.push(glob);
       parsed.workspace = true;
     } else if (value === "--group" && (command === "federation" || command === "workspace")) {
       const next = argv[index + 1];
-      if (!next || next.startsWith("-")) throw new Error("--group needs a group name.");
+      if (!next || next.startsWith("-"))
+        throw usageError("--group needs a group name.", { command });
       parsed.group = next.trim();
-      if (!parsed.group) throw new Error("--group needs a group name.");
+      if (!parsed.group) throw usageError("--group needs a group name.", { command });
       parsed.workspace = true;
       index += 1;
     } else if (
@@ -334,7 +367,7 @@ export function parseArgs(argv: string[]): Parsed {
       (command === "federation" || command === "workspace")
     ) {
       const group = value.slice("--group=".length).trim();
-      if (!group) throw new Error("--group needs a group name.");
+      if (!group) throw usageError("--group needs a group name.", { command });
       parsed.group = group;
       parsed.workspace = true;
     } else if (value === "--remote-entry" && (command === "probe" || command === "compare"))
@@ -344,45 +377,56 @@ export function parseArgs(argv: string[]): Parsed {
       (command === "probe" || command === "compare")
     ) {
       const next = argv[index + 1];
-      if (!next) throw new Error(`${value} needs an integer value.`);
+      if (!next) throw usageError(`${value} needs an integer value.`, { command });
       const parsedNumber = Number(next);
-      if (!Number.isSafeInteger(parsedNumber)) throw new Error(`${value} needs an integer value.`);
+      if (!Number.isSafeInteger(parsedNumber))
+        throw usageError(`${value} needs an integer value.`, { command });
       if (value === "--timeout") parsed.timeoutMs = parsedNumber;
       else parsed.maxBytes = parsedNumber;
       index += 1;
     } else if (value === "--format") {
       const formats = argv[index + 1];
-      if (!formats) throw new Error("--format needs a comma-separated value.");
+      if (!formats) throw usageError("--format needs a comma-separated value.", { command });
       parsed.formats = parseFormats(formats);
       index += 1;
     } else if (value?.startsWith("--format=")) {
       parsed.formats = parseFormats(value.slice("--format=".length));
     } else if (value === "--output") {
       const next = argv[index + 1];
-      if (next !== "-") throw new Error('--output only supports "-" for stdout JSON.');
+      if (next !== "-")
+        throw usageError('--output only supports "-" for stdout JSON.', {
+          command,
+          fix: "Pass `--output -` to print report JSON on stdout. Combine with `--no-write` to skip disk artifacts.",
+        });
       parsed.stdoutJson = true;
       index += 1;
     } else if (value?.startsWith("--output=")) {
       const target = value.slice("--output=".length);
-      if (target !== "-") throw new Error('--output only supports "-" for stdout JSON.');
+      if (target !== "-")
+        throw usageError('--output only supports "-" for stdout JSON.', {
+          command,
+          fix: "Pass `--output -` to print report JSON on stdout. Combine with `--no-write` to skip disk artifacts.",
+        });
       parsed.stdoutJson = true;
     } else if (value === "--no-write") {
       parsed.noWrite = true;
     } else if (value === "--baseline") {
       const next = argv[index + 1];
-      if (!next || next.startsWith("-")) throw new Error("--baseline needs a file path.");
+      if (!next || next.startsWith("-"))
+        throw usageError("--baseline needs a file path.", { command });
       parsed.baseline = next;
       index += 1;
     } else if (value?.startsWith("--baseline=")) {
       parsed.baseline = value.slice("--baseline=".length);
     } else if (value === "--out" || value === "-o") {
       const next = argv[index + 1];
-      if (!next || next.startsWith("-")) throw new Error(`${value} needs a file path.`);
+      if (!next || next.startsWith("-"))
+        throw usageError(`${value} needs a file path.`, { command });
       parsed.outPath = next;
       index += 1;
     } else if (value?.startsWith("--out=")) {
       parsed.outPath = value.slice("--out=".length);
-    } else if (value?.startsWith("-")) throw new Error(`Unknown option: ${value}`);
+    } else if (value?.startsWith("-")) throw unknownOptionError(command, value);
     else if (command === "federation" || command === "workspace") {
       if (parsed.workspace) parsed.roots.push(value ?? "");
       else parsed.patterns.push(value ?? "");
@@ -399,7 +443,11 @@ export function parseArgs(argv: string[]): Parsed {
     else if (command === "baseline" && !parsed.reportPath && value) parsed.reportPath = value;
     else if (command === "prompt" && !parsed.reportPath && value) parsed.reportPath = value;
     else if (!parsed.root && value) parsed.root = value;
-    else throw new Error(`Unexpected argument: ${value}`);
+    else
+      throw usageError(`Unexpected argument: ${value}`, {
+        command,
+        fix: `Remove the extra argument \`${value}\` or pass it in the documented position. See usage.`,
+      });
   }
   if (command === "federation" && parsed.globs.length > 0) parsed.workspace = true;
   // Allow `federation <root> --workspace` by treating early positionals as roots.
@@ -413,8 +461,7 @@ export function parseArgs(argv: string[]): Parsed {
 function parseFormats(value: string): OutputFormat[] {
   const formats = value.split(",").filter(Boolean);
   const invalid = formats.filter((format) => !outputFormats.has(format as OutputFormat));
-  if (formats.length === 0 || invalid.length > 0)
-    throw new Error(`Unknown output format: ${invalid[0] ?? value}`);
+  if (formats.length === 0 || invalid.length > 0) throw unknownFormatError(invalid[0] ?? value);
   return formats as OutputFormat[];
 }
 
@@ -501,10 +548,7 @@ async function runPrompt(parsed: Parsed): Promise<number> {
     const report = await loadReport(reportPath);
     if (parsed.finding) {
       const target = findPromptTarget(report.findings, parsed.finding);
-      if (!target) {
-        process.stderr.write(`No finding matched --finding ${parsed.finding}\n`);
-        return 2;
-      }
+      if (!target) return writeCliError(missingFindingError(parsed.finding, report.findings));
       process.stdout.write(buildAgentPrompt(target) + "\n");
       return 0;
     }
@@ -516,16 +560,19 @@ async function runPrompt(parsed: Parsed): Promise<number> {
     process.stdout.write(text + "\n");
     return 0;
   } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    return 2;
+    return writeCliError(error);
   }
 }
 
 async function runBaseline(parsed: Parsed): Promise<number> {
   const action = parsed.baselineAction;
   if (!action) {
-    process.stderr.write("baseline needs a subcommand: generate, update, or prune.\n");
-    return 2;
+    return writeCliError(
+      usageError("baseline needs a subcommand: generate, update, or prune.", {
+        command: "baseline",
+        fix: "Pass generate, update, or prune. Example: `mfdoctor baseline generate .mf/doctor/report.json`.",
+      }),
+    );
   }
   const cwd = process.cwd();
   const reportPath = path.resolve(cwd, parsed.reportPath ?? DEFAULT_REPORT);
@@ -553,8 +600,7 @@ async function runBaseline(parsed: Parsed): Promise<number> {
         // First update without a file is equivalent to generate.
         existing = parseBaseline({ schemaVersion: 1, entries: [] });
       } else if (missing) {
-        process.stderr.write(`No baseline file at ${outPath}. Run baseline generate first.\n`);
-        return 2;
+        return writeCliError(missingBaselineError(outPath));
       } else {
         throw error;
       }
@@ -567,22 +613,25 @@ async function runBaseline(parsed: Parsed): Promise<number> {
     );
     return 0;
   } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    return 2;
+    return writeCliError(error);
   }
 }
 
 async function runCapabilities(parsed: Parsed): Promise<number> {
   if (parsed.formats && (parsed.formats.length !== 1 || parsed.formats[0] !== "json")) {
-    process.stderr.write("capabilities only supports --format json.\n");
-    return 2;
+    return writeCliError(
+      usageError("capabilities only supports --format json.", {
+        command: "capabilities",
+        fix: "Omit --format or pass `--format json`. `mfdoctor capabilities` always prints JSON.",
+        next: "mfdoctor capabilities",
+      }),
+    );
   }
   try {
     process.stdout.write(stableStringify(await loadCliCapabilities(), 2) + "\n");
     return 0;
   } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    return 2;
+    return writeCliError(error);
   }
 }
 
@@ -592,8 +641,7 @@ async function runVersion(): Promise<number> {
     process.stdout.write(`${capabilities.package.version}\n`);
     return 0;
   } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    return 2;
+    return writeCliError(error);
   }
 }
 
@@ -617,8 +665,7 @@ async function runFederationAnalysis(
 ): Promise<number> {
   const strict = requireComplete || config.requireComplete === true;
   if (files.length === 0 && !workspaceDiagnostics?.length && !isAnalysisIncomplete(analysis)) {
-    process.stderr.write("No project reports matched.\n");
-    return strict ? 1 : 2;
+    return writeCliError(noProjectReportsError("federation", { strict }));
   }
   const outputDirectory = path.resolve(process.cwd(), ".mf/doctor");
   // CLI --no-score / --no-prompt win; --prompt force-enables over config / CI default.
@@ -666,12 +713,14 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   try {
     parsed = parseArgs(argv);
   } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n${help()}\n`);
-    return 2;
+    return writeCliError(error);
   }
   if (parsed.command === "version") return runVersion();
   if (parsed.command === "help") {
-    process.stdout.write(help() + "\n");
+    const text = parsed.helpCommand
+      ? `mfdoctor ${parsed.helpCommand}\n\nUsage:\n${commandUsage(parsed.helpCommand)}`
+      : help();
+    process.stdout.write(text + "\n");
     return 0;
   }
   if (parsed.command === "baseline") return runBaseline(parsed);
@@ -679,8 +728,12 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (parsed.command === "capabilities") return runCapabilities(parsed);
   if (parsed.command === "compare") {
     if (parsed.urls.length === 0) {
-      process.stderr.write("compare needs at least one manifest URL.\n");
-      return 2;
+      return writeCliError(
+        usageError("compare needs at least one manifest URL.", {
+          command: "compare",
+          fix: "Pass one baseline manifest URL followed by zero or more candidate URLs. Example: `mfdoctor compare https://a.example/mf-manifest.json https://b.example/mf-manifest.json`.",
+        }),
+      );
     }
     try {
       const result = await compareManifests(parsed.urls, {
@@ -697,14 +750,17 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       }
       return result.equal ? 0 : 1;
     } catch (error) {
-      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-      return 2;
+      return writeCliError(error);
     }
   }
   if (parsed.command === "probe") {
     if (!parsed.url) {
-      process.stderr.write("probe needs a manifest URL.\n");
-      return 2;
+      return writeCliError(
+        usageError("probe needs a manifest URL.", {
+          command: "probe",
+          fix: "Pass one deployed `mf-manifest.json` URL. Example: `mfdoctor probe https://host.example/mf-manifest.json`.",
+        }),
+      );
     }
     try {
       const result = await probeManifest(parsed.url, {
@@ -715,8 +771,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       process.stdout.write(stableStringify(result, 2) + "\n");
       return result.remoteEntry && result.remoteEntry.status >= 400 ? 1 : 0;
     } catch (error) {
-      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-      return 2;
+      return writeCliError(error);
     }
   }
   if (parsed.command === "rules") {
@@ -724,8 +779,12 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     if (parsed.ruleId) {
       const rule = catalog.find((item) => item.id === parsed.ruleId);
       if (!rule) {
-        process.stderr.write(`Unknown rule: ${parsed.ruleId}\n`);
-        return 2;
+        return writeCliError(
+          unknownRuleError(
+            parsed.ruleId,
+            catalog.map((item) => item.id),
+          ),
+        );
       }
       process.stdout.write(stableStringify(rule, 2) + "\n");
     } else process.stdout.write(stableStringify({ schemaVersion: 1, rules: catalog }, 2) + "\n");
@@ -737,10 +796,15 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       const baseline = parsed.baseline ?? baselineFromConfig(config);
       if (parsed.workspace) {
         if (parsed.patterns.length > 0) {
-          process.stderr.write(
-            "workspace mode takes roots and optional --glob overrides, not positional federation globs.\n",
+          return writeCliError(
+            usageError(
+              "workspace mode takes roots and optional --glob overrides, not positional federation globs.",
+              {
+                command: parsed.command,
+                fix: "Pass directory roots after `workspace` or `federation --workspace`. Use `--glob` only to override project.json discovery, not as extra positionals.",
+              },
+            ),
           );
-          return 2;
         }
         const discovery = await discoverWorkspaceProjectsWithBudget({
           roots: parsed.roots,
@@ -768,10 +832,16 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         );
       }
       if (parsed.patterns.length === 0) {
-        process.stderr.write(
-          'federation needs --workspace or at least one project.json glob (for example ".mf/doctor/**/project.json").\n',
+        return writeCliError(
+          usageError(
+            'federation needs --workspace or at least one project.json glob (for example ".mf/doctor/**/project.json").',
+            {
+              command: "federation",
+              fix: "Prefer `mfdoctor federation --workspace` after adapter emits, or pass an explicit glob to `.mf/doctor/**/project.json`.",
+              next: "mfdoctor federation --workspace",
+            },
+          ),
         );
-        return 2;
       }
       const files = await fg(parsed.patterns, { absolute: true, onlyFiles: true });
       return await runFederationAnalysis(
@@ -793,8 +863,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         parsed.requireComplete,
       );
     } catch (error) {
-      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-      return 2;
+      return writeCliError(error);
     }
   }
   if (parsed.command === "runtime") {
@@ -803,14 +872,20 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       const config = await configAt(root);
       const tracePath = parsed.trace ?? config.runtimeTrace;
       if (!tracePath) {
-        process.stderr.write(
-          "runtime needs a trace JSON path or DoctorOptions.runtimeTrace in mfdoctor.config.\n",
+        return writeCliError(
+          usageError(
+            "runtime needs a trace JSON path or DoctorOptions.runtimeTrace in mfdoctor.config.",
+            {
+              command: "runtime",
+              fix: "Pass a user-supplied Observability export path: `mfdoctor runtime ./trace.json`. Runtime never fetches URLs from the trace.",
+              next: "mfdoctor runtime ./trace.json",
+            },
+          ),
         );
-        return 2;
       }
       const patterns = parsed.patterns.length > 0 ? parsed.patterns : [DEFAULT_RUNTIME_PROJECTS];
       const files = await fg(patterns, { absolute: true, onlyFiles: true, cwd: root });
-      if (files.length === 0) throw new RuntimeTraceError("No project reports matched.");
+      if (files.length === 0) throw noProjectReportsError("runtime");
       const formats = parsed.formats;
       const outputDirectory = path.resolve(root, ".mf/doctor");
       const result = await analyzeRuntime({
@@ -849,8 +924,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         );
       return result.exitCode;
     } catch (error) {
-      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-      return 2;
+      return writeCliError(error);
     }
   }
   const root = path.resolve(parsed.root ?? process.cwd());
@@ -885,8 +959,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     const result = await analyze(options);
     return result.exitCode;
   } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    return 2;
+    return writeCliError(error);
   }
 }
 

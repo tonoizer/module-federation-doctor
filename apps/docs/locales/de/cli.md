@@ -357,6 +357,32 @@ With `--format`, JSON lands at `.mf/doctor/compare.json` and SARIF at
 `.mf/doctor/compare.sarif`. Without `--format`, a human summary prints to
 stdout.
 
+## CLI-Fehler
+
+Usage and I/O failures print a structured stderr block and exit `2` (or `1` when
+`--require-complete` turns missing project facts into a policy failure). Agents
+should parse these keys instead of scraping the full help dump:
+
+```text
+error: usage-error
+Unknown command: chek
+Did you mean: check
+
+fix: Replace `chek` with `check`. Run `mfdoctor --help` or `mfdoctor capabilities` for the command list.
+next: mfdoctor check --help
+
+Usage:
+  mfdoctor check [root]
+```
+
+`error:` is a capabilities `operations.commands.<command>.errorCodes` id
+(`usage-error`, `finding-not-found`, `rule-not-found`, `invalid-report`,
+`invalid-project-facts`, `ssrf-blocked`, …). `fix:` is the concrete next step.
+`next:` is a copy-paste command. `mfdoctor <command> --help` prints focused
+usage for that command. Terminal findings still include `fix:` per rule plus a
+`Next action:` line that names `mfdoctor prompt --finding <ruleId>` when policy
+fails.
+
 ## Exit codes
 
 | Code | Meaning                                                                                                                      |

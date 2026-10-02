@@ -463,7 +463,10 @@ function locationLine(finding: DoctorFinding): string | undefined {
  */
 export function buildAgentPrompt(finding: DoctorFinding, options: AgentPromptOptions = {}): string {
   const guidance = ruleGuidance[finding.ruleId];
-  const fix = finding.suggestion ?? guidance?.fix ?? "Address this finding, then re-run mfdoctor.";
+  const fix =
+    finding.suggestion ??
+    guidance?.fix ??
+    `Inspect this finding's message and evidence, apply the documented fix (\`mfdoctor rules ${finding.ruleId}\`), then re-run \`mfdoctor check\`.`;
   const impact = guidance?.impact ?? "This finding affects Module Federation correctness or DX.";
   const sources = guidance?.sources ?? [];
   const plan = planForPrompt(finding, options);
