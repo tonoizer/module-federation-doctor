@@ -1,4 +1,4 @@
-import { CLI_OPERATIONS } from "./capabilities.js";
+import { CLI_OPERATIONS, type CliOperationContract } from "./capabilities.js";
 import { EvidenceReaderError } from "./evidence-reader.js";
 import { ProbeError } from "./probe.js";
 import { RuntimeTraceError } from "./runtime-trace.js";
@@ -373,12 +373,14 @@ function classifyRuntimeTraceError(error: RuntimeTraceError): CliError {
 }
 
 function optionNames(command: string): string[] {
-  const operation = CLI_OPERATIONS[command as keyof typeof CLI_OPERATIONS];
+  const operation: CliOperationContract | undefined =
+    CLI_OPERATIONS[command as keyof typeof CLI_OPERATIONS];
   if (!operation) return [];
   const names: string[] = ["--help", "-h"];
   for (const option of operation.options) {
     names.push(option.name);
-    if (option.aliases) names.push(...option.aliases);
+    const aliases = option.aliases;
+    if (aliases) names.push(...aliases);
   }
   return names;
 }
