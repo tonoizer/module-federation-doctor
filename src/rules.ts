@@ -74,6 +74,20 @@ export function defineRule(rule: DoctorRule): DoctorRule {
   return rule;
 }
 
+async function readCollectedSource(
+  context: RuleContext,
+  file: string,
+): Promise<string | undefined> {
+  const cached = context.sourceTexts?.[file];
+  if (cached !== undefined) return cached;
+  const root = context.root ?? context.facts.project.root;
+  try {
+    return await fs.readFile(path.join(root, file), "utf8");
+  } catch {
+    return undefined;
+  }
+}
+
 function createRule(
   id: string,
   defaultSeverity: Severity,
@@ -1686,12 +1700,8 @@ export const builtInRules: DoctorRule[] = [
     if (nonEagerShared.size === 0) return;
 
     for (const file of entryFiles) {
-      let source: string;
-      try {
-        source = await fs.readFile(path.join(root, file), "utf8");
-      } catch {
-        continue;
-      }
+      const source = await readCollectedSource(context, file);
+      if (source === undefined) continue;
       const syncShared = syncSharedPackagesInSource(source, nonEagerShared);
       if (syncShared.length === 0) continue;
       report(
@@ -3093,16 +3103,11 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/provider-shape-invalid", "error", async (context) => {
     if (!isReactBridgeProject(context.facts)) return;
-    const root = context.root ?? context.facts.project.root;
     const files = context.facts.imports.sourceFiles ?? [];
     if (files.length === 0) return;
     for (const file of files) {
-      let source: string;
-      try {
-        source = await fs.readFile(path.join(root, file), "utf8");
-      } catch {
-        continue;
-      }
+      const source = await readCollectedSource(context, file);
+      if (source === undefined) continue;
       if (!source.includes("@module-federation/bridge-react")) continue;
       const problem = detectInvalidBridgeProviderShape(source);
       if (!problem) continue;
@@ -3136,14 +3141,9 @@ export const builtInRules: DoctorRule[] = [
   }),
   createRule("bridge/missing-fallback-loading", "warning", async (context) => {
     if (!isReactBridgeProject(context.facts)) return;
-    const root = context.root ?? context.facts.project.root;
     for (const file of context.facts.imports.sourceFiles ?? []) {
-      let source: string;
-      try {
-        source = await fs.readFile(path.join(root, file), "utf8");
-      } catch {
-        continue;
-      }
+      const source = await readCollectedSource(context, file);
+      if (source === undefined) continue;
       if (!/createRemoteAppComponent\s*\(/.test(source)) continue;
       if (/\bfallback\b/.test(source) && /\bloading\b/.test(source)) continue;
       report(
@@ -3160,16 +3160,11 @@ export const builtInRules: DoctorRule[] = [
     if (sourceEvidenceIncomplete(context.facts)) return;
     const hasRemotes = Object.keys(mf(context)?.remotes ?? {}).length > 0;
     if (!hasRemotes && (context.facts.imports.remotes?.length ?? 0) === 0) return;
-    const root = context.root ?? context.facts.project.root;
     let sawManual = false;
     let sawHelper = false;
     for (const file of context.facts.imports.sourceFiles ?? []) {
-      let source: string;
-      try {
-        source = await fs.readFile(path.join(root, file), "utf8");
-      } catch {
-        continue;
-      }
+      const source = await readCollectedSource(context, file);
+      if (source === undefined) continue;
       if (/\b(?:createRemoteAppComponent|createBridgeComponent|createBridge)\b/.test(source))
         sawHelper = true;
       if (/\bloadRemote\b/.test(source)) sawManual = true;
@@ -3269,18 +3264,13 @@ export const builtInRules: DoctorRule[] = [
       !isNodeOrSsrTarget(context.facts, ssrMode)
     )
       return;
-    const root = context.root ?? context.facts.project.root;
     const files = context.facts.imports.sourceFiles ?? [];
     if (files.length === 0) return;
     let sawBridge = false;
     let sawFresh = false;
     for (const file of files) {
-      let source: string;
-      try {
-        source = await fs.readFile(path.join(root, file), "utf8");
-      } catch {
-        continue;
-      }
+      const source = await readCollectedSource(context, file);
+      if (source === undefined) continue;
       if (
         !source.includes("@module-federation/bridge-vue3") &&
         !/\bcreateBridgeComponent\b/.test(source)
@@ -3325,16 +3315,11 @@ export const builtInRules: DoctorRule[] = [
     if (sourceEvidenceIncomplete(context.facts)) return;
     const hasRemotes = Object.keys(mf(context)?.remotes ?? {}).length > 0;
     if (!hasRemotes && (context.facts.imports.remotes?.length ?? 0) === 0) return;
-    const root = context.root ?? context.facts.project.root;
     let sawManual = false;
     let sawHelper = false;
     for (const file of context.facts.imports.sourceFiles ?? []) {
-      let source: string;
-      try {
-        source = await fs.readFile(path.join(root, file), "utf8");
-      } catch {
-        continue;
-      }
+      const source = await readCollectedSource(context, file);
+      if (source === undefined) continue;
       if (/\b(?:createRemoteAppComponent|createBridgeComponent)\b/.test(source)) sawHelper = true;
       if (/\bloadRemote\b/.test(source)) sawManual = true;
     }

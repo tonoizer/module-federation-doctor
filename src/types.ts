@@ -643,6 +643,13 @@ export interface RuleContext {
    */
   root?: string;
   /**
+   * Source texts already read during collect (posix-relative path → contents).
+   * Present on `mfdoctor check` / adapter analysis; absent when rules run from
+   * persisted `project.json` only. Never serialized. Prefer this over a second
+   * `fs.readFile` of `facts.imports.sourceFiles`.
+   */
+  sourceTexts?: Readonly<Record<string, string>>;
+  /**
    * Resolved shared-usage governance (package lists + import depth).
    * Present for project analysis; absent for hand-built federation fixtures
    * that only exercise `analyzeFederation`.
