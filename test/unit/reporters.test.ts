@@ -115,6 +115,72 @@ describe("reporters", () => {
     );
   });
 
+  it("embeds how-to-fix text and incomplete-reason remediations in SARIF", async () => {
+    const output = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-reporters-sarif-fix-"));
+    roots.push(output);
+    const facts = demoFacts();
+    const report = emptyReport(
+      [
+        {
+          schemaVersion: 1,
+          ruleId: "config/name-required",
+          severity: "error",
+          message: "name is required",
+          project: "demo",
+          evidence: {},
+          documentation: "/rules/config/name-required",
+          fingerprint: "abc",
+        },
+      ],
+      { complete: false, incompleteReasons: ["missing-emit"] },
+    );
+
+    await writeReports(facts, report, output, ["sarif"]);
+
+    const sarif = JSON.parse(await fs.readFile(path.join(output, "results.sarif"), "utf8")) as {
+      runs: Array<{
+        properties: {
+          complete: boolean;
+          incompleteReasons: Array<{ code: string; fix: string }>;
+        };
+        invocations: Array<{
+          executionSuccessful: boolean;
+          toolExecutionNotifications?: Array<{
+            descriptor: { id: string };
+            message: { text: string };
+          }>;
+        }>;
+        tool: {
+          driver: {
+            rules: Array<{
+              id: string;
+              help?: { text: string };
+              shortDescription?: { text: string };
+            }>;
+          };
+        };
+        results: Array<{ ruleId: string; properties?: { fix?: string } }>;
+      }>;
+    };
+    const run = sarif.runs[0]!;
+    expect(run.properties.complete).toBe(false);
+    expect(run.properties.incompleteReasons).toEqual([
+      {
+        code: "missing-emit",
+        fix: expect.stringMatching(/project\.json/),
+      },
+    ]);
+    expect(run.invocations[0]?.executionSuccessful).toBe(false);
+    expect(run.invocations[0]?.toolExecutionNotifications?.[0]?.descriptor.id).toBe("missing-emit");
+    expect(run.invocations[0]?.toolExecutionNotifications?.[0]?.message.text).toContain(
+      "missing-emit",
+    );
+    expect(run.tool.driver.rules[0]?.id).toBe("config/name-required");
+    expect(run.tool.driver.rules[0]?.help?.text).toMatch(/name/);
+    expect(run.tool.driver.rules[0]?.shortDescription?.text.length).toBeGreaterThan(10);
+    expect(run.results[0]?.properties?.fix).toMatch(/name/);
+  });
+
   it("replaces report files atomically and leaves no temp files", async () => {
     const output = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-reporters-atomic-"));
     roots.push(output);

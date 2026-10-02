@@ -13,7 +13,7 @@ The config promises an expose that the emitted manifest does not contain.
 
 ## So beheben Sie das Problem
 
-Fix the expose build or remove the stale public contract.
+Rebuild the producer so the expose lands in `mf-manifest.json`, or remove the stale `exposes` key from the Module Federation config.
 
 Suppress or retarget with `rules["artifact/expose-missing"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 

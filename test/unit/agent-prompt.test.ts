@@ -315,6 +315,7 @@ describe("agent prompts", () => {
         emittedAssets: false,
         installedVersions: false,
       },
+      status: { complete: false, incompleteReasons: ["missing-emit"] },
       summary: {
         projects: 1,
         info: 0,
@@ -342,6 +343,8 @@ describe("agent prompts", () => {
     const summary = await fs.readFile(result.summaryPath, "utf8");
     expect(summary).toContain("Score: 99/100 (Great)");
     expect(summary).toContain("config/name-required");
+    expect(summary).toContain("## Incomplete analysis");
+    expect(summary).toContain("`missing-emit`");
     expect(summary).toContain("## Verification plan");
   });
 

@@ -11,6 +11,7 @@ import {
   type FindingRepairContextV1,
 } from "./finding-details.js";
 import { ruleGuidance, type RuleCategory } from "./rule-guidance.js";
+import { incompleteReasonRemediations } from "./run-status.js";
 import type { DoctorFinding, DoctorReport, Severity } from "./types.js";
 import { stableStringify } from "./utils.js";
 
@@ -234,8 +235,9 @@ function defaultRequiredArtifacts(
 }
 
 function incompleteReasonText(report: DoctorReport): string | undefined {
-  const reasons = report.status?.incompleteReasons ?? [];
-  return reasons.length > 0 ? reasons.join(", ") : undefined;
+  const remediations = incompleteReasonRemediations(report.status?.incompleteReasons);
+  if (remediations.length === 0) return undefined;
+  return remediations.map((item) => `${item.code}: ${item.fix}`).join("; ");
 }
 
 function defaultRebuildRequired(
@@ -684,6 +686,16 @@ export async function writeDiagnosticsDump(
       ? `## Top findings (${top.length} of ${eligible}, dump budget ${limit})`
       : "## Top findings";
 
+  const incomplete = incompleteReasonRemediations(report.status?.incompleteReasons);
+  const incompleteHeading =
+    incomplete.length > 0
+      ? [
+          "## Incomplete analysis",
+          ...incomplete.map((item) => `- \`${item.code}\`: ${item.fix}`),
+          "",
+        ]
+      : [];
+
   const summaryLines = [
     "# mfdoctor, agent diagnostics",
     "",
@@ -691,6 +703,7 @@ export async function writeDiagnosticsDump(
     `${report.summary.errors} error(s), ${report.summary.warnings} warning(s), ${report.summary.info} info` +
       (report.summary.suppressed ? `, ${report.summary.suppressed} suppressed` : ""),
     "",
+    ...incompleteHeading,
     findingsHeading,
     ...(top.length === 0
       ? ["- (none)"]

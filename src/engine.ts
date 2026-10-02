@@ -60,6 +60,7 @@ import type {
   Severity,
 } from "./types.js";
 import { FINDING_DETAILS_SCHEMAS } from "./finding-details.js";
+import { ruleGuidance } from "./rule-guidance.js";
 import {
   compareCodePoint,
   deepFreeze,
@@ -207,32 +208,59 @@ async function failureFacts(
   return minimalFailureFacts(root, options.bundler, options.mode);
 }
 
+interface PersistFailureResult {
+  wrote: boolean;
+  printed: boolean;
+}
+
 async function persistFailureReport(
   directory: string,
   write: boolean,
   report: DoctorReport,
   formats: readonly OutputFormat[] = [],
-): Promise<void> {
-  if (!write) return;
+): Promise<PersistFailureResult> {
+  const printed = formats.includes("terminal");
+  const emitFormats: OutputFormat[] = [
+    ...(write ? (["json"] as const) : []),
+    ...(write && formats.includes("sarif") ? (["sarif"] as const) : []),
+    ...(printed ? (["terminal"] as const) : []),
+  ];
+  if (emitFormats.length === 0) return { wrote: false, printed: false };
   const sarifPath = path.join(directory, "results.sarif");
   try {
-    await fs.mkdir(directory, { recursive: true });
-    // A failed run must never leave a previous run's SARIF looking current. A
-    // caller that requested SARIF gets a fresh failure document below; all
-    // other callers get the stale artifact invalidated.
-    await fs.rm(sarifPath, { force: true });
-    await writeFederationReports(
-      report,
-      directory,
-      ["json", ...(formats.includes("sarif") ? (["sarif"] as const) : [])],
-      { write: true },
-    );
+    if (write) {
+      await fs.mkdir(directory, { recursive: true });
+      // A failed run must never leave a previous run's SARIF looking current. A
+      // caller that requested SARIF gets a fresh failure document below; all
+      // other callers get the stale artifact invalidated.
+      await fs.rm(sarifPath, { force: true });
+    }
+    await writeFederationReports(report, directory, emitFormats, { write });
+    return { wrote: write, printed };
   } catch (error) {
-    await fs.rm(sarifPath, { force: true }).catch(() => undefined);
+    if (write) await fs.rm(sarifPath, { force: true }).catch(() => undefined);
     process.stderr.write(
       `mfdoctor could not write the current failure report: ${errorMessage(error)}\n`,
     );
+    return { wrote: false, printed: false };
   }
+}
+
+function writeEngineFailureStderr(
+  persisted: PersistFailureResult,
+  message: string,
+  kind: "check" | "workspace",
+): void {
+  if (persisted.wrote || persisted.printed) return;
+  const fix =
+    kind === "workspace"
+      ? "Inspect `.mf/doctor/report.json` for `doctor/analysis-failed`, restore missing `.mf/doctor/project.json` emits, then re-run `mfdoctor workspace`. Incomplete analysis is not a pass."
+      : "Inspect `.mf/doctor/report.json` for `doctor/analysis-failed`, address that error, then re-run mfdoctor. Incomplete analysis is not a pass.";
+  const prefix =
+    kind === "workspace"
+      ? "mfdoctor could not complete workspace analysis"
+      : "mfdoctor could not complete";
+  process.stderr.write(`${prefix}: ${message}\nfix: ${fix}\n`);
 }
 
 export function isAnalysisIncomplete(analysis: AnalysisBudgetReport | undefined): boolean {
@@ -272,6 +300,7 @@ async function runRule(
     const location = value.location
       ? { ...value.location, path: redact(value.location.path, root) as string }
       : undefined;
+    const suggestion = value.suggestion ?? rule.meta.fix;
     // Fingerprint inputs stay ruleId/project/location/evidence only (see utils.fingerprint).
     // detailsSchema/details are attached after hashing so baselines/SARIF stay stable.
     const base = {
@@ -284,7 +313,7 @@ async function runRule(
       evidence,
       documentation: rule.meta.documentation,
       ...(location ? { location } : {}),
-      ...(value.suggestion ? { suggestion: redact(value.suggestion, root) as string } : {}),
+      ...(suggestion ? { suggestion: redact(suggestion, root) as string } : {}),
     };
     findings.push({
       ...base,
@@ -690,10 +719,6 @@ async function runAnalysis(
     };
   } catch (error) {
     const message = errorMessage(error);
-    if (resolved?.output.formats.includes("terminal"))
-      process.stderr.write(
-        `mfdoctor could not complete: ${message}\nfix: Inspect \`.mf/doctor/report.json\` for \`doctor/analysis-failed\`, address that error, then re-run mfdoctor. Incomplete analysis is not a pass.\n`,
-      );
     const failedFacts = await failureFacts(resolved, facts, options);
     const failureRoot = resolved?.root ?? path.resolve(options.root ?? process.cwd());
     const failureFinding = runFailureFinding(
@@ -711,13 +736,14 @@ async function runAnalysis(
     const failureReport = reportFor(failedFacts, failureFindings);
     failureReport.status = markRunIncomplete(failureReport.status, "evidence-unknown");
     const fallbackRoot = path.resolve(options.root ?? process.cwd());
-    await persistFailureReport(
+    const persisted = await persistFailureReport(
       resolved?.output.directory ??
         path.resolve(fallbackRoot, options.output?.directory ?? ".mf/doctor"),
       resolved?.output.write ?? options.output?.write !== false,
       failureReport,
       resolved?.output.formats ?? options.output?.formats ?? [],
     );
+    writeEngineFailureStderr(persisted, message, "check");
     const safeFacts = redact(failedFacts, failureRoot) as ProjectFacts;
     return {
       facts: safeFacts,
@@ -874,6 +900,7 @@ function pushWorkspacePartialFinding(
   evidence: Record<string, unknown>,
   details: Record<string, unknown>,
 ): void {
+  const partialFix = ruleGuidance["doctor/partial-analysis"]?.fix;
   const fingerprintBase = {
     schemaVersion: 1 as const,
     ruleId: "doctor/partial-analysis",
@@ -882,6 +909,7 @@ function pushWorkspacePartialFinding(
     message,
     evidence,
     documentation: "/rules/doctor/partial-analysis",
+    ...(partialFix ? { suggestion: partialFix } : {}),
   };
   const finding = {
     ...fingerprintBase,
@@ -1220,10 +1248,6 @@ export async function analyzeFederation(
   } catch (error) {
     const message = errorMessage(error);
     const failureRoot = normalizedOptions.root ?? process.cwd();
-    if (normalizedOptions.formats?.includes("terminal"))
-      process.stderr.write(
-        `mfdoctor could not complete workspace analysis: ${message}\nfix: Inspect \`.mf/doctor/report.json\` for \`doctor/analysis-failed\`, restore missing \`.mf/doctor/project.json\` emits, then re-run \`mfdoctor workspace\`. Incomplete analysis is not a pass.\n`,
-      );
     const finding = runFailureFinding(
       failureRoot,
       "workspace",
@@ -1244,13 +1268,13 @@ export async function analyzeFederation(
         : {}),
     });
     report.status = markRunIncomplete(report.status, "evidence-unknown");
-    if (normalizedOptions.outputDirectory)
-      await persistFailureReport(
-        normalizedOptions.outputDirectory,
-        normalizedOptions.write !== false,
-        report,
-        normalizedOptions.formats ?? [],
-      );
+    const persisted = await persistFailureReport(
+      normalizedOptions.outputDirectory ?? failureRoot,
+      Boolean(normalizedOptions.outputDirectory) && normalizedOptions.write !== false,
+      report,
+      normalizedOptions.formats ?? [],
+    );
+    writeEngineFailureStderr(persisted, message, "workspace");
     return {
       projects: [],
       findings,

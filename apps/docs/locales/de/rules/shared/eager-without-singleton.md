@@ -13,7 +13,7 @@ An eager non-singleton can add copies to initial chunks without guaranteeing reu
 
 ## So beheben Sie das Problem
 
-Make it singleton when safe, or remove eager loading.
+Set `singleton: true` on that shared package when it holds framework state, or drop `eager: true` so the runtime can load a single copy.
 
 Suppress or retarget with `rules["shared/eager-without-singleton"]` set to `"off"` or a severity, see [Suppressions and allowlists](../../suppressions.md).
 

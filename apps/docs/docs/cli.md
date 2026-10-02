@@ -95,7 +95,9 @@ mfdoctor check --format terminal,json,sarif
 
 Accepted formats are `terminal`, `json`, and `sarif`. JSON and SARIF artifacts
 are written below `.mf/doctor/`. A format list containing only `json` or `sarif`
-does not add human-readable terminal output.
+does not add human-readable terminal output. SARIF includes per-rule
+`help.text`, result `properties.fix`, and `runs[0].properties.incompleteReasons`
+remediations, see [Report schemas](./report-schemas.md#sarif-remediations).
 
 ### Require complete evidence
 

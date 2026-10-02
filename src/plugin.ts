@@ -22,6 +22,7 @@ import {
   observeSourceTransformImportFromConfigs,
   type ResolveAliasObservation,
 } from "./share-rewrite.js";
+import { incompleteReasonRemediations } from "./run-status.js";
 import { extractCompilerSplitChunksFacts, extractRsbuildSplitChunksFacts } from "./split-chunks.js";
 
 /**
@@ -31,8 +32,11 @@ import { extractCompilerSplitChunksFacts, extractRsbuildSplitChunksFacts } from 
 export function failAfterCollect(result: AnalysisResult): void {
   if (result.exitCode === 0) return;
   if (result.exitCode === 2) {
-    const reasons = result.report.status?.incompleteReasons ?? [];
-    const reasonText = reasons.length > 0 ? ` Incomplete reasons: ${reasons.join(", ")}.` : "";
+    const remediations = incompleteReasonRemediations(result.report.status?.incompleteReasons);
+    const reasonText =
+      remediations.length > 0
+        ? ` Incomplete reasons: ${remediations.map((item) => `${item.code} (${item.fix})`).join("; ")}.`
+        : "";
     throw new Error(
       `mfdoctor could not complete analysis.${reasonText} Inspect \`.mf/doctor/report.json\` status.incompleteReasons and \`doctor/partial-analysis\`. Rebuild with a mfdoctor adapter so \`.mf/doctor/project.json\` exists, then rerun. Incomplete analysis is not a pass.`,
     );

@@ -184,6 +184,7 @@ export function projectConclusiveFailures(input: {
       const location = finding.location
         ? { ...finding.location, path: redact(finding.location.path, input.root) as string }
         : undefined;
+      const suggestion = finding.suggestion ?? rule.meta.remediation.fix;
       const base = {
         schemaVersion: 1 as const,
         ruleId: evaluation.rule.id,
@@ -194,9 +195,7 @@ export function projectConclusiveFailures(input: {
         evidence: redact(evidence, input.root) as Record<string, unknown>,
         documentation: rule.meta.remediation.documentation,
         ...(location ? { location } : {}),
-        ...(finding.suggestion
-          ? { suggestion: redact(finding.suggestion, input.root) as string }
-          : {}),
+        ...(suggestion ? { suggestion: redact(suggestion, input.root) as string } : {}),
       };
       const next: DoctorFinding = {
         ...base,

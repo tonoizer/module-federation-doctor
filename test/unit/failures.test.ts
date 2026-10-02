@@ -236,4 +236,44 @@ describe("strict completeness and failure artifacts", () => {
       process.chdir(previous);
     }
   });
+
+  it("prints the structured failure report instead of a duplicate engine stderr dump", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-quiet-failure-"));
+    roots.push(root);
+    const output = path.join(root, "reports");
+    await fs.mkdir(output, { recursive: true });
+    await fs.writeFile(path.join(root, "package.json"), '{"name":"quiet-failure"}');
+
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const stdoutWrite = process.stdout.write;
+    const stderrWrite = process.stderr.write;
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      stdout.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      stderr.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    try {
+      const result = await analyze({
+        ...baseOptions(root),
+        output: { formats: ["terminal", "json"], directory: output },
+        baseline: path.join(root, "missing-baseline.json"),
+      });
+      expect(result.report.findings.some((item) => item.ruleId === "doctor/analysis-failed")).toBe(
+        true,
+      );
+    } finally {
+      process.stdout.write = stdoutWrite;
+      process.stderr.write = stderrWrite;
+    }
+
+    const printed = `${stdout.join("")}\n${stderr.join("")}`;
+    expect(printed).toContain("doctor/analysis-failed");
+    expect(printed).toContain("Next action:");
+    expect(stderr.join("")).not.toContain("mfdoctor could not complete:");
+    await expect(fs.access(path.join(output, "report.json"))).resolves.toBeUndefined();
+  });
 });

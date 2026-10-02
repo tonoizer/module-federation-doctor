@@ -2393,7 +2393,7 @@ describe("doctor/partial-analysis suggestions", () => {
     const findings = await runPartial(baseFacts());
     expect(findings).toHaveLength(1);
     expect(findings[0]?.suggestion).toMatch(/manifest:\s*true/);
-    expect(findings[0]?.suggestion).not.toBe("Pass explicit MF options.");
+    expect(findings[0]?.suggestion).not.toMatch(/moduleFederation/);
   });
 
   it("keeps Vite remotes without manifest on the documented opt-in path", async () => {
@@ -2433,13 +2433,14 @@ describe("doctor/partial-analysis suggestions", () => {
     },
   );
 
-  it("keeps Pass explicit MF options when config capability is missing", async () => {
+  it("keeps a config-options remediation when config capability is missing", async () => {
     const facts = baseFacts();
     facts.capabilities.config = false;
     delete facts.moduleFederation;
     const findings = await runPartial(facts);
     expect(findings).toHaveLength(1);
-    expect(findings[0]?.suggestion).toBe("Pass explicit MF options.");
+    expect(findings[0]?.suggestion).toMatch(/moduleFederation/);
+    expect(findings[0]?.suggestion).toMatch(/name/);
   });
 
   it("describes unreadable source input without suggesting dynamic-import remediation", async () => {
