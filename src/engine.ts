@@ -9,7 +9,12 @@ import {
   summarizeFindings,
   type ResolvedBaselineOptions,
 } from "./baseline.js";
-import { addBuildFacts, collectProjectFacts, type BuildDiagnostics } from "./collect.js";
+import {
+  addBuildFacts,
+  collectProjectAnalysis,
+  collectProjectFacts,
+  type BuildDiagnostics,
+} from "./collect.js";
 import { resolveOptions } from "./config.js";
 import { compareV1Outputs } from "./evidence-parity.js";
 import {
@@ -274,6 +279,10 @@ function parseSetting(setting: RuleSetting | undefined, fallback: Severity) {
   return { severity: setting as Severity, options: {} };
 }
 
+function freezeRuleFacts(facts: ProjectFacts): ProjectFacts {
+  return deepFreeze(structuredClone(facts));
+}
+
 async function runRule(
   rule: DoctorRule,
   facts: ProjectFacts,
@@ -282,6 +291,7 @@ async function runRule(
   sharedPolicy?: ResolvedDoctorOptions["sharedPolicy"],
   recognizeMfToolkit?: boolean,
   runId: string = randomUUID(),
+  sourceTexts?: Readonly<Record<string, string>>,
 ): Promise<DoctorFinding[]> {
   const resolved = parseSetting(setting, rule.meta.defaultSeverity);
   // Unknown bundler means detection failed. Keep shared rules running; Vite-only
@@ -324,11 +334,13 @@ async function runRule(
   };
   try {
     const returned = await rule.check({
-      facts: deepFreeze(structuredClone(facts)),
+      // Callers freeze each scoped facts object once; do not clone per rule.
+      facts,
       options: deepFreeze(resolved.options),
       root,
-      ...(sharedPolicy ? { sharedPolicy: deepFreeze(sharedPolicy) } : {}),
+      ...(sharedPolicy ? { sharedPolicy } : {}),
       ...(recognizeMfToolkit !== undefined ? { recognizeMfToolkit } : {}),
+      ...(sourceTexts ? { sourceTexts } : {}),
       report: add,
     });
     if (Array.isArray(returned)) for (const finding of returned) add(finding);
@@ -424,7 +436,9 @@ async function legacyMigratedFallback(
   sharedPolicy: ResolvedDoctorOptions["sharedPolicy"],
   recognizeMfToolkit: boolean | undefined,
   runId: string,
+  sourceTexts?: Readonly<Record<string, string>>,
 ): Promise<DoctorFinding[]> {
+  const frozenFacts = freezeRuleFacts(facts);
   return (
     await Promise.all(
       builtInRules
@@ -432,12 +446,13 @@ async function legacyMigratedFallback(
         .map((rule) =>
           runRule(
             rule,
-            facts,
+            frozenFacts,
             settings[rule.meta.id],
             root,
             sharedPolicy,
             recognizeMfToolkit,
             runId,
+            sourceTexts,
           ),
         ),
     )
@@ -500,7 +515,9 @@ async function runAnalysis(
           .map((output) => output.outputRoot)
           .filter((value): value is string => Boolean(value))
       : undefined;
-    facts = await collectProjectFacts(resolvedOptions, boundedRoots);
+    const collected = await collectProjectAnalysis(resolvedOptions, boundedRoots);
+    facts = collected.facts;
+    const sourceTexts = collected.sourceTexts;
     if (emittedAssets)
       await addBuildFacts(facts, emittedAssets, resolvedOptions.root, diagnostics, buildOutputs);
     const rolloutDefaults = createEvidenceRolloutController();
@@ -509,22 +526,25 @@ async function runAnalysis(
       : (options.evidenceRollout ?? rolloutDefaults);
     const rolloutMode = rollout.modeFor("rules");
     const scopedFacts = ruleFacts(facts);
+    const frozenSharedPolicy = deepFreeze(resolvedOptions.sharedPolicy);
+    const frozenScopedFacts = scopedFacts.map(freezeRuleFacts);
     const legacyBuiltIns =
       rolloutMode === "v2-compat"
         ? builtInRules.filter((rule) => !migratedEvidenceRuleIds.has(rule.meta.id))
         : builtInRules;
     let legacyFindings = (
       await Promise.all(
-        scopedFacts.flatMap((factsForRules) =>
+        frozenScopedFacts.flatMap((factsForRules) =>
           [...legacyBuiltIns, ...resolvedOptions.extends].map((rule) =>
             runRule(
               rule,
               factsForRules,
               resolvedOptions.rules[rule.meta.id],
               resolvedOptions.root,
-              resolvedOptions.sharedPolicy,
+              frozenSharedPolicy,
               resolvedOptions.recognizeMfToolkit,
               runId,
+              sourceTexts,
             ),
           ),
         ),
@@ -571,9 +591,10 @@ async function runAnalysis(
                 scope.facts,
                 resolvedOptions.rules,
                 resolvedOptions.root,
-                resolvedOptions.sharedPolicy,
+                frozenSharedPolicy,
                 resolvedOptions.recognizeMfToolkit,
                 runId,
+                sourceTexts,
               ),
             );
           } else migratedProjectionRuns.push({ facts: scope.facts, run });
@@ -589,9 +610,10 @@ async function runAnalysis(
                 scope.facts,
                 resolvedOptions.rules,
                 resolvedOptions.root,
-                resolvedOptions.sharedPolicy,
+                frozenSharedPolicy,
                 resolvedOptions.recognizeMfToolkit,
                 runId,
+                sourceTexts,
               ),
             );
           }

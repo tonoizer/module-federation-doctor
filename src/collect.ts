@@ -109,6 +109,11 @@ async function findPackageFile(entry: string, root: string): Promise<string> {
 
 interface RawImportScan {
   sourceFiles: string[];
+  /**
+   * Relative path → source text from this scan's successful reads.
+   * Stays in memory for rule evaluation; never persisted on ProjectFacts.
+   */
+  sourceTexts?: Record<string, string>;
   /** Specifier → whether any reference was dynamic (import()/require/runtime API). */
   specifierDynamic: Map<string, boolean>;
   /**
@@ -965,6 +970,9 @@ async function scanProjectImports(
     return { file: item.file, scan: miss.scan };
   });
   scan.sourceFiles = parsed.map(({ file }) => file);
+  const sourceTexts: Record<string, string> = {};
+  for (const item of parseable) sourceTexts[item.file] = item.source;
+  scan.sourceTexts = sourceTexts;
   for (const item of parsed) mergeImportScan(scan, item.scan);
   scan.budget = tracker.report(scan.sourceReadFailures.length > 0 ? "unknown" : "complete");
   scan.unresolvedDynamic.sort(
@@ -2071,10 +2079,23 @@ function attachFederationInstanceBuilds(facts: ProjectFacts): void {
   }
 }
 
+/** In-memory collect result. `sourceTexts` must never be written to project.json. */
+interface CollectedProject {
+  facts: ProjectFacts;
+  sourceTexts: Readonly<Record<string, string>>;
+}
+
 export async function collectProjectFacts(
   options: ResolvedDoctorOptions,
   boundedRoots?: string[],
 ): Promise<ProjectFacts> {
+  return (await collectProjectAnalysis(options, boundedRoots)).facts;
+}
+
+export async function collectProjectAnalysis(
+  options: ResolvedDoctorOptions,
+  boundedRoots?: string[],
+): Promise<CollectedProject> {
   const packageJson = await readPackage(options.root);
   const declared = {
     ...packageJson.peerDependencies,
@@ -2290,7 +2311,10 @@ export async function collectProjectFacts(
   // Plugin and asset-size collection can consume the remaining wall-time
   // budget. Publish the shared tracker snapshot only after both phases.
   facts.analysis = tracker.report(scan.sourceReadFailures.length > 0 ? "unknown" : "complete");
-  return facts;
+  return {
+    facts,
+    sourceTexts: Object.freeze({ ...scan.sourceTexts }),
+  };
 }
 
 export interface BuildDiagnostics {

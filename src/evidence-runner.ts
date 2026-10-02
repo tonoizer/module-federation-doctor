@@ -434,6 +434,7 @@ export async function runEvidenceAwareRules(
   const evaluations: RuleEvaluationResult[] = [];
   const execution: RuleExecutionState[] = [];
   const seen = new Set<string>();
+  const frozenFacts = input.facts ? deepFreeze(structuredClone(input.facts)) : undefined;
   for (const rule of input.rules) {
     const subjectKind = subjectKindForRule(rule);
     const ruleSubjects = subjectKind
@@ -521,7 +522,7 @@ export async function runEvidenceAwareRules(
           scope: deepFreeze(scopeForSubject(scope, subject, graph)),
           evidenceIds: Object.freeze(prerequisite.ids.slice()),
           evidence: query,
-          ...(input.facts ? { facts: deepFreeze(structuredClone(input.facts)) } : {}),
+          ...(frozenFacts ? { facts: frozenFacts } : {}),
           options: deepFreeze(Object.freeze(input.ruleOptions?.[rule.meta.id] ?? {})),
           ...(input.root ? { root: input.root } : {}),
           ...(input.sharedPolicy ? { sharedPolicy: input.sharedPolicy } : {}),
