@@ -122,6 +122,7 @@ const headingTranslations = new Map([
   ["## Production policy", "## Produktionsrichtlinie"],
   ["## Probe a deployed manifest", "## Ein bereitgestelltes Manifest prüfen"],
   ["## Print agent fix prompts", "## Agenten-Lösungsprompts ausgeben"],
+  ["## CLI errors", "## CLI-Fehler"],
   ["# Agent loop", "# Agenten-Schleife"],
   ["## Two tiers", "## Zwei Stufen"],
   ["## Intended loop", "## Vorgesehene Schleife"],

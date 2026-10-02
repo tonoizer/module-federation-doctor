@@ -7,6 +7,7 @@ import { resolvePrintLog, resolveQuiet, resolvePrompt } from "./config.js";
 import { formatTopAgentPrompts } from "./agent-prompt.js";
 import { doctorRuleDocUrl } from "./docs-url.js";
 import { ruleGuidance } from "./rule-guidance.js";
+import { fixForIncompleteReason } from "./run-status.js";
 import type {
   DoctorFinding,
   DoctorPrintLog,
@@ -141,19 +142,46 @@ function formatAnalysisStatus(status: TerminalAnalysisStatus): string {
   return pc.yellow(`Analysis: incomplete${reasons}`);
 }
 
+function primaryPromptTarget(report: DoctorReport): string | undefined {
+  const unsuppressed = report.findings.filter((finding) => !finding.suppressed);
+  const error = unsuppressed.find((finding) => finding.severity === "error");
+  return (error ?? unsuppressed[0])?.ruleId;
+}
+
+function formatIncompleteFixes(reasons: string[]): string {
+  if (reasons.length === 0)
+    return "rebuild with the mfdoctor adapter and rerun the check to complete analysis";
+  const detail = [...new Set(reasons)]
+    .slice(0, 3)
+    .map((reason) => `${reason} (${fixForIncompleteReason(reason)})`)
+    .join("; ");
+  return `complete analysis (${detail})`;
+}
+
 function formatNextAction(
   report: DoctorReport,
   status: TerminalAnalysisStatus,
   policyFailed: boolean,
 ): string {
-  if (policyFailed && status.incomplete)
-    return "Next action: Fix the policy errors, then rebuild with the mfdoctor adapter and rerun the check.";
-  if (policyFailed) return "Next action: Fix the policy errors, then rerun the check.";
-  if (status.incomplete)
-    return "Next action: Rebuild with the mfdoctor adapter and rerun the check to complete analysis.";
-  if (report.summary.warnings > 0)
-    return "Next action: Review the warnings and rerun the check after making any changes.";
-  return "Next action: No action required.";
+  const parts: string[] = [];
+  if (policyFailed) {
+    const target = primaryPromptTarget(report);
+    parts.push(
+      target
+        ? `Fix ${target} via \`mfdoctor prompt --finding ${target}\``
+        : "Fix the policy errors",
+    );
+  }
+  if (status.incomplete) {
+    parts.push(formatIncompleteFixes(status.reasons));
+  } else if (policyFailed) {
+    parts.push("rerun the check");
+  } else if (report.summary.warnings > 0) {
+    return "Next action: Review the warnings, then rerun the check after making any changes.";
+  } else {
+    return "Next action: No action required.";
+  }
+  return `Next action: ${parts.join(", then ")}.`;
 }
 
 function formatScoreFooter(

@@ -16,6 +16,27 @@ export const INCOMPLETE_REASON_CODES = [
 
 export type { DoctorRunStatus, IncompleteReasonCode };
 
+/** Concrete remediation for each `status.incompleteReasons` code. */
+export const INCOMPLETE_REASON_FIX: Record<IncompleteReasonCode, string> = {
+  "missing-emit": "rebuild with a mfdoctor adapter so `.mf/doctor/project.json` is emitted",
+  "missing-stats":
+    "enable stats/manifest emit (Webpack/Rspack/Rsbuild: keep `manifest !== false`; Vite: `manifest: true`) and rebuild",
+  "partial-bundler":
+    "this bundler is only partial in the compatibility matrix; treat analysis as incomplete, not green",
+  "probe-skipped": "inspect workspace diagnostics for skipped or failed project discovery",
+  "evidence-unknown":
+    "inspect `doctor/partial-analysis` evidence (unreadable sources, unresolved dynamics, or budget cutoffs)",
+};
+
+/** Human remediations for incomplete-reason codes and the partial-analysis fallback label. */
+export function fixForIncompleteReason(reason: string): string {
+  if (reason in INCOMPLETE_REASON_FIX)
+    return INCOMPLETE_REASON_FIX[reason as IncompleteReasonCode];
+  if (reason === "doctor/partial-analysis")
+    return "inspect the `doctor/partial-analysis` finding and restore the missing evidence";
+  return `resolve ${reason}`;
+}
+
 /** Versioned detail payload used for failures produced by the analysis engine. */
 export const RUN_FAILURE_DETAILS_SCHEMA = "doctor.run-failure.v1" as const;
 

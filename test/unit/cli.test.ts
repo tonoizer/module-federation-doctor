@@ -446,8 +446,13 @@ describe("CLI arguments", () => {
 
     const unknown = await captureStderr(() => main(["chek"]));
     expect(unknown.code).toBe(2);
+    expect(unknown.text).toContain("error: usage-error");
     expect(unknown.text).toContain("Unknown command: chek");
+    expect(unknown.text).toContain("Did you mean: check");
+    expect(unknown.text).toContain("fix:");
+    expect(unknown.text).toContain("next:");
     expect(unknown.text).toContain("Usage:");
+    expect(unknown.text).not.toContain("CI tip:");
 
     const helpOutput = await captureStdout(() => main(["--help"]));
     expect(helpOutput.code).toBe(0);
@@ -462,6 +467,61 @@ describe("CLI arguments", () => {
     expect(shortVersion.code).toBe(0);
     expect(shortVersion.text.trim()).toBe(expectedVersion);
     expect(shortVersion.text).not.toContain("Usage:");
+  });
+
+  it("prints focused usage for mfdoctor <command> --help", async () => {
+    expect(parseArgs(["check", "--help"])).toMatchObject({
+      command: "help",
+      helpCommand: "check",
+    });
+    const helpOutput = await captureStdout(() => main(["check", "--help"]));
+    expect(helpOutput.code).toBe(0);
+    expect(helpOutput.text).toContain("mfdoctor check");
+    expect(helpOutput.text).toContain("Usage:");
+    expect(helpOutput.text).toContain("--require-complete");
+    expect(helpOutput.text).not.toContain("CI tip:");
+  });
+
+  it("prints structured remediations for unknown options, rules, and missing probe URLs", async () => {
+    const ui = await captureStderr(() => main(["check", "--ui"]));
+    expect(ui.code).toBe(2);
+    expect(ui.text).toContain("error: usage-error");
+    expect(ui.text).toContain("Unknown option: --ui");
+    expect(ui.text).toContain("non-goal");
+    expect(ui.text).toContain("fix:");
+
+    const rule = await captureStderr(() => main(["rules", "config/name-requird"]));
+    expect(rule.code).toBe(2);
+    expect(rule.text).toContain("error: rule-not-found");
+    expect(rule.text).toContain("Did you mean: config/name-required");
+    expect(rule.text).toContain("next: mfdoctor rules config/name-required");
+
+    const probe = await captureStderr(() => main(["probe"]));
+    expect(probe.code).toBe(2);
+    expect(probe.text).toContain("error: usage-error");
+    expect(probe.text).toContain("probe needs a manifest URL");
+    expect(probe.text).toContain("mf-manifest.json");
+  });
+
+  it("prints finding-not-found remediations from a saved report", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mfdoctor-cli-prompt-"));
+    roots.push(root);
+    const reportPath = path.join(root, "report.json");
+    await fs.writeFile(reportPath, JSON.stringify(reportFixture));
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const missing = await captureStderr(() =>
+        main(["prompt", "--finding", "config/does-not-exist", reportPath]),
+      );
+      expect(missing.code).toBe(2);
+      expect(missing.text).toContain("error: finding-not-found");
+      expect(missing.text).toContain("No finding matched --finding config/does-not-exist");
+      expect(missing.text).toContain("fix:");
+      expect(missing.text).toContain("Available rule ids:");
+    } finally {
+      process.chdir(previous);
+    }
   });
 
   it("parses probe safety flags and rejects unknown report formats", () => {

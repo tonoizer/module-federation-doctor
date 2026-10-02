@@ -80,6 +80,8 @@ export interface CliOperationNetwork {
 export interface CliOperationError {
   exitCode: 0 | 1 | 2;
   description: string;
+  /** Concrete next step when this code is raised (CLI stderr `fix:` / agent handoff). */
+  fix: string;
 }
 
 export interface CliOperationContract {
@@ -172,48 +174,59 @@ const EXPLICIT_NETWORK: CliOperationNetwork = {
 const USAGE_ERROR: CliOperationError = {
   exitCode: 2,
   description: "Arguments or options are missing or invalid.",
+  fix: "Correct the command arguments or options. Run `mfdoctor --help`, `mfdoctor <command> --help`, or `mfdoctor capabilities` for the versioned contract, then retry.",
 };
 const IO_ERROR: CliOperationError = {
   exitCode: 2,
   description: "A required local file or output artifact could not be read or written.",
+  fix: "Create or chmod the missing path and retry. Saved reports default to `.mf/doctor/report.json`; project facts require a mfdoctor adapter build.",
 };
 const POLICY_FAIL: CliOperationError = {
   exitCode: 1,
   description:
     "The operation completed and its unsuppressed policy findings fail the selected threshold.",
+  fix: "Open `.mf/doctor/report.json` and run `mfdoctor prompt --finding <ruleId>` for a copy-paste repair prompt. Do not add suppressions unless the user asked.",
 };
 const ANALYSIS_INCOMPLETE: CliOperationError = {
   exitCode: 2,
   description: "The operation completed with incomplete evidence; this is not a policy pass.",
+  fix: "Rebuild with a mfdoctor adapter so `.mf/doctor/project.json` exists, inspect `status.incompleteReasons`, and rerun. Pass `--require-complete` to fail policy (exit 1) instead.",
 };
 const INVALID_REPORT: CliOperationError = {
   exitCode: 2,
   description: "The supplied report is not a valid mfdoctor report document.",
+  fix: "Pass `report.json` from `mfdoctor check` or adapter emit, not `project.json`. Re-run `mfdoctor check --format json` to write a fresh report.",
 };
 const INVALID_PROJECT_FACTS: CliOperationError = {
   exitCode: 2,
   description:
     "A project-facts input is missing, invalid, or belongs to an incompatible federation group.",
+  fix: "Rebuild each federated app with a mfdoctor adapter so `.mf/doctor/project.json` exists, then rerun `workspace` or pass an explicit project.json glob.",
 };
 const FINDING_NOT_FOUND: CliOperationError = {
   exitCode: 2,
   description: "No finding matched the requested rule id or fingerprint.",
+  fix: "Omit `--finding` to print the top prompts, or pass a `findings[].ruleId` / `findings[].fingerprint` from the saved report.",
 };
 const RULE_NOT_FOUND: CliOperationError = {
   exitCode: 2,
   description: "The requested rule id is not in the built-in rule catalog.",
+  fix: "Run `mfdoctor rules` for the catalog. Rule ids look like `config/name-required`.",
 };
 const NETWORK_ERROR: CliOperationError = {
   exitCode: 2,
   description: "A guarded manifest request failed or returned an unusable response.",
+  fix: "Confirm the URL is a reachable HTTPS `mf-manifest.json`. Increase `--timeout` / `--max-bytes` only if the manifest is large or slow. Probe never executes remote JavaScript.",
 };
 const INVALID_MANIFEST: CliOperationError = {
   exitCode: 2,
   description: "A fetched manifest is not a supported Module Federation manifest document.",
+  fix: "Point probe/compare at Module Federation `mf-manifest.json` (JSON object with name or id), not remoteEntry JavaScript or HTML.",
 };
 const SSRF_BLOCKED: CliOperationError = {
   exitCode: 2,
   description: "The requested URL was rejected by the network safety policy.",
+  fix: "Use an https URL without embedded credentials. HTTP is allowed only for loopback initial URLs. Private, link-local, and metadata hosts are blocked by default.",
 };
 
 const ANALYSIS_OPTIONS = [

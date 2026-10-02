@@ -115,6 +115,16 @@ function structureEvidenceRun<T extends { output: { execution: RuleExecutionStat
   } as T;
 }
 
+function runFailureSuggestion(details: RunFailureDetails): string {
+  if (details.phase === "rule") {
+    return `Rule \`${details.ruleId}\` threw during analysis (${details.errorCode}). This is an mfdoctor engine failure, not a Module Federation config finding. Re-run after upgrading @tonoizer/mfdoctor; if it persists, file an issue with this rule id and the error text.`;
+  }
+  if (details.phase === "evidence") {
+    return `Evidence collection failed (${details.errorCode}). Check that the project root is readable, analysis budgets are not exhausted, and source files are not permission-denied, then re-run mfdoctor.`;
+  }
+  return `Analysis aborted (${details.errorCode}). Fix the error in the finding message, inspect \`.mf/doctor/report.json\`, then re-run mfdoctor to collect the full report.`;
+}
+
 function runFailureFinding(
   root: string,
   project: string,
@@ -139,7 +149,7 @@ function runFailureFinding(
       ...(details.ruleId ? { ruleId: details.ruleId } : {}),
     },
     ...(documentation ? { documentation } : {}),
-    suggestion: "Fix the reported failure, then re-run mfdoctor to collect the full report.",
+    suggestion: runFailureSuggestion(details),
   };
   return {
     ...base,
@@ -681,7 +691,9 @@ async function runAnalysis(
   } catch (error) {
     const message = errorMessage(error);
     if (resolved?.output.formats.includes("terminal"))
-      process.stderr.write(`mfdoctor could not complete: ${message}\n`);
+      process.stderr.write(
+        `mfdoctor could not complete: ${message}\nfix: Inspect \`.mf/doctor/report.json\` for \`doctor/analysis-failed\`, address that error, then re-run mfdoctor. Incomplete analysis is not a pass.\n`,
+      );
     const failedFacts = await failureFacts(resolved, facts, options);
     const failureRoot = resolved?.root ?? path.resolve(options.root ?? process.cwd());
     const failureFinding = runFailureFinding(
@@ -1209,7 +1221,9 @@ export async function analyzeFederation(
     const message = errorMessage(error);
     const failureRoot = normalizedOptions.root ?? process.cwd();
     if (normalizedOptions.formats?.includes("terminal"))
-      process.stderr.write(`mfdoctor could not complete workspace analysis: ${message}\n`);
+      process.stderr.write(
+        `mfdoctor could not complete workspace analysis: ${message}\nfix: Inspect \`.mf/doctor/report.json\` for \`doctor/analysis-failed\`, restore missing \`.mf/doctor/project.json\` emits, then re-run \`mfdoctor workspace\`. Incomplete analysis is not a pass.\n`,
+      );
     const finding = runFailureFinding(
       failureRoot,
       "workspace",

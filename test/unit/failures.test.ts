@@ -79,6 +79,8 @@ describe("strict completeness and failure artifacts", () => {
         ruleId: "test/throws-structured",
       },
     });
+    expect(failure?.suggestion).toMatch(/test\/throws-structured/);
+    expect(failure?.suggestion).toMatch(/rule-execution-failed/);
     expect(failure?.details?.runId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     );
