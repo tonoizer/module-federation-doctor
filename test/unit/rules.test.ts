@@ -3334,7 +3334,9 @@ describe("Vite/Nuxt artifact false positives", () => {
           target: { state: "exact", reason: "test" },
         },
         sourceHook: "closeBundle",
-        targetKind: "web",
+        // Vite's default ssr.target records node even for the public/client emit.
+        targetKind: "node",
+        target: "node",
       },
     ];
     expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);

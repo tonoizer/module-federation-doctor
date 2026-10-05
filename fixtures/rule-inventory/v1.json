@@ -668,7 +668,8 @@
         "artifacts.emittedAssets",
         "artifacts.assetSizes",
         "capabilities.emittedAssets",
-        "dependencies.declared"
+        "dependencies.declared",
+        "builds"
       ],
       "migrationNote": "Group 2; Parsed manifest evidence is exact when valid. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },

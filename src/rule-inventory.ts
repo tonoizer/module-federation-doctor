@@ -1700,6 +1700,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "artifacts.assetSizes",
     "capabilities.emittedAssets",
     "dependencies.declared",
+    "builds",
   ],
   "artifact/manifest-shared-version-mismatch": [
     "project.scope",
@@ -2166,6 +2167,7 @@ function requirementFor(id: string, spec: RulePlan): EvidenceRequirement {
       "bundler.moduleFederationPluginCount",
     ],
     "ssr/remote-entry-target-mismatch": ["builds"],
+    "artifact/manifest-remote-entry-missing": ["builds"],
     "config/promise-remote-async-boundary": ["imports.sourceFiles"],
   };
   const optional = optionalPluginFacts[id];

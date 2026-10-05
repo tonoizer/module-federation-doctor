@@ -342,6 +342,30 @@ function ssrRemoteEntryMissingSuggestion(pluginVersion: string | undefined): str
   return `Clean and rebuild; build the SSR environment if this remote has a server entry, then verify filename, output path, and manifest generation use one config.${upgrade}`;
 }
 
+const DUAL_ENV_SSR_DEPS = ["nitro", "nitropack", "nuxt", "@nuxt/kit", "@nuxt/schema"] as const;
+
+function isDualEnvSsrFramework(facts: ProjectFacts): boolean {
+  return DUAL_ENV_SSR_DEPS.some((name) => name in facts.dependencies.declared);
+}
+
+/**
+ * Vite's default `ssr.target` is `node`, so a Nitro *client* close often records
+ * `targetKind=node` for `.output/public`. That is not the server environment.
+ * Wait until a server output root (or an explicit `targetKind=ssr` build) exists.
+ */
+function isSsrServerOutputRoot(outputRoot: string | undefined): boolean {
+  if (!outputRoot) return false;
+  const normalized = outputRoot.replaceAll("\\", "/").replace(/\/$/, "");
+  if (normalized === "server" || normalized.endsWith("/server")) return true;
+  return /(?:^|\/)node_modules\/\.nitro\/vite\/services\/ssr$/.test(normalized);
+}
+
+function collectedSsrServerOutput(facts: ProjectFacts): boolean {
+  return (facts.builds ?? []).some(
+    (build) => build.targetKind === "ssr" || isSsrServerOutputRoot(build.outputRoot),
+  );
+}
+
 /**
  * Some Vite SSR integrations intentionally suffix the server container entry
  * (for example `remoteEntry.ssr.js`) while the client build emits the
@@ -2460,16 +2484,10 @@ export const builtInRules: DoctorRule[] = [
     }
     if (ssrRemoteEntry?.name && manifest.exposes.length > 0) {
       // Nitro/Nuxt client close can run before the server environment writes
-      // `remoteEntry.ssr.js`. Absence is only conclusive when we already saw a
-      // node/ssr output, or this is not a dual-env framework app.
-      const dualEnv = ["nitro", "nitropack", "nuxt", "@nuxt/kit", "@nuxt/schema"].some(
-        (name) => name in context.facts.dependencies.declared,
-      );
-      const sawServerOutput = (context.facts.builds ?? []).some(
-        (build) => build.targetKind === "node" || build.targetKind === "ssr",
-      );
+      // `remoteEntry.ssr.js`. Do not treat `targetKind=node` as that server
+      // emit: Vite browser builds often record it from default `ssr.target`.
       if (
-        (sawServerOutput || !dualEnv) &&
+        !(isDualEnvSsrFramework(context.facts) && !collectedSsrServerOutput(context.facts)) &&
         !collectedRemoteEntryPresent(context.facts, ssrRemoteEntry)
       )
         report(
