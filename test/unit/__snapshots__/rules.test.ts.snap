@@ -69,6 +69,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "artifact/manifest-invalid",
   "artifact/manifest-name-mismatch",
   "artifact/manifest-remote-entry-missing",
+  "artifact/manifest-ssr-remote-entry-missing",
   "artifact/manifest-expose-assets-empty",
   "artifact/manifest-shared-version-mismatch",
   "artifact/types-metadata-missing",

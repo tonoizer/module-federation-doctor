@@ -303,13 +303,18 @@ function normalizedCollectedAsset(asset: string): string {
  * collected emit list, size map, and output root the doctor already knows about.
  * Absence from that union is reportable; missing emit capability stays silent.
  */
-function collectedRemoteEntryPresent(facts: ProjectFacts, entry: ManifestRemoteEntry): boolean {
+function collectedRemoteEntryPresent(
+  facts: ProjectFacts,
+  entry: ManifestRemoteEntry,
+  emittedAssets = facts.artifacts.emittedAssets,
+  assetSizes = facts.artifacts.assetSizes,
+): boolean {
   const candidate = `${entry.path}${entry.name}`;
   const basename = path.posix.basename(entry.name);
   const names = [...new Set([candidate, entry.name, basename].filter(Boolean))];
-  const assets: string[] = [...facts.artifacts.emittedAssets];
+  const assets: string[] = [...emittedAssets];
   for (const build of facts.builds ?? []) assets.push(...build.emittedAssets);
-  if (facts.artifacts.assetSizes) assets.push(...Object.keys(facts.artifacts.assetSizes));
+  if (assetSizes) assets.push(...Object.keys(assetSizes));
   return assets.some((asset) => {
     const normalized = normalizedCollectedAsset(asset);
     return names.some(
@@ -2487,7 +2492,12 @@ export const builtInRules: DoctorRule[] = [
     );
     if (
       (sawServerOutput || !dualEnv) &&
-      !collectedRemoteEntryPresent(context.facts, ssrRemoteEntry)
+      !collectedRemoteEntryPresent(
+        context.facts,
+        ssrRemoteEntry,
+        context.facts.artifacts.emittedAssets,
+        context.facts.artifacts.assetSizes,
+      )
     )
       report(
         context,
