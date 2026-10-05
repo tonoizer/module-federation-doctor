@@ -23,6 +23,9 @@ module.exports = async () => {
         rules: {
           "artifact/types-missing": "off",
           "artifact/dts-disabled": "off",
+          // Client-only Vite 1.22.1 advertises ssrRemoteEntry without emitting it
+          // (vite#1403). This cell tests adapter wiring, not SSR emit.
+          "artifact/manifest-remote-entry-missing": "off",
         },
       }),
     ],

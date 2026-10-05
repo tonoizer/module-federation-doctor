@@ -46,6 +46,9 @@ export default defineConfig({
         "config/js-remote-without-type-urls": "off",
         "reliability/version-first-offline-remotes": "off",
         "vite/manual-chunks-conflict": "off",
+        // Client-only Vite 1.22.1 advertises ssrRemoteEntry without emitting it
+        // (vite#1403). This fixture is runtime interop, not SSR emit.
+        "artifact/manifest-remote-entry-missing": "off",
       },
     }),
   ],

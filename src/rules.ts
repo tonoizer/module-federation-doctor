@@ -2458,7 +2458,11 @@ export const builtInRules: DoctorRule[] = [
           findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { remoteEntry }),
         );
     }
-    if (ssrRemoteEntry?.name && !collectedRemoteEntryPresent(context.facts, ssrRemoteEntry))
+    if (
+      ssrRemoteEntry?.name &&
+      manifest.exposes.length > 0 &&
+      !collectedRemoteEntryPresent(context.facts, ssrRemoteEntry)
+    )
       report(
         context,
         "The SSR remote entry named by the manifest was not emitted.",

@@ -3302,6 +3302,16 @@ describe("Vite/Nuxt artifact false positives", () => {
     expect(findings[0]?.message).toBe("The remote entry named by the manifest was not emitted.");
   });
 
+  it("does not flag ssrRemoteEntry on a consumer-only host manifest", async () => {
+    const facts = viteBase();
+    facts.moduleFederation!.exposes = {};
+    facts.artifacts.manifest!.exposes = [];
+    facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
+    facts.artifacts.emittedAssets = ["dist/remoteEntry.js"];
+    facts.artifacts.assetSizes = { "remoteEntry.js": 1200 };
+    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
+  });
+
   it("stays silent for ssrRemoteEntry when emit evidence is missing", async () => {
     const facts = viteBase();
     facts.capabilities.emittedAssets = false;
