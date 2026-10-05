@@ -150,6 +150,7 @@ const quietRules = {
   "config/remote-localhost-in-production": "off",
   "config/remote-manifest-recommended": "off",
   "artifact/remote-entry-missing": "off",
+  "artifact/manifest-remote-entry-missing": "off",
   "artifact/types-missing": "off",
   "artifact/types-metadata-missing": "off",
   "doctor/partial-analysis": "off",
