@@ -440,6 +440,13 @@ export type ArtifactStatsRecord = ArtifactRecordBase & {
 
 export type ArtifactRecord = ArtifactManifestRecord | ArtifactStatsRecord;
 
+/** Manifest `metaData.remoteEntry` / `metaData.ssrRemoteEntry` locator. */
+export interface ManifestRemoteEntry {
+  name: string;
+  path: string;
+  type?: string;
+}
+
 export interface ArtifactManifest {
   path: string;
   valid: boolean;
@@ -448,7 +455,8 @@ export interface ArtifactManifest {
   publicPath?: string;
   pluginVersion?: string;
   buildVersion?: string;
-  remoteEntry?: { name: string; path: string; type?: string };
+  remoteEntry?: ManifestRemoteEntry;
+  ssrRemoteEntry?: ManifestRemoteEntry;
   types?: { path?: string; zip?: string; api?: string };
   exposes: ManifestExpose[];
   shared: ManifestShared[];

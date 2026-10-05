@@ -118,6 +118,7 @@ export interface ArtifactDetailsV1 {
   outputPublicPathKind?: string;
   exposes?: string[];
   remoteEntry?: unknown;
+  ssrRemoteEntry?: unknown;
   /** Specifiers or asset paths that triggered an artifact shape finding. */
   entries?: string[];
 }

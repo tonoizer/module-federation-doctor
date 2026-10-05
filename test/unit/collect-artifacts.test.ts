@@ -275,6 +275,45 @@ describe("artifact collection", () => {
     expect(facts.artifacts.stats?.path).toBe("dist/mf-stats.json");
   });
 
+  it("parses metaData.ssrRemoteEntry beside remoteEntry", async () => {
+    const root = await fixture({
+      "dist/mf-manifest.json": JSON.stringify({
+        metaData: {
+          pluginVersion: "1.22.0",
+          remoteEntry: { name: "remoteEntry.js", path: "", type: "module" },
+          ssrRemoteEntry: { name: "remoteEntry.ssr.js", path: "", type: "module" },
+        },
+        exposes: [],
+        shared: [],
+      }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+    expect(facts.artifacts.manifest?.remoteEntry).toEqual({
+      name: "remoteEntry.js",
+      path: "",
+      type: "module",
+    });
+    expect(facts.artifacts.manifest?.ssrRemoteEntry).toEqual({
+      name: "remoteEntry.ssr.js",
+      path: "",
+      type: "module",
+    });
+    expect(facts.artifacts.manifest?.pluginVersion).toBe("1.22.0");
+  });
+
+  it("omits ssrRemoteEntry when the manifest does not advertise one", async () => {
+    const root = await fixture({
+      "dist/mf-manifest.json": JSON.stringify({
+        metaData: { remoteEntry: { name: "remoteEntry.js", path: "" } },
+        exposes: [],
+        shared: [],
+      }),
+    });
+    const facts = await collectProjectFacts(await resolveOptions({ root }));
+    expect(facts.artifacts.manifest?.remoteEntry).toEqual({ name: "remoteEntry.js", path: "" });
+    expect(facts.artifacts.manifest?.ssrRemoteEntry).toBeUndefined();
+  });
+
   it("collects configured custom names without scanning unrelated names", async () => {
     const root = await fixture({
       ".output/custom[manifest].json": JSON.stringify({ metaData: {}, exposes: [], shared: [] }),

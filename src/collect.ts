@@ -10,6 +10,7 @@ import { isDeepImportSpecifier } from "./shared-policy.js";
 import type {
   ArtifactKind,
   ArtifactManifest,
+  ManifestRemoteEntry,
   ArtifactRecord,
   ArtifactStats,
   ArtifactFacts,
@@ -1239,16 +1240,10 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
       ? (metadata.buildInfo as Record<string, unknown>)
       : {};
   if (typeof buildInfo.buildVersion === "string") manifest.buildVersion = buildInfo.buildVersion;
-  const remoteEntry =
-    metadata.remoteEntry && typeof metadata.remoteEntry === "object"
-      ? (metadata.remoteEntry as Record<string, unknown>)
-      : {};
-  if (typeof remoteEntry.name === "string")
-    manifest.remoteEntry = {
-      name: remoteEntry.name,
-      path: typeof remoteEntry.path === "string" ? remoteEntry.path : "",
-      ...(typeof remoteEntry.type === "string" ? { type: remoteEntry.type } : {}),
-    };
+  const remoteEntry = parseManifestRemoteEntry(metadata.remoteEntry);
+  if (remoteEntry) manifest.remoteEntry = remoteEntry;
+  const ssrRemoteEntry = parseManifestRemoteEntry(metadata.ssrRemoteEntry);
+  if (ssrRemoteEntry) manifest.ssrRemoteEntry = ssrRemoteEntry;
   const types =
     metadata.types && typeof metadata.types === "object"
       ? (metadata.types as Record<string, unknown>)
@@ -1264,6 +1259,17 @@ function manifestFrom(value: unknown, file: string): ArtifactManifest {
       ...(typeof types.api === "string" ? { api: types.api } : {}),
     };
   return manifest;
+}
+
+function parseManifestRemoteEntry(value: unknown): ManifestRemoteEntry | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const entry = value as Record<string, unknown>;
+  if (typeof entry.name !== "string") return undefined;
+  return {
+    name: entry.name,
+    path: typeof entry.path === "string" ? entry.path : "",
+    ...(typeof entry.type === "string" ? { type: entry.type } : {}),
+  };
 }
 
 function detectFromManifest(
@@ -1289,15 +1295,21 @@ function detectFromManifest(
   );
 }
 
+function addManifestRemoteEntryNames(
+  names: Set<string>,
+  entry: ManifestRemoteEntry | undefined,
+): void {
+  if (!entry?.name) return;
+  names.add(entry.name);
+  if (!entry.path) return;
+  const joined = normalizePath(path.posix.join(entry.path, entry.name));
+  if (joined && joined !== entry.name) names.add(joined);
+}
+
 function manifestAssetNames(manifest: NonNullable<ArtifactFacts["manifest"]>): string[] {
   const names = new Set<string>();
-  if (manifest.remoteEntry?.name) names.add(manifest.remoteEntry.name);
-  if (manifest.remoteEntry?.path) {
-    const joined = normalizePath(
-      path.posix.join(manifest.remoteEntry.path, manifest.remoteEntry.name),
-    );
-    if (joined && joined !== manifest.remoteEntry.name) names.add(joined);
-  }
+  addManifestRemoteEntryNames(names, manifest.remoteEntry);
+  addManifestRemoteEntryNames(names, manifest.ssrRemoteEntry);
   for (const expose of manifest.exposes) for (const asset of expose.assets) names.add(asset);
   for (const shared of manifest.shared) for (const asset of shared.assets) names.add(asset);
   return [...names];

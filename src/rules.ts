@@ -61,6 +61,7 @@ import { duplicateFederationInstanceGroups } from "./federation-instance.js";
 import { enhancedRemotesMissingStats } from "./run-status.js";
 import type {
   DoctorRule,
+  ManifestRemoteEntry,
   NormalizedMFConfig,
   NormalizedRemote,
   NormalizedShared,
@@ -291,6 +292,54 @@ function emittedAssetMatches(
     );
   }
   return asset.endsWith(candidate) || asset.endsWith(path.posix.basename(candidate));
+}
+
+function normalizedCollectedAsset(asset: string): string {
+  return asset.replaceAll("\\", "/").replace(/^\.\//, "");
+}
+
+/**
+ * SSR entries are often emitted by a separate server/client output. Search every
+ * collected emit list, size map, and output root the doctor already knows about.
+ * Absence from that union is reportable; missing emit capability stays silent.
+ */
+function collectedRemoteEntryPresent(facts: ProjectFacts, entry: ManifestRemoteEntry): boolean {
+  const candidate = `${entry.path}${entry.name}`;
+  const basename = path.posix.basename(entry.name);
+  const names = [...new Set([candidate, entry.name, basename].filter(Boolean))];
+  const assets: string[] = [...facts.artifacts.emittedAssets];
+  for (const build of facts.builds ?? []) assets.push(...build.emittedAssets);
+  if (facts.artifacts.assetSizes) assets.push(...Object.keys(facts.artifacts.assetSizes));
+  return assets.some((asset) => {
+    const normalized = normalizedCollectedAsset(asset);
+    return names.some(
+      (name) =>
+        normalized === name ||
+        normalized.endsWith(`/${name}`) ||
+        path.posix.basename(normalized) === path.posix.basename(name),
+    );
+  });
+}
+
+/** @module-federation/vite 1.x advertised ssrRemoteEntry on client-only emits before 1.23.2. */
+const VITE_SSR_REMOTE_ENTRY_FIX = "1.23.2";
+
+function vitePluginVersionBelowSsrRemoteEntryFix(pluginVersion: string | undefined): boolean {
+  if (!pluginVersion) return false;
+  const trimmed = pluginVersion.trim();
+  const version = semver.valid(trimmed) ?? semver.coerce(trimmed)?.version;
+  return (
+    version !== undefined &&
+    semver.major(version) === 1 &&
+    semver.lt(version, VITE_SSR_REMOTE_ENTRY_FIX)
+  );
+}
+
+function ssrRemoteEntryMissingSuggestion(pluginVersion: string | undefined): string {
+  const upgrade = vitePluginVersionBelowSsrRemoteEntryFix(pluginVersion)
+    ? " Upgrade `@module-federation/vite` to >=1.23.2 so client-only builds stop advertising `ssrRemoteEntry` without emitting it."
+    : "";
+  return `Clean and rebuild; build the SSR environment if this remote has a server entry, then verify filename, output path, and manifest generation use one config.${upgrade}`;
 }
 
 /**
@@ -2385,26 +2434,40 @@ export const builtInRules: DoctorRule[] = [
   createRule("artifact/manifest-remote-entry-missing", "error", (context) => {
     const manifest = context.facts.artifacts.manifest;
     const remoteEntry = manifest?.remoteEntry;
+    const ssrRemoteEntry = manifest?.ssrRemoteEntry;
     // Enhanced/Webpack hosts may emit a manifest for their remotes while
     // intentionally having no own container. Such manifests use an empty
     // remoteEntry object; there is no producer asset to validate.
-    if (!manifest?.valid || !remoteEntry?.name || !context.facts.capabilities.emittedAssets) return;
-    const candidate = `${remoteEntry.path}${remoteEntry.name}`;
-    const emitted = context.facts.artifacts.emittedAssets.some((asset) =>
-      emittedAssetMatches(context, manifest.path, candidate, asset),
-    );
-    // Vite often leaves remoteEntry.path empty while assetSizes still records the basename.
-    const sized =
-      remoteEntry.path === ""
-        ? lookupAssetSize(context.facts.artifacts.assetSizes, remoteEntry.name) !== undefined
-        : context.facts.artifacts.assetSizes?.[candidate] !== undefined;
-    if (!emitted && !sized)
+    if (!manifest?.valid || !context.facts.capabilities.emittedAssets) return;
+    if (remoteEntry?.name) {
+      const candidate = `${remoteEntry.path}${remoteEntry.name}`;
+      const emitted = context.facts.artifacts.emittedAssets.some((asset) =>
+        emittedAssetMatches(context, manifest.path, candidate, asset),
+      );
+      // Vite often leaves remoteEntry.path empty while assetSizes still records the basename.
+      const sized =
+        remoteEntry.path === ""
+          ? lookupAssetSize(context.facts.artifacts.assetSizes, remoteEntry.name) !== undefined
+          : context.facts.artifacts.assetSizes?.[candidate] !== undefined;
+      if (!emitted && !sized)
+        report(
+          context,
+          "The remote entry named by the manifest was not emitted.",
+          { remoteEntry },
+          "Clean and rebuild; then verify filename, output path, and manifest generation use one config.",
+          findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { remoteEntry }),
+        );
+    }
+    if (ssrRemoteEntry?.name && !collectedRemoteEntryPresent(context.facts, ssrRemoteEntry))
       report(
         context,
-        "The remote entry named by the manifest was not emitted.",
-        { remoteEntry },
-        "Clean and rebuild; then verify filename, output path, and manifest generation use one config.",
-        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { remoteEntry }),
+        "The SSR remote entry named by the manifest was not emitted.",
+        {
+          ssrRemoteEntry,
+          ...(manifest.pluginVersion ? { pluginVersion: manifest.pluginVersion } : {}),
+        },
+        ssrRemoteEntryMissingSuggestion(manifest.pluginVersion),
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { ssrRemoteEntry }),
       );
   }),
   createRule("artifact/manifest-expose-assets-empty", "warning", (context) => {
