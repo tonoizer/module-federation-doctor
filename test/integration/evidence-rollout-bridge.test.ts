@@ -102,6 +102,7 @@ const EXPECTED_GROUP2_RULE_IDS = [
   "artifact/manifest-invalid",
   "artifact/manifest-name-mismatch",
   "artifact/manifest-remote-entry-missing",
+  "artifact/manifest-ssr-remote-entry-missing",
   "artifact/manifest-expose-assets-empty",
   "artifact/manifest-shared-version-mismatch",
   "artifact/types-metadata-missing",
@@ -2642,6 +2643,7 @@ describe("evidence-aware rule rollout bridge", () => {
     const partialRun = await runMigratedEvidenceRules(partial, {});
     for (const id of [
       "artifact/manifest-remote-entry-missing",
+      "artifact/manifest-ssr-remote-entry-missing",
       "artifact/remote-entry-missing",
       "artifact/types-missing",
       "performance/asset-budget",
@@ -2715,6 +2717,7 @@ describe("evidence-aware rule rollout bridge", () => {
       "artifact/manifest-invalid",
       "artifact/manifest-name-mismatch",
       "artifact/manifest-remote-entry-missing",
+      "artifact/manifest-ssr-remote-entry-missing",
       "artifact/manifest-expose-assets-empty",
       "artifact/manifest-shared-version-mismatch",
       "artifact/public-path-suspicious",

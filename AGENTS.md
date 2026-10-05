@@ -64,7 +64,7 @@ dump):
 
 ## Evidence v2 stays legacy by default
 
-All 127 built-in rules are `migrated` to the evidence-aware contract, but
+All 128 built-in rules are `migrated` to the evidence-aware contract, but
 default rollout is still `legacy` until #87. Do not treat
 `apps/docs/docs/evidence-aware-rules.md` or ADR 0083 as the live report: CLI,
 JSON, SARIF, fingerprints, and custom rules remain V1. Do not change env

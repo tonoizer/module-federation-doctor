@@ -61,6 +61,7 @@ export const TYPED_DETAILS_RULE_IDS = [
   "artifact/manifest-invalid",
   "artifact/manifest-name-mismatch",
   "artifact/manifest-remote-entry-missing",
+  "artifact/manifest-ssr-remote-entry-missing",
   "artifact/manifest-expose-assets-empty",
   "artifact/manifest-shared-version-mismatch",
   "artifact/types-metadata-missing",

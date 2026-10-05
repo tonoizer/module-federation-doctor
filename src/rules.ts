@@ -2448,53 +2448,57 @@ export const builtInRules: DoctorRule[] = [
   createRule("artifact/manifest-remote-entry-missing", "error", (context) => {
     const manifest = context.facts.artifacts.manifest;
     const remoteEntry = manifest?.remoteEntry;
-    const ssrRemoteEntry = manifest?.ssrRemoteEntry;
     // Enhanced/Webpack hosts may emit a manifest for their remotes while
     // intentionally having no own container. Such manifests use an empty
     // remoteEntry object; there is no producer asset to validate.
-    if (!manifest?.valid || !context.facts.capabilities.emittedAssets) return;
-    if (remoteEntry?.name) {
-      const candidate = `${remoteEntry.path}${remoteEntry.name}`;
-      const emitted = context.facts.artifacts.emittedAssets.some((asset) =>
-        emittedAssetMatches(context, manifest.path, candidate, asset),
+    if (!manifest?.valid || !remoteEntry?.name || !context.facts.capabilities.emittedAssets) return;
+    const candidate = `${remoteEntry.path}${remoteEntry.name}`;
+    const emitted = context.facts.artifacts.emittedAssets.some((asset) =>
+      emittedAssetMatches(context, manifest.path, candidate, asset),
+    );
+    // Vite often leaves remoteEntry.path empty while assetSizes still records the basename.
+    const sized =
+      remoteEntry.path === ""
+        ? lookupAssetSize(context.facts.artifacts.assetSizes, remoteEntry.name) !== undefined
+        : context.facts.artifacts.assetSizes?.[candidate] !== undefined;
+    if (!emitted && !sized)
+      report(
+        context,
+        "The remote entry named by the manifest was not emitted.",
+        { remoteEntry },
+        "Clean and rebuild; then verify filename, output path, and manifest generation use one config.",
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { remoteEntry }),
       );
-      // Vite often leaves remoteEntry.path empty while assetSizes still records the basename.
-      const sized =
-        remoteEntry.path === ""
-          ? lookupAssetSize(context.facts.artifacts.assetSizes, remoteEntry.name) !== undefined
-          : context.facts.artifacts.assetSizes?.[candidate] !== undefined;
-      if (!emitted && !sized)
-        report(
-          context,
-          "The remote entry named by the manifest was not emitted.",
-          { remoteEntry },
-          "Clean and rebuild; then verify filename, output path, and manifest generation use one config.",
-          findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { remoteEntry }),
-        );
-    }
-    if (ssrRemoteEntry?.name && manifest.exposes.length > 0) {
-      // Nitro/Nuxt client close can run before the server environment writes
-      // `remoteEntry.ssr.js`. Do not treat `targetKind=node` as that server
-      // emit: Vite browser builds often record it from default `ssr.target`.
-      const dualEnv = DUAL_ENV_SSR_DEPS.some((name) => name in context.facts.dependencies.declared);
-      const sawServerOutput = (context.facts.builds ?? []).some(
-        (build) => build.targetKind === "ssr" || isSsrServerOutputRoot(build.outputRoot),
+  }),
+  createRule("artifact/manifest-ssr-remote-entry-missing", "warning", (context) => {
+    const manifest = context.facts.artifacts.manifest;
+    const ssrRemoteEntry = manifest?.ssrRemoteEntry;
+    if (!manifest?.valid || !ssrRemoteEntry?.name || !context.facts.capabilities.emittedAssets)
+      return;
+    // Consumer-only hosts advertise no exposes; CSR hosts never load this
+    // container's ssrRemoteEntry.
+    if (manifest.exposes.length === 0) return;
+    // Nitro/Nuxt client close can run before the server environment writes
+    // `remoteEntry.ssr.js`. Do not treat `targetKind=node` as that server
+    // emit: Vite browser builds often record it from default `ssr.target`.
+    const dualEnv = DUAL_ENV_SSR_DEPS.some((name) => name in context.facts.dependencies.declared);
+    const sawServerOutput = (context.facts.builds ?? []).some(
+      (build) => build.targetKind === "ssr" || isSsrServerOutputRoot(build.outputRoot),
+    );
+    if (
+      (sawServerOutput || !dualEnv) &&
+      !collectedRemoteEntryPresent(context.facts, ssrRemoteEntry)
+    )
+      report(
+        context,
+        "The SSR remote entry named by the manifest was not emitted.",
+        {
+          ssrRemoteEntry,
+          ...(manifest.pluginVersion ? { pluginVersion: manifest.pluginVersion } : {}),
+        },
+        ssrRemoteEntryMissingSuggestion(manifest.pluginVersion),
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { ssrRemoteEntry }),
       );
-      if (
-        (sawServerOutput || !dualEnv) &&
-        !collectedRemoteEntryPresent(context.facts, ssrRemoteEntry)
-      )
-        report(
-          context,
-          "The SSR remote entry named by the manifest was not emitted.",
-          {
-            ssrRemoteEntry,
-            ...(manifest.pluginVersion ? { pluginVersion: manifest.pluginVersion } : {}),
-          },
-          ssrRemoteEntryMissingSuggestion(manifest.pluginVersion),
-          findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { ssrRemoteEntry }),
-        );
-    }
   }),
   createRule("artifact/manifest-expose-assets-empty", "warning", (context) => {
     const manifest = context.facts.artifacts.manifest;

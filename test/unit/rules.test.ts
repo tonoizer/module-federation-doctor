@@ -1467,6 +1467,22 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "artifact/manifest-ssr-remote-entry-missing",
+      (facts: ProjectFacts) => {
+        facts.capabilities.emittedAssets = true;
+        facts.artifacts.manifest = {
+          path: "dist/mf-manifest.json",
+          valid: true,
+          remoteEntry: { name: "remoteEntry.js", path: "" },
+          ssrRemoteEntry: { name: "remoteEntry.ssr.js", path: "" },
+          exposes: [{ key: "./Widget", assets: [] }],
+          shared: [],
+        };
+        facts.artifacts.emittedAssets = ["dist/remoteEntry.js"];
+        facts.artifacts.assetSizes = { "remoteEntry.js": 1200 };
+      },
+    ],
+    [
       "artifact/manifest-expose-assets-empty",
       (facts: ProjectFacts) => {
         facts.bundler.name = "webpack";
@@ -3211,7 +3227,7 @@ describe("Vite/Nuxt artifact false positives", () => {
     facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
     facts.artifacts.emittedAssets = ["dist/remoteEntry.js", "dist/remoteEntry.ssr.js"];
     facts.artifacts.assetSizes = { "remoteEntry.js": 1200, "remoteEntry.ssr.js": 1100 };
-    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", facts)).toHaveLength(0);
   });
 
   it("flags ssrRemoteEntry advertised by a client-only emit", async () => {
@@ -3220,11 +3236,12 @@ describe("Vite/Nuxt artifact false positives", () => {
     facts.artifacts.manifest!.pluginVersion = "1.22.3";
     facts.artifacts.emittedAssets = ["dist/remoteEntry.js"];
     facts.artifacts.assetSizes = { "remoteEntry.js": 1200 };
-    const findings = await runRule("artifact/manifest-remote-entry-missing", facts);
+    const findings = await runRule("artifact/manifest-ssr-remote-entry-missing", facts);
     expect(findings).toHaveLength(1);
     expect(findings[0]?.message).toMatch(/SSR remote entry/i);
     expect(findings[0]?.suggestion).toContain("@module-federation/vite");
     expect(findings[0]?.suggestion).toContain("1.23.2");
+    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
   });
 
   it("accepts ssrRemoteEntry emitted in a separate server output the doctor collected", async () => {
@@ -3289,11 +3306,12 @@ describe("Vite/Nuxt artifact false positives", () => {
         targetKind: "node",
       },
     ];
-    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", facts)).toHaveLength(0);
   });
 
   it("does not change findings when the manifest has no ssrRemoteEntry", async () => {
     expect(await runRule("artifact/manifest-remote-entry-missing", viteBase())).toHaveLength(0);
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", viteBase())).toHaveLength(0);
     const missing = viteBase();
     missing.artifacts.manifest!.remoteEntry = { name: "remoteEntry.js", path: "assets/" };
     missing.artifacts.assetSizes = { "remoteEntry.js": 1200 };
@@ -3309,7 +3327,7 @@ describe("Vite/Nuxt artifact false positives", () => {
     facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
     facts.artifacts.emittedAssets = ["dist/remoteEntry.js"];
     facts.artifacts.assetSizes = { "remoteEntry.js": 1200 };
-    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", facts)).toHaveLength(0);
   });
 
   it("stays silent for ssrRemoteEntry on a Nitro client close before server emit", async () => {
@@ -3339,7 +3357,7 @@ describe("Vite/Nuxt artifact false positives", () => {
         target: "node",
       },
     ];
-    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", facts)).toHaveLength(0);
   });
 
   it("flags missing ssrRemoteEntry after a Nitro server output was collected", async () => {
@@ -3384,7 +3402,7 @@ describe("Vite/Nuxt artifact false positives", () => {
         targetKind: "node",
       },
     ];
-    const findings = await runRule("artifact/manifest-remote-entry-missing", facts);
+    const findings = await runRule("artifact/manifest-ssr-remote-entry-missing", facts);
     expect(findings).toHaveLength(1);
     expect(findings[0]?.message).toMatch(/SSR remote entry/i);
   });
@@ -3395,7 +3413,7 @@ describe("Vite/Nuxt artifact false positives", () => {
     facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
     facts.artifacts.emittedAssets = [];
     facts.artifacts.assetSizes = {};
-    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", facts)).toHaveLength(0);
   });
 
   it("allows relative ./ publicPath", async () => {
