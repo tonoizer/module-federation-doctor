@@ -1699,6 +1699,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
     "artifacts.emittedAssets",
     "artifacts.assetSizes",
     "capabilities.emittedAssets",
+    "dependencies.declared",
   ],
   "artifact/manifest-shared-version-mismatch": [
     "project.scope",

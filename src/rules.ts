@@ -2458,21 +2458,31 @@ export const builtInRules: DoctorRule[] = [
           findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { remoteEntry }),
         );
     }
-    if (
-      ssrRemoteEntry?.name &&
-      manifest.exposes.length > 0 &&
-      !collectedRemoteEntryPresent(context.facts, ssrRemoteEntry)
-    )
-      report(
-        context,
-        "The SSR remote entry named by the manifest was not emitted.",
-        {
-          ssrRemoteEntry,
-          ...(manifest.pluginVersion ? { pluginVersion: manifest.pluginVersion } : {}),
-        },
-        ssrRemoteEntryMissingSuggestion(manifest.pluginVersion),
-        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { ssrRemoteEntry }),
+    if (ssrRemoteEntry?.name && manifest.exposes.length > 0) {
+      // Nitro/Nuxt client close can run before the server environment writes
+      // `remoteEntry.ssr.js`. Absence is only conclusive when we already saw a
+      // node/ssr output, or this is not a dual-env framework app.
+      const dualEnv = ["nitro", "nitropack", "nuxt", "@nuxt/kit", "@nuxt/schema"].some(
+        (name) => name in context.facts.dependencies.declared,
       );
+      const sawServerOutput = (context.facts.builds ?? []).some(
+        (build) => build.targetKind === "node" || build.targetKind === "ssr",
+      );
+      if (
+        (sawServerOutput || !dualEnv) &&
+        !collectedRemoteEntryPresent(context.facts, ssrRemoteEntry)
+      )
+        report(
+          context,
+          "The SSR remote entry named by the manifest was not emitted.",
+          {
+            ssrRemoteEntry,
+            ...(manifest.pluginVersion ? { pluginVersion: manifest.pluginVersion } : {}),
+          },
+          ssrRemoteEntryMissingSuggestion(manifest.pluginVersion),
+          findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { ssrRemoteEntry }),
+        );
+    }
   }),
   createRule("artifact/manifest-expose-assets-empty", "warning", (context) => {
     const manifest = context.facts.artifacts.manifest;

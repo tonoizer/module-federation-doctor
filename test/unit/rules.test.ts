@@ -3312,6 +3312,81 @@ describe("Vite/Nuxt artifact false positives", () => {
     expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
   });
 
+  it("stays silent for ssrRemoteEntry on a Nitro client close before server emit", async () => {
+    const facts = viteBase();
+    facts.dependencies.declared = { nitro: "3.0.0" };
+    facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
+    facts.artifacts.emittedAssets = ["dist/remoteEntry.js"];
+    facts.artifacts.assetSizes = { "remoteEntry.js": 1200 };
+    facts.builds = [
+      {
+        id: "vite-build-1",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: ".output/public",
+        emittedAssets: ["remoteEntry.js", "mf-manifest.json"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+        targetKind: "web",
+      },
+    ];
+    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
+  });
+
+  it("flags missing ssrRemoteEntry after a Nitro server output was collected", async () => {
+    const facts = viteBase();
+    facts.dependencies.declared = { nitro: "3.0.0" };
+    facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
+    facts.artifacts.emittedAssets = [".output/public/remoteEntry.js"];
+    facts.artifacts.assetSizes = { ".output/public/remoteEntry.js": 1200 };
+    facts.builds = [
+      {
+        id: "vite-build-1",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: ".output/public",
+        emittedAssets: ["remoteEntry.js", "mf-manifest.json"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+        targetKind: "web",
+      },
+      {
+        id: "vite-build-2",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: ".output/server",
+        emittedAssets: ["index.mjs"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+        targetKind: "node",
+      },
+    ];
+    const findings = await runRule("artifact/manifest-remote-entry-missing", facts);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/SSR remote entry/i);
+  });
+
   it("stays silent for ssrRemoteEntry when emit evidence is missing", async () => {
     const facts = viteBase();
     facts.capabilities.emittedAssets = false;

@@ -616,6 +616,13 @@
             "subjectKind": "artifact",
             "minimumConfidence": "exact",
             "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "dependencies.declared",
+            "layer": "effective",
+            "subjectKind": "artifact",
+            "minimumConfidence": "exact",
+            "minimumCompleteness": "complete"
           }
         ]
       },
@@ -660,7 +667,8 @@
         "artifacts.manifest",
         "artifacts.emittedAssets",
         "artifacts.assetSizes",
-        "capabilities.emittedAssets"
+        "capabilities.emittedAssets",
+        "dependencies.declared"
       ],
       "migrationNote": "Group 2; Parsed manifest evidence is exact when valid. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
