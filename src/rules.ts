@@ -61,6 +61,7 @@ import { duplicateFederationInstanceGroups } from "./federation-instance.js";
 import { enhancedRemotesMissingStats } from "./run-status.js";
 import type {
   DoctorRule,
+  ManifestRemoteEntry,
   NormalizedMFConfig,
   NormalizedRemote,
   NormalizedShared,
@@ -291,6 +292,73 @@ function emittedAssetMatches(
     );
   }
   return asset.endsWith(candidate) || asset.endsWith(path.posix.basename(candidate));
+}
+
+function normalizedCollectedAsset(asset: string): string {
+  return asset.replaceAll("\\", "/").replace(/^\.\//, "");
+}
+
+/**
+ * SSR entries are often emitted by a separate server/client output. Search every
+ * collected emit list, size map, and output root the doctor already knows about.
+ * Absence from that union is reportable; missing emit capability stays silent.
+ */
+function collectedRemoteEntryPresent(
+  facts: ProjectFacts,
+  entry: ManifestRemoteEntry,
+  emittedAssets = facts.artifacts.emittedAssets,
+  assetSizes = facts.artifacts.assetSizes,
+): boolean {
+  const candidate = `${entry.path}${entry.name}`;
+  const basename = path.posix.basename(entry.name);
+  const names = [...new Set([candidate, entry.name, basename].filter(Boolean))];
+  const assets: string[] = [...emittedAssets];
+  for (const build of facts.builds ?? []) assets.push(...build.emittedAssets);
+  if (assetSizes) assets.push(...Object.keys(assetSizes));
+  return assets.some((asset) => {
+    const normalized = normalizedCollectedAsset(asset);
+    return names.some(
+      (name) =>
+        normalized === name ||
+        normalized.endsWith(`/${name}`) ||
+        path.posix.basename(normalized) === path.posix.basename(name),
+    );
+  });
+}
+
+/** @module-federation/vite 1.x advertised ssrRemoteEntry on client-only emits before 1.23.2. */
+const VITE_SSR_REMOTE_ENTRY_FIX = "1.23.2";
+
+function vitePluginVersionBelowSsrRemoteEntryFix(pluginVersion: string | undefined): boolean {
+  if (!pluginVersion) return false;
+  const trimmed = pluginVersion.trim();
+  const version = semver.valid(trimmed) ?? semver.coerce(trimmed)?.version;
+  return (
+    version !== undefined &&
+    semver.major(version) === 1 &&
+    semver.lt(version, VITE_SSR_REMOTE_ENTRY_FIX)
+  );
+}
+
+function ssrRemoteEntryMissingSuggestion(pluginVersion: string | undefined): string {
+  const upgrade = vitePluginVersionBelowSsrRemoteEntryFix(pluginVersion)
+    ? " Upgrade `@module-federation/vite` to >=1.23.2 so client-only builds stop advertising `ssrRemoteEntry` without emitting it."
+    : "";
+  return `Clean and rebuild; build the SSR environment if this remote has a server entry, then verify filename, output path, and manifest generation use one config.${upgrade}`;
+}
+
+const DUAL_ENV_SSR_DEPS = ["nitro", "nitropack", "nuxt", "@nuxt/kit", "@nuxt/schema"] as const;
+
+/**
+ * Vite's default `ssr.target` is `node`, so a Nitro *client* close often records
+ * `targetKind=node` for `.output/public`. That is not the server environment.
+ * Wait until a server output root (or an explicit `targetKind=ssr` build) exists.
+ */
+function isSsrServerOutputRoot(outputRoot: string | undefined): boolean {
+  if (!outputRoot) return false;
+  const normalized = outputRoot.replaceAll("\\", "/").replace(/\/$/, "");
+  if (normalized === "server" || normalized.endsWith("/server")) return true;
+  return /(?:^|\/)node_modules\/\.nitro\/vite\/services\/ssr$/.test(normalized);
 }
 
 /**
@@ -2405,6 +2473,41 @@ export const builtInRules: DoctorRule[] = [
         { remoteEntry },
         "Clean and rebuild; then verify filename, output path, and manifest generation use one config.",
         findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { remoteEntry }),
+      );
+  }),
+  createRule("artifact/manifest-ssr-remote-entry-missing", "warning", (context) => {
+    const manifest = context.facts.artifacts.manifest;
+    const ssrRemoteEntry = manifest?.ssrRemoteEntry;
+    if (!manifest?.valid || !ssrRemoteEntry?.name || !context.facts.capabilities.emittedAssets)
+      return;
+    // Consumer-only hosts advertise no exposes; CSR hosts never load this
+    // container's ssrRemoteEntry.
+    if (manifest.exposes.length === 0) return;
+    // Nitro/Nuxt client close can run before the server environment writes
+    // `remoteEntry.ssr.js`. Do not treat `targetKind=node` as that server
+    // emit: Vite browser builds often record it from default `ssr.target`.
+    const dualEnv = DUAL_ENV_SSR_DEPS.some((name) => name in context.facts.dependencies.declared);
+    const sawServerOutput = (context.facts.builds ?? []).some(
+      (build) => build.targetKind === "ssr" || isSsrServerOutputRoot(build.outputRoot),
+    );
+    if (
+      (sawServerOutput || !dualEnv) &&
+      !collectedRemoteEntryPresent(
+        context.facts,
+        ssrRemoteEntry,
+        context.facts.artifacts.emittedAssets,
+        context.facts.artifacts.assetSizes,
+      )
+    )
+      report(
+        context,
+        "The SSR remote entry named by the manifest was not emitted.",
+        {
+          ssrRemoteEntry,
+          ...(manifest.pluginVersion ? { pluginVersion: manifest.pluginVersion } : {}),
+        },
+        ssrRemoteEntryMissingSuggestion(manifest.pluginVersion),
+        findingDetails(FINDING_DETAILS_SCHEMAS.ARTIFACT, { ssrRemoteEntry }),
       );
   }),
   createRule("artifact/manifest-expose-assets-empty", "warning", (context) => {

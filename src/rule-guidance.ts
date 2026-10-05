@@ -571,6 +571,13 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Clean and rebuild; verify output path, filename, and manifest settings.",
     sources: [manifest],
   },
+  "artifact/manifest-ssr-remote-entry-missing": {
+    category: "correctness",
+    impact:
+      "An SSR host that prefers `metaData.ssrRemoteEntry` follows that locator to a file the producer did not emit.",
+    fix: "Clean and rebuild client and SSR outputs; verify filename, output path, and manifest generation. Build the SSR environment when `ssrRemoteEntry` is advertised. If `@module-federation/vite` is below 1.23.2, upgrade so client-only builds stop advertising an SSR entry that was never emitted.",
+    sources: [manifest],
+  },
   "artifact/manifest-expose-assets-empty": {
     category: "reliability",
     impact: "Preload and debugging tools cannot map an expose to its assets.",

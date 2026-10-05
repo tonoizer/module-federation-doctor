@@ -61,6 +61,7 @@ export const TYPED_DETAILS_RULE_IDS = [
   "artifact/manifest-invalid",
   "artifact/manifest-name-mismatch",
   "artifact/manifest-remote-entry-missing",
+  "artifact/manifest-ssr-remote-entry-missing",
   "artifact/manifest-expose-assets-empty",
   "artifact/manifest-shared-version-mismatch",
   "artifact/types-metadata-missing",
@@ -118,6 +119,7 @@ export interface ArtifactDetailsV1 {
   outputPublicPathKind?: string;
   exposes?: string[];
   remoteEntry?: unknown;
+  ssrRemoteEntry?: unknown;
   /** Specifiers or asset paths that triggered an artifact shape finding. */
   entries?: string[];
 }

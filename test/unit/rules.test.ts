@@ -1467,6 +1467,22 @@ describe("built-in rules", () => {
       },
     ],
     [
+      "artifact/manifest-ssr-remote-entry-missing",
+      (facts: ProjectFacts) => {
+        facts.capabilities.emittedAssets = true;
+        facts.artifacts.manifest = {
+          path: "dist/mf-manifest.json",
+          valid: true,
+          remoteEntry: { name: "remoteEntry.js", path: "" },
+          ssrRemoteEntry: { name: "remoteEntry.ssr.js", path: "" },
+          exposes: [{ key: "./Widget", assets: [] }],
+          shared: [],
+        };
+        facts.artifacts.emittedAssets = ["dist/remoteEntry.js"];
+        facts.artifacts.assetSizes = { "remoteEntry.js": 1200 };
+      },
+    ],
+    [
       "artifact/manifest-expose-assets-empty",
       (facts: ProjectFacts) => {
         facts.bundler.name = "webpack";
@@ -3017,7 +3033,11 @@ describe("config/async-boundary-missing", () => {
 
 describe("Vite/Nuxt artifact false positives", () => {
   async function runRule(id: string, facts: ProjectFacts, options: Record<string, unknown> = {}) {
-    const findings: Array<{ message: string; evidence?: Record<string, unknown> }> = [];
+    const findings: Array<{
+      message: string;
+      evidence?: Record<string, unknown>;
+      suggestion?: string;
+    }> = [];
     const rule = builtInRules.find((item) => item.meta.id === id)!;
     await rule.check({ facts, options, report: (finding) => findings.push(finding) });
     return findings;
@@ -3200,6 +3220,200 @@ describe("Vite/Nuxt artifact false positives", () => {
     facts.artifacts.manifest!.remoteEntry = { name: "remoteEntry.js", path: "assets/" };
     facts.artifacts.assetSizes = { "remoteEntry.js": 1200 };
     expect(await runRule("artifact/manifest-remote-entry-missing", facts)).not.toHaveLength(0);
+  });
+
+  it("accepts ssrRemoteEntry when the SSR file was emitted", async () => {
+    const facts = viteBase();
+    facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
+    facts.artifacts.emittedAssets = ["dist/remoteEntry.js", "dist/remoteEntry.ssr.js"];
+    facts.artifacts.assetSizes = { "remoteEntry.js": 1200, "remoteEntry.ssr.js": 1100 };
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", facts)).toHaveLength(0);
+  });
+
+  it("flags ssrRemoteEntry advertised by a client-only emit", async () => {
+    const facts = viteBase();
+    facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
+    facts.artifacts.manifest!.pluginVersion = "1.22.3";
+    facts.artifacts.emittedAssets = ["dist/remoteEntry.js"];
+    facts.artifacts.assetSizes = { "remoteEntry.js": 1200 };
+    const findings = await runRule("artifact/manifest-ssr-remote-entry-missing", facts);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/SSR remote entry/i);
+    expect(findings[0]?.suggestion).toContain("@module-federation/vite");
+    expect(findings[0]?.suggestion).toContain("1.23.2");
+    expect(await runRule("artifact/manifest-remote-entry-missing", facts)).toHaveLength(0);
+  });
+
+  it("accepts ssrRemoteEntry emitted in a separate server output the doctor collected", async () => {
+    const facts = viteBase();
+    facts.artifacts.manifest = {
+      ...facts.artifacts.manifest!,
+      path: "dist/client/mf-manifest.json",
+      remoteEntry: { name: "remoteEntry.js", path: "" },
+      ssrRemoteEntry: { name: "remoteEntry.ssr.js", path: "" },
+    };
+    facts.artifacts.emittedAssets = [
+      "dist/client/mf-manifest.json",
+      "dist/client/remoteEntry.js",
+      "dist/server/remoteEntry.ssr.js",
+    ];
+    facts.artifacts.assetSizes = {
+      "dist/client/remoteEntry.js": 1200,
+      "dist/server/remoteEntry.ssr.js": 1100,
+    };
+    facts.builds = [
+      {
+        id: "vite-build-1",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: "dist/client",
+        emittedAssets: ["mf-manifest.json", "remoteEntry.js"],
+        artifacts: [
+          {
+            kind: "manifest",
+            path: "dist/client/mf-manifest.json",
+            valid: true,
+            source: "emitted",
+            state: "valid",
+            manifest: facts.artifacts.manifest,
+          },
+        ],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+        targetKind: "web",
+      },
+      {
+        id: "vite-build-2",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: "dist/server",
+        emittedAssets: ["remoteEntry.ssr.js"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+        targetKind: "node",
+      },
+    ];
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", facts)).toHaveLength(0);
+  });
+
+  it("does not change findings when the manifest has no ssrRemoteEntry", async () => {
+    expect(await runRule("artifact/manifest-remote-entry-missing", viteBase())).toHaveLength(0);
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", viteBase())).toHaveLength(0);
+    const missing = viteBase();
+    missing.artifacts.manifest!.remoteEntry = { name: "remoteEntry.js", path: "assets/" };
+    missing.artifacts.assetSizes = { "remoteEntry.js": 1200 };
+    const findings = await runRule("artifact/manifest-remote-entry-missing", missing);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toBe("The remote entry named by the manifest was not emitted.");
+  });
+
+  it("does not flag ssrRemoteEntry on a consumer-only host manifest", async () => {
+    const facts = viteBase();
+    facts.moduleFederation!.exposes = {};
+    facts.artifacts.manifest!.exposes = [];
+    facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
+    facts.artifacts.emittedAssets = ["dist/remoteEntry.js"];
+    facts.artifacts.assetSizes = { "remoteEntry.js": 1200 };
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", facts)).toHaveLength(0);
+  });
+
+  it("stays silent for ssrRemoteEntry on a Nitro client close before server emit", async () => {
+    const facts = viteBase();
+    facts.dependencies.declared = { nitro: "3.0.0" };
+    facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
+    facts.artifacts.emittedAssets = ["dist/remoteEntry.js"];
+    facts.artifacts.assetSizes = { "remoteEntry.js": 1200 };
+    facts.builds = [
+      {
+        id: "vite-build-1",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: ".output/public",
+        emittedAssets: ["remoteEntry.js", "mf-manifest.json"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+        // Vite's default ssr.target records node even for the public/client emit.
+        targetKind: "node",
+        target: "node",
+      },
+    ];
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", facts)).toHaveLength(0);
+  });
+
+  it("flags missing ssrRemoteEntry after a Nitro server output was collected", async () => {
+    const facts = viteBase();
+    facts.dependencies.declared = { nitro: "3.0.0" };
+    facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
+    facts.artifacts.emittedAssets = [".output/public/remoteEntry.js"];
+    facts.artifacts.assetSizes = { ".output/public/remoteEntry.js": 1200 };
+    facts.builds = [
+      {
+        id: "vite-build-1",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: ".output/public",
+        emittedAssets: ["remoteEntry.js", "mf-manifest.json"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+        targetKind: "web",
+      },
+      {
+        id: "vite-build-2",
+        adapter: "vite",
+        bundler: "vite",
+        outputRoot: ".output/server",
+        emittedAssets: ["index.mjs"],
+        artifacts: [],
+        capabilities: {
+          outputRoot: { state: "exact", reason: "test" },
+          emittedAssets: { state: "exact", reason: "test" },
+          artifacts: { state: "exact", reason: "test" },
+          effectiveMode: { state: "exact", reason: "test" },
+          target: { state: "exact", reason: "test" },
+        },
+        sourceHook: "closeBundle",
+        targetKind: "node",
+      },
+    ];
+    const findings = await runRule("artifact/manifest-ssr-remote-entry-missing", facts);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/SSR remote entry/i);
+  });
+
+  it("stays silent for ssrRemoteEntry when emit evidence is missing", async () => {
+    const facts = viteBase();
+    facts.capabilities.emittedAssets = false;
+    facts.artifacts.manifest!.ssrRemoteEntry = { name: "remoteEntry.ssr.js", path: "" };
+    facts.artifacts.emittedAssets = [];
+    facts.artifacts.assetSizes = {};
+    expect(await runRule("artifact/manifest-ssr-remote-entry-missing", facts)).toHaveLength(0);
   });
 
   it("allows relative ./ publicPath", async () => {
