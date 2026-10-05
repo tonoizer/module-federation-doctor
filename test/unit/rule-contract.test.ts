@@ -661,6 +661,7 @@ describe("evidence-aware rule contract", () => {
           "bundler.moduleFederationPluginCount",
         ],
         "ssr/remote-entry-target-mismatch": ["builds"],
+        "artifact/manifest-remote-entry-missing": ["builds"],
         "config/promise-remote-async-boundary": ["imports.sourceFiles"],
       };
       const optionalReads = optionalPluginFacts[entry.id] ?? [];

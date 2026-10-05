@@ -344,10 +344,6 @@ function ssrRemoteEntryMissingSuggestion(pluginVersion: string | undefined): str
 
 const DUAL_ENV_SSR_DEPS = ["nitro", "nitropack", "nuxt", "@nuxt/kit", "@nuxt/schema"] as const;
 
-function isDualEnvSsrFramework(facts: ProjectFacts): boolean {
-  return DUAL_ENV_SSR_DEPS.some((name) => name in facts.dependencies.declared);
-}
-
 /**
  * Vite's default `ssr.target` is `node`, so a Nitro *client* close often records
  * `targetKind=node` for `.output/public`. That is not the server environment.
@@ -358,12 +354,6 @@ function isSsrServerOutputRoot(outputRoot: string | undefined): boolean {
   const normalized = outputRoot.replaceAll("\\", "/").replace(/\/$/, "");
   if (normalized === "server" || normalized.endsWith("/server")) return true;
   return /(?:^|\/)node_modules\/\.nitro\/vite\/services\/ssr$/.test(normalized);
-}
-
-function collectedSsrServerOutput(facts: ProjectFacts): boolean {
-  return (facts.builds ?? []).some(
-    (build) => build.targetKind === "ssr" || isSsrServerOutputRoot(build.outputRoot),
-  );
 }
 
 /**
@@ -2486,8 +2476,12 @@ export const builtInRules: DoctorRule[] = [
       // Nitro/Nuxt client close can run before the server environment writes
       // `remoteEntry.ssr.js`. Do not treat `targetKind=node` as that server
       // emit: Vite browser builds often record it from default `ssr.target`.
+      const dualEnv = DUAL_ENV_SSR_DEPS.some((name) => name in context.facts.dependencies.declared);
+      const sawServerOutput = (context.facts.builds ?? []).some(
+        (build) => build.targetKind === "ssr" || isSsrServerOutputRoot(build.outputRoot),
+      );
       if (
-        !(isDualEnvSsrFramework(context.facts) && !collectedSsrServerOutput(context.facts)) &&
+        (sawServerOutput || !dualEnv) &&
         !collectedRemoteEntryPresent(context.facts, ssrRemoteEntry)
       )
         report(
