@@ -22,6 +22,9 @@ the recipe.
 - Start from the built `dist/cli.js` (or `pnpm exec mfdoctor` after the same
   build).
 - Prefer stdout JSON over scraping ANSI (`--format json`, `--output -`).
+- Usage/I/O failures print structured stderr (`error:` / `fix:` / `next:` /
+  `Usage:`). The historical one-line message is the `error:` body, not the
+  whole stderr. Do not expect a full help dump.
 - Treat every command as literal. Keep flags unchanged.
 - Stable handles: command names, exit codes (`0`/`1`/`2`), JSON keys
   (`status`, `findings`, `incompleteReasons`), `.mf/doctor/*` paths.

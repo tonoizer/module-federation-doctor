@@ -10,3 +10,4 @@ fingerprint: aad0eafc068fda2276d500d41467e3aff6e518386627d6d6f1803602c6d19e7d
 stdout-starts-with: # Fix: config/remote-http-insecure
 top-starts-with: Agent prompts (top 2)
 headings-present: ['## Verification plan', '## Repair context', '## Finding', '## Impact', '## Fix', '## Evidence', '## Docs', '## Verify']
+unknown-stderr: error: finding-not-found + Available rule ids + fix/next/Usage

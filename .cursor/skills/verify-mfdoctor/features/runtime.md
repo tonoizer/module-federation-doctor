@@ -38,7 +38,8 @@ Preconditions:
 - **Missing trace.** Pass a project glob (otherwise the CLI reports unmatched
   projects first):
   `node dist/cli.js runtime /tmp/mfdoctor-verify-missing-trace.json "examples/showcase/runtime/green/*.project.json"`.
-  Exit code `2`. Stderr mentions the unreadable trace.
+  Exit code `2`. Stderr is structured (`error: invalid-report`) and mentions
+  the unreadable trace, plus `fix:` / `next:` / `Usage:`.
 - **Proof.** Save stdout/stderr/exit under
   `.cursor/skills/verify-mfdoctor/evidence/runtime/`. Note rule IDs (or empty
   findings) in `notes.txt`. Confirm `--no-write` did not create `.mf/doctor`

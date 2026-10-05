@@ -26,6 +26,8 @@ Preconditions:
 - **Inspect one rule.** Run `node dist/cli.js rules config/remote-http-insecure`. Exit `0`. Output describes that rule's severity/category/docs. `supportedBundlers` is the shared inventory set (`vite`, `rspack`, `rsbuild`, `webpack`, `modern`) and does **not** include `unknown`.
 - **Inspect a Vite-only rule.** Run `node dist/cli.js rules vite/server-origin`. Exit `0`. `supportedBundlers` is `["vite"]`.
 - **Unknown ID.** Run `node dist/cli.js rules definitely/not-a-rule`. Exit `2`.
+  Stderr is structured (`error: rule-not-found`, `Unknown rule: …`, `fix:`,
+  `next:`, `Usage:`). Near-miss ids may add `Did you mean:`.
 - **Proof.** Save catalog or single-rule stdout under
   `.cursor/skills/verify-mfdoctor/evidence/rules/` (truncate huge catalogs if needed, but keep schemaVersion + a sample rule ID). Keep the Vite-only `supportedBundlers` assertion in notes or `stdout-vite-only.json`.
 

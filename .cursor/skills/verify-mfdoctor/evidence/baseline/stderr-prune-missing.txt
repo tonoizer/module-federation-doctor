@@ -1,1 +1,10 @@
-No baseline file at /tmp/mfdoctor-verify-maintain-rest-5062/prompt-baseline/missing.baseline.json. Run baseline generate first.
+error: io-error
+No baseline file at /tmp/mfdoctor-verify-missing.baseline.json. Run baseline generate first.
+
+fix: Create a fingerprint baseline with `mfdoctor baseline generate [.mf/doctor/report.json] --out /tmp/mfdoctor-verify-missing.baseline.json`, then retry prune/update.
+next: mfdoctor baseline generate --out /tmp/mfdoctor-verify-missing.baseline.json
+
+Usage:
+  mfdoctor baseline generate [.mf/doctor/report.json] [--out mfdoctor.baseline.json]
+  mfdoctor baseline update [.mf/doctor/report.json]
+  mfdoctor baseline prune [.mf/doctor/report.json]

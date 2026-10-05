@@ -4,6 +4,7 @@ fixture-src: examples/showcase/config/remote-http-insecure
 generate-exit: 0
 update-exit: 0
 prune-missing-exit: 2
+prune-missing-stderr: error: io-error + Run baseline generate first. + fix/next/Usage
 schemaVersion: 1
 entry-count: 2
 rule-ids: ['config/js-remote-without-type-urls', 'config/remote-http-insecure']

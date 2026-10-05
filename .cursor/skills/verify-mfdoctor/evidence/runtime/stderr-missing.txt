@@ -1,1 +1,9 @@
+error: invalid-report
 Unable to read runtime trace: /tmp/mfdoctor-verify-missing-trace.json
+
+fix: Supply a schema-valid runtime trace (not a doctor report). See `mfdoctor capabilities` runtime prerequisites.
+next: mfdoctor runtime ./trace.json .mf/doctor/**/project.json
+
+Usage:
+  mfdoctor runtime <trace.json>
+  mfdoctor runtime ./trace.json ".mf/doctor/**/project.json" --format json

@@ -33,7 +33,7 @@ Preconditions:
 - **Observe exit.** Warning-only fixtures may exit `0` under default CI `failOn: error`; error-severity fixtures exit `1`. Exit `2` is for analysis-budget incompleteness or usage/hard failure, `status.incompleteReasons` such as `missing-emit` can still appear with exit `0`/`1` and must not be treated as a full green claim.
 - **Require complete evidence.** Same command plus `--require-complete` on a showcase fixture with `missing-emit` exits `1` (policy fail) even when `--ci` alone exited `0`. Omit the flag to keep the legacy incomplete exit.
 - **Confirm no-write.** Assert `$FIXTURE/.mf` was **not** created when `--no-write` was used.
-- **Optional write path.** On a temp copy only: omit `--no-write`, use `--format terminal,json,sarif` and optionally `--diagnostics-dir .mf/doctor/diagnostics`. Confirm `.mf/doctor/report.json` exists afterward.
+- **Optional write path.** On a temp copy only: omit `--no-write`, use `--format terminal,json,sarif` and optionally `--diagnostics-dir .mf/doctor/diagnostics`. Confirm `.mf/doctor/report.json` exists afterward. SARIF `results.sarif` includes rule `help.text`, result `properties.fix`, and `runs[0].properties.incompleteReasons[]` `{code,fix}` remediations (JSON `status.incompleteReasons` stays the code list).
 - **Proof.** Store command, cwd, stdout JSON, stderr, exit code under
   `.cursor/skills/verify-mfdoctor/evidence/check/`. Note at least one
   `findings[].ruleId` and the `status` object in `notes.txt`.

@@ -1,1 +1,10 @@
+error: invalid-project-facts
 No project reports matched.
+
+fix: Rebuild each federated app with a mfdoctor adapter so `.mf/doctor/project.json` exists, then rerun. For federation, pass an explicit glob such as `.mf/doctor/**/project.json` or use `--workspace`. Incomplete evidence is not a pass.
+next: mfdoctor federation --workspace
+
+Usage:
+  mfdoctor federation --workspace [root...]
+  mfdoctor federation ".mf/doctor/**/project.json"
+  mfdoctor federation --workspace --require-complete

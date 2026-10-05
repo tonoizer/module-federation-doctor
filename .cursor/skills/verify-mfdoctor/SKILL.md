@@ -67,6 +67,7 @@ Assert:
   those same names
 - optional: `operations.commands.{check,workspace,federation}` list
   `--require-complete`, and `nonInteractive.flags` includes it
+- optional: each `operations.commands.*.errorCodes.*` includes a non-empty `fix`
 - optional: `bundlerMatrix.partial` includes `nuxt`, `modern`, and `rolldown`
 - optional: `test -f dist/cli.js`
 
@@ -129,7 +130,9 @@ node dist/cli.js rules
 
 Prefer stdout JSON (`--format json` and/or `--output -`) over scraping ANSI
 terminal output. `--diagnostics-dir` must stay inside the project root or the
-CLI rejects it.
+CLI rejects it. Usage/I/O failures print a structured stderr block (`error:` /
+`fix:` / `next:` / `Usage:`), not a full help dump; the historical one-line
+message is the `error:` body.
 
 **Two-tier loop:** offline `check` is config/static analysis. Before claiming
 green, require plugin emit evidence (`.mf/doctor/project.json` from a build with

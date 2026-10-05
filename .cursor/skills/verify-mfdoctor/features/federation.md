@@ -31,7 +31,9 @@ Preconditions:
   Exit code `1`. JSON `findings` includes `federation/version-conflict`.
 - **Unmatched glob.** Run
   `node dist/cli.js federation "examples/showcase/federation/version-conflict/*.does-not-exist.json" --ci --format json --output - --no-write`.
-  Exit code `2` (no project reports matched). The same command plus `--require-complete` exits `1`.
+  Exit code `2`. Stderr is structured: `error: invalid-project-facts`, message
+  `No project reports matched.`, then `fix:` / `next:` / `Usage:`. The same
+  command plus `--require-complete` exits `1` with the same stderr shape.
 - **Proof.** Save stdout/stderr/exit under
   `.cursor/skills/verify-mfdoctor/evidence/federation/`. Note at least one
   `findings[].ruleId` in `notes.txt`. Confirm `--no-write` did not create

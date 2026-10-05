@@ -37,7 +37,8 @@ Preconditions:
   file. Exit `0`. Entry count does not drop.
 - **Prune without a file.** On a fresh temp path with no `$OUT`, run
   `node dist/cli.js baseline prune "$REPORT" --out "$MISSING"`.
-  Exit `2`. Stderr tells you to run `baseline generate` first.
+  Exit `2`. Stderr is structured (`error: io-error`) and tells you to run
+  `baseline generate` first (`fix:` / `next:` / `Usage:`).
 - **Proof.** Save command, cwd, stdout, stderr, exit codes, and a baseline
   excerpt under `.cursor/skills/verify-mfdoctor/evidence/baseline/`. Note
   entry count and at least one `ruleId` in `notes.txt`.
