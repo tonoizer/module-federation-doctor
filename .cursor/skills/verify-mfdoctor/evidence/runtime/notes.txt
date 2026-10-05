@@ -5,6 +5,7 @@ mismatch-rule-ids: ['runtime/error-correlated', 'runtime/shared-mismatch']
 green-exit: 0
 green-rule-ids: []
 missing-exit: 2
+missing-stderr: error: invalid-report + Unable to read runtime trace + fix/next/Usage
 no-write-side-effect: repo-root .mf absent (observed)
 mismatch-status: {'complete': True, 'incompleteReasons': []}
 green-status: {'complete': True, 'incompleteReasons': []}

@@ -1,1 +1,10 @@
+error: finding-not-found
 No finding matched --finding definitely/not-a-finding
+Available rule ids: config/js-remote-without-type-urls, config/remote-http-insecure
+
+fix: Use a fingerprint or rule id from the saved report. Omit --finding to print the top prompts, or pick one of: config/js-remote-without-type-urls, config/remote-http-insecure.
+next: mfdoctor prompt --finding config/js-remote-without-type-urls
+
+Usage:
+  mfdoctor prompt [.mf/doctor/report.json]
+  mfdoctor prompt --finding <fingerprint|ruleId> .mf/doctor/report.json

@@ -1,6 +1,6 @@
 feature-id: capabilities
 package.name: @tonoizer/mfdoctor
-package.version: 2.0.1
+package.version: 2.0.3
 schemaVersion: 1
 commands-missing: []
 exitCodes: {'0': 'success', '1': 'policy-fail', '2': 'usage-or-incomplete-analysis'}
@@ -13,3 +13,4 @@ operations.check.options: ['--ci', '--verbose', '--no-score', '--no-prompt', '--
 nonInteractive.flags: ['--ci', '--diagnostics-dir', '--diagnostics-prompts', '--format', '--no-prompt', '--no-score', '--no-write', '--output', '--require-complete']
 operations.prompt.writtenArtifacts: []
 operations.check.writtenArtifacts: ['.mf/doctor/project.json (unless --no-write)', '.mf/doctor/report.json (when JSON output is written)', '.mf/doctor/results.sarif (when SARIF output is written)', '<diagnostics-dir>/report.json', '<diagnostics-dir>/verification-plan.json', '<diagnostics-dir>/prompts/*.md', '<diagnostics-dir>/summary.md']
+errorCodes.fix: present on all operations.commands.*.errorCodes

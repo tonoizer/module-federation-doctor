@@ -4,5 +4,6 @@ conflict-exit: 1
 conflict-rule-ids: ['federation/version-conflict']
 unmatched-exit: 2
 unmatched-require-complete-exit: 1
+unmatched-stderr: error: invalid-project-facts + No project reports matched. + fix/next/Usage
 no-write-side-effect: repo-root .mf absent (observed)
 status: {'complete': False, 'incompleteReasons': ['missing-emit']}

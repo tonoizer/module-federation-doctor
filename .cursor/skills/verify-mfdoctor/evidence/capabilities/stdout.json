@@ -286,15 +286,18 @@
         "errorCodes": {
           "invalid-report": {
             "description": "The supplied report is not a valid mfdoctor report document.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Pass `report.json` from `mfdoctor check` or adapter emit, not `project.json`. Re-run `mfdoctor check --format json` to write a fresh report."
           },
           "io-error": {
             "description": "A required local file or output artifact could not be read or written.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Create or chmod the missing path and retry. Saved reports default to `.mf/doctor/report.json`; project facts require a mfdoctor adapter build."
           },
           "usage-error": {
             "description": "Arguments or options are missing or invalid.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Correct the command arguments or options. Run `mfdoctor --help`, `mfdoctor <command> --help`, or `mfdoctor capabilities` for the versioned contract, then retry."
           }
         },
         "network": {
@@ -319,11 +322,13 @@
         "errorCodes": {
           "io-error": {
             "description": "A required local file or output artifact could not be read or written.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Create or chmod the missing path and retry. Saved reports default to `.mf/doctor/report.json`; project facts require a mfdoctor adapter build."
           },
           "usage-error": {
             "description": "Arguments or options are missing or invalid.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Correct the command arguments or options. Run `mfdoctor --help`, `mfdoctor <command> --help`, or `mfdoctor capabilities` for the versioned contract, then retry."
           }
         },
         "formats": ["json"],
@@ -356,19 +361,23 @@
         "errorCodes": {
           "analysis-incomplete": {
             "description": "The operation completed with incomplete evidence; this is not a policy pass.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Rebuild with a mfdoctor adapter so `.mf/doctor/project.json` exists, inspect `status.incompleteReasons`, and rerun. Pass `--require-complete` to fail policy (exit 1) instead."
           },
           "io-error": {
             "description": "A required local file or output artifact could not be read or written.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Create or chmod the missing path and retry. Saved reports default to `.mf/doctor/report.json`; project facts require a mfdoctor adapter build."
           },
           "policy-fail": {
             "description": "The operation completed and its unsuppressed policy findings fail the selected threshold.",
-            "exitCode": 1
+            "exitCode": 1,
+            "fix": "Open `.mf/doctor/report.json` and run `mfdoctor prompt --finding <ruleId>` for a copy-paste repair prompt. Do not add suppressions unless the user asked."
           },
           "usage-error": {
             "description": "Arguments or options are missing or invalid.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Correct the command arguments or options. Run `mfdoctor --help`, `mfdoctor <command> --help`, or `mfdoctor capabilities` for the versioned contract, then retry."
           }
         },
         "formats": ["terminal", "json", "sarif"],
@@ -472,27 +481,33 @@
         "errorCodes": {
           "invalid-manifest": {
             "description": "A fetched manifest is not a supported Module Federation manifest document.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Point probe/compare at Module Federation `mf-manifest.json` (JSON object with name or id), not remoteEntry JavaScript or HTML."
           },
           "io-error": {
             "description": "A required local file or output artifact could not be read or written.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Create or chmod the missing path and retry. Saved reports default to `.mf/doctor/report.json`; project facts require a mfdoctor adapter build."
           },
           "network-error": {
             "description": "A guarded manifest request failed or returned an unusable response.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Confirm the URL is a reachable HTTPS `mf-manifest.json`. Increase `--timeout` / `--max-bytes` only if the manifest is large or slow. Probe never executes remote JavaScript."
           },
           "policy-fail": {
             "description": "The operation completed and its unsuppressed policy findings fail the selected threshold.",
-            "exitCode": 1
+            "exitCode": 1,
+            "fix": "Open `.mf/doctor/report.json` and run `mfdoctor prompt --finding <ruleId>` for a copy-paste repair prompt. Do not add suppressions unless the user asked."
           },
           "ssrf-blocked": {
             "description": "The requested URL was rejected by the network safety policy.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Use an https URL without embedded credentials. HTTP is allowed only for loopback initial URLs. Private, link-local, and metadata hosts are blocked by default."
           },
           "usage-error": {
             "description": "Arguments or options are missing or invalid.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Correct the command arguments or options. Run `mfdoctor --help`, `mfdoctor <command> --help`, or `mfdoctor capabilities` for the versioned contract, then retry."
           }
         },
         "formats": ["terminal", "json", "sarif"],
@@ -544,23 +559,28 @@
         "errorCodes": {
           "analysis-incomplete": {
             "description": "The operation completed with incomplete evidence; this is not a policy pass.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Rebuild with a mfdoctor adapter so `.mf/doctor/project.json` exists, inspect `status.incompleteReasons`, and rerun. Pass `--require-complete` to fail policy (exit 1) instead."
           },
           "invalid-project-facts": {
             "description": "A project-facts input is missing, invalid, or belongs to an incompatible federation group.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Rebuild each federated app with a mfdoctor adapter so `.mf/doctor/project.json` exists, then rerun `workspace` or pass an explicit project.json glob."
           },
           "io-error": {
             "description": "A required local file or output artifact could not be read or written.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Create or chmod the missing path and retry. Saved reports default to `.mf/doctor/report.json`; project facts require a mfdoctor adapter build."
           },
           "policy-fail": {
             "description": "The operation completed and its unsuppressed policy findings fail the selected threshold.",
-            "exitCode": 1
+            "exitCode": 1,
+            "fix": "Open `.mf/doctor/report.json` and run `mfdoctor prompt --finding <ruleId>` for a copy-paste repair prompt. Do not add suppressions unless the user asked."
           },
           "usage-error": {
             "description": "Arguments or options are missing or invalid.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Correct the command arguments or options. Run `mfdoctor --help`, `mfdoctor <command> --help`, or `mfdoctor capabilities` for the versioned contract, then retry."
           }
         },
         "formats": ["terminal", "json", "sarif"],
@@ -689,23 +709,28 @@
         "errorCodes": {
           "invalid-manifest": {
             "description": "A fetched manifest is not a supported Module Federation manifest document.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Point probe/compare at Module Federation `mf-manifest.json` (JSON object with name or id), not remoteEntry JavaScript or HTML."
           },
           "io-error": {
             "description": "A required local file or output artifact could not be read or written.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Create or chmod the missing path and retry. Saved reports default to `.mf/doctor/report.json`; project facts require a mfdoctor adapter build."
           },
           "network-error": {
             "description": "A guarded manifest request failed or returned an unusable response.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Confirm the URL is a reachable HTTPS `mf-manifest.json`. Increase `--timeout` / `--max-bytes` only if the manifest is large or slow. Probe never executes remote JavaScript."
           },
           "ssrf-blocked": {
             "description": "The requested URL was rejected by the network safety policy.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Use an https URL without embedded credentials. HTTP is allowed only for loopback initial URLs. Private, link-local, and metadata hosts are blocked by default."
           },
           "usage-error": {
             "description": "Arguments or options are missing or invalid.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Correct the command arguments or options. Run `mfdoctor --help`, `mfdoctor <command> --help`, or `mfdoctor capabilities` for the versioned contract, then retry."
           }
         },
         "network": {
@@ -746,19 +771,23 @@
         "errorCodes": {
           "finding-not-found": {
             "description": "No finding matched the requested rule id or fingerprint.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Omit `--finding` to print the top prompts, or pass a `findings[].ruleId` / `findings[].fingerprint` from the saved report."
           },
           "invalid-report": {
             "description": "The supplied report is not a valid mfdoctor report document.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Pass `report.json` from `mfdoctor check` or adapter emit, not `project.json`. Re-run `mfdoctor check --format json` to write a fresh report."
           },
           "io-error": {
             "description": "A required local file or output artifact could not be read or written.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Create or chmod the missing path and retry. Saved reports default to `.mf/doctor/report.json`; project facts require a mfdoctor adapter build."
           },
           "usage-error": {
             "description": "Arguments or options are missing or invalid.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Correct the command arguments or options. Run `mfdoctor --help`, `mfdoctor <command> --help`, or `mfdoctor capabilities` for the versioned contract, then retry."
           }
         },
         "network": {
@@ -789,7 +818,8 @@
         "errorCodes": {
           "rule-not-found": {
             "description": "The requested rule id is not in the built-in rule catalog.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Run `mfdoctor rules` for the catalog. Rule ids look like `config/name-required`."
           }
         },
         "network": {
@@ -821,27 +851,33 @@
         "errorCodes": {
           "analysis-incomplete": {
             "description": "The operation completed with incomplete evidence; this is not a policy pass.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Rebuild with a mfdoctor adapter so `.mf/doctor/project.json` exists, inspect `status.incompleteReasons`, and rerun. Pass `--require-complete` to fail policy (exit 1) instead."
           },
           "invalid-project-facts": {
             "description": "A project-facts input is missing, invalid, or belongs to an incompatible federation group.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Rebuild each federated app with a mfdoctor adapter so `.mf/doctor/project.json` exists, then rerun `workspace` or pass an explicit project.json glob."
           },
           "invalid-report": {
             "description": "The supplied report is not a valid mfdoctor report document.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Pass `report.json` from `mfdoctor check` or adapter emit, not `project.json`. Re-run `mfdoctor check --format json` to write a fresh report."
           },
           "io-error": {
             "description": "A required local file or output artifact could not be read or written.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Create or chmod the missing path and retry. Saved reports default to `.mf/doctor/report.json`; project facts require a mfdoctor adapter build."
           },
           "policy-fail": {
             "description": "The operation completed and its unsuppressed policy findings fail the selected threshold.",
-            "exitCode": 1
+            "exitCode": 1,
+            "fix": "Open `.mf/doctor/report.json` and run `mfdoctor prompt --finding <ruleId>` for a copy-paste repair prompt. Do not add suppressions unless the user asked."
           },
           "usage-error": {
             "description": "Arguments or options are missing or invalid.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Correct the command arguments or options. Run `mfdoctor --help`, `mfdoctor <command> --help`, or `mfdoctor capabilities` for the versioned contract, then retry."
           }
         },
         "formats": ["terminal", "json", "sarif"],
@@ -928,23 +964,28 @@
         "errorCodes": {
           "analysis-incomplete": {
             "description": "The operation completed with incomplete evidence; this is not a policy pass.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Rebuild with a mfdoctor adapter so `.mf/doctor/project.json` exists, inspect `status.incompleteReasons`, and rerun. Pass `--require-complete` to fail policy (exit 1) instead."
           },
           "invalid-project-facts": {
             "description": "A project-facts input is missing, invalid, or belongs to an incompatible federation group.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Rebuild each federated app with a mfdoctor adapter so `.mf/doctor/project.json` exists, then rerun `workspace` or pass an explicit project.json glob."
           },
           "io-error": {
             "description": "A required local file or output artifact could not be read or written.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Create or chmod the missing path and retry. Saved reports default to `.mf/doctor/report.json`; project facts require a mfdoctor adapter build."
           },
           "policy-fail": {
             "description": "The operation completed and its unsuppressed policy findings fail the selected threshold.",
-            "exitCode": 1
+            "exitCode": 1,
+            "fix": "Open `.mf/doctor/report.json` and run `mfdoctor prompt --finding <ruleId>` for a copy-paste repair prompt. Do not add suppressions unless the user asked."
           },
           "usage-error": {
             "description": "Arguments or options are missing or invalid.",
-            "exitCode": 2
+            "exitCode": 2,
+            "fix": "Correct the command arguments or options. Run `mfdoctor --help`, `mfdoctor <command> --help`, or `mfdoctor capabilities` for the versioned contract, then retry."
           }
         },
         "formats": ["terminal", "json", "sarif"],
@@ -1052,7 +1093,7 @@
   },
   "package": {
     "name": "@tonoizer/mfdoctor",
-    "version": "2.0.1"
+    "version": "2.0.3"
   },
   "schemaVersion": 1,
   "schemaVersions": {

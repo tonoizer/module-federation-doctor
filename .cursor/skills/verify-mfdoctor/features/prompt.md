@@ -47,7 +47,8 @@ Preconditions:
   `No agent prompts (no non-suppressed findings).`
 - **Unknown selector.** Run
   `node dist/cli.js prompt --finding definitely/not-a-finding "$REPORT"`.
-  Exit `2`. Stderr mentions no matching finding.
+  Exit `2`. Stderr is structured (`error: finding-not-found`, the no-match
+  message, `Available rule ids:`, `fix:`, `next:`, `Usage:`).
 - **Proof.** Save command, cwd, stdout, stderr, and exit code under
   `.cursor/skills/verify-mfdoctor/evidence/prompt/`. Note the `ruleId` (and a
   fingerprint if used) in `notes.txt`.

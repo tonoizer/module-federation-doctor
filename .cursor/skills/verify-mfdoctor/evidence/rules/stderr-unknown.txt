@@ -1,1 +1,9 @@
+error: rule-not-found
 Unknown rule: definitely/not-a-rule
+
+fix: Run `mfdoctor rules` for the built-in catalog. Rule ids look like `config/name-required`.
+next: mfdoctor rules
+
+Usage:
+  mfdoctor rules
+  mfdoctor rules <rule-id>
