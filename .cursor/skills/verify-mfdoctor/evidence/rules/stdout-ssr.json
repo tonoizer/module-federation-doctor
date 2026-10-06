@@ -1,0 +1,10 @@
+{
+  "category": "correctness",
+  "defaultSeverity": "warning",
+  "documentation": "/rules/artifact/manifest-ssr-remote-entry-missing",
+  "fix": "Clean and rebuild client and SSR outputs; verify filename, output path, and manifest generation. Build the SSR environment when `ssrRemoteEntry` is advertised. If `@module-federation/vite` is below 1.23.2, upgrade so client-only builds stop advertising an SSR entry that was never emitted.",
+  "id": "artifact/manifest-ssr-remote-entry-missing",
+  "impact": "An SSR host that prefers `metaData.ssrRemoteEntry` follows that locator to a file the producer did not emit.",
+  "sources": ["https://module-federation.io/configure/manifest.html"],
+  "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+}

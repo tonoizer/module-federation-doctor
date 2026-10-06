@@ -14,7 +14,7 @@
       "category": "correctness",
       "defaultSeverity": "error",
       "documentation": "/rules/artifact/expose-missing",
-      "fix": "Fix the expose build or remove the stale public contract.",
+      "fix": "Rebuild the producer so the expose lands in `mf-manifest.json`, or remove the stale `exposes` key from the Module Federation config.",
       "id": "artifact/expose-missing",
       "impact": "The config promises an expose that the emitted manifest does not contain.",
       "sources": [
@@ -105,6 +105,16 @@
     {
       "category": "correctness",
       "defaultSeverity": "warning",
+      "documentation": "/rules/artifact/manifest-ssr-remote-entry-missing",
+      "fix": "Clean and rebuild client and SSR outputs; verify filename, output path, and manifest generation. Build the SSR environment when `ssrRemoteEntry` is advertised. If `@module-federation/vite` is below 1.23.2, upgrade so client-only builds stop advertising an SSR entry that was never emitted.",
+      "id": "artifact/manifest-ssr-remote-entry-missing",
+      "impact": "An SSR host that prefers `metaData.ssrRemoteEntry` follows that locator to a file the producer did not emit.",
+      "sources": ["https://module-federation.io/configure/manifest.html"],
+      "supportedBundlers": ["vite", "rspack", "rsbuild", "webpack", "modern"]
+    },
+    {
+      "category": "correctness",
+      "defaultSeverity": "warning",
       "documentation": "/rules/artifact/public-path-non-string-manifest",
       "fix": "Set `output.publicPath` or Vite MF `publicPath` to a string URL, root-relative path, or `auto` when manifests are required.",
       "id": "artifact/public-path-non-string-manifest",
@@ -131,7 +141,7 @@
       "documentation": "/rules/artifact/react-dom-server-in-web",
       "fix": "Keep `react-dom/server` (and `react-dom/server.*`) on the SSR/server build only. Use a client entry such as `react-dom/client` for web remotes/hosts, or mark the target with `ssrMode: \"node\"` / `experiments.target: \"node\"` when the artifact is server-only. Set `rules[\"artifact/react-dom-server-in-web\"]` to `\"off\"` when intentional.",
       "id": "artifact/react-dom-server-in-web",
-      "impact": "react-dom/server (and related server entries) in a web/client Module Federation bundle crash or mis-target the browser runtime — a common MF/SSR boundary failure.",
+      "impact": "react-dom/server (and related server entries) in a web/client Module Federation bundle crash or mis-target the browser runtime, a common MF/SSR boundary failure.",
       "sources": [
         "https://react.dev/reference/react-dom/server",
         "https://module-federation.io/guide/framework/react"
@@ -837,7 +847,7 @@
       "category": "tooling",
       "defaultSeverity": "warning",
       "documentation": "/rules/doctor/partial-analysis",
-      "fix": "When MF options are missing, pass them explicitly. On Vite, missing `mf-manifest.json` / `mf-stats.json` usually means enable `manifest: true` — not missing options; an explicit `manifest: false` is reported by `artifact/manifest-disabled` instead. On Webpack/Rspack/Rsbuild, remotes with `capabilities.stats` false after emit is incomplete (`missing-stats` on `status.incompleteReasons`, or this rule): those bundlers emit stats by default (`manifest !== false`). Fix source permissions or transient read races when `imports.sourceReadFailures` is present, or raise the analysis budget when only a budget cutoff made the workspace `partial`. Prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
+      "fix": "When MF options are missing, pass them explicitly. On Vite, missing `mf-manifest.json` / `mf-stats.json` usually means enable `manifest: true`, not missing options; an explicit `manifest: false` is reported by `artifact/manifest-disabled` instead. On Webpack/Rspack/Rsbuild, remotes with `capabilities.stats` false after emit is incomplete (`missing-stats` on `status.incompleteReasons`, or this rule): those bundlers emit stats by default (`manifest !== false`). Fix source permissions or transient read races when `imports.sourceReadFailures` is present, or raise the analysis budget when only a budget cutoff made the workspace `partial`. Prefer string-literal dynamic imports or an opt-in runtime trace when analysis is incomplete.",
       "id": "doctor/partial-analysis",
       "impact": "Missing facts, unresolved dynamic imports, unreadable source files recorded in `imports.sourceReadFailures`, budget-limited persisted projects, or omitted workspace projects reduce confidence and can hide relevant findings. Source read failures make project or workspace input `unknown`; a pure analysis-budget cutoff is `partial`. Incomplete workspace evidence suppresses absence-based federation rules (`host-gaps`, `ghost-shares`, `missing-provider`, and `external-runtime-provider-missing`) while positive mismatches remain useful. Package-capable unresolved dynamics suppress workspace absence certainty without changing the ordinary project exit code.",
       "sources": ["https://module-federation.io/configure/index.html"],
@@ -901,7 +911,7 @@
       "category": "correctness",
       "defaultSeverity": "error",
       "documentation": "/rules/federation/name-conflict",
-      "fix": "Give every participating container a unique stable name.",
+      "fix": "Give every participating container a unique stable `name` in the Module Federation plugin options.",
       "id": "federation/name-conflict",
       "impact": "Duplicate container names collide in runtime data and global chunk storage.",
       "sources": ["https://module-federation.io/configure/name.html"],
@@ -1179,7 +1189,7 @@
       "category": "performance",
       "defaultSeverity": "warning",
       "documentation": "/rules/shared/eager-without-singleton",
-      "fix": "Make it singleton when safe, or remove eager loading.",
+      "fix": "Set `singleton: true` on that shared package when it holds framework state, or drop `eager: true` so the runtime can load a single copy.",
       "id": "shared/eager-without-singleton",
       "impact": "An eager non-singleton can add copies to initial chunks without guaranteeing reuse.",
       "sources": ["https://module-federation.io/configure/shared.html"],
@@ -1316,7 +1326,7 @@
       "documentation": "/rules/ssr/remote-entry-target-mismatch",
       "fix": "Point browser remotes at `remoteEntry.js` (or the client `mf-manifest.json`) and node/SSR remotes at `remoteEntry.ssr.js` or `/ssr/...`. Requires `experiments.target` / `vite.target` / unambiguous `builds.targetKind` on the consumer; missing targetKind skips. Set `ssrMode: \"browser-only\"` or `\"node\"` to force a side, or turn the rule `\"off\"`.",
       "id": "ssr/remote-entry-target-mismatch",
-      "impact": "A browser host that loads `remoteEntry.ssr.js` (or an SSR-specific path) executes the server container in the client. The reverse — an SSR host loading a browser `remoteEntry.js` — misses the server runtime contract. Dual-env Nitro pairing of client+server outputs is not this check.",
+      "impact": "A browser host that loads `remoteEntry.ssr.js` (or an SSR-specific path) executes the server container in the client. The reverse, an SSR host loading a browser `remoteEntry.js`, misses the server runtime contract. Dual-env Nitro pairing of client+server outputs is not this check.",
       "sources": [
         "https://module-federation.io/guide/basic/manifest-snapshot.html",
         "https://module-federation.io/blog/node"

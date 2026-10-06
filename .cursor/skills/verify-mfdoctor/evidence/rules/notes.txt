@@ -1,11 +1,14 @@
 feature-id: rules
 catalog-exit: 0
-ruleCount: 127
+ruleCount: 128
 schemaVersion: 1
 one-exit: 0
 one-id: config/remote-http-insecure
 one-supportedBundlers: ['vite', 'rspack', 'rsbuild', 'webpack', 'modern']
 vite-only-id: vite/server-origin
 vite-only-supportedBundlers: ['vite']
+ssr-id: artifact/manifest-ssr-remote-entry-missing
+ssr-defaultSeverity: warning
+ssr-supportedBundlers: ['vite', 'rspack', 'rsbuild', 'webpack', 'modern']
 unknown-exit: 2
 unknown-stderr: error: rule-not-found + Unknown rule + fix/next/Usage
