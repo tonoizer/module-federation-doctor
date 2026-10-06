@@ -13,7 +13,7 @@ Do not suggest suppressions or baseline entries unless the user asks.
 - Required artifacts:
   - `.mf/doctor/report.json`
   - `.mf/doctor/project.json (post-emit adapter facts)`
-- Rebuild required: yes — A check is config/static analysis; rebuild with the mfdoctor adapter before claiming emitted-artifact or federation coverage.
+- Rebuild required: yes, A check is config/static analysis; rebuild with the mfdoctor adapter before claiming emitted-artifact or federation coverage.
 - Build command: unknown (not provided; do not invent one)
 - Follow-up (workspace, required): `mfdoctor workspace`
   Run the post-emit workspace gate after the narrow fix; mfdoctor check alone is not a green claim.
@@ -73,7 +73,7 @@ Do not suggest suppressions or baseline entries unless the user asks.
 - Required artifacts:
   - `.mf/doctor/report.json`
   - `.mf/doctor/project.json (post-emit adapter facts)`
-- Rebuild required: yes — A check is config/static analysis; rebuild with the mfdoctor adapter before claiming emitted-artifact or federation coverage.
+- Rebuild required: yes, A check is config/static analysis; rebuild with the mfdoctor adapter before claiming emitted-artifact or federation coverage.
 - Build command: unknown (not provided; do not invent one)
 - Follow-up (workspace, required): `mfdoctor workspace`
   Run the post-emit workspace gate after the narrow fix; mfdoctor check alone is not a green claim.
