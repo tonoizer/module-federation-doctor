@@ -84,12 +84,26 @@ dangerouslyAllowAllBuilds: false
 # GHSA-r53p-7pc4-xj5r, GHSA-2gqq-gqf2-x968, GHSA-8436-99hf-9mmv).
 # Transitive via @module-federation/dts-plugin@2.9.0. Drop when dts-plugin
 # pins undici >=7.29.1.
+# Dependabot alerts #71/#72 / GHSA-85c8-ppgw-ccpr, GHSA-5gmw-xhrv-c9v3,
+# tinypool <=2.1.0 prototype-pollution gadgets to RCE. Exact pin from
+# oxfmt@0.62.0/0.64.0 via vite-plus. Drop when oxfmt pins tinypool >=2.1.2.
+# Dependabot alert #73 / GHSA-68fv-2mgg-jv7q, source-map-js <1.2.2 event-loop
+# DoS via indexed source-map offsets. Drop when postcss/sass pin >=1.2.2.
+# Dependabot alert #74 / GHSA-r4xh-jqrq-34v2, smol-toml <=1.8.0 quadratic
+# parse() DoS. Drop when knip pins >=1.9.0.
+# Dependabot alert #75 / GHSA-pqg4-j6r4-53mv, shell-quote <1.11.0 command
+# injection via line terminator after a comment token. Drop when
+# launch-editor pins >=1.11.0.
 overrides:
   react-router: 8.3.0
   "nanoid@3": 3.3.18
   "fast-uri@3": 3.1.8
   adm-zip: 0.6.1
   "undici@7": 7.29.1
+  "tinypool@2.1.0": 2.1.2
+  "source-map-js@1": 1.2.2
+  "smol-toml@1": 1.9.0
+  "shell-quote@1": 1.11.0
   "vitest@4": 4.1.11
   "@vitest/browser@4": 4.1.11
   "@vitest/browser-preview@4": 4.1.11
