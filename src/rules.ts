@@ -329,15 +329,17 @@ function collectedRemoteEntryPresent(
 /** @module-federation/vite 1.x advertised ssrRemoteEntry on client-only emits before 1.23.2. */
 const VITE_SSR_REMOTE_ENTRY_FIX = "1.23.2";
 
-function vitePluginVersionBelowSsrRemoteEntryFix(pluginVersion: string | undefined): boolean {
-  if (!pluginVersion) return false;
+function parseVitePlugin1xVersion(pluginVersion: string | undefined): string | undefined {
+  if (!pluginVersion) return undefined;
   const trimmed = pluginVersion.trim();
   const version = semver.valid(trimmed) ?? semver.coerce(trimmed)?.version;
-  return (
-    version !== undefined &&
-    semver.major(version) === 1 &&
-    semver.lt(version, VITE_SSR_REMOTE_ENTRY_FIX)
-  );
+  if (!version || semver.major(version) !== 1) return undefined;
+  return version;
+}
+
+function vitePluginVersionBelowSsrRemoteEntryFix(pluginVersion: string | undefined): boolean {
+  const version = parseVitePlugin1xVersion(pluginVersion);
+  return version !== undefined && semver.lt(version, VITE_SSR_REMOTE_ENTRY_FIX);
 }
 
 function ssrRemoteEntryMissingSuggestion(pluginVersion: string | undefined): string {
@@ -3630,6 +3632,11 @@ export const federationRuleMeta = [
     id: "shared/singleton-mismatch",
     severity: "warning",
     ...ruleGuidance["shared/singleton-mismatch"]!,
+  },
+  {
+    id: "federation/vite-webpack-nonsingleton-share",
+    severity: "error",
+    ...ruleGuidance["federation/vite-webpack-nonsingleton-share"]!,
   },
   {
     id: "federation/external-runtime-provider-missing",

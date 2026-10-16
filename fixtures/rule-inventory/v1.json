@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "src/rule-inventory.ts",
-  "ruleCount": 128,
-  "migratedCount": 128,
+  "ruleCount": 129,
+  "migratedCount": 129,
   "compatibilityExceptionCount": 0,
   "compatibilityExceptions": [],
   "rules": [
@@ -6612,6 +6612,79 @@
       },
       "evidenceReads": ["project.scope", "federation.graph"],
       "migrationNote": "Group 4; Federation graph evidence is high confidence when all projects are present. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
+    },
+    {
+      "id": "federation/vite-webpack-nonsingleton-share",
+      "version": "1",
+      "group": 4,
+      "status": "migrated",
+      "demo": "unit",
+      "defaultSeverity": "error",
+      "confidenceCeiling": "high",
+      "owner": {
+        "name": "mfdoctor maintainers"
+      },
+      "remediation": {
+        "summary": "Since `@module-federation/vite` 1.22.0, a webpack/rspack/enhanced peer that shares the same package as a non-singleton can mark that share loaded without the `lib` a Vite remote's production `loadShare` wrapper expects, so container init crashes with RUNTIME-015 on every reload after the first load.",
+        "documentation": "/rules/federation/vite-webpack-nonsingleton-share",
+        "fix": "Upgrade `@module-federation/vite` to >=1.23.4 so Vite remotes seed unbridged webpack non-singleton shares (https://github.com/module-federation/vite/issues/1429)."
+      },
+      "prerequisites": {
+        "allOf": [
+          {
+            "predicate": "project.scope",
+            "layer": "declared",
+            "subjectKind": "shared-package",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          },
+          {
+            "predicate": "federation.graph",
+            "layer": "declared",
+            "subjectKind": "shared-package",
+            "minimumConfidence": "high",
+            "minimumCompleteness": "complete"
+          }
+        ]
+      },
+      "applicability": {
+        "adapters": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ],
+        "bundlers": [
+          {
+            "name": "vite"
+          },
+          {
+            "name": "rspack"
+          },
+          {
+            "name": "rsbuild"
+          },
+          {
+            "name": "webpack"
+          },
+          {
+            "name": "modern"
+          }
+        ]
+      },
+      "evidenceReads": ["project.scope", "federation.graph"],
+      "migrationNote": "Group 4; Fires only when a Vite emit reports a known @module-federation/vite version in [1.22.0, 1.23.4) and a webpack-family peer shares the same package as a non-singleton. Unknown plugin version or missing peer evidence stays quiet (pass-unknown). Does not require a declared version mismatch: the upstream skip is a runtime share-scope comparison that public emit/config facts do not expose. Migrated through the evidence-aware rollout bridge with golden V1 parity in shadow and v2-compat modes."
     },
     {
       "id": "performance/asset-budget",
