@@ -7,15 +7,16 @@
 Same Vite + Rspack + Rsbuild topology as the [healthy mixed example](./mixed-example.md),
 but configured so mfdoctor reports shared and cross-project conflicts.
 
-| Finding                                     | How it is planted                                              |
-| ------------------------------------------- | -------------------------------------------------------------- |
-| `config/remote-manifest-recommended`        | Host remotes use `remoteEntry.js` URLs (rule left on)          |
-| `reliability/version-first-offline-remotes` | Host keeps `version-first` with remotes and no recovery plugin |
-| `shared/version-unsatisfied`                | Rspack remote installs React 18 against `requiredVersion: ^19` |
-| `shared/singleton-risk`                     | Rspack remote shares React without `singleton`                 |
-| `federation/version-conflict`               | Installed React versions do not satisfy every consumer range   |
-| `federation/share-scope-mismatch`           | Rsbuild remote shares React on `legacy`                        |
-| `shared/singleton-mismatch`                 | Host singleton vs Rspack non-singleton                         |
+| Finding                                      | How it is planted                                                                |
+| -------------------------------------------- | -------------------------------------------------------------------------------- |
+| `config/remote-manifest-recommended`         | Host remotes use `remoteEntry.js` URLs (rule left on)                            |
+| `reliability/version-first-offline-remotes`  | Host keeps `version-first` with remotes and no recovery plugin                   |
+| `shared/version-unsatisfied`                 | Rspack remote installs React 18 against `requiredVersion: ^19`                   |
+| `shared/singleton-risk`                      | Rspack remote shares React without `singleton`                                   |
+| `federation/version-conflict`                | Installed React versions do not satisfy every consumer range                     |
+| `federation/share-scope-mismatch`            | Rsbuild remote shares React on `legacy`                                          |
+| `shared/singleton-mismatch`                  | Host singleton vs Rspack non-singleton                                           |
+| `federation/vite-webpack-nonsingleton-share` | Vite `@module-federation/vite` 1.23.2 + Rspack non-singleton React (RUNTIME-015) |
 
 ```bash
 vp run demo:mixed-issues

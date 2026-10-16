@@ -81,7 +81,12 @@ const federation = run(process.execPath, [
 if (
   !assertRules(
     "examples/mixed-federation-issues federation",
-    ["federation/version-conflict", "federation/share-scope-mismatch", "shared/singleton-mismatch"],
+    [
+      "federation/version-conflict",
+      "federation/share-scope-mismatch",
+      "shared/singleton-mismatch",
+      "federation/vite-webpack-nonsingleton-share",
+    ],
     federation.output,
     1,
     federation.exitCode,

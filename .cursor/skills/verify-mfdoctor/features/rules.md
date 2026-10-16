@@ -30,7 +30,7 @@ Preconditions:
   Stderr is structured (`error: rule-not-found`, `Unknown rule: …`, `fix:`,
   `next:`, `Usage:`). Near-miss ids may add `Did you mean:`.
 - **Proof.** Save catalog or single-rule stdout under
-  `.cursor/skills/verify-mfdoctor/evidence/rules/` (truncate huge catalogs if needed, but keep schemaVersion + a sample rule ID). Notes `ruleCount` is `128` and includes `artifact/manifest-ssr-remote-entry-missing`. Keep the Vite-only `supportedBundlers` assertion in notes or `stdout-vite-only.json`.
+  `.cursor/skills/verify-mfdoctor/evidence/rules/` (truncate huge catalogs if needed, but keep schemaVersion + a sample rule ID). Notes `ruleCount` is `129` and includes `artifact/manifest-ssr-remote-entry-missing` and `federation/vite-webpack-nonsingleton-share`. Keep the Vite-only `supportedBundlers` assertion in notes or `stdout-vite-only.json`.
 
 ## Gotchas
 

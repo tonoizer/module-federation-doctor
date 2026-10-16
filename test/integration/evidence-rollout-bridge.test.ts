@@ -138,6 +138,7 @@ const EXPECTED_GROUP4_RULE_IDS = [
   "federation/host-gaps",
   "federation/ghost-shares",
   "shared/singleton-mismatch",
+  "federation/vite-webpack-nonsingleton-share",
   "federation/external-runtime-provider-missing",
 ] as const;
 

@@ -713,6 +713,7 @@ describe("evidence-aware rule contract", () => {
       "federation/host-gaps",
       "federation/ghost-shares",
       "shared/singleton-mismatch",
+      "federation/vite-webpack-nonsingleton-share",
       "federation/external-runtime-provider-missing",
     ]);
     for (const id of [
@@ -731,6 +732,7 @@ describe("evidence-aware rule contract", () => {
       "federation/version-conflict",
       "federation/share-scope-mismatch",
       "shared/singleton-mismatch",
+      "federation/vite-webpack-nonsingleton-share",
     ]) {
       const entry = ruleInventory.find((item) => item.id === id);
       expect(entry).toBeTruthy();

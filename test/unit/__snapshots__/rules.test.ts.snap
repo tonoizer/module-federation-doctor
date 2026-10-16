@@ -124,6 +124,7 @@ exports[`built-in rules > registers every production rule exactly once 1`] = `
   "federation/host-gaps",
   "federation/ghost-shares",
   "shared/singleton-mismatch",
+  "federation/vite-webpack-nonsingleton-share",
   "federation/external-runtime-provider-missing",
   "runtime/remote-load-failed",
   "runtime/init-failed",

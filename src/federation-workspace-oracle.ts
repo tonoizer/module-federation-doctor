@@ -1,7 +1,13 @@
 import semver from "semver";
 import { buildFederationModel, findFederationCycleGroups } from "./federation-model.js";
 import { FINDING_DETAILS_SCHEMAS } from "./finding-details.js";
-import type { ProjectFacts } from "./types.js";
+import type {
+  ArtifactFacts,
+  ArtifactStats,
+  BundlerName,
+  FederationInstanceFacts,
+  ProjectFacts,
+} from "./types.js";
 import { compareCodePoint } from "./utils.js";
 
 export interface FederationOracleFinding {
@@ -17,6 +23,75 @@ export interface FederationWorkspaceOracleInput {
   projectGroup: readonly ProjectFacts[];
   groupEvidenceIncomplete: boolean;
   alwaysShared: ReadonlySet<string>;
+}
+
+/**
+ * @module-federation/vite 1.22.0 started returning share `lib` synchronously once a
+ * webpack-family container marked the share loaded. Non-singleton webpack shares can
+ * be marked loaded without that `lib`, so a Vite remote's production `loadShare`
+ * wrapper crashes (`RUNTIME-015`) on every reload after the first load.
+ * Fixed in 1.23.4. Same version-gate pattern as `VITE_SSR_REMOTE_ENTRY_FIX` in src/rules.ts.
+ * https://github.com/module-federation/vite/issues/1429
+ */
+const VITE_WEBPACK_NONSINGLETON_SHARE_INTRODUCED = "1.22.0";
+const VITE_WEBPACK_NONSINGLETON_SHARE_FIX = "1.23.4";
+
+function vitePluginVersionHasUnbridgedWebpackNonsingletonShare(
+  pluginVersion: string | undefined,
+): boolean {
+  if (!pluginVersion) return false;
+  const trimmed = pluginVersion.trim();
+  const version = semver.valid(trimmed) ?? semver.coerce(trimmed)?.version;
+  return (
+    version !== undefined &&
+    semver.major(version) === 1 &&
+    semver.gte(version, VITE_WEBPACK_NONSINGLETON_SHARE_INTRODUCED) &&
+    semver.lt(version, VITE_WEBPACK_NONSINGLETON_SHARE_FIX)
+  );
+}
+
+/** Webpack-family bundlers whose containers can register unbridged non-singleton shares. */
+function isWebpackFamilyBundler(
+  name: BundlerName,
+): name is "webpack" | "rspack" | "rsbuild" | "modern" {
+  return name === "webpack" || name === "rspack" || name === "rsbuild" || name === "modern";
+}
+
+/**
+ * Public `metaData.pluginVersion` on already-collected mf-stats JSON. Same field
+ * collect.ts copies onto manifests; not a private MF plugin scrape.
+ */
+function pluginVersionFromStatsData(data: ArtifactStats["data"]): string | undefined {
+  const metadata = data?.metaData;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return undefined;
+  const version = (metadata as Record<string, unknown>).pluginVersion;
+  return typeof version === "string" ? version : undefined;
+}
+
+function addCollectedPluginVersions(target: Set<string>, artifacts: ArtifactFacts): void {
+  const add = (value: string | undefined) => {
+    const trimmed = value?.trim();
+    if (trimmed) target.add(trimmed);
+  };
+  add(artifacts.manifest?.pluginVersion);
+  add(pluginVersionFromStatsData(artifacts.stats?.data));
+  for (const record of artifacts.records ?? []) {
+    add(record.manifest?.pluginVersion);
+    add(pluginVersionFromStatsData(record.stats?.data));
+  }
+}
+
+function collectedPluginVersions(
+  project: ProjectFacts,
+  instance?: FederationInstanceFacts,
+): string[] {
+  const versions = new Set<string>();
+  addCollectedPluginVersions(versions, instance?.artifacts ?? project.artifacts);
+  return [...versions];
+}
+
+function affectedVitePluginVersion(versions: readonly string[]): string | undefined {
+  return versions.find((version) => vitePluginVersionHasUnbridgedWebpackNonsingletonShare(version));
 }
 
 /** Workspace-level federation rule oracle shared by legacy V1 and evidence v2 evaluators. */
@@ -311,6 +386,45 @@ export function evaluateFederationWorkspaceOracle(
           });
         }
       }
+    }
+  }
+
+  /**
+   * Do not require a declared/installed version mismatch. Upstream #1429 / PR #1431
+   * skip seeding when a webpack provider's *runtime share-scope* version differs;
+   * public emit/config facts do not expose that comparison, so requiring it would
+   * both false-negative same-declared-version crashes and pass-unknown when
+   * versions are omitted. Non-singleton webpack-family overlap is the observable
+   * trigger. Unknown plugin version or no webpack-family peer stays quiet.
+   */
+  for (const viteNode of federationNodes) {
+    if (viteNode.project.bundler.name !== "vite") continue;
+    const pluginVersion = affectedVitePluginVersion(
+      collectedPluginVersions(viteNode.project, viteNode.instance),
+    );
+    if (!pluginVersion) continue;
+    const viteShared = nodeConfig(viteNode)?.shared ?? {};
+    const webpackPeers = federationNodes.filter(
+      (peer) => peer !== viteNode && isWebpackFamilyBundler(peer.project.bundler.name),
+    );
+    if (webpackPeers.length === 0) continue;
+    for (const pkg of Object.keys(viteShared).sort(compareCodePoint)) {
+      const peers = webpackPeers.filter((peer) => {
+        const shared = nodeConfig(peer)?.shared[pkg];
+        return shared !== undefined && shared.singleton === false;
+      });
+      if (peers.length === 0) continue;
+      findings.push({
+        ruleId: "federation/vite-webpack-nonsingleton-share",
+        project: viteNode.projectName,
+        message: `"${pkg}" is shared as a non-singleton by a webpack-family peer; @module-federation/vite ${pluginVersion} can crash Vite remote loadShare (RUNTIME-015) until 1.23.4.`,
+        evidence: {
+          package: pkg,
+          pluginVersion,
+          viteInstance: nodeScope(viteNode),
+          webpackPeers: peers.map(nodeScope).sort(compareCodePoint),
+        },
+      });
     }
   }
 

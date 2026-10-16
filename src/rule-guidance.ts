@@ -765,6 +765,18 @@ export const ruleGuidance: Record<string, RuleGuidance> = {
     fix: "Use one federation-wide singleton policy for stateful packages.",
     sources: [shared],
   },
+  "federation/vite-webpack-nonsingleton-share": {
+    category: "correctness",
+    impact:
+      "Since `@module-federation/vite` 1.22.0, a webpack/rspack/enhanced peer that shares the same package as a non-singleton can mark that share loaded without the `lib` a Vite remote's production `loadShare` wrapper expects, so container init crashes with RUNTIME-015 on every reload after the first load.",
+    fix: "Upgrade `@module-federation/vite` to >=1.23.4 so Vite remotes seed unbridged webpack non-singleton shares (https://github.com/module-federation/vite/issues/1429).",
+    sources: [
+      "https://github.com/module-federation/vite/issues/1429",
+      "https://github.com/module-federation/vite/pull/1431",
+      shared,
+      vite,
+    ],
+  },
   "federation/external-runtime-provider-missing": {
     category: "correctness",
     impact: "External-runtime remotes cannot start without a federation-wide provider.",

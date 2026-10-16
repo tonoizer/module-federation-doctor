@@ -105,6 +105,7 @@ const ids = [
   "federation/share-scope-mismatch",
   "federation/share-strategy-mismatch",
   "federation/version-conflict",
+  "federation/vite-webpack-nonsingleton-share",
   "performance/asset-budget",
   "performance/version-first-startup",
   "performance/vite-bundle-all-css",
@@ -243,6 +244,7 @@ const demoByRule = {
   "federation/share-scope-mismatch": "showcase",
   "federation/share-strategy-mismatch": "showcase",
   "federation/version-conflict": "showcase",
+  "federation/vite-webpack-nonsingleton-share": "unit",
   "performance/asset-budget": "unit",
   "performance/version-first-startup": "unit",
   "performance/vite-bundle-all-css": "unit",
@@ -403,6 +405,7 @@ export const MIGRATED_GROUP4_RULE_IDS = [
   "federation/host-gaps",
   "federation/ghost-shares",
   "shared/singleton-mismatch",
+  "federation/vite-webpack-nonsingleton-share",
   "federation/external-runtime-provider-missing",
 ] as const;
 
@@ -1432,6 +1435,15 @@ const plans: Record<string, RulePlan> = {
     "high",
     "Federation graph evidence is high confidence when all projects are present.",
   ),
+  "federation/vite-webpack-nonsingleton-share": plan(
+    4,
+    "error",
+    "federation.graph",
+    "declared",
+    "shared-package",
+    "high",
+    "Fires only when a Vite emit reports a known @module-federation/vite version in [1.22.0, 1.23.4) and a webpack-family peer shares the same package as a non-singleton. Unknown plugin version or missing peer evidence stays quiet (pass-unknown). Does not require a declared version mismatch: the upstream skip is a runtime share-scope comparison that public emit/config facts do not expose.",
+  ),
   "federation/external-runtime-provider-missing": plan(
     4,
     "error",
@@ -1992,6 +2004,7 @@ const evidenceReadsByRule: Record<string, readonly string[]> = {
   "federation/share-scope-mismatch": ["project.scope", "federation.graph"],
   "federation/share-strategy-mismatch": ["project.scope", "federation.graph"],
   "federation/version-conflict": ["project.scope", "federation.graph"],
+  "federation/vite-webpack-nonsingleton-share": ["project.scope", "federation.graph"],
   "performance/asset-budget": ["project.scope", "artifacts.manifest", "artifacts.assetSizes"],
   "performance/version-first-startup": ["project.scope", "moduleFederation"],
   "performance/vite-bundle-all-css": ["project.scope", "moduleFederation", "bundler.name"],
