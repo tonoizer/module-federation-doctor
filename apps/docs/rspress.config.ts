@@ -16,6 +16,11 @@ const siteOrigin = (process.env.SITE_ORIGIN || "https://mfdoctor.kevinbeier.com"
 const siteIcon = "/mfdoctor-mark.svg";
 const socialImageUrl = `${siteOrigin}/mfdoctor-social.svg`;
 const socialImageAlt = "mfdoctor icon";
+const cloudflareAnalyticsEnabled = process.env.CF_PAGES === "1";
+const cloudflareAnalyticsToken = process.env.CF_WEB_ANALYTICS_TOKEN;
+if (cloudflareAnalyticsEnabled && !/^[a-f0-9]{32}$/.test(cloudflareAnalyticsToken ?? "")) {
+  throw new Error("Cloudflare Pages builds require a valid CF_WEB_ANALYTICS_TOKEN");
+}
 
 const guideSidebar = [
   { sectionHeaderText: "Guide" },
@@ -360,6 +365,17 @@ export default defineConfig({
   },
   outDir: "doc_build",
   head: [
+    ...(cloudflareAnalyticsEnabled
+      ? ([
+          [
+            "script",
+            {
+              defer: "",
+              src: `https://static.cloudflareinsights.com/beacon.min.js?token=${cloudflareAnalyticsToken}`,
+            },
+          ],
+        ] satisfies [string, Record<string, string>][])
+      : []),
     ["meta", { property: "og:site_name", content: "mfdoctor" }],
     ["meta", { property: "og:image", content: socialImageUrl }],
     ["meta", { property: "og:image:type", content: "image/svg+xml" }],
