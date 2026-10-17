@@ -36,6 +36,23 @@ if (!html.includes('href="https://mfdoctor.kevinbeier.com/index.md"')) {
 if (/(?:src|href)="\/module-federation-doctor\//.test(html)) {
   throw new Error("GitHub Pages base path leaked into production build");
 }
+if (process.env.CF_PAGES === "1") {
+  const token = process.env.CF_WEB_ANALYTICS_TOKEN;
+  if (!/^[a-f0-9]{32}$/.test(token ?? "")) {
+    throw new Error("Missing or invalid CF_WEB_ANALYTICS_TOKEN");
+  }
+  // Rspress' standalone 404 page does not include the configured document head.
+  for (const { file } of files.filter(
+    (entry) => entry.file.endsWith(".html") && path.basename(entry.file) !== "404.html",
+  )) {
+    const content = await fs.readFile(file, "utf8");
+    const beacons =
+      content.match(/<script\b[^>]*static\.cloudflareinsights\.com\/beacon\.min\.js[^>]*>/g) ?? [];
+    if (beacons.length !== 1 || !beacons[0].includes(token)) {
+      throw new Error(`Expected exactly one configured Cloudflare Analytics beacon: ${file}`);
+    }
+  }
+}
 // Only content-hashed files may receive the immutable /static/* cache rule.
 for (const { file } of files) {
   const relative = path.relative(root, file).split(path.sep).join("/");

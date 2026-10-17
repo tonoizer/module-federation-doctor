@@ -14,7 +14,8 @@ Pages project: `mfdoctor`, production branch: `main`.
 - Build: `pnpm build && pnpm docs:build && node scripts/check-cloudflare-docs.mjs`
 - Output: `apps/docs/doc_build`
 - Build environment: `NODE_VERSION=24`, `PNPM_VERSION=11.17.0`, `DOCS_BASE=/`,
-  `SITE_ORIGIN=https://mfdoctor.kevinbeier.com`.
+  `SITE_ORIGIN=https://mfdoctor.kevinbeier.com`, and `CF_WEB_ANALYTICS_TOKEN`
+  (the public Web Analytics site token, not an API credential).
 
 Connect the Cloudflare GitHub app to this repository and enable production
 deployments from `main`. Keep automatic preview deployments disabled until their
@@ -30,11 +31,15 @@ This site has no Pages Functions or runtime database bindings.
 
 ## Analytics and performance
 
-Cloudflare Web Analytics is configured for `mfdoctor.kevinbeier.com` and enabled
-through the Pages project's `web_analytics_tag` and `web_analytics_token` settings.
-Pages inserts the beacon; do not add a second beacon to the Rspress layout.
-These are public beacon identifiers, not API credentials. No API credentials are
-committed to this repository.
+Cloudflare Web Analytics is configured for `mfdoctor.kevinbeier.com`. On Cloudflare
+Pages builds (`CF_PAGES=1`), the Rspress configuration embeds its deferred beacon
+with `CF_WEB_ANALYTICS_TOKEN` and SPA measurement enabled. The output check requires
+exactly one correctly configured beacon in every generated documentation page
+(Rspress' standalone 404 page does not include the document head). Disable
+Pages' automatic Web Analytics injection (`web_analytics_tag` and
+`web_analytics_token` set to null) to prevent duplicate measurement. The site
+token is public; no API credentials are committed to this repository. Local and
+GitHub Pages builds do not embed the beacon.
 
 Use **Cloudflare → Analytics & Logs → Web Analytics → mfdoctor.kevinbeier.com**
 to inspect page views, visits, referrers, countries, devices and browsers,
