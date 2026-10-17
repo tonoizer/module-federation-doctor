@@ -1,5 +1,14 @@
 # @tonoizer/mfdoctor
 
+## 2.0.4
+
+### Patch Changes
+
+- 4642782: Print structured CLI errors with capabilities error codes and concrete `fix:` / `next:` remediations. Terminal next-action lines and plugin policy failures now point at `mfdoctor prompt --finding <ruleId>`.
+- 4a7f1e8: Attach per-rule how-to-fix suggestions on findings, SARIF (`help.text`, `properties.fix`, incomplete-reason remediations), diagnostics dumps, and plugin incomplete failures. Engine stderr stays quiet when a failure report was already written.
+- 6298a60: Parse manifest `metaData.ssrRemoteEntry` and report `artifact/manifest-ssr-remote-entry-missing` (warning) when that SSR entry was advertised but not present in any collected emit/output. Split client/server builds stay quiet when the doctor collected the server asset. `artifact/manifest-remote-entry-missing` still only checks the client `remoteEntry`.
+- e18317f: Report `federation/vite-webpack-nonsingleton-share` when a Vite container's emitted `@module-federation/vite` version is in `[1.22.0, 1.23.4)` and a webpack/rspack/enhanced peer shares the same package as a non-singleton. That combination crashes Vite remote `loadShare` with RUNTIME-015 on reload (https://github.com/module-federation/vite/issues/1429). Unknown plugin version or missing peer evidence stays quiet. Upgrade `@module-federation/vite` to >=1.23.4.
+
 ## 2.0.3
 
 ### Patch Changes
