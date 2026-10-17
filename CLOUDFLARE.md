@@ -81,9 +81,9 @@ that pins HTML or documentation manifests in visitor browsers.
    analytics beacon. Verify beacon delivery and subsequent dashboard data.
 5. Verify an additional GitHub commit triggers a successful production build.
    Back up the Vercel project configuration and any available analytics history.
-6. Remove the **mfdoctor.kevinbeier.com Vercel project only** after all checks pass.
-   Its `*.vercel.app` URLs will then stop working. Do not delete `kevinbeier.com`
-   from the team: Vercel still provides registrar/DNS services for it.
+6. The cutover is complete. Keep the existing Vercel project for rollback.
+   The domain now uses Cloudflare DNS; domain registration remains at Vercel.
+   Do not delete projects or start a registrar transfer.
 
 Before deleting Vercel, DNS rollback means removing the explicit `mfdoctor`
 CNAME so the unchanged Vercel wildcard serves it again. Keep the Vercel domain
@@ -94,3 +94,20 @@ Cloudflare rollbacks use a previous successful Pages production deployment.
 See <https://developers.cloudflare.com/pages/configuration/custom-domains/>,
 <https://developers.cloudflare.com/pages/configuration/headers/>, and
 <https://developers.cloudflare.com/web-analytics/data-metrics/core-web-vitals/>.
+
+## Cloudflare protection and logging baseline
+
+The active kevinbeier.com zone uses Full (strict) TLS, minimum TLS 1.2 and HTTPS
+redirects. Browser cache TTL is set to respect origin headers. Keep the free
+Managed WAF enabled and public custom domains accessible without a login gate.
+Browser Integrity Check is disabled only for the existing /api/, /assets/,
+/static/, /_next/, /_nuxt/ and /webhooks/ path prefixes; keep Managed WAF active
+on these paths. Do not enable blanket Bot Fight Mode. These are shared zone
+settings, not Wrangler application settings; deployments must not reset them.
+Keep nameservers and iCloud MX, DKIM and TXT records unchanged. Do not enable
+R2, paid plans or a registrar transfer, or delete Vercel projects.
+
+This project serves static Pages output and has no Worker invocation logs.
+Use the existing Cloudflare Web Analytics and zone security analytics. Do not
+add a Worker or a login gate solely to obtain Worker logs. The custom-domain DNS
+record is proxied, using automatic TTL; preserve the Pages domain binding.
