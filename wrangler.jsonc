@@ -1,0 +1,6 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mfdoctor",
+  "pages_build_output_dir": "./apps/docs/doc_build",
+  "compatibility_date": "2026-10-17",
+}

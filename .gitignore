@@ -14,5 +14,7 @@ doctor-terminal.txt
 .idea/
 .playwright-mcp/
 .vercel/
+.wrangler/
+.dev.vars*
 .env*
 nohup.out

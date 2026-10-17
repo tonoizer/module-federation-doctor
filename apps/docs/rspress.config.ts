@@ -5,7 +5,7 @@ import { defineConfig, type Nav, type Sidebar } from "@rspress/core";
 import { docsRelease } from "./docs-release.js";
 
 const docsAppDir = path.dirname(fileURLToPath(import.meta.url));
-// Vercel serves the canonical custom domain at the root. GitHub Pages overrides
+// Cloudflare Pages serves the canonical custom domain at the root. GitHub Pages overrides
 // DOCS_BASE for its repository-path fallback build. Terminal/SARIF rule links
 // use the same canonical origin via DOCTOR_DOCS_ORIGIN in src/reporters.ts.
 const base = process.env.DOCS_BASE || "/";
