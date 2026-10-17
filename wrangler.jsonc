@@ -3,4 +3,13 @@
   "name": "mfdoctor",
   "pages_build_output_dir": "./apps/docs/doc_build",
   "compatibility_date": "2026-10-17",
+  // Pages reads build variables from this file once Wrangler config is enabled.
+  // The analytics site token is public and is embedded in the generated HTML.
+  "vars": {
+    "NODE_VERSION": "24",
+    "PNPM_VERSION": "11.17.0",
+    "DOCS_BASE": "/",
+    "SITE_ORIGIN": "https://mfdoctor.kevinbeier.com",
+    "CF_WEB_ANALYTICS_TOKEN": "f2d21121fd4e4a7799170136a9dda0c3",
+  },
 }
