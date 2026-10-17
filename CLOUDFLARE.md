@@ -17,6 +17,11 @@ Pages project: `mfdoctor`, production branch: `main`.
   `SITE_ORIGIN=https://mfdoctor.kevinbeier.com`, and `CF_WEB_ANALYTICS_TOKEN`
   (the public Web Analytics site token, not an API credential).
 
+These public build variables are declared in `wrangler.jsonc`, which Pages uses
+as its configuration source of truth. Dashboard-only variables were omitted by
+the Pages build after Wrangler configuration was enabled. Keep the site token in
+this file aligned with the active Web Analytics site.
+
 Connect the Cloudflare GitHub app to this repository and enable production
 deployments from `main`. Keep automatic preview deployments disabled until their
 access policy is configured: Vercel previously protected preview deployments.
