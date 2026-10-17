@@ -1,0 +1,16 @@
+# Keep HTML and unversioned documentation fresh across atomic deployments.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Rspress puts content hashes in these asset filenames.
+/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Keep preview/default hostnames out of search results.
+https://:project.pages.dev/*
+  X-Robots-Tag: noindex
+https://:deployment.:project.pages.dev/*
+  X-Robots-Tag: noindex

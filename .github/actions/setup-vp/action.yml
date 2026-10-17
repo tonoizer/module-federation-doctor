@@ -23,7 +23,7 @@ runs:
         cache: ${{ inputs.cache }}
         run-install: false
         registry-url: ${{ inputs.registry-url }}
-    # Keep the pinned pnpm shim available for Vercel and low-level package
+    # Keep the pinned pnpm shim available for Cloudflare and low-level package
     # operations that intentionally remain outside Vite+'s task interface.
     - name: Enable the pinned package manager compatibility shim
       shell: bash
