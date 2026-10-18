@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Nav, type Sidebar } from "@rspress/core";
+import { pluginSitemap } from "@rspress/plugin-sitemap";
 import { docsRelease } from "./docs-release.js";
 
 const docsAppDir = path.dirname(fileURLToPath(import.meta.url));
@@ -342,6 +343,7 @@ export default defineConfig({
   root: docsBuildRoot,
   base,
   siteOrigin,
+  plugins: [pluginSitemap()],
   lang: "en",
   locales: [
     { lang: "en", label: "English" },

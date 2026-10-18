@@ -26,8 +26,20 @@ for (const required of [
   "llms.txt",
   "llms-full.txt",
   "_headers",
+  "sitemap.xml",
+  "robots.txt",
 ]) {
   await fs.access(path.join(root, required));
+}
+const sitemap = await fs.readFile(path.join(root, "sitemap.xml"), "utf8");
+for (const expected of [
+  "https://mfdoctor.kevinbeier.com/setup",
+  "https://mfdoctor.kevinbeier.com/de/setup",
+]) {
+  if (!sitemap.includes(expected)) throw new Error(`Missing canonical sitemap entry: ${expected}`);
+}
+if (sitemap.includes("pages.dev") || sitemap.includes("vercel.app")) {
+  throw new Error("Technical deployment host leaked into canonical sitemap");
 }
 const html = await fs.readFile(path.join(root, "index.html"), "utf8");
 if (!html.includes('href="https://mfdoctor.kevinbeier.com/index.md"')) {
