@@ -8,7 +8,7 @@ must preserve its original provenance.
 ## Migrated to Vite+
 
 - Root and workspace `package.json` scripts use `vp run` for scripts, `vp run
---filter` for workspace selection, `vp run --filter . build` for root-only
+  --filter` for workspace selection, `vp run --filter . build` for root-only
   package builds, and `vp exec` for local binaries. The root filter matters:
   a bare `vp run build` schedules every workspace build and can load example
   configs before the root package has produced its exported `dist` files.

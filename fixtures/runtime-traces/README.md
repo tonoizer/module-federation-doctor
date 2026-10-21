@@ -14,7 +14,7 @@ stack frame with a stable marker so fresh captures produce the same bytes.
 - `partial-devtools.json` is the serialized result of the pinned upstream
   `readObservabilitySnapshot()` call from
   `keeps reports without runtime version as basic observability regardless of
-scope` in `@module-federation/devtools` 2.7.0.
+  scope` in `@module-federation/devtools` 2.7.0.
 - `healthy.json`, `init-failed.json`, `remote-load-failed.json`, and
   `shared-mismatch.json` are legacy mfdoctor fixtures. They remain separate for
   the later migration adapter.
