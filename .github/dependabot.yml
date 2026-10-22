@@ -5,6 +5,14 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # React and React DOM require matching versions at runtime.
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
     # Keep routine updates enabled for the root package and apps. Dependabot's
     # default limit of five open version PRs is sufficient here.
     #
