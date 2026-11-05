@@ -94,7 +94,6 @@ function classifyBridgeReactSignal(signal: string): ReactBridgeEntryMajor {
     return 18;
   if (signal === BRIDGE_REACT_PKG) return "bare";
   // Ignore plugin and other subpaths when classifying the public entry major.
-  if (signal.startsWith(`${BRIDGE_REACT_PKG}/`)) return undefined;
   return undefined;
 }
 
