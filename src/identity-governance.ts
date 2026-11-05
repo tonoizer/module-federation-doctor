@@ -1,3 +1,4 @@
+import { assertSafeValue } from "./governance-validation.js";
 import type {
   IdentityCompleteness,
   IdentityKind,
@@ -111,20 +112,6 @@ const MAX_ID_LENGTH = 128;
 const MAX_OWNER_LENGTH = 256;
 const MAX_EVIDENCE_IDS = 32;
 const MAX_EVIDENCE_ID_LENGTH = 128;
-const UNSAFE_VALUE =
-  /(?:[A-Za-z]:[\\/]|\\\\|^\/|[a-z][a-z\d+.-]*:\/\/|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$))/i;
-const VOLATILE_VALUE =
-  /^(?:\d{10,13}|\d{4}-\d{2}-\d{2}(?:[Tt ]|$)|(?:process|session|tab|pid|sid)(?:[-_:]|$))/i;
-
-function assertSafeValue(value: string, label: string, maxLength: number): void {
-  if (
-    value.length === 0 ||
-    value.length > maxLength ||
-    UNSAFE_VALUE.test(value) ||
-    VOLATILE_VALUE.test(value)
-  )
-    throw new IdentityValidationError(`${label} must be a bounded non-sensitive value.`);
-}
 
 function validateScope(scope: IdentityCorrelationScope, label: string): IdentityCorrelationScope {
   if (!scope || typeof scope !== "object")

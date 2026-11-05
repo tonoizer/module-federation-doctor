@@ -1,3 +1,4 @@
+import { assertSafeValue } from "./governance-validation.js";
 import type {
   IdentityCompleteness,
   IdentityRealm,
@@ -139,21 +140,7 @@ const MAX_ENVIRONMENTS = 32;
 const MAX_ENVIRONMENT_LENGTH = 128;
 const MAX_TARGET_SELECTORS = 6;
 const LINEAGE_ID = /^mffinding:v1:[a-f0-9]{24}$/;
-const UNSAFE_VALUE =
-  /(?:[A-Za-z]:[\\/]|\\\\|^\/|[a-z][a-z\d+.-]*:\/\/|[?&](?:token|sig|signature|expires|auth|authorization|password|secret|credential|session|key)(?:=|&|$))/i;
-const VOLATILE_VALUE =
-  /^(?:\d{10,13}|\d{4}-\d{2}-\d{2}(?:[Tt ]|$)|(?:process|session|tab|pid|sid)(?:[-_:]|$))/i;
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:?\d{2})$/;
-
-function assertSafeValue(value: string, label: string, maxLength: number): void {
-  if (
-    value.length === 0 ||
-    value.length > maxLength ||
-    UNSAFE_VALUE.test(value) ||
-    VOLATILE_VALUE.test(value)
-  )
-    throw new IdentityValidationError(`${label} must be a bounded non-sensitive value.`);
-}
 
 function assertNoWildcard(value: string, label: string): void {
   if (/[?*]/.test(value))
