@@ -238,7 +238,7 @@ export function writeCliError(
   return cli.exitCode;
 }
 
-export function classifyThrownError(error: unknown): CliError {
+function classifyThrownError(error: unknown): CliError {
   if (error instanceof CliError) return error;
   if (error instanceof EvidenceReaderError) return classifyEvidenceError(error);
   if (error instanceof ProbeError) return classifyProbeError(error);
