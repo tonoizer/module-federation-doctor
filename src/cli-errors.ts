@@ -80,10 +80,6 @@ export class CliError extends Error {
   }
 }
 
-export function commandNames(): string[] {
-  return COMMAND_NAMES;
-}
-
 /** Compact usage block for one command, or the command list when unknown. */
 export function commandUsage(command?: string): string {
   if (command && FOCUSED_USAGE[command]) return FOCUSED_USAGE[command];
