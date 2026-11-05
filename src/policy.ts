@@ -54,7 +54,6 @@ function catalogSeverities(): Record<string, RuleSetting> {
 
 function elevateStrict(severity: Severity): Severity {
   if (severity === "info") return "warning";
-  if (severity === "warning") return "error";
   return "error";
 }
 
