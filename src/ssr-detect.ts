@@ -67,7 +67,6 @@ function remoteEntryBasename(entry: string): string {
 export function remoteEntryImpliedTarget(entry: string): RemoteEntryTargetKind | undefined {
   const trimmed = entry.trim();
   if (!trimmed) return undefined;
-  if (/\.(?:ssr|node)\.[cm]?js(?:[?#]|$)/i.test(trimmed)) return "ssr";
   if (isSsrAwareRemoteEntry(trimmed)) return "ssr";
   if (isBrowserOnlyManifestRemoteEntry(trimmed)) return undefined;
   const basename = remoteEntryBasename(trimmed);
