@@ -47,8 +47,11 @@ async function installedPackageName(root: string, name: string): Promise<string 
   }
 }
 
-async function packageEvidence(root: string, names: readonly string[]): Promise<string[]> {
-  const declared = declaredNames(await readRootPackage(root));
+async function packageEvidence(
+  root: string,
+  names: readonly string[],
+  declared: ReadonlySet<string>,
+): Promise<string[]> {
   const found: string[] = [];
   for (const name of names) {
     if (declared.has(name)) {
@@ -94,9 +97,10 @@ export async function detectViteLifecycle(
   meta?: ViteHookMeta,
 ): Promise<ViteLifecycleFacts> {
   const evidence: string[] = [];
-  const vitePlus = await packageEvidence(root, VITE_PLUS_PACKAGES);
-  const rolldownVite = await packageEvidence(root, ROLLDOWN_VITE_PACKAGES);
-  const rolldown = await packageEvidence(root, ROLLDOWN_ENGINE_PACKAGES);
+  const declared = declaredNames(await readRootPackage(root));
+  const vitePlus = await packageEvidence(root, VITE_PLUS_PACKAGES, declared);
+  const rolldownVite = await packageEvidence(root, ROLLDOWN_VITE_PACKAGES, declared);
+  const rolldown = await packageEvidence(root, ROLLDOWN_ENGINE_PACKAGES, declared);
   evidence.push(...vitePlus, ...rolldownVite, ...rolldown);
 
   const resolvedVite = await installedPackageName(root, "vite");
