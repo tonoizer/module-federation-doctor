@@ -230,12 +230,14 @@ export function summarizeFindings(findings: DoctorFinding[]): {
   errors: number;
   suppressed: number;
 } {
-  return {
-    info: findings.filter((item) => item.severity === "info").length,
-    warnings: findings.filter((item) => item.severity === "warning").length,
-    errors: findings.filter((item) => item.severity === "error").length,
-    suppressed: findings.filter((item) => item.suppressed).length,
-  };
+  const summary = { info: 0, warnings: 0, errors: 0, suppressed: 0 };
+  for (const finding of findings) {
+    if (finding.severity === "info") summary.info += 1;
+    else if (finding.severity === "warning") summary.warnings += 1;
+    else if (finding.severity === "error") summary.errors += 1;
+    if (finding.suppressed) summary.suppressed += 1;
+  }
+  return summary;
 }
 
 export async function writeBaselineFile(filePath: string, baseline: BaselineFile): Promise<void> {
