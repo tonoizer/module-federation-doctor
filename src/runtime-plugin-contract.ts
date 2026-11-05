@@ -164,9 +164,6 @@ export function inspectPluginFactory(source: string): PluginContractStatus {
     return { kind: "invalid-factory", reason: "no-export" };
 
   // Readable but not confidently broken, do not invent a fail.
-  if (factoryLike || /\bexport\s+default\b/.test(text) || /\bmodule\.exports\b/.test(text))
-    return { kind: "skip", reason: "ambiguous" };
-
   return { kind: "skip", reason: "ambiguous" };
 }
 
