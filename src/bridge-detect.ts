@@ -179,8 +179,7 @@ export function isBridgeRouterEnabled(facts: ProjectFacts): boolean {
   if (options?.enableBridgeRouter === false) return false;
   // Deprecated escape hatch: disableAlias turns off Bridge router aliasing.
   if (options?.disableAlias === true) return false;
-  if (options?.enableBridgeRouter === true) return true;
-  // Omitted → Rspack may auto-enable when Bridge is present.
+  // Explicitly enabled or omitted: Rspack may auto-enable when Bridge is present.
   return true;
 }
 
