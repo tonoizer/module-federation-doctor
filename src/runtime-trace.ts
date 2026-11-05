@@ -1326,9 +1326,7 @@ export function classifyRuntimeAttribution(
     ? "exact"
     : neutralAttribution
       ? "low"
-      : completeness === "partial"
-        ? "high"
-        : "high";
+      : "high";
   const scopeProject = attributedProjects[0] ?? hostProject ?? producerProject ?? projects[0];
   return {
     remoteName,
