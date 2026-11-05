@@ -126,8 +126,11 @@ export function duplicateFederationInstanceGroups(
 ): FederationInstanceRef[][] {
   if (!refs?.length) return [];
   const groups = new Map<string, FederationInstanceRef[]>();
-  for (const ref of refs)
-    groups.set(ref.registrationGroup, [...(groups.get(ref.registrationGroup) ?? []), ref]);
+  for (const ref of refs) {
+    const group = groups.get(ref.registrationGroup);
+    if (group) group.push(ref);
+    else groups.set(ref.registrationGroup, [ref]);
+  }
   return [...groups.values()]
     .filter((group) => group.length > 1)
     .map((group) => group.slice().sort((left, right) => left.id.localeCompare(right.id)))
