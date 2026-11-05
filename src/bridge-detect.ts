@@ -217,19 +217,10 @@ export function isNodeOrSsrTarget(
   if (config?.vite?.target === "node") return true;
   const builds = facts.builds ?? [];
   if (builds.length === 0) return false;
-  const nodeLike = builds.filter(
+  // Mixed web + node/SSR records stay quiet unless ssrMode explicitly applies.
+  return builds.every(
     (build) => build.targetKind === "node" || build.targetKind === "ssr" || build.target === "node",
   );
-  if (nodeLike.length === 0) return false;
-  // Mixed web + node/SSR records → dual-env; leave to `ssrMode` / #122 rather than Bridge leak.
-  const hasWeb = builds.some(
-    (build) =>
-      build.targetKind === "web" ||
-      build.targetKind === "unknown" ||
-      (build.target !== undefined && build.target !== "node"),
-  );
-  if (hasWeb && nodeLike.length < builds.length) return false;
-  return nodeLike.length === builds.length;
 }
 
 /** Specifiers that are browser-only Bridge React entries (not `/server`). */
