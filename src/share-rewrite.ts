@@ -114,7 +114,7 @@ export function rewriteOverlapsShareKey(rewriteTarget: string, shareKey: string)
     if (!prefix) return false;
     return rewriteTarget === prefix || rewriteTarget.startsWith(shareKey);
   }
-  return rewriteTarget === shareKey || rewriteTarget.startsWith(`${shareKey}/`);
+  return rewriteTarget.startsWith(`${shareKey}/`);
 }
 
 /** Overlapping package names for alias / transformImport vs shared findings. */
