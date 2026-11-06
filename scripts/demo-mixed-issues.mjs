@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { runDemoCommand } from "./demo-command.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,18 +7,6 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(root, "dist/cli.js");
 const vitePlus = process.platform === "win32" ? "vp.cmd" : "vp";
 const vitePlusArgs = ["run"];
-
-function run(command, args) {
-  const result = spawnSync(command, args, {
-    encoding: "utf8",
-    cwd: root,
-    shell: process.platform === "win32" && command.endsWith(".cmd"),
-  });
-  return {
-    output: `${result.stdout ?? ""}${result.stderr ?? ""}`,
-    exitCode: result.status ?? 1,
-  };
-}
 
 function assertRules(label, ruleIds, haystack, expectedExit, exitCode) {
   const missing = ruleIds.filter((ruleId) => !haystack.includes(ruleId));
@@ -33,12 +21,11 @@ function assertRules(label, ruleIds, haystack, expectedExit, exitCode) {
   return ok;
 }
 
-const build = run(vitePlus, [
-  ...vitePlusArgs,
-  "--filter",
-  "./examples/mixed-federation-issues/**",
-  "build",
-]);
+const build = runDemoCommand(
+  vitePlus,
+  [...vitePlusArgs, "--filter", "./examples/mixed-federation-issues/**", "build"],
+  root,
+);
 if (build.exitCode !== 0) {
   process.stdout.write(`FAIL build mixed-federation-issues\n${build.output}`);
   process.exit(1);
@@ -71,13 +58,11 @@ const projectFiles = [
   "examples/mixed-federation-issues/remote-rspack/.mf/doctor/project.json",
   "examples/mixed-federation-issues/remote-rsbuild/.mf/doctor/project.json",
 ];
-const federation = run(process.execPath, [
-  cli,
-  "federation",
-  ...projectFiles,
-  "--format",
-  "terminal",
-]);
+const federation = runDemoCommand(
+  process.execPath,
+  [cli, "federation", ...projectFiles, "--format", "terminal"],
+  root,
+);
 if (
   !assertRules(
     "examples/mixed-federation-issues federation",
