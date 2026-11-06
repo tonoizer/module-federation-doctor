@@ -736,24 +736,6 @@ const MF2_ONLY_ON_RSBUILD_15 = [
   "treeShakingSharedPlugins",
   "treeShakingSharedExcludePlugins",
 ] as const;
-const MF2_OPTION_CURRENT: Record<(typeof MF2_ONLY_ON_RSBUILD_15)[number], string> = {
-  dts: "`dts` on `pluginModuleFederation({ ... })`",
-  manifest: "`manifest` on `pluginModuleFederation({ ... })`",
-  getPublicPath: "`getPublicPath` on `pluginModuleFederation({ ... })`",
-  shareStrategy: "`shareStrategy` on `pluginModuleFederation({ ... })`",
-  virtualRuntimeEntry: "`virtualRuntimeEntry` on `pluginModuleFederation({ ... })`",
-  experiments: "`experiments` on `pluginModuleFederation({ ... })`",
-  bridge: "`bridge` on `pluginModuleFederation({ ... })`",
-  async: "`async` on `pluginModuleFederation({ ... })`",
-  dev: "`dev` on `pluginModuleFederation({ ... })`",
-  implementation: "`implementation` on `pluginModuleFederation({ ... })`",
-  injectTreeShakingUsedExports:
-    "`injectTreeShakingUsedExports` on `pluginModuleFederation({ ... })`",
-  treeShakingDir: "`treeShakingDir` on `pluginModuleFederation({ ... })`",
-  treeShakingSharedPlugins: "`treeShakingSharedPlugins` on `pluginModuleFederation({ ... })`",
-  treeShakingSharedExcludePlugins:
-    "`treeShakingSharedExcludePlugins` on `pluginModuleFederation({ ... })`",
-};
 /** Rsbuild 1.5 nested bag / plugin second-arg keys wrongly placed on the v2 options object. */
 const RSBUILD_V2_MISPLACED_KEYS: Record<string, string> = {
   options:
@@ -2739,10 +2721,7 @@ export const builtInRules: DoctorRule[] = [
         api: "rsbuild-moduleFederation-options-1.5",
         offendingKeys: offenders,
         currentOptions: Object.fromEntries(
-          offenders.map((key) => [
-            key,
-            MF2_OPTION_CURRENT[key as (typeof MF2_ONLY_ON_RSBUILD_15)[number]] ?? key,
-          ]),
+          offenders.map((key) => [key, `\`${key}\` on \`pluginModuleFederation({ ... })\``]),
         ),
       },
       `Install \`${RSBUILD_PLUGIN_PACKAGE}\` and move these keys onto \`pluginModuleFederation({ ... })\`. Keep \`moduleFederation.options\` only for MF 1.5.`,
