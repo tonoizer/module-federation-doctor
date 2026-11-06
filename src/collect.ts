@@ -1990,8 +1990,10 @@ function instanceBuildAssets(
   if (instances.length <= 1) return build.emittedAssets.slice();
   const assignedPaths = new Set(
     records
-      .filter((record) => instanceArtifactCandidates(record, instances, records).length === 1)
-      .filter((record) => instanceArtifactCandidates(record, instances, records)[0] === instance.id)
+      .filter((record) => {
+        const candidates = instanceArtifactCandidates(record, instances, records);
+        return candidates.length === 1 && candidates[0] === instance.id;
+      })
       .map((record) => record.path),
   );
   const expectedEntries = literalRemoteEntryNames(instance.moduleFederation);
