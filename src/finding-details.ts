@@ -256,8 +256,8 @@ export function findingDetails(
 }
 
 /**
- * Safe reader for agents/CI: missing fields and unknown schema versions are
- * tolerated (returns undefined rather than throwing).
+ * Safe reader for agents/CI: missing or malformed fields return undefined.
+ * Unknown schema versions are preserved for forward-compatible consumers.
  */
 export function readFindingDetails(finding: {
   detailsSchema?: unknown;
