@@ -2403,16 +2403,10 @@ function buildOutputOrderKey(output: BuildOutputInput): string {
   return `${primary}\u0000${tieBreaker}`;
 }
 
-function compareDeterministicStrings(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
-}
-
 function orderBuildOutputs(outputs: BuildOutputInput[]): BuildOutputInput[] {
   return outputs
     .slice()
-    .sort((left, right) =>
-      compareDeterministicStrings(buildOutputOrderKey(left), buildOutputOrderKey(right)),
-    );
+    .sort((left, right) => compareCodePoint(buildOutputOrderKey(left), buildOutputOrderKey(right)));
 }
 
 function outputArtifacts(
