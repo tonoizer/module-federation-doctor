@@ -344,7 +344,9 @@ function buildOrchestrationGraph(findings: DoctorFinding[], federation: Federati
   const nodesByGroup = new Map<string, typeof federation.projects>();
   for (const node of federation.projects) {
     const key = node.project.project.federationGroup ?? "\0ungrouped";
-    nodesByGroup.set(key, [...(nodesByGroup.get(key) ?? []), node]);
+    const groupNodes = nodesByGroup.get(key);
+    if (groupNodes) groupNodes.push(node);
+    else nodesByGroup.set(key, [node]);
   }
   for (const groupNodes of nodesByGroup.values()) {
     const group = groupNodes[0]?.federationGroup;
