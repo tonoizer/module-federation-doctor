@@ -133,15 +133,12 @@ export async function detectViteLifecycle(
   let flavor: ViteLifecycleFlavor = "vite";
   let engine: ViteLifecycleEngine = metaEngine ?? "rollup";
 
-  if (vitePlus.length > 0 || resolvedVite === "@voidzero-dev/vite-plus-core") {
+  if (vitePlus.length > 0) {
     flavor = "vite-plus";
     engine = "rolldown";
   } else if (rolldownVite.length > 0 || metaEngine === "rolldown") {
     flavor = "rolldown-vite";
     engine = "rolldown";
-  } else if (metaEngine === "rollup") {
-    flavor = "vite";
-    engine = "rollup";
   }
 
   return {
