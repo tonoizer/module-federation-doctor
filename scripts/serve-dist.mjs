@@ -17,7 +17,13 @@ const types = {
 
 http
   .createServer((request, response) => {
-    const pathname = decodeURIComponent(new URL(request.url ?? "/", "http://localhost").pathname);
+    let pathname;
+    try {
+      pathname = decodeURIComponent(new URL(request.url ?? "/", "http://localhost").pathname);
+    } catch {
+      response.writeHead(400).end("Bad request");
+      return;
+    }
     const candidate = path.resolve(root, `.${pathname === "/" ? "/index.html" : pathname}`);
     if (candidate !== root && !candidate.startsWith(`${root}${path.sep}`)) {
       response.writeHead(403).end("Forbidden");
