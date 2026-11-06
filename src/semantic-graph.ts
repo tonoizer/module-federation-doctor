@@ -319,11 +319,9 @@ export function querySemanticGraph(
       (query.scope === undefined || scopeMatches(item.scope, query.scope)),
   );
   return {
-    nodes: nodes.slice().sort((left, right) => compareCodePoint(left.id, right.id)),
-    edges: edges.slice().sort((left, right) => compareCodePoint(left.id, right.id)),
-    coverage: coverage
-      .slice()
-      .sort((left, right) => compareCodePoint(left.subjectKey, right.subjectKey)),
+    nodes: nodes.sort((left, right) => compareCodePoint(left.id, right.id)),
+    edges: edges.sort((left, right) => compareCodePoint(left.id, right.id)),
+    coverage: coverage.sort((left, right) => compareCodePoint(left.subjectKey, right.subjectKey)),
   };
 }
 
