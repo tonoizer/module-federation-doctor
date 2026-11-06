@@ -1118,29 +1118,24 @@ async function runtimeTraceHints(
     const reports = await loadRuntimeTraceFile(runtimeTrace);
     const packages = new Set<string>();
     const remotes = new Set<string>();
-    let sawTrace = false;
     for (const item of reports) {
       const shared = item.shared;
       const remote = item.remote;
       const sharedName = shared?.package;
       if (sharedName) {
         packages.add(sharedName);
-        sawTrace = true;
       }
       if (typeof remote?.name === "string" && remote.name) {
         remotes.add(remote.name);
-        sawTrace = true;
       }
       if (typeof remote?.alias === "string" && remote.alias) {
         remotes.add(remote.alias);
-        sawTrace = true;
       }
-      sawTrace = true;
     }
     return {
       packages: [...packages].sort(compareCodePoint),
       remotes: [...remotes].sort(compareCodePoint),
-      used: sawTrace,
+      used: reports.length > 0,
     };
   } catch {
     // Opt-in runtimeTrace must use the same adapter as `mfdoctor runtime`, but
