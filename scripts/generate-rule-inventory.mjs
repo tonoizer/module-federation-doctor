@@ -69,14 +69,16 @@ const content = `${JSON.stringify(document, null, 2)}\n`;
 async function formatInventory(rawContent) {
   const tempPath = path.join(repository, "fixtures/rule-inventory/.v1.generated.json");
   await fs.mkdir(path.dirname(tempPath), { recursive: true });
-  await fs.writeFile(tempPath, rawContent);
-  execFileSync(process.execPath, [vitePlusCli, "fmt", tempPath], {
-    cwd: repository,
-    stdio: "pipe",
-  });
-  const formatted = await fs.readFile(tempPath, "utf8");
-  await fs.unlink(tempPath).catch(() => {});
-  return formatted;
+  try {
+    await fs.writeFile(tempPath, rawContent);
+    execFileSync(process.execPath, [vitePlusCli, "fmt", tempPath], {
+      cwd: repository,
+      stdio: "pipe",
+    });
+    return await fs.readFile(tempPath, "utf8");
+  } finally {
+    await fs.unlink(tempPath).catch(() => {});
+  }
 }
 
 const formattedContent = await formatInventory(content);
