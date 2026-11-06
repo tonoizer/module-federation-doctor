@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { runDemoCommand } from "./demo-command.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,24 +8,11 @@ const cli = path.join(root, "dist/cli.js");
 const vitePlus = process.platform === "win32" ? "vp.cmd" : "vp";
 const vitePlusArgs = ["run"];
 
-function run(command, args) {
-  const result = spawnSync(command, args, {
-    encoding: "utf8",
-    cwd: root,
-    shell: process.platform === "win32" && command.endsWith(".cmd"),
-  });
-  return {
-    output: `${result.stdout ?? ""}${result.stderr ?? ""}`,
-    exitCode: result.status ?? 1,
-  };
-}
-
-const build = run(vitePlus, [
-  ...vitePlusArgs,
-  "--filter",
-  "./examples/nested-federation/**",
-  "build",
-]);
+const build = runDemoCommand(
+  vitePlus,
+  [...vitePlusArgs, "--filter", "./examples/nested-federation/**", "build"],
+  root,
+);
 if (build.exitCode !== 0) {
   process.stdout.write(`FAIL build nested-federation\n${build.output}`);
   process.exit(1);
@@ -61,13 +48,11 @@ for (const dir of packages) {
   process.stdout.write(`ok ${dir} (clean mfdoctor build)\n`);
 }
 
-const workspace = run(process.execPath, [
-  cli,
-  "workspace",
-  "examples/nested-federation",
-  "--format",
-  "terminal,json",
-]);
+const workspace = runDemoCommand(
+  process.execPath,
+  [cli, "workspace", "examples/nested-federation", "--format", "terminal,json"],
+  root,
+);
 process.stdout.write(workspace.output);
 if (workspace.exitCode !== 0) {
   process.stdout.write(`FAIL nested-federation workspace gate (exit ${workspace.exitCode})\n`);
