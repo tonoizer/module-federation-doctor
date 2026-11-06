@@ -151,20 +151,15 @@ export function projectRuntimeCaptureIdentity(
   );
   const instanceKnown = runtimeInstanceId.known;
   const targetKnown = options.target !== "unknown";
-  const instanceCompleteness = projectionCompleteness([
+  const instanceKnownDimensions = [
     deployment.known,
     realmKnown,
     instanceKnown,
     runtimePackage.known,
     runtimeVersion.known,
-  ]);
-  const instanceConfidence = projectionConfidence([
-    deployment.known,
-    realmKnown,
-    instanceKnown,
-    runtimePackage.known,
-    runtimeVersion.known,
-  ]);
+  ];
+  const instanceCompleteness = projectionCompleteness(instanceKnownDimensions);
+  const instanceConfidence = projectionConfidence(instanceKnownDimensions);
   const instance = createRuntimeInstanceIdentity(
     {
       realmKey: realm.key,
@@ -179,14 +174,7 @@ export function projectRuntimeCaptureIdentity(
       provenance: { source: "runtime", evidenceIds: [] },
     },
   );
-  const known = [
-    targetKnown,
-    deployment.known,
-    realmKnown,
-    instanceKnown,
-    runtimePackage.known,
-    runtimeVersion.known,
-  ];
+  const known = [targetKnown, ...instanceKnownDimensions];
   const scope: IdentityCorrelationScope = {
     target: options.target,
     realm: options.realm,
@@ -204,14 +192,7 @@ export function projectRuntimeCaptureIdentity(
     options.target === "unknown" || options.realm === "unknown"
       ? "unknown"
       : projectionConfidence(known);
-  const outcome: Exclude<IdentityCorrelationOutcome, "ambiguous"> =
-    confidence === "exact"
-      ? "exact"
-      : confidence === "strong"
-        ? "strong"
-        : confidence === "weak"
-          ? "weak"
-          : "unknown";
+  const outcome: Exclude<IdentityCorrelationOutcome, "ambiguous"> = confidence;
   return {
     schemaVersion: RUNTIME_IDENTITY_CORRELATION_SCHEMA_VERSION,
     captureId: source.captureId,
