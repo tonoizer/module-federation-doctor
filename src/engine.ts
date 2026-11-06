@@ -945,7 +945,9 @@ function federationProjectGroups(projects: ProjectFacts[]): ProjectFacts[][] {
   const groups = new Map<string, ProjectFacts[]>();
   for (const project of projects) {
     const key = project.project.federationGroup ?? "\0ungrouped";
-    groups.set(key, [...(groups.get(key) ?? []), project]);
+    const group = groups.get(key);
+    if (group) group.push(project);
+    else groups.set(key, [project]);
   }
   return [...groups.entries()]
     .sort(([left], [right]) => compareCodePoint(left, right))

@@ -140,7 +140,9 @@ export function evaluateFederationWorkspaceOracle(
     if (!nodeConfig(node)) continue;
     // Omitted is not version-first. Defaulting here would fake alignment across hosts.
     const strategy = node.shareStrategy ?? "omitted";
-    strategyOwners.set(strategy, [...(strategyOwners.get(strategy) ?? []), nodeScope(node)]);
+    const owners = strategyOwners.get(strategy);
+    if (owners) owners.push(nodeScope(node));
+    else strategyOwners.set(strategy, [nodeScope(node)]);
   }
   if (strategyOwners.size > 1) {
     findings.push({
