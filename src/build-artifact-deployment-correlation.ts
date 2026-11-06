@@ -139,15 +139,6 @@ function completeness(values: readonly boolean[]): IdentityCompleteness {
   return "unknown";
 }
 
-function confidenceFor(
-  outcome: BuildArtifactDeploymentOutcome,
-  complete: boolean,
-): IdentityConfidence {
-  if (outcome === "unknown") return "unknown";
-  if (outcome === "exact" && complete) return "exact";
-  return outcome;
-}
-
 function validateArtifactSet(
   build: BuildIdentity,
   artifacts: readonly ArtifactIdentity[],
@@ -244,7 +235,7 @@ export function correlateBuildArtifactDeployment(
     environmentKey: input.deployment.environmentKey,
     outcome,
     completeness: resultCompleteness,
-    confidence: confidenceFor(outcome, allComplete && linkComplete),
+    confidence: outcome,
     matchedDimensions,
     missing: normalizedMissing,
     conflicts: normalizedConflicts,
@@ -275,7 +266,6 @@ export function correlateDeploymentRelationship(
   const deploymentKeys = deploymentArtifactKeys(input.deployment);
   const relatedKeys = deploymentArtifactKeys(input.relatedDeployment);
   const conflicts: string[] = [];
-  const missing: string[] = [];
   if (input.deployment.environmentKey !== input.relatedDeployment.environmentKey)
     conflicts.push("environmentKey");
   if (!artifactSetEqual(deploymentKeys, relatedKeys)) conflicts.push("artifactKeys");
@@ -283,12 +273,10 @@ export function correlateDeploymentRelationship(
     conflicts.push("artifactSetDigest");
   const complete =
     conflicts.length === 0 &&
-    missing.length === 0 &&
     input.deployment.completeness === "complete" &&
     input.relatedDeployment.completeness === "complete";
   const outcome: BuildArtifactDeploymentOutcome =
-    conflicts.length > 0 ? "unknown" : missing.length > 0 ? "weak" : complete ? "exact" : "strong";
-  const normalizedMissing = sortedUnique(missing);
+    conflicts.length > 0 ? "unknown" : complete ? "exact" : "strong";
   const normalizedConflicts = sortedUnique(conflicts);
   return {
     schemaVersion: BUILD_ARTIFACT_DEPLOYMENT_SCHEMA_VERSION,
@@ -298,14 +286,14 @@ export function correlateDeploymentRelationship(
     environmentKey: input.deployment.environmentKey,
     relation: input.relation,
     outcome,
-    completeness: completeness([conflicts.length === 0 && missing.length === 0, complete]),
-    confidence: confidenceFor(outcome, complete),
+    completeness: completeness([conflicts.length === 0, complete]),
+    confidence: outcome,
     matchedDimensions: sortedUnique([
       ...(conflicts.includes("environmentKey") ? [] : ["environmentKey"]),
       ...(conflicts.includes("artifactKeys") ? [] : ["artifactKeys"]),
       ...(conflicts.includes("artifactSetDigest") ? [] : ["artifactSetDigest"]),
     ]),
-    missing: normalizedMissing,
+    missing: [],
     conflicts: normalizedConflicts,
     evidenceIds: evidenceIds(input.evidenceIds),
     reason:
