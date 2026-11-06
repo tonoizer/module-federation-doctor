@@ -1,6 +1,14 @@
 import fs from "node:fs/promises";
 import fg from "fast-glob";
 
+function escapeData(value) {
+  return value.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
+}
+
+function escapeProperty(value) {
+  return escapeData(value).replaceAll(":", "%3A").replaceAll(",", "%2C");
+}
+
 const files = await fg([
   "examples/mixed-federation/*/.mf/doctor/report.json",
   "examples/nested-federation/*/.mf/doctor/report.json",
@@ -13,8 +21,10 @@ for (const file of files.sort()) {
   warnings += report.summary.warnings;
   for (const finding of report.findings) {
     const command = finding.severity === "error" ? "error" : "warning";
-    const location = finding.location?.path ? `file=${finding.location.path},` : "";
-    process.stdout.write(`::${command} ${location}title=${finding.ruleId}::${finding.message}\n`);
+    const location = finding.location?.path ? `file=${escapeProperty(finding.location.path)},` : "";
+    process.stdout.write(
+      `::${command} ${location}title=${escapeProperty(finding.ruleId)}::${escapeData(finding.message)}\n`,
+    );
   }
 }
 process.stdout.write(`## mfdoctor\n\n- Errors: ${errors}\n- Warnings: ${warnings}\n`);
