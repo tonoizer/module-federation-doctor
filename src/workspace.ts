@@ -985,8 +985,11 @@ async function inspectWorkspaceProjects(
   for (const item of inspected) {
     if (!item) continue;
     diagnostics.push(...item.diagnostics);
-    if (item.identity)
-      identities.set(item.identity, [...(identities.get(item.identity) ?? []), item.file]);
+    if (item.identity) {
+      const identityFiles = identities.get(item.identity);
+      if (identityFiles) identityFiles.push(item.file);
+      else identities.set(item.identity, [item.file]);
+    }
     if (item.included) {
       for (const name of item.participantNames)
         discoveredParticipants.add(`${federationGroupFromContents(item.contents) ?? ""}\0${name}`);
