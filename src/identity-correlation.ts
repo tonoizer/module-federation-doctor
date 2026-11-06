@@ -471,12 +471,12 @@ export function correlateSemanticIdentity(
   };
 }
 
-function canonicalScope(scope: IdentityCorrelationScope): string {
-  return JSON.stringify({
+function canonicalScope(scope: IdentityCorrelationScope): IdentityCorrelationScope {
+  return {
     ...(scope.environmentKey === undefined ? {} : { environmentKey: scope.environmentKey }),
     ...(scope.realm === undefined ? {} : { realm: scope.realm }),
     ...(scope.target === undefined ? {} : { target: scope.target }),
-  });
+  };
 }
 
 function canonicalEdgeInput(options: CreateIdentityCapabilityEdgeOptions): string {
@@ -486,7 +486,7 @@ function canonicalEdgeInput(options: CreateIdentityCapabilityEdgeOptions): strin
     fromKey: options.fromKey,
     kind: options.kind,
     outcome: options.outcome ?? "unknown",
-    scope: JSON.parse(canonicalScope(options.scope)) as IdentityCorrelationScope,
+    scope: canonicalScope(options.scope),
     toKey: options.toKey,
   });
 }
