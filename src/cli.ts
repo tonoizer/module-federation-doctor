@@ -449,7 +449,6 @@ export function parseArgs(argv: string[]): Parsed {
         fix: `Remove the extra argument \`${value}\` or pass it in the documented position. See usage.`,
       });
   }
-  if (command === "federation" && parsed.globs.length > 0) parsed.workspace = true;
   // Allow `federation <root> --workspace` by treating early positionals as roots.
   if (parsed.workspace && parsed.patterns.length > 0 && parsed.roots.length === 0) {
     parsed.roots = parsed.patterns;
