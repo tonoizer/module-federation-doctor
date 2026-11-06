@@ -106,8 +106,8 @@ export interface AgentPromptOptions {
 
 /**
  * Resolve how many prompts a diagnostics dump may write.
- * Defaults to {@link DEFAULT_PROMPT_FINDINGS}; clamps to
- * {@link MAX_DIAGNOSTICS_PROMPT_FINDINGS}. Rejects non-integers and values below 1.
+ * Defaults to {@link DEFAULT_PROMPT_FINDINGS}. Rejects non-integers and values
+ * outside 1 through {@link MAX_DIAGNOSTICS_PROMPT_FINDINGS}.
  */
 export function resolveDiagnosticsPromptLimit(value?: number | string): number {
   if (value === undefined || value === "") return DEFAULT_PROMPT_FINDINGS;
