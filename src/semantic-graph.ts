@@ -163,7 +163,9 @@ function legacyNodes(projects: readonly ProjectFacts[]): {
   const grouped = new Map<string, ProjectFacts[]>();
   for (const project of projects) {
     const group = `${project.project.name}\u0000${project.project.federationGroup ?? ""}`;
-    grouped.set(group, [...(grouped.get(group) ?? []), project]);
+    const groupProjects = grouped.get(group);
+    if (groupProjects) groupProjects.push(project);
+    else grouped.set(group, [project]);
   }
   const entries = [...grouped.entries()].sort(([left], [right]) => compareCodePoint(left, right));
   const nodes: SemanticGraphNode[] = [];
