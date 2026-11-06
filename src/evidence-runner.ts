@@ -68,18 +68,21 @@ function selectorMatches(
   );
 }
 
-function queryFor(graph: EvidenceGraphV2, subjectId?: string): EvidenceQuery {
-  const subjects = new Map(graph.subjects.map((subject) => [subject.id, subject] as const));
+function queryFor(
+  graph: EvidenceGraphV2,
+  subjectsById: ReadonlyMap<string, EvidenceSubject>,
+  subjectId?: string,
+): EvidenceQuery {
   const assertions = graph.assertions.filter(
     (assertion) => !subjectId || assertion.subject === subjectId,
   );
   const view: EvidenceQuery = {
     assertions,
     find(selector) {
-      return assertions.filter((assertion) => selectorMatches(assertion, selector, subjects));
+      return assertions.filter((assertion) => selectorMatches(assertion, selector, subjectsById));
     },
     forSubject(nextSubjectId) {
-      return queryFor(graph, nextSubjectId);
+      return queryFor(graph, subjectsById, nextSubjectId);
     },
   };
   return deepFreeze(view);
@@ -422,6 +425,7 @@ export async function runEvidenceAwareRules(
     }
     return { evaluations, execution: [], analysis: error.report };
   }
+  const subjectsById = new Map(graph.subjects.map((subject) => [subject.id, subject] as const));
   const subjects = graph.subjects.filter(
     (subject) => !input.subjects || input.subjects.includes(subject.id),
   );
@@ -458,7 +462,7 @@ export async function runEvidenceAwareRules(
         continue;
       }
       seen.add(base.id);
-      const query = queryFor(graph, subject.id);
+      const query = queryFor(graph, subjectsById, subject.id);
       const applicable = applicability(rule, scope);
       if (applicable !== "yes") {
         const unknown = applicable === "unknown";
