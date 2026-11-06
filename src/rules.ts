@@ -188,7 +188,7 @@ function mismatchedLibraryRemotes(
 }
 
 function manifestAssetPath(manifestPath: string, asset: string): string {
-  const normalizedAsset = asset.replaceAll("\\", "/").replace(/^\.\//, "");
+  const normalizedAsset = normalizedCollectedAsset(asset);
   const manifestDir = path.posix.dirname(manifestPath);
   if (
     manifestDir === "." ||
@@ -201,7 +201,7 @@ function manifestAssetPath(manifestPath: string, asset: string): string {
 
 function buildsForManifest(context: { facts: ProjectFacts }, manifestPath: string) {
   const builds = context.facts.builds ?? [];
-  const normalizedManifestPath = manifestPath.replaceAll("\\", "/").replace(/^\.\//, "");
+  const normalizedManifestPath = normalizedCollectedAsset(manifestPath);
   const linked = builds.filter((build) =>
     build.artifacts.some(
       (artifact) => artifact.path.replaceAll("\\", "/") === normalizedManifestPath,
@@ -227,7 +227,7 @@ function buildScopedAssetPaths(
   // directory so same-named files in other outputs cannot satisfy the rule.
   if (!context.facts.builds || context.facts.builds.length === 0) return [asset];
 
-  const normalizedAsset = asset.replaceAll("\\", "/").replace(/^\.\//, "");
+  const normalizedAsset = normalizedCollectedAsset(asset);
   const manifestDir = path.posix.dirname(manifestPath);
   const outputRoots = [
     ...new Set(
@@ -286,7 +286,7 @@ function emittedAssetMatches(
   asset: string,
 ): boolean {
   if (context.facts.builds && context.facts.builds.length > 0) {
-    const normalizedAsset = asset.replaceAll("\\", "/").replace(/^\.\//, "");
+    const normalizedAsset = normalizedCollectedAsset(asset);
     return buildScopedAssetPaths(context, manifestPath, candidate).some(
       (expected) => normalizedAsset === expected,
     );
