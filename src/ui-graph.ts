@@ -234,18 +234,12 @@ function buildSharedGraph(findings: DoctorFinding[], federation: FederationModel
       const id = sharedNodeId(shared.package, project.project.federationGroup, node.instanceId);
       const previous = nodes.get(id);
       const previousVersions = previous?.meta?.versions as Record<string, string> | undefined;
-      const versions = previousVersions
-        ? {
-            ...previousVersions,
-            [node.instanceId ? `${project.project.name}#${node.instanceId}` : project.project.name]:
-              project.dependencies.installed[shared.package] ??
-              String(shared.requiredVersion ?? shared.version ?? "*"),
-          }
-        : {
-            [node.instanceId ? `${project.project.name}#${node.instanceId}` : project.project.name]:
-              project.dependencies.installed[shared.package] ??
-              String(shared.requiredVersion ?? shared.version ?? "*"),
-          };
+      const versions = {
+        ...previousVersions,
+        [node.instanceId ? `${project.project.name}#${node.instanceId}` : project.project.name]:
+          project.dependencies.installed[shared.package] ??
+          String(shared.requiredVersion ?? shared.version ?? "*"),
+      };
       addNode(
         nodes,
         withSeverity(
