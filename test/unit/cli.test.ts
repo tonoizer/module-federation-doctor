@@ -24,34 +24,30 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
 });
 
-async function captureStdout(run: () => Promise<number>): Promise<{ code: number; text: string }> {
+async function captureOutput(
+  stream: Pick<NodeJS.WriteStream, "write">,
+  run: () => Promise<number>,
+): Promise<{ code: number; text: string }> {
   const chunks: string[] = [];
-  const write = process.stdout.write;
-  process.stdout.write = ((chunk: string | Uint8Array) => {
+  const write = stream.write;
+  stream.write = ((chunk: string | Uint8Array) => {
     chunks.push(String(chunk));
     return true;
-  }) as typeof process.stdout.write;
+  }) as typeof stream.write;
   try {
     const code = await run();
     return { code, text: chunks.join("") };
   } finally {
-    process.stdout.write = write;
+    stream.write = write;
   }
 }
 
-async function captureStderr(run: () => Promise<number>): Promise<{ code: number; text: string }> {
-  const chunks: string[] = [];
-  const write = process.stderr.write;
-  process.stderr.write = ((chunk: string | Uint8Array) => {
-    chunks.push(String(chunk));
-    return true;
-  }) as typeof process.stderr.write;
-  try {
-    const code = await run();
-    return { code, text: chunks.join("") };
-  } finally {
-    process.stderr.write = write;
-  }
+function captureStdout(run: () => Promise<number>): Promise<{ code: number; text: string }> {
+  return captureOutput(process.stdout, run);
+}
+
+function captureStderr(run: () => Promise<number>): Promise<{ code: number; text: string }> {
+  return captureOutput(process.stderr, run);
 }
 
 function stubLocalEnv(): void {
