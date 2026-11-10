@@ -94,6 +94,9 @@ bridges. See `EVIDENCE_ROLLOUT_V2.md`.
 - HTML UI / `--ui` dashboard
 - In-browser doctor / runtime agent injection
 - A general `--fix` that mutates the project without a finding-driven change
+- New bundler adapters
+- A client-bundle doctor
+- Scraping private Module Federation fields
 
 For Module Federation concepts (shared, remotes, Bridge, observability), use the
 upstream `mf` skill, not this playbook.

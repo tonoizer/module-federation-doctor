@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve mfdoctor.
+        Thanks for helping improve mfdoctor. Bundler names match the compatibility matrix: webpack, rspack, rsbuild, and vite are supported; rolldown-vite (Rolldown / Vite Plus), modern.js (Modern.js), and nuxt (Nuxt 3/4) are partial. Next.js has no adapter — choose other.
   - type: textarea
     id: what-happened
     attributes:
@@ -24,6 +24,37 @@ body:
       placeholder: mfdoctor 0.1.0, Node 24, Vite 8
     validations:
       required: true
+  - type: dropdown
+    id: bundler
+    attributes:
+      label: Bundler
+      description: |
+        The bundler you built with. rolldown-vite is the Rolldown / Vite Plus flavor (matrix id rolldown). modern.js is matrix id modern.
+      options:
+        - webpack
+        - rspack
+        - rsbuild
+        - vite
+        - rolldown-vite
+        - modern.js
+        - nuxt
+        - other
+    validations:
+      required: true
+  - type: input
+    id: mfdoctor-command
+    attributes:
+      label: mfdoctor command
+      description: The exact command you ran, including flags.
+      placeholder: mfdoctor check . --ci --format json --output - --no-write
+    validations:
+      required: true
+  - type: textarea
+    id: capabilities
+    attributes:
+      label: mfdoctor capabilities
+      description: Paste the JSON from `mfdoctor capabilities` (no project config, no network).
+      render: json
   - type: input
     id: reproduction
     attributes:
@@ -33,6 +64,29 @@ body:
       placeholder: Reproduction
     validations:
       required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected mfdoctor to report or exit with.
+      placeholder: Exit 1 with finding config/remote-http-insecure
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What mfdoctor did instead, including the exit code if you have it.
+      placeholder: Exit 0 and no findings
+    validations:
+      required: true
+  - type: textarea
+    id: mf-report
+    attributes:
+      label: Redacted .mf report
+      description: |
+        Optional. Paste the relevant redacted `.mf/doctor` report JSON (or the finding ids). Remove secrets, tokens, and private paths.
+      render: json
   - type: textarea
     id: logs
     attributes:
