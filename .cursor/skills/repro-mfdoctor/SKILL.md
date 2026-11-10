@@ -55,7 +55,7 @@ node dist/cli.js capabilities
 
 `capabilities` must exit `0` and print JSON (`schemaVersion`,
 `package.name` = `@tonoizer/mfdoctor`). If it does not, stop and report the
-build failure. Do not Drive.
+build failure. Do not continue.
 
 Clone or unpack the reporter's reproduction into its own temp dir
 (`/tmp/mfdoctor-repro-<issue>/app`). Do not mutate the reporter's checkout or
