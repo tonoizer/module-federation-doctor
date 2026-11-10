@@ -89,6 +89,30 @@ mfdoctor does not ship or expect agents to invent:
 - HTML UI / `--ui` dashboard
 - In-browser doctor / runtime agent injection
 - A general `--fix` that mutates the project without a finding-driven change
+- New bundler adapters
+- A client-bundle doctor
+- Scraping private Module Federation fields
 
 For Module Federation concepts (shared, remotes, Bridge, observability), use the
 upstream `mf` skill, not this playbook.
+
+## Repository agents
+
+These rules apply when changing this repository. Diagnosing a consumer app
+stays in the loop above.
+
+- Keep the pnpm `minimumReleaseAge` gate in `pnpm-workspace.yaml` (strict, ten
+  days, fail closed when a publish time is missing). Do not add
+  `minimumReleaseAgeExclude` entries. If a version is too new, regenerate the
+  lockfile onto a version that clears the gate.
+- Stay a post-emit doctor. Do not add items from the out-of-scope list. A
+  bundler adapter is allowed only when the maintainer asks.
+- Open pull requests. Do not merge them. Keep each pull request to one purpose.
+- Behavior changes need tests. User-visible package changes need a changeset.
+  See `CONTRIBUTING.md`.
+- When a CLI output contract changes, refresh `.cursor/skills/verify-mfdoctor`
+  evidence in the same pull request.
+- Reproduce a reported bug with `.cursor/skills/repro-mfdoctor` before writing
+  a fix. That skill's pull request is the failing test and the repro report,
+  not the fix. Prove user-facing CLI and post-emit behavior with
+  `.cursor/skills/verify-mfdoctor`.
